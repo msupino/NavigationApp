@@ -31,6 +31,79 @@
     return legs.map(l => (Number.isFinite(l.timeH) ? l.timeH : 0));
   }
 
+  // The air along the route, not just over its aerodromes. One request for every sample point --
+  // Open-Meteo takes them comma-separated and answers with an array, each entry carrying its own
+  // ground elevation, which is what turns a base above the ground into a height above the sea
+  // that a planned altitude can be compared with.
+  //
+  // `cloud_base` is accepted by the API and comes back null: it is not served by the model this
+  // uses. The base is derived instead, from the surface temperature and dew point.
+  const OPEN_METEO = 'https://api.open-meteo.com/v1/forecast';
+  async function fetchCloudAlongRoute(points, atMs) {
+    if (!Array.isArray(points) || !points.length) return null;
+    // A cap, because the URL is one line and a 400 NM route sampled every ten miles is forty
+    // points. Beyond it the spacing widens rather than the tail being dropped: a check that
+    // quietly stopped looking two thirds of the way along would be worse than a coarser one.
+    const MAX = 25;
+    const use = points.length <= MAX
+      ? points
+      : points.filter((_, i) => i % Math.ceil(points.length / MAX) === 0);
+    const lat = use.map(p => p.lat.toFixed(3)).join(',');
+    const lng = use.map(p => p.lng.toFixed(3)).join(',');
+    const url = OPEN_METEO + '?latitude=' + lat + '&longitude=' + lng
+      + '&hourly=temperature_2m,dew_point_2m,cloud_cover_low'
+      + '&timezone=UTC&forecast_days=2';
+    let list;
+    try {
+      const res = await fetch(url);
+      if (!res.ok) throw new Error(String(res.status));
+      const j = await res.json();
+      list = Array.isArray(j) ? j : [j];
+    } catch (e) { return null; }
+    const stamp = new Date(Number.isFinite(atMs) ? atMs : Date.now()).toISOString().slice(0, 13);
+    const out = [];
+    use.forEach((p, i) => {
+      const loc = list[i];
+      const hours = loc && loc.hourly && Array.isArray(loc.hourly.time) ? loc.hourly.time : null;
+      if (!hours) return;
+      let at = hours.findIndex(t => String(t).slice(0, 13) === stamp);
+      if (at < 0) at = 0;
+      const read = (k) => {
+        const arr = loc.hourly[k];
+        return Array.isArray(arr) && Number.isFinite(Number(arr[at])) ? Number(arr[at]) : null;
+      };
+      const t = read('temperature_2m'), d = read('dew_point_2m');
+      out.push({
+        lat: p.lat, lng: p.lng, leg: p.leg,
+        baseFtAgl: routeCheckCloudBaseAglFt(t, d),
+        lowCoverPct: read('cloud_cover_low'),
+        elevFt: Number.isFinite(loc.elevation) ? loc.elevation * 3.28084 : 0,
+      });
+    });
+    return out.length ? out : null;
+  }
+
+  // The fields worth asking a METAR of: the ones near the route, not only the ones it names.
+  // A plan that routes past Haifa without landing there still cares what Haifa is reporting.
+  const WX_NEAR_NM = 15;
+  function fieldsNearRoute(points) {
+    const out = new Set();
+    for (const w of ((state && state.waypoints) || [])) {
+      const n = String((w && w.name) || '').trim().toUpperCase();
+      if (/^[A-Z]{4}$/.test(n)) out.add(n);
+    }
+    if (!Array.isArray(window.airfields)) return out;
+    for (const af of window.airfields) {
+      const icao = String((af && af.icao) || (af && af.name) || '').trim().toUpperCase();
+      if (!/^[A-Z]{4}$/.test(icao) || out.has(icao)) continue;
+      if (!Number.isFinite(af.lat) || !Number.isFinite(af.lng)) continue;
+      for (const p of points) {
+        if (routeCheckNmBetween(p, af) <= WX_NEAR_NM) { out.add(icao); break; }
+      }
+    }
+    return out;
+  }
+
   // The four datasets, each fetched the way its own layer fetches it, and each allowed to fail
   // on its own: one feed that is down must not turn the other three into silence.
   async function gather() {
@@ -50,11 +123,13 @@
     for (const list of [sigRes, airRes]) if (Array.isArray(list)) hazards.push(...list);
     // The stations this route actually touches, in the shape the check reads: a ceiling is a
     // property of a field on the plan, not of every field in the country.
+    const points = (typeof routeCheckSamplePoints === 'function')
+      ? routeCheckSamplePoints((state && state.waypoints) || [], 10) : [];
+    const cloud = await fetchCloudAlongRoute(points, departAtMs());
     const wx = [];
     const stations = (wxRes && wxRes.stations) || null;
     if (stations) {
-      const names = new Set(((state && state.waypoints) || [])
-        .map(w => String((w && w.name) || '').trim().toUpperCase()));
+      const names = fieldsNearRoute(points);
       for (const icao of Object.keys(stations)) {
         if (!names.has(icao.toUpperCase())) continue;
         const m = stations[icao] && stations[icao].metar;
@@ -71,6 +146,7 @@
         : (Array.isArray(window.notams) ? window.notams : null),
       hazards: (Array.isArray(sigRes) || Array.isArray(airRes)) ? hazards : null,
       wx: stations ? wx : null,
+      cloud,
       contains: (a, p) => (typeof airspaceContains === 'function' ? airspaceContains(a, p) : false),
     };
   }
@@ -80,8 +156,8 @@
     return routeCheckFindings(await gather());
   }
 
-  const hhmmZ = (ms) => (Number.isFinite(ms)
-    ? new Date(ms).toISOString().slice(11, 16) + 'Z' : '');
+  const hhmm = (ms) => (Number.isFinite(ms) ? new Date(ms).toISOString().slice(11, 16) : '');
+  const hhmmZ = (ms) => (Number.isFinite(ms) ? hhmm(ms) + 'Z' : '');
   // An open end is what a NOTAM with no end and a permanent area both carry, and "until
   // further notice" is what that means to a pilot -- not a blank.
   function span(from, to) {
@@ -89,7 +165,8 @@
     if (!Number.isFinite(from) && !Number.isFinite(to)) return '';
     if (!Number.isFinite(to)) return (S2.routeCheckFrom || 'from') + ' ' + hhmmZ(from);
     if (!Number.isFinite(from)) return (S2.routeCheckUntil || 'until') + ' ' + hhmmZ(to);
-    return hhmmZ(from) + '–' + hhmmZ(to);
+    // One Z on the pair, the way a validity is written: 08:00-08:30Z, not 08:00Z-08:30Z.
+    return hhmm(from) + '\u2013' + hhmmZ(to);
   }
   const ft = (v) => (Number.isFinite(v) ? Math.round(v).toLocaleString() + ' ft' : '');
   function band(lower, upper) {
@@ -123,6 +200,15 @@
     if (f.kind === 'hazard') {
       const head = [f.qualifier, f.hazard].filter(Boolean).join(' ');
       return { head, detail: band(f.baseFt, f.topFt), where, when: span(f.from, f.to) };
+    }
+    if (f.kind === 'cloudbase') {
+      // Said as an estimate, every time. This is a spread rule on a forecast, not a report:
+      // a derived figure dressed as a METAR is a wrong number wearing the shape of a right one.
+      const head = (S2.routeCheckCloudEst || 'Estimated cloud base') + ' ' + ft(f.baseFtAmsl)
+        + ' (' + (S2.routeCheckAgl || 'AGL') + ' ' + ft(f.baseFtAgl) + ')';
+      const detail = (S2.routeCheckLowCover || 'low cloud') + ' ' + f.coverPct + '%'
+        + ' · ' + (S2.routeCheckLegPlanned || 'leg planned') + ' ' + ft(f.altFt);
+      return { head, detail, where, when: span(f.from, f.to) };
     }
     if (f.kind === 'ceiling') {
       return {
@@ -185,6 +271,7 @@
       const names = { airspace: S2.routeCheckSrcAirspace || 'airspace',
         notams: S2.routeCheckSrcNotams || 'NOTAMs',
         hazards: S2.routeCheckSrcHazards || 'SIGMET/AIRMET',
+        cloud: S2.routeCheckSrcCloud || 'cloud along the route',
         ceiling: S2.routeCheckSrcCeiling || 'ceiling' };
       miss.textContent = (S2.routeCheckCouldNotAsk || 'Not checked (no data):') + ' '
         + result.unchecked.map(k => names[k] || k).join(', ');

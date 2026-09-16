@@ -43,12 +43,12 @@ test('with no data at all it says which sources it could not read', async ({ pag
   const got = await run(page);
   expect(got.findings).toEqual([]);
   // "No NOTAMs" and "no NOTAM data" are opposite answers to a pilot.
-  expect(got.unchecked.sort()).toEqual(['airspace', 'ceiling', 'hazards', 'notams']);
+  expect(got.unchecked.sort()).toEqual(['airspace', 'ceiling', 'cloud', 'hazards', 'notams']);
 });
 
 test('the window is the departure time plus the legs, not now', async ({ page }) => {
   await boot(page);
-  const got = await run(page, { airspace: [], notams: [], hazards: [], wx: [] });
+  const got = await run(page, { airspace: [], notams: [], hazards: [], wx: [], cloud: [] });
   expect(got.from).toBe(T0);
   expect(got.to).toBe(T0 + 1.5 * HOUR);
   expect(got.unchecked).toEqual([]);
@@ -387,3 +387,123 @@ async function NavAid_show(page) {
   await page.evaluate(() => NavAid.routeCheck.show());
   await page.waitForSelector('.route-check-modal .route-check-when');
 }
+
+// METAR and TAF are POINTS, at aerodromes. The cloud that traps a VFR flight is usually the
+// cloud between them, and no aerodrome report says anything about it. So the route is sampled
+// along its own length and the air asked about at each point.
+test.describe('cloud between the fields', () => {
+  async function boot2(page) {
+    await page.goto('?lang=en&nogist');
+    await page.waitForFunction(() => typeof routeCheckSamplePoints === 'function');
+  }
+
+  test('the route is sampled every ten miles, ends included', async ({ page }) => {
+    await boot2(page);
+    const got = await page.evaluate(() => {
+      const wps = [{ lat: 32.0, lng: 35.0 }, { lat: 32.5, lng: 35.0 }];   // 30 NM due north
+      const pts = routeCheckSamplePoints(wps, 10);
+      return {
+        n: pts.length,
+        legNm: Math.round(pts[0].legNm),
+        gaps: pts.slice(1, -1).map((p, i) => Math.round(routeCheckNmBetween(pts[i], p))),
+        lastIsEnd: pts[pts.length - 1].lat === 32.5,
+      };
+    });
+    expect(got.legNm).toBe(30);
+    expect(got.gaps.every(g => g === 10)).toBe(true);
+    expect(got.lastIsEnd).toBe(true);
+  });
+
+  // A two-mile leg is still a place the aeroplane goes.
+  test('a leg shorter than the step still gets a point', async ({ page }) => {
+    await boot2(page);
+    const n = await page.evaluate(() => routeCheckSamplePoints(
+      [{ lat: 32.0, lng: 35.0 }, { lat: 32.03, lng: 35.0 }], 10).length);
+    expect(n).toBe(2);                 // its start, and the route's end
+  });
+
+  // Cloud forms where the parcel cools to its dew point: about 400 ft per degree of spread.
+  test('the base is the spread rule, to the precision the rule has', async ({ page }) => {
+    await boot2(page);
+    const got = await page.evaluate(() => ({
+      ten: routeCheckCloudBaseAglFt(30, 20),
+      tight: routeCheckCloudBaseAglFt(15.5, 15),
+      saturated: routeCheckCloudBaseAglFt(12, 14),
+      unknown: routeCheckCloudBaseAglFt(null, 14),
+    }));
+    expect(got.ten).toBe(4000);
+    expect(got.tight).toBe(200);
+    expect(got.saturated).toBe(0);     // on the deck
+    expect(got.unknown).toBeNull();
+  });
+
+  const sample = (leg, baseAgl, cover, elevFt) =>
+    ({ lat: 32.4, lng: 35.1, leg, baseFtAgl: baseAgl, lowCoverPct: cover, elevFt: elevFt || 0 });
+
+  test('a broken layer below a planned leg is a finding, in feet AMSL', async ({ page }) => {
+    await boot2(page);
+    const f = await page.evaluate(() => routeCheckCloudFindings(
+      [{ lat: 32.4, lng: 35.1, leg: 0, baseFtAgl: 1500, lowCoverPct: 80, elevFt: 900 }],
+      [{ inboundAltitude: 3000 }], [{ from: 1, to: 2 }]));
+    expect(f).toHaveLength(1);
+    expect(f[0].baseFtAmsl).toBe(2400);        // 1,500 above 900 ft of ground
+    expect(f[0].groundFt).toBe(900);
+    expect(f[0].estimated).toBe(true);
+  });
+
+  // Broken starts at five eighths. Below that there is a layer, but there is also a way through.
+  test('scattered cover is not a ceiling', async ({ page }) => {
+    await boot2(page);
+    const f = await page.evaluate((s) => routeCheckCloudFindings(
+      [s], [{ inboundAltitude: 3000 }], []), sample(0, 1200, 40));
+    expect(f).toEqual([]);
+  });
+
+  test('a base above the planned leg is not a finding', async ({ page }) => {
+    await boot2(page);
+    const f = await page.evaluate((s) => routeCheckCloudFindings(
+      [s], [{ inboundAltitude: 3000 }], []), sample(0, 6000, 90));
+    expect(f).toEqual([]);
+  });
+
+  // Nine rows saying the same thing is a panel nobody reads.
+  test('one finding per leg, at its worst point', async ({ page }) => {
+    await boot2(page);
+    const f = await page.evaluate(() => routeCheckCloudFindings([
+      { lat: 32.1, lng: 35, leg: 0, baseFtAgl: 2500, lowCoverPct: 70, elevFt: 0 },
+      { lat: 32.2, lng: 35, leg: 0, baseFtAgl: 1100, lowCoverPct: 90, elevFt: 0 },
+      { lat: 32.3, lng: 35, leg: 0, baseFtAgl: 2000, lowCoverPct: 70, elevFt: 0 },
+      { lat: 32.4, lng: 35, leg: 1, baseFtAgl: 1800, lowCoverPct: 75, elevFt: 0 },
+    ], [{ inboundAltitude: 3000 }, { inboundAltitude: 3000 }], []));
+    expect(f).toHaveLength(2);
+    expect(f.find(x => x.leg === 0).baseFtAmsl).toBe(1100);
+    expect(f.find(x => x.leg === 0).coverPct).toBe(90);
+  });
+
+  test('no cloud data is named, not counted as clear', async ({ page }) => {
+    await boot2(page);
+    const got = await page.evaluate(() => routeCheckFindings({
+      waypoints: [{ name: 'A', lat: 32, lng: 35 }, { name: 'B', lat: 32.5, lng: 35 }],
+      legs: [{ inboundAltitude: 3000 }],
+      legTimesH: [0.5], departAtMs: Date.now(),
+      airspace: [], notams: [], hazards: [], wx: [],
+    }));
+    expect(got.unchecked).toEqual(['cloud']);
+  });
+
+  // It is a spread rule on a forecast, not a report, and the row has to say so every time.
+  test('the panel calls it an estimate and shows the cover it is based on', async ({ page }) => {
+    await boot2(page);
+    await page.waitForFunction(() => !!(window.NavAid && NavAid.routeCheck));
+    const parts = await page.evaluate(() => NavAid.routeCheck.lineFor({
+      kind: 'cloudbase', severity: 'warn', leg: 0,
+      baseFtAmsl: 2400, baseFtAgl: 1500, groundFt: 900, coverPct: 85, altFt: 3000,
+      from: Date.UTC(2026, 8, 16, 8, 0), to: Date.UTC(2026, 8, 16, 8, 30),
+    }));
+    expect(parts.head).toMatch(/Estimated cloud base/);
+    expect(parts.head).toContain('2,400 ft');
+    expect(parts.head).toContain('AGL 1,500 ft');
+    expect(parts.detail).toContain('85%');
+    expect(parts.when).toBe('08:00–08:30Z');
+  });
+});

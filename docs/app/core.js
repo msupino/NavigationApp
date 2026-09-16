@@ -1382,6 +1382,11 @@ window.S = Object.assign({
   routeCheckSrcNotams: 'NOTAMs',
   routeCheckSrcHazards: 'SIGMET/AIRMET',
   routeCheckSrcCeiling: 'ceiling',
+  routeCheckSrcCloud: 'cloud along the route',
+  routeCheckCloudEst: 'Estimated cloud base',
+  routeCheckAgl: 'AGL',
+  routeCheckLowCover: 'low cloud',
+  routeCheckLegPlanned: 'leg planned',
   routeCheckCrossedAt: 'crossed at',
   routeCheckNoAlt: 'crossed, and no altitude is planned for that leg',
   routeCheckCeiling: 'ceiling',
@@ -6083,6 +6088,92 @@ function routeCheckAltInBand(altFt, baseFt, topFt) {
   return altFt >= lo && altFt <= hi;
 }
 
+// --- cloud along the route ------------------------------------------------------------------
+// METAR and TAF are POINTS, at aerodromes. The cloud that traps a VFR flight is usually the
+// cloud between them -- a sea-breeze layer over the coastal plain, a hill fog on the ridge --
+// and no aerodrome report says anything about it.
+//
+// So the route is sampled along its own length and the air asked about at each point. The base
+// is the classic spread rule: cloud forms where the parcel cools to its dew point, which is
+// about 400 ft for every degree the surface temperature is above it. It is an ESTIMATE of a
+// convective base, not an observation, and everything downstream says so -- a derived figure
+// dressed as a METAR would be a wrong number wearing the shape of a right one.
+const ROUTE_CHECK_SAMPLE_NM = 10;
+// A base is only a CEILING when the sky is broken or worse. Broken starts at five eighths, so
+// the cover has to be at least that before a base is worth a pilot's attention: below it there
+// is a layer, but there is also a way through.
+const ROUTE_CHECK_CEILING_COVER_PCT = 62;
+const ROUTE_CHECK_FT_PER_DEG_SPREAD = 400;
+const ROUTE_CHECK_FT_PER_M = 3.28084;
+
+// Points along the whole route, one every `everyNm`, each carrying the leg it belongs to and
+// how far along that leg it is -- which is what lets a time be put on it later.
+function routeCheckSamplePoints(wps, everyNm) {
+  const step = Number(everyNm) > 0 ? Number(everyNm) : ROUTE_CHECK_SAMPLE_NM;
+  const out = [];
+  if (!Array.isArray(wps) || wps.length < 2) return out;
+  for (let i = 0; i + 1 < wps.length; i++) {
+    const a = wps[i], b = wps[i + 1];
+    if (!a || !b) continue;
+    const legNm = routeCheckNmBetween(a, b);
+    // Every leg contributes its start, however short it is: a two-mile leg is still a place the
+    // aeroplane goes, and a sampler that skipped it would leave a hole in the route.
+    const n = Math.max(1, Math.ceil(legNm / step));
+    for (let k = 0; k < n; k++) {
+      const t = k / n;
+      out.push({
+        lat: a.lat + (b.lat - a.lat) * t,
+        lng: a.lng + (b.lng - a.lng) * t,
+        leg: i,
+        alongNm: legNm * t,
+        legNm,
+      });
+    }
+  }
+  const last = wps[wps.length - 1];
+  out.push({ lat: last.lat, lng: last.lng, leg: wps.length - 2, alongNm: null, legNm: null });
+  return out;
+}
+// The spread rule. Rounded to the nearest hundred feet, because that is the precision the rule
+// has -- printing 3,847 ft would claim an accuracy the method does not possess.
+function routeCheckCloudBaseAglFt(tempC, dewC) {
+  if (!Number.isFinite(tempC) || !Number.isFinite(dewC)) return null;
+  const spread = tempC - dewC;
+  if (spread < 0) return 0;                       // saturated at the surface: it is on the deck
+  return Math.round(spread * ROUTE_CHECK_FT_PER_DEG_SPREAD / 100) * 100;
+}
+// One finding per leg, at its worst point, rather than one per sample: a 90 NM route sampled
+// every ten miles is nine rows saying the same thing, which is a panel nobody reads.
+function routeCheckCloudFindings(samples, legs, windows) {
+  const worst = new Map();
+  for (const s of (samples || [])) {
+    if (!s || !Number.isFinite(s.baseFtAgl)) continue;
+    if (!(Number(s.lowCoverPct) >= ROUTE_CHECK_CEILING_COVER_PCT)) continue;
+    const elevFt = Number.isFinite(s.elevFt) ? s.elevFt : 0;
+    const baseAmsl = s.baseFtAgl + elevFt;
+    const legAlt = (legs && legs[s.leg] && Number.isFinite(legs[s.leg].inboundAltitude))
+      ? legs[s.leg].inboundAltitude : null;
+    if (legAlt === null || baseAmsl > legAlt) continue;
+    const had = worst.get(s.leg);
+    if (!had || baseAmsl < had.baseFtAmsl) {
+      worst.set(s.leg, {
+        kind: 'cloudbase', severity: 'warn', leg: s.leg,
+        baseFtAmsl: baseAmsl, baseFtAgl: s.baseFtAgl, groundFt: Math.round(elevFt),
+        coverPct: Math.round(Number(s.lowCoverPct)), altFt: legAlt,
+        lat: s.lat, lng: s.lng, estimated: true,
+        from: (windows && windows[s.leg] && windows[s.leg].from) || null,
+        to: (windows && windows[s.leg] && windows[s.leg].to) || null,
+      });
+    }
+  }
+  return [...worst.values()];
+}
+if (typeof window !== 'undefined') {
+  window.routeCheckSamplePoints = routeCheckSamplePoints;
+  window.routeCheckCloudBaseAglFt = routeCheckCloudBaseAglFt;
+  window.routeCheckCloudFindings = routeCheckCloudFindings;
+}
+
 // The check itself. `input` carries everything: the route, when it leaves, and the four
 // datasets. Missing data is missing, not clear -- a source that could not be read says so
 // rather than contributing a silent "nothing found", because "no NOTAMs" and "no NOTAM data"
@@ -6214,6 +6305,12 @@ function routeCheckFindings(input) {
       });
     }
   }
+
+  // --- cloud between the fields -----------------------------------------------------------
+  // The half no aerodrome report covers. Sampled along the route, so a layer that sits over the
+  // middle of a leg is found where a METAR at either end would have said nothing.
+  if (!Array.isArray(o.cloud)) out.unchecked.push('cloud');
+  else for (const f of routeCheckCloudFindings(o.cloud, legs, windows)) add(f);
 
   out.findings.sort((a, b) => (a.severity === b.severity ? 0 : (a.severity === 'stop' ? -1 : 1))
     || ((a.leg === null ? 99 : a.leg) - (b.leg === null ? 99 : b.leg)));
