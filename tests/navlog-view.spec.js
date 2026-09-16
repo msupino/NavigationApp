@@ -560,7 +560,9 @@ test('the window offers no import of its own', async ({ page }) => {
   expect(await page.locator('.navlog-import').count()).toBe(0);
   expect(await page.locator('.navlog-file').count()).toBe(0);
   // The way OUT stays here: the sheet it saves is a nav-table document nothing else composes.
-  await expect(page.locator('.navlog-export')).toHaveText('Save exercise');
+  // Named for the action, not for the exam -- a pilot planning a real flight is not saving an
+  // exercise, and this window is no longer only for the ones that come with answer sheets.
+  await expect(page.locator('.navlog-export')).toHaveText('Save as a file');
 });
 
 // Reported: the compass card took too many lines. It is printed two pairs of columns wide, and
@@ -1564,5 +1566,72 @@ test.describe('the form as a thing to read', () => {
     // table past that edge.
     expect(got.attach).toContain('local');
     expect(got.attach).toContain('scroll');
+  });
+});
+
+// Reported: the form's close X scrolls away, leaving Esc as the only way out on a short screen.
+// Every modal in this app positions its X absolutely inside the box; this one made the BOX the
+// scroller (it had to have an overflow for the resize grip to work), so the header went with
+// the sheet. The body scrolls now and the box does not.
+test.describe('the header stays put', () => {
+  const short = async (page) => {
+    await page.setViewportSize({ width: 900, height: 460 });
+    await boot(page);
+    // Enough rows that there is something to scroll past -- stored BEFORE the window opens,
+    // since a second show() leaves two of them on screen.
+    await page.evaluate(() => {
+      const cfg = NavAid.navLog.config();
+      cfg.met = [];
+      for (let ft = 1000; ft <= 12000; ft += 1000) cfg.met.push({ alt: ft, dir: 300, kt: 20, tempC: 5 });
+      NavAid.navLog.save(cfg);
+    });
+    await openLog(page);
+  };
+
+  test('the title and its X survive a scroll to the bottom', async ({ page }) => {
+    await short(page);
+    const box = page.locator('.navlog-modal');
+    const pos = () => page.evaluate(() => {
+      const b = document.querySelector('.navlog-modal');
+      const x = b.querySelector('.modal-close-x');
+      const t = b.querySelector('.modal-title');
+      return { boxTop: Math.round(b.getBoundingClientRect().top),
+        xTop: Math.round(x.getBoundingClientRect().top),
+        titleTop: Math.round(t.getBoundingClientRect().top) };
+    });
+    const before = await pos();
+    const scrolled = await page.evaluate(() => {
+      const body = document.querySelector('.navlog-body');
+      body.scrollTop = body.scrollHeight;
+      return body.scrollTop;
+    });
+    expect(scrolled, 'the body is what scrolls').toBeGreaterThan(0);
+    expect(await pos()).toEqual(before);
+    await expect(box.locator('.modal-close-x')).toBeInViewport();
+  });
+
+  // The box itself must not scroll, or the header goes with it however far the body is scrolled.
+  test('the box is not the scroller, and still resizes', async ({ page }) => {
+    await short(page);
+    const got = await page.evaluate(() => {
+      const b = document.querySelector('.navlog-modal');
+      b.scrollTop = 600;
+      const cs = getComputedStyle(b);
+      return { scrollTop: b.scrollTop, overflowY: cs.overflowY, resize: cs.resize };
+    });
+    expect(got.scrollTop).toBe(0);
+    expect(got.overflowY).toBe('hidden');
+    expect(got.resize).toBe('both');      // an overflow that is not `visible` is what resize needs
+  });
+
+  // ...and it still closes by the button, not only by Esc. At the default window size: this is a
+  // non-blocking window, so on a 460px-tall viewport its top-right corner sits under the
+  // toolbar's footer strip and the X is genuinely covered -- which is the price of a window you
+  // can keep open while working the map, not something this change introduced.
+  test('the X closes it', async ({ page }) => {
+    await boot(page);
+    await openLog(page);
+    await page.locator('.navlog-modal .modal-close-x').click();
+    await expect(page.locator('.navlog-modal')).toHaveCount(0);
   });
 });

@@ -418,7 +418,7 @@ window.S = {
   navTableFetchMetTitle: 'רוח וטמפרטורה לכל גובה שהטיסה עוברת בו, באמצע המסלול ובשעה שאליה מכוון שעון ההסתכלות קדימה',
   navTableFetchMetErr: 'לא ניתן היה למשוך את התחזית.',
   navTableMetFetched: (n, at) => 'נמשכו ' + n + ' גבהים לטבלה, עבור ' + at + '.',
-  navTableExport: 'שמירת תרגיל',
+  navTableExport: 'שמירה לקובץ',
   navTableImported: 'התרגיל נטען.',
   navTableImportBad: 'הקובץ הזה אינו תרגיל: אין בו מסלול ואין בו הגדרות.',
   navTableReplaceRoute: 'התרגיל נושא מסלול משלו. לטעון אותו? הפעולה מחליפה את המסלול במפה שלכם.',
