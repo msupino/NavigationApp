@@ -5025,10 +5025,11 @@ function drawLegs() {
     // the total. See legRetraceTurnIndex.
     if (typeof legRetraceTurnIndex === 'function' && i === legRetraceTurnIndex()) cumInH = 0;
     if (timerAt > 0 && i === timerAt) cumInH = 0;
-    // Before the mark the clock is not running, so there is nothing to add and nothing to show.
-    const beforeTimer = timerAt > 0 && i < timerAt;
-    if (!preClock && !beforeTimer) cumInH += durH;
-    const cumInStr = (!preClock && !beforeTimer && cumInH > 0) ? toHMS(cumInH) : '--';
+    // Before the mark the clock is not running: nothing to add, and no kite -- the same
+    // treatment a leg inside the departure CTR already gets. See legOffCumClock.
+    const offClock = typeof legOffCumClock === 'function' ? legOffCumClock(i) : preClock;
+    if (!offClock) cumInH += durH;
+    const cumInStr = (!offClock && cumInH > 0) ? toHMS(cumInH) : '--';
 
     // A blocked inbound direction (one-way leg flown the disallowed way) has no
     // valid altitude to show — skip its nav kite entirely (the return kite is
@@ -5051,7 +5052,7 @@ function drawLegs() {
     // Declared out here because the RETURN cum kite mirrors it, and that is drawn in the
     // return block below -- inside the inbound block it was out of scope there.
     const cumDef = cumDefaultLabelOffset();       // perp/along px, shared with the hit test
-    if (showCumTime && !preClock) {
+    if (showCumTime && !offClock) {
       const cumP = leg.cumLabel || defCum;
       const cumPerp  = cumP._default ? cumDef.perp : (cumP.p || 0) * zoomScale;
       const cumAlong = cumP._default ? cumDef.along : (cumP.a || 0) * zoomScale;
@@ -6101,7 +6102,8 @@ function routeInkRects() {
         pushRotated(legLabelCenter(i, 'out'), A.x, A.y, halfL, halfW);
       }
     }
-    if (cum && typeof showCumTime !== 'undefined' && showCumTime && !preClock) {
+    if (cum && typeof showCumTime !== 'undefined' && showCumTime &&
+        !(typeof legOffCumClock === 'function' ? legOffCumClock(i) : preClock)) {
       if (typeof cumLabelCenter === 'function') pushRotated(cumLabelCenter(i), B.x, B.y, cum.halfL, cum.halfW);
       if (typeof showReturn !== 'undefined' && showReturn && typeof cumLabelRetCenter === 'function') {
         pushRotated(cumLabelRetCenter(i), A.x, A.y, cum.halfL, cum.halfW);

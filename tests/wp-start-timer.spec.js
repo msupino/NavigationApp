@@ -162,10 +162,29 @@ test('the map kites count from the mark too', async ({ page }) => {
 
   await page.evaluate(() => { setTimerWaypoint(2); draw(); });
   const after = await labels();
-  // Legs 0 and 1 run before the mark: no clock, so nothing to print.
-  expect(after[0]).toBe('--');
-  expect(after[1]).toBe('--');
-  // Leg 2 starts on it, so its kite reads its own time -- less than it read from departure.
-  expect(after[2]).not.toBe('--');
-  expect(after[2]).not.toBe(before[2]);
+  // Legs 0 and 1 run before the mark, so they get no kite at all -- not a kite reading '--'.
+  // That is the treatment a leg inside the departure CTR already gets, and the reason the
+  // departure airfield has none: a label that says nothing is a label to read and discard.
+  expect(after).toHaveLength(1);
+  // The one that remains starts on the mark, so it reads its own leg time -- less than it read
+  // when the clock ran from departure.
+  expect(after[0]).not.toBe('--');
+  expect(after[0]).not.toBe(before[2]);
+});
+
+// The kite you cannot see is a kite you cannot drag: the drawing and the hit test read one
+// predicate, so they cannot disagree about which legs have one.
+test('a leg with no cum kite offers nothing to grab', async ({ page }) => {
+  await boot(page);
+  await page.evaluate(() => { showCumTime = true; setTimerWaypoint(2); draw(); });
+  const boxes = await page.evaluate(() => {
+    const seen = [];
+    const orig = window.cumLabelCenter;
+    if (typeof orig !== 'function') return null;
+    window.cumLabelCenter = (i, ...rest) => { seen.push(i); return orig.call(null, i, ...rest); };
+    if (typeof routeInkRects === 'function') routeInkRects();
+    window.cumLabelCenter = orig;
+    return seen;
+  });
+  if (boxes !== null) for (const i of boxes) expect(i).toBeGreaterThanOrEqual(2);
 });

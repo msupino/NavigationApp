@@ -6019,6 +6019,18 @@ function setTimerWaypoint(idx) {
 }
 if (typeof window !== 'undefined') window.setTimerWaypoint = setTimerWaypoint;
 
+// Is leg i off the cumulative clock? Two reasons, and they behave the same way: it lies inside
+// the departure CTR, or it runs before the waypoint the pilot started the clock at. Off the
+// clock means NO cumulative kite -- not a kite reading '--'. The departure airfield does not get
+// one either, and a label that says nothing is a label to read and discard. One predicate, so
+// the drawing and the hit test cannot disagree about which legs have a kite to grab.
+function legOffCumClock(i) {
+  if (typeof legInsideCtr === 'function' && legInsideCtr(i)) return true;
+  const at = typeof routeTimerIndex === 'function' ? routeTimerIndex() : -1;
+  return at > 0 && i < at;
+}
+if (typeof window !== 'undefined') window.legOffCumClock = legOffCumClock;
+
 function legTurnaroundIndex() { return legRetraceTurnIndex(); }
 // Should leg i be shown, given the direction filter? Everything from the turnaround
 // on counts as the return -- not just the legs that literally retrace. This is the
