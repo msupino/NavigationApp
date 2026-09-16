@@ -1,0 +1,142 @@
+{
+  "title": "Teyman - Sdom (CVFR exercise)",
+  "source": "Israeli CVFR written navigation exercise",
+  "notes": [
+    "Straight lines between the points, ignoring CVFR routes. Climb and descent on the route.",
+    "Climb met data at 2/3 of the height gained above the departure field; descent at 1/2 of the height lost above the destination field."
+  ],
+  "route": {
+    "waypoints": [
+      {
+        "name": "LLTM",
+        "lat": 31.28333,
+        "lng": 34.71667,
+        "he": "שדה תימן",
+        "elevFt": 1000
+      },
+      {
+        "name": "B",
+        "lat": 30.825,
+        "lng": 34.36667
+      },
+      {
+        "name": "C",
+        "lat": 30.63333,
+        "lng": 34.98333
+      },
+      {
+        "name": "D",
+        "lat": 31.10833,
+        "lng": 34.76667
+      },
+      {
+        "name": "LLSD",
+        "lat": 31.16667,
+        "lng": 35.36667,
+        "he": "מנחת סדום",
+        "elevFt": -1000
+      }
+    ]
+  },
+  "navlog": {
+    "cruiseAltFt": 7000,
+    "depElevFt": 1000,
+    "destElevFt": -1000,
+    "variationDeg": 3,
+    "cas": {
+      "climb": 110,
+      "cruise": 140,
+      "descent": 150
+    },
+    "rates": {
+      "climbFpm": 600,
+      "descentFpm": 1000
+    },
+    "fuel": {
+      "climbGal": 3,
+      "cruiseGph": 12
+    },
+    "met": [
+      {
+        "alt": 3000,
+        "dir": 160,
+        "kt": 16,
+        "tempC": 18
+      },
+      {
+        "alt": 4000,
+        "dir": 180,
+        "kt": 18,
+        "tempC": 16
+      },
+      {
+        "alt": 5000,
+        "dir": 200,
+        "kt": 20,
+        "tempC": 14
+      },
+      {
+        "alt": 6000,
+        "dir": 220,
+        "kt": 22,
+        "tempC": 12
+      },
+      {
+        "alt": 7000,
+        "dir": 240,
+        "kt": 25,
+        "tempC": 10
+      }
+    ],
+    "deviation": [
+      {
+        "mh": 0,
+        "ch": 3
+      },
+      {
+        "mh": 30,
+        "ch": 31
+      },
+      {
+        "mh": 60,
+        "ch": 60
+      },
+      {
+        "mh": 90,
+        "ch": 89
+      },
+      {
+        "mh": 120,
+        "ch": 118
+      },
+      {
+        "mh": 150,
+        "ch": 147
+      },
+      {
+        "mh": 180,
+        "ch": 179
+      },
+      {
+        "mh": 210,
+        "ch": 211
+      },
+      {
+        "mh": 240,
+        "ch": 243
+      },
+      {
+        "mh": 270,
+        "ch": 272
+      },
+      {
+        "mh": 300,
+        "ch": 300
+      },
+      {
+        "mh": 330,
+        "ch": 331
+      }
+    ]
+  }
+}
