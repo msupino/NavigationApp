@@ -242,6 +242,36 @@
     };
   }
 
+  // Is there a drawn plan an incoming route would destroy?
+  function routeOnMap() {
+    return typeof state === 'object' && state
+      && Array.isArray(state.waypoints) && state.waypoints.length > 0;
+  }
+
+  // The one gate in front of every exercise route, asked before anything is applied. Both doors
+  // pass through it: an exercise that is also a route file (drawn by the app's own route path)
+  // and one that is only points (drawn here). Reported as a route replaced with no warning --
+  // the ask lived after applyRouteData had already overwritten the map.
+  async function askReplaceRoute() {
+    if (!routeOnMap()) return true;
+    const S2 = window.S || {};
+    const ask = S2.navTableReplaceRoute
+      || 'This exercise carries its own route. Load it? This replaces the route on your map.';
+    try {
+      return typeof window.askYesNo === 'function'
+        ? !!await window.askYesNo(S2.navTableTitle || 'Flight planning form', ask,
+          S2.navTableReplaceRouteOk || 'Load the route')
+        : true;
+    } catch (e) { return false; }
+  }
+
+  // The undo the route path takes, so declining is not the only way back.
+  function snapshotRoute() {
+    if (typeof recordUndoSnapshot !== 'function'
+      || typeof routeSnapshotForStorage !== 'function') return;
+    try { recordUndoSnapshot(JSON.stringify(routeSnapshotForStorage())); } catch (e) { /* not fatal */ }
+  }
+
   // Applies one. The route is REPLACED, so it asks first when there is one to lose -- in the
   // app's own dialog, because the answer decides whether a drawn plan survives.
   async function importExercise(text, opts) {
@@ -257,21 +287,12 @@
       }
       return null;
     }
-    if (parsed.waypoints && typeof state === 'object' && state
-      && Array.isArray(state.waypoints) && state.waypoints.length) {
-      const ask = S2.navTableReplaceRoute
-        || 'This exercise carries its own route. Load it? This replaces the route on your map.';
-      let take = false;
-      try {
-        take = typeof window.askYesNo === 'function'
-          ? await window.askYesNo(S2.navTableTitle || 'Flight planning form', ask,
-            S2.navTableReplaceRouteOk || 'Load the route')
-          : true;
-      } catch (e) { take = false; }
-      if (!take) parsed.waypoints = null;      // the settings still land; the plan is untouched
+    // Already asked and answered upstairs when the caller drew the route itself.
+    if (parsed.waypoints && !(await askReplaceRoute())) {
+      parsed.waypoints = null;               // the settings still land; the plan is untouched
     }
     if (parsed.waypoints) {
-      if (typeof recordUndoSnapshot === 'function') recordUndoSnapshot();
+      snapshotRoute();
       state.waypoints = parsed.waypoints;
       if (typeof syncLegs === 'function') syncLegs();
       if (typeof draw === 'function') draw();
@@ -403,12 +424,22 @@
   // all. When it is, the route goes down the ordinary route path so it lands on the map complete;
   // only the sheet's assumptions come here. Reported as "the alt is ---": the window's own
   // importer read the points and dropped the legs, so every kite showed a dash.
-  function openExerciseFile(text) {
+  async function openExerciseFile(text) {
     let doc = null;
     try { doc = JSON.parse(String(text)); } catch (e) { doc = null; }
     const asRoute = (doc && typeof doc === 'object' && typeof validateRoute === 'function'
       && !validateRoute(doc)) ? doc : null;
-    if (asRoute && typeof applyRouteData === 'function') applyRouteData(asRoute);
+    if (asRoute && typeof applyRouteData === 'function') {
+      // Ask BEFORE applying: applyRouteData overwrites waypoints, legs and notes outright, and
+      // a question asked afterwards is asking about a plan that is already gone. Declining
+      // keeps the map and still takes the sheet -- met table, card, speeds, field elevations.
+      if (await askReplaceRoute()) {
+        snapshotRoute();
+        applyRouteData(asRoute);
+      }
+    }
+    // skipRoute when this path drew the route, and also when it was offered and declined:
+    // either way the answer is settled, and importExercise must not ask a second time.
     return importExercise(text, { skipRoute: !!asRoute });
   }
 
