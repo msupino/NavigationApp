@@ -254,9 +254,33 @@
 
   // The menu, in the sheet. Not a copy of it: the toolbar element itself is moved in and put
   // back on close, so every section, handler and stored state is the one that already works.
+  // The search, at the top of the menu sheet, where a thumb already is.
+  //
+  // On a phone the only way in used to be Menu -> Edit -> Find, two taps into a section, for the
+  // one control that is a text box rather than a switch. The OVERLAY element itself is moved in,
+  // the way the toolbar is: same input, same results list, same handlers, and no second source
+  // of truth to keep in step.
+  function hostSearch(body) {
+    const overlay = document.getElementById('search-overlay');
+    if (!overlay) return null;
+    const parent = overlay.parentNode;
+    const next = overlay.nextSibling;
+    const wasHidden = overlay.classList.contains('hidden');
+    overlay.classList.remove('hidden');
+    overlay.classList.add('deck-hosted-search');
+    body.appendChild(overlay);
+    return () => {
+      overlay.classList.remove('deck-hosted-search');
+      if (wasHidden) overlay.classList.add('hidden');
+      if (next && next.parentNode === parent) parent.insertBefore(overlay, next);
+      else if (parent) parent.appendChild(overlay);
+    };
+  }
+
   function hostToolbar(body) {
+    const putSearchBack = hostSearch(body);
     const bar = document.getElementById('toolbar');
-    if (!bar) return;
+    if (!bar) { restore = putSearchBack; return; }
     const parent = bar.parentNode;
     const next = bar.nextSibling;
     const inline = bar.getAttribute('style') || '';
@@ -265,6 +289,7 @@
     bar.classList.add('deck-hosted');
     body.appendChild(bar);
     restore = () => {
+      if (putSearchBack) putSearchBack();
       bar.classList.remove('deck-hosted');
       if (inline) bar.setAttribute('style', inline);
       if (next && next.parentNode === parent) parent.insertBefore(bar, next);

@@ -8051,6 +8051,18 @@ body.theme-light .disclaimer-lang-select { border-color: rgba(31, 37, 44, 0.35);
 /* Nothing behind it scrolls while it is up: the chart is not in use yet. */
 body.disclaimer-open { overflow: hidden; }
 
+/* The search, hosted at the top of the deck's menu sheet: the overlay element itself, so it is
+   the same input and the same results list. Its floating-overlay geometry means nothing here. */
+#search-overlay.deck-hosted-search {
+  position: static;
+  transform: none;
+  width: 100%;
+  max-width: none;
+  margin: 0 0 8px;
+  box-shadow: none;
+}
+#search-overlay.deck-hosted-search #search-close { display: none; }
+
 /* --- nav log -------------------------------------------------------------
    A planning-desk table: 23 columns that will not fit a phone, so the table
    scrolls inside its own box and the page never scrolls sideways. */
