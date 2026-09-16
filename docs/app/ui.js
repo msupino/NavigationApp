@@ -3384,6 +3384,21 @@ function runSearch() {
       }
       map.setView([w.lat, w.lng], Math.max(map.getZoom(), 12));
       flashMapPoint(w.lat, w.lng);
+      // An airfield found by name opens its panel, the way a bubble and a typed coordinate
+      // already do. Everything a pilot searches a field FOR is in there -- its frequencies, its
+      // plates, the wind and the density altitude -- and flying the map to a triangle leaves
+      // them to find it again with a tap they have just made with the keyboard.
+      //
+      // Only a field: a nav waypoint, a VOR or a note is a point on the chart whose own label
+      // says what it is, and the flash is the answer to "where is it".
+      if (h.kind === 'af' && Array.isArray(airfields)) {
+        const index = airfields.indexOf(w);
+        if (index >= 0) {
+          state.selected = { type: 'airfield', index };
+          if (typeof showInspector === 'function') showInspector();
+          if (typeof draw === 'function') draw();
+        }
+      }
       wpSearch.value = primary;
       closeSearch();
     };

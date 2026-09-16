@@ -151,6 +151,64 @@ test('a coordinate selection survives a redraw and yields to the next one', asyn
   expect(await page.evaluate(() => state.selected.lat)).toBeCloseTo(33.0, 4);
 });
 
+// An airfield found by name opens its panel. Everything a pilot searches a field FOR is in there
+// -- frequencies, plates, wind, density altitude -- and flying the map to a triangle left them to
+// find it again with a tap they had just made with the keyboard.
+test('a searched airfield opens its inspector', async ({ page }) => {
+  await boot(page);
+  await page.waitForFunction(() => Array.isArray(window.airfields) && airfields.length > 0);
+  await page.evaluate(() => {
+    showSearchOverlay();
+    const box = document.getElementById('wp-search');
+    box.value = 'LLHZ';
+    box.dispatchEvent(new Event('input', { bubbles: true }));
+  });
+  await page.locator('.wp-search-item').first().click();
+  await expect(page.locator('#inspector')).toBeVisible();
+  const seen = await page.evaluate(() => ({
+    sel: state.selected && state.selected.type,
+    name: airfields[state.selected.index].name,
+    title: document.getElementById('insp-title').value,
+    centred: Math.round(map.getCenter().lat * 100) / 100,
+  }));
+  expect(seen.sel).toBe('airfield');
+  expect(seen.name).toBe('LLHZ');
+  expect(seen.title).toMatch(/LLHZ/);
+  expect(seen.centred).toBeCloseTo(32.18, 1);
+});
+
+// A nav waypoint is a point on the chart whose own label says what it is: the flash answers
+// "where is it", and opening a panel over the map would be answering a question nobody asked.
+test('a searched nav waypoint still just flies there', async ({ page }) => {
+  await boot(page);
+  await page.waitForFunction(() => Array.isArray(window.navWP) && navWP.length > 0);
+  await page.evaluate(() => {
+    showSearchOverlay();
+    const box = document.getElementById('wp-search');
+    box.value = 'BAZRA';
+    box.dispatchEvent(new Event('input', { bubbles: true }));
+  });
+  await page.locator('.wp-search-item').first().click();
+  expect(await page.evaluate(() => state.selected)).toBeNull();
+  await expect(page.locator('#inspector')).toBeHidden();
+});
+
+// Route building is not looking something up: the token is replaced and nothing flies or opens.
+test('route building does not open a panel', async ({ page }) => {
+  await boot(page);
+  await page.waitForFunction(() => Array.isArray(window.airfields) && airfields.length > 0);
+  await page.evaluate(() => {
+    showSearchOverlay();
+    const box = document.getElementById('wp-search');
+    box.value = 'BAZRA LLHZ';
+    box.dispatchEvent(new Event('input', { bubbles: true }));
+  });
+  await page.locator('.wp-search-item').first().click();
+  expect(await page.evaluate(() => state.selected)).toBeNull();
+  await expect(page.locator('#inspector')).toBeHidden();
+  expect(await page.evaluate(() => document.getElementById('wp-search').value)).toMatch(/^BAZRA /);
+});
+
 // Asked for: an ✕ that empties the box. On a phone the search sits at the top of the menu sheet,
 // where the only ✕ in reach puts the whole menu away -- so clearing a mistyped waypoint meant
 // thirteen backspaces, or losing the sheet.
