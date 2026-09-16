@@ -1301,9 +1301,11 @@ test.describe('adding a met level', () => {
     await boot(page);
     await openLog(page);
     const wanted = await page.evaluate(() => NavAid.navLog.metLevelsFor(NavAid.navLog.config()));
-    // Written the way a number is written: 2,000 rather than 2000.
+    // Written the way a number is written: 2,000 rather than 2000. Matched as a literal, since
+    // the separator is the point and a regex would read it as "any character".
     await expect(page.locator('.navlog-add'))
-      .toHaveAttribute('title', new RegExp(wanted[0].toLocaleString('en-US').replace(',', ',')));
+      .toHaveAttribute('title', new RegExp('\\b' + wanted[0].toLocaleString('en-US')
+        .replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\b'));
   });
 });
 
