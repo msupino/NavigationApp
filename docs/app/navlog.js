@@ -772,13 +772,45 @@
       add.type = 'button';
       add.className = 'navlog-add';
       add.textContent = S2.navLogAddRow || 'Add a level';
-      add.addEventListener('click', () => {
+      // The level the FLIGHT is missing, not the next rung of a ladder. metLevelsFor already
+      // knows the pressure altitudes this sheet reads its air at -- it is the list Fetch
+      // forecast asks for -- so the first of those with no row is the one worth adding. Only
+      // once the table covers the flight does it fall back to a thousand feet above the top.
+      const nextLevel = () => {
+        const have = new Set(cfg.met.map(r => Math.round(r.alt)));
+        const wanted = metLevelsFor(cfg).find(ft => !have.has(ft));
+        if (Number.isFinite(wanted)) return wanted;
         const highest = cfg.met.reduce((top, r) => Math.max(top, r.alt), 0);
-        cfg.met.push({ alt: highest ? highest + 1000 : 2000, dir: 0, kt: 0, tempC: 15 });
+        return highest ? highest + 1000 : 2000;
+      };
+      add.title = S2.navLogAddRowAt ? S2.navLogAddRowAt(nextLevel()) : add.textContent;
+      add.setAttribute('aria-label', add.title);
+      add.addEventListener('click', () => {
+        const alt = nextLevel();
+        // Wind is copied from the nearest row the table already has, because a copy is plainly
+        // a copy and the pilot can see what it came from; with nothing to copy it is calm,
+        // which claims nothing. The temperature is ISA for that altitude rather than a flat 15
+        // at every level -- 15 °C at 7,000 ft is not a default, it is a wrong number wearing
+        // the shape of one, and this sheet works its true airspeeds from that column.
+        const near = cfg.met.length
+          ? cfg.met.reduce((best, r) => (Math.abs(r.alt - alt) < Math.abs(best.alt - alt) ? r : best))
+          : null;
+        cfg.met.push({
+          alt,
+          dir: near ? near.dir : 0,
+          kt: near ? near.kt : 0,
+          tempC: typeof isaTempAtPaC === 'function' ? Math.round(isaTempAtPaC(alt)) : 15,
+        });
         cfg.met.sort((a, b) => a.alt - b.alt);
         saveTables(cfg);
         render();
         renderMet();
+        // Adding a level is asking to type one, so the caret lands in the row just added -- and
+        // on its altitude, the one figure the app cannot guess better than the pilot can.
+        const idx = cfg.met.findIndex(r => Math.round(r.alt) === Math.round(alt));
+        const tr = met.querySelectorAll('.navlog-grid tr')[idx + 1];
+        const box = tr && tr.querySelector('input');
+        if (box) { box.focus(); box.select(); }
       });
       // The two buttons share a row, with room between them: side by side and touching, they
       // read as one control with a seam down it.

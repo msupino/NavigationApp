@@ -513,10 +513,16 @@ test('met levels are kept in altitude order', async ({ page }) => {
     return [...grid].slice(1).map(tr => tr.querySelector('input').value);
   });
   expect(shown).toEqual(['2000', '6000']);
-  // Adding one puts it above the highest, and the list stays sorted.
+  // Adding one keeps the list sorted, wherever the new level belongs. (It used to land above
+  // the highest by construction; it now lands on a level the flight reads its air at, which is
+  // as likely to be between two existing rows as above them -- so this asserts the order, which
+  // is what the test is named for.)
   await page.evaluate(() => document.querySelector('.navlog-add').click());
   const after = await page.evaluate(() => NavAid.navLog.config().met.map(r => r.alt));
-  expect(after).toEqual([2000, 6000, 7000]);
+  expect(after).toHaveLength(3);
+  expect(after).toEqual([...after].sort((a, b) => a - b));
+  expect(after).toContain(2000);
+  expect(after).toContain(6000);
 });
 
 // Reported: opening the file left every altitude as a dash -- the importer read the points and
@@ -1227,4 +1233,76 @@ test('a climb with no rate says so under the sheet', async ({ page }) => {
   });
   const note = await page.evaluate(() => document.querySelector('.navlog-note').textContent);
   expect(note).toMatch(/no rate of climb/i);
+});
+
+// "Add a level" appended the next rung of a ladder -- highest + 1000, with wind 00/00 and 15 °C
+// whatever the altitude. Three problems in one button: the altitude was not a level this flight
+// reads its air at, and the sheet works its true airspeeds from that temperature column, so a
+// flat 15 is a wrong number wearing the shape of a default.
+test.describe('adding a met level', () => {
+  const alts = (page) => page.evaluate(() => NavAid.navLog.config().met.map(r => r.alt));
+
+  test('it adds a level this flight actually reads its air at', async ({ page }) => {
+    await boot(page);
+    await openLog(page);
+    // The levels the sheet asks the forecast for: the same list, and the table starts empty.
+    const wanted = await page.evaluate(() => NavAid.navLog.metLevelsFor(NavAid.navLog.config()));
+    expect(await alts(page)).toEqual([]);
+    await page.locator('.navlog-add').click();
+    expect(await alts(page)).toEqual([wanted[0]]);
+    await page.locator('.navlog-add').click();
+    expect(await alts(page)).toEqual(wanted.slice(0, 2));
+  });
+
+  // The temperature column is where every TAS on the sheet comes from.
+  test('the new row is ISA for its altitude, not 15 °C everywhere', async ({ page }) => {
+    await boot(page);
+    await openLog(page);
+    await page.locator('.navlog-add').click();
+    const row = await page.evaluate(() => NavAid.navLog.config().met[0]);
+    // 15 − 2 °C per 1,000 ft, the lapse rate this sheet is worked to.
+    expect(row.tempC).toBe(Math.round(15 - 2 * row.alt / 1000));
+    expect(row.dir).toBe(0);      // nothing to copy from, so calm: it claims nothing
+    expect(row.kt).toBe(0);
+  });
+
+  test('the wind is copied from the nearest row there is', async ({ page }) => {
+    await boot(page);
+    // Stored before the window opens: calling show() twice would leave two of them on screen.
+    await page.evaluate(() => {
+      NavAid.navLog.save({ met: [{ alt: 3000, dir: 270, kt: 22, tempC: 9 }] });
+    });
+    await openLog(page);
+    await page.locator('.navlog-add').click();
+    const rows = await page.evaluate(() => NavAid.navLog.config().met);
+    const added = rows.find(r => r.alt !== 3000);
+    expect(added.dir).toBe(270);
+    expect(added.kt).toBe(22);
+  });
+
+  // Adding a level is asking to type one.
+  test('the caret lands on the altitude just added', async ({ page }) => {
+    await boot(page);
+    await openLog(page);
+    await page.locator('.navlog-add').click();
+    const focused = await page.evaluate(() => {
+      const el = document.activeElement;
+      const cell = el && el.closest('td');
+      return { tag: el && el.tagName, first: !!(cell && cell === cell.parentElement.children[0]),
+        value: el && el.value };
+    });
+    expect(focused.tag).toBe('INPUT');
+    expect(focused.first).toBe(true);
+    expect(Number(focused.value)).toBe((await alts(page))[0]);
+  });
+
+  // The button says which level it is about to add, so it is not a surprise.
+  test('the button names the level it will add', async ({ page }) => {
+    await boot(page);
+    await openLog(page);
+    const wanted = await page.evaluate(() => NavAid.navLog.metLevelsFor(NavAid.navLog.config()));
+    // Written the way a number is written: 2,000 rather than 2000.
+    await expect(page.locator('.navlog-add'))
+      .toHaveAttribute('title', new RegExp(wanted[0].toLocaleString('en-US').replace(',', ',')));
+  });
 });

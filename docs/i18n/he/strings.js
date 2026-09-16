@@ -401,6 +401,7 @@ window.S = {
   navLogMetKt: 'עוצמת רוח',
   navLogMetTemp: 'טמפרטורה',
   navLogAddRow: 'הוספת גובה',
+  navLogAddRowAt: (ft) => 'הוספת ' + ft.toLocaleString() + ' רגל \u2014 הגובה הבא שאין לו שורה בטיסה הזו',
   navLogRemoveRow: 'מחיקת השורה',
   navLogCard: 'טבלת סטיות',
   navLogCardFor: 'עבור כיוון מגנטי',

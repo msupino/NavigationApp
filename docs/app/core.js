@@ -1687,6 +1687,7 @@ window.S = Object.assign({
   navLogMetKt: 'Wind kt',
   navLogMetTemp: 'Temp °C',
   navLogAddRow: 'Add a level',
+  navLogAddRowAt: (ft) => 'Add ' + ft.toLocaleString() + ' ft \u2014 the next level this flight has no row for',
   navLogRemoveRow: 'Remove this row',
   navLogCard: 'Compass card',
   navLogCardFor: 'For (M)',
