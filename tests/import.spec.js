@@ -189,3 +189,55 @@ test.describe('Route import rejection', () => {
     expect(names).toEqual(['LLHZ', 'BAZRA', 'LLHA']);
   });
 });
+
+// A route file replaces the plan on the map outright -- waypoints, legs and notes. It is the
+// same picker and the same load() an exercise file comes through, and it used to be the only
+// one of the app's four route doors that did it without asking: the saved-routes library asks,
+// a route shared over Follow Me asks, an exercise asks. Asked why they differed, the answer was
+// that the JSON happened to carry a `navlog` key. Now they are one gate.
+test.describe('Replacing the route on the map', () => {
+  const ROUTE_FILE = require('./fixtures/route-herzliya-rosh-pina.json');
+
+  const open = (page) => page.setInputFiles('#file', {
+    name: 'route.json',
+    mimeType: 'application/json',
+    buffer: Buffer.from(JSON.stringify(ROUTE_FILE), 'utf8'),
+  });
+
+  test('it asks first, while the old route is still on the map', async ({ page }) => {
+    await bootWithRoute(page);
+    await page.evaluate(() => {
+      window.__askedWith = null;
+      window.askYesNo = async () => {
+        window.__askedWith = state.waypoints.map(w => w.name);
+        return true;
+      };
+    });
+    await open(page);
+    await page.waitForFunction(() => state.waypoints.length === 5, null, { timeout: 5000 });
+    // The three points bootWithRoute drew -- the question was asked about a plan still there.
+    expect(await page.evaluate(() => window.__askedWith)).toEqual(['LLHZ', 'BAZRA', 'LLHA']);
+  });
+
+  test('declining leaves the route exactly as it was', async ({ page }) => {
+    await bootWithRoute(page);
+    await page.evaluate(() => { window.askYesNo = async () => false; });
+    await open(page);
+    await page.waitForTimeout(250);
+    expect(await page.evaluate(() => state.waypoints.map(w => w.name)))
+      .toEqual(['LLHZ', 'BAZRA', 'LLHA']);
+  });
+
+  // Nothing to lose is not a question worth asking.
+  test('an empty map is not asked anything', async ({ page }) => {
+    await bootWithRoute(page);
+    await page.evaluate(() => {
+      state.waypoints = []; state.notes = []; syncLegs(); draw();
+      window.__asked = 0;
+      window.askYesNo = async () => { window.__asked += 1; return true; };
+    });
+    await open(page);
+    await page.waitForFunction(() => state.waypoints.length === 5, null, { timeout: 5000 });
+    expect(await page.evaluate(() => window.__asked)).toBe(0);
+  });
+});

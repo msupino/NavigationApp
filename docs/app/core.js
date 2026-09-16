@@ -1396,6 +1396,7 @@ window.S = Object.assign({
   routeLibraryDelete: 'Delete',
   routeLibraryDeleteConfirm: 'Delete this saved route?',
   routeLibraryReplaceConfirm: 'Replace the current route with this saved route?',
+  routeOpenReplaceConfirm: 'Replace the route on your map with the one in this file?',
   routeLibraryExport: 'Export library',
   routeLibraryProfile: 'Profile',
   routeLibraryGroupRoutes: 'Saved routes',

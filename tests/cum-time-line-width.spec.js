@@ -319,6 +319,8 @@ test.describe('Cumulative-time kite', () => {
     await boot(page);
     await loadRoute(page);
     await page.evaluate(() => {
+      // A route file replaces the one on the map, and the app asks before it does.
+      window.askYesNo = async () => true;
       const doc = {
         waypoints: state.waypoints.map(w => ({ lat: w.lat, lng: w.lng, name: w.name })),
         legs: state.legs.map(l => ({

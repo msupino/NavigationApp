@@ -318,11 +318,14 @@ test('the toolbar Import opens an exercise file', async ({ page }) => {
   expect(got).toEqual({ names: ['LLHZ', 'א', 'ב', 'ג', 'LLIB'], met: 6, cruise: 6000, dep: 100 });
 });
 
-// ...and an ordinary route file still takes the route path, untouched by any of this.
+// ...and an ordinary route file still takes the route path, untouched by any of this. It asks
+// the same question -- the gate is the app's, not this window's (see import.spec.js) -- so the
+// sheet is what this one is about: a route file carries none, and must not invent one.
 const ROUTE_FILE = require('./fixtures/route-herzliya-rosh-pina.json');
 
 test('a plain route file is still just a route', async ({ page }) => {
   await boot(page);
+  await page.evaluate(() => { window.askYesNo = async () => true; });
   const before = await page.evaluate(() => NavAid.navLog.config().met.length);
   await page.setInputFiles('#file', {
     name: 'route.json',
@@ -368,6 +371,68 @@ test('an exercise that is also a route lands whole: map and sheet', async ({ pag
   const rows = await page.evaluate(() => NavAid.navLog.rows().map(r => Math.round(r.pressureAltFt)));
   expect(rows[0]).toBe(4033);
   expect(rows[rows.length - 1]).toBe(3450);
+});
+
+// Reported: opening an exercise replaced the route on the map without asking. The question was
+// being asked -- after applyRouteData had already overwritten waypoints, legs and notes, which
+// is asking whether to destroy something already destroyed. It is asked first now, and the
+// answer decides. Both files below are the same exercise; only the answer differs.
+const BOTH = () => Object.assign({}, ROUTE_FILE, {
+  title: 'Herzliya - Rosh Pina (CVFR exercise)',
+  navlog: FIXTURE.navlog,
+});
+
+test('it asks before the route on the map is touched', async ({ page }) => {
+  await boot(page);
+  // The stub answers yes, but records what the map still held at the moment it was asked.
+  await page.evaluate(() => {
+    window.__askedWith = null;
+    window.askYesNo = async () => {
+      window.__askedWith = state.waypoints.map(w => w.name);
+      return true;
+    };
+  });
+  await page.setInputFiles('#file', {
+    name: 'navaid-exercise.json',
+    mimeType: 'application/json',
+    buffer: Buffer.from(JSON.stringify(BOTH()), 'utf8'),
+  });
+  await page.waitForFunction(() => state.waypoints.length === 5, null, { timeout: 5000 });
+  // The three points boot() drew -- not the five the file carries.
+  expect(await page.evaluate(() => window.__askedWith)).toEqual(['LLHZ', 'א', 'LLIB']);
+});
+
+test('declining keeps the route on the map, and still takes the sheet', async ({ page }) => {
+  await boot(page);
+  await page.evaluate(() => { window.askYesNo = async () => false; });
+  await page.setInputFiles('#file', {
+    name: 'navaid-exercise.json',
+    mimeType: 'application/json',
+    buffer: Buffer.from(JSON.stringify(BOTH()), 'utf8'),
+  });
+  // The sheet lands either way: the met table is what tells us the import ran at all.
+  await page.waitForFunction(() => NavAid.navLog.config().met.length === 6, null, { timeout: 5000 });
+  const got = await page.evaluate(() => ({
+    names: state.waypoints.map(w => w.name),
+    cruise: NavAid.navLog.config().cruiseAltFt,
+    dep: NavAid.navLog.config().depElevFt,
+  }));
+  expect(got).toEqual({ names: ['LLHZ', 'א', 'LLIB'], cruise: 6000, dep: 100 });
+});
+
+// Saying yes is not a one-way door: the route path's own Undo takes the old plan back.
+test('accepting is undoable', async ({ page }) => {
+  await boot(page);
+  await page.evaluate(() => { window.askYesNo = async () => true; });
+  await page.setInputFiles('#file', {
+    name: 'navaid-exercise.json',
+    mimeType: 'application/json',
+    buffer: Buffer.from(JSON.stringify(BOTH()), 'utf8'),
+  });
+  await page.waitForFunction(() => state.waypoints.length === 5, null, { timeout: 5000 });
+  await page.evaluate(() => undo());
+  expect(await page.evaluate(() => state.waypoints.map(w => w.name)))
+    .toEqual(['LLHZ', 'א', 'LLIB']);
 });
 
 // Reported: moving a waypoint with the table open changed nothing on it. The sheet is worked
