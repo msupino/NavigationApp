@@ -127,3 +127,29 @@ test('a phone gets the chart instead of the table', async ({ page }) => {
   const display = await withBox(page, `(box) => getComputedStyle(box).display`);
   expect(display).toBe('none');
 });
+
+// East of the chart, in both languages. The table always stood east of Israel, and east does
+// not move when the interface language does -- a logical property put it on the left in Hebrew,
+// which is a different place from the one a pilot already knows.
+for (const lang of ['en', 'he']) {
+  test('it stands east of the chart in ' + lang, async ({ page }) => {
+    await page.setViewportSize({ width: 1000, height: 800 });
+    await page.goto('?lang=' + lang + '&nogist');
+    await page.waitForFunction(() => typeof sigwxSideBox === 'function');
+    const got = await page.evaluate((src) => {
+      const box = sigwxSideBox();
+      for (const img of box.querySelectorAll('img')) img.src = src;
+      const b = box.getBoundingClientRect();
+      return {
+        right: Math.round(b.right),
+        left: Math.round(b.left),
+        viewport: innerWidth,
+        dir: getComputedStyle(document.documentElement).direction,
+      };
+    }, 'data:image/gif;base64,R0lGODlhAQABAAAAACw=');
+    expect(got.dir).toBe(lang === 'he' ? 'rtl' : 'ltr');
+    // Hard against the right edge, and nowhere near the left one.
+    expect(got.viewport - got.right).toBeLessThanOrEqual(12);
+    expect(got.left).toBeGreaterThan(got.viewport / 2);
+  });
+}

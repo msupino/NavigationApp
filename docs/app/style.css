@@ -8242,7 +8242,11 @@ body.theme-light .navlog-table {
   /* Clear of the toolbar, which sits at top: 12px and is the one thing that must never be
      covered: it is how the pilot turns this panel back off. */
   top: 96px;
-  inset-inline-end: 8px;
+  /* RIGHT, not inset-inline-end. This is not text flow: the panel stands where the sheet's
+     table always stood, east of the chart, and east does not move when the interface language
+     does. The logical property put it on the left in Hebrew -- a different place from the one
+     every pilot who has used this already knows. */
+  right: 8px;
   z-index: 620;                 /* over the panes, under the toolbar and the modals */
   /* Width is set in JS, from the height there is room for and the table's own resolution --
      see sizeSideBox. This is only the floor for the moment before it runs. */
