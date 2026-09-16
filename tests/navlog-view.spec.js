@@ -1228,3 +1228,98 @@ test('a climb with no rate says so under the sheet', async ({ page }) => {
   const note = await page.evaluate(() => document.querySelector('.navlog-note').textContent);
   expect(note).toMatch(/no rate of climb/i);
 });
+
+// A UI pass over the window: what a pilot reads, and in what order. Each of these was a real
+// complaint about the form as it stood.
+test.describe('the form as a thing to read', () => {
+  // It opened at .modal.wide's cap -- 92vw -- because nothing ever set a width, so a third of a
+  // desktop window was empty and the map underneath it was covered for no reason.
+  test('the window opens at the sheet\'s width, not the screen\'s', async ({ page }) => {
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await boot(page);
+    await openLog(page);
+    const got = await page.evaluate(() => ({
+      modal: Math.round(document.querySelector('.navlog-modal').getBoundingClientRect().width),
+      cap: Math.round(innerWidth * 0.92),
+    }));
+    expect(got.modal).toBeLessThan(got.cap);
+    // ...and still wide enough that the 23 columns are not a scroller on a desktop.
+    expect(got.modal).toBeGreaterThan(880);
+  });
+
+  // Twelve boxes in one flow wrapped wherever the window ended, leaving one box alone on a line.
+  test('the setup row is four groups that wrap as units', async ({ page }) => {
+    await boot(page);
+    await openLog(page);
+    const groups = await page.evaluate(() =>
+      [...document.querySelectorAll('.navlog-setup .navlog-group')].map(g => g.children.length));
+    // Where the flight starts and ends, how fast, where the air is read, what it costs.
+    expect(groups).toEqual([3, 3, 2, 4]);
+    expect(await page.locator('.navlog-setup .navlog-field').count()).toBe(12);
+  });
+
+  // Figures on this sheet are read DOWN a column, which centring undoes: tabular digits line up
+  // only against an edge.
+  test('the numbers line up on an edge; the names stay centred', async ({ page }) => {
+    await boot(page);
+    await openLog(page);
+    const align = await page.evaluate(() => {
+      const cells = [...document.querySelectorAll('.navlog-table tr.navlog-row')[0].children];
+      return cells.map(c => getComputedStyle(c).textAlign);
+    });
+    expect(align.slice(0, 3)).toEqual(['center', 'center', 'center']);   // LEG, From, To
+    for (const a of align.slice(3)) expect(a).toBe('end');
+  });
+
+  // The sheet is three sheets: what you were given, the triangle worked through it, what comes
+  // out. The printed exercise rules those apart; 23 identical hairlines do not.
+  test('the three groups of columns are ruled apart', async ({ page }) => {
+    await boot(page);
+    await openLog(page);
+    const widths = await page.evaluate(() =>
+      [...document.querySelectorAll('.navlog-table tr')[0].children]
+        .map(th => parseFloat(getComputedStyle(th).borderInlineStartWidth)));
+    // W kt opens the wind triangle; GS opens the results.
+    expect(widths[7]).toBeGreaterThan(widths[6]);
+    expect(widths[16]).toBeGreaterThan(widths[15]);
+    expect(widths[6]).toBe(widths[5]);        // ...and nothing else is ruled
+  });
+
+  // "FF" and "TT" are columns somebody has to be told about once. The full name is the tooltip
+  // rather than a wider sheet.
+  test('every abbreviated column says what it is', async ({ page }) => {
+    await boot(page);
+    await openLog(page);
+    const heads = await page.evaluate(() =>
+      [...document.querySelectorAll('.navlog-table th')].map(th => [th.textContent, th.title]));
+    expect(heads).toHaveLength(23);
+    const ff = heads.find(([t]) => t === 'FF');
+    expect(ff[1]).toBe('Fuel flow');
+    expect(heads.find(([t]) => t === 'TT')[1]).toBe('True track');
+    // The three that need no explaining carry none.
+    expect(heads.find(([t]) => t === 'From')[1]).toBe('');
+  });
+
+  // On a phone the scrollbar is an overlay that shows only while it moves, so the sheet simply
+  // looked cut off at "W dir" -- and in Hebrew, cut off at the other end.
+  test('the sideways scroll says it is there', async ({ page }) => {
+    await page.setViewportSize({ width: 430, height: 880 });
+    await boot(page);
+    await openLog(page);
+    const got = await page.evaluate(() => {
+      const t = document.querySelector('.navlog-table');
+      const cs = getComputedStyle(t);
+      return {
+        scrolls: t.scrollWidth > t.clientWidth,
+        layers: cs.backgroundImage.split('linear-gradient').length - 1,
+        attach: cs.backgroundAttachment,
+      };
+    });
+    expect(got.scrolls).toBe(true);
+    expect(got.layers).toBe(4);
+    // The pair pinned to the content is what makes each shadow appear only while there is more
+    // table past that edge.
+    expect(got.attach).toContain('local');
+    expect(got.attach).toContain('scroll');
+  });
+});
