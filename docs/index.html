@@ -505,6 +505,7 @@
         <button id="route-templates" type="button" data-i18n="tbRouteTemplates" data-i18n-title="tbRouteTemplatesTitle"></button>
         <button id="freq-table" data-i18n="tbFreqTable" data-i18n-title="tbFreqTableTitle"></button>
         <button id="alt-pairs" data-i18n="tbAltPairs" data-i18n-title="tbAltPairsTitle"></button>
+        <button id="nav-log" type="button" data-i18n="tbNavTable" data-i18n-title="tbNavTableTitle"></button>
         <button id="charts" data-i18n="tbCharts" data-i18n-title="tbChartsTitle"></button>
         <!-- SIGWX significant-weather chart viewer (image modal). Hidden until
              the ims-data sigwx manifest loads. The on-map overlay lives in the
@@ -997,8 +998,15 @@
        moved out of the Build section so the search no longer requires the
        section to be expanded. -->
   <div id="search-overlay" class="hidden">
-    <input type="text" id="wp-search" data-i18n-placeholder="tbSearchPlaceholder"
-           data-i18n-title="tbSearchHint" autocomplete="off">
+    <!-- The box and the ✕ that empties it are one object: the button sits INSIDE the field,
+         which is where a phone user reaches for it, and the field is padded to leave it room.
+         Emptying is not closing -- the overlay's own ✕ is the next element along. -->
+    <span class="search-box">
+      <input type="text" id="wp-search" data-i18n-placeholder="tbSearchPlaceholder"
+             data-i18n-title="tbSearchHint" autocomplete="off">
+      <button id="search-clear" type="button" class="search-clear" hidden
+              data-i18n-title="tbSearchClear" aria-label="Clear">✕</button>
+    </span>
     <button id="search-close" type="button" data-i18n-title="modalCloseTitle" aria-label="Close">✕</button>
     <small id="wp-search-hint" class="search-hint" data-i18n="tbSearchHint"></small>
     <div id="wp-search-results" class="hidden"></div>
@@ -1113,6 +1121,7 @@
         'app/assistant.js' + v,
         'app/offline-tiles.js' + v,
         'app/deck.js' + v,
+        'app/navlog.js' + v,
         'app/disclaimer.js' + v,
         'app/ota.js' + v
       ];
