@@ -1303,7 +1303,7 @@ test.describe('adding a met level', () => {
     const wanted = await page.evaluate(() => NavAid.navLog.metLevelsFor(NavAid.navLog.config()));
     // Written the way a number is written: 2,000 rather than 2000.
     await expect(page.locator('.navlog-add'))
-      .toHaveAttribute('title', new RegExp(wanted[0].toLocaleString('en-US').replace(',', ',')));
+      .toHaveAttribute('title', new RegExp(wanted[0].toLocaleString('en-US')));
   });
 });
 
