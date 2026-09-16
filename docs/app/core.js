@@ -1381,8 +1381,8 @@ window.S = Object.assign({
   routeCheckSrcAirspace: 'airspace',
   routeCheckSrcNotams: 'NOTAMs',
   routeCheckSrcHazards: 'SIGMET/AIRMET',
-  routeCheckSrcCeiling: 'ceiling',
-  routeCheckSrcCloud: 'cloud along the route',
+  routeCheckSrcCeiling: 'aerodrome reports',
+  routeCheckSrcCloud: 'forecast along the route',
   routeCheckCloudEst: 'Estimated cloud base',
   routeCheckAgl: 'AGL',
   routeCheckLowCover: 'low cloud',
@@ -6307,8 +6307,12 @@ function routeCheckFindings(input) {
   }
 
   // --- cloud between the fields -----------------------------------------------------------
-  // The half no aerodrome report covers. Sampled along the route, so a layer that sits over the
-  // middle of a leg is found where a METAR at either end would have said nothing.
+  // The same quantity as the ceiling above -- a cloud base -- from a different source, which is
+  // why they are two sources and not one. That one is OBSERVED, at a point, by an aerodrome
+  // that happens to be on the route. This one is ESTIMATED, everywhere along it, from a
+  // forecast. Blending them would hide which is which, and a pilot weighs a METAR and a spread
+  // rule differently. Sampled along the route, so a layer over the middle of a leg is found
+  // where a METAR at either end would have said nothing.
   if (!Array.isArray(o.cloud)) out.unchecked.push('cloud');
   else for (const f of routeCheckCloudFindings(o.cloud, legs, windows)) add(f);
 

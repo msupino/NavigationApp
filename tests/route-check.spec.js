@@ -418,7 +418,7 @@ test.describe('the panel', () => {
     await page.waitForSelector('.route-check-when');
     // The panel has finished, and it says which sources it could not read.
     await expect(page.locator('.route-check-unchecked')).toContainText('NOTAMs');
-    await expect(page.locator('.route-check-unchecked')).toContainText('cloud along the route');
+    await expect(page.locator('.route-check-unchecked')).toContainText('forecast along the route');
   });
 
   test('a clean plan says so plainly', async ({ page }) => {
