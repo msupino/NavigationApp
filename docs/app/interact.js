@@ -1004,11 +1004,15 @@ function hitCumLabel(px, py) {
   const { halfL, halfW } = _cumKiteHalfDims();
   for (let i = 0; i < state.legs.length; i++) {
     if (typeof legDirVisible === 'function' && !legDirVisible(i)) continue;
-    // Same as draw.js's own `showCumTime && !preClock` gate: a leg inside the departure
-    // CTR is flown on the field's procedure and draws no cumulative kite at all. Missing
-    // this left a phantom, never-drawn kite still hit-testable right over the leg's own
-    // endpoint waypoint -- exactly the kind of invisible blocker a hidden kite must not be.
-    if (typeof legInsideCtr === 'function' && legInsideCtr(i)) continue;
+    // Same gate draw.js draws under: a leg inside the departure CTR is flown on the field's
+    // procedure, and a leg before the waypoint the clock was started at has no clock running,
+    // so neither draws a cumulative kite at all. Missing this left a phantom, never-drawn kite
+    // still hit-testable right over the leg's own endpoint waypoint -- exactly the kind of
+    // invisible blocker a hidden kite must not be. It was missed a second time when the timer
+    // mark was added: legOffCumClock is the one predicate now, so there is no third time.
+    if (typeof legOffCumClock === 'function'
+      ? legOffCumClock(i)
+      : (typeof legInsideCtr === 'function' && legInsideCtr(i))) continue;
     const c = cumLabelCenter(i);
     const ends = (typeof legScreenEnds === 'function') ? legScreenEnds(i) : null;
     const b = ends ? ends.b : (state.waypoints[i + 1] && proj(state.waypoints[i + 1]));
