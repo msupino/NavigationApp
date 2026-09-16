@@ -6102,10 +6102,17 @@ function routeInkRects() {
         pushRotated(legLabelCenter(i, 'out'), A.x, A.y, halfL, halfW);
       }
     }
-    if (cum && typeof showCumTime !== 'undefined' && showCumTime &&
-        !(typeof legOffCumClock === 'function' ? legOffCumClock(i) : preClock)) {
-      if (typeof cumLabelCenter === 'function') pushRotated(cumLabelCenter(i), B.x, B.y, cum.halfL, cum.halfW);
-      if (typeof showReturn !== 'undefined' && showReturn && typeof cumLabelRetCenter === 'function') {
+    // Two kites, two gates -- they were under one, which was the inbound kite's. The return
+    // kite is drawn whenever the return path is (draw.js nests it in showCumTime alone, and
+    // hitCumLabelRet matches that), so counting it only when the INBOUND clock is running left
+    // return kites painted outside the fitted page: not grown for, and no clipping warning.
+    if (cum && typeof showCumTime !== 'undefined' && showCumTime) {
+      const offClockHere = typeof legOffCumClock === 'function' ? legOffCumClock(i) : preClock;
+      if (!offClockHere && typeof cumLabelCenter === 'function') {
+        pushRotated(cumLabelCenter(i), B.x, B.y, cum.halfL, cum.halfW);
+      }
+      if (typeof showReturn !== 'undefined' && showReturn && typeof cumLabelRetCenter === 'function'
+        && (typeof legAllowsReturn !== 'function' || legAllowsReturn(i))) {
         pushRotated(cumLabelRetCenter(i), A.x, A.y, cum.halfL, cum.halfW);
       }
     }
