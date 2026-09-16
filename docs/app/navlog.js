@@ -15,6 +15,13 @@
 
   const featureOn = () => typeof tune !== 'function' || tune('featureNavLog') !== false;
   const num = (v, fallback) => (Number.isFinite(Number(v)) && v !== '' ? Number(v) : fallback);
+  // A heading is a point on a circle, so 364 is 004 and -10 is 350. Typed as 364 it used to
+  // stay 364: a number the compass in front of the pilot cannot show, on a card whose whole
+  // job is to say what that compass will read.
+  const deg360 = (v, fallback) => {
+    const n = num(v, null);
+    return n === null ? fallback : ((Math.round(n) % 360) + 360) % 360;
+  };
   // A percentage box, read as the fraction it means. Anything that is not a number -- and any
   // number that is not a percentage -- leaves the last good value alone: typing over a field
   // character by character must not pass through nonsense on the way.
@@ -868,11 +875,40 @@
     // the "steer" column is typed.
     const card = document.createElement('div');
     card.className = 'navlog-card';
+    // A card with no deviation on it: steer what you were told to fly. That is the state the
+    // window starts in, and the one the arrow goes back to -- it clears the whole map rather
+    // than one row, because a half-cleared card is a card that still lies about the rows left
+    // on it. Twelve rows is also twelve arrows if this were per-row, on a table that is already
+    // the densest thing in the window.
+    const cardIsClear = () => cfg.deviation.every(e => e && e.ch === e.mh);
+    let showCardReset = () => {};
+    const clearCard = () => {
+      for (const e of cfg.deviation) e.ch = e.mh;
+      saveTables(cfg);
+      renderCard();          // rebuilt, so every row's own arrow is re-lit with it
+      render();
+    };
     function renderCard() {
       card.replaceChildren();
       const head = document.createElement('div');
       head.className = 'navlog-sub-title';
       head.textContent = S2.navLogCard || 'Compass card';
+      // Always there, dimmed while there is nothing to undo -- the house rule every other box
+      // in this window follows.
+      const reset = document.createElement('button');
+      reset.type = 'button';
+      reset.className = 'navlog-reset';
+      reset.textContent = '\u21ba';
+      reset.addEventListener('click', clearCard);
+      showCardReset = () => {
+        const on = !cardIsClear();
+        reset.classList.toggle('navlog-reset-idle', !on);
+        reset.title = on
+          ? (S2.navLogCardReset || 'Clear the card: steer what you are told to fly')
+          : (S2.navLogAtDefault || 'Already the default');
+        reset.setAttribute('aria-label', reset.title);
+      };
+      head.appendChild(reset);
       card.appendChild(head);
       // Two pairs of columns, the way a card is printed and the way the exercise hands it over:
       // twelve marks down one column is a table taller than the sheet it belongs to.
@@ -895,9 +931,62 @@
         mh.textContent = deg(entry.mh);
         const input = document.createElement('input');
         input.type = 'number';
-        input.value = String(entry.ch);
-        input.addEventListener('input', () => { entry.ch = num(input.value, entry.mh); saveTables(cfg); render(); });
-        ch.appendChild(input);
+        // No max: a max makes the spinner STOP at 359, and a compass does not stop -- one step
+        // up from 359 is 000. The circle is enforced by wrapping what is typed or stepped, not
+        // by walling off the end of it.
+        input.step = '1';
+        // Three digits, the way the magnetic column beside it is printed and the way a heading
+        // is spoken: a card reading 000 / 030 against boxes reading 0 / 30 is the same number
+        // written two ways, on the one table whose job is to be compared across.
+        input.value = deg(entry.ch);
+        // Emptying the box is how a row's deviation is taken back, the same as every other box
+        // in this window: the steer heading returns to the magnetic one beside it.
+        input.addEventListener('input', (e) => {
+          entry.ch = deg360(input.value, entry.mh);
+          saveTables(cfg);
+          render();
+          lightBack();
+          showCardReset();
+          // A step -- the spinner, or an arrow key -- carries no inputType, and it is a finished
+          // answer: show it wrapped at once, which is what makes 359 step round to 000. A typed
+          // digit is a half-finished answer, and rewriting the box under the caret would stop
+          // anyone typing 120 (1 ... 12 ... 120) from ever reaching the second digit.
+          if (!e.inputType) {
+            const shown = deg(entry.ch);
+            if (input.value !== shown) input.value = shown;
+          }
+        });
+        // What is stored is on the circle; what is typed is whatever was typed. Putting the
+        // wrapped value back on blur rather than mid-keystroke leaves the caret alone.
+        input.addEventListener('change', () => {
+          const shown = deg(entry.ch);
+          if (input.value !== shown) input.value = shown;
+        });
+        // Its own way back, on every row, the way every other box in this window has one --
+        // always there, dimmed while that row carries no deviation. The arrow in the title
+        // clears the whole card; this one clears the heading it sits on.
+        const back = document.createElement('button');
+        back.type = 'button';
+        back.className = 'navlog-reset';
+        back.textContent = '\u21ba';
+        const lightBack = () => {
+          const on = entry.ch !== entry.mh;
+          back.classList.toggle('navlog-reset-idle', !on);
+          back.title = on
+            ? (S2.navLogCardRowReset || 'No deviation on this heading')
+            : (S2.navLogAtDefault || 'Already the default');
+          back.setAttribute('aria-label', back.title);
+        };
+        back.addEventListener('click', () => {
+          entry.ch = entry.mh;
+          input.value = deg(entry.ch);
+          saveTables(cfg);
+          render();
+          lightBack();
+          showCardReset();
+        });
+        lightBack();
+        ch.append(input, back);
         return [mh, ch];
       };
       for (let i = 0; i < half; i++) {
@@ -906,6 +995,7 @@
         grid.appendChild(tr);
       }
       card.appendChild(grid);
+      showCardReset();
     }
 
     function render() {

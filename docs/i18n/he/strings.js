@@ -409,6 +409,8 @@ window.S = {
   navLogAddRowAt: (ft) => 'הוספת ' + ft.toLocaleString() + ' רגל \u2014 הגובה הבא שאין לו שורה בטיסה הזו',
   navLogRemoveRow: 'מחיקת השורה',
   navLogCard: 'טבלת סטיות',
+  navLogCardReset: 'ניקוי הטבלה: לטוס את הכיוון שנמסר',
+  navLogCardRowReset: 'בלי סטייה בכיוון הזה',
   navLogCardFor: 'עבור כיוון מגנטי',
   navLogCardSteer: 'טוס כיוון מצפני',
   navTableFetchMet: 'משיכת תחזית',

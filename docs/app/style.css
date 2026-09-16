@@ -8124,7 +8124,11 @@ body.theme-light .navlog-group + .navlog-group { border-inline-start-color: rgba
    the hand reaching for it. */
 .navlog-reset-idle { opacity: 0.3; }
 .navlog-editors { display: flex; flex-wrap: wrap; gap: 16px; align-items: flex-start; }
-.navlog-sub-title { font-weight: 600; margin-bottom: 4px; }
+/* The title carries the card's own restore arrow, so it is a row rather than a line of text:
+   the arrow sits beside the heading, the way every other arrow in this window sits beside its
+   box rather than under it. */
+.navlog-sub-title { font-weight: 600; margin-bottom: 4px; display: flex; align-items: center;
+  gap: 6px; }
 .navlog-grid { border-collapse: collapse; font-size: 12px; }
 .navlog-grid th, .navlog-grid td { border: 1px solid rgba(128, 128, 128, 0.35); padding: 1px 4px; }
 .navlog-grid input { width: 5em; }
@@ -8162,6 +8166,9 @@ body.theme-light .navlog-note { color: #333; }
 .navlog-card-grid td:nth-child(3), .navlog-card-grid th:nth-child(3) {
   border-inline-start-width: 2px;
 }
+/* The box and its own way back, side by side: the arrow belongs to the heading it sits on,
+   and a cell that wrapped would put it under the box instead. */
+.navlog-card-grid td { white-space: nowrap; }
 .navlog-card-grid input { width: 4em; }
 .navlog-row-del { background: none; border: 0; cursor: pointer; color: inherit; padding: 0 4px; }
 .navlog-met-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 6px; }
