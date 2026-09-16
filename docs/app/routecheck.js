@@ -1,0 +1,223 @@
+// The route check: the four things that can say "not this plan, not at this time", asked
+// together and against the clock.
+//
+// Each of them already knew its own half. The airspace inspector knew the route crossed a
+// CTR, the NOTAM list knew a field was closed, the SIGMET layer knew where the weather was,
+// the METAR knew the ceiling -- four surfaces, none of them looking at the plan, and none of
+// them looking at WHEN. A NOTAM that lifts at 10:00 is not a warning on a flight that lands
+// at 11:00, and a danger area live from 09:00 is not a warning on a leg flown at 08:20.
+//
+// The arithmetic is core.js's routeCheckFindings(), which is pure and knows nothing about
+// fetching or the DOM. This file is the part that goes and gets the four datasets, hands them
+// over, and puts the answer on screen.
+(function () {
+  const NS = (window.NavAid = window.NavAid || {});
+  const featureOn = () => typeof tune !== 'function' || tune('featureRouteCheck') !== false;
+
+  // Departure is the look-ahead clock, the same master slider the NOTAM list, the wind field
+  // and the planning form's forecast all answer to. Planning is done for a flight that has not
+  // happened yet, so "now" is the wrong question to ask of any of this.
+  function departAtMs() {
+    const el = document.getElementById('lookahead-time');
+    const v = el ? parseInt(el.value, 10) : 0;
+    return Date.now() + (Number.isFinite(v) && v > 0 ? v : 0) * 3600000;
+  }
+
+  // Leg times from the one model everything else flies by, so the check cannot disagree with
+  // the kites, the plan and the nav log about when the aeroplane is where.
+  function legTimesH() {
+    const prof = (typeof routeProfile === 'function') ? routeProfile() : null;
+    const legs = (prof && Array.isArray(prof.legs)) ? prof.legs : [];
+    return legs.map(l => (Number.isFinite(l.timeH) ? l.timeH : 0));
+  }
+
+  // The four datasets, each fetched the way its own layer fetches it, and each allowed to fail
+  // on its own: one feed that is down must not turn the other three into silence.
+  async function gather() {
+    const want = (fn, force) => {
+      try { return typeof fn === 'function' ? fn(force) : null; } catch (e) { return null; }
+    };
+    const [notamsRes, sigRes, airRes, wxRes] = await Promise.all([
+      Promise.resolve(want(window.loadNotam)).catch(() => null),
+      Promise.resolve(want(window.loadSigmets)).catch(() => null),
+      Promise.resolve(want(window.loadAirmets)).catch(() => null),
+      Promise.resolve(want(window.loadWxFile)).catch(() => null),
+    ]);
+    if (typeof loadAirspace === 'function' && !Array.isArray(window.airspace)) {
+      try { await loadAirspace(); } catch (e) { /* its own layer says so */ }
+    }
+    const hazards = [];
+    for (const list of [sigRes, airRes]) if (Array.isArray(list)) hazards.push(...list);
+    // The stations this route actually touches, in the shape the check reads: a ceiling is a
+    // property of a field on the plan, not of every field in the country.
+    const wx = [];
+    const stations = (wxRes && wxRes.stations) || null;
+    if (stations) {
+      const names = new Set(((state && state.waypoints) || [])
+        .map(w => String((w && w.name) || '').trim().toUpperCase()));
+      for (const icao of Object.keys(stations)) {
+        if (!names.has(icao.toUpperCase())) continue;
+        const m = stations[icao] && stations[icao].metar;
+        wx.push({ icao, clouds: (m && m.clouds) || [] });
+      }
+    }
+    return {
+      waypoints: (state && state.waypoints) || [],
+      legs: (state && state.legs) || [],
+      legTimesH: legTimesH(),
+      departAtMs: departAtMs(),
+      airspace: Array.isArray(window.airspace) ? window.airspace : null,
+      notams: Array.isArray(notamsRes) ? notamsRes
+        : (Array.isArray(window.notams) ? window.notams : null),
+      hazards: (Array.isArray(sigRes) || Array.isArray(airRes)) ? hazards : null,
+      wx: stations ? wx : null,
+      contains: (a, p) => (typeof airspaceContains === 'function' ? airspaceContains(a, p) : false),
+    };
+  }
+
+  async function run() {
+    if (typeof routeCheckFindings !== 'function') return null;
+    return routeCheckFindings(await gather());
+  }
+
+  const hhmmZ = (ms) => (Number.isFinite(ms)
+    ? new Date(ms).toISOString().slice(11, 16) + 'Z' : '');
+  // An open end is what a NOTAM with no end and a permanent area both carry, and "until
+  // further notice" is what that means to a pilot -- not a blank.
+  function span(from, to) {
+    const S2 = window.S || {};
+    if (!Number.isFinite(from) && !Number.isFinite(to)) return '';
+    if (!Number.isFinite(to)) return (S2.routeCheckFrom || 'from') + ' ' + hhmmZ(from);
+    if (!Number.isFinite(from)) return (S2.routeCheckUntil || 'until') + ' ' + hhmmZ(to);
+    return hhmmZ(from) + '–' + hhmmZ(to);
+  }
+  const ft = (v) => (Number.isFinite(v) ? Math.round(v).toLocaleString() + ' ft' : '');
+  function band(lower, upper) {
+    const S2 = window.S || {};
+    const lo = Number.isFinite(lower) && lower > 0 ? ft(lower) : (S2.routeCheckSfc || 'SFC');
+    const hi = Number.isFinite(upper) ? ft(upper) : (S2.routeCheckUnl || 'unlimited');
+    return lo + '–' + hi;
+  }
+  const legName = (i) => {
+    const wps = (state && state.waypoints) || [];
+    const a = wps[i], b = wps[i + 1];
+    const nm = (w) => (typeof navName === 'function' ? navName((w && w.name) || '') : ((w && w.name) || ''));
+    return (a && b) ? nm(a) + ' → ' + nm(b) : '';
+  };
+
+  // One line per finding: what it is, where on the route, and when. The "when" is the point.
+  function lineFor(f) {
+    const S2 = window.S || {};
+    const where = Number.isInteger(f.leg) ? legName(f.leg) : '';
+    if (f.kind === 'airspace') {
+      const head = (f.name || '') + (f.airspaceClass ? ' (' + f.airspaceClass + ')' : '');
+      const detail = f.noAltitude
+        ? (S2.routeCheckNoAlt || 'crossed, and no altitude is planned for that leg')
+        : ((S2.routeCheckCrossedAt || 'crossed at') + ' ' + ft(f.altFt));
+      return { head, detail: detail + ' · ' + band(f.lowerFt, f.upperFt), where, when: span(f.from, f.to) };
+    }
+    if (f.kind === 'notam') {
+      const head = (f.onField ? (f.icao || '') + ' · ' : '') + (f.id || 'NOTAM');
+      return { head, detail: f.text || '', where, when: span(f.from, f.to) };
+    }
+    if (f.kind === 'hazard') {
+      const head = [f.qualifier, f.hazard].filter(Boolean).join(' ');
+      return { head, detail: band(f.baseFt, f.topFt), where, when: span(f.from, f.to) };
+    }
+    if (f.kind === 'ceiling') {
+      return {
+        head: (f.icao || '') + ' · ' + (S2.routeCheckCeiling || 'ceiling') + ' ' + ft(f.ceilingFt),
+        detail: (S2.routeCheckLowestLeg || 'lowest planned leg') + ' ' + ft(f.altFt),
+        where: '', when: '',
+      };
+    }
+    return { head: '', detail: '', where: '', when: '' };
+  }
+
+  function render(body, result) {
+    const S2 = window.S || {};
+    body.replaceChildren();
+    const head = document.createElement('div');
+    head.className = 'route-check-when';
+    head.textContent = (S2.routeCheckWindow || 'Checked for')
+      + ' ' + span(result.from, result.to);
+    body.appendChild(head);
+
+    if (!result.findings.length) {
+      const ok = document.createElement('p');
+      ok.className = 'route-check-clear';
+      ok.textContent = S2.routeCheckClear
+        || 'Nothing found against this plan in that window.';
+      body.appendChild(ok);
+    }
+    const list = document.createElement('ul');
+    list.className = 'route-check-list';
+    for (const f of result.findings) {
+      const li = document.createElement('li');
+      li.className = 'route-check-item route-check-' + f.severity;
+      const mark = document.createElement('span');
+      mark.className = 'route-check-mark';
+      mark.textContent = f.severity === 'stop' ? '⛔' : '⚠';
+      const text = document.createElement('div');
+      const parts = lineFor(f);
+      const h = document.createElement('div');
+      h.className = 'route-check-head';
+      h.textContent = parts.head;
+      text.appendChild(h);
+      for (const [cls, val] of [['route-check-detail', parts.detail],
+        ['route-check-where', parts.where], ['route-check-when-row', parts.when]]) {
+        if (!val) continue;
+        const d = document.createElement('div');
+        d.className = cls;
+        d.textContent = val;
+        text.appendChild(d);
+      }
+      li.append(mark, text);
+      list.appendChild(li);
+    }
+    body.appendChild(list);
+
+    // A source that could not be read is not a clear source. Saying so is the difference
+    // between "no NOTAMs affect this route" and "I could not ask about NOTAMs".
+    if (result.unchecked.length) {
+      const miss = document.createElement('p');
+      miss.className = 'route-check-unchecked';
+      const names = { airspace: S2.routeCheckSrcAirspace || 'airspace',
+        notams: S2.routeCheckSrcNotams || 'NOTAMs',
+        hazards: S2.routeCheckSrcHazards || 'SIGMET/AIRMET',
+        ceiling: S2.routeCheckSrcCeiling || 'ceiling' };
+      miss.textContent = (S2.routeCheckCouldNotAsk || 'Not checked (no data):') + ' '
+        + result.unchecked.map(k => names[k] || k).join(', ');
+      body.appendChild(miss);
+    }
+  }
+
+  async function show() {
+    if (!featureOn()) return null;
+    const S2 = window.S || {};
+    if (typeof createDraggableModal !== 'function') return null;
+    if (!state || !Array.isArray(state.waypoints) || state.waypoints.length < 2) {
+      if (typeof refuse === 'function') refuse(S2.routeCheckNeedRoute || S2.errNeedWps
+        || 'Draw a route first.');
+      return null;
+    }
+    const modal = createDraggableModal(S2.routeCheckTitle || 'Route check',
+      'modal wide route-check-modal', null, { chartKind: 'route-check' });
+    const body = document.createElement('div');
+    body.className = 'route-check-body';
+    const waiting = document.createElement('p');
+    waiting.className = 'route-check-waiting';
+    waiting.textContent = S2.routeCheckWorking || 'Asking the four sources…';
+    body.appendChild(waiting);
+    modal.box.appendChild(body);
+    // createDraggableModal BUILDS the window; show() is what puts it on screen. Without this
+    // the panel was constructed, filled and returned to nobody.
+    modal.show();
+    const result = await run();
+    if (!modal.box.isConnected) return null;      // closed while the feeds were answering
+    if (result) render(body, result);
+    return modal;
+  }
+
+  NS.routeCheck = { show, run, gather, lineFor };
+}());

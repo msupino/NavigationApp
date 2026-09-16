@@ -8231,3 +8231,25 @@ body.theme-light .navlog-table {
 .navlog-row.navlog-descent td { background: rgba(214, 178, 74, 0.16); }
 .navlog-note { font-size: 12px; opacity: 0.8; }
 .navlog-actions { display: flex; gap: 8px; }
+
+/* --- route check ---------------------------------------------------------
+   A list a pilot reads top to bottom before they go: what it is, where on the route, and
+   when. The severity mark carries the weight, so the rows stay plain -- a wall of coloured
+   panels reads as decoration and this is the opposite of decoration. */
+.route-check-body { display: flex; flex-direction: column; gap: 8px; max-width: 60ch; }
+.route-check-when { font-weight: 600; }
+.route-check-list { list-style: none; margin: 0; padding: 0; display: flex;
+  flex-direction: column; gap: 8px; }
+.route-check-item { display: grid; grid-template-columns: 1.4em 1fr; gap: 8px;
+  align-items: start; }
+.route-check-mark { line-height: 1.3; }
+.route-check-head { font-weight: 600; }
+.route-check-detail, .route-check-where, .route-check-when-row { font-size: 12.5px;
+  opacity: 0.85; }
+/* The window is the point of the whole panel, so it is not the quietest line on the row. */
+.route-check-when-row { opacity: 1; font-variant-numeric: tabular-nums; }
+.route-check-stop .route-check-head { color: #ffb3a7; }
+body.theme-light .route-check-stop .route-check-head { color: #8a1c00; }
+.route-check-clear, .route-check-waiting { margin: 0; opacity: 0.85; }
+/* Not a finding and not silence: a source that could not be read. */
+.route-check-unchecked { margin: 0; font-size: 12.5px; opacity: 0.7; }

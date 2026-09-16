@@ -1370,6 +1370,26 @@ window.S = Object.assign({
   choosePointCommChange: 'Freq-change arrow',
   choosePointNotam: 'NOTAM',
   tbSearchClear: 'Clear the box',
+  tbRouteCheck: '\u2713 Route check',
+  tbRouteCheckTitle: 'Airspace, NOTAMs, SIGMET/AIRMET and ceiling against this route, at the time you plan to fly it',
+  routeCheckTitle: 'Route check',
+  routeCheckWorking: 'Asking the four sources\u2026',
+  routeCheckNeedRoute: 'Draw a route first: there is nothing to check yet.',
+  routeCheckWindow: 'Checked for',
+  routeCheckClear: 'Nothing found against this plan in that window.',
+  routeCheckCouldNotAsk: 'Not checked (no data):',
+  routeCheckSrcAirspace: 'airspace',
+  routeCheckSrcNotams: 'NOTAMs',
+  routeCheckSrcHazards: 'SIGMET/AIRMET',
+  routeCheckSrcCeiling: 'ceiling',
+  routeCheckCrossedAt: 'crossed at',
+  routeCheckNoAlt: 'crossed, and no altitude is planned for that leg',
+  routeCheckCeiling: 'ceiling',
+  routeCheckLowestLeg: 'lowest planned leg',
+  routeCheckFrom: 'from',
+  routeCheckUntil: 'until',
+  routeCheckSfc: 'SFC',
+  routeCheckUnl: 'unlimited',
   tbSearchOpen: '🔍 Find (Ctrl-F)',
   tbSearchOpenTitle: 'Open the search overlay (Ctrl/Cmd-F)',
   tbRouteTemplates: '🧭 Templates',
@@ -5999,6 +6019,237 @@ function setTurnWaypoint(idx) {
   if (!was && wps[idx]) wps[idx].turn = 1;
   return !was;
 }
+// --- the route check ---------------------------------------------------------------------
+// "Can I fly this plan, at the time I mean to fly it?" Four things can say no, and until now
+// each of them answered only if you went and asked it: the airspace inspector knew the route
+// crossed a CTR, the NOTAM list knew a field was closed, the SIGMET layer knew where the
+// weather was, and the METAR knew the ceiling -- four surfaces, none of them looking at the
+// plan, and none of them looking at WHEN.
+//
+// Time is the part that makes it a check rather than a list. A NOTAM that closes the field
+// until 10:00 is not a warning on a flight that lands at 11:00, and a danger area live from
+// 09:00 is not a warning on a leg flown at 08:20. Every finding here is tested against the
+// window the aeroplane is actually in that piece of airspace, built from the departure time
+// and the leg times the rest of the app already flies by (routeProfile).
+//
+// Pure: no DOM, no fetch, no clock of its own. Everything arrives in `input` so the same
+// function answers for a plan on screen, a saved route, or a test.
+const ROUTE_CHECK_SAMPLES = 24;          // points along a leg; a leg can cross without an end in
+// Severity: `stop` is a rule ("closed", "inside controlled airspace"), `warn` is a condition
+// worth knowing that is not in itself a refusal. Nothing here decides whether a flight is
+// legal -- the pilot does, and the sheet says so.
+function routeCheckWindows(legTimesH, departAtMs) {
+  const out = [];
+  let t = Number.isFinite(departAtMs) ? departAtMs : Date.now();
+  for (const h of (legTimesH || [])) {
+    const dur = Number.isFinite(h) && h > 0 ? h * 3600000 : 0;
+    out.push({ from: t, to: t + dur });
+    t += dur;
+  }
+  return out;
+}
+// Does [aFrom,aTo] overlap [bFrom,bTo]? An open end (null/NaN) is "always", which is what a
+// NOTAM with no end and a permanent danger area both mean.
+function routeCheckOverlaps(aFrom, aTo, bFrom, bTo) {
+  const af = Number.isFinite(aFrom) ? aFrom : -Infinity;
+  const at = Number.isFinite(aTo) ? aTo : Infinity;
+  const bf = Number.isFinite(bFrom) ? bFrom : -Infinity;
+  const bt = Number.isFinite(bTo) ? bTo : Infinity;
+  return af <= bt && bf <= at;
+}
+// Points along a leg, ends included. A leg can pass clean through an area with neither end in
+// it -- the airspace inspector samples for the same reason.
+function routeCheckSamples(a, b, n) {
+  const out = [];
+  const steps = Math.max(2, n || ROUTE_CHECK_SAMPLES);
+  for (let k = 0; k < steps; k++) {
+    const t = k / (steps - 1);
+    out.push({ lat: a.lat + (b.lat - a.lat) * t, lng: a.lng + (b.lng - a.lng) * t, t });
+  }
+  return out;
+}
+// Great-circle-ish distance in NM, good enough at Israeli scales for a radius test.
+function routeCheckNmBetween(p, q) {
+  const dLat = (q.lat - p.lat) * 60;
+  const dLng = (q.lng - p.lng) * 60 * Math.cos((p.lat + q.lat) / 2 * Math.PI / 180);
+  return Math.hypot(dLat, dLng);
+}
+// A vertical band against a planned altitude. `base`/`top` null means "no stated limit" --
+// surface and unlimited respectively, which is how both feeds write them.
+function routeCheckAltInBand(altFt, baseFt, topFt) {
+  if (!Number.isFinite(altFt)) return null;            // nothing planned: cannot say
+  const lo = Number.isFinite(baseFt) ? baseFt : -Infinity;
+  const hi = Number.isFinite(topFt) ? topFt : Infinity;
+  return altFt >= lo && altFt <= hi;
+}
+
+// The check itself. `input` carries everything: the route, when it leaves, and the four
+// datasets. Missing data is missing, not clear -- a source that could not be read says so
+// rather than contributing a silent "nothing found", because "no NOTAMs" and "no NOTAM data"
+// are opposite answers to a pilot.
+function routeCheckFindings(input) {
+  const o = input || {};
+  const wps = Array.isArray(o.waypoints) ? o.waypoints : [];
+  const legs = Array.isArray(o.legs) ? o.legs : [];
+  const out = { findings: [], unchecked: [], from: null, to: null };
+  if (wps.length < 2 || !legs.length) return out;
+  const windows = routeCheckWindows(o.legTimesH || [], o.departAtMs);
+  out.from = windows.length ? windows[0].from : (o.departAtMs || null);
+  out.to = windows.length ? windows[windows.length - 1].to : out.from;
+  const altOf = (i) => {
+    const v = legs[i] && legs[i].inboundAltitude;
+    return Number.isFinite(v) ? v : null;
+  };
+  const add = (f) => { out.findings.push(f); };
+  const legWindow = (i) => windows[i] || { from: out.from, to: out.to };
+
+  // --- airspace ------------------------------------------------------------------------
+  // Only what the route is INSIDE. Crossing above the top or below the base is the answer a
+  // pilot planned for, and a check that shouted about it would be a check nobody reads.
+  if (!Array.isArray(o.airspace)) out.unchecked.push('airspace');
+  else {
+    for (const a of o.airspace) {
+      if (!a || typeof o.contains !== 'function') continue;
+      for (let i = 0; i < legs.length; i++) {
+        const w1 = wps[i], w2 = wps[i + 1];
+        if (!w1 || !w2) continue;
+        const hit = routeCheckSamples(w1, w2).some(p => o.contains(a, p));
+        if (!hit) continue;
+        const alt = altOf(i);
+        const inBand = routeCheckAltInBand(alt, a.lowerFt, a.upperFt);
+        if (inBand === false) continue;                 // over the top or under the base
+        add({
+          kind: 'airspace', severity: inBand === null ? 'warn' : 'stop', leg: i,
+          name: a.name || a.id || '', airspaceClass: a.class || '',
+          lowerFt: a.lowerFt, upperFt: a.upperFt, altFt: alt,
+          noAltitude: inBand === null,
+          from: legWindow(i).from, to: legWindow(i).to,
+        });
+        break;                                          // one finding per area, not per leg
+      }
+    }
+  }
+
+  // --- NOTAMs --------------------------------------------------------------------------
+  // Two ways a NOTAM lands on a plan: it sits on the route, or it names one of its fields.
+  // Both are only findings while they are in force during the window the aeroplane is there.
+  if (!Array.isArray(o.notams)) out.unchecked.push('notams');
+  else {
+    const fieldCodes = new Set();
+    for (const k of [0, wps.length - 1]) {
+      const n = (wps[k] && wps[k].name || '').trim().toUpperCase();
+      if (/^[A-Z]{4}$/.test(n)) fieldCodes.add(n);
+    }
+    for (const n of o.notams) {
+      if (!n) continue;
+      const from = Date.parse(n.start), to = Date.parse(n.end);
+      let leg = null;
+      const g = n.geom;
+      if (g && g.type === 'circle' && Number.isFinite(g.lat) && Number.isFinite(g.lng)) {
+        for (let i = 0; i < legs.length; i++) {
+          const w1 = wps[i], w2 = wps[i + 1];
+          if (!w1 || !w2) continue;
+          const near = routeCheckSamples(w1, w2)
+            .some(p => routeCheckNmBetween(p, g) <= (Number(g.radiusNm) || 0));
+          if (near) { leg = i; break; }
+        }
+      }
+      const onField = fieldCodes.has((n.icao || '').trim().toUpperCase());
+      if (leg === null && !onField) continue;
+      const win = leg === null ? { from: out.from, to: out.to } : legWindow(leg);
+      if (!routeCheckOverlaps(from, to, win.from, win.to)) continue;
+      add({
+        kind: 'notam', severity: 'warn', leg, id: n.id || '', icao: n.icao || '',
+        text: n.text || '', onField, from, to,
+      });
+    }
+  }
+
+  // --- SIGMET / AIRMET ------------------------------------------------------------------
+  // The hazard polygons the significant-weather chart draws, as data: a polygon, a band and a
+  // validity. Crossed inside the band while it is in force is the only combination that is a
+  // finding -- an area the route passes under is not one.
+  if (!Array.isArray(o.hazards)) out.unchecked.push('hazards');
+  else {
+    for (const h of o.hazards) {
+      if (!h || !Array.isArray(h.coords) || h.coords.length < 3) continue;
+      const from = Number(h.validFrom) * 1000, to = Number(h.validTo) * 1000;
+      for (let i = 0; i < legs.length; i++) {
+        const w1 = wps[i], w2 = wps[i + 1];
+        if (!w1 || !w2) continue;
+        if (!routeCheckOverlaps(from, to, legWindow(i).from, legWindow(i).to)) continue;
+        const hit = routeCheckSamples(w1, w2)
+          .some(p => routeCheckPointInRing(p, h.coords));
+        if (!hit) continue;
+        const alt = altOf(i);
+        if (routeCheckAltInBand(alt, h.base, h.top) === false) continue;
+        add({
+          kind: 'hazard', severity: 'warn', leg: i,
+          hazard: h.hazard || '', qualifier: h.qualifier || '',
+          baseFt: h.base, topFt: h.top, altFt: alt,
+          from, to,
+        });
+        break;
+      }
+    }
+  }
+
+  // --- ceiling ---------------------------------------------------------------------------
+  // The lowest broken or overcast layer at a field on this route. A planned leg at or above it
+  // is a leg planned into cloud, which is the one thing a VFR plan cannot be.
+  if (!Array.isArray(o.wx)) out.unchecked.push('ceiling');
+  else {
+    const planned = legs.map((_, i) => altOf(i)).filter(Number.isFinite);
+    const lowestPlanned = planned.length ? Math.min(...planned) : null;
+    const names = new Set(wps.map(w => (w && w.name || '').trim().toUpperCase()));
+    for (const st of o.wx) {
+      if (!st || !names.has((st.icao || '').trim().toUpperCase())) continue;
+      const ceil = routeCheckCeilingFt(st.clouds);
+      if (ceil === null || lowestPlanned === null) continue;
+      if (ceil > lowestPlanned) continue;
+      add({
+        kind: 'ceiling', severity: 'warn', leg: null,
+        icao: st.icao || '', ceilingFt: ceil, altFt: lowestPlanned,
+        from: out.from, to: out.to,
+      });
+    }
+  }
+
+  out.findings.sort((a, b) => (a.severity === b.severity ? 0 : (a.severity === 'stop' ? -1 : 1))
+    || ((a.leg === null ? 99 : a.leg) - (b.leg === null ? 99 : b.leg)));
+  return out;
+}
+// The ceiling: the lowest BROKEN or OVERCAST base. Few and scattered are not a ceiling -- that
+// is the definition, and reporting SCT as one would cry wolf on an ordinary fair-weather day.
+function routeCheckCeilingFt(clouds) {
+  if (!Array.isArray(clouds)) return null;
+  let low = null;
+  for (const c of clouds) {
+    if (!c || (c.cover !== 'BKN' && c.cover !== 'OVC')) continue;
+    if (!Number.isFinite(c.base)) continue;
+    low = low === null ? c.base : Math.min(low, c.base);
+  }
+  return low;
+}
+// Ray casting on lat/lng directly: these polygons are a degree or two across, where the
+// difference from a projected test is far below the width of the areas themselves.
+function routeCheckPointInRing(pt, ring) {
+  let inside = false;
+  for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+    const yi = ring[i][0], xi = ring[i][1], yj = ring[j][0], xj = ring[j][1];
+    if ((yi > pt.lat) !== (yj > pt.lat)
+      && pt.lng < (xj - xi) * (pt.lat - yi) / ((yj - yi) || 1e-12) + xi) inside = !inside;
+  }
+  return inside;
+}
+if (typeof window !== 'undefined') {
+  window.routeCheckFindings = routeCheckFindings;
+  window.routeCheckWindows = routeCheckWindows;
+  window.routeCheckCeilingFt = routeCheckCeilingFt;
+  window.routeCheckPointInRing = routeCheckPointInRing;
+  window.routeCheckOverlaps = routeCheckOverlaps;
+}
+
 // Where the cumulative clock starts. Departure by default -- that is what a cumulative time IS
 // -- but a pilot flying a leg of somebody else's plan, or picking the route up at a reporting
 // point, wants the times counted from where they actually start. One per route: two origins

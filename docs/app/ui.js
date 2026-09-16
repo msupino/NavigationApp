@@ -6004,6 +6004,15 @@ function notamPrefWrite(on) {
   if (pref !== null) window.showNotam = pref;
 }
 const notamCb = document.getElementById('notam-cb');
+// The four things that can say "not this plan, not at this time", asked together and against
+// the clock. Each of them already knew its own half; none of them looked at the plan, and none
+// of them looked at when. See routecheck.js.
+const routeCheckBtn = document.getElementById('route-check-btn');
+if (routeCheckBtn) {
+  routeCheckBtn.onclick = () => {
+    if (window.NavAid && NavAid.routeCheck) NavAid.routeCheck.show();
+  };
+}
 const notamListBtn = document.getElementById('notam-list-btn');
 const notamControls = document.getElementById('notam-controls');
 const notamTimeEl = document.getElementById('notam-time');
@@ -9618,6 +9627,7 @@ function refreshMapAfterToolbarModeChange() {
       'sigmet-btn',
       'airmet-btn',
       'notam-list-btn',
+      'route-check-btn',
       'lsa-list-btn',
       'mosaic-btn',
       'load',
