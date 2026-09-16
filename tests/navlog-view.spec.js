@@ -560,7 +560,9 @@ test('the window offers no import of its own', async ({ page }) => {
   expect(await page.locator('.navlog-import').count()).toBe(0);
   expect(await page.locator('.navlog-file').count()).toBe(0);
   // The way OUT stays here: the sheet it saves is a nav-table document nothing else composes.
-  await expect(page.locator('.navlog-export')).toHaveText('Save exercise');
+  // Named for the action, not for the exam -- a pilot planning a real flight is not saving an
+  // exercise, and this window is no longer only for the ones that come with answer sheets.
+  await expect(page.locator('.navlog-export')).toHaveText('Save as a file');
 });
 
 // Reported: the compass card took too many lines. It is printed two pairs of columns wide, and
