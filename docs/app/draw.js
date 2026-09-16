@@ -6095,11 +6095,24 @@ function routeInkRects() {
     const preClock = typeof legInsideCtr === 'function' && legInsideCtr(i);
     const inBlocked = typeof legAltitudeIsBlocked === 'function' &&
       legAltitudeIsBlocked(legI, 'inboundAltitude');
+    // The same endpoints drawLegs draws from and the hit tests measure from. An out-and-back
+    // steps each direction to its own side (legScreenEnds), so a box oriented about the
+    // unshifted waypoint is rotated about the wrong point -- and these kites are elongated, so
+    // that is the wrong SHAPE of box, not merely one a few pixels out.
+    const inkEnds = (typeof legScreenEnds === 'function') ? legScreenEnds(i) : null;
+    const kA = inkEnds ? inkEnds.a : A, kB = inkEnds ? inkEnds.b : B;
+    // ...and the same gate: the feature flag as well as the toggle, exactly as drawLegs reads
+    // it. A gist can switch the return path off while a stored or synced `showReturn = true`
+    // is still in effect, and the draw site defends against precisely that -- so ink counted
+    // without the flag is ink for kites nobody paints, which is what this whole function
+    // exists to avoid.
+    const inkReturnOn = typeof showReturn !== 'undefined' && showReturn
+      && (typeof showReturnFeatureOn !== 'function' || showReturnFeatureOn())
+      && (typeof legAllowsReturn !== 'function' || legAllowsReturn(i));
     if (typeof legLabelCenter === 'function' && !kiteOff) {
-      if (!inBlocked) pushRotated(legLabelCenter(i, 'in'), B.x, B.y, halfL, halfW);
-      if (typeof showReturn !== 'undefined' && showReturn &&
-          (typeof legAllowsReturn !== 'function' || legAllowsReturn(i))) {
-        pushRotated(legLabelCenter(i, 'out'), A.x, A.y, halfL, halfW);
+      if (!inBlocked) pushRotated(legLabelCenter(i, 'in'), kB.x, kB.y, halfL, halfW);
+      if (inkReturnOn) {
+        pushRotated(legLabelCenter(i, 'out'), kA.x, kA.y, halfL, halfW);
       }
     }
     // Two kites, two gates -- they were under one, which was the inbound kite's. The return
@@ -6109,11 +6122,10 @@ function routeInkRects() {
     if (cum && typeof showCumTime !== 'undefined' && showCumTime) {
       const offClockHere = typeof legOffCumClock === 'function' ? legOffCumClock(i) : preClock;
       if (!offClockHere && typeof cumLabelCenter === 'function') {
-        pushRotated(cumLabelCenter(i), B.x, B.y, cum.halfL, cum.halfW);
+        pushRotated(cumLabelCenter(i), kB.x, kB.y, cum.halfL, cum.halfW);
       }
-      if (typeof showReturn !== 'undefined' && showReturn && typeof cumLabelRetCenter === 'function'
-        && (typeof legAllowsReturn !== 'function' || legAllowsReturn(i))) {
-        pushRotated(cumLabelRetCenter(i), A.x, A.y, cum.halfL, cum.halfW);
+      if (inkReturnOn && typeof cumLabelRetCenter === 'function') {
+        pushRotated(cumLabelRetCenter(i), kA.x, kA.y, cum.halfL, cum.halfW);
       }
     }
   }

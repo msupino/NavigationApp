@@ -573,7 +573,12 @@
     const S2 = window.S || {};
     return Array.isArray(S2.navLogHeaders) && S2.navLogHeaders.length === 23
       ? S2.navLogHeaders
-      : ['LEG', 'From', 'To', 'CAS', 'PA', 'Temp', 'TAS', 'W dir', 'W kt', 'TT', 'Drift', 'TH',
+      // Strength then direction, the order cells() emits and the order the exercise's own sheet
+      // prints them in. This fallback had them the other way round, so a language pack missing
+      // navLogHeaders -- or the first build after a column is added, when the length check
+      // fails -- labelled the wind speed "W dir" and the direction "W kt". The header row is
+      // the export contract, so anything keyed on those names read the wrong figure.
+      : ['LEG', 'From', 'To', 'CAS', 'PA', 'Temp', 'TAS', 'W kt', 'W dir', 'TT', 'Drift', 'TH',
         'Var', 'MH', 'Dev', 'CH', 'GS', 'Dist', 'Time', 'Cum time', 'FF', 'Fuel', 'Cum fuel'];
   }
 
