@@ -402,6 +402,31 @@ test.describe('the panel', () => {
     await expect(page.locator('.route-check-progress')).toHaveCount(0);
   });
 
+  // Long enough to be SEEN, not long enough to be read: the first version held the list for
+  // the time it takes to read every word, which on this much text is eight seconds of staring
+  // at an answer that is already in.
+  test('the progress is held for a beat, not for a reading', async ({ page }) => {
+    await app(page);
+    await drawRoute(page);
+    await page.evaluate(() => {
+      window.loadNotam = async () => ([]);
+      window.loadSigmets = async () => ([]);
+      window.loadAirmets = async () => ([]);
+      window.loadWxFile = async () => ({ stations: {} });
+      window.airspace = [];
+      window.fetch = async () => { throw new Error('offline'); };
+    });
+    const took = await page.evaluate(async () => {
+      const t0 = Date.now();
+      await NavAid.routeCheck.show();
+      return Date.now() - t0;
+    });
+    // The beat is there -- the list does not flash past...
+    expect(took).toBeGreaterThanOrEqual(700);
+    // ...and it is a beat, not a paragraph. toastReadMs on this text is over eight seconds.
+    expect(took).toBeLessThan(3000);
+  });
+
   // A feed that is down is marked, not silently ticked: the findings do not cover it.
   test('a source that fails is marked as failed, not as answered', async ({ page }) => {
     await app(page);

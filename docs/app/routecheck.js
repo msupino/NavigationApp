@@ -365,16 +365,22 @@
       row.li.classList.toggle('route-check-step-failed', state === 'failed');
     };
 
-    // Held long enough to be read. On a warm cache all five answer at once and the list was
-    // gone before the eye had found it -- five labels that flash past teach a pilot nothing
-    // except that something happened. The app already has the rule for this: toastReadMs, the
-    // notice allowance plus the words divided by a deliberately slow reading speed. The same
-    // formula, on the same text, so the panel and the toasts agree about how long reading takes.
+    // Held long enough to be SEEN, which is not the same as long enough to be read. On a warm
+    // cache all five answer at once and the list was gone before the eye had found it; the
+    // first fix reached for toastReadMs and held it for the time it takes to read every word,
+    // which on this much text is eight seconds of staring at a list whose answer is already in.
+    //
+    // toastNoticeMs is the figure that fits: the app defines it as "the beat before reading
+    // begins -- the eye has to find the thing that just appeared", which is exactly what this
+    // list needs and all it needs. Nobody has to read five labels word by word to learn that
+    // five sources were asked.
+    const noticeMs = () => {
+      const v = (typeof tune === 'function') ? tune('toastNoticeMs') : 0;
+      return Number.isFinite(v) && v > 0 ? v : 1000;
+    };
     const started = Date.now();
     const result = await run(onStep);
-    const readable = (typeof toastReadMs === 'function')
-      ? toastReadMs(head.textContent + ' ' + SOURCES.map(k => names[k]).join(' ')) : 0;
-    const left = readable - (Date.now() - started);
+    const left = noticeMs() - (Date.now() - started);
     if (left > 0) await new Promise(r => setTimeout(r, left));
     if (!modal.box.isConnected) return null;      // closed while the feeds were answering
     if (result) render(head, body, result);
