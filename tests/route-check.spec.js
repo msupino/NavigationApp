@@ -577,19 +577,38 @@ test.describe('a panel full of findings', () => {
     expect(reach.after, 'and scrolling brings the last one inside the window').toBe(true);
   });
 
-  // The title and its X stay put while the findings move under them.
-  test('the header does not scroll away with the list', async ({ page }) => {
+  // The title, its X, AND the window line stay put while the findings move under them. The
+  // window is what every finding below is relative to -- a NOTAM valid 13:00-14:00 means
+  // nothing without it -- so it was the worst line to let scroll away, and it did: it was the
+  // first child of the scroller until it was moved out.
+  test('the header and the window line do not scroll away with the list', async ({ page }) => {
     await loaded(page, 9, REAL);
     const pos = () => page.evaluate(() => {
       const x = document.querySelector('.route-check-modal .modal-close-x');
-      return x ? Math.round(x.getBoundingClientRect().top) : null;
+      const when = document.querySelector('.route-check-when');
+      const box = document.querySelector('.route-check-modal');
+      return {
+        x: x ? Math.round(x.getBoundingClientRect().top) : null,
+        when: when ? Math.round(when.getBoundingClientRect().top) : null,
+        whenInside: when
+          ? when.getBoundingClientRect().top >= box.getBoundingClientRect().top : null,
+        whenText: when ? when.textContent : '',
+      };
     });
     const before = await pos();
+    expect(before.whenText).toMatch(/Checked for/);
     await page.evaluate(() => {
       const body = document.querySelector('.route-check-body');
       body.scrollTop = body.scrollHeight;
     });
-    expect(await pos()).toBe(before);
+    const after = await pos();
+    expect(after.x).toBe(before.x);
+    expect(after.when, 'the window line holds its place').toBe(before.when);
+    expect(after.whenInside).toBe(true);
+    // ...and it is not in the scroller at all, which is what makes that true at any scroll.
+    expect(await page.evaluate(() =>
+      !document.querySelector('.route-check-body').contains(
+        document.querySelector('.route-check-when')))).toBe(true);
   });
 
   // NOTAM text is somebody else's, and it arrives with coordinate strings that have no break

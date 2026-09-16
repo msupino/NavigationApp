@@ -220,14 +220,15 @@
     return { head: '', detail: '', where: '', when: '' };
   }
 
-  function render(body, result) {
+  // `head` is a sibling of the scroller, not its first child. The window this was checked FOR is
+  // the one line every finding below is relative to -- a NOTAM valid 13:00-14:00 means nothing
+  // without it -- so it scrolling away with the list was the worst line to lose. Every other
+  // chart in this app keeps its header; so does this one now.
+  function render(head, body, result) {
     const S2 = window.S || {};
     body.replaceChildren();
-    const head = document.createElement('div');
-    head.className = 'route-check-when';
     head.textContent = (S2.routeCheckWindow || 'Checked for')
       + ' ' + span(result.from, result.to);
-    body.appendChild(head);
 
     if (!result.findings.length) {
       const ok = document.createElement('p');
@@ -290,19 +291,21 @@
     }
     const modal = createDraggableModal(S2.routeCheckTitle || 'Route check',
       'modal wide route-check-modal', null, { chartKind: 'route-check' });
+    const head = document.createElement('div');
+    head.className = 'route-check-when';
     const body = document.createElement('div');
     body.className = 'route-check-body';
     const waiting = document.createElement('p');
     waiting.className = 'route-check-waiting';
     waiting.textContent = S2.routeCheckWorking || 'Asking the four sources…';
     body.appendChild(waiting);
-    modal.box.appendChild(body);
+    modal.box.append(head, body);
     // createDraggableModal BUILDS the window; show() is what puts it on screen. Without this
     // the panel was constructed, filled and returned to nobody.
     modal.show();
     const result = await run();
     if (!modal.box.isConnected) return null;      // closed while the feeds were answering
-    if (result) render(body, result);
+    if (result) render(head, body, result);
     return modal;
   }
 

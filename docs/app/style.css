@@ -8246,7 +8246,8 @@ body.theme-light .navlog-table {
   /* A pixel cap as well as a ch one: `ch` scales with the font, so a zoomed page or a larger
      base font took the panel as wide as the screen and ran NOTAM text right across it. */
   max-width: min(72ch, 620px); }
-.route-check-when { font-weight: 600; }
+/* Outside the scroller: it is the window every finding below is relative to. */
+.route-check-when { font-weight: 600; flex: 0 0 auto; padding-bottom: 6px; }
 .route-check-list { list-style: none; margin: 0; padding: 0; display: flex;
   flex-direction: column; gap: 8px; }
 .route-check-item { display: grid; grid-template-columns: 1.4em minmax(0, 1fr); gap: 8px;
