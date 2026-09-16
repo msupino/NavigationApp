@@ -670,7 +670,19 @@
     setup.className = 'navlog-setup';
     const fields = [];
     const add = (f, read, path) => { fields.push({ f, read, path }); return f; };
+    // Twelve boxes in one flow is twelve boxes to read before finding the one you want, and it
+    // wrapped wherever the window happened to end -- "Cruise (gal/h)" alone on a second line.
+    // They belong in four groups, and a group wraps as a unit: where the aeroplane starts and
+    // ends, how fast it flies, where in the climb and descent the air is read, and what it
+    // costs to get there.
+    const group = (...items) => {
+      const g = document.createElement('div');
+      g.className = 'navlog-group';
+      g.append(...items);
+      return g;
+    };
     setup.append(
+      group(
       // Emptying the box, or pressing the arrow, hands it back -- see settingEdited.
       add(field(S2.navLogDepElev || 'Departure elev (ft)', cfg.depElevFt,
         v => settingEdited('depElevFt', v), {
@@ -689,10 +701,12 @@
           resetTitle: S2.navLogUseTuneVariation || 'Back to the variation the app uses',
           atDefaultTitle: S2.navLogAtDefault || 'Already the default',
           onReset: () => restore('variationDeg'),
-        }), c => c.variationDeg, 'variationDeg'),
-      field(S2.navLogCasClimb || 'Climb CAS', cfg.cas.climb, v => { cfg.cas.climb = num(v, 0); commit('cas.climb'); }),
-      field(S2.navLogCasCruise || 'Cruise CAS', cfg.cas.cruise, v => { cfg.cas.cruise = num(v, 0); commit('cas.cruise'); }),
-      field(S2.navLogCasDescent || 'Descent CAS', cfg.cas.descent, v => { cfg.cas.descent = num(v, 0); commit('cas.descent'); }),
+        }), c => c.variationDeg, 'variationDeg')),
+      group(
+        field(S2.navLogCasClimb || 'Climb CAS', cfg.cas.climb, v => { cfg.cas.climb = num(v, 0); commit('cas.climb'); }),
+        field(S2.navLogCasCruise || 'Cruise CAS', cfg.cas.cruise, v => { cfg.cas.cruise = num(v, 0); commit('cas.cruise'); }),
+        field(S2.navLogCasDescent || 'Descent CAS', cfg.cas.descent, v => { cfg.cas.descent = num(v, 0); commit('cas.descent'); })),
+      group(
       // Where in the climb and the descent the met data is read, as a percentage of the height
       // gained or lost: the exercise's 67% and 50%. A percentage is what a pilot can type; the
       // fraction is what the arithmetic uses.
@@ -707,11 +721,12 @@
           resetTitle: S2.navLogUseDefaultFraction || 'Back to the standard fraction',
           atDefaultTitle: S2.navLogAtDefault || 'Already the default',
           onReset: () => restore('paFraction.descent'),
-        }), c => Math.round(c.paFraction.descent * 100), 'paFraction.descent'),
-      field(S2.navLogClimbRate || 'Climb (fpm)', cfg.rates.climbFpm, v => { cfg.rates.climbFpm = num(v, 0); commit('rates.climbFpm'); }),
-      field(S2.navLogDescentRate || 'Descent (fpm)', cfg.rates.descentFpm, v => { cfg.rates.descentFpm = num(v, 0); commit('rates.descentFpm'); }),
-      field(S2.navLogClimbFuel || 'Climb fuel (gal)', cfg.fuel.climbGal, v => { cfg.fuel.climbGal = num(v, 0); commit('fuel.climbGal'); }, { step: '0.1' }),
-      field(S2.navLogCruiseGph || 'Cruise (gal/h)', cfg.fuel.cruiseGph, v => { cfg.fuel.cruiseGph = num(v, 0); commit('fuel.cruiseGph'); }, { step: '0.1' }),
+        }), c => Math.round(c.paFraction.descent * 100), 'paFraction.descent')),
+      group(
+        field(S2.navLogClimbRate || 'Climb (fpm)', cfg.rates.climbFpm, v => { cfg.rates.climbFpm = num(v, 0); commit('rates.climbFpm'); }),
+        field(S2.navLogDescentRate || 'Descent (fpm)', cfg.rates.descentFpm, v => { cfg.rates.descentFpm = num(v, 0); commit('rates.descentFpm'); }),
+        field(S2.navLogClimbFuel || 'Climb fuel (gal)', cfg.fuel.climbGal, v => { cfg.fuel.climbGal = num(v, 0); commit('fuel.climbGal'); }, { step: '0.1' }),
+        field(S2.navLogCruiseGph || 'Cruise (gal/h)', cfg.fuel.cruiseGph, v => { cfg.fuel.cruiseGph = num(v, 0); commit('fuel.cruiseGph'); }, { step: '0.1' })),
     );
 
     // The met table. Empty by default -- an exercise hands you one, and inventing rows would
@@ -897,11 +912,16 @@
       const list = rowsFor(cfg);
       table.replaceChildren();
       const hr = document.createElement('tr');
-      for (const h of headers()) {
+      // A column called "FF" or "TT" is a column somebody has to be told about once. The full
+      // name rides along as the tooltip rather than widening a sheet that is already 23 wide.
+      const titles = Array.isArray(S2.navLogHeaderTitles) && S2.navLogHeaderTitles.length === 23
+        ? S2.navLogHeaderTitles : null;
+      headers().forEach((h, i) => {
         const th = document.createElement('th');
         th.textContent = h;
+        if (titles && titles[i] && titles[i] !== h) th.title = titles[i];
         hr.appendChild(th);
-      }
+      });
       table.appendChild(hr);
       list.forEach((row, i) => {
         const tr = document.createElement('tr');

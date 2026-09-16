@@ -8090,10 +8090,26 @@ body.disclaimer-open { overflow: hidden; }
    23-column sheet is a table somebody wants wider, and the window it is in should not be the
    thing stopping them. */
 .navlog-modal { resize: both; overflow: auto; min-width: 320px; min-height: 220px;
-  max-width: 96vw; max-height: 92vh; }
+  max-width: 96vw; max-height: 92vh;
+  /* Opened at the cap -- 92vw, a third of it empty on a desktop -- because .modal.wide sets a
+     maximum and nothing set a width. The sheet is what the window is for, so the sheet is what
+     it opens at: 23 columns come to a little over 900px, and the setup row wraps to suit. Still
+     smaller than the screen on a phone, and the resize grip still overrides both. (max-content
+     was the obvious try and is wrong: it measures the setup row unwrapped, which is wider than
+     the cap, so the window opened at the cap again.) */
+  width: min(96vw, 940px); }
 .navlog-body { display: flex; flex-direction: column; gap: 10px;
   max-height: none; overflow: visible; }
-.navlog-setup { display: flex; flex-wrap: wrap; gap: 6px 12px; }
+/* Four groups, each wrapping as a unit: where the flight starts and ends, how fast, where the
+   air is read, what it costs. A flat run of twelve boxes wrapped wherever the window ended and
+   left one box alone on a second line. The rule between groups is the only thing marking them:
+   a heading over three boxes is more furniture than the boxes themselves. */
+.navlog-setup { display: flex; flex-wrap: wrap; gap: 8px 0; align-items: start; }
+.navlog-group { display: flex; flex-wrap: wrap; gap: 6px 12px; padding-inline: 12px; }
+.navlog-group:first-child { padding-inline-start: 0; }
+.navlog-group:last-child { padding-inline-end: 0; }
+.navlog-group + .navlog-group { border-inline-start: 1px solid rgba(255, 255, 255, 0.14); }
+body.theme-light .navlog-group + .navlog-group { border-inline-start-color: rgba(0, 0, 0, 0.14); }
 /* Label across the top, then the box with its restore arrow BESIDE it -- the arrow belongs to
    the box, and under it reads as another row of the form. */
 .navlog-field { display: grid; grid-template-columns: max-content max-content;
@@ -8150,9 +8166,43 @@ body.theme-light .navlog-note { color: #333; }
 .navlog-row-del { background: none; border: 0; cursor: pointer; color: inherit; padding: 0 4px; }
 .navlog-met-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 6px; }
 .navlog-add, .navlog-fetch { padding: 2px 8px; }
-.navlog-table { border-collapse: collapse; font-size: 12px; display: block; overflow-x: auto; max-width: 100%; }
+/* 23 columns do not fit a phone, and on a phone the scrollbar is an overlay that appears only
+   while it moves -- so the sheet simply looked cut off at "W dir", and in Hebrew looked cut off
+   at the other end. The shadows are painted by the scroller itself: a hard-edged pair pinned to
+   the box, a soft pair pinned to the content, so each shadow shows only while there is more
+   table past that edge. */
+.navlog-table {
+  border-collapse: collapse; font-size: 12px; display: block; overflow-x: auto; max-width: 100%;
+  background-image:
+    linear-gradient(to right, var(--navlog-edge, #2a2626), rgba(42, 38, 38, 0)),
+    linear-gradient(to left, var(--navlog-edge, #2a2626), rgba(42, 38, 38, 0)),
+    linear-gradient(to right, rgba(0, 0, 0, 0.45), rgba(0, 0, 0, 0)),
+    linear-gradient(to left, rgba(0, 0, 0, 0.45), rgba(0, 0, 0, 0));
+  background-position: left center, right center, left center, right center;
+  background-repeat: no-repeat;
+  background-size: 22px 100%, 22px 100%, 12px 100%, 12px 100%;
+  background-attachment: local, local, scroll, scroll;
+}
+body.theme-light .navlog-table {
+  background-image:
+    linear-gradient(to right, #fff, rgba(255, 255, 255, 0)),
+    linear-gradient(to left, #fff, rgba(255, 255, 255, 0)),
+    linear-gradient(to right, rgba(0, 0, 0, 0.22), rgba(0, 0, 0, 0)),
+    linear-gradient(to left, rgba(0, 0, 0, 0.22), rgba(0, 0, 0, 0));
+}
 .navlog-table th, .navlog-table td { border: 1px solid rgba(128, 128, 128, 0.35); padding: 1px 5px;
   white-space: nowrap; text-align: center; font-variant-numeric: tabular-nums; }
+/* Figures are read DOWN a column on this sheet, which centring undoes -- tabular digits line up
+   only if the column has an edge to line up against. The leg number and the two place names
+   stay centred; everything from the speed rightwards is a number. */
+.navlog-table th:nth-child(n+4), .navlog-table td:nth-child(n+4) { text-align: end; }
+/* The sheet is three sheets: what you were given (to TAS), the wind triangle worked through it
+   (to CH), and what comes out (from GS). The printed exercise rules those apart, and 23
+   columns of identical hairlines do not. */
+.navlog-table th:nth-child(8), .navlog-table td:nth-child(8),
+.navlog-table th:nth-child(17), .navlog-table td:nth-child(17) {
+  border-inline-start-width: 3px;
+}
 /* The climb and the descent are not cruise legs, and the sheet should say so at a glance. */
 .navlog-row.navlog-climb td { background: rgba(120, 200, 130, 0.14); }
 .navlog-row.navlog-descent td { background: rgba(214, 178, 74, 0.16); }
