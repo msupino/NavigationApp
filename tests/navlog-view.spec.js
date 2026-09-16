@@ -1292,6 +1292,40 @@ test.describe('the compass card', () => {
     expect(await page.evaluate(() => NavAid.navLog.config().deviation[1].ch)).toBe(350);
   });
 
+  // Every other box in this window carries its own way back. The card had one arrow for the
+  // whole table, which is a way back to nothing in particular: asked where the undo for each
+  // element was, the answer was that there wasn't one.
+  const rowArrow = (page, devIndex) =>
+    page.locator('.navlog-card-grid td .navlog-reset').nth((devIndex % 6) * 2 + (devIndex >= 6 ? 1 : 0));
+
+  test('every row carries its own way back', async ({ page }) => {
+    await boot(page);
+    await openLog(page);
+    expect(await page.locator('.navlog-card-grid td .navlog-reset').count()).toBe(12);
+    // Always there, dimmed while that heading carries no deviation.
+    await expect(rowArrow(page, 2)).toBeVisible();
+    await expect(rowArrow(page, 2)).toHaveClass(/navlog-reset-idle/);
+    await typeSteer(page, 2, 66);
+    await expect(rowArrow(page, 2)).not.toHaveClass(/navlog-reset-idle/);
+    // ...and its neighbours stay quiet: this arrow is that heading's, not the table's.
+    await expect(rowArrow(page, 3)).toHaveClass(/navlog-reset-idle/);
+  });
+
+  test('a row arrow clears that heading and leaves the rest', async ({ page }) => {
+    await boot(page);
+    await openLog(page);
+    await typeSteer(page, 2, 66);
+    await typeSteer(page, 7, 215);
+    await rowArrow(page, 2).click();
+    const after = await page.evaluate(() => NavAid.navLog.config().deviation.map(e => e.ch));
+    expect(after[2]).toBe(60);            // back to its magnetic heading
+    expect(after[7]).toBe(215);           // the other one is untouched
+    await expect(rowArrow(page, 2)).toHaveClass(/navlog-reset-idle/);
+    // The card as a whole still has something to undo, so its arrow stays live.
+    await expect(page.locator('.navlog-card .navlog-sub-title .navlog-reset'))
+      .not.toHaveClass(/navlog-reset-idle/);
+  });
+
   // The house rule: always there, dimmed when there is nothing to undo.
   test('the card carries a restore arrow, dimmed while the card is clear', async ({ page }) => {
     await boot(page);
@@ -1320,6 +1354,9 @@ test.describe('the compass card', () => {
     })).toBe(true);
     await expect(page.locator('.navlog-card .navlog-sub-title .navlog-reset'))
       .toHaveClass(/navlog-reset-idle/);
+    // ...and every row's own arrow went quiet with it.
+    expect(await page.locator('.navlog-card-grid td .navlog-reset:not(.navlog-reset-idle)').count())
+      .toBe(0);
   });
 
   // The card the window starts with: no deviation anywhere, written the way the column beside

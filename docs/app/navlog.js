@@ -838,7 +838,7 @@
     const clearCard = () => {
       for (const e of cfg.deviation) e.ch = e.mh;
       saveTables(cfg);
-      renderCard();
+      renderCard();          // rebuilt, so every row's own arrow is re-lit with it
       render();
     };
     function renderCard() {
@@ -898,6 +898,7 @@
           entry.ch = deg360(input.value, entry.mh);
           saveTables(cfg);
           render();
+          lightBack();
           showCardReset();
           // A step -- the spinner, or an arrow key -- carries no inputType, and it is a finished
           // answer: show it wrapped at once, which is what makes 359 step round to 000. A typed
@@ -914,7 +915,31 @@
           const shown = deg(entry.ch);
           if (input.value !== shown) input.value = shown;
         });
-        ch.appendChild(input);
+        // Its own way back, on every row, the way every other box in this window has one --
+        // always there, dimmed while that row carries no deviation. The arrow in the title
+        // clears the whole card; this one clears the heading it sits on.
+        const back = document.createElement('button');
+        back.type = 'button';
+        back.className = 'navlog-reset';
+        back.textContent = '\u21ba';
+        const lightBack = () => {
+          const on = entry.ch !== entry.mh;
+          back.classList.toggle('navlog-reset-idle', !on);
+          back.title = on
+            ? (S2.navLogCardRowReset || 'No deviation on this heading')
+            : (S2.navLogAtDefault || 'Already the default');
+          back.setAttribute('aria-label', back.title);
+        };
+        back.addEventListener('click', () => {
+          entry.ch = entry.mh;
+          input.value = deg(entry.ch);
+          saveTables(cfg);
+          render();
+          lightBack();
+          showCardReset();
+        });
+        lightBack();
+        ch.append(input, back);
         return [mh, ch];
       };
       for (let i = 0; i < half; i++) {
