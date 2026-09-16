@@ -8101,9 +8101,21 @@ body.disclaimer-open { overflow: hidden; }
      smaller than the screen on a phone, and the resize grip still overrides both. (max-content
      was the obvious try and is wrong: it measures the setup row unwrapped, which is wider than
      the cap, so the window opened at the cap again.) */
-  width: min(96vw, 940px); }
+  width: min(96vw, 940px);
+  /* The BOX must not be the scroller. It was, so the title and the close X -- which every modal
+     positions absolutely inside the box -- scrolled away with the sheet: on a short screen the
+     only way out was Esc. Hidden here, and the body scrolls instead, which keeps the header
+     where a header belongs. `resize` still works: it needs an overflow that is not `visible`. */
+  overflow: hidden; }
 .navlog-body { display: flex; flex-direction: column; gap: 10px;
-  max-height: none; overflow: visible; }
+  /* flex child that may be taller than the window: min-height 0 lets it shrink so it scrolls
+     rather than pushing the box past its max-height. */
+  flex: 1 1 auto; min-height: 0; max-height: none; overflow: auto; }
+/* ...and nothing inside it shrinks to make room. A flex item's automatic minimum size is its
+   content -- except for an item that scrolls, whose minimum is zero. The sheet scrolls sideways,
+   so once the body became a scroller the table was free to collapse, and did: 23 columns at
+   height 0. Everything in here keeps its own height and the body scrolls past it. */
+.navlog-body > * { flex: 0 0 auto; }
 /* Four groups, each wrapping as a unit: where the flight starts and ends, how fast, where the
    air is read, what it costs. A flat run of twelve boxes wrapped wherever the window ended and
    left one box alone on a second line. The rule between groups is the only thing marking them:

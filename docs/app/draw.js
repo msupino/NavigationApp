@@ -4928,6 +4928,10 @@ function drawLegs() {
   const legProfile = (typeof routeProfile === 'function') ? routeProfile() : null;
 
   let cumInH = 0;  // running inbound cumulative time (hours)
+  // Where the pilot asked the clock to start, if not the departure field. The legs before it
+  // have no cumulative time to show, and the chain restarts on it -- the same mark and the same
+  // rule the planning form's Cum time column reads.
+  const timerAt = (typeof routeTimerIndex === 'function') ? routeTimerIndex() : -1;
 
   for (let i = 0; i < state.legs.length; i++) {
     const A = state.waypoints[i], B = state.waypoints[i + 1];
@@ -5020,8 +5024,12 @@ function drawLegs() {
     // untouched: field 15 and the nav log stay continuous, because a filing desk does want
     // the total. See legRetraceTurnIndex.
     if (typeof legRetraceTurnIndex === 'function' && i === legRetraceTurnIndex()) cumInH = 0;
-    if (!preClock) cumInH += durH;
-    const cumInStr = (!preClock && cumInH > 0) ? toHMS(cumInH) : '--';
+    if (timerAt > 0 && i === timerAt) cumInH = 0;
+    // Before the mark the clock is not running: nothing to add, and no kite -- the same
+    // treatment a leg inside the departure CTR already gets. See legOffCumClock.
+    const offClock = typeof legOffCumClock === 'function' ? legOffCumClock(i) : preClock;
+    if (!offClock) cumInH += durH;
+    const cumInStr = (!offClock && cumInH > 0) ? toHMS(cumInH) : '--';
 
     // A blocked inbound direction (one-way leg flown the disallowed way) has no
     // valid altitude to show — skip its nav kite entirely (the return kite is
@@ -5044,7 +5052,7 @@ function drawLegs() {
     // Declared out here because the RETURN cum kite mirrors it, and that is drawn in the
     // return block below -- inside the inbound block it was out of scope there.
     const cumDef = cumDefaultLabelOffset();       // perp/along px, shared with the hit test
-    if (showCumTime && !preClock) {
+    if (showCumTime && !offClock) {
       const cumP = leg.cumLabel || defCum;
       const cumPerp  = cumP._default ? cumDef.perp : (cumP.p || 0) * zoomScale;
       const cumAlong = cumP._default ? cumDef.along : (cumP.a || 0) * zoomScale;
@@ -6094,7 +6102,8 @@ function routeInkRects() {
         pushRotated(legLabelCenter(i, 'out'), A.x, A.y, halfL, halfW);
       }
     }
-    if (cum && typeof showCumTime !== 'undefined' && showCumTime && !preClock) {
+    if (cum && typeof showCumTime !== 'undefined' && showCumTime &&
+        !(typeof legOffCumClock === 'function' ? legOffCumClock(i) : preClock)) {
       if (typeof cumLabelCenter === 'function') pushRotated(cumLabelCenter(i), B.x, B.y, cum.halfL, cum.halfW);
       if (typeof showReturn !== 'undefined' && showReturn && typeof cumLabelRetCenter === 'function') {
         pushRotated(cumLabelRetCenter(i), A.x, A.y, cum.halfL, cum.halfW);

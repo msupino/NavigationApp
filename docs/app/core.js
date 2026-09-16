@@ -2800,6 +2800,10 @@ window.S = Object.assign({
     return '\u21bb This route turns for home at ' + name + ' \u2014 the leg after it doubles back, so that is the turning point.';
   },
   inspTurnIsAuto: '\u21bb Turning point \u2014 the route doubles back here, so this is where it turns for home. It cannot be moved while it does.',
+  inspTimerStart: '\u23f1 Start the clock here',
+  inspTimerClear: '\u23f1 Count from departure again',
+  inspTimerStartTitle: 'Count the cumulative times from this point instead of from the departure field',
+  inspTimerIsHere: '\u23f1 The cumulative times count from here, on the map and on the planning form.',
   inspTurnIsManual: '\u21bb Turning point \u2014 you marked this as where the route turns for home.',
   inspTurnNeedsSameField: 'Available on a route that returns to the airfield it started from — a one-way trip has no return to separate from its outbound.',
   inspTurnTitle: 'Where this route turns for home. A loop repeats no waypoint, so nothing in the geometry says where the far end is — mark it here and the leg-direction filter can split outbound from return.',
@@ -3698,16 +3702,41 @@ function navLogRows(input) {
   // one, so the cumulative column still adds up.
   const climbGal = Number(fuel.climbGal) > 0 ? Number(fuel.climbGal) : 0;
   const climbTotalH = rows.reduce((sum, r) => sum + (r.kind === 'climb' && r.timeH > 0 ? r.timeH : 0), 0);
+  // The cumulative clock starts at the departure field unless a waypoint says otherwise, in
+  // which case it starts THERE: the rows before it have no cumulative time to show (null, which
+  // the sheet prints as a dash), the row that ends on it reads zero, and the rest count from it.
+  // Fuel is not re-zeroed with it -- cumulative fuel is the reserve figure, and it is burned
+  // from the departure field whatever the clock is doing.
+  const timerAt = Number.isInteger(o.timerFromIndex) && o.timerFromIndex > 0
+    ? o.timerFromIndex : -1;
+  // A leg can be more than one row -- a climb is split where it tops out -- so the row that
+  // ENDS on the marked waypoint is the LAST row of the leg before it, not every row of it.
+  let zeroRow = -1;
+  if (timerAt > 0) {
+    for (let i = 0; i < rows.length; i++) {
+      if (Number.isInteger(rows[i].legIndex) && rows[i].legIndex === timerAt - 1) zeroRow = i;
+    }
+  }
   let cumTimeH = 0, cumFuel = 0;
-  for (const row of rows) {
+  let clockRunning = timerAt < 0;
+  for (let i = 0; i < rows.length; i++) {
+    const row = rows[i];
     row.gph = row.kind === 'climb' ? null : cruiseGph;
     row.fuelGal = row.kind === 'climb'
       ? (climbTotalH > 0 ? climbGal * (row.timeH / climbTotalH) : climbGal)
       : (row.timeH > 0 ? cruiseGph * row.timeH : 0);
-    cumTimeH += row.timeH > 0 ? row.timeH : 0;
     cumFuel += row.fuelGal > 0 ? row.fuelGal : 0;
-    row.cumTimeH = cumTimeH;
     row.cumFuelGal = cumFuel;
+    if (!clockRunning) {
+      // A row is "before the mark" while the leg it belongs to starts before it. The last row
+      // of the leg that ENDS on the marked waypoint is where the clock reads zero.
+      row.cumTimeH = null;
+      if (i === zeroRow) { row.timerStartsHere = true; row.cumTimeH = 0; }
+      if (Number.isInteger(row.legIndex) && row.legIndex >= timerAt) clockRunning = true;
+      if (!clockRunning) continue;
+    }
+    cumTimeH += row.timeH > 0 ? row.timeH : 0;
+    row.cumTimeH = cumTimeH;
   }
   return rows;
 }
@@ -5970,6 +5999,39 @@ function setTurnWaypoint(idx) {
   if (!was && wps[idx]) wps[idx].turn = 1;
   return !was;
 }
+// Where the cumulative clock starts. Departure by default -- that is what a cumulative time IS
+// -- but a pilot flying a leg of somebody else's plan, or picking the route up at a reporting
+// point, wants the times counted from where they actually start. One per route: two origins
+// would make "cumulative" mean nothing, the same reason there is one turning point.
+function routeTimerIndex() {
+  const wps = (typeof state !== 'undefined' && state.waypoints) || [];
+  for (let i = 0; i < wps.length; i++) if (wps[i] && wps[i].timerStart) return i;
+  return -1;
+}
+if (typeof window !== 'undefined') window.routeTimerIndex = routeTimerIndex;
+// Set it, move it, or press it again to clear it. The departure point is not a mark: the clock
+// already starts there, so asking for it is asking for the default and it clears instead.
+function setTimerWaypoint(idx) {
+  const wps = (typeof state !== 'undefined' && state.waypoints) || [];
+  const was = !!(wps[idx] && wps[idx].timerStart);
+  for (const w of wps) { if (w) delete w.timerStart; }
+  if (!was && idx > 0 && wps[idx]) { wps[idx].timerStart = 1; return true; }
+  return false;
+}
+if (typeof window !== 'undefined') window.setTimerWaypoint = setTimerWaypoint;
+
+// Is leg i off the cumulative clock? Two reasons, and they behave the same way: it lies inside
+// the departure CTR, or it runs before the waypoint the pilot started the clock at. Off the
+// clock means NO cumulative kite -- not a kite reading '--'. The departure airfield does not get
+// one either, and a label that says nothing is a label to read and discard. One predicate, so
+// the drawing and the hit test cannot disagree about which legs have a kite to grab.
+function legOffCumClock(i) {
+  if (typeof legInsideCtr === 'function' && legInsideCtr(i)) return true;
+  const at = typeof routeTimerIndex === 'function' ? routeTimerIndex() : -1;
+  return at > 0 && i < at;
+}
+if (typeof window !== 'undefined') window.legOffCumClock = legOffCumClock;
+
 function legTurnaroundIndex() { return legRetraceTurnIndex(); }
 // Should leg i be shown, given the direction filter? Everything from the turnaround
 // on counts as the return -- not just the legs that literally retrace. This is the
