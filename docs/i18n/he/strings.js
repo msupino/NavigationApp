@@ -102,6 +102,7 @@ window.S = {
   routeLibraryDelete: 'מחק',
   routeLibraryDeleteConfirm: 'למחוק את המסלול השמור הזה?',
   routeLibraryReplaceConfirm: 'להחליף את המסלול הנוכחי במסלול השמור?',
+  routeOpenReplaceConfirm: 'להחליף את המסלול שעל המפה במסלול שבקובץ הזה?',
   routeLibraryExport: 'ייצא ספרייה',
   routeLibraryProfile: 'פרופיל',
   routeLibraryGroupRoutes: 'מסלולים שמורים',
