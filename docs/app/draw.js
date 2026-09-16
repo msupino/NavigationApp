@@ -2747,27 +2747,6 @@ function airspaceLimitText(a) {
 // check below must not change its answer because a layer is switched off: "your route is
 // clear of it" is a safety statement, and one that depends on what is being drawn is worse
 // than saying nothing.
-// Keep a map overlay's own content upright while the map turns under it.
-//
-// An image overlay lives in .leaflet-rotate-pane, so the bearing turns it with the chart --
-// which is right for anything georeferenced, and wrong for a panel of TEXT. The SIGWX sheet is
-// cropped into three: the weather itself, which must turn (its fronts and areas belong over the
-// ground they describe), and a header and a table, which are annotations that happen to be
-// pinned beside it. Turning those makes them unreadable and buys nothing.
-//
-// leaflet-rotate already does exactly this for divIcon content -- it counter-rotates the wrapper
-// -- so this is the same trick applied to an element the plugin does not know about. Leaflet
-// writes its own positioning transform on these elements, so the rotation is appended to
-// whatever is there rather than replacing it.
-function keepOverlayUpright(el, bearingDeg) {
-  if (!el) return;
-  const base = String(el.style.transform || '').replace(/\s*rotate\([^)]*\)/g, '');
-  const deg = Number(bearingDeg) || 0;
-  el.style.transformOrigin = '50% 50%';
-  el.style.transform = deg ? (base + ' rotate(' + (-deg) + 'deg)').trim() : base.trim();
-}
-window.keepOverlayUpright = keepOverlayUpright;
-
 function airspaceContains(area, latlng) {
   if (!area || !Array.isArray(area.ring) || !latlng) return false;
   const pt = proj(latlng);

@@ -107,33 +107,59 @@
 
   // The five datasets, each fetched the way its own layer fetches it, and each allowed to fail
   // on its own: one feed that is down must not turn the others into silence.
-  async function gather() {
-    const want = (fn, force) => {
-      try { return typeof fn === 'function' ? fn(force) : null; } catch (e) { return null; }
+  // Each source reports when it is asked and when it answers, so the panel can show five rows
+  // ticking off rather than one line that sits there. It is honest progress -- a row changes
+  // because that feed actually came back -- and it doubles as the failure story: the source that
+  // ends in a cross is the one the findings below do not cover.
+  const SOURCES = ['airspace', 'notams', 'hazards', 'ceiling', 'cloud'];
+  async function gather(onStep) {
+    const step = (k, state) => { try { if (onStep) onStep(k, state); } catch (e) { /* cosmetic */ } };
+    const track = async (key, make) => {
+      step(key, 'asking');
+      let v = null;
+      try { v = await make(); } catch (e) { v = null; }
+      step(key, v === null || v === undefined ? 'failed' : 'done');
+      return v;
     };
-    const [notamsRes, sigRes, airRes, wxRes] = await Promise.all([
-      Promise.resolve(want(window.loadNotam)).catch(() => null),
-      Promise.resolve(want(window.loadSigmets)).catch(() => null),
-      Promise.resolve(want(window.loadAirmets)).catch(() => null),
-      Promise.resolve(want(window.loadWxFile)).catch(() => null),
-    ]);
-    if (typeof loadAirspace === 'function' && !Array.isArray(window.airspace)) {
-      try { await loadAirspace(); } catch (e) { /* its own layer says so */ }
-    }
-    const hazards = [];
-    for (const list of [sigRes, airRes]) if (Array.isArray(list)) hazards.push(...list);
-    // The stations this route actually touches, in the shape the check reads: a ceiling is a
-    // property of a field on the plan, not of every field in the country.
+    const call = (fn, ...args) => (typeof fn === 'function' ? fn(...args) : null);
     const points = (typeof routeCheckSamplePoints === 'function')
       ? routeCheckSamplePoints((state && state.waypoints) || [], 10) : [];
-    const cloud = await fetchCloudAlongRoute(points, departAtMs());
+    const at = departAtMs();
+
+    // All five at once: one feed being slow must not hold the other four, and one being down
+    // must not turn them into silence.
+    const [airspaceRes, notamsRes, hazardRes, wxRes, cloud] = await Promise.all([
+      track('airspace', async () => {
+        if (Array.isArray(window.airspace)) return window.airspace;
+        await call(window.loadAirspace);
+        return Array.isArray(window.airspace) ? window.airspace : null;
+      }),
+      track('notams', async () => {
+        const v = await call(window.loadNotam);
+        return Array.isArray(v) ? v : (Array.isArray(window.notams) ? window.notams : null);
+      }),
+      track('hazards', async () => {
+        const [sig, air] = await Promise.all([
+          Promise.resolve(call(window.loadSigmets)).catch(() => null),
+          Promise.resolve(call(window.loadAirmets)).catch(() => null),
+        ]);
+        if (!Array.isArray(sig) && !Array.isArray(air)) return null;
+        return [...(Array.isArray(sig) ? sig : []), ...(Array.isArray(air) ? air : [])];
+      }),
+      track('ceiling', async () => {
+        const f = await call(window.loadWxFile);
+        return (f && f.stations) ? f : null;
+      }),
+      track('cloud', async () => fetchCloudAlongRoute(points, at)),
+    ]);
+
+    // The stations this route actually passes, in the shape the check reads.
     const wx = [];
-    const stations = (wxRes && wxRes.stations) || null;
-    if (stations) {
+    if (wxRes && wxRes.stations) {
       const names = fieldsNearRoute(points);
-      for (const icao of Object.keys(stations)) {
+      for (const icao of Object.keys(wxRes.stations)) {
         if (!names.has(icao.toUpperCase())) continue;
-        const m = stations[icao] && stations[icao].metar;
+        const m = wxRes.stations[icao] && wxRes.stations[icao].metar;
         wx.push({ icao, clouds: (m && m.clouds) || [] });
       }
     }
@@ -141,20 +167,19 @@
       waypoints: (state && state.waypoints) || [],
       legs: (state && state.legs) || [],
       legTimesH: legTimesH(),
-      departAtMs: departAtMs(),
-      airspace: Array.isArray(window.airspace) ? window.airspace : null,
-      notams: Array.isArray(notamsRes) ? notamsRes
-        : (Array.isArray(window.notams) ? window.notams : null),
-      hazards: (Array.isArray(sigRes) || Array.isArray(airRes)) ? hazards : null,
-      wx: stations ? wx : null,
+      departAtMs: at,
+      airspace: airspaceRes,
+      notams: notamsRes,
+      hazards: hazardRes,
+      wx: wxRes ? wx : null,
       cloud,
       contains: (a, p) => (typeof airspaceContains === 'function' ? airspaceContains(a, p) : false),
     };
   }
 
-  async function run() {
+  async function run(onStep) {
     if (typeof routeCheckFindings !== 'function') return null;
-    return routeCheckFindings(await gather());
+    return routeCheckFindings(await gather(onStep));
   }
 
   const hhmm = (ms) => (Number.isFinite(ms) ? new Date(ms).toISOString().slice(11, 16) : '');
@@ -296,16 +321,61 @@
     head.className = 'route-check-when';
     const body = document.createElement('div');
     body.className = 'route-check-body';
-    const waiting = document.createElement('p');
-    waiting.className = 'route-check-waiting';
-    waiting.textContent = S2.routeCheckWorking
-      || 'Asking airspace, NOTAMs, SIGMET/AIRMET, the aerodrome reports and the forecast along the route…';
-    body.appendChild(waiting);
     modal.box.append(head, body);
-    // createDraggableModal BUILDS the window; show() is what puts it on screen. Without this
-    // the panel was constructed, filled and returned to nobody.
+
+    // Five rows, ticking off as each source answers. A single "asking…" line gives a pilot no
+    // way to tell a slow feed from a dead one, and the slowest of these goes over the network
+    // to a forecast API. Announced politely: a screen reader should hear the summary settle,
+    // not every row as it lands.
+    head.textContent = S2.routeCheckWorking
+      || 'Asking airspace, NOTAMs, SIGMET/AIRMET, the aerodrome reports and the forecast along the route…';
+    const names = {
+      airspace: S2.routeCheckSrcAirspace || 'airspace',
+      notams: S2.routeCheckSrcNotams || 'NOTAMs',
+      hazards: S2.routeCheckSrcHazards || 'SIGMET/AIRMET',
+      ceiling: S2.routeCheckSrcCeiling || 'ceiling',
+      cloud: S2.routeCheckSrcCloud || 'cloud along the route',
+    };
+    const progress = document.createElement('ul');
+    progress.className = 'route-check-progress';
+    progress.setAttribute('aria-live', 'polite');
+    const rows = {};
+    for (const key of SOURCES) {
+      const li = document.createElement('li');
+      li.className = 'route-check-step';
+      const mark = document.createElement('span');
+      mark.className = 'route-check-step-mark';
+      mark.textContent = '\u00b7';                  // not started
+      const label = document.createElement('span');
+      label.textContent = names[key] || key;
+      li.append(mark, label);
+      progress.appendChild(li);
+      rows[key] = { li, mark };
+    }
+    body.appendChild(progress);
     modal.show();
-    const result = await run();
+
+    const MARKS = { asking: '\u2026', done: '\u2713', failed: '\u2715' };
+    const onStep = (key, state) => {
+      const row = rows[key];
+      if (!row || !modal.box.isConnected) return;
+      row.mark.textContent = MARKS[state] || '\u00b7';
+      row.li.classList.toggle('route-check-step-asking', state === 'asking');
+      row.li.classList.toggle('route-check-step-done', state === 'done');
+      row.li.classList.toggle('route-check-step-failed', state === 'failed');
+    };
+
+    // Held long enough to be read. On a warm cache all five answer at once and the list was
+    // gone before the eye had found it -- five labels that flash past teach a pilot nothing
+    // except that something happened. The app already has the rule for this: toastReadMs, the
+    // notice allowance plus the words divided by a deliberately slow reading speed. The same
+    // formula, on the same text, so the panel and the toasts agree about how long reading takes.
+    const started = Date.now();
+    const result = await run(onStep);
+    const readable = (typeof toastReadMs === 'function')
+      ? toastReadMs(head.textContent + ' ' + SOURCES.map(k => names[k]).join(' ')) : 0;
+    const left = readable - (Date.now() - started);
+    if (left > 0) await new Promise(r => setTimeout(r, left));
     if (!modal.box.isConnected) return null;      // closed while the feeds were answering
     if (result) render(head, body, result);
     return modal;

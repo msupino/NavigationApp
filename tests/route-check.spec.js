@@ -367,24 +367,58 @@ test.describe('the panel', () => {
   });
 
   // "Asking the four sources" said neither which sources nor the right number -- the forecast
-  // along the route made five, and the line had gone stale without anyone noticing.
-  test('the waiting line names the sources, and there are five of them', async ({ page }) => {
+  // along the route made five, and the line had gone stale without anyone noticing. It names
+  // them now, and each one ticks off as it answers: a single line gives a pilot no way to tell
+  // a slow feed from a dead one, and the slowest of these goes over the network.
+  test('the sources are named, and each ticks off as it answers', async ({ page }) => {
     await app(page);
     await drawRoute(page);
     await page.evaluate(() => {
-      // Held open: this is about what the panel says while it waits.
-      window.loadNotam = () => new Promise(() => {});
+      // NOTAMs are held open; everything else answers at once. This is about the waiting.
+      window.__release = null;
+      window.loadNotam = () => new Promise((r) => { window.__release = () => r([]); });
       window.loadSigmets = async () => ([]);
       window.loadAirmets = async () => ([]);
       window.loadWxFile = async () => ({ stations: {} });
       window.airspace = [];
+      window.fetch = async () => { throw new Error('offline'); };
       NavAid.routeCheck.show();
     });
-    const said = await page.locator('.route-check-waiting').textContent();
+    await page.waitForSelector('.route-check-progress');
+    const said = await page.locator('.route-check-when').textContent();
     for (const src of ['airspace', 'NOTAM', 'SIGMET/AIRMET', 'aerodrome', 'forecast']) {
       expect(said, src + ' is named').toContain(src);
     }
     expect(said).not.toMatch(/four/i);
+    // Five rows, one per source.
+    await expect(page.locator('.route-check-step')).toHaveCount(5);
+    // The four that answered are ticked; the one still out is not, which is the whole point.
+    await expect(page.locator('.route-check-step-done')).toHaveCount(3);
+    await expect(page.locator('.route-check-step-failed')).toHaveCount(1);   // the forecast
+    await expect(page.locator('.route-check-step-asking')).toHaveCount(1);   // NOTAMs, still out
+    // ...and when it answers, the panel moves on to the findings.
+    await page.evaluate(() => window.__release());
+    await page.waitForSelector('.route-check-clear, .route-check-item');
+    await expect(page.locator('.route-check-progress')).toHaveCount(0);
+  });
+
+  // A feed that is down is marked, not silently ticked: the findings do not cover it.
+  test('a source that fails is marked as failed, not as answered', async ({ page }) => {
+    await app(page);
+    await drawRoute(page);
+    await page.evaluate(() => {
+      window.loadNotam = async () => { throw new Error('feed down'); };
+      window.loadSigmets = async () => ([]);
+      window.loadAirmets = async () => ([]);
+      window.loadWxFile = async () => ({ stations: {} });
+      window.airspace = [];
+      window.fetch = async () => { throw new Error('offline'); };
+    });
+    await page.evaluate(() => NavAid.routeCheck.show());
+    await page.waitForSelector('.route-check-when');
+    // The panel has finished, and it says which sources it could not read.
+    await expect(page.locator('.route-check-unchecked')).toContainText('NOTAMs');
+    await expect(page.locator('.route-check-unchecked')).toContainText('cloud along the route');
   });
 
   test('a clean plan says so plainly', async ({ page }) => {
