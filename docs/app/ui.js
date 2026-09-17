@@ -11609,32 +11609,30 @@ const NavWxAvailability = (function () {
     if (mapLayer) { map.removeLayer(mapLayer); mapLayer = null; }
     if (sidePanel) { sidePanel.remove(); sidePanel = null; hdrImg = null; tblImg = null; }
   }
-  // The table is 746 x 1427 source pixels. Fitted whole into the height beside the chart it
-  // comes out around 360px wide -- half its own resolution, which is the complaint: the text is
-  // too small to read. As an overlay it never had to fit, because it grew with the zoom (~640px
-  // at z8, ~1270px at z9) and ran off the screen when it got big.
-  //
-  // It cannot be both whole and readable in a corner, so it is both, in two places: fitted to
-  // the height beside the chart, where it says what kind of weather is on the sheet, and opened
-  // at full size in a window that scrolls, where it can actually be read.
-  const TABLE_ASPECT = (CROP_TABLE.y1 - CROP_TABLE.y0) * 1755
-    / ((CROP_TABLE.x1 - CROP_TABLE.x0) * 1240);
-  const TABLE_SRC_W = Math.round((CROP_TABLE.x1 - CROP_TABLE.x0) * 1240);
+  const TABLE_ASPECT = (CROP_TABLE.y1 - CROP_TABLE.y0) * 1240
+    / ((CROP_TABLE.x1 - CROP_TABLE.x0) * 1755);
+  const HEADER_ASPECT = (CROP_HEADER.y1 - CROP_HEADER.y0) * 1240
+    / ((CROP_HEADER.x1 - CROP_HEADER.x0) * 1755);
+  const TABLE_SRC_W = Math.round((CROP_TABLE.x1 - CROP_TABLE.x0) * 1755);
   // Pure, and exported, because it is the whole answer to "why is the text that size" and the
   // part worth pinning: as wide as the height leaves room for, never past the source's own
   // resolution (upscaling a scanned table adds blur, not letters), never more than half the map.
-  window.sigwxSideWidthPx = function sigwxSideWidthPx(hostW, hostH, scale) {
+  window.sigwxSideWidthPx = function sigwxSideWidthPx(hostW, hostH, scale,
+    tableWidth = TABLE_SRC_W, tableAspect = TABLE_ASPECT, headerAspect = HEADER_ASPECT) {
     const top = 208, margin = 16;
-    const room = Math.max(120, (hostH || 0) - top - margin);
-    const w = Math.min(TABLE_SRC_W, room / TABLE_ASPECT, (hostW || 0) * 0.5)
-      * (Number(scale) > 0 ? Number(scale) : 1);
-    return Math.round(Math.max(160, w));
+    const room = Math.max(1, (hostH || 0) - top - margin - 2);
+    const limit = Math.min(tableWidth, room / (tableAspect + headerAspect), (hostW || 0) * 0.5);
+    return Math.max(1, Math.floor(Math.min(limit,
+      Math.max(160, limit * (Number(scale) > 0 ? Number(scale) : 1)))));
   };
   function sizeSideBox() {
     if (!sidePanel) return;
     const host = map.getContainer();
     sidePanel.style.width =
-      window.sigwxSideWidthPx(host.clientWidth, host.clientHeight, off('sigwxTblScale') || 1) + 'px';
+      window.sigwxSideWidthPx(host.clientWidth, host.clientHeight, off('sigwxTblScale') || 1,
+        tblImg.naturalWidth || TABLE_SRC_W,
+        tblImg.naturalWidth ? tblImg.naturalHeight / tblImg.naturalWidth : TABLE_ASPECT,
+        hdrImg.naturalWidth ? hdrImg.naturalHeight / hdrImg.naturalWidth : HEADER_ASPECT) + 'px';
   }
   map.on('resize', sizeSideBox);
   // The full-size table, in a window that scrolls. This is the one that can be read.
@@ -11670,7 +11668,12 @@ const NavWxAvailability = (function () {
     tblImg = document.createElement('img');
     tblImg.className = 'sigwx-side-table';
     tblImg.alt = '';
+    hdrImg.onload = sizeSideBox;
+    tblImg.onload = sizeSideBox;
     sidePanel.append(hdrImg, tblImg);
+    L.DomEvent.disableClickPropagation(sidePanel);
+    L.DomEvent.disableScrollPropagation(sidePanel);
+    sidePanel.addEventListener('pointerdown', e => e.stopPropagation());
     // Pressable, and said so: at this size the panel is a summary, and the way to read it is to
     // open it. The map behind stays draggable everywhere else -- this is a small box in a
     // corner, not a layer over the chart.
@@ -11681,6 +11684,7 @@ const NavWxAvailability = (function () {
     sidePanel.setAttribute('aria-label', sidePanel.title);
     sidePanel.addEventListener('click', openTableFull);
     sidePanel.addEventListener('keydown', (e) => {
+      e.stopPropagation();
       if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openTableFull(); }
     });
     host.appendChild(sidePanel);

@@ -130,15 +130,17 @@ test('an old SIGWX request rejecting late leaves the newer overlay alone', async
   // Switch to the OTHER time while the first is still in flight, and let it paint.
   const other = /1200\.png/.test(heldUrl) ? 1 : 0;
   await page.selectOption('#wx-time', { index: other });
-  await expect(page.locator('img.sigwx-ov-layer')).toHaveCount(3);
+  await expect(page.locator('img.sigwx-ov-layer')).toHaveCount(1);
+  await expect(page.locator('.sigwx-side img[src^="data:image/png"]')).toHaveCount(2);
   const label = await page.locator('#wx-time').inputValue();
 
   // Now the superseded request fails.
   await held.abort();
   await page.waitForTimeout(600);
 
-  // Was: 3 -> 0. The overlay the pilot is looking at survives its predecessor's failure...
-  await expect(page.locator('img.sigwx-ov-layer')).toHaveCount(3);
+  // Both the geographic crop and text panel survive the predecessor's failure.
+  await expect(page.locator('img.sigwx-ov-layer')).toHaveCount(1);
+  await expect(page.locator('.sigwx-side img[src^="data:image/png"]')).toHaveCount(2);
   // ...and nothing about the selection changed underneath them.
   await expect(page.locator('#sigwx-ov-cb')).toBeChecked();
   expect(await page.locator('#wx-time').inputValue()).toBe(label);
