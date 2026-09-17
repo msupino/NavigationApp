@@ -159,8 +159,20 @@
       const names = fieldsNearRoute(points);
       for (const icao of Object.keys(wxRes.stations)) {
         if (!names.has(icao.toUpperCase())) continue;
-        const m = wxRes.stations[icao] && wxRes.stations[icao].metar;
-        wx.push({ icao, clouds: (m && m.clouds) || [] });
+        const st = wxRes.stations[icao] || {};
+        const m = st.metar;
+        // The TAF's own periods, in the shape the check reads: what the field is forecast to be
+        // while the flight is there, which is the question a plan asks and a METAR cannot
+        // answer. A field can be CAVOK now and forecast SCT018 BKN015 for the hour you arrive.
+        const fcsts = (st.taf && Array.isArray(st.taf.fcsts)) ? st.taf.fcsts : [];
+        const taf = fcsts.map((f, i) => ({
+          from: Number(f.timeFrom) * 1000,
+          // A period runs until the next one starts; the last runs to the end of the TAF.
+          to: fcsts[i + 1] ? Number(fcsts[i + 1].timeFrom) * 1000
+            : (Number(f.timeTo) * 1000 || null),
+          clouds: Array.isArray(f.clouds) ? f.clouds : [],
+        })).filter(p => Number.isFinite(p.from));
+        wx.push({ icao, clouds: (m && m.clouds) || [], taf });
       }
     }
     return {
@@ -236,11 +248,17 @@
         + ' · ' + (S2.routeCheckLegPlanned || 'leg planned') + ' ' + ft(f.altFt);
       return { head, detail, where, when: span(f.from, f.to) };
     }
-    if (f.kind === 'ceiling') {
+    if (f.kind === 'ceiling' || f.kind === 'layer') {
+      // A ceiling is a lid. A scattered or few layer is not, and saying so is the difference
+      // between "you cannot get over this" and "there is cloud in your way".
+      const what = f.kind === 'ceiling'
+        ? (S2.routeCheckCeiling || 'ceiling')
+        : ((f.cover || '') + ' ' + (S2.routeCheckLayer || 'layer')).trim();
+      const src = f.forecast ? (S2.routeCheckForecast || 'forecast') : (S2.routeCheckObserved || 'reported');
       return {
-        head: (f.icao || '') + ' · ' + (S2.routeCheckCeiling || 'ceiling') + ' ' + ft(f.ceilingFt),
-        detail: (S2.routeCheckLowestLeg || 'lowest planned leg') + ' ' + ft(f.altFt),
-        where: '', when: '',
+        head: (f.icao || '') + ' · ' + what + ' ' + ft(f.ceilingFt),
+        detail: src + ' · ' + (S2.routeCheckLowestLeg || 'lowest planned leg') + ' ' + ft(f.altFt),
+        where: '', when: f.forecast ? span(f.from, f.to) : '',
       };
     }
     return { head: '', detail: '', where: '', when: '' };

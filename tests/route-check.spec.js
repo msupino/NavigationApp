@@ -723,3 +723,120 @@ test.describe('a panel full of findings', () => {
     expect(got.zoomed).toBeLessThanOrEqual(got.normal + 2);
   });
 });
+
+// Reported on a real LLHZ -> LLHA plan: the check said nothing about cloud when it should have
+// warned -- too low, SCT going to BKN. Both halves of that were mine. The live data at the time:
+//
+//   LLHA METAR: CAVOK                       -> clouds: []
+//   LLHA TAF:   SCT018 ... PROB40 TEMPO BKN015 ... TEMPO SCT020
+//
+// The check read only the METAR, which was clear, and counted only BKN/OVC, which ignored the
+// SCT. Both are fixed here.
+test.describe('cloud at a field: what it is reporting, and what it is forecast', () => {
+  const at = (h) => T0 + h * HOUR;
+
+  test('a scattered layer below a planned leg is reported, and not called a ceiling', async ({ page }) => {
+    await boot(page);
+    const got = await run(page, {
+      wx: [{ icao: 'LLIB', clouds: [{ cover: 'SCT', base: 1800 }] }],
+    });
+    const f = got.findings.filter(x => x.kind === 'layer' || x.kind === 'ceiling');
+    expect(f).toHaveLength(1);
+    expect(f[0].kind).toBe('layer');          // not a lid, and the sheet must not say it is
+    expect(f[0].cover).toBe('SCT');
+    expect(f[0].ceilingFt).toBe(1800);
+    expect(f[0].forecast).toBe(false);
+  });
+
+  test('broken is still a ceiling', async ({ page }) => {
+    await boot(page);
+    const f = (await run(page, { wx: [{ icao: 'LLIB', clouds: [{ cover: 'BKN', base: 1500 }] }] }))
+      .findings.filter(x => x.kind === 'ceiling');
+    expect(f).toHaveLength(1);
+    expect(f[0].cover).toBe('BKN');
+  });
+
+  // The case that was silent: clear now, cloud forecast for the hour the flight is there.
+  test('a CAVOK field with a TAF is read from the TAF', async ({ page }) => {
+    await boot(page);
+    const got = await run(page, {
+      wx: [{
+        icao: 'LLIB',
+        clouds: [],                                   // CAVOK
+        taf: [
+          { from: at(-2), to: at(0), clouds: [{ cover: 'SCT', base: 2500 }] },
+          { from: at(0), to: at(3), clouds: [{ cover: 'BKN', base: 1500 }] },
+        ],
+      }],
+    });
+    const f = got.findings.filter(x => x.kind === 'ceiling' || x.kind === 'layer');
+    expect(f).toHaveLength(1);
+    expect(f[0].forecast).toBe(true);
+    expect(f[0].ceilingFt).toBe(1500);
+    expect(f[0].cover).toBe('BKN');
+  });
+
+  // A TAF period the flight is not there for is not a finding, same rule as every other source.
+  test('a forecast outside the window is not a finding', async ({ page }) => {
+    await boot(page);
+    const got = await run(page, {
+      wx: [{
+        icao: 'LLIB', clouds: [],
+        taf: [{ from: at(6), to: at(9), clouds: [{ cover: 'OVC', base: 800 }] }],
+      }],
+    });
+    expect(got.findings.filter(x => x.kind === 'ceiling' || x.kind === 'layer')).toEqual([]);
+  });
+
+  // A five-period TAF must not fill the panel by itself.
+  test('one row per field, at its worst in the window', async ({ page }) => {
+    await boot(page);
+    const got = await run(page, {
+      wx: [{
+        icao: 'LLIB', clouds: [{ cover: 'SCT', base: 2800 }],
+        taf: [
+          { from: at(0), to: at(1), clouds: [{ cover: 'SCT', base: 2000 }] },
+          { from: at(1), to: at(2), clouds: [{ cover: 'BKN', base: 1200 }] },
+          { from: at(2), to: at(3), clouds: [{ cover: 'SCT', base: 900 }] },
+        ],
+      }],
+    });
+    const f = got.findings.filter(x => x.kind === 'ceiling' || x.kind === 'layer');
+    expect(f).toHaveLength(1);
+    // The BKN wins over the lower SCT: one is a lid, the other is something to avoid.
+    expect(f[0].kind).toBe('ceiling');
+    expect(f[0].ceilingFt).toBe(1200);
+  });
+
+  test('cloud above every planned leg says nothing, forecast or not', async ({ page }) => {
+    await boot(page);
+    const got = await run(page, {
+      wx: [{
+        icao: 'LLIB', clouds: [{ cover: 'BKN', base: 6000 }],
+        taf: [{ from: at(0), to: at(3), clouds: [{ cover: 'OVC', base: 7000 }] }],
+      }],
+    });
+    expect(got.findings).toEqual([]);
+  });
+
+  test('the row says which it is, and whether it was reported or forecast', async ({ page }) => {
+    await boot(page);
+    await page.waitForFunction(() => !!(window.NavAid && NavAid.routeCheck));
+    const parts = await page.evaluate(() => ({
+      scattered: NavAid.routeCheck.lineFor({
+        kind: 'layer', icao: 'LLHA', cover: 'SCT', ceilingFt: 1800, altFt: 3000,
+        forecast: true, from: Date.UTC(2026, 8, 17, 8, 0), to: Date.UTC(2026, 8, 17, 11, 0),
+      }),
+      lid: NavAid.routeCheck.lineFor({
+        kind: 'ceiling', icao: 'LLHA', cover: 'BKN', ceilingFt: 1500, altFt: 3000,
+        forecast: false,
+      }),
+    }));
+    expect(parts.scattered.head).toContain('SCT layer 1,800 ft');
+    expect(parts.scattered.detail).toContain('forecast');
+    expect(parts.scattered.when).toBe('08:00–11:00Z');
+    expect(parts.lid.head).toContain('ceiling 1,500 ft');
+    expect(parts.lid.detail).toContain('reported');
+    expect(parts.lid.when).toBe('');            // an observation is for now, not for a window
+  });
+});
