@@ -308,20 +308,49 @@
     }
     body.appendChild(list);
 
-    // A source that could not be read is not a clear source. Saying so is the difference
-    // between "no NOTAMs affect this route" and "I could not ask about NOTAMs".
-    if (result.unchecked.length) {
-      const miss = document.createElement('p');
-      miss.className = 'route-check-unchecked';
-      const names = { airspace: S2.routeCheckSrcAirspace || 'airspace',
-        notams: S2.routeCheckSrcNotams || 'NOTAMs',
-        hazards: S2.routeCheckSrcHazards || 'SIGMET/AIRMET',
-        cloud: S2.routeCheckSrcCloud || 'cloud along the route',
-        ceiling: S2.routeCheckSrcCeiling || 'ceiling' };
-      miss.textContent = (S2.routeCheckCouldNotAsk || 'Not checked (no data):') + ' '
-        + result.unchecked.map(k => names[k] || k).join(', ');
-      body.appendChild(miss);
+    // Every source, every time, with what it found. Reported as "I only see NOTAMs on the
+    // warning list": four of the five had been asked and had nothing to say, and a source that
+    // is silent looked exactly like a source that was never consulted. The findings above are
+    // what is wrong with the plan; this is what was looked at, which is the other half of
+    // trusting the answer.
+    const names = {
+      airspace: S2.routeCheckSrcAirspace || 'airspace',
+      notams: S2.routeCheckSrcNotams || 'NOTAMs',
+      hazards: S2.routeCheckSrcHazards || 'SIGMET/AIRMET',
+      ceiling: S2.routeCheckSrcCeiling || 'aerodrome reports',
+      cloud: S2.routeCheckSrcCloud || 'forecast along the route',
+    };
+    const counts = {};
+    for (const f of result.findings) {
+      const key = f.kind === 'hazard' ? 'hazards'
+        : (f.kind === 'notam' ? 'notams'
+          : (f.kind === 'cloudbase' ? 'cloud'
+            : (f.kind === 'ceiling' || f.kind === 'layer' ? 'ceiling' : 'airspace')));
+      counts[key] = (counts[key] || 0) + 1;
     }
+    const asked = document.createElement('ul');
+    asked.className = 'route-check-asked';
+    for (const key of SOURCES) {
+      const li = document.createElement('li');
+      const missing = result.unchecked.includes(key);
+      li.className = 'route-check-asked-row'
+        + (missing ? ' route-check-asked-missing' : '');
+      const mark = document.createElement('span');
+      mark.className = 'route-check-step-mark';
+      mark.textContent = missing ? '\u2715' : '\u2713';
+      const label = document.createElement('span');
+      label.textContent = names[key] || key;
+      const said = document.createElement('span');
+      said.className = 'route-check-asked-said';
+      said.textContent = missing
+        ? (S2.routeCheckNotRead || 'could not be read')
+        : (counts[key]
+          ? (S2.routeCheckFound ? S2.routeCheckFound(counts[key]) : counts[key] + ' found')
+          : (S2.routeCheckNothing || 'nothing'));
+      li.append(mark, label, said);
+      asked.appendChild(li);
+    }
+    body.appendChild(asked);
   }
 
   async function show() {

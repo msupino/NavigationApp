@@ -362,8 +362,11 @@ test.describe('the panel', () => {
     });
     await NavAid_show(page);
     const panel = page.locator('.route-check-modal');
-    await expect(panel.locator('.route-check-unchecked')).toContainText('NOTAMs');
-    await expect(panel.locator('.route-check-unchecked')).not.toContainText('airspace');
+    // Every source is listed; the unreadable one is marked, the rest say what they found.
+    await expect(panel.locator('.route-check-asked-row')).toHaveCount(5);
+    const missingText = (await panel.locator('.route-check-asked-missing').allTextContents()).join(' | ');
+    expect(missingText).toContain('NOTAMs');
+    expect(missingText).not.toContain('airspace');
   });
 
   // "Asking the four sources" said neither which sources nor the right number -- the forecast
@@ -442,8 +445,9 @@ test.describe('the panel', () => {
     await page.evaluate(() => NavAid.routeCheck.show());
     await page.waitForSelector('.route-check-when');
     // The panel has finished, and it says which sources it could not read.
-    await expect(page.locator('.route-check-unchecked')).toContainText('NOTAMs');
-    await expect(page.locator('.route-check-unchecked')).toContainText('forecast along the route');
+    const missingText = (await page.locator('.route-check-asked-missing').allTextContents()).join(' | ');
+    expect(missingText).toContain('NOTAMs');
+    expect(missingText).toContain('forecast along the route');
   });
 
   test('a clean plan says so plainly', async ({ page }) => {
@@ -838,5 +842,146 @@ test.describe('cloud at a field: what it is reporting, and what it is forecast',
     expect(parts.lid.head).toContain('ceiling 1,500 ft');
     expect(parts.lid.detail).toContain('reported');
     expect(parts.lid.when).toBe('');            // an observation is for now, not for a window
+  });
+});
+
+// The harness stubs api.open-meteo.com with a single-location ISA body carrying no `hourly`, so
+// every test above reaches routeCheckCloudFindings with samples made by hand and the FETCH that
+// builds those samples was never exercised. A shape change at the API would have gone unnoticed.
+// These register their own route, which wins by later registration.
+test.describe('reading the forecast off the wire', () => {
+  const hours = (n) => Array.from({ length: n }, (_, i) =>
+    new Date(Date.UTC(2026, 8, 17, i)).toISOString().slice(0, 16));
+
+  // What the API actually returns for several points: an ARRAY, one entry each, every entry
+  // carrying its own ground elevation -- which is what turns a base above ground into a height
+  // above the sea a planned altitude can be compared with.
+  const body = (n) => JSON.stringify(Array.from({ length: n }, (_, k) => ({
+    latitude: 32 + k * 0.1, longitude: 34.9, elevation: 100 * (k + 1),
+    hourly: {
+      time: hours(24),
+      temperature_2m: hours(24).map(() => 20),
+      dew_point_2m: hours(24).map(() => 15),      // spread 5 -> 2,000 ft AGL
+      cloud_cover_low: hours(24).map(() => 85),
+    },
+  })));
+
+  async function withApi(page, payload) {
+    await page.route('**api.open-meteo.com/**', (route) => route.fulfill({
+      status: 200, contentType: 'application/json', body: payload,
+    }));
+    await page.goto('?lang=en&nogist');
+    await page.waitForFunction(() => !!(window.NavAid && NavAid.routeCheck)
+      && typeof draw === 'function');
+    return page.evaluate(() => {
+      state.waypoints = [{ name: 'A', lat: 32.0, lng: 34.9 }, { name: 'B', lat: 32.5, lng: 34.9 }];
+      syncLegs();
+      for (const l of state.legs) { l.inboundAltitude = 3000; l.flightSpeed = 90; }
+      return NavAid.routeCheck.gather().then(i => ({
+        cloud: i.cloud,
+        n: Array.isArray(i.cloud) ? i.cloud.length : null,
+      }));
+    });
+  }
+
+  test('a multi-location answer becomes one sample per point', async ({ page }) => {
+    const got = await withApi(page, body(4));
+    expect(got.n).toBeGreaterThan(0);
+    const s = got.cloud[0];
+    // The spread rule on 20/15, and the ground the point stands on.
+    expect(s.baseFtAgl).toBe(2000);
+    expect(s.lowCoverPct).toBe(85);
+    expect(Math.round(s.elevFt)).toBe(328);            // 100 m, in feet
+  });
+
+  // Every other source says so when it cannot be read; this one has to as well.
+  test('a body with no hourly data is unchecked, not clear', async ({ page }) => {
+    const got = await withApi(page, JSON.stringify({ latitude: 32, longitude: 34.9, elevation: 0 }));
+    expect(got.cloud).toBeNull();
+  });
+
+  test('an error from the API is unchecked, not clear', async ({ page }) => {
+    await page.route('**api.open-meteo.com/**', (route) => route.fulfill({ status: 500, body: '' }));
+    await page.goto('?lang=en&nogist');
+    await page.waitForFunction(() => !!(window.NavAid && NavAid.routeCheck)
+      && typeof draw === 'function');
+    const got = await page.evaluate(() => {
+      state.waypoints = [{ name: 'A', lat: 32.0, lng: 34.9 }, { name: 'B', lat: 32.5, lng: 34.9 }];
+      syncLegs();
+      for (const l of state.legs) { l.inboundAltitude = 3000; l.flightSpeed = 90; }
+      return NavAid.routeCheck.gather().then(i => i.cloud);
+    });
+    expect(got).toBeNull();
+  });
+});
+
+// Reported as "I only see NOTAMs on the warning list for route". Four of the five sources had
+// been asked and had nothing to say -- and a source that is silent looked exactly like one that
+// was never consulted. The findings are what is wrong with the plan; this list is what was
+// looked at, which is the other half of trusting the answer.
+test.describe('what was looked at', () => {
+  async function ran(page, feeds) {
+    await page.addInitScript(() => {
+      try {
+        for (const k of ['build', 'view', 'display', 'charts', 'export', 'print']) {
+          localStorage.setItem('navaid.sec.' + k, '1');
+        }
+      } catch (e) {}
+    });
+    await page.goto('?lang=en&nogist');
+    await page.waitForFunction(() => !!(window.NavAid && NavAid.routeCheck)
+      && typeof draw === 'function');
+    await page.evaluate(() => {
+      if (window.clearBootLoading) clearBootLoading();
+      state.waypoints = [
+        { name: 'LLHZ', lat: 32.18, lng: 34.83 },
+        { name: 'BAZRA', lat: 32.45, lng: 35.00 },
+        { name: 'LLIB', lat: 32.98, lng: 35.57 },
+      ];
+      syncLegs();
+      for (const l of state.legs) { l.inboundAltitude = 3000; l.flightSpeed = 90; }
+      draw();
+    });
+    await page.evaluate((f) => {
+      window.loadNotam = async () => (f.notams === null ? null : f.notams);
+      window.loadSigmets = async () => ([]);
+      window.loadAirmets = async () => ([]);
+      window.loadWxFile = async () => ({ stations: f.stations || {} });
+      window.airspace = [];
+      window.fetch = async () => { throw new Error('offline'); };
+    }, feeds);
+    await page.evaluate(() => NavAid.routeCheck.show());
+    await page.waitForSelector('.route-check-asked-row');
+  }
+
+  test('all five are listed, with what each of them said', async ({ page }) => {
+    await ran(page, {
+      notams: [{
+        id: 'A1/26', icao: 'LLIB', text: 'AD CLOSED',
+        start: new Date(Date.now() - 3600000).toISOString(),
+        end: new Date(Date.now() + 6 * 3600000).toISOString(),
+      }],
+    });
+    const rows = await page.evaluate(() =>
+      [...document.querySelectorAll('.route-check-asked-row')].map(li => li.textContent));
+    expect(rows).toHaveLength(5);
+    // The one with something to say says how much...
+    expect(rows.find(r => /NOTAM/.test(r))).toMatch(/1 found/);
+    // ...and the ones with nothing say so, rather than being absent.
+    expect(rows.find(r => /airspace/.test(r))).toMatch(/nothing/);
+    expect(rows.find(r => /SIGMET/.test(r))).toMatch(/nothing/);
+    // The forecast could not be reached here, and that is a third state again.
+    expect(rows.find(r => /forecast along the route/.test(r))).toMatch(/could not be read/);
+  });
+
+  test('a clean plan still lists every source', async ({ page }) => {
+    await ran(page, { notams: [] });
+    await expect(page.locator('.route-check-asked-row')).toHaveCount(5);
+    await expect(page.locator('.route-check-clear')).toBeVisible();
+    // Nothing found anywhere is not the same as nothing looked at.
+    const nothings = await page.evaluate(() =>
+      [...document.querySelectorAll('.route-check-asked-row')]
+        .filter(li => /nothing/.test(li.textContent)).length);
+    expect(nothings).toBe(4);           // the fifth is the forecast, unreachable offline
   });
 });
