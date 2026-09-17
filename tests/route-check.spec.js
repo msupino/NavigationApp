@@ -38,6 +38,31 @@ async function boot(page) {
   await page.waitForFunction(() => typeof routeCheckFindings === 'function');
 }
 
+for (const legacy of [false, true]) {
+  test(`raw TAF validity reaches route warnings (${legacy ? 'cached' : 'new'} feed)`, async ({ page }) => {
+    const { parseTaf } = await import('../scripts/parse-metar.mjs');
+    const taf = parseTaf('TAF LLHA 170502Z 1706/1806 32004KT CAVOK PROB40 TEMPO 1802/1806 7000 RA BKN025',
+      new Date('2026-09-17T06:00:00Z'));
+    if (legacy) taf.fcsts.forEach(f => { delete f.timeTo; });
+    await boot(page);
+    await page.waitForFunction(() => window.NavAid && NavAid.routeCheck);
+    const results = await page.evaluate(async taf => {
+      state.waypoints = [{ name: 'LLHZ', lat: 32.18, lng: 34.83 }, { name: 'LLHA', lat: 32.8, lng: 35 }];
+      syncLegs();
+      state.legs[0].inboundAltitude = 3000;
+      window.loadWxFile = async () => ({ stations: { LLHA: { metar: { clouds: [] }, taf } } });
+      const input = await NavAid.routeCheck.gather();
+      input.legTimesH = [1];
+      return ['2026-09-18T03:00:00Z', '2026-09-18T06:00:00Z', '2026-09-18T12:00:00Z', '2026-09-20T12:00:00Z'].map(date => {
+        input.departAtMs = Date.parse(date);
+        return routeCheckFindings(input).findings.filter(f => f.kind === 'ceiling');
+      });
+    }, taf);
+    expect(results.map(r => r.length)).toEqual([1, 0, 0, 0]);
+    expect(results[0][0].to).toBe(Date.parse('2026-09-18T06:00:00Z'));
+  });
+}
+
 test('with no data at all it says which sources it could not read', async ({ page }) => {
   await boot(page);
   const got = await run(page);

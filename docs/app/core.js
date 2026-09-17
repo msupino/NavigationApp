@@ -6306,7 +6306,8 @@ function routeCheckFindings(input) {
       // a five-period TAF would otherwise fill the panel by itself.
       const sets = [{ clouds: st.clouds, forecast: false, from: out.from, to: out.to }];
       for (const p of (Array.isArray(st.taf) ? st.taf : [])) {
-        if (!p || !routeCheckOverlaps(p.from, p.to, out.from, out.to)) continue;
+        if (!p || !Number.isFinite(p.from) || !Number.isFinite(p.to)
+            || p.to <= out.from || p.from >= out.to) continue;
         sets.push({ clouds: p.clouds, forecast: true, from: p.from, to: p.to });
       }
       let worst = null;

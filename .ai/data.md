@@ -160,3 +160,11 @@ Do not move or duplicate these PDFs without updating:
 - `docs/byop/README.md`
 - `plateBase()` behavior in `docs/app/io.js`
 - deploy assembly comments/tests if relevant
+# TAF validity
+
+`docs/app/taf-validity.js` is shared by the weather producer (`parse-metar.mjs`)
+and browser route checker. It preserves finite `timeTo` values in seconds and
+recovers them from `rawTAF` for cached feeds. TEMPO/PROB intervals do not end the
+prevailing forecast. BECMG keeps both states during its transition; wind-only
+changes retain prevailing clouds. Route warnings use half-open validity windows
+and never extend the final period beyond the TAF expiry.

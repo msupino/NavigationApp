@@ -164,12 +164,10 @@
         // The TAF's own periods, in the shape the check reads: what the field is forecast to be
         // while the flight is there, which is the question a plan asks and a METAR cannot
         // answer. A field can be CAVOK now and forecast SCT018 BKN015 for the hour you arrive.
-        const fcsts = (st.taf && Array.isArray(st.taf.fcsts)) ? st.taf.fcsts : [];
-        const taf = fcsts.map((f, i) => ({
+        const fcsts = tafPeriods(st.taf);
+        const taf = fcsts.map(f => ({
           from: Number(f.timeFrom) * 1000,
-          // A period runs until the next one starts; the last runs to the end of the TAF.
-          to: fcsts[i + 1] ? Number(fcsts[i + 1].timeFrom) * 1000
-            : (Number(f.timeTo) * 1000 || null),
+          to: f.timeTo * 1000,
           clouds: Array.isArray(f.clouds) ? f.clouds : [],
         })).filter(p => Number.isFinite(p.from));
         wx.push({ icao, clouds: (m && m.clouds) || [], taf });
