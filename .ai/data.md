@@ -162,6 +162,10 @@ Do not move or duplicate these PDFs without updating:
 - deploy assembly comments/tests if relevant
 # TAF validity
 
+Aerodrome cloud findings compare every planned leg's current route-direction altitude
+and time window, not the route-wide minimum. The finding names the affected leg and
+its planned altitude; lower departure/arrival legs cannot suppress a cruise warning.
+
 `docs/app/taf-validity.js` is shared by the weather producer (`parse-metar.mjs`)
 and browser route checker. It preserves finite `timeTo` values in seconds and
 recovers them from `rawTAF` for cached feeds. TEMPO/PROB intervals do not end the

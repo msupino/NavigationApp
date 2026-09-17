@@ -255,8 +255,8 @@
       const src = f.forecast ? (S2.routeCheckForecast || 'forecast') : (S2.routeCheckObserved || 'reported');
       return {
         head: (f.icao || '') + ' · ' + what + ' ' + ft(f.ceilingFt),
-        detail: src + ' · ' + (S2.routeCheckLowestLeg || 'lowest planned leg') + ' ' + ft(f.altFt),
-        where: '', when: f.forecast ? span(f.from, f.to) : '',
+        detail: src + ' · ' + (S2.routeCheckLegPlanned || 'leg planned') + ' ' + ft(f.altFt),
+        where, when: f.forecast ? span(f.from, f.to) : '',
       };
     }
     return { head: '', detail: '', where: '', when: '' };

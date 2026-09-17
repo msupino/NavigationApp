@@ -38,6 +38,30 @@ async function boot(page) {
   await page.waitForFunction(() => typeof routeCheckFindings === 'function');
 }
 
+test('low departure legs do not hide cloud at the return-direction cruise altitude', async ({ page }) => {
+  await boot(page);
+  const input = {
+    waypoints: [{ name: 'LLHA' }, { name: 'GALIM' }, { name: 'DAROM' }, { name: 'LLHZ' }],
+    legs: [{ inboundAltitude: 800 }, { inboundAltitude: 2000 }, { inboundAltitude: 800 }],
+    legTimesH: [0.1, 0.3, 0.1], departAtMs: T0,
+    wx: [{ icao: 'LLHA', clouds: [{ cover: 'SCT', base: 2000 }] }],
+  };
+  const result = await page.evaluate(input => routeCheckFindings(input), input);
+  expect(result.findings).toEqual([expect.objectContaining({ kind: 'layer', leg: 1, altFt: 2000 })]);
+  input.legs[1].inboundAltitude = 1500;
+  expect((await page.evaluate(input => routeCheckFindings(input), input)).findings).toEqual([]);
+});
+
+test('a forecast must overlap the high leg, not just a low leg earlier in the flight', async ({ page }) => {
+  await boot(page);
+  const result = await run(page, {
+    legs: [{ inboundAltitude: 800 }, { inboundAltitude: 2000 }, { inboundAltitude: 800 }],
+    wx: [{ icao: 'LLIB', clouds: [], taf: [{ from: T0, to: T0 + HOUR / 2,
+      clouds: [{ cover: 'BKN', base: 1800 }] }] }],
+  });
+  expect(result.findings).toEqual([]);
+});
+
 for (const legacy of [false, true]) {
   test(`raw TAF validity reaches route warnings (${legacy ? 'cached' : 'new'} feed)`, async ({ page }) => {
     const { parseTaf } = await import('../scripts/parse-metar.mjs');

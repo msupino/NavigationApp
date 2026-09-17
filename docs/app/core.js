@@ -6296,11 +6296,9 @@ function routeCheckFindings(input) {
   // is a leg planned into cloud, which is the one thing a VFR plan cannot be.
   if (!Array.isArray(o.wx)) out.unchecked.push('ceiling');
   else {
-    const planned = legs.map((_, i) => altOf(i)).filter(Number.isFinite);
-    const lowestPlanned = planned.length ? Math.min(...planned) : null;
     const names = new Set(wps.map(w => (w && w.name || '').trim().toUpperCase()));
     for (const st of o.wx) {
-      if (!st || !names.has((st.icao || '').trim().toUpperCase()) || lowestPlanned === null) continue;
+      if (!st || !names.has((st.icao || '').trim().toUpperCase())) continue;
       // What the field is reporting NOW, and what it is forecast to be while the flight is
       // there. Reported as one field's worst case in the window, not one row per TAF period:
       // a five-period TAF would otherwise fill the panel by itself.
@@ -6312,13 +6310,17 @@ function routeCheckFindings(input) {
       }
       let worst = null;
       for (const set of sets) {
-        for (const layer of routeCheckLayersBelow(set.clouds, lowestPlanned)) {
-          // A ceiling beats a scattered layer however low the scattered one is: one is a lid,
-          // the other is something to avoid.
-          const better = !worst
-            || (layer.ceiling && !worst.ceiling)
-            || (layer.ceiling === worst.ceiling && layer.baseFt < worst.baseFt);
-          if (better) worst = Object.assign({}, layer, set);
+        for (let i = 0; i < legs.length; i++) {
+          const altitude = altOf(i);
+          const flightWindow = legWindow(i);
+          if (set.forecast && (set.to <= flightWindow.from || set.from >= flightWindow.to)) continue;
+          for (const layer of routeCheckLayersBelow(set.clouds, altitude)) {
+            // A ceiling takes precedence over scattered cloud.
+            const better = !worst
+              || (layer.ceiling && !worst.ceiling)
+              || (layer.ceiling === worst.ceiling && layer.baseFt < worst.baseFt);
+            if (better) worst = Object.assign({}, layer, set, { leg: i, altFt: altitude });
+          }
         }
       }
       if (!worst) continue;
@@ -6326,9 +6328,9 @@ function routeCheckFindings(input) {
         // A ceiling is a lid; a scattered layer is not, and calling it one would be wrong in the
         // other direction. Two kinds, so the sheet can say which it is.
         kind: worst.ceiling ? 'ceiling' : 'layer',
-        severity: 'warn', leg: null,
+        severity: 'warn', leg: worst.leg,
         icao: st.icao || '', ceilingFt: worst.baseFt, cover: worst.cover,
-        forecast: !!worst.forecast, altFt: lowestPlanned,
+        forecast: !!worst.forecast, altFt: worst.altFt,
         from: worst.from, to: worst.to,
       });
     }
