@@ -990,6 +990,8 @@ test.describe('what was looked at', () => {
     const rows = await page.evaluate(() =>
       [...document.querySelectorAll('.route-check-asked-row')].map(li => li.textContent));
     expect(rows).toHaveLength(5);
+    expect(await page.locator('.route-check-asked').evaluate(el =>
+      el.parentElement.firstElementChild === el)).toBe(true);
     // The one with something to say says how much...
     expect(rows.find(r => /NOTAM/.test(r))).toMatch(/1 found/);
     // ...and the ones with nothing say so, rather than being absent.
@@ -1003,6 +1005,8 @@ test.describe('what was looked at', () => {
     await ran(page, { notams: [] });
     await expect(page.locator('.route-check-asked-row')).toHaveCount(5);
     await expect(page.locator('.route-check-clear')).toBeVisible();
+    expect(await page.locator('.route-check-asked').evaluate(el =>
+      el.parentElement.firstElementChild === el)).toBe(true);
     // Nothing found anywhere is not the same as nothing looked at.
     const nothings = await page.evaluate(() =>
       [...document.querySelectorAll('.route-check-asked-row')]

@@ -348,7 +348,7 @@
       li.append(mark, label, said);
       asked.appendChild(li);
     }
-    body.appendChild(asked);
+    body.prepend(asked);
   }
 
   async function show() {

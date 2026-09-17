@@ -42,6 +42,9 @@ clamp does not replace the preferred saved size; a completed resize gesture does
 
 ## Charts
 
+The route-check source summary appears first below the checked time window,
+before either the findings or the clear-plan message.
+
 Charts are modal tools, not route inspectors.
 
 Current chart-style tools include:
