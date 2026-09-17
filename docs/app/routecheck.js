@@ -26,8 +26,8 @@
 
   // Leg times from the one model everything else flies by, so the check cannot disagree with
   // the kites, the plan and the nav log about when the aeroplane is where.
-  function legTimesH() {
-    const prof = (typeof routeProfile === 'function') ? routeProfile() : null;
+  function legTimesH(indexes) {
+    const prof = (typeof routeProfile === 'function') ? routeProfile(undefined, indexes) : null;
     const legs = (prof && Array.isArray(prof.legs)) ? prof.legs : [];
     return legs.map(l => (Number.isFinite(l.timeH) ? l.timeH : 0));
   }
@@ -87,9 +87,9 @@
   // The fields worth asking a METAR of: the ones near the route, not only the ones it names.
   // A plan that routes past Haifa without landing there still cares what Haifa is reporting.
   const WX_NEAR_NM = 15;
-  function fieldsNearRoute(points) {
+  function fieldsNearRoute(points, waypoints) {
     const out = new Set();
-    for (const w of ((state && state.waypoints) || [])) {
+    for (const w of waypoints) {
       const n = String((w && w.name) || '').trim().toUpperCase();
       if (/^[A-Z]{4}$/.test(n)) out.add(n);
     }
@@ -122,8 +122,13 @@
       return v;
     };
     const call = (fn, ...args) => (typeof fn === 'function' ? fn(...args) : null);
+    const legIndexes = typeof legDirVisibleIndexes === 'function'
+      ? legDirVisibleIndexes() : state.legs.map((_, i) => i);
+    const waypoints = legIndexes.length
+      ? [state.waypoints[legIndexes[0]], ...legIndexes.map(i => state.waypoints[i + 1])] : [];
+    const legs = legIndexes.map(i => state.legs[i]);
     const points = (typeof routeCheckSamplePoints === 'function')
-      ? routeCheckSamplePoints((state && state.waypoints) || [], 10) : [];
+      ? routeCheckSamplePoints(waypoints, 10) : [];
     const at = departAtMs();
 
     // All five at once: one feed being slow must not hold the other four, and one being down
@@ -156,7 +161,7 @@
     // The stations this route actually passes, in the shape the check reads.
     const wx = [];
     if (wxRes && wxRes.stations) {
-      const names = fieldsNearRoute(points);
+      const names = fieldsNearRoute(points, waypoints);
       for (const icao of Object.keys(wxRes.stations)) {
         if (!names.has(icao.toUpperCase())) continue;
         const st = wxRes.stations[icao] || {};
@@ -170,13 +175,14 @@
           to: f.timeTo * 1000,
           clouds: Array.isArray(f.clouds) ? f.clouds : [],
         })).filter(p => Number.isFinite(p.from));
-        wx.push({ icao, clouds: (m && m.clouds) || [], taf });
+        const field = (window.airfields || []).find(f => (f.icao || f.name || '').toUpperCase() === icao.toUpperCase());
+        wx.push({ icao, clouds: (m && m.clouds) || [], taf,
+          elevationFt: field && Number.isFinite(field.elev_ft) ? field.elev_ft : 0 });
       }
     }
     return {
-      waypoints: (state && state.waypoints) || [],
-      legs: (state && state.legs) || [],
-      legTimesH: legTimesH(),
+      waypoints, legs, legIndexes,
+      legTimesH: legTimesH(legIndexes),
       departAtMs: at,
       airspace: airspaceRes,
       notams: notamsRes,
@@ -189,7 +195,12 @@
 
   async function run(onStep) {
     if (typeof routeCheckFindings !== 'function') return null;
-    return routeCheckFindings(await gather(onStep));
+    const input = await gather(onStep);
+    const result = routeCheckFindings(input);
+    for (const finding of result.findings) {
+      if (Number.isInteger(finding.leg)) finding.leg = input.legIndexes[finding.leg];
+    }
+    return result;
   }
 
   const hhmm = (ms) => (Number.isFinite(ms) ? new Date(ms).toISOString().slice(11, 16) : '');
@@ -243,7 +254,8 @@
       const head = (S2.routeCheckCloudEst || 'Estimated cloud base') + ' ' + ft(f.baseFtAmsl)
         + ' (' + (S2.routeCheckAgl || 'AGL') + ' ' + ft(f.baseFtAgl) + ')';
       const detail = (S2.routeCheckLowCover || 'low cloud') + ' ' + f.coverPct + '%'
-        + ' · ' + (S2.routeCheckLegPlanned || 'leg planned') + ' ' + ft(f.altFt);
+        + ' · ' + (S2.routeCheckLegPlanned || 'leg planned') + ' ' + ft(f.altFt)
+        + ' · ' + S2.routeCheckCeilingClearance;
       return { head, detail, where, when: span(f.from, f.to) };
     }
     if (f.kind === 'ceiling' || f.kind === 'layer') {
@@ -254,8 +266,9 @@
         : ((f.cover || '') + ' ' + (S2.routeCheckLayer || 'layer')).trim();
       const src = f.forecast ? (S2.routeCheckForecast || 'forecast') : (S2.routeCheckObserved || 'reported');
       return {
-        head: (f.icao || '') + ' · ' + what + ' ' + ft(f.ceilingFt),
-        detail: src + ' · ' + (S2.routeCheckLegPlanned || 'leg planned') + ' ' + ft(f.altFt),
+        head: (f.icao || '') + ' · ' + what + ' ' + ft(f.ceilingFt) + ' AMSL',
+        detail: src + ' · ' + (S2.routeCheckLegPlanned || 'leg planned') + ' ' + ft(f.altFt)
+          + ' · ' + (f.kind === 'ceiling' ? S2.routeCheckCeilingClearance : S2.routeCheckScatteredClearance),
         where, when: f.forecast ? span(f.from, f.to) : '',
       };
     }

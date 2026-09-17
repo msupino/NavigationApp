@@ -38,6 +38,46 @@ async function boot(page) {
   await page.waitForFunction(() => typeof routeCheckFindings === 'function');
 }
 
+test('CVFR uses 1000 ft below BKN/OVC and converts station height to AMSL', async ({ page }) => {
+  await boot(page);
+  const got = await page.evaluate(() => ({
+    close: routeCheckLayersBelow([{ cover: 'BKN', base: 2000 }], 1500, 0),
+    boundary: routeCheckLayersBelow([{ cover: 'OVC', base: 2500 }], 1500, 0),
+    elevated: routeCheckLayersBelow([{ cover: 'BKN', base: 2000 }], 1500, 600),
+    scattered: routeCheckLayersBelow([{ cover: 'SCT', base: 2000 }], 1500, 0),
+  }));
+  expect(got.close).toHaveLength(1);
+  expect(got.boundary).toEqual([]);
+  expect(got.elevated).toEqual([]);
+  expect(got.scattered).toEqual([]);
+});
+
+test('route check uses only visible legs and does not invent a return flight', async ({ page }) => {
+  await boot(page);
+  await page.waitForFunction(() => window.NavAid && NavAid.routeCheck);
+  const got = await page.evaluate(async () => {
+    state.waypoints = [{ name: 'LLHA', lat: 32.8, lng: 35 },
+      { name: 'LLHZ', lat: 32.18, lng: 34.83 }, { name: 'LLHA', lat: 32.8, lng: 35 }];
+    syncLegs();
+    state.legs[0].inboundAltitude = 1500;
+    state.legs[1].inboundAltitude = 2000;
+    window.legDirFilter = 'out';
+    const out = await NavAid.routeCheck.gather();
+    window.legDirFilter = 'back';
+    const back = await NavAid.routeCheck.gather();
+    const outAltitudes = out.legs.map(l => l.inboundAltitude);
+    const backAltitudes = back.legs.map(l => l.inboundAltitude);
+    state.waypoints = state.waypoints.slice(0, 2);
+    syncLegs();
+    const oneWay = await NavAid.routeCheck.gather();
+    return { out: outAltitudes, back: backAltitudes,
+      indexes: back.legIndexes, names: back.waypoints.map(w => w.name),
+      oneWay: { indexes: oneWay.legIndexes, names: oneWay.waypoints.map(w => w.name) } };
+  });
+  expect(got).toEqual({ out: [1500], back: [2000], indexes: [1], names: ['LLHZ', 'LLHA'],
+    oneWay: { indexes: [0], names: ['LLHA', 'LLHZ'] } });
+});
+
 test('low departure legs do not hide cloud at the return-direction cruise altitude', async ({ page }) => {
   await boot(page);
   const input = {
@@ -394,7 +434,7 @@ test.describe('the panel', () => {
     await expect(panel.locator('.route-check-item')).toHaveCount(2);
     await expect(panel).toContainText('A1234/26');
     await expect(panel).toContainText('AD CLOSED');
-    await expect(panel).toContainText('ceiling 1,500 ft');
+    await expect(panel).toContainText('ceiling 2,384 ft AMSL');
   });
 
   // "No NOTAMs affect this route" and "I could not ask about NOTAMs" are opposite answers.

@@ -1390,6 +1390,8 @@ window.S = Object.assign({
   routeCheckAgl: 'AGL',
   routeCheckLowCover: 'low cloud',
   routeCheckLegPlanned: 'leg planned',
+  routeCheckCeilingClearance: 'CVFR: at least 1,000 ft vertical clearance from BKN/OVC',
+  routeCheckScatteredClearance: 'CVFR: keep 1.5 km horizontally from individual clouds; horizontal clearance cannot be checked from this report',
   routeCheckCrossedAt: 'crossed at',
   routeCheckNoAlt: 'crossed, and no altitude is planned for that leg',
   routeCheckCeiling: 'ceiling',
@@ -6159,7 +6161,7 @@ function routeCheckCloudFindings(samples, legs, windows) {
     const baseAmsl = s.baseFtAgl + elevFt;
     const legAlt = (legs && legs[s.leg] && Number.isFinite(legs[s.leg].inboundAltitude))
       ? legs[s.leg].inboundAltitude : null;
-    if (legAlt === null || baseAmsl > legAlt) continue;
+    if (legAlt === null || baseAmsl - legAlt >= 1000) continue;
     const had = worst.get(s.leg);
     if (!had || baseAmsl < had.baseFtAmsl) {
       worst.set(s.leg, {
@@ -6292,8 +6294,7 @@ function routeCheckFindings(input) {
   }
 
   // --- ceiling ---------------------------------------------------------------------------
-  // The lowest broken or overcast layer at a field on this route. A planned leg at or above it
-  // is a leg planned into cloud, which is the one thing a VFR plan cannot be.
+  // CVFR requires clearance below BKN/OVC, not merely a planned altitude below the base.
   if (!Array.isArray(o.wx)) out.unchecked.push('ceiling');
   else {
     const names = new Set(wps.map(w => (w && w.name || '').trim().toUpperCase()));
@@ -6314,7 +6315,7 @@ function routeCheckFindings(input) {
           const altitude = altOf(i);
           const flightWindow = legWindow(i);
           if (set.forecast && (set.to <= flightWindow.from || set.from >= flightWindow.to)) continue;
-          for (const layer of routeCheckLayersBelow(set.clouds, altitude)) {
+          for (const layer of routeCheckLayersBelow(set.clouds, altitude, st.elevationFt)) {
             // A ceiling takes precedence over scattered cloud.
             const better = !worst
               || (layer.ceiling && !worst.ceiling)
@@ -6357,14 +6358,17 @@ function routeCheckFindings(input) {
 // notify on clouds, too low, SCT to BKN" -- and the TAF said SCT018 with PROB40 TEMPO BKN015
 // while the METAR said CAVOK. A scattered layer at 1,800 ft under a leg planned at 3,000 is
 // exactly what a VFR flight needs told; what it must not be told is that it is a ceiling.
-function routeCheckLayersBelow(clouds, altFt) {
+function routeCheckLayersBelow(clouds, altFt, elevationFt = 0) {
   const out = [];
   if (!Array.isArray(clouds) || !Number.isFinite(altFt)) return out;
   for (const c of clouds) {
-    if (!c || !Number.isFinite(c.base) || c.base > altFt) continue;
+    if (!c || !Number.isFinite(c.base)) continue;
     const cover = String(c.cover || '').toUpperCase();
     if (!['FEW', 'SCT', 'BKN', 'OVC'].includes(cover)) continue;
-    out.push({ baseFt: c.base, cover, ceiling: cover === 'BKN' || cover === 'OVC' });
+    const ceiling = cover === 'BKN' || cover === 'OVC';
+    const baseFt = c.base + (Number.isFinite(elevationFt) ? elevationFt : 0);
+    if (ceiling ? baseFt - altFt >= 1000 : baseFt > altFt) continue;
+    out.push({ baseFt, cover, ceiling });
   }
   return out.sort((a, b) => a.baseFt - b.baseFt);
 }

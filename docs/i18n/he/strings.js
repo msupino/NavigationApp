@@ -96,6 +96,8 @@ window.S = {
   routeCheckAgl: 'מעל הקרקע',
   routeCheckLowCover: 'עננות נמוכה',
   routeCheckLegPlanned: 'הקטע תוכנן ל-',
+  routeCheckCeilingClearance: 'כטר״מ: הפרדה אנכית של לפחות 1,000 רגל משכבת BKN/OVC',
+  routeCheckScatteredClearance: 'כטר״מ: מרחק אופקי של 1.5 ק״מ מעננים בודדים; לא ניתן לבדוק הפרדה אופקית מתוך הדיווח',
   routeCheckCrossedAt: 'נחצה בגובה',
   routeCheckNoAlt: 'נחצה, ולא תוכנן גובה לקטע הזה',
   routeCheckCeiling: 'בסיס עננים',
