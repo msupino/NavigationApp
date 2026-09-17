@@ -11624,7 +11624,7 @@ const NavWxAvailability = (function () {
   // part worth pinning: as wide as the height leaves room for, never past the source's own
   // resolution (upscaling a scanned table adds blur, not letters), never more than half the map.
   window.sigwxSideWidthPx = function sigwxSideWidthPx(hostW, hostH, scale) {
-    const top = 96, margin = 16;
+    const top = 208, margin = 16;
     const room = Math.max(120, (hostH || 0) - top - margin);
     const w = Math.min(TABLE_SRC_W, room / TABLE_ASPECT, (hostW || 0) * 0.5)
       * (Number(scale) > 0 ? Number(scale) : 1);

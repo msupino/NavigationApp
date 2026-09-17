@@ -8302,9 +8302,8 @@ body.theme-light .route-check-step-failed { color: #8a1c00; }
    space now -- same place, same way up, whatever the map is doing underneath. */
 .sigwx-side {
   position: absolute;
-  /* Clear of the toolbar, which sits at top: 12px and is the one thing that must never be
-     covered: it is how the pilot turns this panel back off. */
-  top: 96px;
+  /* Reserve room for the search window above the chart header. */
+  top: 208px;
   /* RIGHT, not inset-inline-end. This is not text flow: the panel stands where the sheet's
      table always stood, east of the chart, and east does not move when the interface language
      does. The logical property put it on the left in Hebrew -- a different place from the one

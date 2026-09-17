@@ -42,6 +42,9 @@ clamp does not replace the preferred saved size; a completed resize gesture does
 
 ## Charts
 
+The SIGWX screen-space table starts 208px below the map container's top to leave
+room for the search window; its available-height calculation uses the same inset.
+
 Charts are modal tools, not route inspectors.
 
 Current chart-style tools include:

@@ -80,6 +80,13 @@ test('it clears the toolbar', async ({ page }) => {
   expect(clear).toBe(true);
 });
 
+test('it leaves room for the search window above the chart table', async ({ page }) => {
+  await boot(page, 918, 826);
+  const top = await withBox(page, `(box) =>
+    box.getBoundingClientRect().top - map.getContainer().getBoundingClientRect().top`);
+  expect(top).toBeGreaterThanOrEqual(208);
+});
+
 // Reported: the text is too small. The table is 746x1427 source pixels, so fitting it whole
 // beside the chart lands it around 360px wide -- half its own resolution. As an overlay it never
 // had to fit: it grew with the zoom (~640px at z8, ~1270px at z9) and ran off the screen instead.
