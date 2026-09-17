@@ -13,6 +13,9 @@ const SAME_IN_BOTH = [
   'choosePointNotam', 'notamInspLabel',        // NOTAM
   'tbSigmet', 'sigmetReadout',                 // SIGMET
   'tbAirmet',                                  // AIRMET -- an ICAO product name, same word in Hebrew
+  // The route check names its sources. Four of them translate; this one is the pair of ICAO
+  // product names already listed above, written as they are written on a briefing sheet.
+  'routeCheckSrcHazards',
   'atis', 'wxMetar', 'plateCategoryStar',      // ATIS / METAR / STAR
   // The density-altitude row names where its temperature came from. A METAR is called a
   // METAR in Hebrew too -- the observation type, not a word to translate.
