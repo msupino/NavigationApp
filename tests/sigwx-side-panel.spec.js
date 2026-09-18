@@ -126,6 +126,38 @@ test('it is pressable, and says so', async ({ page }) => {
   expect(got.cursor).toBe('zoom-in');
 });
 
+test('mobile table pinch enlarges its images without zooming the map', async ({ page }) => {
+  await boot(page, 430, 780);
+  const got = await withBox(page, `(box) => {
+    box.click();
+    const viewer = document.querySelector('.sigwx-table-full');
+    const img = viewer.querySelector('img');
+    const mapZoom = map.getZoom();
+    const before = img.getBoundingClientRect().width;
+    const touch = (type, points) => {
+      const touches = points.map(([x, y], identifier) => new Touch({
+        identifier, target: viewer, clientX: x, clientY: y,
+      }));
+      viewer.dispatchEvent(new TouchEvent(type, { bubbles: true, cancelable: true, touches }));
+    };
+    touch('touchstart', [[100, 260], [200, 260]]);
+    touch('touchmove', [[50, 260], [250, 260]]);
+    const enlarged = img.getBoundingClientRect().width;
+    touch('touchcancel', []);
+    touch('touchmove', [[0, 260], [300, 260]]);
+    const afterCancel = img.getBoundingClientRect().width;
+    touch('touchstart', [[50, 260], [250, 260]]);
+    touch('touchmove', [[100, 260], [200, 260]]);
+    touch('touchend', []);
+    return { before, enlarged, afterCancel, restored: img.getBoundingClientRect().width,
+      mapZoom, afterMapZoom: map.getZoom() };
+  }`);
+  expect(got.enlarged).toBeGreaterThan(got.before * 1.9);
+  expect(got.afterCancel).toBe(got.enlarged);
+  expect(got.restored).toBeCloseTo(got.before, 0);
+  expect(got.afterMapZoom).toBe(got.mapZoom);
+});
+
 for (const lang of ['en', 'he']) {
   for (const [width, height] of [[430, 780], [667, 375]]) {
     test(`mobile legend stays visible and opens full size: ${lang} ${width}x${height}`, async ({ page }) => {

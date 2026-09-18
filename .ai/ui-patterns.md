@@ -48,6 +48,8 @@ Sizing uses the loaded table/header crop dimensions and keeps their combined hei
 inside the map. Panel input events are isolated from map editing and zoom gestures.
 The table remains visible on mobile in both orientations and languages; tapping it
 opens the full-size, scrollable table viewer.
+The SIGWX table viewer fits the screen initially and owns two-finger pinch zoom;
+one-finger scrolling pans the enlarged images without moving the map.
 
 Charts are modal tools, not route inspectors.
 

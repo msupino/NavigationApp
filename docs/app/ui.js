@@ -11653,6 +11653,35 @@ const NavWxAvailability = (function () {
     }
     m.box.appendChild(body);
     m.show();
+    let zoom = 1, pinchDistance = 0, pinchZoom = 1, anchorX = 0, anchorY = 0;
+    const distance = touches => Math.hypot(touches[0].clientX - touches[1].clientX,
+      touches[0].clientY - touches[1].clientY);
+    const applyZoom = next => {
+      const previous = zoom;
+      zoom = Math.min(tune('plateZoomMax'), Math.max(1, next));
+      for (const img of body.querySelectorAll('img')) img.style.width = (zoom * 100) + '%';
+      body.scrollLeft = (body.scrollLeft + anchorX) * zoom / previous - anchorX;
+      body.scrollTop = (body.scrollTop + anchorY) * zoom / previous - anchorY;
+    };
+    body.addEventListener('touchstart', e => {
+      e.stopPropagation();
+      if (e.touches.length !== 2) { pinchDistance = 0; return; }
+      pinchDistance = distance(e.touches);
+      pinchZoom = zoom;
+      const rect = body.getBoundingClientRect();
+      anchorX = (e.touches[0].clientX + e.touches[1].clientX) / 2 - rect.left;
+      anchorY = (e.touches[0].clientY + e.touches[1].clientY) / 2 - rect.top;
+    }, { passive: true });
+    body.addEventListener('touchmove', e => {
+      e.stopPropagation();
+      if (e.touches.length !== 2 || !pinchDistance) return;
+      e.preventDefault();
+      applyZoom(pinchZoom * distance(e.touches) / pinchDistance);
+    }, { passive: false });
+    for (const type of ['touchend', 'touchcancel']) body.addEventListener(type, e => {
+      e.stopPropagation();
+      pinchDistance = 0;
+    }, { passive: true });
   }
   // The box beside the chart. Built once, on the map container rather than in a pane, so no
   // pan, zoom or bearing reaches it.

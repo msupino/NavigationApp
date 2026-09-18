@@ -8326,6 +8326,7 @@ body.theme-light .route-check-step-failed { color: #8a1c00; }
 /* The table at its own size, in a window that scrolls. The panel beside the chart says what
    kind of weather is on the sheet; this is where it can be read. */
 .sigwx-table-full { max-height: 78vh; overflow: auto; display: flex; flex-direction: column;
+  touch-action: pan-x pan-y; direction: ltr;
   gap: 2px; }
-.sigwx-table-full img { display: block; width: auto; max-width: none; }
+.sigwx-table-full img { display: block; width: 100%; max-width: none; flex-shrink: 0; }
 .sigwx-side:focus-visible { outline: 2px solid #6fb0ff; outline-offset: 2px; }
