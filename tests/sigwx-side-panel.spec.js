@@ -126,12 +126,33 @@ test('it is pressable, and says so', async ({ page }) => {
   expect(got.cursor).toBe('zoom-in');
 });
 
-// A third of a phone is too much to give a table nobody can read at that size.
-test('a phone gets the chart instead of the table', async ({ page }) => {
-  await boot(page, 430, 780);
-  const display = await withBox(page, `(box) => getComputedStyle(box).display`);
-  expect(display).toBe('none');
-});
+for (const lang of ['en', 'he']) {
+  for (const [width, height] of [[430, 780], [667, 375]]) {
+    test(`mobile legend stays visible and opens full size: ${lang} ${width}x${height}`, async ({ page }) => {
+      await page.setViewportSize({ width, height });
+      await page.goto('?lang=' + lang + '&nogist');
+      await page.waitForFunction(() => typeof sigwxSideBox === 'function');
+      const got = await withBox(page, `(box) => {
+        const rect = box.getBoundingClientRect();
+        const display = getComputedStyle(box).display;
+        box.click();
+        return {
+          display, width: rect.width, left: rect.left, right: rect.right,
+          top: rect.top, bottom: rect.bottom,
+          fullSizeImages: document.querySelectorAll('.sigwx-table-full img').length,
+        };
+      }`);
+      expect(got.display).toBe('flex');
+      expect(got.width).toBeGreaterThan(0);
+      expect(got.width).toBeLessThanOrEqual(width / 2);
+      expect(got.left).toBeGreaterThanOrEqual(0);
+      expect(got.right).toBeLessThanOrEqual(width);
+      expect(got.top).toBeGreaterThanOrEqual(208);
+      expect(got.bottom).toBeLessThanOrEqual(height);
+      expect(got.fullSizeImages).toBe(2);
+    });
+  }
+}
 
 // East of the chart, in both languages. The table always stood east of Israel, and east does
 // not move when the interface language does -- a logical property put it on the left in Hebrew,

@@ -8322,11 +8322,6 @@ body.theme-light .route-check-step-failed { color: #8a1c00; }
   filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.45));
 }
 .sigwx-side img { display: block; width: 100%; height: auto; }
-/* Narrow screens: the chart is the point, and a third of a phone is too much to give a table
-   nobody can read at that size anyway. */
-@media (max-width: 680px) {
-  .sigwx-side { display: none; }
-}
 
 /* The table at its own size, in a window that scrolls. The panel beside the chart says what
    kind of weather is on the sheet; this is where it can be read. */

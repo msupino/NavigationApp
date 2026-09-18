@@ -46,6 +46,8 @@ The SIGWX screen-space table starts 208px below the map container's top to leave
 room for the search window; its available-height calculation uses the same inset.
 Sizing uses the loaded table/header crop dimensions and keeps their combined height
 inside the map. Panel input events are isolated from map editing and zoom gestures.
+The table remains visible on mobile in both orientations and languages; tapping it
+opens the full-size, scrollable table viewer.
 
 Charts are modal tools, not route inspectors.
 
