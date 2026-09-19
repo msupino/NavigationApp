@@ -3,7 +3,7 @@ const { test, expect } = require('./_setup');
 
 for (const lang of ['en', 'he']) {
   for (const [width, height] of [[1000, 800], [390, 667], [844, 390]]) {
-    test(`SIGWX is map-anchored and upright: ${lang} ${width}x${height}`, async ({ page }) => {
+    test(`SIGWX stays fixed while rotating with the map: ${lang} ${width}x${height}`, async ({ page }) => {
       await page.setViewportSize({ width, height });
       await page.goto('?lang=' + lang + '&nogist');
       await page.waitForFunction(() => typeof sigwxSideBox === 'function');
@@ -43,13 +43,14 @@ for (const lang of ['en', 'he']) {
       expect(got.outsideRotatedPane).toBe(true);
       expect(got.imageCount).toBe(1);
       expect(got.popupCount).toBe(0);
-      expect(got.panned.left).not.toBe(got.before.left);
-      expect(got.zoomed.width).toBeCloseTo(got.before.width * 2, 1);
+      expect(Math.abs(got.before.left - got.before.anchorX)).toBeLessThan(1);
       for (const position of [got.before, got.panned, got.zoomed, got.rotated, got.southUp]) {
-        expect(Math.abs(position.left - position.anchorX)).toBeLessThan(1);
-        expect(position.top).toBeLessThan(position.anchorY);
-        expect(position.transform).toBe('none');
+        expect(position.left).toBeCloseTo(got.before.left, 1);
+        expect(position.top).toBeCloseTo(got.before.top, 1);
+        expect(position.width).toBeCloseTo(got.before.width, 1);
       }
+      expect(got.rotated.transform).toBe('matrix(0, 1, -1, 0, 0, 0)');
+      expect(got.southUp.transform).toBe('matrix(-1, 0, 0, -1, 0, 0)');
       expect(got.rotated.width).toBeCloseTo(got.zoomed.width, 1);
       for (const position of [got.rotated, got.southUp]) {
         expect(position.left).toBeCloseTo(got.zoomed.left, 1);
@@ -58,6 +59,31 @@ for (const lang of ['en', 'he']) {
     });
   }
 }
+
+test('existing table tuning offsets and scale adjust the frozen reference', async ({ page }) => {
+  await page.goto('?lang=en&nogist');
+  await page.waitForFunction(() => typeof sigwxSideBox === 'function');
+  const got = await page.evaluate(() => {
+    const box = sigwxSideBox();
+    const read = () => ({ x: parseFloat(box.style.left), y: parseFloat(box.style.top),
+      w: parseFloat(box.style.width) });
+    const before = read();
+    const original = window.tune;
+    const overrides = { sigwxTblLatOffset: 1, sigwxTblLngOffset: 1 };
+    window.tune = key => key in overrides ? overrides[key] : original(key);
+    map.fire('resize');
+    const offset = read();
+    overrides.sigwxTblScale = 0.5;
+    map.fire('resize');
+    const scaled = read();
+    window.tune = original;
+    return { before, offset, scaled };
+  });
+  expect(got.offset.x).toBeGreaterThan(got.before.x);
+  expect(got.offset.y).toBeLessThan(got.before.y);
+  expect(got.offset.w).toBeCloseTo(got.before.w, 1);
+  expect(got.scaled.w).toBeCloseTo(got.before.w / 2, 1);
+});
 
 test('title and table compose into one proportional image', async ({ page }) => {
   await page.goto('?lang=en&nogist');

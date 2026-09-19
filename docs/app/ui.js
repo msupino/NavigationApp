@@ -11589,6 +11589,7 @@ const NavWxAvailability = (function () {
   const BOUNDS_TABLE = { n: 34.20, s: 29.60, w: 37.10, e: 40.60 };
   let manifest = null, mapLayer = null;
   let sidePanel = null, tblImg = null;
+  let tableReferenceCenter = null, tableReferenceZoom = null;
   const off = k => (typeof tune === 'function' ? tune(k) : 0) || 0;
   const sc = k => { const v = typeof tune === 'function' ? tune(k) : 1; return v > 0 ? v : 1; };
   const cropCache = {};
@@ -11605,18 +11606,23 @@ const NavWxAvailability = (function () {
     const bounds = boundsFrom(BOUNDS_TABLE, 'sigwxTblLatOffset', 'sigwxTblLngOffset',
       'sigwxTblScale', 'sigwxTblScale');
     const north = bounds[1][0], west = bounds[0][1], east = bounds[1][1];
-    const anchor = map.project([north, west]).subtract(map.project(map.getCenter()))
+    const anchor = map.project([north, west], tableReferenceZoom)
+      .subtract(map.project(tableReferenceCenter, tableReferenceZoom))
       .add(map.getSize().divideBy(2));
-    const width = Math.abs(map.project([north, east]).x - map.project([north, west]).x);
+    const width = Math.abs(map.project([north, east], tableReferenceZoom).x
+      - map.project([north, west], tableReferenceZoom).x);
     sidePanel.style.left = anchor.x + 'px';
     sidePanel.style.top = (anchor.y - width * HEADER_ASPECT) + 'px';
     sidePanel.style.width = width + 'px';
+    sidePanel.style.transform = 'rotate(' + map.getBearing() + 'deg)';
   }
-  // Project relative to the center without bearing: preserve the north-up text position.
+  // Freeze the north-up reference view; only bearing and tuning move the composed image.
   map.on('move zoom rotate resize', sizeSideBox);
   function sideBox() {
     if (sidePanel && sidePanel.isConnected) return sidePanel;
     const host = map.getContainer();
+    tableReferenceCenter = map.getCenter();
+    tableReferenceZoom = map.getZoom();
     sidePanel = document.createElement('div');
     sidePanel.className = 'sigwx-side';
     tblImg = document.createElement('img');
