@@ -408,6 +408,10 @@ test.describe('the panel', () => {
     });
     await NavAid_show(page);
     const weather = page.locator('.route-check-weather');
+    await expect(weather).not.toHaveAttribute('open', '');
+    await expect(weather.locator('.route-check-weather-report').first()).toBeHidden();
+    await weather.locator('summary').click();
+    await expect(weather.locator('.route-check-weather-report').first()).toBeVisible();
     await expect(weather).toContainText('LLHZ clear observation');
     await expect(weather).toContainText('Temperature 24°C');
     await expect(weather).toContainText('LLHZ clear forecast');
@@ -462,6 +466,21 @@ test.describe('the panel', () => {
     await expect(panel.locator('.route-check-when')).toContainText('Checked for');
     // The closure and the ceiling, both against the planned window.
     await expect(panel.locator('.route-check-item')).toHaveCount(2);
+    await expect(panel.locator('details.route-check-group')).toHaveCount(6);
+    await expect(panel.locator('details.route-check-group[open]')).toHaveCount(0);
+    const notams = panel.locator('details[data-type="notams"]');
+    const clouds = panel.locator('details[data-type="ceiling"]');
+    await expect(notams.locator('summary')).toContainText('1 found');
+    await expect(notams.locator('.route-check-item')).toBeHidden();
+    await notams.locator('summary').click();
+    await expect(notams.locator('.route-check-item')).toBeVisible();
+    await expect(clouds.locator('.route-check-item')).toBeHidden();
+    await clouds.locator('summary').focus();
+    await page.keyboard.press('Enter');
+    await expect(clouds.locator('.route-check-item')).toBeVisible();
+    await notams.locator('summary').click();
+    await expect(notams.locator('.route-check-item')).toBeHidden();
+    await expect(clouds.locator('.route-check-item')).toBeVisible();
     await expect(panel).toContainText('A1234/26');
     await expect(panel).toContainText('AD CLOSED');
     await expect(panel).toContainText('ceiling 2,384 ft AMSL');
@@ -739,6 +758,7 @@ test.describe('a panel full of findings', () => {
       window.fetch = async () => { throw new Error('offline'); };
     }, { n: count, body: text });
     await page.evaluate(() => NavAid.routeCheck.show());
+    await page.locator('details[data-type="notams"] > summary').click();
     await page.waitForSelector('.route-check-item');
   }
 

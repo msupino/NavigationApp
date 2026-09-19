@@ -296,8 +296,42 @@
         || 'Nothing found against this plan in that window.';
       body.appendChild(ok);
     }
-    const list = document.createElement('ul');
-    list.className = 'route-check-list';
+    const names = {
+      airspace: S2.routeCheckSrcAirspace || 'airspace',
+      notams: S2.routeCheckSrcNotams || 'NOTAMs',
+      hazards: S2.routeCheckSrcHazards || 'SIGMET/AIRMET',
+      ceiling: S2.routeCheckSrcCeiling || 'aerodrome reports',
+      cloud: S2.routeCheckSrcCloud || 'forecast along the route',
+    };
+    const sourceFor = f => f.kind === 'hazard' ? 'hazards'
+      : f.kind === 'notam' ? 'notams' : f.kind === 'cloudbase' ? 'cloud'
+        : f.kind === 'ceiling' || f.kind === 'layer' ? 'ceiling' : 'airspace';
+    const frame = (key, label) => {
+      const section = document.createElement('details');
+      section.className = 'route-check-group';
+      section.dataset.type = key;
+      const summary = document.createElement('summary');
+      summary.textContent = label;
+      section.appendChild(summary);
+      body.appendChild(section);
+      return section;
+    };
+    const lists = {};
+    for (const key of SOURCES) {
+      const count = result.findings.filter(f => sourceFor(f) === key).length;
+      const missing = result.unchecked.includes(key);
+      const section = frame(key, names[key] + ' · ' + (missing ? S2.routeCheckNotRead
+        : S2.routeCheckFound(count)));
+      const list = document.createElement('ul');
+      list.className = 'route-check-list';
+      section.appendChild(list);
+      lists[key] = list;
+      if (!count) {
+        const empty = document.createElement('p');
+        empty.textContent = missing ? S2.routeCheckNotRead : S2.routeCheckNothing;
+        section.appendChild(empty);
+      }
+    }
     for (const f of result.findings) {
       const li = document.createElement('li');
       li.className = 'route-check-item route-check-' + f.severity;
@@ -319,15 +353,10 @@
         text.appendChild(d);
       }
       li.append(mark, text);
-      list.appendChild(li);
+      lists[sourceFor(f)].appendChild(li);
     }
-    body.appendChild(list);
-
-    const weather = document.createElement('section');
-    weather.className = 'route-check-weather';
-    const weatherTitle = document.createElement('h3');
-    weatherTitle.textContent = S2.routeCheckWeatherReports;
-    weather.appendChild(weatherTitle);
+    const weather = frame('weather', S2.routeCheckWeatherReports);
+    weather.classList.add('route-check-weather');
     for (const report of result.weatherReports || []) {
       const station = document.createElement('h4');
       station.textContent = report.icao;
@@ -367,19 +396,9 @@
     // is silent looked exactly like a source that was never consulted. The findings above are
     // what is wrong with the plan; this is what was looked at, which is the other half of
     // trusting the answer.
-    const names = {
-      airspace: S2.routeCheckSrcAirspace || 'airspace',
-      notams: S2.routeCheckSrcNotams || 'NOTAMs',
-      hazards: S2.routeCheckSrcHazards || 'SIGMET/AIRMET',
-      ceiling: S2.routeCheckSrcCeiling || 'aerodrome reports',
-      cloud: S2.routeCheckSrcCloud || 'forecast along the route',
-    };
     const counts = {};
     for (const f of result.findings) {
-      const key = f.kind === 'hazard' ? 'hazards'
-        : (f.kind === 'notam' ? 'notams'
-          : (f.kind === 'cloudbase' ? 'cloud'
-            : (f.kind === 'ceiling' || f.kind === 'layer' ? 'ceiling' : 'airspace')));
+      const key = sourceFor(f);
       counts[key] = (counts[key] || 0) + 1;
     }
     const asked = document.createElement('ul');
