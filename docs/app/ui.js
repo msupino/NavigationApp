@@ -11619,7 +11619,7 @@ const NavWxAvailability = (function () {
   // resolution (upscaling a scanned table adds blur, not letters), never more than half the map.
   window.sigwxSideWidthPx = function sigwxSideWidthPx(hostW, hostH, scale,
     tableWidth = TABLE_SRC_W, tableAspect = TABLE_ASPECT, headerAspect = HEADER_ASPECT) {
-    const top = 208, margin = 16;
+    const top = 208, margin = hostH <= 600 ? 80 : 16;
     const room = Math.max(1, (hostH || 0) - top - margin - 2);
     const limit = Math.min(tableWidth, room / (tableAspect + headerAspect), (hostW || 0) * 0.5);
     return Math.max(1, Math.floor(Math.min(limit,

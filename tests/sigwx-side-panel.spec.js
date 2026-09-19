@@ -11,6 +11,33 @@ const { test, expect } = require('./_setup');
 
 const PIX = 'data:image/gif;base64,R0lGODlhAQABAAAAACw=';
 
+test('short screens reserve the bottom readout and time controls', async ({ page }) => {
+  await boot(page, 844, 390);
+  const width = await page.evaluate(() => sigwxSideWidthPx(844, 390, 1, 800, 1, 0.1));
+  expect(208 + width * 1.1 + 2).toBeLessThanOrEqual(310);
+});
+
+for (const lang of ['en', 'he']) {
+  for (const [width, height] of [[390, 667], [844, 390]]) {
+    test(`SIGWX clears map controls: ${lang} ${width}x${height}`, async ({ page }) => {
+      await page.setViewportSize({ width, height });
+      await page.goto('?lang=' + lang + '&nogist');
+      await page.waitForFunction(() => typeof sigwxSideBox === 'function');
+      const overlaps = await withBox(page, `(box) => {
+        for (const img of box.querySelectorAll('img')) img.style.height = '75px';
+        const panel = box.getBoundingClientRect();
+        return [...document.querySelectorAll('.leaflet-control-zoom, #rotate-dial, #rotate-hdg, #edit-lock')]
+          .filter(el => {
+            const r = el.getBoundingClientRect();
+            return r.width && r.height && panel.left < r.right && panel.right > r.left
+              && panel.top < r.bottom && panel.bottom > r.top;
+          }).map(el => el.id || el.className);
+      }`);
+      expect(overlaps).toEqual([]);
+    });
+  }
+}
+
 async function boot(page, w, h) {
   await page.setViewportSize({ width: w || 1000, height: h || 800 });
   await page.goto('?lang=en&nogist');
