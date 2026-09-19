@@ -11612,10 +11612,8 @@ const NavWxAvailability = (function () {
     sidePanel.style.left = anchor.x + 'px';
     sidePanel.style.top = anchor.y + 'px';
     sidePanel.style.width = width + 'px';
-    sidePanel.style.transformOrigin = '0 0';
-    sidePanel.style.transform = 'rotate(' + map.getBearing() + 'deg)';
   }
-  // Rotate about the geographic top-left, not the image center, to keep it pinned to the map.
+  // The geographic anchor follows bearing; the text outside the rotated pane stays upright.
   map.on('move zoom rotate resize', sizeSideBox);
   function sideBox() {
     if (sidePanel && sidePanel.isConnected) return sidePanel;

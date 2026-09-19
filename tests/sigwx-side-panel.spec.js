@@ -50,9 +50,8 @@ for (const lang of ['en', 'he']) {
       for (const position of [got.before, got.panned, got.zoomed, got.rotated, got.southUp]) {
         expect(position.left).toBeCloseTo(position.anchorX, 1);
         expect(position.top).toBeCloseTo(position.anchorY, 1);
+        expect(position.transform).toBe('none');
       }
-      expect(got.rotated.transform).toBe('matrix(0, 1, -1, 0, 0, 0)');
-      expect(got.southUp.transform).toBe('matrix(-1, 0, 0, -1, 0, 0)');
       expect(got.rotated.width).toBeCloseTo(got.zoomed.width, 1);
     });
   }
