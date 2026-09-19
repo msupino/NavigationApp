@@ -42,6 +42,9 @@ clamp does not replace the preferred saved size; a completed resize gesture does
 
 ## Charts
 
+The route-check source summary appears first below the checked time window,
+before either the findings or the clear-plan message.
+
 Charts are modal tools, not route inspectors.
 
 Current chart-style tools include:
@@ -120,3 +123,8 @@ Regression-prone text:
 - map coordinate readouts
 
 Use `tests/bidi-regression.spec.js` for lasting coverage.
+
+Route check includes a weather-report section below its findings. It uses the same
+near-route airfield selection as the weather checks, showing decoded METAR/TAF
+conditions and LTR raw reports even when they generate no warning. Missing reports
+are explicitly marked; these reports do not add findings or imply flight clearance.

@@ -6,6 +6,29 @@ const { test, expect } = require('./_setup');
 let P;
 test.beforeAll(async () => { P = await import('../scripts/parse-metar.mjs'); });
 
+test('TAF validity bounds temporary groups without truncating prevailing cloud', () => {
+  const t = P.parseTaf('TAF LLHA 170502Z 1706/1806 32004KT 9999 BKN025 PROB40 TEMPO 1710/1712 SCT020',
+    new Date('2026-09-17T06:00:00Z'));
+  expect(t.fcsts.map(f => new Date(f.timeTo * 1000).toISOString()))
+    .toEqual(['2026-09-18T06:00:00.000Z', '2026-09-17T12:00:00.000Z']);
+});
+
+test('BECMG overlaps its transition and persists until the next prevailing change', () => {
+  const t = P.parseTaf('TAF LLHA 170502Z 1706/1806 32004KT 9999 BKN025 BECMG 1710/1712 CAVOK TEMPO 1713/1714 BKN010 FM171600 32004KT 9999 SCT030',
+    new Date('2026-09-17T06:00:00Z'));
+  expect(t.fcsts.map(f => new Date(f.timeTo * 1000).toISOString()))
+    .toEqual(['2026-09-17T12:00:00.000Z', '2026-09-17T16:00:00.000Z',
+      '2026-09-17T14:00:00.000Z', '2026-09-18T06:00:00.000Z']);
+});
+
+test('wind-only changes inherit cloud and validity crosses month and year boundaries', () => {
+  const t = P.parseTaf('TAF LLHA 311700Z 3118/0124 32004KT 9999 BKN025 BECMG 3122/3124 24005KT',
+    new Date('2026-12-31T18:00:00Z'));
+  expect(t.fcsts[1].clouds).toEqual([{ cover: 'BKN', base: 2500 }]);
+  expect(new Date(t.fcsts[0].timeTo * 1000).toISOString()).toBe('2027-01-01T00:00:00.000Z');
+  expect(new Date(t.fcsts[1].timeTo * 1000).toISOString()).toBe('2027-01-02T00:00:00.000Z');
+});
+
 test('visToKm converts metric and statute-mile visibilities', () => {
   expect(P.visToKm('CAVOK')).toBe('10+');
   expect(P.visToKm('9999')).toBe('10+');
