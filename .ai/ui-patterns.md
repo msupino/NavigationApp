@@ -128,6 +128,6 @@ Route check includes a weather-report section below its findings. It uses the sa
 near-route airfield selection as the weather checks, showing decoded METAR/TAF
 conditions and LTR raw reports even when they generate no warning. Missing reports
 are explicitly marked; these reports do not add findings or imply flight clearance.
-Each source type and the weather reports have an independent native details/summary
+Source types with findings or missing data and the weather reports have an independent native details/summary
 frame, collapsed initially. Frame headers show counts or missing-data status; the
 source summary remains visible above the frames. Expansion is not persisted.

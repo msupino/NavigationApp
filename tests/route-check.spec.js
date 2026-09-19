@@ -466,7 +466,9 @@ test.describe('the panel', () => {
     await expect(panel.locator('.route-check-when')).toContainText('Checked for');
     // The closure and the ceiling, both against the planned window.
     await expect(panel.locator('.route-check-item')).toHaveCount(2);
-    await expect(panel.locator('details.route-check-group')).toHaveCount(6);
+    await expect(panel.locator('details[data-type="airspace"], details[data-type="hazards"]')).toHaveCount(0);
+    await expect(panel.locator('.route-check-asked-row')).toHaveCount(5);
+    await expect(panel.locator('details[data-type="weather"]')).toHaveCount(1);
     await expect(panel.locator('details.route-check-group[open]')).toHaveCount(0);
     const notams = panel.locator('details[data-type="notams"]');
     const clouds = panel.locator('details[data-type="ceiling"]');
@@ -505,6 +507,8 @@ test.describe('the panel', () => {
     const missingText = (await panel.locator('.route-check-asked-missing').allTextContents()).join(' | ');
     expect(missingText).toContain('NOTAMs');
     expect(missingText).not.toContain('airspace');
+    await expect(panel.locator('details[data-type="notams"] > summary')).toContainText('could not be read');
+    await expect(panel.locator('details[data-type="airspace"]')).toHaveCount(0);
   });
 
   // "Asking the four sources" said neither which sources nor the right number -- the forecast

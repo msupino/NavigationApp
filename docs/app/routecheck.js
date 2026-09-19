@@ -320,6 +320,7 @@
     for (const key of SOURCES) {
       const count = result.findings.filter(f => sourceFor(f) === key).length;
       const missing = result.unchecked.includes(key);
+      if (!count && !missing) continue;
       const section = frame(key, names[key] + ' · ' + (missing ? S2.routeCheckNotRead
         : S2.routeCheckFound(count)));
       const list = document.createElement('ul');
