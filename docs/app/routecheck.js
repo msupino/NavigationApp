@@ -26,8 +26,8 @@
 
   // Leg times from the one model everything else flies by, so the check cannot disagree with
   // the kites, the plan and the nav log about when the aeroplane is where.
-  function legTimesH() {
-    const prof = (typeof routeProfile === 'function') ? routeProfile() : null;
+  function legTimesH(indexes) {
+    const prof = (typeof routeProfile === 'function') ? routeProfile(undefined, indexes) : null;
     const legs = (prof && Array.isArray(prof.legs)) ? prof.legs : [];
     return legs.map(l => (Number.isFinite(l.timeH) ? l.timeH : 0));
   }
@@ -87,9 +87,9 @@
   // The fields worth asking a METAR of: the ones near the route, not only the ones it names.
   // A plan that routes past Haifa without landing there still cares what Haifa is reporting.
   const WX_NEAR_NM = 15;
-  function fieldsNearRoute(points) {
+  function fieldsNearRoute(points, waypoints) {
     const out = new Set();
-    for (const w of ((state && state.waypoints) || [])) {
+    for (const w of waypoints) {
       const n = String((w && w.name) || '').trim().toUpperCase();
       if (/^[A-Z]{4}$/.test(n)) out.add(n);
     }
@@ -122,8 +122,13 @@
       return v;
     };
     const call = (fn, ...args) => (typeof fn === 'function' ? fn(...args) : null);
+    const legIndexes = typeof legDirVisibleIndexes === 'function'
+      ? legDirVisibleIndexes() : state.legs.map((_, i) => i);
+    const waypoints = legIndexes.length
+      ? [state.waypoints[legIndexes[0]], ...legIndexes.map(i => state.waypoints[i + 1])] : [];
+    const legs = legIndexes.map(i => state.legs[i]);
     const points = (typeof routeCheckSamplePoints === 'function')
-      ? routeCheckSamplePoints((state && state.waypoints) || [], 10) : [];
+      ? routeCheckSamplePoints(waypoints, 10) : [];
     const at = departAtMs();
 
     // All five at once: one feed being slow must not hold the other four, and one being down
@@ -155,23 +160,37 @@
 
     // The stations this route actually passes, in the shape the check reads.
     const wx = [];
+    const weatherReports = [];
     if (wxRes && wxRes.stations) {
-      const names = fieldsNearRoute(points);
+      const names = fieldsNearRoute(points, waypoints);
       for (const icao of Object.keys(wxRes.stations)) {
         if (!names.has(icao.toUpperCase())) continue;
-        const m = wxRes.stations[icao] && wxRes.stations[icao].metar;
-        wx.push({ icao, clouds: (m && m.clouds) || [] });
+        const st = wxRes.stations[icao] || {};
+        weatherReports.push({ icao, metar: st.metar || null, taf: st.taf || null });
+        const m = st.metar;
+        // The TAF's own periods, in the shape the check reads: what the field is forecast to be
+        // while the flight is there, which is the question a plan asks and a METAR cannot
+        // answer. A field can be CAVOK now and forecast SCT018 BKN015 for the hour you arrive.
+        const fcsts = tafPeriods(st.taf);
+        const taf = fcsts.map(f => ({
+          from: Number(f.timeFrom) * 1000,
+          to: f.timeTo * 1000,
+          clouds: Array.isArray(f.clouds) ? f.clouds : [],
+        })).filter(p => Number.isFinite(p.from));
+        const field = (window.airfields || []).find(f => (f.icao || f.name || '').toUpperCase() === icao.toUpperCase());
+        wx.push({ icao, clouds: (m && m.clouds) || [], taf,
+          elevationFt: field && Number.isFinite(field.elev_ft) ? field.elev_ft : 0 });
       }
     }
     return {
-      waypoints: (state && state.waypoints) || [],
-      legs: (state && state.legs) || [],
-      legTimesH: legTimesH(),
+      waypoints, legs, legIndexes,
+      legTimesH: legTimesH(legIndexes),
       departAtMs: at,
       airspace: airspaceRes,
       notams: notamsRes,
       hazards: hazardRes,
       wx: wxRes ? wx : null,
+      weatherReports,
       cloud,
       contains: (a, p) => (typeof airspaceContains === 'function' ? airspaceContains(a, p) : false),
     };
@@ -179,7 +198,13 @@
 
   async function run(onStep) {
     if (typeof routeCheckFindings !== 'function') return null;
-    return routeCheckFindings(await gather(onStep));
+    const input = await gather(onStep);
+    const result = routeCheckFindings(input);
+    result.weatherReports = input.weatherReports;
+    for (const finding of result.findings) {
+      if (Number.isInteger(finding.leg)) finding.leg = input.legIndexes[finding.leg];
+    }
+    return result;
   }
 
   const hhmm = (ms) => (Number.isFinite(ms) ? new Date(ms).toISOString().slice(11, 16) : '');
@@ -233,14 +258,22 @@
       const head = (S2.routeCheckCloudEst || 'Estimated cloud base') + ' ' + ft(f.baseFtAmsl)
         + ' (' + (S2.routeCheckAgl || 'AGL') + ' ' + ft(f.baseFtAgl) + ')';
       const detail = (S2.routeCheckLowCover || 'low cloud') + ' ' + f.coverPct + '%'
-        + ' · ' + (S2.routeCheckLegPlanned || 'leg planned') + ' ' + ft(f.altFt);
+        + ' · ' + (S2.routeCheckLegPlanned || 'leg planned') + ' ' + ft(f.altFt)
+        + ' · ' + S2.routeCheckCeilingClearance;
       return { head, detail, where, when: span(f.from, f.to) };
     }
-    if (f.kind === 'ceiling') {
+    if (f.kind === 'ceiling' || f.kind === 'layer') {
+      // A ceiling is a lid. A scattered or few layer is not, and saying so is the difference
+      // between "you cannot get over this" and "there is cloud in your way".
+      const what = f.kind === 'ceiling'
+        ? (S2.routeCheckCeiling || 'ceiling')
+        : ((f.cover || '') + ' ' + (S2.routeCheckLayer || 'layer')).trim();
+      const src = f.forecast ? (S2.routeCheckForecast || 'forecast') : (S2.routeCheckObserved || 'reported');
       return {
-        head: (f.icao || '') + ' · ' + (S2.routeCheckCeiling || 'ceiling') + ' ' + ft(f.ceilingFt),
-        detail: (S2.routeCheckLowestLeg || 'lowest planned leg') + ' ' + ft(f.altFt),
-        where: '', when: '',
+        head: (f.icao || '') + ' · ' + what + ' ' + ft(f.ceilingFt) + ' AMSL',
+        detail: src + ' · ' + (S2.routeCheckLegPlanned || 'leg planned') + ' ' + ft(f.altFt)
+          + ' · ' + (f.kind === 'ceiling' ? S2.routeCheckCeilingClearance : S2.routeCheckScatteredClearance),
+        where, when: f.forecast ? span(f.from, f.to) : '',
       };
     }
     return { head: '', detail: '', where: '', when: '' };
@@ -263,8 +296,46 @@
         || 'Nothing found against this plan in that window.';
       body.appendChild(ok);
     }
-    const list = document.createElement('ul');
-    list.className = 'route-check-list';
+    const names = {
+      airspace: S2.routeCheckSrcAirspace || 'airspace',
+      notams: S2.routeCheckSrcNotams || 'NOTAMs',
+      hazards: S2.routeCheckSrcHazards || 'SIGMET/AIRMET',
+      ceiling: S2.routeCheckSrcCeiling || 'aerodrome reports',
+      cloud: S2.routeCheckSrcCloud || 'forecast along the route',
+    };
+    const sourceFor = f => f.kind === 'hazard' ? 'hazards'
+      : f.kind === 'notam' ? 'notams' : f.kind === 'cloudbase' ? 'cloud'
+        : f.kind === 'ceiling' || f.kind === 'layer' ? 'ceiling' : 'airspace';
+    const frame = (key, label) => {
+      const section = document.createElement('details');
+      section.className = 'route-check-group';
+      section.dataset.type = key;
+      const summary = document.createElement('summary');
+      summary.textContent = label;
+      section.appendChild(summary);
+      const content = document.createElement('div');
+      content.className = 'route-check-group-content';
+      section.appendChild(content);
+      body.appendChild(section);
+      return { section, content };
+    };
+    const lists = {};
+    for (const key of SOURCES) {
+      const count = result.findings.filter(f => sourceFor(f) === key).length;
+      const missing = result.unchecked.includes(key);
+      if (!count && !missing) continue;
+      const { content } = frame(key, names[key] + ' · ' + (missing ? S2.routeCheckNotRead
+        : S2.routeCheckFound(count)));
+      const list = document.createElement('ul');
+      list.className = 'route-check-list';
+      content.appendChild(list);
+      lists[key] = list;
+      if (!count) {
+        const empty = document.createElement('p');
+        empty.textContent = missing ? S2.routeCheckNotRead : S2.routeCheckNothing;
+        content.appendChild(empty);
+      }
+    }
     for (const f of result.findings) {
       const li = document.createElement('li');
       li.className = 'route-check-item route-check-' + f.severity;
@@ -286,24 +357,76 @@
         text.appendChild(d);
       }
       li.append(mark, text);
-      list.appendChild(li);
+      lists[sourceFor(f)].appendChild(li);
     }
-    body.appendChild(list);
+    const { section: weatherSection, content: weather } = frame('weather', S2.routeCheckWeatherReports);
+    weatherSection.classList.add('route-check-weather');
+    for (const report of result.weatherReports || []) {
+      const station = document.createElement('h4');
+      station.textContent = report.icao;
+      station.dir = 'ltr';
+      weather.appendChild(station);
+      for (const type of ['metar', 'taf']) {
+        const data = report[type];
+        const row = document.createElement('div');
+        row.className = 'route-check-weather-report';
+        const label = document.createElement('strong');
+        label.textContent = type.toUpperCase();
+        row.appendChild(label);
+        const decoded = data && (type === 'metar' ? decodeMetar(data)
+          : decodeTaf(data).map(period => period.when + ': ' + period.text).join('\n'));
+        const summary = document.createElement('p');
+        summary.textContent = decoded || S2.routeCheckNotRead;
+        row.appendChild(summary);
+        const raw = data && (data.rawOb || data.rawTAF || data.rawText);
+        if (raw) {
+          const text = document.createElement('p');
+          text.dir = 'ltr';
+          text.textContent = raw;
+          row.appendChild(text);
+        }
+        weather.appendChild(row);
+      }
+    }
+    if (!(result.weatherReports || []).length) {
+      const empty = document.createElement('p');
+      empty.textContent = S2.routeCheckNoWeatherReports;
+      weather.appendChild(empty);
+    }
 
-    // A source that could not be read is not a clear source. Saying so is the difference
-    // between "no NOTAMs affect this route" and "I could not ask about NOTAMs".
-    if (result.unchecked.length) {
-      const miss = document.createElement('p');
-      miss.className = 'route-check-unchecked';
-      const names = { airspace: S2.routeCheckSrcAirspace || 'airspace',
-        notams: S2.routeCheckSrcNotams || 'NOTAMs',
-        hazards: S2.routeCheckSrcHazards || 'SIGMET/AIRMET',
-        cloud: S2.routeCheckSrcCloud || 'cloud along the route',
-        ceiling: S2.routeCheckSrcCeiling || 'ceiling' };
-      miss.textContent = (S2.routeCheckCouldNotAsk || 'Not checked (no data):') + ' '
-        + result.unchecked.map(k => names[k] || k).join(', ');
-      body.appendChild(miss);
+    // Every source, every time, with what it found. Reported as "I only see NOTAMs on the
+    // warning list": four of the five had been asked and had nothing to say, and a source that
+    // is silent looked exactly like a source that was never consulted. The findings above are
+    // what is wrong with the plan; this is what was looked at, which is the other half of
+    // trusting the answer.
+    const counts = {};
+    for (const f of result.findings) {
+      const key = sourceFor(f);
+      counts[key] = (counts[key] || 0) + 1;
     }
+    const asked = document.createElement('ul');
+    asked.className = 'route-check-asked';
+    for (const key of SOURCES) {
+      const li = document.createElement('li');
+      const missing = result.unchecked.includes(key);
+      li.className = 'route-check-asked-row'
+        + (missing ? ' route-check-asked-missing' : '');
+      const mark = document.createElement('span');
+      mark.className = 'route-check-step-mark';
+      mark.textContent = missing ? '\u2715' : '\u2713';
+      const label = document.createElement('span');
+      label.textContent = names[key] || key;
+      const said = document.createElement('span');
+      said.className = 'route-check-asked-said';
+      said.textContent = missing
+        ? (S2.routeCheckNotRead || 'could not be read')
+        : (counts[key]
+          ? (S2.routeCheckFound ? S2.routeCheckFound(counts[key]) : counts[key] + ' found')
+          : (S2.routeCheckNothing || 'nothing'));
+      li.append(mark, label, said);
+      asked.appendChild(li);
+    }
+    body.prepend(asked);
   }
 
   async function show() {
