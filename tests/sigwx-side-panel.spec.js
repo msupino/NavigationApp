@@ -12,7 +12,8 @@ for (const lang of ['en', 'he']) {
         map.setBearing(0);
         const box = sigwxSideBox();
         const measure = () => {
-          const anchor = map.latLngToContainerPoint([34.2, 37.1]);
+          const anchor = map.project([34.2, 37.1]).subtract(map.project(map.getCenter()))
+            .add(map.getSize().divideBy(2));
           return { left: parseFloat(box.style.left), top: parseFloat(box.style.top),
             width: parseFloat(box.style.width), anchorX: anchor.x, anchorY: anchor.y,
             transform: getComputedStyle(box).transform };
@@ -24,9 +25,11 @@ for (const lang of ['en', 'he']) {
         const zoomed = measure();
         map.setBearing(90);
         const rotated = measure();
+        map.setBearing(180);
+        const southUp = measure();
         const control = document.querySelector('.leaflet-control');
         box.click();
-        return { before, panned, zoomed, rotated,
+        return { before, panned, zoomed, rotated, southUp,
           display: getComputedStyle(box).display,
           pointerEvents: getComputedStyle(box).pointerEvents,
           belowControls: Number(getComputedStyle(box).zIndex) < Number(getComputedStyle(control).zIndex),
@@ -42,12 +45,16 @@ for (const lang of ['en', 'he']) {
       expect(got.popupCount).toBe(0);
       expect(got.panned.left).not.toBe(got.before.left);
       expect(got.zoomed.width).toBeCloseTo(got.before.width * 2, 1);
-      for (const position of [got.before, got.panned, got.zoomed, got.rotated]) {
-        expect(position.left).toBeCloseTo(position.anchorX, 1);
+      for (const position of [got.before, got.panned, got.zoomed, got.rotated, got.southUp]) {
+        expect(Math.abs(position.left - position.anchorX)).toBeLessThan(1);
         expect(position.top).toBeLessThan(position.anchorY);
         expect(position.transform).toBe('none');
       }
       expect(got.rotated.width).toBeCloseTo(got.zoomed.width, 1);
+      for (const position of [got.rotated, got.southUp]) {
+        expect(position.left).toBeCloseTo(got.zoomed.left, 1);
+        expect(position.top).toBeCloseTo(got.zoomed.top, 1);
+      }
     });
   }
 }
