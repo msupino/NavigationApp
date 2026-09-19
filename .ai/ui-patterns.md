@@ -42,16 +42,11 @@ clamp does not replace the preferred saved size; a completed resize gesture does
 
 ## Charts
 
-The SIGWX screen-space table starts 208px below the map container's top to leave
-room for the search window; its available-height calculation uses the same inset.
-Sizing uses the loaded table/header crop dimensions and keeps their combined height
-inside the map. Panel input events are isolated from map editing and zoom gestures.
-The table remains visible on mobile in both orientations and languages; tapping it
-opens the full-size, scrollable table viewer.
-On narrow or short screens it reserves 112px on the right for map controls.
-Short screens also reserve 80px below the table for the time and coordinate readouts.
-The SIGWX table viewer fits the screen initially and owns two-finger pinch zoom;
-one-finger scrolling pans the enlarged images without moving the map.
+The SIGWX table is anchored east of Israel (37.1°E, 34.2°N by default),
+with the title and table composed into a single image. It follows map pan/zoom and the existing table position
+and scale tunables, but its text stays upright when the map rotates. It is not a
+fixed popup: on mobile, pan east to reach it and use map pinch zoom to enlarge it.
+It renders below map controls and lets map gestures pass through.
 
 Charts are modal tools, not route inspectors.
 

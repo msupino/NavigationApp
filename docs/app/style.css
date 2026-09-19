@@ -8302,34 +8302,9 @@ body.theme-light .route-check-step-failed { color: #8a1c00; }
    space now -- same place, same way up, whatever the map is doing underneath. */
 .sigwx-side {
   position: absolute;
-  /* Reserve room for the search window above the chart header. */
-  top: 208px;
-  /* RIGHT, not inset-inline-end. This is not text flow: the panel stands where the sheet's
-     table always stood, east of the chart, and east does not move when the interface language
-     does. The logical property put it on the left in Hebrew -- a different place from the one
-     every pilot who has used this already knows. */
-  right: 8px;
-  z-index: 620;                 /* over the panes, under the toolbar and the modals */
-  /* Width is set in JS, from the height there is room for and the table's own resolution --
-     see sizeSideBox. This is only the floor for the moment before it runs. */
-  width: 260px;
+  z-index: 450;
   display: flex;
   flex-direction: column;
-  gap: 2px;
-  /* Pressable: at this size the panel is a summary, and the way to READ the table is to open
-     it. A small box in a corner, so the map stays draggable everywhere that matters. */
-  cursor: zoom-in;
-  filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.45));
+  pointer-events: none;
 }
 .sigwx-side img { display: block; width: 100%; height: auto; }
-@media (max-width: 900px), (max-height: 600px) {
-  .sigwx-side { right: 112px; max-width: calc(100% - 120px); }
-}
-
-/* The table at its own size, in a window that scrolls. The panel beside the chart says what
-   kind of weather is on the sheet; this is where it can be read. */
-.sigwx-table-full { max-height: 78vh; overflow: auto; display: flex; flex-direction: column;
-  touch-action: pan-x pan-y; direction: ltr;
-  gap: 2px; }
-.sigwx-table-full img { display: block; width: 100%; max-width: none; flex-shrink: 0; }
-.sigwx-side:focus-visible { outline: 2px solid #6fb0ff; outline-offset: 2px; }

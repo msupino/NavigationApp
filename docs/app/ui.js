@@ -11586,144 +11586,66 @@ const NavWxAvailability = (function () {
   // similarity fit over three airfields shared with our own layers — LLHA, LLBS
   // and LLIB; LLIB constrains the longitude scale. ~-0.8° tilt → sigwxRotationDeg.
   const BOUNDS_MAP = { n: 33.97, s: 29.37, w: 33.29, e: 36.80 };
-  // (HEADER_ASPECT and BOUNDS_TABLE lived here. The header keeps its own aspect now because it
-  // is an <img> in a box, and the table has no geographic extent to invent -- see sideBox.)
-
+  const BOUNDS_TABLE = { n: 34.20, s: 29.60, w: 37.10, e: 40.60 };
   let manifest = null, mapLayer = null;
-  // The header and the table are NOT geography. They were image overlays pinned to invented
-  // coordinates -- the old comment said so: "the TABLE isn't geographic, park it just east of
-  // Israel" -- which works only while the map is north-up. Rotate it and those fake points swing
-  // with everything else, so the panels land wherever that geography now falls: off to the side,
-  // half off-screen, turned on their side. Counter-rotating them fixes the angle and leaves the
-  // position wrong, which reads worse than leaving them alone.
-  //
-  // So they live in SCREEN space now: one box beside the chart, always in the same place,
-  // always the right way up, whatever the map is doing underneath. The weather panel stays a
-  // map layer, because its fronts and areas do belong over the ground they describe.
-  let sidePanel = null, hdrImg = null, tblImg = null;
+  let sidePanel = null, tblImg = null;
   const off = k => (typeof tune === 'function' ? tune(k) : 0) || 0;
   const sc = k => { const v = typeof tune === 'function' ? tune(k) : 1; return v > 0 ? v : 1; };
-  const cropCache = {};                      // key → cropped dataURL
+  const cropCache = {};
 
   function removeLayers() {
     if (mapLayer) { map.removeLayer(mapLayer); mapLayer = null; }
-    if (sidePanel) { sidePanel.remove(); sidePanel = null; hdrImg = null; tblImg = null; }
+    if (sidePanel) { sidePanel.remove(); sidePanel = null; tblImg = null; }
   }
-  const TABLE_ASPECT = (CROP_TABLE.y1 - CROP_TABLE.y0) * 1240
-    / ((CROP_TABLE.x1 - CROP_TABLE.x0) * 1755);
   const HEADER_ASPECT = (CROP_HEADER.y1 - CROP_HEADER.y0) * 1240
     / ((CROP_HEADER.x1 - CROP_HEADER.x0) * 1755);
-  const TABLE_SRC_W = Math.round((CROP_TABLE.x1 - CROP_TABLE.x0) * 1755);
-  // Pure, and exported, because it is the whole answer to "why is the text that size" and the
-  // part worth pinning: as wide as the height leaves room for, never past the source's own
-  // resolution (upscaling a scanned table adds blur, not letters), never more than half the map.
-  window.sigwxSideWidthPx = function sigwxSideWidthPx(hostW, hostH, scale,
-    tableWidth = TABLE_SRC_W, tableAspect = TABLE_ASPECT, headerAspect = HEADER_ASPECT) {
-    const top = 208, margin = hostH <= 600 ? 80 : 16;
-    const room = Math.max(1, (hostH || 0) - top - margin - 2);
-    const limit = Math.min(tableWidth, room / (tableAspect + headerAspect), (hostW || 0) * 0.5);
-    return Math.max(1, Math.floor(Math.min(limit,
-      Math.max(160, limit * (Number(scale) > 0 ? Number(scale) : 1)))));
-  };
+
   function sizeSideBox() {
     if (!sidePanel) return;
-    const host = map.getContainer();
-    sidePanel.style.width =
-      window.sigwxSideWidthPx(host.clientWidth, host.clientHeight, off('sigwxTblScale') || 1,
-        tblImg.naturalWidth || TABLE_SRC_W,
-        tblImg.naturalWidth ? tblImg.naturalHeight / tblImg.naturalWidth : TABLE_ASPECT,
-        hdrImg.naturalWidth ? hdrImg.naturalHeight / hdrImg.naturalWidth : HEADER_ASPECT) + 'px';
+    const bounds = boundsFrom(BOUNDS_TABLE, 'sigwxTblLatOffset', 'sigwxTblLngOffset',
+      'sigwxTblScale', 'sigwxTblScale');
+    const north = bounds[1][0], west = bounds[0][1], east = bounds[1][1];
+    const anchor = map.latLngToContainerPoint([north, west]);
+    const width = Math.abs(map.project([north, east]).x - map.project([north, west]).x);
+    sidePanel.style.left = anchor.x + 'px';
+    sidePanel.style.top = (anchor.y - width * HEADER_ASPECT) + 'px';
+    sidePanel.style.width = width + 'px';
   }
-  map.on('resize', sizeSideBox);
-  // The full-size table, in a window that scrolls. This is the one that can be read.
-  function openTableFull() {
-    if (!tblImg || !tblImg.getAttribute('src')) return;
-    if (typeof createDraggableModal !== 'function') return;
-    const S2 = window.S || {};
-    const m = createDraggableModal(S2.sigwxTableTitle || 'Significant weather — table',
-      'modal wide sigwx-table-modal', null);
-    const body = document.createElement('div');
-    body.className = 'sigwx-table-full';
-    for (const src of [hdrImg && hdrImg.getAttribute('src'), tblImg.getAttribute('src')]) {
-      if (!src) continue;
-      const img = document.createElement('img');
-      img.src = src;
-      img.alt = '';
-      body.appendChild(img);
-    }
-    m.box.appendChild(body);
-    m.show();
-    let zoom = 1, pinchDistance = 0, pinchZoom = 1, anchorX = 0, anchorY = 0;
-    const distance = touches => Math.hypot(touches[0].clientX - touches[1].clientX,
-      touches[0].clientY - touches[1].clientY);
-    const applyZoom = next => {
-      const previous = zoom;
-      zoom = Math.min(tune('plateZoomMax'), Math.max(1, next));
-      for (const img of body.querySelectorAll('img')) img.style.width = (zoom * 100) + '%';
-      body.scrollLeft = (body.scrollLeft + anchorX) * zoom / previous - anchorX;
-      body.scrollTop = (body.scrollTop + anchorY) * zoom / previous - anchorY;
-    };
-    body.addEventListener('touchstart', e => {
-      e.stopPropagation();
-      if (e.touches.length !== 2) { pinchDistance = 0; return; }
-      pinchDistance = distance(e.touches);
-      pinchZoom = zoom;
-      const rect = body.getBoundingClientRect();
-      anchorX = (e.touches[0].clientX + e.touches[1].clientX) / 2 - rect.left;
-      anchorY = (e.touches[0].clientY + e.touches[1].clientY) / 2 - rect.top;
-    }, { passive: true });
-    body.addEventListener('touchmove', e => {
-      e.stopPropagation();
-      if (e.touches.length !== 2 || !pinchDistance) return;
-      e.preventDefault();
-      applyZoom(pinchZoom * distance(e.touches) / pinchDistance);
-    }, { passive: false });
-    for (const type of ['touchend', 'touchcancel']) body.addEventListener(type, e => {
-      e.stopPropagation();
-      pinchDistance = 0;
-    }, { passive: true });
-  }
-  // The box beside the chart. Built once, on the map container rather than in a pane, so no
-  // pan, zoom or bearing reaches it.
+  // Follow a geographic anchor, but render outside the rotated pane so text stays upright.
+  map.on('move zoom rotate resize', sizeSideBox);
   function sideBox() {
     if (sidePanel && sidePanel.isConnected) return sidePanel;
-    const host = (typeof map !== 'undefined' && map.getContainer) ? map.getContainer() : null;
-    if (!host) return null;
+    const host = map.getContainer();
     sidePanel = document.createElement('div');
     sidePanel.className = 'sigwx-side';
-    hdrImg = document.createElement('img');
-    hdrImg.className = 'sigwx-side-header';
-    hdrImg.alt = '';
     tblImg = document.createElement('img');
     tblImg.className = 'sigwx-side-table';
-    tblImg.alt = '';
-    hdrImg.onload = sizeSideBox;
+    tblImg.alt = (window.S || {}).sigwxTableTitle || 'Significant weather — table';
     tblImg.onload = sizeSideBox;
-    sidePanel.append(hdrImg, tblImg);
-    L.DomEvent.disableClickPropagation(sidePanel);
-    L.DomEvent.disableScrollPropagation(sidePanel);
-    sidePanel.addEventListener('pointerdown', e => e.stopPropagation());
-    // Pressable, and said so: at this size the panel is a summary, and the way to read it is to
-    // open it. The map behind stays draggable everywhere else -- this is a small box in a
-    // corner, not a layer over the chart.
-    sidePanel.tabIndex = 0;
-    sidePanel.setAttribute('role', 'button');
-    const S2 = window.S || {};
-    sidePanel.title = S2.sigwxTableOpen || 'Open the table at full size';
-    sidePanel.setAttribute('aria-label', sidePanel.title);
-    sidePanel.addEventListener('click', openTableFull);
-    sidePanel.addEventListener('keydown', (e) => {
-      e.stopPropagation();
-      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openTableFull(); }
-    });
+    sidePanel.appendChild(tblImg);
     host.appendChild(sidePanel);
     sizeSideBox();
     return sidePanel;
   }
-  // The real builder, reachable by name: the module only reaches it after fetching and cropping
-  // a half-megabyte chart, and the box's placement and affordances are worth testing without
-  // that. Nothing else calls it.
   window.sigwxSideBox = sideBox;
+  async function combineTable(headerUrl, tableUrl) {
+    const load = src => new Promise((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => resolve(img);
+      img.onerror = reject;
+      img.src = src;
+    });
+    const [header, table] = await Promise.all([load(headerUrl), load(tableUrl)]);
+    const canvas = document.createElement('canvas');
+    canvas.width = table.naturalWidth;
+    const headerHeight = Math.round(canvas.width * header.naturalHeight / header.naturalWidth);
+    canvas.height = headerHeight + table.naturalHeight;
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(header, 0, 0, canvas.width, headerHeight);
+    ctx.drawImage(table, 0, headerHeight);
+    return canvas.toDataURL('image/png');
+  }
+  window.sigwxCombineTable = combineTable;
   // Crop a panel of the chart PNG client-side. `knockWhite` (map panel only)
   // makes the chart's white paper transparent so it doesn't read as a glaring
   // print sheet over a dark-mode map (the table keeps its white, for legibility).
@@ -11855,12 +11777,11 @@ const NavWxAvailability = (function () {
   }
   map.on('move zoom zoomend viewreset', applyRotation);
   function place(which, data, bounds, op) {
-    if (which !== 'map') {                 // header and table: screen space, see sideBox
+    if (which !== 'map') {
       const box = sideBox();
       if (!box) return;
       box.style.opacity = String(op);
-      const img = which === 'header' ? hdrImg : tblImg;
-      if (img && img.getAttribute('src') !== data) img.src = data;
+      if (tblImg.getAttribute('src') !== data) tblImg.src = data;
       sizeSideBox();
       return;
     }
@@ -11921,18 +11842,13 @@ const NavWxAvailability = (function () {
       showLoading(false);
       removeLayers();
     });
-    // No bounds for these two any more: they are a box beside the chart, not places on it. The
-    // header keeps its own aspect from the crop, and the table sits under it, both as wide as
-    // the box -- which is what the old lat/lng arithmetic was doing the long way round.
+    // The upright table follows its own geographic anchor, separate from the weather overlay.
     const tblOp = off('sigwxTblOpacity') || 0.92;
-    cropPanel(url, CROP_TABLE, false).then(data => {
+    Promise.all([cropPanel(url, CROP_HEADER, false), cropPanel(url, CROP_TABLE, false)])
+      .then(([header, table]) => combineTable(header, table)).then(data => {
       if (gen !== sigwxGen || !cb.checked) return;
       place('table', data, null, tblOp);
     }).catch(() => { /* table optional */ });
-    cropPanel(url, CROP_HEADER, false).then(data => {
-      if (gen !== sigwxGen || !cb.checked) return;
-      place('header', data, null, tblOp);
-    }).catch(() => { /* header optional */ });
   }
   // Merge into the shared #wx-time dropdown (deduped; does not clear PWX's
   // options).
