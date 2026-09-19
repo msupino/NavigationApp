@@ -38,55 +38,38 @@ test('toggling adds a cropped image overlay; persists across reload', async ({ p
   // Only the geographic crop is a map overlay; the text stays in screen space.
   const img = page.locator('img.sigwx-ov-layer');
   await expect(img).toHaveCount(1);
-  await expect(page.locator('.sigwx-side img[src^="data:image/png"]')).toHaveCount(2);
+  await expect(page.locator('.sigwx-side img[src^="data:image/png"]')).toHaveCount(1);
   await expect(img.first()).toHaveAttribute('src', /^data:image\/png/);
   // Persisted on; restored after reload.
   await page.reload();
   await page.waitForFunction(() => document.getElementById('sigwx-ov-cb'));
   await expect(page.locator('#sigwx-ov-cb')).toBeChecked();
   await expect(page.locator('img.sigwx-ov-layer')).toHaveCount(1);
-  await expect(page.locator('.sigwx-side img[src^="data:image/png"]')).toHaveCount(2);
+  await expect(page.locator('.sigwx-side img[src^="data:image/png"]')).toHaveCount(1);
   await page.locator('#sigwx-ov-cb').uncheck();
   await expect(page.locator('img.sigwx-ov-layer, .sigwx-side')).toHaveCount(0);
 });
 
-test('the panel fits real landscape chart crops including its header', async ({ page }) => {
-  await page.setViewportSize({ width: 1400, height: 800 });
+test('the loaded combined image keeps its proportions as the map zooms', async ({ page }) => {
   await boot(page);
   await page.locator('#sigwx-ov-cb').check();
-  await expect(page.locator('.sigwx-side img[src^="data:image/png"]')).toHaveCount(2);
-  await page.evaluate(async () => {
-    const sizes = [[1741, 102], [1057, 1008]];
-    await Promise.all(Array.from(document.querySelectorAll('.sigwx-side img')).map((img, i) => {
-      const canvas = document.createElement('canvas');
-      [canvas.width, canvas.height] = sizes[i];
-      return new Promise(resolve => {
-        img.addEventListener('load', resolve, { once: true });
-        img.src = canvas.toDataURL();
-      });
-    }));
+  await expect(page.locator('.sigwx-side img[src^="data:image/png"]')).toHaveCount(1);
+  const geometry = await page.evaluate(async () => {
+    const img = document.querySelector('.sigwx-side img');
+    await img.decode();
+    const before = img.getBoundingClientRect();
+    map.setZoom(map.getZoom() + 1, { animate: false });
+    const after = img.getBoundingClientRect();
+    return { before: before.width, after: after.width,
+      ratio: after.width / after.height, naturalRatio: img.naturalWidth / img.naturalHeight,
+      pointerEvents: getComputedStyle(img).pointerEvents,
+      popup: !!document.querySelector('.sigwx-table-modal') };
   });
-  const geometry = await page.evaluate(() => ({
-    width: document.querySelector('.sigwx-side').getBoundingClientRect().width,
-    bottom: document.querySelector('.sigwx-side').getBoundingClientRect().bottom,
-    mapBottom: map.getContainer().getBoundingClientRect().bottom,
-  }));
-  expect(geometry.width).toBeGreaterThan(500);
-  expect(geometry.bottom).toBeLessThanOrEqual(geometry.mapBottom - 15);
+  expect(geometry.after).toBeCloseTo(geometry.before * 2, 1);
+  expect(geometry.ratio).toBeCloseTo(geometry.naturalRatio, 2);
+  expect(geometry.pointerEvents).toBe('none');
+  expect(geometry.popup).toBe(false);
 });
-
-for (const mode of ['add', 'note']) {
-  test(`opening the SIGWX table does not edit the map in ${mode} mode`, async ({ page }) => {
-    await boot(page);
-    await page.locator('#sigwx-ov-cb').check();
-    await expect(page.locator('.sigwx-side img[src^="data:image/png"]')).toHaveCount(2);
-    await page.evaluate(mode => { state.mode = mode; }, mode);
-    const before = await page.evaluate(() => JSON.stringify([state.waypoints, state.notes]));
-    await page.locator('.sigwx-side').click();
-    await expect(page.locator('.sigwx-table-modal')).toBeVisible();
-    expect(await page.evaluate(() => JSON.stringify([state.waypoints, state.notes]))).toBe(before);
-  });
-}
 
 test('no SIGWX times → overlay box stays hidden', async ({ page }) => {
   await boot(page, []);
