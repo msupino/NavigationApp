@@ -42,12 +42,10 @@ clamp does not replace the preferred saved size; a completed resize gesture does
 
 ## Charts
 
-The SIGWX title and table are composed into one image. When enabled, its north-up
-placement east of Israel (37.1°E, 34.2°N by default) captures the current map center
-and zoom as a reference. Pan and zoom do not move or resize the legend; bearing
-rotates the combined image in place. Existing table latitude/longitude offsets
-and scale tunables adjust it using the captured reference. Re-enabling captures
-a new reference view; viewport resizing recenters the reference on the new viewport.
+The SIGWX title and table are composed into one image pinned east of Israel
+(table top-left 37.1°E, 34.2°N by default). The combined image follows map pan,
+zoom, and bearing, rotating about its geographic top-left rather than its center.
+Existing table latitude/longitude offsets and scale tunables adjust its placement.
 It renders below map controls and lets map gestures pass through.
 
 Charts are modal tools, not route inspectors.

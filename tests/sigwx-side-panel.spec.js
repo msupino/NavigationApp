@@ -3,7 +3,7 @@ const { test, expect } = require('./_setup');
 
 for (const lang of ['en', 'he']) {
   for (const [width, height] of [[1000, 800], [390, 667], [844, 390]]) {
-    test(`SIGWX stays fixed while rotating with the map: ${lang} ${width}x${height}`, async ({ page }) => {
+    test(`SIGWX stays pinned to the map: ${lang} ${width}x${height}`, async ({ page }) => {
       await page.setViewportSize({ width, height });
       await page.goto('?lang=' + lang + '&nogist');
       await page.waitForFunction(() => typeof sigwxSideBox === 'function');
@@ -12,8 +12,10 @@ for (const lang of ['en', 'he']) {
         map.setBearing(0);
         const box = sigwxSideBox();
         const measure = () => {
-          const anchor = map.project([34.2, 37.1]).subtract(map.project(map.getCenter()))
-            .add(map.getSize().divideBy(2));
+          const tableWidth = map.project([34.2, 40.6]).x - map.project([34.2, 37.1]).x;
+          const headerHeight = tableWidth * (0.10484 - 0.02258) * 1240 / (0.992 * 1755);
+          const origin = map.unproject(map.project([34.2, 37.1]).subtract(L.point(0, headerHeight)));
+          const anchor = map.latLngToContainerPoint(origin);
           return { left: parseFloat(box.style.left), top: parseFloat(box.style.top),
             width: parseFloat(box.style.width), anchorX: anchor.x, anchorY: anchor.y,
             transform: getComputedStyle(box).transform };
@@ -43,24 +45,20 @@ for (const lang of ['en', 'he']) {
       expect(got.outsideRotatedPane).toBe(true);
       expect(got.imageCount).toBe(1);
       expect(got.popupCount).toBe(0);
-      expect(Math.abs(got.before.left - got.before.anchorX)).toBeLessThan(1);
+      expect(got.panned.left).not.toBe(got.before.left);
+      expect(got.zoomed.width).toBeCloseTo(got.before.width * 2, 1);
       for (const position of [got.before, got.panned, got.zoomed, got.rotated, got.southUp]) {
-        expect(position.left).toBeCloseTo(got.before.left, 1);
-        expect(position.top).toBeCloseTo(got.before.top, 1);
-        expect(position.width).toBeCloseTo(got.before.width, 1);
+        expect(position.left).toBeCloseTo(position.anchorX, 1);
+        expect(position.top).toBeCloseTo(position.anchorY, 1);
       }
       expect(got.rotated.transform).toBe('matrix(0, 1, -1, 0, 0, 0)');
       expect(got.southUp.transform).toBe('matrix(-1, 0, 0, -1, 0, 0)');
       expect(got.rotated.width).toBeCloseTo(got.zoomed.width, 1);
-      for (const position of [got.rotated, got.southUp]) {
-        expect(position.left).toBeCloseTo(got.zoomed.left, 1);
-        expect(position.top).toBeCloseTo(got.zoomed.top, 1);
-      }
     });
   }
 }
 
-test('existing table tuning offsets and scale adjust the frozen reference', async ({ page }) => {
+test('existing table tuning offsets and scale adjust the geographic placement', async ({ page }) => {
   await page.goto('?lang=en&nogist');
   await page.waitForFunction(() => typeof sigwxSideBox === 'function');
   const got = await page.evaluate(() => {

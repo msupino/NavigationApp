@@ -50,7 +50,7 @@ test('toggling adds a cropped image overlay; persists across reload', async ({ p
   await expect(page.locator('img.sigwx-ov-layer, .sigwx-side')).toHaveCount(0);
 });
 
-test('the loaded combined image keeps its size as the map zooms', async ({ page }) => {
+test('the loaded combined image scales with map zoom', async ({ page }) => {
   await boot(page);
   await page.locator('#sigwx-ov-cb').check();
   await expect(page.locator('.sigwx-side img[src^="data:image/png"]')).toHaveCount(1);
@@ -65,7 +65,7 @@ test('the loaded combined image keeps its size as the map zooms', async ({ page 
       pointerEvents: getComputedStyle(img).pointerEvents,
       popup: !!document.querySelector('.sigwx-table-modal') };
   });
-  expect(geometry.after).toBeCloseTo(geometry.before, 1);
+  expect(geometry.after).toBeCloseTo(geometry.before * 2, 1);
   expect(geometry.ratio).toBeCloseTo(geometry.naturalRatio, 2);
   expect(geometry.pointerEvents).toBe('none');
   expect(geometry.popup).toBe(false);
