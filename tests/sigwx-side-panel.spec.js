@@ -14,8 +14,8 @@ for (const lang of ['en', 'he']) {
         const measure = () => {
           const tableWidth = map.project([34.2, 40.6]).x - map.project([34.2, 37.1]).x;
           const headerHeight = tableWidth * (0.10484 - 0.02258) * 1240 / (0.992 * 1755);
-          const origin = map.unproject(map.project([34.2, 37.1]).subtract(L.point(0, headerHeight)));
-          const anchor = map.latLngToContainerPoint(origin);
+          const anchor = map.project([34.2, 37.1]).subtract(L.point(0, headerHeight))
+            .subtract(map.project(map.getCenter())).add(map.getSize().divideBy(2));
           return { left: parseFloat(box.style.left), top: parseFloat(box.style.top),
             width: parseFloat(box.style.width), anchorX: anchor.x, anchorY: anchor.y,
             transform: getComputedStyle(box).transform };
@@ -53,6 +53,10 @@ for (const lang of ['en', 'he']) {
         expect(position.transform).toBe('none');
       }
       expect(got.rotated.width).toBeCloseTo(got.zoomed.width, 1);
+      for (const position of [got.rotated, got.southUp]) {
+        expect(position.left).toBeCloseTo(got.zoomed.left, 1);
+        expect(position.top).toBeCloseTo(got.zoomed.top, 1);
+      }
     });
   }
 }

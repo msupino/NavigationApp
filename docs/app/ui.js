@@ -11606,14 +11606,13 @@ const NavWxAvailability = (function () {
       'sigwxTblScale', 'sigwxTblScale');
     const north = bounds[1][0], west = bounds[0][1], east = bounds[1][1];
     const width = Math.abs(map.project([north, east]).x - map.project([north, west]).x);
-    const origin = map.unproject(map.project([north, west])
-      .subtract(L.point(0, width * HEADER_ASPECT)));
-    const anchor = map.latLngToContainerPoint(origin);
+    const anchor = map.project([north, west]).subtract(L.point(0, width * HEADER_ASPECT))
+      .subtract(map.project(map.getCenter())).add(map.getSize().divideBy(2));
     sidePanel.style.left = anchor.x + 'px';
     sidePanel.style.top = anchor.y + 'px';
     sidePanel.style.width = width + 'px';
   }
-  // The geographic anchor follows bearing; the text outside the rotated pane stays upright.
+  // Ignore bearing for both position and text; pan and zoom still update the north-up projection.
   map.on('move zoom rotate resize', sizeSideBox);
   function sideBox() {
     if (sidePanel && sidePanel.isConnected) return sidePanel;
