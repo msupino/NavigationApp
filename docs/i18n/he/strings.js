@@ -433,6 +433,8 @@ window.S = {
   navLogAddRow: 'הוספת גובה',
   navLogAddRowAt: (ft) => 'הוספת ' + ft.toLocaleString() + ' רגל \u2014 הגובה הבא שאין לו שורה בטיסה הזו',
   navLogRemoveRow: 'מחיקת השורה',
+  sigwxTableTitle: 'מזג אוויר משמעותי \u2014 טבלה',
+  sigwxTableOpen: 'פתיחת הטבלה בגודל מלא',
   navLogCard: 'טבלת סטיות',
   navLogCardReset: 'ניקוי הטבלה: לטוס את הכיוון שנמסר',
   navLogCardRowReset: 'בלי סטייה בכיוון הזה',

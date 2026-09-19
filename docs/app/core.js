@@ -1719,6 +1719,8 @@ window.S = Object.assign({
   navLogAddRow: 'Add a level',
   navLogAddRowAt: (ft) => 'Add ' + ft.toLocaleString() + ' ft \u2014 the next level this flight has no row for',
   navLogRemoveRow: 'Remove this row',
+  sigwxTableTitle: 'Significant weather \u2014 table',
+  sigwxTableOpen: 'Open the table at full size',
   navLogCard: 'Compass card',
   navLogCardReset: 'Clear the card: steer what you are told to fly',
   navLogCardRowReset: 'No deviation on this heading',

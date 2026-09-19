@@ -35,15 +35,40 @@ test('SIGWX overlay box reveals when the manifest loads', async ({ page }) => {
 test('toggling adds a cropped image overlay; persists across reload', async ({ page }) => {
   await boot(page);
   await page.locator('#sigwx-ov-cb').check();
-  // Three cropped overlays appear (map panel + table + title header), data: URLs.
+  // Only the geographic crop is a map overlay; the text stays in screen space.
   const img = page.locator('img.sigwx-ov-layer');
-  await expect(img).toHaveCount(3);
+  await expect(img).toHaveCount(1);
+  await expect(page.locator('.sigwx-side img[src^="data:image/png"]')).toHaveCount(1);
   await expect(img.first()).toHaveAttribute('src', /^data:image\/png/);
   // Persisted on; restored after reload.
   await page.reload();
   await page.waitForFunction(() => document.getElementById('sigwx-ov-cb'));
   await expect(page.locator('#sigwx-ov-cb')).toBeChecked();
-  await expect(page.locator('img.sigwx-ov-layer')).toHaveCount(3);
+  await expect(page.locator('img.sigwx-ov-layer')).toHaveCount(1);
+  await expect(page.locator('.sigwx-side img[src^="data:image/png"]')).toHaveCount(1);
+  await page.locator('#sigwx-ov-cb').uncheck();
+  await expect(page.locator('img.sigwx-ov-layer, .sigwx-side')).toHaveCount(0);
+});
+
+test('the loaded combined image scales with map zoom', async ({ page }) => {
+  await boot(page);
+  await page.locator('#sigwx-ov-cb').check();
+  await expect(page.locator('.sigwx-side img[src^="data:image/png"]')).toHaveCount(1);
+  const geometry = await page.evaluate(async () => {
+    const img = document.querySelector('.sigwx-side img');
+    await img.decode();
+    const before = img.getBoundingClientRect();
+    map.setZoom(map.getZoom() + 1, { animate: false });
+    const after = img.getBoundingClientRect();
+    return { before: before.width, after: after.width,
+      ratio: after.width / after.height, naturalRatio: img.naturalWidth / img.naturalHeight,
+      pointerEvents: getComputedStyle(img).pointerEvents,
+      popup: !!document.querySelector('.sigwx-table-modal') };
+  });
+  expect(geometry.after).toBeCloseTo(geometry.before * 2, 1);
+  expect(geometry.ratio).toBeCloseTo(geometry.naturalRatio, 2);
+  expect(geometry.pointerEvents).toBe('none');
+  expect(geometry.popup).toBe(false);
 });
 
 test('no SIGWX times → overlay box stays hidden', async ({ page }) => {

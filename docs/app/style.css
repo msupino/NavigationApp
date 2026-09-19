@@ -8294,3 +8294,17 @@ body.theme-light .route-check-stop .route-check-head { color: #8a1c00; }
 body.theme-light .route-check-step-failed { color: #8a1c00; }
 /* Not a finding and not silence: a source that could not be read. */
 .route-check-unchecked { margin: 0; font-size: 12.5px; opacity: 0.7; }
+
+/* --- SIGWX side panel ----------------------------------------------------
+   The sheet's header and table are not geography. They used to be image overlays pinned to
+   invented coordinates east of Israel, which works only while the map is north-up: rotate it
+   and they swing away with that fiction, off to the side and on their ear. They sit in screen
+   space now -- same place, same way up, whatever the map is doing underneath. */
+.sigwx-side {
+  position: absolute;
+  z-index: 450;
+  display: flex;
+  flex-direction: column;
+  pointer-events: none;
+}
+.sigwx-side img { display: block; width: 100%; height: auto; }
