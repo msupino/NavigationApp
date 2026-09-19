@@ -313,24 +313,27 @@
       const summary = document.createElement('summary');
       summary.textContent = label;
       section.appendChild(summary);
+      const content = document.createElement('div');
+      content.className = 'route-check-group-content';
+      section.appendChild(content);
       body.appendChild(section);
-      return section;
+      return { section, content };
     };
     const lists = {};
     for (const key of SOURCES) {
       const count = result.findings.filter(f => sourceFor(f) === key).length;
       const missing = result.unchecked.includes(key);
       if (!count && !missing) continue;
-      const section = frame(key, names[key] + ' · ' + (missing ? S2.routeCheckNotRead
+      const { content } = frame(key, names[key] + ' · ' + (missing ? S2.routeCheckNotRead
         : S2.routeCheckFound(count)));
       const list = document.createElement('ul');
       list.className = 'route-check-list';
-      section.appendChild(list);
+      content.appendChild(list);
       lists[key] = list;
       if (!count) {
         const empty = document.createElement('p');
         empty.textContent = missing ? S2.routeCheckNotRead : S2.routeCheckNothing;
-        section.appendChild(empty);
+        content.appendChild(empty);
       }
     }
     for (const f of result.findings) {
@@ -356,8 +359,8 @@
       li.append(mark, text);
       lists[sourceFor(f)].appendChild(li);
     }
-    const weather = frame('weather', S2.routeCheckWeatherReports);
-    weather.classList.add('route-check-weather');
+    const { section: weatherSection, content: weather } = frame('weather', S2.routeCheckWeatherReports);
+    weatherSection.classList.add('route-check-weather');
     for (const report of result.weatherReports || []) {
       const station = document.createElement('h4');
       station.textContent = report.icao;
@@ -390,7 +393,6 @@
       empty.textContent = S2.routeCheckNoWeatherReports;
       weather.appendChild(empty);
     }
-    body.appendChild(weather);
 
     // Every source, every time, with what it found. Reported as "I only see NOTAMs on the
     // warning list": four of the five had been asked and had nothing to say, and a source that

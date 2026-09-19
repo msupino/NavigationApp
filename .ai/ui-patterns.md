@@ -131,3 +131,5 @@ are explicitly marked; these reports do not add findings or imply flight clearan
 Source types with findings or missing data and the weather reports have an independent native details/summary
 frame, collapsed initially. Frame headers show counts or missing-data status; the
 source summary remains visible above the frames. Expansion is not persisted.
+Expanded frame content scrolls independently within 40% of the viewport height,
+leaving its summary header outside the inner scroller.

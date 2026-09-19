@@ -8290,6 +8290,7 @@ body.theme-light .route-check-stop .route-check-head { color: #8a1c00; }
 .route-check-weather-report p { white-space: pre-wrap; overflow-wrap: anywhere; margin: 4px 0 10px; }
 .route-check-group { border: 1px solid var(--border, #9ca3af); border-radius: 8px; padding: 10px; margin-block: 10px; }
 .route-check-group > summary { cursor: pointer; font-weight: 700; overflow-wrap: anywhere; }
+.route-check-group-content { max-height: 40vh; max-height: 40dvh; overflow-y: auto; overflow-wrap: anywhere; }
 .route-check-step-done { opacity: 1; }
 /* A source that could not be read is the one thing on this list worth a colour: the findings
    below do not cover it. */

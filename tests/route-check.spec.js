@@ -769,6 +769,21 @@ test.describe('a panel full of findings', () => {
   const REAL = 'UAS/UAV ACT WILL TAKE PLACE AT OR-AKIVA INDUSTRY AREA. AN AREA BTN THE FLW PSN '
     + 'CLSD FM GND UP TO 500FT AMSL N323122E0345511 N323119E0345512. CTN ADZ.';
 
+  test('scrolling inside a frame keeps its header visible', async ({ page }) => {
+    await loaded(page, 20, REAL);
+    const frame = page.locator('details[data-type="notams"]');
+    const header = frame.locator('summary');
+    await header.scrollIntoViewIfNeeded();
+    const before = await header.boundingBox();
+    const content = frame.locator('.route-check-group-content');
+    await expect(content).toHaveCount(1);
+    await content.evaluate(el => { el.scrollTop = el.scrollHeight; });
+    expect(await content.evaluate(el => el.scrollTop)).toBeGreaterThan(0);
+    expect((await header.boundingBox()).y).toBe(before.y);
+    await expect(header).toBeInViewport();
+    await expect(frame.locator('.route-check-item').last()).toBeInViewport();
+  });
+
   test('the list scrolls and the window does not', async ({ page }) => {
     await loaded(page, 9, REAL);
     const got = await page.evaluate(() => {
@@ -794,6 +809,8 @@ test.describe('a panel full of findings', () => {
       const last = items[items.length - 1];
       const before = last.getBoundingClientRect().bottom <= box.getBoundingClientRect().bottom;
       body.scrollTop = body.scrollHeight;
+      const content = document.querySelector('details[data-type="notams"] .route-check-group-content');
+      if (content) content.scrollTop = content.scrollHeight;
       await new Promise(r => setTimeout(r, 50));
       return {
         before,
