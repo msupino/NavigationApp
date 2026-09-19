@@ -8287,6 +8287,7 @@ body.theme-light .route-check-stop .route-check-head { color: #8a1c00; }
   opacity: 0.55; }
 .route-check-step-mark { font-variant-numeric: tabular-nums; text-align: center; }
 .route-check-step-asking { opacity: 0.9; }
+.route-check-weather-report p { white-space: pre-wrap; overflow-wrap: anywhere; margin: 4px 0 10px; }
 .route-check-step-done { opacity: 1; }
 /* A source that could not be read is the one thing on this list worth a colour: the findings
    below do not cover it. */

@@ -91,6 +91,8 @@ window.S = {
   routeCheckSrcNotams: 'נוטאמים',
   routeCheckSrcHazards: 'SIGMET/AIRMET',
   routeCheckSrcCeiling: 'דיווחי שדות',
+  routeCheckWeatherReports: 'דיווחי מזג אוויר בקרבת המסלול (METAR / TAF)',
+  routeCheckNoWeatherReports: 'אין דיווחי מזג אוויר זמינים לשדות בקרבת המסלול.',
   routeCheckSrcCloud: 'תחזית לאורך המסלול',
   routeCheckCloudEst: 'בסיס עננים משוער',
   routeCheckAgl: 'מעל הקרקע',

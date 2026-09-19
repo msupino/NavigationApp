@@ -160,11 +160,13 @@
 
     // The stations this route actually passes, in the shape the check reads.
     const wx = [];
+    const weatherReports = [];
     if (wxRes && wxRes.stations) {
       const names = fieldsNearRoute(points, waypoints);
       for (const icao of Object.keys(wxRes.stations)) {
         if (!names.has(icao.toUpperCase())) continue;
         const st = wxRes.stations[icao] || {};
+        weatherReports.push({ icao, metar: st.metar || null, taf: st.taf || null });
         const m = st.metar;
         // The TAF's own periods, in the shape the check reads: what the field is forecast to be
         // while the flight is there, which is the question a plan asks and a METAR cannot
@@ -188,6 +190,7 @@
       notams: notamsRes,
       hazards: hazardRes,
       wx: wxRes ? wx : null,
+      weatherReports,
       cloud,
       contains: (a, p) => (typeof airspaceContains === 'function' ? airspaceContains(a, p) : false),
     };
@@ -197,6 +200,7 @@
     if (typeof routeCheckFindings !== 'function') return null;
     const input = await gather(onStep);
     const result = routeCheckFindings(input);
+    result.weatherReports = input.weatherReports;
     for (const finding of result.findings) {
       if (Number.isInteger(finding.leg)) finding.leg = input.legIndexes[finding.leg];
     }
@@ -318,6 +322,45 @@
       list.appendChild(li);
     }
     body.appendChild(list);
+
+    const weather = document.createElement('section');
+    weather.className = 'route-check-weather';
+    const weatherTitle = document.createElement('h3');
+    weatherTitle.textContent = S2.routeCheckWeatherReports;
+    weather.appendChild(weatherTitle);
+    for (const report of result.weatherReports || []) {
+      const station = document.createElement('h4');
+      station.textContent = report.icao;
+      station.dir = 'ltr';
+      weather.appendChild(station);
+      for (const type of ['metar', 'taf']) {
+        const data = report[type];
+        const row = document.createElement('div');
+        row.className = 'route-check-weather-report';
+        const label = document.createElement('strong');
+        label.textContent = type.toUpperCase();
+        row.appendChild(label);
+        const decoded = data && (type === 'metar' ? decodeMetar(data)
+          : decodeTaf(data).map(period => period.when + ': ' + period.text).join('\n'));
+        const summary = document.createElement('p');
+        summary.textContent = decoded || S2.routeCheckNotRead;
+        row.appendChild(summary);
+        const raw = data && (data.rawOb || data.rawTAF || data.rawText);
+        if (raw) {
+          const text = document.createElement('p');
+          text.dir = 'ltr';
+          text.textContent = raw;
+          row.appendChild(text);
+        }
+        weather.appendChild(row);
+      }
+    }
+    if (!(result.weatherReports || []).length) {
+      const empty = document.createElement('p');
+      empty.textContent = S2.routeCheckNoWeatherReports;
+      weather.appendChild(empty);
+    }
+    body.appendChild(weather);
 
     // Every source, every time, with what it found. Reported as "I only see NOTAMs on the
     // warning list": four of the five had been asked and had nothing to say, and a source that

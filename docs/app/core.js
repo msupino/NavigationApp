@@ -1385,6 +1385,8 @@ window.S = Object.assign({
   routeCheckSrcNotams: 'NOTAMs',
   routeCheckSrcHazards: 'SIGMET/AIRMET',
   routeCheckSrcCeiling: 'aerodrome reports',
+  routeCheckWeatherReports: 'Weather reports near the route (METAR / TAF)',
+  routeCheckNoWeatherReports: 'No weather reports available for airfields near this route.',
   routeCheckSrcCloud: 'forecast along the route',
   routeCheckCloudEst: 'Estimated cloud base',
   routeCheckAgl: 'AGL',

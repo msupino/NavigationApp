@@ -389,6 +389,36 @@ test.describe('the panel', () => {
     draw();
   });
 
+  test('weather reports include clear nearby stations and exclude unrelated stations', async ({ page }) => {
+    await app(page);
+    await drawRoute(page);
+    await page.evaluate(() => {
+      window.loadNotam = async () => [];
+      window.loadSigmets = async () => [];
+      window.loadAirmets = async () => [];
+      window.airspace = [];
+      window.loadWxFile = async () => ({ stations: {
+        LLHZ: {
+          metar: { rawOb: 'LLHZ clear observation', temp: 24, visib: 10 },
+          taf: { rawTAF: 'LLHZ clear forecast', fcsts: [{ timeFrom: 1800000000, visib: 10 }] },
+        },
+        LLIB: { metar: { rawOb: 'LLIB observation', temp: 20 } },
+        KJFK: { metar: { rawOb: 'unrelated station', temp: 25 } },
+      } });
+    });
+    await NavAid_show(page);
+    const weather = page.locator('.route-check-weather');
+    await expect(weather).toContainText('LLHZ clear observation');
+    await expect(weather).toContainText('Temperature 24°C');
+    await expect(weather).toContainText('LLHZ clear forecast');
+    await expect(weather).toContainText('Visibility');
+    await expect(weather).toContainText('LLIB observation');
+    await expect(weather).toContainText('could not be read');
+    await expect(weather).not.toContainText('unrelated station');
+    await expect(weather.locator('h4')).toHaveCount(2);
+    await expect(page.locator('.route-check-item')).toHaveCount(0);
+  });
+
   test('the toolbar offers it', async ({ page }) => {
     await app(page);
     await expect(page.locator('#route-check-btn')).toHaveText('✓ Route check');
