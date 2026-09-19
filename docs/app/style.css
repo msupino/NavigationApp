@@ -8287,10 +8287,25 @@ body.theme-light .route-check-stop .route-check-head { color: #8a1c00; }
   opacity: 0.55; }
 .route-check-step-mark { font-variant-numeric: tabular-nums; text-align: center; }
 .route-check-step-asking { opacity: 0.9; }
+.route-check-weather-report p { white-space: pre-wrap; overflow-wrap: anywhere; margin: 4px 0 10px; }
+.route-check-group { border: 1px solid var(--border, #9ca3af); border-radius: 8px; padding: 10px; margin-block: 10px; }
+.route-check-group > summary { cursor: pointer; font-weight: 700; overflow-wrap: anywhere; }
+.route-check-group-content { max-height: 40vh; max-height: 40dvh; overflow-y: auto; overflow-wrap: anywhere; }
 .route-check-step-done { opacity: 1; }
 /* A source that could not be read is the one thing on this list worth a colour: the findings
    below do not cover it. */
 .route-check-step-failed { opacity: 1; color: #ffb3a7; }
 body.theme-light .route-check-step-failed { color: #8a1c00; }
-/* Not a finding and not silence: a source that could not be read. */
+/* Not a finding and not silence: what each source was asked and what it said. A source that is
+   clear reads the same as one nobody consulted unless it is on the list saying so. */
 .route-check-unchecked { margin: 0; font-size: 12.5px; opacity: 0.7; }
+.route-check-asked { list-style: none; margin: 0 0 4px; padding: 0 0 6px; display: flex;
+  flex-direction: column; gap: 3px; font-size: 12px; opacity: 0.8;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.14); }
+body.theme-light .route-check-asked { border-bottom-color: rgba(0, 0, 0, 0.14); }
+.route-check-asked-row { display: grid; grid-template-columns: 1.4em minmax(0, 1fr) max-content;
+  gap: 8px; }
+.route-check-asked-said { font-variant-numeric: tabular-nums; opacity: 0.8; }
+/* The one state on this list worth a colour: the findings above do not cover it. */
+.route-check-asked-missing { opacity: 1; color: #ffb3a7; }
+body.theme-light .route-check-asked-missing { color: #8a1c00; }
