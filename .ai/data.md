@@ -160,3 +160,22 @@ Do not move or duplicate these PDFs without updating:
 - `docs/byop/README.md`
 - `plateBase()` behavior in `docs/app/io.js`
 - deploy assembly comments/tests if relevant
+# TAF validity
+
+The route check gathers only `legDirVisibleIndexes()`, preserving the displayed
+leg altitudes and remapping findings to their original map leg. It never synthesizes
+a return leg. Aerodrome bases are converted to AMSL with `elev_ft`; BKN/OVC
+warnings include clearance below 1,000 ft (domestic AIP A-02 section 4).
+FEW/SCT are separate advisories: the report cannot establish the required 1.5 km
+horizontal separation. This checker is not a complete CVFR compliance verdict.
+
+Aerodrome cloud findings compare every planned leg's current route-direction altitude
+and time window, not the route-wide minimum. The finding names the affected leg and
+its planned altitude; lower departure/arrival legs cannot suppress a cruise warning.
+
+`docs/app/taf-validity.js` is shared by the weather producer (`parse-metar.mjs`)
+and browser route checker. It preserves finite `timeTo` values in seconds and
+recovers them from `rawTAF` for cached feeds. TEMPO/PROB intervals do not end the
+prevailing forecast. BECMG keeps both states during its transition; wind-only
+changes retain prevailing clouds. Route warnings use half-open validity windows
+and never extend the final period beyond the TAF expiry.

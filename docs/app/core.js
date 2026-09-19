@@ -1378,18 +1378,28 @@ window.S = Object.assign({
   routeCheckWindow: 'Checked for',
   routeCheckClear: 'Nothing found against this plan in that window.',
   routeCheckCouldNotAsk: 'Not checked (no data):',
+  routeCheckNothing: 'nothing',
+  routeCheckNotRead: 'could not be read',
+  routeCheckFound: (n) => n + ' found',
   routeCheckSrcAirspace: 'airspace',
   routeCheckSrcNotams: 'NOTAMs',
   routeCheckSrcHazards: 'SIGMET/AIRMET',
   routeCheckSrcCeiling: 'aerodrome reports',
+  routeCheckWeatherReports: 'Weather reports near the route (METAR / TAF)',
+  routeCheckNoWeatherReports: 'No weather reports available for airfields near this route.',
   routeCheckSrcCloud: 'forecast along the route',
   routeCheckCloudEst: 'Estimated cloud base',
   routeCheckAgl: 'AGL',
   routeCheckLowCover: 'low cloud',
   routeCheckLegPlanned: 'leg planned',
+  routeCheckCeilingClearance: 'CVFR: at least 1,000 ft vertical clearance from BKN/OVC',
+  routeCheckScatteredClearance: 'CVFR: keep 1.5 km horizontally from individual clouds; horizontal clearance cannot be checked from this report',
   routeCheckCrossedAt: 'crossed at',
   routeCheckNoAlt: 'crossed, and no altitude is planned for that leg',
   routeCheckCeiling: 'ceiling',
+  routeCheckLayer: 'layer',
+  routeCheckForecast: 'forecast',
+  routeCheckObserved: 'reported',
   routeCheckLowestLeg: 'lowest planned leg',
   routeCheckFrom: 'from',
   routeCheckUntil: 'until',
@@ -6155,7 +6165,7 @@ function routeCheckCloudFindings(samples, legs, windows) {
     const baseAmsl = s.baseFtAgl + elevFt;
     const legAlt = (legs && legs[s.leg] && Number.isFinite(legs[s.leg].inboundAltitude))
       ? legs[s.leg].inboundAltitude : null;
-    if (legAlt === null || baseAmsl > legAlt) continue;
+    if (legAlt === null || baseAmsl - legAlt >= 1000) continue;
     const had = worst.get(s.leg);
     if (!had || baseAmsl < had.baseFtAmsl) {
       worst.set(s.leg, {
@@ -6288,22 +6298,45 @@ function routeCheckFindings(input) {
   }
 
   // --- ceiling ---------------------------------------------------------------------------
-  // The lowest broken or overcast layer at a field on this route. A planned leg at or above it
-  // is a leg planned into cloud, which is the one thing a VFR plan cannot be.
+  // CVFR requires clearance below BKN/OVC, not merely a planned altitude below the base.
   if (!Array.isArray(o.wx)) out.unchecked.push('ceiling');
   else {
-    const planned = legs.map((_, i) => altOf(i)).filter(Number.isFinite);
-    const lowestPlanned = planned.length ? Math.min(...planned) : null;
     const names = new Set(wps.map(w => (w && w.name || '').trim().toUpperCase()));
     for (const st of o.wx) {
       if (!st || !names.has((st.icao || '').trim().toUpperCase())) continue;
-      const ceil = routeCheckCeilingFt(st.clouds);
-      if (ceil === null || lowestPlanned === null) continue;
-      if (ceil > lowestPlanned) continue;
+      // What the field is reporting NOW, and what it is forecast to be while the flight is
+      // there. Reported as one field's worst case in the window, not one row per TAF period:
+      // a five-period TAF would otherwise fill the panel by itself.
+      const sets = [{ clouds: st.clouds, forecast: false, from: out.from, to: out.to }];
+      for (const p of (Array.isArray(st.taf) ? st.taf : [])) {
+        if (!p || !Number.isFinite(p.from) || !Number.isFinite(p.to)
+            || p.to <= out.from || p.from >= out.to) continue;
+        sets.push({ clouds: p.clouds, forecast: true, from: p.from, to: p.to });
+      }
+      let worst = null;
+      for (const set of sets) {
+        for (let i = 0; i < legs.length; i++) {
+          const altitude = altOf(i);
+          const flightWindow = legWindow(i);
+          if (set.forecast && (set.to <= flightWindow.from || set.from >= flightWindow.to)) continue;
+          for (const layer of routeCheckLayersBelow(set.clouds, altitude, st.elevationFt)) {
+            // A ceiling takes precedence over scattered cloud.
+            const better = !worst
+              || (layer.ceiling && !worst.ceiling)
+              || (layer.ceiling === worst.ceiling && layer.baseFt < worst.baseFt);
+            if (better) worst = Object.assign({}, layer, set, { leg: i, altFt: altitude });
+          }
+        }
+      }
+      if (!worst) continue;
       add({
-        kind: 'ceiling', severity: 'warn', leg: null,
-        icao: st.icao || '', ceilingFt: ceil, altFt: lowestPlanned,
-        from: out.from, to: out.to,
+        // A ceiling is a lid; a scattered layer is not, and calling it one would be wrong in the
+        // other direction. Two kinds, so the sheet can say which it is.
+        kind: worst.ceiling ? 'ceiling' : 'layer',
+        severity: 'warn', leg: worst.leg,
+        icao: st.icao || '', ceilingFt: worst.baseFt, cover: worst.cover,
+        forecast: !!worst.forecast, altFt: worst.altFt,
+        from: worst.from, to: worst.to,
       });
     }
   }
@@ -6322,8 +6355,30 @@ function routeCheckFindings(input) {
     || ((a.leg === null ? 99 : a.leg) - (b.leg === null ? 99 : b.leg)));
   return out;
 }
+// Every reported layer that sits at or below a planned altitude, lowest first.
+//
+// The first version of this took only BROKEN and OVERCAST, on the grounds that scattered is not
+// a ceiling. That is true as a definition and wrong as a rule: reported as "LLHZ to LLHA should
+// notify on clouds, too low, SCT to BKN" -- and the TAF said SCT018 with PROB40 TEMPO BKN015
+// while the METAR said CAVOK. A scattered layer at 1,800 ft under a leg planned at 3,000 is
+// exactly what a VFR flight needs told; what it must not be told is that it is a ceiling.
+function routeCheckLayersBelow(clouds, altFt, elevationFt = 0) {
+  const out = [];
+  if (!Array.isArray(clouds) || !Number.isFinite(altFt)) return out;
+  for (const c of clouds) {
+    if (!c || !Number.isFinite(c.base)) continue;
+    const cover = String(c.cover || '').toUpperCase();
+    if (!['FEW', 'SCT', 'BKN', 'OVC'].includes(cover)) continue;
+    const ceiling = cover === 'BKN' || cover === 'OVC';
+    const baseFt = c.base + (Number.isFinite(elevationFt) ? elevationFt : 0);
+    if (ceiling ? baseFt - altFt >= 1000 : baseFt > altFt) continue;
+    out.push({ baseFt, cover, ceiling });
+  }
+  return out.sort((a, b) => a.baseFt - b.baseFt);
+}
 // The ceiling: the lowest BROKEN or OVERCAST base. Few and scattered are not a ceiling -- that
-// is the definition, and reporting SCT as one would cry wolf on an ordinary fair-weather day.
+// is the definition, which is why routeCheckLayersBelow above reports them as something else
+// rather than as this.
 function routeCheckCeilingFt(clouds) {
   if (!Array.isArray(clouds)) return null;
   let low = null;
@@ -6349,6 +6404,7 @@ if (typeof window !== 'undefined') {
   window.routeCheckFindings = routeCheckFindings;
   window.routeCheckWindows = routeCheckWindows;
   window.routeCheckCeilingFt = routeCheckCeilingFt;
+  window.routeCheckLayersBelow = routeCheckLayersBelow;
   window.routeCheckPointInRing = routeCheckPointInRing;
   window.routeCheckOverlaps = routeCheckOverlaps;
 }

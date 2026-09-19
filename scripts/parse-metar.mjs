@@ -6,6 +6,7 @@
 // converted. "10+" means "10 km or more" (9999 / CAVOK / P6SM).
 //
 // This module is pure (no I/O) so it unit-tests without the network.
+import tafPeriods from '../docs/app/taf-validity.js';
 
 const SM_TO_KM = 1.60934;
 
@@ -177,7 +178,9 @@ export function parseTaf(raw, now = new Date()) {
     };
   }).filter(f => f.wdir != null || f.visib != null || f.clouds.length || f.wxString);
 
-  return { icaoId, rawTAF: clean, fcsts };
+  const taf = { icaoId, rawTAF: clean, fcsts };
+  taf.fcsts = tafPeriods(taf);
+  return taf;
 }
 
 // Assemble the app's stations map from arrays of raw METAR/TAF strings (the IAA feed).
