@@ -11600,19 +11600,54 @@ const NavWxAvailability = (function () {
   const HEADER_ASPECT = (CROP_HEADER.y1 - CROP_HEADER.y0) * 1240
     / ((CROP_HEADER.x1 - CROP_HEADER.x0) * 1755);
 
+  // Where the legend sits: the place it would occupy with north up, and its CENTRE pinned
+  // there.
+  //
+  // It was computed straight out of map.project(), which is the north-up CRS plane and knows
+  // nothing about the bearing, then written as left/top in screen space. Rotating alone looked
+  // right -- but a pan while rotated moves the map along a vector that is itself rotated, so
+  // the north-up projection of the anchor moved by a different vector: panning 120 px sideways
+  // slid the legend 85 left and 84 down. Reported as the legend keeping moving when north is
+  // not up, and that is exactly what it was doing.
+  //
+  // latLngToContainerPoint gives where the anchor REALLY is on screen, bearing included. Undo
+  // the bearing about the container centre and you have the north-up screen position, which is
+  // stable under pan (the rotation cancels) and stationary under rotation (nothing else
+  // changes). The panel's centre goes there.
+  function sigwxNorthUpCentre(latlng) {
+    const size = map.getSize();
+    const mid = L.point(size.x / 2, size.y / 2);
+    const here = map.latLngToContainerPoint(latlng);
+    const bearing = (typeof map.getBearing === 'function') ? (map.getBearing() || 0) : 0;
+    if (!bearing) return here;
+    const a = -bearing * Math.PI / 180;      // undo the bearing, not apply it again
+    const d = here.subtract(mid);
+    return L.point(mid.x + d.x * Math.cos(a) - d.y * Math.sin(a),
+      mid.y + d.x * Math.sin(a) + d.y * Math.cos(a));
+  }
   function sizeSideBox() {
     if (!sidePanel) return;
     const bounds = boundsFrom(BOUNDS_TABLE, 'sigwxTblLatOffset', 'sigwxTblLngOffset',
       'sigwxTblScale', 'sigwxTblScale');
-    const north = bounds[1][0], west = bounds[0][1], east = bounds[1][1];
+    const [[south, west], [north, east]] = bounds;
     const width = Math.abs(map.project([north, east]).x - map.project([north, west]).x);
-    const anchor = map.project([north, west]).subtract(L.point(0, width * HEADER_ASPECT))
-      .subtract(map.project(map.getCenter())).add(map.getSize().divideBy(2));
-    sidePanel.style.left = anchor.x + 'px';
-    sidePanel.style.top = anchor.y + 'px';
+    const height = width * HEADER_ASPECT;
+    const centre = sigwxNorthUpCentre([(south + north) / 2, (west + east) / 2]);
+    // No clamping. The legend is anchored to the map: pan away from where it lives and it goes
+    // off the edge, the way anything drawn on a chart does. I had it held inside the viewport
+    // at first, and that fights the whole point -- at a phone's width the table is wider than
+    // the screen, so it pinned to the edge and could not move at all, and it froze the tuning
+    // offsets too. Keeping it on screen is a different feature from putting it where it belongs.
+    const left = centre.x - width / 2;
+    const top = centre.y - height / 2;
+    // Unrounded, as it was: the tuning offsets and the scale are compared against exact
+    // projected widths, and rounding here put a half-pixel between them.
+    sidePanel.style.left = left + 'px';
+    sidePanel.style.top = top + 'px';
     sidePanel.style.width = width + 'px';
   }
-  // Ignore bearing for both position and text; pan and zoom still update the north-up projection.
+  // `rotate` is in the list so the north-up position is recomputed when the bearing changes --
+  // it cancels out, which is the point, but the pan that usually comes with it does not.
   map.on('move zoom rotate resize', sizeSideBox);
   function sideBox() {
     if (sidePanel && sidePanel.isConnected) return sidePanel;
