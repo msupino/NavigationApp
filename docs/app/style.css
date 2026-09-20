@@ -8322,4 +8322,8 @@ body.theme-light .route-check-asked { border-bottom-color: rgba(0, 0, 0, 0.14); 
 .route-check-asked-said { font-variant-numeric: tabular-nums; opacity: 0.8; }
 /* The one state on this list worth a colour: the findings above do not cover it. */
 .route-check-asked-missing { opacity: 1; color: #ffb3a7; }
+/* Answered, but not completely -- a TAF whose periods could not be worked out. Not the red of
+   a source that said nothing at all, and not the quiet of one that is clear. */
+.route-check-asked-partial { opacity: 1; color: #ffd9a0; }
+body.theme-light .route-check-asked-partial { color: #7a4a00; }
 body.theme-light .route-check-asked-missing { color: #8a1c00; }

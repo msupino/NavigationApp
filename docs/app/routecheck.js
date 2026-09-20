@@ -171,14 +171,19 @@
         // The TAF's own periods, in the shape the check reads: what the field is forecast to be
         // while the flight is there, which is the question a plan asks and a METAR cannot
         // answer. A field can be CAVOK now and forecast SCT018 BKN015 for the hour you arrive.
+        // A TAF is there but yields no periods when its raw text cannot be parsed -- no
+        // validity group, no FM/TEMPO/BECMG markers. That is not a clear field, and the panel
+        // has to be able to say so rather than reporting "nothing".
         const fcsts = tafPeriods(st.taf);
+        const tafUnreadable = !!(st.taf && Array.isArray(st.taf.fcsts) && st.taf.fcsts.length
+          && !fcsts.length);
         const taf = fcsts.map(f => ({
           from: Number(f.timeFrom) * 1000,
           to: f.timeTo * 1000,
           clouds: Array.isArray(f.clouds) ? f.clouds : [],
         })).filter(p => Number.isFinite(p.from));
         const field = (window.airfields || []).find(f => (f.icao || f.name || '').toUpperCase() === icao.toUpperCase());
-        wx.push({ icao, clouds: (m && m.clouds) || [], taf,
+        wx.push({ icao, clouds: (m && m.clouds) || [], taf, tafUnreadable,
           elevationFt: field && Number.isFinite(field.elev_ft) ? field.elev_ft : 0 });
       }
     }
@@ -257,9 +262,13 @@
       // a derived figure dressed as a METAR is a wrong number wearing the shape of a right one.
       const head = (S2.routeCheckCloudEst || 'Estimated cloud base') + ' ' + ft(f.baseFtAmsl)
         + ' (' + (S2.routeCheckAgl || 'AGL') + ' ' + ft(f.baseFtAgl) + ')';
+      // No altitude on the leg means no clearance to state: without this the row read
+      // "leg planned  · CVFR: at least 1,000 ft ...", quoting a rule against a blank.
       const detail = (S2.routeCheckLowCover || 'low cloud') + ' ' + f.coverPct + '%'
-        + ' · ' + (S2.routeCheckLegPlanned || 'leg planned') + ' ' + ft(f.altFt)
-        + ' · ' + S2.routeCheckCeilingClearance;
+        + ' · ' + (f.noAltitude
+          ? (S2.routeCheckNoLegAlt || 'no altitude planned \u2014 nothing to judge it against')
+          : (S2.routeCheckLegPlanned || 'leg planned') + ' ' + ft(f.altFt)
+            + ' · ' + S2.routeCheckCeilingClearance);
       return { head, detail, where, when: span(f.from, f.to) };
     }
     if (f.kind === 'ceiling' || f.kind === 'layer') {
@@ -271,8 +280,14 @@
       const src = f.forecast ? (S2.routeCheckForecast || 'forecast') : (S2.routeCheckObserved || 'reported');
       return {
         head: (f.icao || '') + ' · ' + what + ' ' + ft(f.ceilingFt) + ' AMSL',
-        detail: src + ' · ' + (S2.routeCheckLegPlanned || 'leg planned') + ' ' + ft(f.altFt)
-          + ' · ' + (f.kind === 'ceiling' ? S2.routeCheckCeilingClearance : S2.routeCheckScatteredClearance),
+        // With no altitude on the leg there is no clearance to state either: saying "leg
+        // planned" and then nothing rendered a row reading "leg planned  ·", which is the
+        // shape of an answer without being one.
+        detail: src + ' · ' + (f.noAltitude
+          ? (S2.routeCheckNoLegAlt || 'no altitude planned \u2014 nothing to judge it against')
+          : (S2.routeCheckLegPlanned || 'leg planned') + ' ' + ft(f.altFt)
+            + ' · ' + (f.kind === 'ceiling' ? S2.routeCheckCeilingClearance
+              : S2.routeCheckScatteredClearance)),
         where, when: f.forecast ? span(f.from, f.to) : '',
       };
     }
@@ -418,9 +433,15 @@
       label.textContent = names[key] || key;
       const said = document.createElement('span');
       said.className = 'route-check-asked-said';
+      const partial = (result.partial || []).includes(key);
+      if (partial) li.classList.add('route-check-asked-partial');
       said.textContent = missing
         ? (S2.routeCheckNotRead || 'could not be read')
-        : (counts[key]
+        : partial
+          ? ((counts[key] ? (S2.routeCheckFound ? S2.routeCheckFound(counts[key])
+            : counts[key] + ' found') + ' \u00b7 ' : '')
+            + (S2.routeCheckPartlyRead || 'part of it could not be read'))
+          : (counts[key]
           ? (S2.routeCheckFound ? S2.routeCheckFound(counts[key]) : counts[key] + ' found')
           : (S2.routeCheckNothing || 'nothing'));
       li.append(mark, label, said);
