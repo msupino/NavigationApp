@@ -1392,6 +1392,8 @@ window.S = Object.assign({
   routeCheckAgl: 'AGL',
   routeCheckLowCover: 'low cloud',
   routeCheckLegPlanned: 'leg planned',
+  routeCheckNoLegAlt: 'no altitude planned \u2014 nothing to judge it against',
+  routeCheckPartlyRead: 'part of it could not be read',
   routeCheckCeilingClearance: 'CVFR: at least 1,000 ft vertical clearance from BKN/OVC',
   routeCheckScatteredClearance: 'CVFR: keep 1.5 km horizontally from individual clouds; horizontal clearance cannot be checked from this report',
   routeCheckCrossedAt: 'crossed at',
@@ -6163,13 +6165,16 @@ function routeCheckCloudFindings(samples, legs, windows) {
     const baseAmsl = s.baseFtAgl + elevFt;
     const legAlt = (legs && legs[s.leg] && Number.isFinite(legs[s.leg].inboundAltitude))
       ? legs[s.leg].inboundAltitude : null;
-    if (legAlt === null || baseAmsl - legAlt >= 1000) continue;
+    // Same rule as the fields above: nothing planned is nothing to measure against, not a
+    // reason to stay quiet.
+    if (legAlt !== null && baseAmsl - legAlt >= 1000) continue;
     const had = worst.get(s.leg);
     if (!had || baseAmsl < had.baseFtAmsl) {
       worst.set(s.leg, {
         kind: 'cloudbase', severity: 'warn', leg: s.leg,
         baseFtAmsl: baseAmsl, baseFtAgl: s.baseFtAgl, groundFt: Math.round(elevFt),
         coverPct: Math.round(Number(s.lowCoverPct)), altFt: legAlt,
+        noAltitude: legAlt === null,
         lat: s.lat, lng: s.lng, estimated: true,
         from: (windows && windows[s.leg] && windows[s.leg].from) || null,
         to: (windows && windows[s.leg] && windows[s.leg].to) || null,
@@ -6192,7 +6197,11 @@ function routeCheckFindings(input) {
   const o = input || {};
   const wps = Array.isArray(o.waypoints) ? o.waypoints : [];
   const legs = Array.isArray(o.legs) ? o.legs : [];
-  const out = { findings: [], unchecked: [], from: null, to: null };
+  // `unchecked` is a source nobody could read at all. `partial` is a source that answered, but
+  // not completely -- a TAF whose raw text could not be parsed into periods, say. Both are the
+  // opposite of "nothing found", and a sheet that blurs them tells a pilot the sky is clear
+  // when what it means is that it could not look.
+  const out = { findings: [], unchecked: [], partial: [], from: null, to: null };
   if (wps.length < 2 || !legs.length) return out;
   const windows = routeCheckWindows(o.legTimesH || [], o.departAtMs);
   out.from = windows.length ? windows[0].from : (o.departAtMs || null);
@@ -6302,6 +6311,10 @@ function routeCheckFindings(input) {
     const names = new Set(wps.map(w => (w && w.name || '').trim().toUpperCase()));
     for (const st of o.wx) {
       if (!st || !names.has((st.icao || '').trim().toUpperCase())) continue;
+      // A field that published a TAF whose periods could not be worked out is a field this
+      // check has only half looked at: the METAR is current weather, and the forecast is the
+      // half a PLAN needs.
+      if (st.tafUnreadable && !out.partial.includes('ceiling')) out.partial.push('ceiling');
       // What the field is reporting NOW, and what it is forecast to be while the flight is
       // there. Reported as one field's worst case in the window, not one row per TAF period:
       // a five-period TAF would otherwise fill the panel by itself.
@@ -6334,6 +6347,7 @@ function routeCheckFindings(input) {
         severity: 'warn', leg: worst.leg,
         icao: st.icao || '', ceilingFt: worst.baseFt, cover: worst.cover,
         forecast: !!worst.forecast, altFt: worst.altFt,
+        noAltitude: !Number.isFinite(worst.altFt),
         from: worst.from, to: worst.to,
       });
     }
@@ -6362,14 +6376,25 @@ function routeCheckFindings(input) {
 // exactly what a VFR flight needs told; what it must not be told is that it is a ceiling.
 function routeCheckLayersBelow(clouds, altFt, elevationFt = 0) {
   const out = [];
-  if (!Array.isArray(clouds) || !Number.isFinite(altFt)) return out;
+  if (!Array.isArray(clouds)) return out;
+  // No planned altitude is no LIMIT, not "nothing qualifies". A leg nobody has typed an
+  // altitude on cannot be called clear of the cloud under it -- the airspace check says
+  // "crossed, and no altitude is planned for that leg" for exactly this reason, and cloud used
+  // to go quiet instead: `Number.isFinite(null)` is false, so the guard returned an empty list
+  // and the source row then read "nothing", which is not what it knew.
+  const limit = Number.isFinite(altFt) ? altFt : Infinity;
   for (const c of clouds) {
     if (!c || !Number.isFinite(c.base)) continue;
     const cover = String(c.cover || '').toUpperCase();
     if (!['FEW', 'SCT', 'BKN', 'OVC'].includes(cover)) continue;
     const ceiling = cover === 'BKN' || cover === 'OVC';
+    // A METAR's bases are above the FIELD; a planned altitude is above the sea.
     const baseFt = c.base + (Number.isFinite(elevationFt) ? elevationFt : 0);
-    if (ceiling ? baseFt - altFt >= 1000 : baseFt > altFt) continue;
+    // The two tests differ on purpose. A ceiling is a lid, and VFR wants a thousand feet under
+    // it, so a ceiling within 1,000 ft of the planned level is already a problem. Scattered is
+    // not a lid -- there is a way through it -- so it is only worth saying when the flight
+    // would actually be in it.
+    if (ceiling ? baseFt - limit >= 1000 : baseFt > limit) continue;
     out.push({ baseFt, cover, ceiling });
   }
   return out.sort((a, b) => a.baseFt - b.baseFt);

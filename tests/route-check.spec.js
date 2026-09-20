@@ -362,33 +362,36 @@ test('the findings come out in the order they matter', async ({ page }) => {
   expect(got.findings.map(f => f.kind)).toContain('ceiling');
 });
 
+// Opening the real panel, shared by every describe below: three of them had grown their own
+// copy of this because it started life inside one.
+async function app(page) {
+  await page.addInitScript(() => {
+    try {
+      for (const s of ['build', 'view', 'display', 'charts', 'export', 'print']) {
+        localStorage.setItem('navaid.sec.' + s, '1');
+      }
+    } catch (e) {}
+  });
+  await page.goto('?lang=en&nogist');
+  await page.waitForFunction(() => !!(window.NavAid && NavAid.routeCheck)
+    && typeof draw === 'function');
+  await page.evaluate(() => { if (window.clearBootLoading) clearBootLoading(); });
+}
+
+const drawRoute = (page) => page.evaluate(() => {
+  state.waypoints = [
+    { name: 'LLHZ', lat: 32.18, lng: 34.83 },
+    { name: 'BAZRA', lat: 32.45, lng: 35.00 },
+    { name: 'LLIB', lat: 32.98, lng: 35.57 },
+  ];
+  syncLegs();
+  for (const l of state.legs) { l.inboundAltitude = 3000; l.flightSpeed = 90; }
+  draw();
+});
+
+
 // The panel itself: the control a pilot presses, and what it says when the feeds answer.
 test.describe('the panel', () => {
-  async function app(page) {
-    await page.addInitScript(() => {
-      try {
-        for (const s of ['build', 'view', 'display', 'charts', 'export', 'print']) {
-          localStorage.setItem('navaid.sec.' + s, '1');
-        }
-      } catch (e) {}
-    });
-    await page.goto('?lang=en&nogist');
-    await page.waitForFunction(() => !!(window.NavAid && NavAid.routeCheck)
-      && typeof draw === 'function');
-    await page.evaluate(() => { if (window.clearBootLoading) clearBootLoading(); });
-  }
-
-  const drawRoute = (page) => page.evaluate(() => {
-    state.waypoints = [
-      { name: 'LLHZ', lat: 32.18, lng: 34.83 },
-      { name: 'BAZRA', lat: 32.45, lng: 35.00 },
-      { name: 'LLIB', lat: 32.98, lng: 35.57 },
-    ];
-    syncLegs();
-    for (const l of state.legs) { l.inboundAltitude = 3000; l.flightSpeed = 90; }
-    draw();
-  });
-
   test('weather reports include clear nearby stations and exclude unrelated stations', async ({ page }) => {
     await app(page);
     await drawRoute(page);
@@ -1081,13 +1084,8 @@ test.describe('reading the forecast off the wire', () => {
 // looked at, which is the other half of trusting the answer.
 test.describe('what was looked at', () => {
   async function ran(page, feeds) {
-    await page.addInitScript(() => {
-      try {
-        for (const k of ['build', 'view', 'display', 'charts', 'export', 'print']) {
-          localStorage.setItem('navaid.sec.' + k, '1');
-        }
-      } catch (e) {}
-    });
+    await app(page);
+    await drawRoute(page);
     await page.goto('?lang=en&nogist');
     await page.waitForFunction(() => !!(window.NavAid && NavAid.routeCheck)
       && typeof draw === 'function');
@@ -1147,5 +1145,104 @@ test.describe('what was looked at', () => {
       [...document.querySelectorAll('.route-check-asked-row')]
         .filter(li => /nothing/.test(li.textContent)).length);
     expect(nothings).toBe(4);           // the fifth is the forecast, unreachable offline
+  });
+});
+
+// A route drawn by clicking points has no altitudes typed on it yet. The airspace check already
+// says "crossed, and no altitude is planned for that leg" in that case; cloud went silent
+// instead, and the source list then read "nothing" -- which is not what it knew. Reported as
+// not seeing the cloud alert at all.
+test.describe('a route with no planned altitude', () => {
+  const noAlt = (extra) => page => page.evaluate(
+    (args) => routeCheckFindings(Object.assign({}, args.route, args.extra, {
+      legs: [{}, {}, {}],                       // drawn, not planned
+      contains: (a, p) => routeCheckPointInRing(p, a.ring),
+    })),
+    { route: ROUTE, extra });
+
+  test('a field reporting cloud is still named', async ({ page }) => {
+    await boot(page);
+    const got = await noAlt({ wx: [{ icao: 'LLIB', clouds: [{ cover: 'BKN', base: 1500 }] }] })(page);
+    const f = got.findings.filter(x => x.kind === 'ceiling' || x.kind === 'layer');
+    expect(f).toHaveLength(1);
+    expect(f[0].noAltitude).toBe(true);
+    expect(f[0].ceilingFt).toBe(1500);
+  });
+
+  test('cloud along the route is still named', async ({ page }) => {
+    await boot(page);
+    const got = await noAlt({
+      cloud: [{ lat: 32.4, lng: 35.0, leg: 1, baseFtAgl: 1200, lowCoverPct: 80, elevFt: 0 }],
+    })(page);
+    const f = got.findings.filter(x => x.kind === 'cloudbase');
+    expect(f).toHaveLength(1);
+    expect(f[0].noAltitude).toBe(true);
+  });
+
+  // ...and it says why it cannot judge, rather than implying it did.
+  test('the row says there was nothing to judge it against', async ({ page }) => {
+    await boot(page);
+    await page.waitForFunction(() => !!(window.NavAid && NavAid.routeCheck));
+    const parts = await page.evaluate(() => ({
+      field: NavAid.routeCheck.lineFor({ kind: 'ceiling', icao: 'LLHA', cover: 'BKN',
+        ceilingFt: 1500, altFt: null, noAltitude: true, forecast: false }),
+      enroute: NavAid.routeCheck.lineFor({ kind: 'cloudbase', leg: 0, baseFtAmsl: 1200,
+        baseFtAgl: 1200, coverPct: 80, altFt: null, noAltitude: true }),
+    }));
+    expect(parts.field.detail).toMatch(/no altitude planned/i);
+    expect(parts.enroute.detail).toMatch(/no altitude planned/i);
+    expect(parts.field.detail).not.toMatch(/lowest planned leg/i);
+  });
+});
+
+// A TAF is published but its periods cannot be worked out -- no validity group, no FM/TEMPO
+// markers in the raw text, so tafPeriods returns nothing. The field then contributed only its
+// METAR, and the source list said "nothing": clear, to a pilot, when what it meant was that the
+// forecast half could not be read.
+test.describe('a forecast that could not be parsed', () => {
+  const RAW_OK = 'TAF LLIB 162304Z 1700/1724 VRB04KT 9999 SCT018 '
+    + 'PROB40 TEMPO 1700/1706 BKN015 BECMG 1707/1709 33010KT CAVOK';
+
+  async function withTaf(page, taf) {
+    await app(page);
+    await drawRoute(page);
+    await page.evaluate((t) => {
+      window.loadNotam = async () => ([]);
+      window.loadSigmets = async () => ([]);
+      window.loadAirmets = async () => ([]);
+      window.airspace = [];
+      window.fetch = async () => { throw new Error('offline'); };
+      window.loadWxFile = async () => ({ stations: { LLIB: { metar: { clouds: [] }, taf: t } } });
+    }, taf);
+    await page.evaluate(() => NavAid.routeCheck.show());
+    await page.waitForSelector('.route-check-asked-row');
+  }
+
+  const fcsts = (hour) => ([{
+    fcstChange: '', timeFrom: Math.round(Date.UTC(2026, 8, 17, hour) / 1000),
+    clouds: [{ cover: 'BKN', base: 1500 }],
+  }]);
+
+  test('a TAF with no readable periods is marked, not counted as clear', async ({ page }) => {
+    // fcsts present, but nothing in the raw text to bound them with.
+    await withTaf(page, { rawTAF: 'TAF LLIB 162304Z NIL', fcsts: fcsts(0) });
+    const row = await page.evaluate(() =>
+      [...document.querySelectorAll('.route-check-asked-row')]
+        .find(li => /aerodrome/.test(li.textContent)).textContent);
+    expect(row).toMatch(/could not be read/i);
+    expect(row).not.toMatch(/\bnothing\b/);
+    await expect(page.locator('.route-check-asked-partial')).toHaveCount(1);
+  });
+
+  test('a TAF that parses is not marked', async ({ page }) => {
+    await withTaf(page, { rawTAF: RAW_OK, fcsts: fcsts(0) });
+    await expect(page.locator('.route-check-asked-partial')).toHaveCount(0);
+  });
+
+  // No TAF at all is not the same as an unreadable one: a field that published nothing has
+  // nothing to fail at.
+  test('a field with no TAF at all is not marked', async ({ page }) => {
+    await withTaf(page, { rawTAF: 'TAF LLIB 162304Z NIL', fcsts: [] });
+    await expect(page.locator('.route-check-asked-partial')).toHaveCount(0);
   });
 });
