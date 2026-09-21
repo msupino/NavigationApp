@@ -6,7 +6,7 @@
 //
 // The hard part is that the two feeds cannot agree exactly: NOTAM and wind are hourly, the
 // weather charts are published at 00/03/06/12/18Z. The clock therefore pulls the charts to
-// the newest sheet issued by the chosen hour and SAYS which one that is, rather than leaving
+// the sheet valid NEAREST the chosen hour and SAYS which one that is, rather than leaving
 // two layers quietly disagreeing about what "+3h" means.
 const { test, expect } = require('./_setup');
 
@@ -92,7 +92,7 @@ test('with nothing time-dependent on, the clock goes quiet instead of vanishing'
   expect(await page.evaluate(() => document.getElementById('map-time').classList.contains('idle'))).toBe(false);
 });
 
-test('the weather charts snap to the newest sheet issued by that hour, and say which', async ({ page }) => {
+test('the weather charts snap to the sheet valid nearest that hour, and say which', async ({ page }) => {
   await boot(page);
   // Two sheets three hours apart, as the feeds publish them.
   const picked = await page.evaluate(() => {
@@ -108,7 +108,7 @@ test('the weather charts snap to the newest sheet issued by that hour, and say w
       o.textContent = day + ' ' + hh + 'Z';
       sel.appendChild(o);
     }
-    // 13:00Z on the same day: the 12:00 sheet is the newest issued by then.
+    // 13:00Z on the same day: the 12:00 sheet is an hour away, the 00:00 one thirteen.
     const noon = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 13);
     return NavWxTime.followInstant(noon);
   });
@@ -116,7 +116,7 @@ test('the weather charts snap to the newest sheet issued by that hour, and say w
   expect(await page.evaluate(() => document.getElementById('wx-time').value)).toContain('12:00');
 });
 
-test('before the first published sheet it shows the earliest rather than nothing', async ({ page }) => {
+test('an hour before the only published sheet still shows that sheet', async ({ page }) => {
   await boot(page);
   const picked = await page.evaluate(() => {
     const sel = document.getElementById('wx-time');
@@ -131,8 +131,9 @@ test('before the first published sheet it shows the earliest rather than nothing
     const early = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 1);
     return NavWxTime.followInstant(early);
   });
-  // A blank chart would read as "no weather"; the earliest sheet is what the dropdown would
-  // have seeded anyway, and the label still says which hour it is.
+  // A blank chart would read as "no weather". The sheet is seventeen hours out and it is
+  // still the nearest one there is, which is what the dropdown would have seeded anyway --
+  // and the label still says which hour it is.
   expect(picked).toContain('18:00');
 });
 

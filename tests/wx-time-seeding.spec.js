@@ -260,7 +260,10 @@ test('enabled overlays watermark dates that only the other weather feed publishe
 
   const mark = page.locator('#weather-unavailable-watermark');
   await expect(mark).toBeVisible();
-  await expect(mark.locator('[data-layer="pwx"]')).toHaveText('Wind/temp — Unavailable');
+  // The stamp names the chart AND the hour it has none for: "unavailable" on its own reads
+  // as a broken layer rather than a gap at the hour on screen.
+  await expect(mark.locator('[data-layer="pwx"]'))
+    .toHaveText('Wind/temp — Unavailable · 21/06/2026 18:00Z');
   await expect(mark.locator('[data-layer="sigwx"]')).toHaveCount(0);
   await expect(mark).toHaveCSS('pointer-events', 'none');
 
@@ -270,7 +273,8 @@ test('enabled overlays watermark dates that only the other weather feed publishe
     time.dispatchEvent(new Event('change'));
   });
   await expect(mark.locator('[data-layer="pwx"]')).toHaveCount(0);
-  await expect(mark.locator('[data-layer="sigwx"]')).toHaveText('SIGWX — Unavailable');
+  await expect(mark.locator('[data-layer="sigwx"]'))
+    .toHaveText('Significant weather — Unavailable · 21/06/2026 12:00Z');
 
   await page.evaluate(() => {
     const cb = document.getElementById('sigwx-ov-cb');
@@ -299,5 +303,5 @@ test('weather-unavailable watermark is localized in Hebrew', async ({ page }) =>
     time.dispatchEvent(new Event('change'));
   });
   await expect(page.locator('#weather-unavailable-watermark [data-layer="pwx"]'))
-    .toHaveText('רוח/טמפרטורה — לא זמין');
+    .toHaveText('רוח/טמפרטורה — לא זמין · 21/06/2026 18:00Z');
 });
