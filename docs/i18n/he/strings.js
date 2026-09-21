@@ -58,7 +58,7 @@ window.S = {
   pwxMissing: 'המפה אינה זמינה עדיין לגובה/זמן זה.',
   pwxUnavailable: 'מפות רוח/טמפ׳ אינן זמינות כעת.',
   wxPwxUnavailableWatermark: 'רוח/טמפרטורה — לא זמין',
-  wxSigwxUnavailableWatermark: 'SIGWX — לא זמין',
+  wxSigwxUnavailableWatermark: 'מזג אוויר משמעותי — לא זמין',
   tbShowMsa: 'תבליט מול הגובה',
   tbShowMsaTitle: 'מסמן רק את הקרקע שמגיעה לגובה שתכננתם, ומציג לכל קטע את הגובה הבטוח המינימלי בחלונית. אמצעי תכנון בלבד.',
   report: 'דיווח',

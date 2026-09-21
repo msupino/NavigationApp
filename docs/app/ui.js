@@ -10913,6 +10913,10 @@ const NavWxTime = (function () {
       reseed();                                 // notifies if the selection actually moved
       return sel.selectedIndex >= 0 ? (sel.options[sel.selectedIndex].textContent || '') : '';
     },
+    // The selected option as it reads on screen ("21/06/2026 18:00Z"), for anything that has
+    // to say WHICH valid time it is talking about.
+    text: () => (sel && sel.selectedIndex >= 0)
+      ? (sel.options[sel.selectedIndex].textContent || '') : '',
     register,   // a feed registers its refetch() so poll() keeps the dropdown live
     poll,       // exposed for tests to trigger a re-poll deterministically
     // Called for BOTH a pilot change and a programmatic re-seed; the argument says which,
@@ -11200,7 +11204,7 @@ const NavWxAvailability = (function () {
   const missing = new Set();
   const labels = {
     pwx: () => S.wxPwxUnavailableWatermark || 'Wind/temp — Unavailable',
-    sigwx: () => S.wxSigwxUnavailableWatermark || 'SIGWX — Unavailable',
+    sigwx: () => S.wxSigwxUnavailableWatermark || 'Significant weather — Unavailable',
   };
   let el = null;
 
@@ -11215,11 +11219,27 @@ const NavWxAvailability = (function () {
       el.hidden = true;
       mapEl.appendChild(el);
     }
+    // WHICH valid time has no chart. "Unavailable" alone reads as "this layer is broken",
+    // when what it means is "not for the hour you are looking at" -- and the hour is the one
+    // thing a pilot can act on, by picking another from the same dropdown.
+    const when = (typeof NavWxTime !== 'undefined' && NavWxTime.text) ? NavWxTime.text() : '';
     const keys = ['pwx', 'sigwx'].filter(key => missing.has(key));
     el.replaceChildren(...keys.map(key => {
       const line = document.createElement('span');
       line.dataset.layer = key;
-      line.textContent = labels[key]();
+      // Each run in its own <bdi>. The name is Hebrew in a Hebrew session and the clock is
+      // always Latin digits, and a bidi paragraph run together turns "18:00Z" into "00:18Z"
+      // with the Z adrift -- the same treatment the map clock's readout needs, for the same
+      // reason.
+      const name = document.createElement('bdi');
+      name.textContent = labels[key]();
+      line.appendChild(name);
+      if (when) {
+        line.appendChild(document.createTextNode(' \u00b7 '));
+        const at = document.createElement('bdi');
+        at.textContent = when;
+        line.appendChild(at);
+      }
       return line;
     }));
     el.hidden = keys.length === 0;
