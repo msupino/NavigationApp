@@ -11,6 +11,10 @@
 const { test, expect } = require('./_setup');
 
 async function boot(page) {
+  // No real weather manifests. These tests hand-build #wx-time to put a known set of sheets
+  // in it; a live ims-data response landing mid-test adds its own times and lets an overlay
+  // claim one of them, which is a race against the network, not a behaviour worth asserting.
+  await page.route(/ims-data\/ims\/(sigwx|pwx)\.json/, r => r.fulfill({ status: 404, body: '' }));
   await page.goto('?lang=en&nogist');
   await page.waitForFunction(() => document.getElementById('map-time-slider')
     && document.getElementById('lookahead-time'));
@@ -310,6 +314,7 @@ test('the Hebrew readout is not run together by the bidi algorithm', async ({ pa
   // Reported garbled: "+14ש · 21:00Z" rendered as "+1421:00 · שZ" -- digits merged, Z adrift
   // -- and "מפות 09/09/2026 18:00Z" as "Zמפות 09/09/2026 18:00". Both came from forcing
   // dir="ltr" on a span holding a Hebrew word AND a clock. Each run is isolated instead.
+  await page.route(/ims-data\/ims\/(sigwx|pwx)\.json/, r => r.fulfill({ status: 404, body: '' }));
   await page.goto('?lang=he&nogist');
   await page.waitForFunction(() => document.getElementById('map-time-slider')
     && !document.documentElement.classList.contains('app-booting'));
