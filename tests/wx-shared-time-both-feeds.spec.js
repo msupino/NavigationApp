@@ -124,6 +124,41 @@ for (const [layer, key, expected] of [
   });
 }
 
+// Claiming a time when the layer goes on is not enough on its own: the shared dropdown
+// RE-SEEDS by itself, and every one of those paths chose by "nearest to now" across the
+// whole union. So an overlay that had been put on a drawable hour was quietly moved back to
+// an hour it cannot draw -- by the ten-minute re-poll, by a feed arriving, and by pressing
+// Now. The seed respects what the enabled layers can draw, so all three are the same fix.
+test('the ten-minute re-poll does not move SIGWX off an hour it can draw', async ({ page }) => {
+  await boot(page);
+  await turnOn(page, 'sigwx-ov-cb');
+  expect(await wxValue(page)).toBe('21/06/2026|18:00');
+  await page.evaluate(() => NavWxTime.poll());
+  await expect.poll(() => wxValue(page)).toBe('21/06/2026|18:00');
+  await expect(watermark(page)).toBeHidden();
+});
+
+test('pressing Now does not move SIGWX off an hour it can draw', async ({ page }) => {
+  await boot(page);
+  await turnOn(page, 'sigwx-ov-cb');
+  // Scrub forward and back. Now releases the pin and re-seeds -- and the hour it re-seeds to
+  // has to be one the layer that is actually on the map can draw.
+  await page.evaluate(() => {
+    const s = document.getElementById('map-time-slider');
+    s.value = '6'; s.dispatchEvent(new Event('input'));
+  });
+  await page.evaluate(() => document.getElementById('map-time-now').click());
+  expect(await wxValue(page)).toBe('21/06/2026|18:00');
+  await expect(watermark(page)).toBeHidden();
+});
+
+test('with no chart layer on, the seed is still the union nearest', async ({ page }) => {
+  await boot(page);
+  // Nothing is drawing, so there is nothing to respect and the dropdown keeps its own rule.
+  await page.evaluate(() => NavWxTime.poll());
+  await expect.poll(() => wxValue(page)).toBe('21/06/2026|12:00');
+});
+
 test('a time the pilot picked is never moved for them', async ({ page }) => {
   await boot(page);
   await page.evaluate(() => {

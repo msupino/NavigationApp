@@ -10695,6 +10695,31 @@ const NavWxTime = (function () {
     for (const o of opts) sel.appendChild(o);
     reseed();
   }
+  // What each chart layer can draw right now, so a move can respect the others. An overlay
+  // registers once; `on()` says whether it is currently on the map and `times()` what it
+  // publishes. Without this the two layers pull the one shared dropdown in opposite
+  // directions and each takes the other off the map.
+  const drawers = [];
+  function drawing(on, times) {
+    if (typeof on !== 'function' || typeof times !== 'function') return null;
+    const d = { on, times };
+    drawers.push(d);
+    return d;                                  // the caller hands this back to prefer()
+  }
+  // The options EVERY enabled chart layer can draw, or null when that is no help: no layer
+  // is on, or the layers that are on share no hour at all. The dropdown is shared and the
+  // feeds do not publish the same hours, so choosing by "nearest to now" across the whole
+  // union regularly lands on an hour only one of them has -- and the other then stamps
+  // "unavailable" over a chart it could have drawn.
+  function drawablePool(except) {
+    if (!sel) return null;
+    const lists = drawers.filter(d => d !== except && d.on())
+      .map(d => d.times()).filter(list => Array.isArray(list) && list.length);
+    if (!lists.length) return null;
+    const out = Array.from(sel.options)
+      .filter(o => lists.every(list => list.some(t => keyOf(t) === o.value)));
+    return out.length ? out : null;
+  }
   // Choose the default. Re-run on every merge until the selection is pinned, so a feed that
   // arrives second can still supply a closer time.
   function reseed() {
@@ -10719,34 +10744,31 @@ const NavWxTime = (function () {
     const sameHour = savedValid &&
       Array.from(sel.options).filter(o => parse(o.value).valid === savedValid);
     if (sameHour && sameHour.length) {
-      const i = Math.max(0, imsNearestTimeIndex(sameHour.map(o => parse(o.value))));
-      sel.value = sameHour[i].value;
+      const pool = within(sameHour);
+      const i = Math.max(0, imsNearestTimeIndex(pool.map(o => parse(o.value))));
+      sel.value = pool[i].value;
       changed();
       return;
     }
     // ...and the day goes to imsNearestTimeIndex, which has always known how to use one.
     // Without it every hour was assumed to be TODAY, so at 23:45 the dropdown seeded to a
     // chart hours old instead of the one about to become valid.
-    sel.selectedIndex = Math.max(0, imsNearestTimeIndex(
-      Array.from(sel.options, o => parse(o.value))));
+    const pool = within(Array.from(sel.options));
+    sel.value = pool[Math.max(0, imsNearestTimeIndex(pool.map(o => parse(o.value))))].value;
     changed();
+  }
+  // Narrow a candidate list to what the enabled layers can draw, when that leaves anything.
+  function within(options) {
+    const pool = drawablePool(null);
+    if (!pool) return options;
+    const kept = options.filter(o => pool.includes(o));
+    return kept.length ? kept : options;
   }
   // Move to a time the caller can actually render, if the current one is not among them.
   // The dropdown accumulates options from both feeds and every PWX level, so a level change
   // used to leave a time selected that the new level does not publish: currentTime() then
   // found nothing and the overlay was REMOVED, even though that level had valid charts.
   // Changing level is itself a request to see that level, so this overrides a pin.
-  // What each chart layer can draw right now, so a move can respect the others. An overlay
-  // registers once; `on()` says whether it is currently on the map and `times()` what it
-  // publishes. Without this the two layers pull the one shared dropdown in opposite
-  // directions and each takes the other off the map.
-  const drawers = [];
-  function drawing(on, times) {
-    if (typeof on !== 'function' || typeof times !== 'function') return null;
-    const d = { on, times };
-    drawers.push(d);
-    return d;                                  // the caller hands this back to prefer()
-  }
   function prefer(times, force, self) {
     if (!sel || !Array.isArray(times) || !times.length) return false;
     // A pinned choice stands unless the pilot just asked for a different level: PWX must not
@@ -10762,9 +10784,8 @@ const NavWxTime = (function () {
     // overlay by breaking the other, and the two would then take turns moving the dropdown.
     // Falling back to our own list is the honest outcome when the feeds share nothing: one
     // chart can be shown, and the other says so with its watermark.
-    const others = drawers.filter(d => d !== self && d.on())
-      .map(d => d.times()).filter(list => Array.isArray(list) && list.length);
-    const shared = usable.filter(o => others.every(list => list.some(t => keyOf(t) === o.value)));
+    const others = drawablePool(self);
+    const shared = others ? usable.filter(o => others.includes(o)) : [];
     const pool = shared.length ? shared : usable;
     const near = Math.max(0, imsNearestTimeIndex(pool.map(o => parse(o.value))));
     const was = sel.value;
