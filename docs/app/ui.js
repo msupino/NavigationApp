@@ -11386,7 +11386,10 @@ const NavWxAvailability = (function () {
           if (sv.level && [...levelSel.options].some(o => o.value === sv.level)) {
             levelSel.value = sv.level; fillTimes();
           }
-          if (sv.on) { cb.checked = true; controls.hidden = false; }
+          if (sv.on) {
+            cb.checked = true; controls.hidden = false;
+            fillTimes();          // now that it is on: claim a time this level publishes
+          }
         }
       } catch (e) { /* storage unavailable */ }
     }
@@ -11985,7 +11988,17 @@ const NavWxAvailability = (function () {
       let saved = null;
       try { saved = JSON.parse(lsGet(KEY) || 'null'); } catch (e) { /* */ }
       // The shared #wx-time dropdown was seeded to now (Zulu) by NavWxTime.
-      if (saved && saved.on) { cb.checked = true; controls.hidden = false; updateLayer(); }
+      if (saved && saved.on) {
+        cb.checked = true;
+        controls.hidden = false;
+        // Again, now that the layer is ON. fillTimes() above ran with the checkbox still
+        // false -- its claim on a renderable time is gated on the layer actually drawing --
+        // and this path sets the checkbox directly, so the change listener never fires
+        // either. A reload with the overlay on therefore kept the seeded union time and
+        // stamped "unavailable" over a chart it could draw.
+        fillTimes();
+        updateLayer();
+      }
     }
     return { add: m.times, avail: m.times };
   }

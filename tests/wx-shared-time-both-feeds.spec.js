@@ -91,6 +91,39 @@ test('with both overlays on, the hour is one they can both draw', async ({ page 
   await expect(watermark(page)).toBeHidden();
 });
 
+// The path the report actually came from. The overlay is restored from localStorage, which
+// sets the checkbox DIRECTLY -- so the change listener never fires -- and it does so AFTER
+// the manifest has already been merged, when the claim on a renderable time is still gated
+// on a layer that is not yet on. Both feeds restore this way, so both were affected.
+// The expected hour differs by layer, and that is the point: PWX can already draw the
+// union's nearest (12:00), so prefer() stands down and nothing moves. SIGWX cannot, so it
+// has to claim 18:00. Both must end up showing a chart.
+for (const [layer, key, expected] of [
+  ['SIGWX', 'navaid.sigwxOv', '21/06/2026|18:00'],
+  ['PWX', 'navaid.imsPwx', '21/06/2026|12:00'],
+]) {
+  test('a reload with ' + layer + ' already on lands on an hour it can draw', async ({ page }) => {
+    await freeze(page);
+    await page.route(/ims-data\/ims\/(sigwx|pwx)\/.*\.png/, r =>
+      r.fulfill({ status: 200, contentType: 'image/png', body: PNG }));
+    await page.route(/ims-data\/ims\/sigwx\.json/, r => r.fulfill({
+      status: 200, contentType: 'application/json', body: JSON.stringify(SIGWX) }));
+    await page.route(/ims-data\/ims\/pwx\.json/, r => r.fulfill({
+      status: 200, contentType: 'application/json', body: JSON.stringify(PWX) }));
+    await page.addInitScript((k) => {
+      for (const s of ['build', 'view', 'display', 'charts', 'export', 'print'])
+        try { localStorage.setItem('navaid.sec.' + s, '1'); } catch (e) {}
+      // What the previous session left behind: the layer was on. No wxTime is stored, so
+      // nothing is pinned and the dropdown is free to be moved.
+      try { localStorage.setItem(k, JSON.stringify({ on: true, level: '950', valid: '' })); } catch (e) {}
+    }, key);
+    await page.goto('?lang=en&nogist');
+    await page.waitForFunction(() => document.querySelectorAll('#wx-time option').length >= 5);
+    await expect.poll(() => wxValue(page)).toBe(expected);
+    await expect(watermark(page)).toBeHidden();
+  });
+}
+
 test('a time the pilot picked is never moved for them', async ({ page }) => {
   await boot(page);
   await page.evaluate(() => {
