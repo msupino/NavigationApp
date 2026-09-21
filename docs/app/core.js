@@ -1346,11 +1346,11 @@ window.S = Object.assign({
   tbImsPwxOpacityReset: 'Reset opacity',
   tbImsPwxRun: 'Model run',
   tbSigwx: '🌐 Significant weather',                // significant-weather viewer button
-  tbSigwxTitle: 'View IMS significant-weather charts by valid time',
+  tbSigwxTitle: 'View the IMS significant-weather (SIGWX) charts by valid time',
   tbSigwxTime: 'Valid time',
   tbSigwxOverlay: 'Show significant weather',
-  tbSigwxOverlayTitle: 'Overlay the low-level significant-weather prog chart on the map by valid time. Approximate alignment — fine-tune with ?tune. Planning aid only.',
-  sigwxModalTitle: 'Significant weather charts',
+  tbSigwxOverlayTitle: 'Overlay the low-level significant-weather (SIGWX) prog chart on the map by valid time. Approximate alignment — fine-tune with ?tune. Planning aid only.',
+  sigwxModalTitle: 'Significant weather charts (SIGWX)',
   sigwxMissing: 'Chart not available for this time yet.',
   sigwxUnavailable: 'Significant-weather charts are temporarily unavailable.',
   tbPwxCharts: '🌬 Wind/temp charts',               // IMS PWX original-chart viewer button

@@ -45,6 +45,29 @@ async function boot(page, { withManifest } = { withManifest: true }) {
   await page.waitForFunction(() => document.getElementById('sigwx-btn'));
 }
 
+// The acronym is what the shared valid-time tooltip and the "unavailable" watermark call
+// this chart, in BOTH languages -- but the feature's own title never said it, so a pilot met
+// "SIGWX" only where something had gone wrong. The wind/temp viewer beside it has always
+// printed its acronym in brackets after the name; this one now does too.
+for (const [lang, name] of [['en', 'Significant weather charts'], ['he', 'מפות מזג אוויר משמעותי']]) {
+  test('the viewer names the chart and its acronym (' + lang + ')', async ({ page }) => {
+    await page.route(PNG_RE, r => r.fulfill({ status: 200, contentType: 'image/png', body: PNG }));
+    await page.route(MANIFEST_RE, r => r.fulfill({
+      status: 200, contentType: 'application/json', body: JSON.stringify(MANIFEST),
+    }));
+    await page.addInitScript(() => { try { localStorage.setItem('navaid.sec.charts', '1'); } catch (e) {} });
+    await page.goto('?lang=' + lang);
+    await page.waitForFunction(() => document.getElementById('sigwx-btn'));
+    await page.locator('#sigwx-btn').click();
+    const title = page.locator('.modal-back .sigwx-modal .modal-title');
+    await expect(title).toHaveText(name + ' (SIGWX)');
+    // And the button that opens it introduces the acronym too, rather than leaving the
+    // watermark to be the first place a pilot sees it.
+    await page.keyboard.press('Escape');
+    await expect(page.locator('#sigwx-btn')).toHaveAttribute('title', /SIGWX/);
+  });
+}
+
 test('SIGWX button stays hidden when no manifest exists', async ({ page }) => {
   await boot(page, { withManifest: false });
   await page.waitForTimeout(400);
