@@ -128,8 +128,11 @@ test('and it carries the same Add to route every chart point has', async ({ page
   expect(route).toHaveLength(1);
   expect(route[0].lat).toBeCloseTo(32.5, 4);
   expect(route[0].lng).toBeCloseTo(35, 4);
-  // The selection moves to the waypoint it just made, as adding from any other point does.
-  expect(await page.evaluate(() => state.selected.type)).toBe('wp');
+  // ...and the panel closes with the press. It used to select the waypoint it had just made,
+  // which swapped this small coordinate panel for the full route-waypoint inspector over the
+  // map the point had just landed on. addToRouteClosesInspector puts the old behaviour back.
+  expect(await page.evaluate(() => state.selected)).toBeNull();
+  await expect(page.locator('#inspector')).toHaveClass(/hidden/);
 });
 
 // A second coordinate replaces the first: the panel is about the point you just asked for.
@@ -266,4 +269,52 @@ test('the clear X is there in the phone menu too, where the other X means someth
     };
   });
   expect(seen).toEqual({ clearInSheet: true, clearShown: true, closeHidden: true });
+});
+
+// Adding from a reference panel -- a field, a reporting point, a coordinate -- is a press whose
+// answer is the point on the map. It used to answer with a different panel: the full
+// route-waypoint inspector, delete and rename and the turning point, over the chart the pilot
+// had just put a point on.
+test.describe('what the Add to route button leaves behind', () => {
+  const addCoord = async (page) => {
+    await page.evaluate(() => {
+      if (typeof showSearchOverlay === 'function') showSearchOverlay();
+      const box = document.getElementById('wp-search');
+      box.value = '32.5 35.0';
+      box.dispatchEvent(new Event('input', { bubbles: true }));
+    });
+    await page.locator('.wp-search-coord').click();
+    await expect(page.locator('#inspector')).not.toHaveClass(/hidden/);
+    await page.locator('#insp-add-to-route').click();
+  };
+
+  test('the panel closes, and the point is on the route', async ({ page }) => {
+    await boot(page);
+    await addCoord(page);
+    await expect(page.locator('#inspector')).toHaveClass(/hidden/);
+    expect(await page.evaluate(() => state.waypoints.length)).toBe(1);
+    expect(await page.evaluate(() => state.selected)).toBeNull();
+  });
+
+  // Closing must not leave a selection behind to be restored on the next load.
+  test('nothing is left stored to reopen it', async ({ page }) => {
+    await boot(page);
+    await addCoord(page);
+    const stored = await page.evaluate(() =>
+      Object.keys(sessionStorage).filter(k => /inspector/i.test(k))
+        .map(k => sessionStorage.getItem(k)));
+    for (const v of stored) expect(v).toBeFalsy();
+  });
+
+  // The gist can have the old behaviour back.
+  test('the tunable puts the full inspector back', async ({ page }) => {
+    await boot(page);
+    await page.evaluate(() => {
+      const real = window.tune;
+      window.tune = (k) => (k === 'addToRouteClosesInspector' ? false : real(k));
+    });
+    await addCoord(page);
+    await expect(page.locator('#inspector')).not.toHaveClass(/hidden/);
+    expect(await page.evaluate(() => state.selected.type)).toBe('wp');
+  });
 });
