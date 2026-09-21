@@ -230,6 +230,82 @@ test('a chart time still ahead of live is left alone by a re-seed', async ({ pag
   expect(await wxValue(page)).toBe(sheet[LATER]);
 });
 
+test('a chart time the pilot picked lights Now, and Now takes it back', async ({ page }) => {
+  await boot(page);
+  const sheet = await seedSheets(page, OFFSETS);
+  // Nothing has been scrubbed: the slider is at live, so Now is dead.
+  await expect(page.locator('#map-time-now')).toBeDisabled();
+
+  // The dropdown is its own control, in the toolbar. Moving it to a future sheet is a move
+  // off live even though no slider has been touched -- and there is now something for Now
+  // to reset, so it has to be available.
+  await page.evaluate((v) => {
+    const sel = document.getElementById('wx-time');
+    sel.value = v;
+    sel.dispatchEvent(new Event('change', { bubbles: true }));
+  }, sheet[LATER]);
+  await expect(page.locator('#map-time-now')).toBeEnabled();
+
+  await page.evaluate(() => document.getElementById('map-time-now').click());
+  expect(await wxValue(page)).toBe(sheet[SOON]);
+  await expect(page.locator('#map-time-now')).toBeDisabled();
+});
+
+test('a chart time that IS the live sheet leaves Now dead', async ({ page }) => {
+  await boot(page);
+  const sheet = await seedSheets(page, OFFSETS);
+  // Choosing the sheet the dropdown had already seeded is not a move off live, whatever the
+  // pin says -- Now would have nothing to do.
+  await page.evaluate((v) => {
+    const sel = document.getElementById('wx-time');
+    sel.value = v;
+    sel.dispatchEvent(new Event('change', { bubbles: true }));
+  }, sheet[SOON]);
+  await expect(page.locator('#map-time-now')).toBeDisabled();
+});
+
+test('with no chart layer on, the dropdown does not light Now', async ({ page }) => {
+  await boot(page);
+  const sheet = await seedSheets(page, OFFSETS);
+  await page.evaluate((v) => {
+    const cb = document.getElementById('sigwx-ov-cb');
+    cb.checked = false; cb.dispatchEvent(new Event('change', { bubbles: true }));
+    const sel = document.getElementById('wx-time');
+    sel.value = v;
+    sel.dispatchEvent(new Event('change', { bubbles: true }));
+  }, sheet[LATER]);
+  // No chart is on the map, so the selected sheet changes nothing a pilot can see and Now
+  // has nothing to bring back.
+  await expect(page.locator('#map-time-now')).toBeDisabled();
+});
+
+test('the density-altitude slider lights Now, and Now resets it', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 780 });
+  await boot(page);
+  await page.evaluate(() => {
+    const af = (window.airfields || []).find(a => Number.isFinite(Number(a.elev_ft)));
+    state.selected = { type: 'airfield', af: af, index: 0 };
+    showInspector();
+  });
+  await page.waitForSelector('#inspector input.da-time', { state: 'attached' });
+  await expect(page.locator('#map-time-now')).toBeDisabled();
+
+  // The panel's own slider. It does not drive the shared hour, so nothing else on the map
+  // moves -- but the density altitude on screen is now for an hour four ahead, and that is
+  // exactly the state Now exists to leave.
+  await page.evaluate(() => {
+    const s1 = document.querySelector('#inspector input.da-time');
+    s1.value = '4';
+    s1.dispatchEvent(new Event('input', { bubbles: true }));
+  });
+  await expect(page.locator('#map-time-now')).toBeEnabled();
+
+  await page.evaluate(() => document.getElementById('map-time-now').click());
+  expect(await page.evaluate(() =>
+    document.querySelector('#inspector input.da-time').value)).toBe('0');
+  await expect(page.locator('#map-time-now')).toBeDisabled();
+});
+
 test('the Hebrew readout is not run together by the bidi algorithm', async ({ page }) => {
   // Reported garbled: "+14ש · 21:00Z" rendered as "+1421:00 · שZ" -- digits merged, Z adrift
   // -- and "מפות 09/09/2026 18:00Z" as "Zמפות 09/09/2026 18:00". Both came from forcing
