@@ -11388,12 +11388,30 @@ const NavWxAvailability = (function () {
     const sel = document.createElement('select');
     sel.className = 'sigwx-time';
     sel.setAttribute('aria-label', S.tbSigwxTime || 'Valid time');
-    manifest.times.forEach((t, i) => {
-      const o = document.createElement('option');
-      o.value = String(i);
-      o.textContent = (t.day ? t.day + ' ' : '') + t.valid + 'Z';
-      sel.appendChild(o);
-    });
+    // The option VALUE is the manifest index, which a refresh renumbers; remember the
+    // pilot's pick by the time it names so a rebuilt list can find it again.
+    let picked = '';
+    const keyAt = i => {
+      const t = manifest.times[i];
+      return t ? (t.day || '') + '|' + t.valid : '';
+    };
+    function fillTimes() {
+      sel.innerHTML = '';
+      manifest.times.forEach((t, i) => {
+        const o = document.createElement('option');
+        o.value = String(i);
+        o.textContent = (t.day ? t.day + ' ' : '') + t.valid + 'Z';
+        sel.appendChild(o);
+      });
+      // Open on the chart that is current NOW. Seeding to options[0] meant the viewer
+      // always opened on the OLDEST sheet the run published, and a tab left open all day
+      // kept opening on it -- the dropdown never moved with Zulu.
+      const keep = picked
+        ? manifest.times.findIndex(t => (t.day || '') + '|' + t.valid === picked)
+        : -1;
+      sel.selectedIndex = keep >= 0 ? keep : imsNearestTimeIndex(manifest.times);
+    }
+    fillTimes();
     box.appendChild(sel);
 
     const img = document.createElement('img');
@@ -11414,7 +11432,7 @@ const NavWxAvailability = (function () {
     // If the PNG is missing (a forecast hour not yet published), show a note
     // instead of a broken-image icon.
     img.addEventListener('error', () => { img.hidden = true; note.hidden = false; });
-    sel.addEventListener('change', load);
+    sel.addEventListener('change', () => { picked = keyAt(sel.selectedIndex); load(); });
     if (manifest.times.length) {
       load();
     } else {
@@ -11433,21 +11451,29 @@ const NavWxAvailability = (function () {
     document.addEventListener('keydown', onEsc, true);
     document.body.appendChild(back);
     sel.focus();
+    // A tab open since this morning holds this morning's manifest. Re-read it now so the
+    // list gains the runs published since; if it lands while we are still open, rebuild.
+    refresh().then(changed => { if (changed && back && sel.isConnected) { fillTimes(); load(); } });
   }
 
   btn.addEventListener('click', open);
 
-  fetch(RAW + 'ims/sigwx.json?t=' + Date.now(), { cache: 'no-store' })
-    .then(r => (r.ok ? r.json() : null))
-    .then(m => {
-      // Reveal the button whenever the manifest exists — even with zero times —
-      // so a broken/empty run is visible (button opens to an "unavailable" note)
-      // rather than the whole feature silently disappearing.
-      if (!m || !Array.isArray(m.times)) return;
-      manifest = m;
-      btn.hidden = false;
-    })
-    .catch(() => { /* manifest unreachable → stay hidden */ });
+  // Reveal the button whenever the manifest exists — even with zero times — so a
+  // broken/empty run is visible (button opens to an "unavailable" note) rather than
+  // the whole feature silently disappearing.
+  function refresh() {
+    return fetch(RAW + 'ims/sigwx.json?t=' + Date.now(), { cache: 'no-store' })
+      .then(r => (r.ok ? r.json() : null))
+      .then(m => {
+        if (!m || !Array.isArray(m.times)) return false;
+        const before = manifest && JSON.stringify(manifest.times);
+        manifest = m;
+        btn.hidden = false;
+        return before !== JSON.stringify(m.times);
+      })
+      .catch(() => false);                   // manifest unreachable → keep what we have
+  }
+  refresh();
 })();
 
 // --- IMS wind/temperature (PWX) original-chart viewer ----------------
@@ -11485,7 +11511,7 @@ const NavWxAvailability = (function () {
     title.textContent = S.pwxModalTitle || 'Wind / temperature charts (PWX)';
     box.appendChild(title);
 
-    const levels = manifest.levels.slice().sort((a, b) => Number(b.level) - Number(a.level));
+    let levels = manifest.levels.slice().sort((a, b) => Number(b.level) - Number(a.level));
     const lvlSel = document.createElement('select');
     lvlSel.className = 'sigwx-time';
     lvlSel.setAttribute('aria-label', S.tbImsPwxLevel || 'Level');
@@ -11513,8 +11539,12 @@ const NavWxAvailability = (function () {
     // Read png paths from the trusted manifest by index, never the DOM value
     // (avoids js/xss-through-dom).
     const curLevel = () => levels[lvlSel.selectedIndex];
+    // The option VALUE is an index into the level's times, which a level change or a
+    // refreshed manifest renumbers; carry the pilot's pick as the time it names.
+    let picked = '';
+    const keyOf = t => (t ? (t.day || '') + '|' + t.valid : '');
     function fillTimes() {
-      const lv = curLevel(); const prev = timeSel.value;
+      const lv = curLevel();
       timeSel.innerHTML = '';
       if (!lv || !Array.isArray(lv.times)) return;
       lv.times.forEach((t, i) => {
@@ -11523,7 +11553,10 @@ const NavWxAvailability = (function () {
         o.textContent = (t.day ? t.day + ' ' : '') + t.valid + 'Z';
         timeSel.appendChild(o);
       });
-      if (prev && [...timeSel.options].some(o => o.value === prev)) timeSel.value = prev;
+      // Open on the chart that is current NOW, as #wx-time does. options[0] is the oldest
+      // sheet of the run, and the viewer used to open on it however late in the day it was.
+      const keep = picked ? lv.times.findIndex(t => keyOf(t) === picked) : -1;
+      timeSel.selectedIndex = keep >= 0 ? keep : imsNearestTimeIndex(lv.times);
     }
     function load() {
       const lv = curLevel(); const t = lv && lv.times[timeSel.selectedIndex];
@@ -11533,7 +11566,11 @@ const NavWxAvailability = (function () {
     }
     img.addEventListener('error', () => { img.hidden = true; note.hidden = false; });
     lvlSel.addEventListener('change', () => { fillTimes(); load(); });
-    timeSel.addEventListener('change', load);
+    timeSel.addEventListener('change', () => {
+      const lv = curLevel();
+      picked = keyOf(lv && lv.times[timeSel.selectedIndex]);
+      load();
+    });
     if (levels.length) { fillTimes(); load(); }
     else {
       lvlSel.hidden = true; timeSel.hidden = true; img.hidden = true;
@@ -11549,18 +11586,30 @@ const NavWxAvailability = (function () {
     document.addEventListener('keydown', onEsc, true);
     document.body.appendChild(back);
     lvlSel.focus();
+    // Same as SIGWX: a long-open tab holds a stale manifest, so re-read on open and
+    // rebuild the time list (the level list is fixed, so only the times can grow).
+    refresh().then(changed => {
+      if (!changed || !back || !timeSel.isConnected) return;
+      levels = manifest.levels.slice().sort((a, b) => Number(b.level) - Number(a.level));
+      fillTimes(); load();
+    });
   }
 
   btn.addEventListener('click', open);
 
-  fetch(RAW + 'ims/pwx.json?t=' + Date.now(), { cache: 'no-store' })
-    .then(r => (r.ok ? r.json() : null))
-    .then(m => {
-      if (!m || !Array.isArray(m.levels) || !m.levels.length) return;
-      manifest = m;
-      btn.hidden = false;
-    })
-    .catch(() => { /* manifest unreachable → stay hidden */ });
+  function refresh() {
+    return fetch(RAW + 'ims/pwx.json?t=' + Date.now(), { cache: 'no-store' })
+      .then(r => (r.ok ? r.json() : null))
+      .then(m => {
+        if (!m || !Array.isArray(m.levels) || !m.levels.length) return false;
+        const before = manifest && JSON.stringify(manifest.levels);
+        manifest = m;
+        btn.hidden = false;
+        return before !== JSON.stringify(m.levels);
+      })
+      .catch(() => false);                   // manifest unreachable → keep what we have
+  }
+  refresh();
 })();
 
 // --- SIGWX significant-weather MAP overlay --------------------------
