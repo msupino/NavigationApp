@@ -10736,7 +10736,18 @@ const NavWxTime = (function () {
   // used to leave a time selected that the new level does not publish: currentTime() then
   // found nothing and the overlay was REMOVED, even though that level had valid charts.
   // Changing level is itself a request to see that level, so this overrides a pin.
-  function prefer(times, force) {
+  // What each chart layer can draw right now, so a move can respect the others. An overlay
+  // registers once; `on()` says whether it is currently on the map and `times()` what it
+  // publishes. Without this the two layers pull the one shared dropdown in opposite
+  // directions and each takes the other off the map.
+  const drawers = [];
+  function drawing(on, times) {
+    if (typeof on !== 'function' || typeof times !== 'function') return null;
+    const d = { on, times };
+    drawers.push(d);
+    return d;                                  // the caller hands this back to prefer()
+  }
+  function prefer(times, force, self) {
     if (!sel || !Array.isArray(times) || !times.length) return false;
     // A pinned choice stands unless the pilot just asked for a different level: PWX must not
     // drag the shared dropdown off a SIGWX-only time the pilot chose deliberately.
@@ -10747,9 +10758,17 @@ const NavWxTime = (function () {
     const keys = new Set(offered.map(keyOf));
     const usable = Array.from(sel.options).filter(o => keys.has(o.value));
     if (!usable.length) return false;
-    const near = Math.max(0, imsNearestTimeIndex(usable.map(o => parse(o.value))));
+    // Prefer a time EVERY enabled layer can draw. A time only this one publishes fixes this
+    // overlay by breaking the other, and the two would then take turns moving the dropdown.
+    // Falling back to our own list is the honest outcome when the feeds share nothing: one
+    // chart can be shown, and the other says so with its watermark.
+    const others = drawers.filter(d => d !== self && d.on())
+      .map(d => d.times()).filter(list => Array.isArray(list) && list.length);
+    const shared = usable.filter(o => others.every(list => list.some(t => keyOf(t) === o.value)));
+    const pool = shared.length ? shared : usable;
+    const near = Math.max(0, imsNearestTimeIndex(pool.map(o => parse(o.value))));
     const was = sel.value;
-    sel.value = usable[near].value;
+    sel.value = pool[near].value;
     if (sel.value !== was) notify(true);
     return true;
   }
@@ -10825,6 +10844,7 @@ const NavWxTime = (function () {
     },
     ensure,
     prefer,
+    drawing,    // an overlay declares what it can draw, so prefer() can respect the others
     // Move to the newest chart published at or before `ms`. The map clock is continuous and
     // these feeds are not -- they publish at 00/03/06/12/18Z -- so "the chart for 15:00Z" is
     // whatever was last issued by then. Returns the option text so the caller can say which
@@ -11293,13 +11313,18 @@ const NavWxAvailability = (function () {
   // does not clear SIGWX's options). The selection persists in the element.
   // `force` = the pilot just changed level, so landing on a renderable time outranks a
   // pinned one. Only ever moves the shared selection while this overlay is actually on.
+  // What this overlay can draw, for prefer(): the level currently selected, and only while
+  // the overlay is actually on the map.
+  const drawer = NavWxTime.drawing(
+    () => !!(cb && cb.checked),
+    () => { const lv = currentLevel(); return (lv && Array.isArray(lv.times)) ? lv.times : []; });
   function fillTimes(force) {
     const lv = currentLevel();
     if (!lv) return;
     NavWxTime.ensure(lv.times);
     // ...then make sure the selection is one THIS level publishes, or the overlay would be
     // removed on a level change despite valid charts being available at the new level.
-    if (cb.checked) NavWxTime.prefer(lv.times, force);
+    if (cb.checked) NavWxTime.prefer(lv.times, force, drawer);
   }
 
   // Persist the on/off + selections so a reload keeps the overlay as it was.
@@ -11907,10 +11932,20 @@ const NavWxAvailability = (function () {
       place('header', data, [[nT, w], [nT + hLat, e]], tblOp);
     }).catch(() => { /* header optional */ });
   }
+  const drawer = NavWxTime.drawing(
+    () => !!(cb && cb.checked),
+    () => (manifest && Array.isArray(manifest.times)) ? manifest.times : []);
   // Merge into the shared #wx-time dropdown (deduped; does not clear PWX's
   // options).
   function fillTimes() {
-    if (manifest) NavWxTime.ensure(manifest.times);
+    if (!manifest) return;
+    NavWxTime.ensure(manifest.times);
+    // ...and then claim a time this feed actually publishes, exactly as PWX does. The two
+    // feeds do not carry the same hours -- PWX runs three-hourly from the latest model run,
+    // SIGWX publishes the prog charts, and the nearest time in the UNION is regularly one
+    // only PWX has. Seeding there left this overlay drawing nothing and showing its
+    // "unavailable" watermark over a chart it was perfectly able to draw an hour later.
+    if (cb.checked) NavWxTime.prefer(manifest.times, false, drawer);
   }
   const KEY = 'navaid.sigwxOv';
   const persist = () => {
@@ -11919,7 +11954,14 @@ const NavWxAvailability = (function () {
   };
   NavAid.refreshSigwxOv = updateLayer;
 
-  cb.addEventListener('change', () => { controls.hidden = !cb.checked; updateLayer(); persist(); });
+  cb.addEventListener('change', () => {
+    controls.hidden = !cb.checked;
+    // Turning the layer on is a request to SEE it, which outranks an unpinned selection
+    // sitting on an hour this feed does not publish.
+    if (cb.checked) fillTimes();
+    updateLayer();
+    persist();
+  });
   NavWxTime.onChange(e => {
     updateLayer();
     if (!e || !e.programmatic) persist();     // a re-seed is not a pilot pin
