@@ -10866,23 +10866,38 @@ const NavWxTime = (function () {
     ensure,
     prefer,
     drawing,    // an overlay declares what it can draw, so prefer() can respect the others
-    // Move to the newest chart published at or before `ms`. The map clock is continuous and
-    // these feeds are not -- they publish at 00/03/06/12/18Z -- so "the chart for 15:00Z" is
-    // whatever was last issued by then. Returns the option text so the caller can say which
-    // sheet is actually on screen; scrubbing the clock is an explicit request and therefore
-    // overrides a pin, exactly as changing level does.
+    // Move to the chart nearest the hour `ms` names. The map clock is continuous and these
+    // feeds are not -- they publish at 00/03/06/12/18Z -- so the sheet for 16:00Z is the
+    // 18:00Z one, two hours out, not the 12:00Z one that is already four hours old. These
+    // are FORECASTS valid AT a time, which is what the dropdown labels them and what the
+    // seed rule has always assumed.
+    //
+    // This used to take the newest sheet issued at or BEFORE the hour, which is the rule for
+    // an analysis, not a forecast -- and it disagreed with the rule at live. Stepping the
+    // clock from live to +1h therefore moved the chart from 18:00Z back to 12:00Z: the clock
+    // forward an hour, the weather back six. Reported as: the next step goes backwards in
+    // time. One rule on both sides of live, and the sheet can only move forward as the clock
+    // does.
+    //
+    // Within what the enabled layers can draw, like every other move: scrubbing used to be
+    // able to land an overlay on an hour only the OTHER feed publishes and stamp the map
+    // "unavailable" over a chart it had. Scrubbing is an explicit request and so overrides a
+    // pin, exactly as changing level does. Returns the option text so the caller can say
+    // which sheet is actually on screen.
     followInstant(ms) {
       if (!sel || !sel.options.length || !Number.isFinite(ms)) return '';
+      const pool = drawablePool(null) || Array.from(sel.options);
       let best = null;
-      for (const o of sel.options) {
+      for (const o of pool) {
         const { day, valid } = parse(o.value);
         const t = wxOptionEpoch(day, valid);
         if (t === null) continue;
-        if (t <= ms && (!best || t > best.t)) best = { t, o };
+        const d = Math.abs(t - ms);
+        if (!best || d < best.d) best = { d, o };
       }
-      // Before the first published sheet there is nothing earlier to fall back to; show the
-      // earliest rather than nothing, which is what the dropdown would have seeded anyway.
-      const pick = best ? best.o : sel.options[0];
+      // Every option unparseable: show the first rather than nothing, which is what the
+      // dropdown would have seeded anyway.
+      const pick = best ? best.o : pool[0];
       if (sel.value !== pick.value) {
         sel.value = pick.value;
         pinned = true;              // the clock is now the choice, and poll() must not re-seed it
@@ -10935,9 +10950,10 @@ const NavWxTime = (function () {
 // This is the face of the existing look-ahead, not a second mechanism: it moves
 // #lookahead-time, which already cascades to every mirror and carries the walk-back-to-live
 // tick. What it adds is the weather charts, which publish at 00/03/06/12/18Z and so cannot
-// follow an hourly clock exactly. They snap to the newest sheet at or before the chosen
-// hour, and the readout says which one that is rather than leaving two layers quietly
-// disagreeing about what "now + 3" means.
+// follow an hourly clock exactly. They snap to the sheet valid NEAREST the chosen hour --
+// they are forecasts valid at a time, so the sheet for 16:00Z is the 18:00Z one rather than
+// a 12:00Z already four hours stale -- and the readout says which one that is, rather than
+// leaving two layers quietly disagreeing about what "now + 3" means.
 (function mapClock() {
   const el = document.getElementById('map-time');
   const slider = document.getElementById('map-time-slider');
