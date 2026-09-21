@@ -130,7 +130,7 @@ test('and it carries the same Add to route every chart point has', async ({ page
   expect(route[0].lng).toBeCloseTo(35, 4);
   // ...and the panel closes with the press. It used to select the waypoint it had just made,
   // which swapped this small coordinate panel for the full route-waypoint inspector over the
-  // map the point had just landed on. addToRouteClosesInspector puts the old behaviour back.
+  // map the point had just landed on. addToRouteOpensInspector turns the old behaviour back on.
   expect(await page.evaluate(() => state.selected)).toBeNull();
   await expect(page.locator('#inspector')).toHaveClass(/hidden/);
 });
@@ -311,7 +311,7 @@ test.describe('what the Add to route button leaves behind', () => {
     await boot(page);
     await page.evaluate(() => {
       const real = window.tune;
-      window.tune = (k) => (k === 'addToRouteClosesInspector' ? false : real(k));
+      window.tune = (k) => (k === 'addToRouteOpensInspector' ? true : real(k));
     });
     await addCoord(page);
     await expect(page.locator('#inspector')).not.toHaveClass(/hidden/);
