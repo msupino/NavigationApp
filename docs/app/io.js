@@ -9926,12 +9926,18 @@ function fplProfileWrite(p) {
     catch (e) { /* storage unavailable */ }
   }
 }
-// Local date/time defaults: today, and the next whole 10 minutes far enough out
-// to satisfy the 60-minute filing rule rather than tripping its warning at once.
+// Local date/time defaults: today, and the filing lead (an hour) out, rounded UP to the
+// next quarter hour -- the granularity a pilot picks an EOBT in and the one the desk reads
+// back. Rounding UP, not to nearest: the proposed time must never open already inside the
+// 60-minute rule, which is what rounding down would do for most of every quarter.
 function fplDefaultWhen(now) {
   const d = now instanceof Date ? new Date(now.getTime()) : new Date();
-  d.setMinutes(d.getMinutes() + FPL_MIN_LEAD_MIN() + 5);
-  d.setMinutes(Math.ceil(d.getMinutes() / 10) * 10, 0, 0);
+  // The seconds count towards the lead, and the rounding below drops them. Without this
+  // a dialog opened at 10:00:30 would propose 11:00 -- 59.5 minutes out -- and trip
+  // warnFplLead on its own default.
+  const part = (d.getSeconds() || d.getMilliseconds()) ? 1 : 0;
+  d.setMinutes(d.getMinutes() + FPL_MIN_LEAD_MIN() + part, 0, 0);
+  d.setMinutes(Math.ceil(d.getMinutes() / 15) * 15, 0, 0);
   const pad = n => String(n).padStart(2, '0');
   return {
     date: d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()),
