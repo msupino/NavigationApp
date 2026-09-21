@@ -1365,7 +1365,14 @@ function appendAddToRouteButton(body, pt) {
     const prevTail = state.waypoints[state.waypoints.length - 1];
     state.waypoints.push({ lat: r5(pt.lat), lng: r5(pt.lng), name: pt.name || '' });
     syncLegs();
-    state.selected = { type: 'wp', index: state.waypoints.length - 1 };
+    // Nothing selected, so the panel closes with the press. It used to select the waypoint it
+    // had just made, which swapped the small reference panel -- a field, a reporting point, a
+    // coordinate -- for the full route-waypoint inspector: delete, rename, turning point, the
+    // clock. The pilot pressed "add to route", and the answer to that is the point on the map,
+    // not a different panel over it. The gist can turn the old behaviour back ON for anyone who
+    // was using it to go straight into naming what they had just added.
+    const opens = typeof tune === 'function' && tune('addToRouteOpensInspector') === true;
+    state.selected = opens ? { type: 'wp', index: state.waypoints.length - 1 } : null;
     draw();
     showInspector();
     // Same corridor treatment as a map tap: adding by button must not produce a different
