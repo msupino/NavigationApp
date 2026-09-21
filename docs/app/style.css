@@ -7808,6 +7808,19 @@ body.deck-on .map-time {
   right: 112px;
 }
 body.deck-on .zulu-clock { display: none; }     /* the strip carries the Zulu time now */
+/* Everything that speaks from the bottom edge. These are drawn ABOVE the deck (a toast is
+   z-index 5000, the deck 2400), so on a phone they did not sit beside the five buttons --
+   they sat on top of them, and a warning that has to be read covered the menu that answers
+   it. Each keeps the gap it had from the bottom of the screen, measured from the top of the
+   deck instead: 52px of deck, plus the home-indicator inset, plus its own gap.
+   Reported: in mobile mode a popup warning hides the bottom menu. */
+body.deck-on .toast { bottom: calc(76px + env(safe-area-inset-bottom, 0px)); }          /* 52 + 24 */
+body.deck-on .build-update-notice { bottom: calc(70px + env(safe-area-inset-bottom, 0px)); }  /* 52 + 18 */
+body.deck-on .overlay-loading { bottom: calc(120px + env(safe-area-inset-bottom, 0px)); }     /* 52 + 68 */
+/* The mode chip is the other way round -- it sits UNDER the deck (z 1600), so the deck hid
+   the chip rather than the chip hiding the deck. Same cause, same move. The class+id
+   selector beats the phone media block that placed it at 80px, whatever the source order. */
+body.deck-on #mode-chip { bottom: calc(132px + env(safe-area-inset-bottom, 0px)); }      /* 52 + 80 */
 /* The sheet: one surface for everything that is not the chart, at one of three heights.
    It sits above the deck and below the strip, and the chart behind it stays live -- that is
    the point of the peek height. */
