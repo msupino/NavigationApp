@@ -11237,6 +11237,13 @@ const NavWxAvailability = (function () {
       if (when) {
         line.appendChild(document.createTextNode(' \u00b7 '));
         const at = document.createElement('bdi');
+        // A clock is a clock in both languages. <bdi> is dir="auto", which resolves off the
+        // first STRONG character -- here the trailing Z, since digits are not strong. That
+        // happens to give LTR today, but it means the run order depends on the Z being
+        // there: drop it, or print an hour without one, and dir="auto" falls back to the
+        // paragraph's RTL and renders "21/06/2026 18:00" as "18:00 21/06/2026". Stating the
+        // direction costs nothing and does not rely on the format.
+        at.dir = 'ltr';
         at.textContent = when;
         line.appendChild(at);
       }

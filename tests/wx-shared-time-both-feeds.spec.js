@@ -233,6 +233,40 @@ test('the stamp says WHICH valid time has no chart', async ({ page }) => {
   })).toEqual(['Wind/temp — Unavailable', '21/06/2026 18:00Z']);
 });
 
+test('in Hebrew the hour still reads left to right, Z last', async ({ page }) => {
+  await boot(page, {
+    sigwx: { generatedAt: 'x', times: [sig('21/06/2026', '18:00')] },
+    pwxManifest: { generatedAt: 'x', bounds: BOUNDS,
+      levels: [{ level: '950', label: 'FL020', times: [pwx('21/06/2026', '12:00')] }] },
+  }, 'he');
+  await turnOn(page, 'ims-pwx-cb');
+  await turnOn(page, 'sigwx-ov-cb');
+  await expect(watermark(page)).toBeVisible();
+  const seen = await page.evaluate(() => {
+    const line = document.querySelector('#weather-unavailable-watermark span[data-layer]');
+    const bdis = [...line.querySelectorAll('bdi')];
+    const box = b => b.getBoundingClientRect();
+    // Character by character, in the order they actually appear on screen. The string alone
+    // cannot show this bug: the text content is right while the glyphs are not.
+    const node = bdis[1].firstChild;
+    const chars = [];
+    for (let i = 0; i < node.length; i++) {
+      const r = document.createRange();
+      r.setStart(node, i); r.setEnd(node, i + 1);
+      chars.push({ c: node.data[i], x: r.getBoundingClientRect().left });
+    }
+    return {
+      visual: chars.sort((a, b) => a.x - b.x).map(o => o.c).join(''),
+      nameIsRightOfTime: box(bdis[0]).left > box(bdis[1]).right,
+    };
+  });
+  // Not "18:00 21/06/2026", and not "00:18" with the Z adrift -- the failure this line has
+  // produced three times elsewhere in the app.
+  expect(seen.visual).toBe('21/06/2026 18:00Z');
+  // And in an RTL line the Hebrew name is read first, so it sits on the right.
+  expect(seen.nameIsRightOfTime).toBe(true);
+});
+
 test('the named hour follows the dropdown', async ({ page }) => {
   await boot(page, {
     sigwx: { generatedAt: 'x', times: [sig('21/06/2026', '18:00'), sig('22/06/2026', '00:00')] },
