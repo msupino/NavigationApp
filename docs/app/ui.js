@@ -10849,6 +10849,29 @@ const NavWxTime = (function () {
       }
       return pick.textContent || '';
     },
+    // The option an unpinned dropdown would be sitting on -- the sheet valid now -- without
+    // moving it. live() lands here, so it is also the answer to "are the charts off live?".
+    liveValue() {
+      if (!sel || !sel.options.length) return '';
+      const i = Math.max(0, imsNearestTimeIndex(Array.from(sel.options, o => parse(o.value))));
+      return sel.options[i].value;
+    },
+    // The pilot can move this dropdown from the toolbar without touching a slider, so the
+    // map clock has to be able to ask whether the charts are somewhere other than now.
+    offLive: () => !!sel && sel.options.length > 0 && sel.value !== api.liveValue(),
+    // Back to live. Drops the pin -- the pilot's own pick, or the one followInstant set
+    // while they scrubbed -- and re-seeds to the sheet valid now. "Now" means every layer
+    // as it is right now, and the charts are a layer: leaving them on the hour the last
+    // scrub chose put the map back at live with a three-hour-old prog chart still on it.
+    // The stored preference goes too, or the next reload would resurrect the time the
+    // pilot just asked to leave.
+    live() {
+      if (!sel || !sel.options.length) return '';
+      pinned = false;
+      try { localStorage.removeItem(KEY); } catch (e) {}
+      reseed();                                 // notifies if the selection actually moved
+      return sel.selectedIndex >= 0 ? (sel.options[sel.selectedIndex].textContent || '') : '';
+    },
     register,   // a feed registers its refetch() so poll() keeps the dropdown live
     poll,       // exposed for tests to trigger a re-poll deterministically
     // Called for BOTH a pilot change and a programmatic re-seed; the argument says which,
@@ -10954,28 +10977,47 @@ const NavWxTime = (function () {
       el.appendChild(bdi);
     });
   }
+  const chartsOn = () => ['ims-pwx-cb', 'sigwx-ov-cb'].some(id => {
+    const cb = document.getElementById(id);
+    return !!(cb && cb.checked);
+  });
+  // Three things answer to this clock and can each be moved off live on their own: the
+  // shared hour, the density-altitude slider on an open panel (its own control, which does
+  // not drive the master), and the chart dropdown in the toolbar. Now resets all three, so
+  // offering it only when the SLIDER had moved left a pilot looking at a future chart, or a
+  // density altitude for an hour they had scrubbed to, beside a dead button.
+  const daAhead = () => Array.from(document.querySelectorAll('#inspector:not(.hidden) input.da-time'))
+    .some(s1 => (parseInt(s1.value, 10) || 0) > 0);
+  const chartsAhead = () => chartsOn() && !!(NavWxTime.offLive && NavWxTime.offLive());
+  const offLive = () => (parseInt(slider.value, 10) || 0) !== 0 || daAhead() || chartsAhead();
   function label() {
     const h = parseInt(slider.value, 10) || 0;
     const text = (typeof notamTimeLabel === 'function')
       ? notamTimeLabel(h) : (h ? '+' + h + 'h' : 'now');
     setParts(read, text);
     setParts(inspRead, text);
-    if (nowBtn) nowBtn.disabled = h === 0;
-    if (inspNow) inspNow.disabled = h === 0;
+    const atLive = !offLive();
+    if (nowBtn) nowBtn.disabled = atLive;
+    if (inspNow) inspNow.disabled = atLive;
     if (inspSlider && inspSlider.value !== slider.value) inspSlider.value = slider.value;
   }
-  const chartsOn = () => ['ims-pwx-cb', 'sigwx-ov-cb'].some(id => {
-    const cb = document.getElementById(id);
-    return !!(cb && cb.checked);
-  });
   // Pull the charts to the hour. ONLY on a scrub: moving the clock is a request about time,
   // but switching a layer on is not. Doing it on toggle overwrote a valid time the pilot had
   // chosen from the dropdown -- pick the SIGWX-only 18:00 sheet, enable the overlays, and the
   // selection jumped back to whatever was newest by now.
   function pullCharts() {
     if (!charts || !chartsOn()) return showCharts();
-    if (!NavWxTime.followInstant) return showCharts();
     const h = parseInt(slider.value, 10) || 0;
+    // Back at live the charts go back to choosing for themselves: the dropdown is released
+    // and re-seeded to the sheet valid now, instead of staying pinned to whatever the last
+    // scrub chose. Pressing Now is a request for every layer as it is right now -- it used
+    // to leave the prog chart on the hour the pilot had just scrubbed away from, and pinned
+    // there, so the ten-minute re-poll could not move it either.
+    if (!h) {
+      if (NavWxTime.live) NavWxTime.live();
+      return showCharts();
+    }
+    if (!NavWxTime.followInstant) return showCharts();
     const instant = (typeof topOfHour === 'function' ? topOfHour(Date.now()) : Date.now()) + h * 3600e3;
     NavWxTime.followInstant(instant);
     showCharts();
@@ -11024,6 +11066,12 @@ const NavWxTime = (function () {
   if (inspBody && typeof MutationObserver === 'function') {
     new MutationObserver(() => refresh()).observe(inspBody, { childList: true, subtree: true });
   }
+  // Dragging the density-altitude slider changes a value, not the tree, so the observer
+  // above never sees it. It is still a move off live, and Now has to light up for it.
+  if (inspBody) inspBody.addEventListener('input', e => {
+    const t = e.target;
+    if (t && t.classList && t.classList.contains('da-time')) label();
+  });
 
   const scrubbed = () => {
     // Drive the master and let it cascade: NOTAM, wind effect, wind field and airfield wind
@@ -11072,7 +11120,7 @@ const NavWxTime = (function () {
   // the file behind a `typeof NavWxTime !== 'undefined'` guard -- which throws for a const in
   // its temporal dead zone rather than reporting "undefined", taking the whole script down
   // and leaving the weather dropdown empty.
-  NavWxTime.onChange(showCharts);
+  NavWxTime.onChange(() => { showCharts(); label(); });
 }());
 
 
