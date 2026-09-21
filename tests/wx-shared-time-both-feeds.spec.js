@@ -42,7 +42,7 @@ const PWX = { generatedAt: '2026-06-21T09:18:18Z', bounds: BOUNDS, levels: [{
     pwx('21/06/2026', '12:00'), pwx('21/06/2026', '18:00'),
     pwx('22/06/2026', '00:00'), pwx('22/06/2026', '03:00'), pwx('22/06/2026', '06:00')] }] };
 
-async function boot(page, { sigwx = SIGWX, pwxManifest = PWX } = {}) {
+async function boot(page, { sigwx = SIGWX, pwxManifest = PWX } = {}, lang = 'en') {
   await freeze(page);
   await page.route(/ims-data\/ims\/(sigwx|pwx)\/.*\.png/, r =>
     r.fulfill({ status: 200, contentType: 'image/png', body: PNG }));
@@ -54,7 +54,7 @@ async function boot(page, { sigwx = SIGWX, pwxManifest = PWX } = {}) {
     for (const s of ['build', 'view', 'display', 'charts', 'export', 'print'])
       try { localStorage.setItem('navaid.sec.' + s, '1'); } catch (e) {}
   });
-  await page.goto('?lang=en&nogist');
+  await page.goto('?lang=' + lang + '&nogist');
   await page.waitForFunction(() => document.getElementById('sigwx-ov-cb')
     && document.querySelectorAll('#wx-time option').length > 0);
 }
@@ -186,4 +186,103 @@ test('with nothing in common, the layer that was switched on wins and the other 
   // shown and the other is named as missing rather than quietly absent.
   await expect(watermark(page)).toBeVisible();
   await expect(watermark(page)).toContainText('Wind/temp');
+});
+
+// Both watermarks name the chart the same way -- the layer's own name, not an acronym for
+// one of them and a name for the other. The acronym belongs beside the name in the viewer's
+// title (see ims-sigwx-viewer.spec.js); a stamp across the map is not where a pilot should
+// be introduced to it.
+for (const [lang, sigwxName, pwxName] of [
+  ['en', 'Significant weather — Unavailable', 'Wind/temp — Unavailable'],
+  ['he', 'מזג אוויר משמעותי — לא זמין', 'רוח/טמפרטורה — לא זמין'],
+]) {
+  test('the unavailable stamp names the chart (' + lang + ')', async ({ page }) => {
+    await boot(page, {
+      sigwx: { generatedAt: 'x', times: [sig('21/06/2026', '18:00')] },
+      pwxManifest: { generatedAt: 'x', bounds: BOUNDS,
+        levels: [{ level: '950', label: 'FL020', times: [pwx('21/06/2026', '12:00')] }] },
+    }, lang);
+    await turnOn(page, 'ims-pwx-cb');
+    await turnOn(page, 'sigwx-ov-cb');
+    // The feeds share no hour, so whichever is left out is named on the map.
+    await expect(watermark(page)).toBeVisible();
+    await expect(watermark(page)).toContainText(pwxName);
+    // ...and the other one's wording is the same shape, checked directly rather than by
+    // arranging a second scenario for it.
+    expect(await page.evaluate(() => S.wxSigwxUnavailableWatermark)).toBe(sigwxName);
+  });
+}
+
+test('the stamp says WHICH valid time has no chart', async ({ page }) => {
+  await boot(page, {
+    sigwx: { generatedAt: 'x', times: [sig('21/06/2026', '18:00')] },
+    pwxManifest: { generatedAt: 'x', bounds: BOUNDS,
+      levels: [{ level: '950', label: 'FL020', times: [pwx('21/06/2026', '12:00')] }] },
+  });
+  await turnOn(page, 'ims-pwx-cb');
+  await turnOn(page, 'sigwx-ov-cb');
+  // The dropdown settles on the SIGWX hour, so PWX is the one with nothing to draw -- and
+  // the stamp names the hour it has nothing for. "Unavailable" on its own reads as "this
+  // layer is broken"; the hour is the part a pilot can act on.
+  expect(await wxValue(page)).toBe('21/06/2026|18:00');
+  await expect(watermark(page)).toContainText('21/06/2026 18:00Z');
+  // Each run is isolated, or an RTL paragraph merges the clock into the Hebrew beside it.
+  expect(await page.evaluate(() => {
+    const line = document.querySelector('#weather-unavailable-watermark span[data-layer]');
+    return Array.from(line.querySelectorAll('bdi'), b => b.textContent);
+  })).toEqual(['Wind/temp — Unavailable', '21/06/2026 18:00Z']);
+});
+
+test('in Hebrew the hour still reads left to right, Z last', async ({ page }) => {
+  await boot(page, {
+    sigwx: { generatedAt: 'x', times: [sig('21/06/2026', '18:00')] },
+    pwxManifest: { generatedAt: 'x', bounds: BOUNDS,
+      levels: [{ level: '950', label: 'FL020', times: [pwx('21/06/2026', '12:00')] }] },
+  }, 'he');
+  await turnOn(page, 'ims-pwx-cb');
+  await turnOn(page, 'sigwx-ov-cb');
+  await expect(watermark(page)).toBeVisible();
+  const seen = await page.evaluate(() => {
+    const line = document.querySelector('#weather-unavailable-watermark span[data-layer]');
+    const bdis = [...line.querySelectorAll('bdi')];
+    const box = b => b.getBoundingClientRect();
+    // Character by character, in the order they actually appear on screen. The string alone
+    // cannot show this bug: the text content is right while the glyphs are not.
+    const node = bdis[1].firstChild;
+    const chars = [];
+    for (let i = 0; i < node.length; i++) {
+      const r = document.createRange();
+      r.setStart(node, i); r.setEnd(node, i + 1);
+      chars.push({ c: node.data[i], x: r.getBoundingClientRect().left });
+    }
+    return {
+      visual: chars.sort((a, b) => a.x - b.x).map(o => o.c).join(''),
+      nameIsRightOfTime: box(bdis[0]).left > box(bdis[1]).right,
+    };
+  });
+  // Not "18:00 21/06/2026", and not "00:18" with the Z adrift -- the failure this line has
+  // produced three times elsewhere in the app.
+  expect(seen.visual).toBe('21/06/2026 18:00Z');
+  // And in an RTL line the Hebrew name is read first, so it sits on the right.
+  expect(seen.nameIsRightOfTime).toBe(true);
+});
+
+test('the named hour follows the dropdown', async ({ page }) => {
+  await boot(page, {
+    sigwx: { generatedAt: 'x', times: [sig('21/06/2026', '18:00'), sig('22/06/2026', '00:00')] },
+    pwxManifest: { generatedAt: 'x', bounds: BOUNDS,
+      levels: [{ level: '950', label: 'FL020', times: [pwx('21/06/2026', '12:00')] }] },
+  });
+  await turnOn(page, 'ims-pwx-cb');
+  await turnOn(page, 'sigwx-ov-cb');
+  await expect(watermark(page)).toContainText('21/06/2026 18:00Z');
+  // A stamp that keeps naming the hour the pilot has moved away from is worse than one that
+  // names none, so it is rebuilt with the selection rather than written once.
+  await page.evaluate(() => {
+    const sel = document.getElementById('wx-time');
+    sel.value = '22/06/2026|00:00';
+    sel.dispatchEvent(new Event('change', { bubbles: true }));
+  });
+  await expect(watermark(page)).toContainText('22/06/2026 00:00Z');
+  await expect(watermark(page)).not.toContainText('18:00Z');
 });

@@ -1359,7 +1359,7 @@ window.S = Object.assign({
   pwxMissing: 'Chart not available for this level/time yet.',
   pwxUnavailable: 'Wind/temp charts are temporarily unavailable.',
   wxPwxUnavailableWatermark: 'Wind/temp — Unavailable',
-  wxSigwxUnavailableWatermark: 'SIGWX — Unavailable',
+  wxSigwxUnavailableWatermark: 'Significant weather — Unavailable',
   tbShowMsa: 'Terrain vs altitude',                 // clearance shading + the leg MSA row
   tbShowMsaTitle: 'Shade only the ground that reaches your planned altitude, and show each leg\'s minimum safe altitude in the inspector',
   report: 'Reporting',
