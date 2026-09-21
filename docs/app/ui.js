@@ -10849,6 +10849,19 @@ const NavWxTime = (function () {
       }
       return pick.textContent || '';
     },
+    // Back to live. Drops the pin -- the pilot's own pick, or the one followInstant set
+    // while they scrubbed -- and re-seeds to the sheet valid now. "Now" means every layer
+    // as it is right now, and the charts are a layer: leaving them on the hour the last
+    // scrub chose put the map back at live with a three-hour-old prog chart still on it.
+    // The stored preference goes too, or the next reload would resurrect the time the
+    // pilot just asked to leave.
+    live() {
+      if (!sel || !sel.options.length) return '';
+      pinned = false;
+      try { localStorage.removeItem(KEY); } catch (e) {}
+      reseed();                                 // notifies if the selection actually moved
+      return sel.selectedIndex >= 0 ? (sel.options[sel.selectedIndex].textContent || '') : '';
+    },
     register,   // a feed registers its refetch() so poll() keeps the dropdown live
     poll,       // exposed for tests to trigger a re-poll deterministically
     // Called for BOTH a pilot change and a programmatic re-seed; the argument says which,
@@ -10974,8 +10987,17 @@ const NavWxTime = (function () {
   // selection jumped back to whatever was newest by now.
   function pullCharts() {
     if (!charts || !chartsOn()) return showCharts();
-    if (!NavWxTime.followInstant) return showCharts();
     const h = parseInt(slider.value, 10) || 0;
+    // Back at live the charts go back to choosing for themselves: the dropdown is released
+    // and re-seeded to the sheet valid now, instead of staying pinned to whatever the last
+    // scrub chose. Pressing Now is a request for every layer as it is right now -- it used
+    // to leave the prog chart on the hour the pilot had just scrubbed away from, and pinned
+    // there, so the ten-minute re-poll could not move it either.
+    if (!h) {
+      if (NavWxTime.live) NavWxTime.live();
+      return showCharts();
+    }
+    if (!NavWxTime.followInstant) return showCharts();
     const instant = (typeof topOfHour === 'function' ? topOfHour(Date.now()) : Date.now()) + h * 3600e3;
     NavWxTime.followInstant(instant);
     showCharts();

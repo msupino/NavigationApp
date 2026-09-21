@@ -132,6 +132,104 @@ test('before the first published sheet it shows the earliest rather than nothing
   expect(picked).toContain('18:00');
 });
 
+// Publish sheets at chosen offsets from now, as the feeds do, and turn a chart overlay on.
+// The offsets matter: "nearest to now" (how the dropdown seeds itself) and "newest issued
+// by now" (how the clock pulls it) are NOT the same sheet for half of every interval, and
+// that gap is the whole subject here.
+async function seedSheets(page, offsetsH) {
+  return page.evaluate((hh) => {
+    const sel = document.getElementById('wx-time');
+    const pad = n => String(n).padStart(2, '0');
+    sel.innerHTML = '';
+    for (const h of hh) {
+      const d = new Date(Date.now() + h * 3600e3);
+      const day = pad(d.getUTCDate()) + '/' + pad(d.getUTCMonth() + 1) + '/' + d.getUTCFullYear();
+      const valid = pad(d.getUTCHours()) + ':' + pad(d.getUTCMinutes());
+      const o = document.createElement('option');
+      o.value = day + '|' + valid;
+      o.textContent = day + ' ' + valid + 'Z';
+      sel.appendChild(o);
+    }
+    const cb = document.getElementById('sigwx-ov-cb');
+    cb.checked = true; cb.dispatchEvent(new Event('change', { bubbles: true }));
+    NavWxTime.ensure([]);          // seed it the way a feed arriving would
+    return Array.from(sel.options, o => o.value);
+  }, offsetsH);
+}
+const wxValue = page => page.evaluate(() => document.getElementById('wx-time').value);
+// A re-seed of the kind a feed arriving (or the ten-minute re-poll) performs. It moves the
+// selection only while the dropdown is unpinned, so it is also how a test asks "is it pinned?"
+const reseed = page => page.evaluate(() => NavWxTime.ensure([]));
+
+// PAST is two hours old, SOON is an hour out, LATER is ten. "Nearest to now" is SOON;
+// "newest issued by now" is PAST. Pressing Now must give the first, which is what the other
+// layers show -- it used to give the second, and pin it there.
+const PAST = 0, SOON = 1, LATER = 2;
+const OFFSETS = [-2, 1, 10];
+
+test('Now releases the charts back to the sheet valid right now', async ({ page }) => {
+  await boot(page);
+  const sheet = await seedSheets(page, OFFSETS);
+  expect(await wxValue(page), 'the unpinned dropdown seeds to the nearest sheet')
+    .toBe(sheet[SOON]);
+
+  await scrub(page, 12);
+  expect(await wxValue(page), 'scrubbing forward moves the chart with the clock')
+    .toBe(sheet[LATER]);
+
+  // Back to live. The chart that is valid now is the one an hour out, not the two-hour-old
+  // sheet that was merely the newest ISSUED by now -- the clock's rule for a scrubbed hour
+  // is not the rule for live.
+  await page.evaluate(() => document.getElementById('map-time-now').click());
+  expect(await wxValue(page)).toBe(sheet[SOON]);
+  expect(await wxValue(page)).not.toBe(sheet[PAST]);
+});
+
+test('Now leaves the dropdown unpinned, so it can keep advancing on its own', async ({ page }) => {
+  await boot(page);
+  const sheet = await seedSheets(page, OFFSETS);
+  await scrub(page, 12);
+  await page.evaluate(() => document.getElementById('map-time-now').click());
+
+  // A sheet published six minutes out is now the nearest. Only an unpinned dropdown takes
+  // it; a pin left behind by the scrub would strand the map on the old one until a reload.
+  const fresh = await page.evaluate(() => {
+    const sel = document.getElementById('wx-time');
+    const d = new Date(Date.now() + 6 * 60e3);
+    const pad = n => String(n).padStart(2, '0');
+    const o = document.createElement('option');
+    o.value = pad(d.getUTCDate()) + '/' + pad(d.getUTCMonth() + 1) + '/' + d.getUTCFullYear()
+      + '|' + pad(d.getUTCHours()) + ':' + pad(d.getUTCMinutes());
+    o.textContent = o.value;
+    sel.appendChild(o);
+    return o.value;
+  });
+  await reseed(page);
+  expect(await wxValue(page)).toBe(fresh);
+  expect(fresh).not.toBe(sheet[SOON]);        // the re-seed really did have somewhere to move
+});
+
+test('dragging the slider back to live releases the charts too', async ({ page }) => {
+  await boot(page);
+  const sheet = await seedSheets(page, OFFSETS);
+  await scrub(page, 12);
+  expect(await wxValue(page)).toBe(sheet[LATER]);
+  // The button is only one way back to live; the slider itself is the other, and it means
+  // exactly the same thing.
+  await scrub(page, 0);
+  expect(await wxValue(page)).toBe(sheet[SOON]);
+});
+
+test('a chart time still ahead of live is left alone by a re-seed', async ({ page }) => {
+  await boot(page);
+  const sheet = await seedSheets(page, OFFSETS);
+  await scrub(page, 12);
+  // The pin is what says "the clock chose this hour". A feed arriving must not drag the
+  // scrubbed pilot back to now; only returning to live releases it.
+  await reseed(page);
+  expect(await wxValue(page)).toBe(sheet[LATER]);
+});
+
 test('the Hebrew readout is not run together by the bidi algorithm', async ({ page }) => {
   // Reported garbled: "+14ש · 21:00Z" rendered as "+1421:00 · שZ" -- digits merged, Z adrift
   // -- and "מפות 09/09/2026 18:00Z" as "Zמפות 09/09/2026 18:00". Both came from forcing
