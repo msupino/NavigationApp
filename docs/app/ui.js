@@ -11571,6 +11571,8 @@ const NavWxAvailability = (function () {
     const title = document.createElement('div');
     title.className = 'modal-title';
     title.style.cursor = 'default';
+    title.id = 'sigwx-viewer-title';
+    box.setAttribute('aria-labelledby', title.id);
     title.textContent = S.sigwxModalTitle || 'Significant weather (SIGWX)';
     box.appendChild(title);
 
@@ -11697,6 +11699,8 @@ const NavWxAvailability = (function () {
     const title = document.createElement('div');
     title.className = 'modal-title';
     title.style.cursor = 'default';
+    title.id = 'pwx-viewer-title';
+    box.setAttribute('aria-labelledby', title.id);
     title.textContent = S.pwxModalTitle || 'Wind / temperature charts (PWX)';
     box.appendChild(title);
 
