@@ -1217,12 +1217,39 @@ legendCtrl.addTo(map);
   // around a phone screen. Being covered by the menu you are reading is not a problem; being
   // somewhere new each time you close it is. The docked search panel stays, because it is
   // not transient: it sits there until it is dismissed.
+  //
+  // The map clock is on the list for the same reason. It has a fixed place along the bottom
+  // of the chart and it DIMS rather than vanishes when nothing answers to it, so it is not
+  // something that comes and goes -- and below about 1150px the card reached across the
+  // clock's row and sat on top of the control at its left end: the Now button in English,
+  // the hour readout in Hebrew, each covered to the point of being unusable. The card moves
+  // instead, because the clock cannot: it is a fixed strip and the card is the thing with
+  // somewhere else to be.
   function chromeRects() {
-    return ['search-overlay']
-      .map(id => document.getElementById(id))
-      .filter(el => el && !el.classList.contains('hidden'))
-      .map(el => el.getBoundingClientRect())
-      .filter(r => r.width && r.height);
+    const search = document.getElementById('search-overlay');
+    const rects = [];
+    if (search && !search.classList.contains('hidden')) rects.push(search.getBoundingClientRect());
+    const clock = document.getElementById('map-time');
+    // `hidden` is an attribute here, not a class, and the strip is also withdrawn by the
+    // gist and while a live position is showing.
+    if (clock && !clock.hidden && getComputedStyle(clock).display !== 'none') {
+      // The CONTROLS, not the strip. The strip spans the full width and is transparent and
+      // pointer-transparent; treating it as an obstacle would push the card off the bottom
+      // row at every width, including the wide screens where the two never met -- and an
+      // untouched legend would lose its Leaflet anchor for nothing.
+      let box = null;
+      for (const kid of clock.children) {
+        if (kid.hidden || getComputedStyle(kid).display === 'none') continue;
+        const k = kid.getBoundingClientRect();
+        if (!k.width || !k.height) continue;
+        box = box ? {
+          left: Math.min(box.left, k.left), top: Math.min(box.top, k.top),
+          right: Math.max(box.right, k.right), bottom: Math.max(box.bottom, k.bottom),
+        } : { left: k.left, top: k.top, right: k.right, bottom: k.bottom };
+      }
+      if (box) rects.push({ ...box, width: box.right - box.left, height: box.bottom - box.top });
+    }
+    return rects.filter(r => r.width && r.height);
   }
 
   function overlaps(x, y, w, h, obstacle) {
@@ -1307,14 +1334,15 @@ legendCtrl.addTo(map);
     const obstacles = chromeRects();
     const obstructed = obstacles.some(obstacle =>
       overlaps(r.left, r.top, r.width, r.height, obstacle));
+    // A legend the pilot has never dragged still has a place it belongs: where the stylesheet
+    // put it. Record that the first time we see it on screen, whether or not something is
+    // currently sitting over it -- being obstructed does not move where the card BELONGS,
+    // and a card first seen obstructed used to end up adopting the shove as its home, so
+    // the spot it was pushed to never gave way again once the obstruction went.
+    if (!home && !outside) home = { x: r.left, y: r.top };
     // Where it is is fine: leave it exactly where it is. Re-applying a position it already
-    // holds is how a card starts drifting a pixel at a time. Remember this spot as home if
-    // nothing has claimed one yet -- a legend the pilot has never dragged still has a place
-    // it belongs, and that is wherever it was sitting undisturbed.
-    if (!positioned && !outside && !obstructed) {
-      if (!home) home = { x: r.left, y: r.top };
-      return;
-    }
+    // holds is how a card starts drifting a pixel at a time.
+    if (!positioned && !outside && !obstructed) return;
     // Aim at HOME, not at where the card happens to be. Expanding a legend near the bottom
     // of a phone screen makes it too tall to fit, so it is clamped upwards; collapsing it
     // again used to re-apply that clamped position and leave the card somewhere new --
@@ -6008,10 +6036,21 @@ const notamCb = document.getElementById('notam-cb');
 // the clock. Each of them already knew its own half; none of them looked at the plan, and none
 // of them looked at when. See routecheck.js.
 const routeCheckBtn = document.getElementById('route-check-btn');
+// Dim, never hide: with the feature withdrawn by the gist the button stayed fully enabled
+// and show() returned silently, so the control looked live and did nothing at all when
+// pressed. Greyed out says the same thing the SIGMET button says when there is none.
+function refreshRouteCheckBtn() {
+  if (!routeCheckBtn) return;
+  const on = typeof tune !== 'function' || tune('featureRouteCheck') !== false;
+  routeCheckBtn.hidden = false;
+  routeCheckBtn.disabled = !on;
+}
+window.refreshRouteCheckBtn = refreshRouteCheckBtn;
 if (routeCheckBtn) {
   routeCheckBtn.onclick = () => {
     if (window.NavAid && NavAid.routeCheck) NavAid.routeCheck.show();
   };
+  refreshRouteCheckBtn();
 }
 const notamListBtn = document.getElementById('notam-list-btn');
 const notamControls = document.getElementById('notam-controls');
@@ -9688,6 +9727,9 @@ function redrawAfterTune() {
   if (window.NavAid && typeof NavAid.refreshImsPwx === 'function') NavAid.refreshImsPwx();
   if (window.NavAid && typeof NavAid.refreshSigwxOv === 'function') NavAid.refreshSigwxOv();
   if (window.NavAid && typeof NavAid.refreshWindField === 'function') NavAid.refreshWindField();
+  // Feature flags the panel can move have to reach their controls without a reload.
+  if (typeof refreshRouteCheckBtn === 'function') refreshRouteCheckBtn();
+  if (typeof NavAid.refreshMapClock === 'function') NavAid.refreshMapClock();
 }
 
 function createTuningPanel() {
@@ -10695,6 +10737,31 @@ const NavWxTime = (function () {
     for (const o of opts) sel.appendChild(o);
     reseed();
   }
+  // What each chart layer can draw right now, so a move can respect the others. An overlay
+  // registers once; `on()` says whether it is currently on the map and `times()` what it
+  // publishes. Without this the two layers pull the one shared dropdown in opposite
+  // directions and each takes the other off the map.
+  const drawers = [];
+  function drawing(on, times) {
+    if (typeof on !== 'function' || typeof times !== 'function') return null;
+    const d = { on, times };
+    drawers.push(d);
+    return d;                                  // the caller hands this back to prefer()
+  }
+  // The options EVERY enabled chart layer can draw, or null when that is no help: no layer
+  // is on, or the layers that are on share no hour at all. The dropdown is shared and the
+  // feeds do not publish the same hours, so choosing by "nearest to now" across the whole
+  // union regularly lands on an hour only one of them has -- and the other then stamps
+  // "unavailable" over a chart it could have drawn.
+  function drawablePool(except) {
+    if (!sel) return null;
+    const lists = drawers.filter(d => d !== except && d.on())
+      .map(d => d.times()).filter(list => Array.isArray(list) && list.length);
+    if (!lists.length) return null;
+    const out = Array.from(sel.options)
+      .filter(o => lists.every(list => list.some(t => keyOf(t) === o.value)));
+    return out.length ? out : null;
+  }
   // Choose the default. Re-run on every merge until the selection is pinned, so a feed that
   // arrives second can still supply a closer time.
   function reseed() {
@@ -10719,24 +10786,32 @@ const NavWxTime = (function () {
     const sameHour = savedValid &&
       Array.from(sel.options).filter(o => parse(o.value).valid === savedValid);
     if (sameHour && sameHour.length) {
-      const i = Math.max(0, imsNearestTimeIndex(sameHour.map(o => parse(o.value))));
-      sel.value = sameHour[i].value;
+      const pool = within(sameHour);
+      const i = Math.max(0, imsNearestTimeIndex(pool.map(o => parse(o.value))));
+      sel.value = pool[i].value;
       changed();
       return;
     }
     // ...and the day goes to imsNearestTimeIndex, which has always known how to use one.
     // Without it every hour was assumed to be TODAY, so at 23:45 the dropdown seeded to a
     // chart hours old instead of the one about to become valid.
-    sel.selectedIndex = Math.max(0, imsNearestTimeIndex(
-      Array.from(sel.options, o => parse(o.value))));
+    const pool = within(Array.from(sel.options));
+    sel.value = pool[Math.max(0, imsNearestTimeIndex(pool.map(o => parse(o.value))))].value;
     changed();
+  }
+  // Narrow a candidate list to what the enabled layers can draw, when that leaves anything.
+  function within(options) {
+    const pool = drawablePool(null);
+    if (!pool) return options;
+    const kept = options.filter(o => pool.includes(o));
+    return kept.length ? kept : options;
   }
   // Move to a time the caller can actually render, if the current one is not among them.
   // The dropdown accumulates options from both feeds and every PWX level, so a level change
   // used to leave a time selected that the new level does not publish: currentTime() then
   // found nothing and the overlay was REMOVED, even though that level had valid charts.
   // Changing level is itself a request to see that level, so this overrides a pin.
-  function prefer(times, force) {
+  function prefer(times, force, caller) {
     if (!sel || !Array.isArray(times) || !times.length) return false;
     // A pinned choice stands unless the pilot just asked for a different level: PWX must not
     // drag the shared dropdown off a SIGWX-only time the pilot chose deliberately.
@@ -10747,9 +10822,16 @@ const NavWxTime = (function () {
     const keys = new Set(offered.map(keyOf));
     const usable = Array.from(sel.options).filter(o => keys.has(o.value));
     if (!usable.length) return false;
-    const near = Math.max(0, imsNearestTimeIndex(usable.map(o => parse(o.value))));
+    // Prefer a time EVERY enabled layer can draw. A time only this one publishes fixes this
+    // overlay by breaking the other, and the two would then take turns moving the dropdown.
+    // Falling back to our own list is the honest outcome when the feeds share nothing: one
+    // chart can be shown, and the other says so with its watermark.
+    const others = drawablePool(caller);
+    const shared = others ? usable.filter(o => others.includes(o)) : [];
+    const pool = shared.length ? shared : usable;
+    const near = Math.max(0, imsNearestTimeIndex(pool.map(o => parse(o.value))));
     const was = sel.value;
-    sel.value = usable[near].value;
+    sel.value = pool[near].value;
     if (sel.value !== was) notify(true);
     return true;
   }
@@ -10825,23 +10907,39 @@ const NavWxTime = (function () {
     },
     ensure,
     prefer,
-    // Move to the newest chart published at or before `ms`. The map clock is continuous and
-    // these feeds are not -- they publish at 00/03/06/12/18Z -- so "the chart for 15:00Z" is
-    // whatever was last issued by then. Returns the option text so the caller can say which
-    // sheet is actually on screen; scrubbing the clock is an explicit request and therefore
-    // overrides a pin, exactly as changing level does.
+    drawing,    // an overlay declares what it can draw, so prefer() can respect the others
+    // Move to the chart nearest the hour `ms` names. The map clock is continuous and these
+    // feeds are not -- they publish at 00/03/06/12/18Z -- so the sheet for 16:00Z is the
+    // 18:00Z one, two hours out, not the 12:00Z one that is already four hours old. These
+    // are FORECASTS valid AT a time, which is what the dropdown labels them and what the
+    // seed rule has always assumed.
+    //
+    // This used to take the newest sheet issued at or BEFORE the hour, which is the rule for
+    // an analysis, not a forecast -- and it disagreed with the rule at live. Stepping the
+    // clock from live to +1h therefore moved the chart from 18:00Z back to 12:00Z: the clock
+    // forward an hour, the weather back six. Reported as: the next step goes backwards in
+    // time. One rule on both sides of live, and the sheet can only move forward as the clock
+    // does.
+    //
+    // Within what the enabled layers can draw, like every other move: scrubbing used to be
+    // able to land an overlay on an hour only the OTHER feed publishes and stamp the map
+    // "unavailable" over a chart it had. Scrubbing is an explicit request and so overrides a
+    // pin, exactly as changing level does. Returns the option text so the caller can say
+    // which sheet is actually on screen.
     followInstant(ms) {
       if (!sel || !sel.options.length || !Number.isFinite(ms)) return '';
+      const pool = drawablePool(null) || Array.from(sel.options);
       let best = null;
-      for (const o of sel.options) {
+      for (const o of pool) {
         const { day, valid } = parse(o.value);
         const t = wxOptionEpoch(day, valid);
         if (t === null) continue;
-        if (t <= ms && (!best || t > best.t)) best = { t, o };
+        const d = Math.abs(t - ms);
+        if (!best || d < best.d) best = { d, o };
       }
-      // Before the first published sheet there is nothing earlier to fall back to; show the
-      // earliest rather than nothing, which is what the dropdown would have seeded anyway.
-      const pick = best ? best.o : sel.options[0];
+      // Every option unparseable: show the first rather than nothing, which is what the
+      // dropdown would have seeded anyway.
+      const pick = best ? best.o : pool[0];
       if (sel.value !== pick.value) {
         sel.value = pick.value;
         pinned = true;              // the clock is now the choice, and poll() must not re-seed it
@@ -10849,6 +10947,33 @@ const NavWxTime = (function () {
       }
       return pick.textContent || '';
     },
+    // The option an unpinned dropdown would be sitting on -- the sheet valid now -- without
+    // moving it. live() lands here, so it is also the answer to "are the charts off live?".
+    liveValue() {
+      if (!sel || !sel.options.length) return '';
+      const i = Math.max(0, imsNearestTimeIndex(Array.from(sel.options, o => parse(o.value))));
+      return sel.options[i].value;
+    },
+    // The pilot can move this dropdown from the toolbar without touching a slider, so the
+    // map clock has to be able to ask whether the charts are somewhere other than now.
+    offLive: () => !!sel && sel.options.length > 0 && sel.value !== api.liveValue(),
+    // Back to live. Drops the pin -- the pilot's own pick, or the one followInstant set
+    // while they scrubbed -- and re-seeds to the sheet valid now. "Now" means every layer
+    // as it is right now, and the charts are a layer: leaving them on the hour the last
+    // scrub chose put the map back at live with a three-hour-old prog chart still on it.
+    // The stored preference goes too, or the next reload would resurrect the time the
+    // pilot just asked to leave.
+    live() {
+      if (!sel || !sel.options.length) return '';
+      pinned = false;
+      try { localStorage.removeItem(KEY); } catch (e) {}
+      reseed();                                 // notifies if the selection actually moved
+      return sel.selectedIndex >= 0 ? (sel.options[sel.selectedIndex].textContent || '') : '';
+    },
+    // The selected option as it reads on screen ("21/06/2026 18:00Z"), for anything that has
+    // to say WHICH valid time it is talking about.
+    text: () => (sel && sel.selectedIndex >= 0)
+      ? (sel.options[sel.selectedIndex].textContent || '') : '',
     register,   // a feed registers its refetch() so poll() keeps the dropdown live
     poll,       // exposed for tests to trigger a re-poll deterministically
     // Called for BOTH a pilot change and a programmatic re-seed; the argument says which,
@@ -10867,9 +10992,10 @@ const NavWxTime = (function () {
 // This is the face of the existing look-ahead, not a second mechanism: it moves
 // #lookahead-time, which already cascades to every mirror and carries the walk-back-to-live
 // tick. What it adds is the weather charts, which publish at 00/03/06/12/18Z and so cannot
-// follow an hourly clock exactly. They snap to the newest sheet at or before the chosen
-// hour, and the readout says which one that is rather than leaving two layers quietly
-// disagreeing about what "now + 3" means.
+// follow an hourly clock exactly. They snap to the sheet valid NEAREST the chosen hour --
+// they are forecasts valid at a time, so the sheet for 16:00Z is the 18:00Z one rather than
+// a 12:00Z already four hours stale -- and the readout says which one that is, rather than
+// leaving two layers quietly disagreeing about what "now + 3" means.
 (function mapClock() {
   const el = document.getElementById('map-time');
   const slider = document.getElementById('map-time-slider');
@@ -10954,28 +11080,47 @@ const NavWxTime = (function () {
       el.appendChild(bdi);
     });
   }
+  const chartsOn = () => ['ims-pwx-cb', 'sigwx-ov-cb'].some(id => {
+    const cb = document.getElementById(id);
+    return !!(cb && cb.checked);
+  });
+  // Three things answer to this clock and can each be moved off live on their own: the
+  // shared hour, the density-altitude slider on an open panel (its own control, which does
+  // not drive the master), and the chart dropdown in the toolbar. Now resets all three, so
+  // offering it only when the SLIDER had moved left a pilot looking at a future chart, or a
+  // density altitude for an hour they had scrubbed to, beside a dead button.
+  const daAhead = () => Array.from(document.querySelectorAll('#inspector:not(.hidden) input.da-time'))
+    .some(s1 => (parseInt(s1.value, 10) || 0) > 0);
+  const chartsAhead = () => chartsOn() && !!(NavWxTime.offLive && NavWxTime.offLive());
+  const offLive = () => (parseInt(slider.value, 10) || 0) !== 0 || daAhead() || chartsAhead();
   function label() {
     const h = parseInt(slider.value, 10) || 0;
     const text = (typeof notamTimeLabel === 'function')
       ? notamTimeLabel(h) : (h ? '+' + h + 'h' : 'now');
     setParts(read, text);
     setParts(inspRead, text);
-    if (nowBtn) nowBtn.disabled = h === 0;
-    if (inspNow) inspNow.disabled = h === 0;
+    const atLive = !offLive();
+    if (nowBtn) nowBtn.disabled = atLive;
+    if (inspNow) inspNow.disabled = atLive;
     if (inspSlider && inspSlider.value !== slider.value) inspSlider.value = slider.value;
   }
-  const chartsOn = () => ['ims-pwx-cb', 'sigwx-ov-cb'].some(id => {
-    const cb = document.getElementById(id);
-    return !!(cb && cb.checked);
-  });
   // Pull the charts to the hour. ONLY on a scrub: moving the clock is a request about time,
   // but switching a layer on is not. Doing it on toggle overwrote a valid time the pilot had
   // chosen from the dropdown -- pick the SIGWX-only 18:00 sheet, enable the overlays, and the
   // selection jumped back to whatever was newest by now.
   function pullCharts() {
     if (!charts || !chartsOn()) return showCharts();
-    if (!NavWxTime.followInstant) return showCharts();
     const h = parseInt(slider.value, 10) || 0;
+    // Back at live the charts go back to choosing for themselves: the dropdown is released
+    // and re-seeded to the sheet valid now, instead of staying pinned to whatever the last
+    // scrub chose. Pressing Now is a request for every layer as it is right now -- it used
+    // to leave the prog chart on the hour the pilot had just scrubbed away from, and pinned
+    // there, so the ten-minute re-poll could not move it either.
+    if (!h) {
+      if (NavWxTime.live) NavWxTime.live();
+      return showCharts();
+    }
+    if (!NavWxTime.followInstant) return showCharts();
     const instant = (typeof topOfHour === 'function' ? topOfHour(Date.now()) : Date.now()) + h * 3600e3;
     NavWxTime.followInstant(instant);
     showCharts();
@@ -11001,7 +11146,9 @@ const NavWxTime = (function () {
   }
   function refresh() {
     const timed = anyTimedLayer() || inspectorTimed() || planningFormOpen();
+    const was = el.hidden;
     el.hidden = !featureOn() || liveHides() || (!timed && idleHidesOnPhone());
+    if (el.hidden !== was) reseatLegend();
     // The panel's copy exists for one reason: on a phone the sheet covers the map's copy. So
     // it appears when there is something for a clock to move and not otherwise -- a waypoint,
     // an ADS-B aircraft or a note has nothing in it that answers to time, and a slider on
@@ -11014,6 +11161,11 @@ const NavWxTime = (function () {
     label();
   }
   NavAid.refreshMapClock = refresh;
+  // The legend keeps clear of this strip, so it has to be told when the strip comes or goes
+  // -- the gist withdrawing it, or a live position hiding it, frees the row again.
+  const reseatLegend = () => {
+    if (typeof window.reconcileLegendPosition === 'function') window.reconcileLegendPosition();
+  };
   // The inspector is rebuilt from scratch on every selection, so what it contains cannot be
   // asked once. Watching it is cheaper than making every caller that opens or closes a panel
   // remember to say so -- and refresh() is a class toggle and a label.
@@ -11024,6 +11176,12 @@ const NavWxTime = (function () {
   if (inspBody && typeof MutationObserver === 'function') {
     new MutationObserver(() => refresh()).observe(inspBody, { childList: true, subtree: true });
   }
+  // Dragging the density-altitude slider changes a value, not the tree, so the observer
+  // above never sees it. It is still a move off live, and Now has to light up for it.
+  if (inspBody) inspBody.addEventListener('input', e => {
+    const t = e.target;
+    if (t && t.classList && t.classList.contains('da-time')) label();
+  });
 
   const scrubbed = () => {
     // Drive the master and let it cascade: NOTAM, wind effect, wind field and airfield wind
@@ -11072,7 +11230,7 @@ const NavWxTime = (function () {
   // the file behind a `typeof NavWxTime !== 'undefined'` guard -- which throws for a const in
   // its temporal dead zone rather than reporting "undefined", taking the whole script down
   // and leaving the weather dropdown empty.
-  NavWxTime.onChange(showCharts);
+  NavWxTime.onChange(() => { showCharts(); label(); });
 }());
 
 
@@ -11111,7 +11269,7 @@ const NavWxAvailability = (function () {
   const missing = new Set();
   const labels = {
     pwx: () => S.wxPwxUnavailableWatermark || 'Wind/temp — Unavailable',
-    sigwx: () => S.wxSigwxUnavailableWatermark || 'SIGWX — Unavailable',
+    sigwx: () => S.wxSigwxUnavailableWatermark || 'Significant weather — Unavailable',
   };
   let el = null;
 
@@ -11126,11 +11284,34 @@ const NavWxAvailability = (function () {
       el.hidden = true;
       mapEl.appendChild(el);
     }
+    // WHICH valid time has no chart. "Unavailable" alone reads as "this layer is broken",
+    // when what it means is "not for the hour you are looking at" -- and the hour is the one
+    // thing a pilot can act on, by picking another from the same dropdown.
+    const when = (typeof NavWxTime !== 'undefined' && NavWxTime.text) ? NavWxTime.text() : '';
     const keys = ['pwx', 'sigwx'].filter(key => missing.has(key));
     el.replaceChildren(...keys.map(key => {
       const line = document.createElement('span');
       line.dataset.layer = key;
-      line.textContent = labels[key]();
+      // Each run in its own <bdi>. The name is Hebrew in a Hebrew session and the clock is
+      // always Latin digits, and a bidi paragraph run together turns "18:00Z" into "00:18Z"
+      // with the Z adrift -- the same treatment the map clock's readout needs, for the same
+      // reason.
+      const name = document.createElement('bdi');
+      name.textContent = labels[key]();
+      line.appendChild(name);
+      if (when) {
+        line.appendChild(document.createTextNode(' \u00b7 '));
+        const at = document.createElement('bdi');
+        // A clock is a clock in both languages. <bdi> is dir="auto", which resolves off the
+        // first STRONG character -- here the trailing Z, since digits are not strong. That
+        // happens to give LTR today, but it means the run order depends on the Z being
+        // there: drop it, or print an hour without one, and dir="auto" falls back to the
+        // paragraph's RTL and renders "21/06/2026 18:00" as "18:00 21/06/2026". Stating the
+        // direction costs nothing and does not rely on the format.
+        at.dir = 'ltr';
+        at.textContent = when;
+        line.appendChild(at);
+      }
       return line;
     }));
     el.hidden = keys.length === 0;
@@ -11245,13 +11426,18 @@ const NavWxAvailability = (function () {
   // does not clear SIGWX's options). The selection persists in the element.
   // `force` = the pilot just changed level, so landing on a renderable time outranks a
   // pinned one. Only ever moves the shared selection while this overlay is actually on.
+  // What this overlay can draw, for prefer(): the level currently selected, and only while
+  // the overlay is actually on the map.
+  const drawer = NavWxTime.drawing(
+    () => !!(cb && cb.checked),
+    () => { const lv = currentLevel(); return (lv && Array.isArray(lv.times)) ? lv.times : []; });
   function fillTimes(force) {
     const lv = currentLevel();
     if (!lv) return;
     NavWxTime.ensure(lv.times);
     // ...then make sure the selection is one THIS level publishes, or the overlay would be
     // removed on a level change despite valid charts being available at the new level.
-    if (cb.checked) NavWxTime.prefer(lv.times, force);
+    if (cb.checked) NavWxTime.prefer(lv.times, force, drawer);
   }
 
   // Persist the on/off + selections so a reload keeps the overlay as it was.
@@ -11313,7 +11499,10 @@ const NavWxAvailability = (function () {
           if (sv.level && [...levelSel.options].some(o => o.value === sv.level)) {
             levelSel.value = sv.level; fillTimes();
           }
-          if (sv.on) { cb.checked = true; controls.hidden = false; }
+          if (sv.on) {
+            cb.checked = true; controls.hidden = false;
+            fillTimes();          // now that it is on: claim a time this level publishes
+          }
         }
       } catch (e) { /* storage unavailable */ }
     }
@@ -11388,12 +11577,30 @@ const NavWxAvailability = (function () {
     const sel = document.createElement('select');
     sel.className = 'sigwx-time';
     sel.setAttribute('aria-label', S.tbSigwxTime || 'Valid time');
-    manifest.times.forEach((t, i) => {
-      const o = document.createElement('option');
-      o.value = String(i);
-      o.textContent = (t.day ? t.day + ' ' : '') + t.valid + 'Z';
-      sel.appendChild(o);
-    });
+    // The option VALUE is the manifest index, which a refresh renumbers; remember the
+    // pilot's pick by the time it names so a rebuilt list can find it again.
+    let picked = '';
+    const keyAt = i => {
+      const t = manifest.times[i];
+      return t ? (t.day || '') + '|' + t.valid : '';
+    };
+    function fillTimes() {
+      sel.innerHTML = '';
+      manifest.times.forEach((t, i) => {
+        const o = document.createElement('option');
+        o.value = String(i);
+        o.textContent = (t.day ? t.day + ' ' : '') + t.valid + 'Z';
+        sel.appendChild(o);
+      });
+      // Open on the chart that is current NOW. Seeding to options[0] meant the viewer
+      // always opened on the OLDEST sheet the run published, and a tab left open all day
+      // kept opening on it -- the dropdown never moved with Zulu.
+      const keep = picked
+        ? manifest.times.findIndex(t => (t.day || '') + '|' + t.valid === picked)
+        : -1;
+      sel.selectedIndex = keep >= 0 ? keep : imsNearestTimeIndex(manifest.times);
+    }
+    fillTimes();
     box.appendChild(sel);
 
     const img = document.createElement('img');
@@ -11414,7 +11621,7 @@ const NavWxAvailability = (function () {
     // If the PNG is missing (a forecast hour not yet published), show a note
     // instead of a broken-image icon.
     img.addEventListener('error', () => { img.hidden = true; note.hidden = false; });
-    sel.addEventListener('change', load);
+    sel.addEventListener('change', () => { picked = keyAt(sel.selectedIndex); load(); });
     if (manifest.times.length) {
       load();
     } else {
@@ -11433,21 +11640,29 @@ const NavWxAvailability = (function () {
     document.addEventListener('keydown', onEsc, true);
     document.body.appendChild(back);
     sel.focus();
+    // A tab open since this morning holds this morning's manifest. Re-read it now so the
+    // list gains the runs published since; if it lands while we are still open, rebuild.
+    refresh().then(changed => { if (changed && back && sel.isConnected) { fillTimes(); load(); } });
   }
 
   btn.addEventListener('click', open);
 
-  fetch(RAW + 'ims/sigwx.json?t=' + Date.now(), { cache: 'no-store' })
-    .then(r => (r.ok ? r.json() : null))
-    .then(m => {
-      // Reveal the button whenever the manifest exists — even with zero times —
-      // so a broken/empty run is visible (button opens to an "unavailable" note)
-      // rather than the whole feature silently disappearing.
-      if (!m || !Array.isArray(m.times)) return;
-      manifest = m;
-      btn.hidden = false;
-    })
-    .catch(() => { /* manifest unreachable → stay hidden */ });
+  // Reveal the button whenever the manifest exists — even with zero times — so a
+  // broken/empty run is visible (button opens to an "unavailable" note) rather than
+  // the whole feature silently disappearing.
+  function refresh() {
+    return fetch(RAW + 'ims/sigwx.json?t=' + Date.now(), { cache: 'no-store' })
+      .then(r => (r.ok ? r.json() : null))
+      .then(m => {
+        if (!m || !Array.isArray(m.times)) return false;
+        const before = manifest && JSON.stringify(manifest.times);
+        manifest = m;
+        btn.hidden = false;
+        return before !== JSON.stringify(m.times);
+      })
+      .catch(() => false);                   // manifest unreachable → keep what we have
+  }
+  refresh();
 })();
 
 // --- IMS wind/temperature (PWX) original-chart viewer ----------------
@@ -11485,7 +11700,7 @@ const NavWxAvailability = (function () {
     title.textContent = S.pwxModalTitle || 'Wind / temperature charts (PWX)';
     box.appendChild(title);
 
-    const levels = manifest.levels.slice().sort((a, b) => Number(b.level) - Number(a.level));
+    let levels = manifest.levels.slice().sort((a, b) => Number(b.level) - Number(a.level));
     const lvlSel = document.createElement('select');
     lvlSel.className = 'sigwx-time';
     lvlSel.setAttribute('aria-label', S.tbImsPwxLevel || 'Level');
@@ -11513,8 +11728,12 @@ const NavWxAvailability = (function () {
     // Read png paths from the trusted manifest by index, never the DOM value
     // (avoids js/xss-through-dom).
     const curLevel = () => levels[lvlSel.selectedIndex];
+    // The option VALUE is an index into the level's times, which a level change or a
+    // refreshed manifest renumbers; carry the pilot's pick as the time it names.
+    let picked = '';
+    const keyOf = t => (t ? (t.day || '') + '|' + t.valid : '');
     function fillTimes() {
-      const lv = curLevel(); const prev = timeSel.value;
+      const lv = curLevel();
       timeSel.innerHTML = '';
       if (!lv || !Array.isArray(lv.times)) return;
       lv.times.forEach((t, i) => {
@@ -11523,7 +11742,10 @@ const NavWxAvailability = (function () {
         o.textContent = (t.day ? t.day + ' ' : '') + t.valid + 'Z';
         timeSel.appendChild(o);
       });
-      if (prev && [...timeSel.options].some(o => o.value === prev)) timeSel.value = prev;
+      // Open on the chart that is current NOW, as #wx-time does. options[0] is the oldest
+      // sheet of the run, and the viewer used to open on it however late in the day it was.
+      const keep = picked ? lv.times.findIndex(t => keyOf(t) === picked) : -1;
+      timeSel.selectedIndex = keep >= 0 ? keep : imsNearestTimeIndex(lv.times);
     }
     function load() {
       const lv = curLevel(); const t = lv && lv.times[timeSel.selectedIndex];
@@ -11533,7 +11755,11 @@ const NavWxAvailability = (function () {
     }
     img.addEventListener('error', () => { img.hidden = true; note.hidden = false; });
     lvlSel.addEventListener('change', () => { fillTimes(); load(); });
-    timeSel.addEventListener('change', load);
+    timeSel.addEventListener('change', () => {
+      const lv = curLevel();
+      picked = keyOf(lv && lv.times[timeSel.selectedIndex]);
+      load();
+    });
     if (levels.length) { fillTimes(); load(); }
     else {
       lvlSel.hidden = true; timeSel.hidden = true; img.hidden = true;
@@ -11549,18 +11775,30 @@ const NavWxAvailability = (function () {
     document.addEventListener('keydown', onEsc, true);
     document.body.appendChild(back);
     lvlSel.focus();
+    // Same as SIGWX: a long-open tab holds a stale manifest, so re-read on open and
+    // rebuild the time list (the level list is fixed, so only the times can grow).
+    refresh().then(changed => {
+      if (!changed || !back || !timeSel.isConnected) return;
+      levels = manifest.levels.slice().sort((a, b) => Number(b.level) - Number(a.level));
+      fillTimes(); load();
+    });
   }
 
   btn.addEventListener('click', open);
 
-  fetch(RAW + 'ims/pwx.json?t=' + Date.now(), { cache: 'no-store' })
-    .then(r => (r.ok ? r.json() : null))
-    .then(m => {
-      if (!m || !Array.isArray(m.levels) || !m.levels.length) return;
-      manifest = m;
-      btn.hidden = false;
-    })
-    .catch(() => { /* manifest unreachable → stay hidden */ });
+  function refresh() {
+    return fetch(RAW + 'ims/pwx.json?t=' + Date.now(), { cache: 'no-store' })
+      .then(r => (r.ok ? r.json() : null))
+      .then(m => {
+        if (!m || !Array.isArray(m.levels) || !m.levels.length) return false;
+        const before = manifest && JSON.stringify(manifest.levels);
+        manifest = m;
+        btn.hidden = false;
+        return before !== JSON.stringify(m.levels);
+      })
+      .catch(() => false);                   // manifest unreachable → keep what we have
+  }
+  refresh();
 })();
 
 // --- SIGWX significant-weather MAP overlay --------------------------
@@ -11886,10 +12124,20 @@ const NavWxAvailability = (function () {
       place('table', data, null, tblOp);
     }).catch(() => { /* table optional */ });
   }
+  const drawer = NavWxTime.drawing(
+    () => !!(cb && cb.checked),
+    () => (manifest && Array.isArray(manifest.times)) ? manifest.times : []);
   // Merge into the shared #wx-time dropdown (deduped; does not clear PWX's
   // options).
   function fillTimes() {
-    if (manifest) NavWxTime.ensure(manifest.times);
+    if (!manifest) return;
+    NavWxTime.ensure(manifest.times);
+    // ...and then claim a time this feed actually publishes, exactly as PWX does. The two
+    // feeds do not carry the same hours -- PWX runs three-hourly from the latest model run,
+    // SIGWX publishes the prog charts, and the nearest time in the UNION is regularly one
+    // only PWX has. Seeding there left this overlay drawing nothing and showing its
+    // "unavailable" watermark over a chart it was perfectly able to draw an hour later.
+    if (cb.checked) NavWxTime.prefer(manifest.times, false, drawer);
   }
   const KEY = 'navaid.sigwxOv';
   const persist = () => {
@@ -11898,7 +12146,14 @@ const NavWxAvailability = (function () {
   };
   NavAid.refreshSigwxOv = updateLayer;
 
-  cb.addEventListener('change', () => { controls.hidden = !cb.checked; updateLayer(); persist(); });
+  cb.addEventListener('change', () => {
+    controls.hidden = !cb.checked;
+    // Turning the layer on is a request to SEE it, which outranks an unpinned selection
+    // sitting on an hour this feed does not publish.
+    if (cb.checked) fillTimes();
+    updateLayer();
+    persist();
+  });
   NavWxTime.onChange(e => {
     updateLayer();
     if (!e || !e.programmatic) persist();     // a re-seed is not a pilot pin
@@ -11922,7 +12177,17 @@ const NavWxAvailability = (function () {
       let saved = null;
       try { saved = JSON.parse(lsGet(KEY) || 'null'); } catch (e) { /* */ }
       // The shared #wx-time dropdown was seeded to now (Zulu) by NavWxTime.
-      if (saved && saved.on) { cb.checked = true; controls.hidden = false; updateLayer(); }
+      if (saved && saved.on) {
+        cb.checked = true;
+        controls.hidden = false;
+        // Again, now that the layer is ON. fillTimes() above ran with the checkbox still
+        // false -- its claim on a renderable time is gated on the layer actually drawing --
+        // and this path sets the checkbox directly, so the change listener never fires
+        // either. A reload with the overlay on therefore kept the seeded union time and
+        // stamped "unavailable" over a chart it could draw.
+        fillTimes();
+        updateLayer();
+      }
     }
     return { add: m.times, avail: m.times };
   }

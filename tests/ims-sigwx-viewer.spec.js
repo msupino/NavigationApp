@@ -20,7 +20,22 @@ const MANIFEST = {
   ],
 };
 
+// Freeze at 12:00Z on 21/06/2026 so "the chart that is valid now" is unambiguous: the
+// viewer opens on the nearest valid time, not on whichever the manifest happens to list first.
+async function freezeNoon(page) {
+  await page.addInitScript(() => {
+    const fixed = Date.UTC(2026, 5, 21, 12, 0);
+    const RealDate = Date;
+    // eslint-disable-next-line no-global-assign
+    Date = class extends RealDate {
+      constructor(...a) { super(...(a.length ? a : [fixed])); }
+      static now() { return fixed; }
+    };
+  });
+}
+
 async function boot(page, { withManifest } = { withManifest: true }) {
+  await freezeNoon(page);
   await page.route(PNG_RE, r => r.fulfill({ status: 200, contentType: 'image/png', body: PNG }));
   await page.route(MANIFEST_RE, r => withManifest
     ? r.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(MANIFEST) })
@@ -28,6 +43,29 @@ async function boot(page, { withManifest } = { withManifest: true }) {
   await page.addInitScript(() => { try { localStorage.setItem('navaid.sec.charts', '1'); } catch (e) {} });
   await page.goto('?lang=en');
   await page.waitForFunction(() => document.getElementById('sigwx-btn'));
+}
+
+// The acronym is what the shared valid-time tooltip and the "unavailable" watermark call
+// this chart, in BOTH languages -- but the feature's own title never said it, so a pilot met
+// "SIGWX" only where something had gone wrong. The wind/temp viewer beside it has always
+// printed its acronym in brackets after the name; this one now does too.
+for (const [lang, name] of [['en', 'Significant weather charts'], ['he', 'מפות מזג אוויר משמעותי']]) {
+  test('the viewer names the chart and its acronym (' + lang + ')', async ({ page }) => {
+    await page.route(PNG_RE, r => r.fulfill({ status: 200, contentType: 'image/png', body: PNG }));
+    await page.route(MANIFEST_RE, r => r.fulfill({
+      status: 200, contentType: 'application/json', body: JSON.stringify(MANIFEST),
+    }));
+    await page.addInitScript(() => { try { localStorage.setItem('navaid.sec.charts', '1'); } catch (e) {} });
+    await page.goto('?lang=' + lang);
+    await page.waitForFunction(() => document.getElementById('sigwx-btn'));
+    await page.locator('#sigwx-btn').click();
+    const title = page.locator('.modal-back .sigwx-modal .modal-title');
+    await expect(title).toHaveText(name + ' (SIGWX)');
+    // And the button that opens it introduces the acronym too, rather than leaving the
+    // watermark to be the first place a pilot sees it.
+    await page.keyboard.press('Escape');
+    await expect(page.locator('#sigwx-btn')).toHaveAttribute('title', /SIGWX/);
+  });
 }
 
 test('SIGWX button stays hidden when no manifest exists', async ({ page }) => {
@@ -61,11 +99,11 @@ test('SIGWX button opens a viewer with valid-time options and the chart image', 
   const opts = await modal.locator('select.sigwx-time option').allTextContents();
   expect(opts.length).toBe(3);
   expect(opts[0]).toContain('06:00');
-  // First chart image shown.
-  await expect(modal.locator('img.sigwx-img')).toHaveAttribute('src', /ims\/sigwx\/0600\.png/);
-  // Switching the time swaps the image.
-  await modal.locator('select.sigwx-time').selectOption({ label: '21/06/2026 12:00Z' });
+  // The chart valid NOW is shown, not the manifest's first entry.
   await expect(modal.locator('img.sigwx-img')).toHaveAttribute('src', /ims\/sigwx\/1200\.png/);
+  // Switching the time swaps the image.
+  await modal.locator('select.sigwx-time').selectOption({ label: '21/06/2026 06:00Z' });
+  await expect(modal.locator('img.sigwx-img')).toHaveAttribute('src', /ims\/sigwx\/0600\.png/);
   // Esc closes.
   await page.keyboard.press('Escape');
   await expect(page.locator('.modal-back .sigwx-modal')).toHaveCount(0);

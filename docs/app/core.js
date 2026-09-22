@@ -684,6 +684,13 @@ NavAid.tuningDefaults = {
   afWindObsMaxAgeMin: { value: 0, min: 0, max: 360, step: 5, label: 'Airfield wind: reported wind counts as current for (min, 0 = follow the weather setting)' },
   featureAirfieldWind: { value: true, type: 'bool', label: 'Feature: airfield surface-wind barbs' },
   featureMapClock: { value: true, type: 'bool', label: 'Feature: the look-ahead clock on the map' },
+  // routecheck.js gates the whole feature on this. It was read from the first commit and
+  // never registered, so tune() answered undefined: the guard reads `!== false`, so the
+  // feature was permanently on, the gist had no way to withdraw it, and it appeared nowhere
+  // in ?tune. Every other feature flag here is registered, which is what makes the removal
+  // the gist's to make.
+  featureRouteCheck: { value: true, type: 'bool',
+    label: 'Feature: check the route against airspace, NOTAMs and the weather' },
   hideIdleMapClockOnPhone: { value: true, type: 'bool', label: 'Phone: take the map clock away when nothing answers to it' },
   hideMapClockWhileLive: { value: true, type: 'bool', label: 'Hide the map clock while a position is live' },
   mapClockHoursAhead: { value: 24, min: 1, max: 48, step: 1, label: 'Map clock range (h ahead)' },
@@ -1072,6 +1079,7 @@ NavAid.tuningGroups = [
   // The map's own clock: one control for every time-dependent layer, so it is not a
   // setting that belongs under any single layer's heading.
   { name: 'Map clock', keys: ['featureMapClock', 'hideMapClockWhileLive', 'hideIdleMapClockOnPhone', 'mapClockHoursAhead'] },
+  { name: 'Route check', keys: ['featureRouteCheck'] },
   { name: 'Airfield wind', keys: ['afWindBarbLenPx', 'afWindBarbTickPx', 'afWindBarbTickGapPx', 'afWindBarbWidthPx', 'afWindCalmRadiusPx', 'afWindBarbColor', 'afWindOffsetPx', 'afWindLabelFontPx', 'afWindLabelHaloPx', 'afWindMinZoom', 'afWindLabelMinZoom', 'afWindGustDeltaKt', 'afWindRunwayMinKt', 'afWindCalmMaxKt', 'afWindCrossDeadbandKt', 'afWindCacheMin', 'afWindForecastDays', 'afWindSampleToleranceMin', 'afWindPennantWidthFactor', 'afWindPennantGapFactor', 'afWindFullTickSlantFactor', 'afWindHalfTickSlantFactor', 'afWindHalfTickLenFactor', 'afWindStartGapPx', 'afWindBarbHaloPx', 'afWindObsColor', 'afWindModelDashPx', 'afWindModelGapPx', 'afWindModelLabelAlpha', 'afWindObsMaxAgeMin', 'featureAirfieldWind'] },
   { name: 'Wind field', keys: ['windFieldDefaultAltFt', 'windFieldDefaultOpacity', 'windFieldGridDeg', 'windFieldWest', 'windFieldEast', 'windFieldSouth', 'windFieldNorth', 'windFieldVelocityScale', 'windFieldParticleAge', 'windFieldParticleMultiplier', 'windFieldLineWidth', 'windFieldMaxVelocity', 'windFieldMinVelocity', 'windFieldFrameRate', 'windFieldHoursAhead', 'windFieldForecastDays'] },
   { name: 'Chrome layout', keys: ['inspectorDefaultTopPx', 'inspectorBottomGapPx', 'floatingPanelGapPx', 'zuluClockMinWidthPx', 'zuluClockPadYPx', 'zuluClockPadXPx', 'zuluClockMarginTopPx', 'zuluClockMarginRightPx', 'zuluClockFontPx', 'zuluClockFontWeight', 'zuluClockLineHeight', 'zuluClockTextColor', 'zuluClockBgColor', 'zuluClockBgAlpha', 'zuluClockBorderColor', 'zuluClockBorderWidthPx', 'zuluClockBorderRadiusPx', 'zuluClockShadowYPx', 'zuluClockShadowBlurPx', 'zuluClockShadowAlpha'] },
@@ -1346,11 +1354,11 @@ window.S = Object.assign({
   tbImsPwxOpacityReset: 'Reset opacity',
   tbImsPwxRun: 'Model run',
   tbSigwx: '🌐 Significant weather',                // significant-weather viewer button
-  tbSigwxTitle: 'View IMS significant-weather charts by valid time',
+  tbSigwxTitle: 'View the IMS significant-weather (SIGWX) charts by valid time',
   tbSigwxTime: 'Valid time',
   tbSigwxOverlay: 'Show significant weather',
-  tbSigwxOverlayTitle: 'Overlay the low-level significant-weather prog chart on the map by valid time. Approximate alignment — fine-tune with ?tune. Planning aid only.',
-  sigwxModalTitle: 'Significant weather charts',
+  tbSigwxOverlayTitle: 'Overlay the low-level significant-weather (SIGWX) prog chart on the map by valid time. Approximate alignment — fine-tune with ?tune. Planning aid only.',
+  sigwxModalTitle: 'Significant weather charts (SIGWX)',
   sigwxMissing: 'Chart not available for this time yet.',
   sigwxUnavailable: 'Significant-weather charts are temporarily unavailable.',
   tbPwxCharts: '🌬 Wind/temp charts',               // IMS PWX original-chart viewer button
@@ -1359,7 +1367,7 @@ window.S = Object.assign({
   pwxMissing: 'Chart not available for this level/time yet.',
   pwxUnavailable: 'Wind/temp charts are temporarily unavailable.',
   wxPwxUnavailableWatermark: 'Wind/temp — Unavailable',
-  wxSigwxUnavailableWatermark: 'SIGWX — Unavailable',
+  wxSigwxUnavailableWatermark: 'Significant weather — Unavailable',
   tbShowMsa: 'Terrain vs altitude',                 // clearance shading + the leg MSA row
   tbShowMsaTitle: 'Shade only the ground that reaches your planned altitude, and show each leg\'s minimum safe altitude in the inspector',
   report: 'Reporting',

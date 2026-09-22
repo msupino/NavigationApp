@@ -42,15 +42,15 @@ async function serveWx(page, { pwx, sigwx, sigwxDelayMs = 0 }) {
   await page.goto('?lang=en&nogist');
 }
 
-test('a re-seed refreshes the active overlay, so label and pixels agree', async ({ page }) => {
+test('a feed that answers second does not take the drawn chart away', async ({ page }) => {
   await serveWx(page, {
     // PWX is restored ON and its level publishes ONLY 18:00, so it draws that chart while
     // it is the only option in the dropdown.
     pwx: { generatedAt: '2026-06-21T18:00:00Z', bounds: BOUNDS,
       levels: [{ level: '90', label: 'FL030', times: [
         { valid: '18:00', day: '21/06/2026', png: 'ims/pwx/90/old.png' }] }] },
-    // SIGWX answers later with a time fifteen minutes from the frozen clock, which
-    // re-seeds the shared selector away from 18:00.
+    // SIGWX answers later with a time fifteen minutes from the frozen clock. It is NEARER,
+    // but SIGWX is not on the map and PWX cannot draw it.
     sigwx: { generatedAt: '2026-06-21T18:00:00Z', times: [
       { valid: '00:00', day: '22/06/2026', png: 'ims/sigwx/new.png' }] },
     sigwxDelayMs: 600,
@@ -63,13 +63,50 @@ test('a re-seed refreshes the active overlay, so label and pixels agree', async 
       i => i.getAttribute('src') || '');
     return { selected: sel.value, imgs };
   });
-  expect(r.selected).toBe('22/06/2026|00:00');
-  // The overlay must FOLLOW the selector. Its level has no 00:00 chart, so the honest
-  // outcome is that it stops drawing; what it must never do is keep painting the 18:00
-  // chart under a label that now says 00:00 — a weather chart six hours from what it
-  // claims. Only a real `change` event used to refresh it, and a re-seed fires none.
+  // The re-seed now chooses within the hours the layers that are actually DRAWING can draw.
+  // This case used to move to 00:00 and leave the one overlay on the map with nothing to
+  // show -- the same defect, in the other direction, as the SIGWX "unavailable" watermark
+  // over a chart it could have drawn. The nearer hour is still in the list for the pilot.
+  expect(r.selected).toBe('21/06/2026|18:00');
   expect(r.imgs.some(src => /old\.png/.test(src)),
-    'PWX still painting the 18:00 chart after the selector moved to 00:00').toBe(false);
+    'PWX stopped drawing the only chart its level publishes').toBe(true);
+});
+
+test('when the selector does move, the overlay follows it', async ({ page }) => {
+  await page.addInitScript(() => {
+    // BOTH overlays on, and the two feeds share no hour at all -- so there is no pool of
+    // commonly drawable times to seed within and the dropdown falls back to nearest-now.
+    try { localStorage.setItem('navaid.sigwxOv', JSON.stringify({ on: true, valid: '' })); }
+    catch (e) {}
+  });
+  await serveWx(page, {
+    pwx: { generatedAt: '2026-06-21T18:00:00Z', bounds: BOUNDS,
+      levels: [{ level: '90', label: 'FL030', times: [
+        { valid: '18:00', day: '21/06/2026', png: 'ims/pwx/90/old.png' }] }] },
+    sigwx: { generatedAt: '2026-06-21T18:00:00Z', times: [
+      { valid: '00:00', day: '22/06/2026', png: 'ims/sigwx/new.png' }] },
+    // Long enough to leave a window in which PWX has painted and SIGWX has not answered:
+    // the assertion below is about a chart being TAKEN DOWN, not one that was never there.
+    sigwxDelayMs: 2500,
+  });
+  // PWX answers first and draws its only chart -- so the assertion below is about something
+  // being taken down, not about it never having been there.
+  await expect.poll(() => page.evaluate(() =>
+    Array.from(document.querySelectorAll('.leaflet-image-layer'),
+      i => i.getAttribute('src') || '').some(src => /old\.png/.test(src))))
+    .toBe(true);
+  await page.waitForFunction(() => document.querySelectorAll('#wx-time option').length === 2);
+  await expect.poll(() => page.evaluate(() => document.getElementById('wx-time').value))
+    .toBe('22/06/2026|00:00');
+  // The overlay must FOLLOW the selector. PWX's level has no 00:00 chart, so the honest
+  // outcome is that it stops drawing; what it must never do is keep painting the 18:00
+  // chart under a label that now says 00:00 -- a weather chart six hours from what it
+  // claims. Only a real `change` event used to refresh it, and a re-seed fires none.
+  await expect.poll(() => page.evaluate(() =>
+    Array.from(document.querySelectorAll('.leaflet-image-layer'),
+      i => i.getAttribute('src') || '').some(src => /old\.png/.test(src))),
+  { message: 'PWX still painting the 18:00 chart after the selector moved to 00:00' })
+    .toBe(false);
 });
 
 test('a re-seed does not write itself back as the pilot\'s pinned choice', async ({ page }) => {
