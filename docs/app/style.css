@@ -2623,7 +2623,13 @@ body.theme-light .shortcuts-help-keys kbd {
 
 /* Print (browser Cmd+P): drop the UI, keep the map + route overlay. */
 @media print {
-  #toolbar, #inspector, #tuning-panel, .leaflet-control-container { display: none !important; }
+  /* Chrome off the paper. .leaflet-control-container covers everything Leaflet owns -- the
+     zoom keys, the legend card, the rotate dial, the Zulu clock, the attribution -- but the
+     map clock and the docked search panel are children of the map container and the body,
+     not Leaflet controls, so that sweep never reached them: a slider, a Now button and a
+     search box printed across the chart, over the waypoint labels underneath. */
+  #toolbar, #inspector, #tuning-panel, .leaflet-control-container,
+  #map-time, #search-overlay { display: none !important; }
   #map, #overlay { position: fixed; inset: 0; }
 }
 
