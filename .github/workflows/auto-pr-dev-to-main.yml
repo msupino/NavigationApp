@@ -143,6 +143,72 @@ jobs:
             fi
           done
 
+      - name: Dispatch anything whose required context never landed
+        if: steps.promotion.outputs.needed == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR: ${{ steps.promotion.outputs.pr }}
+        run: |
+          set -euo pipefail
+          # The step above asks whether the WORKFLOW ran. That is not the same question as
+          # whether the required CONTEXT landed, and it is the context branch protection
+          # actually gates on. A Review run can finish green while the code-scanning status
+          # it is meant to post never appears -- and a MISSING required context is not a
+          # failing one: the PR reports every check passing, `gh pr checks` shows nothing
+          # wrong, and it sits BLOCKED with nothing to point at.
+          #
+          # Seen on #2375: CI, Deploy and Review all had successful push runs for the head
+          # SHA, so the step above dispatched nothing, and `CodeQL` simply did not exist on
+          # the commit. Re-running Review's codeql job produced it and the PR went green.
+          SHA=$(gh pr view "$PR" --json headRefOid --jq '.headRefOid')
+
+          # Nothing to conclude while work is still in flight -- a context that has not
+          # landed YET is not a context that never will.
+          BUSY=$(gh run list --branch dev --limit 50 \
+            --json headSha,status \
+            --jq "[.[] | select(.headSha == \"$SHA\" and .status != \"completed\")] | length")
+          if [ "$BUSY" -gt 0 ]; then
+            echo "$BUSY run(s) still in flight for $SHA -- not judging missing contexts yet."
+            exit 0
+          fi
+
+          REQ=$(gh api "repos/${{ github.repository }}/branches/main/protection" \
+            --jq '.required_status_checks.contexts[]?' 2>/dev/null || true)
+          if [ -z "$REQ" ]; then
+            echo "No required contexts published for main."
+            exit 0
+          fi
+          # Both kinds count: check runs (Actions) and commit statuses (apps).
+          gh api "repos/${{ github.repository }}/commits/$SHA/check-runs?per_page=100" \
+            --jq '.check_runs[].name' > /tmp/have.txt || true
+          gh api "repos/${{ github.repository }}/commits/$SHA/status" \
+            --jq '.statuses[].context' >> /tmp/have.txt || true
+
+          WANT=
+          for C in $REQ; do
+            if ! grep -qxF "$C" /tmp/have.txt; then
+              echo "Required context '$C' has no result on $SHA."
+              # Which workflow owns it. Anything unrecognised falls to Review, which is
+              # where the static-analysis contexts live.
+              case "$C" in
+                e2e|build|lint) W=CI ;;
+                deploy)         W=Deploy ;;
+                *)              W=Review ;;
+              esac
+              case " $WANT " in *" $W "*) ;; *) WANT="$WANT $W" ;; esac
+            fi
+          done
+
+          if [ -z "$WANT" ]; then
+            echo "Every required context has a result."
+            exit 0
+          fi
+          for W in $WANT; do
+            echo "Re-dispatching $W for $SHA to produce its missing context(s)."
+            # Never fail the run over this: the PR exists and a human can re-run by hand.
+            gh workflow run "$W" --ref dev || echo "Could not dispatch $W." >&2
+          done
+
       - name: Arm promotion auto-merge watcher
         if: steps.promotion.outputs.dispatch_watcher == 'true'
         env:
