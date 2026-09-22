@@ -485,6 +485,17 @@ function validateRoute(d) {
       }
       _v(w, 'lat',  'number', p, errs);
       _v(w, 'lng',  'number', p, errs);
+      // ...and a number that is actually a position. A corrupt share link decodes to
+      // coordinates like lat -21474.83648: the type check passed it, the schema gate passed
+      // it, and because loading a URL route makes boot SKIP restoreRoute(), the pilot's own
+      // saved route was displaced by a point that cannot exist -- on nothing louder than a
+      // console warning. Every producer here already works in degrees.
+      if (typeof w.lat === 'number' && Number.isFinite(w.lat) && Math.abs(w.lat) > 90) {
+        errs.push(p + '.lat: out of range (' + w.lat + ')');
+      }
+      if (typeof w.lng === 'number' && Number.isFinite(w.lng) && Math.abs(w.lng) > 180) {
+        errs.push(p + '.lng: out of range (' + w.lng + ')');
+      }
       _v(w, 'name', 'string', p, errs);
       if (Object.prototype.hasOwnProperty.call(w, 'hotspot') && typeof w.hotspot !== 'boolean') {
         errs.push(p + '.hotspot: expected boolean, got ' + _vKind(w.hotspot));
