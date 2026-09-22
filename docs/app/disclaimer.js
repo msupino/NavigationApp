@@ -104,6 +104,10 @@
     head.className = 'disclaimer-head';
     const title = document.createElement('div');
     title.className = 'modal-title';
+    // Named like every other window in the app. This one already declares alertdialog --
+    // the right role for an acknowledgement -- but announced itself without a name.
+    title.id = 'disclaimer-title';
+    box.setAttribute('aria-labelledby', title.id);
     title.textContent = textOf('disclaimerTitle', 'Before you fly');
     head.appendChild(title);
     head.appendChild(languageSwitch());

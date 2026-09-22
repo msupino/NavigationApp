@@ -361,6 +361,8 @@
     box.setAttribute('aria-modal', 'true');
     const title = document.createElement('div');
     title.className = 'modal-title';
+    title.id = 'offline-manager-title';
+    box.setAttribute('aria-labelledby', title.id);
     title.textContent = t('offlineManagerTitle', 'Offline maps');
     const close = () => {
       document.removeEventListener('keydown', onEsc, true);
