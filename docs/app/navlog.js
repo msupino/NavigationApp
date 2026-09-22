@@ -636,6 +636,10 @@
     const S2 = window.S || {};
     if (typeof createDraggableModal !== 'function') return null;
     const cfg = config();
+    // Only one chart on screen. The form is swept BY closeOpenChartModals -- that function
+    // looks for .navlog-modal by name -- but it never called it, so opening the form left
+    // whatever was already up underneath.
+    if (typeof closeOpenChartModals === 'function') closeOpenChartModals();
     // Remembered like every other chart window: a refresh, or a language switch (which IS a
     // refresh -- it reloads with ?lang), brings it back. Reported as the form closing itself
     // when every other table on the toolbar survives.
