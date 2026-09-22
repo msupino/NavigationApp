@@ -35,30 +35,6 @@ async function boot(page) {
   });
 }
 
-// Open each one in turn and report what it says about itself.
-const survey = page => page.evaluate((ids) => {
-  const out = [];
-  for (const id of ids) {
-    for (const b of document.querySelectorAll('.modal-back')) {
-      if (b._navaidClose) b._navaidClose(); else b.remove();
-    }
-    const btn = document.getElementById(id);
-    if (!btn || btn.hidden || btn.disabled) continue;
-    const cs = getComputedStyle(btn);
-    if (cs.display === 'none' || cs.visibility === 'hidden') continue;
-    btn.click();
-    const back = [...document.querySelectorAll('.modal-back')]
-      .find(b => getComputedStyle(b).display !== 'none' && !b.hidden);
-    if (!back) continue;
-    const m = back.querySelector('.modal, [class*="modal"]') || back.firstElementChild;
-    const by = m.getAttribute('aria-labelledby');
-    const named = !!(m.getAttribute('aria-label')
-      || (by && document.getElementById(by) && document.getElementById(by).textContent.trim()));
-    out.push({ id, role: m.getAttribute('role'), named });
-  }
-  return out;
-}, ids => ids);
-
 test('every chart window is a named dialog', async ({ page }) => {
   await boot(page);
   const rows = await page.evaluate((ids) => {
