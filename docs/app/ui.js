@@ -6036,10 +6036,21 @@ const notamCb = document.getElementById('notam-cb');
 // the clock. Each of them already knew its own half; none of them looked at the plan, and none
 // of them looked at when. See routecheck.js.
 const routeCheckBtn = document.getElementById('route-check-btn');
+// Dim, never hide: with the feature withdrawn by the gist the button stayed fully enabled
+// and show() returned silently, so the control looked live and did nothing at all when
+// pressed. Greyed out says the same thing the SIGMET button says when there is none.
+function refreshRouteCheckBtn() {
+  if (!routeCheckBtn) return;
+  const on = typeof tune !== 'function' || tune('featureRouteCheck') !== false;
+  routeCheckBtn.hidden = false;
+  routeCheckBtn.disabled = !on;
+}
+window.refreshRouteCheckBtn = refreshRouteCheckBtn;
 if (routeCheckBtn) {
   routeCheckBtn.onclick = () => {
     if (window.NavAid && NavAid.routeCheck) NavAid.routeCheck.show();
   };
+  refreshRouteCheckBtn();
 }
 const notamListBtn = document.getElementById('notam-list-btn');
 const notamControls = document.getElementById('notam-controls');
@@ -9716,6 +9727,9 @@ function redrawAfterTune() {
   if (window.NavAid && typeof NavAid.refreshImsPwx === 'function') NavAid.refreshImsPwx();
   if (window.NavAid && typeof NavAid.refreshSigwxOv === 'function') NavAid.refreshSigwxOv();
   if (window.NavAid && typeof NavAid.refreshWindField === 'function') NavAid.refreshWindField();
+  // Feature flags the panel can move have to reach their controls without a reload.
+  if (typeof refreshRouteCheckBtn === 'function') refreshRouteCheckBtn();
+  if (typeof NavAid.refreshMapClock === 'function') NavAid.refreshMapClock();
 }
 
 function createTuningPanel() {
