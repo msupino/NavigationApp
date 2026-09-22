@@ -145,6 +145,32 @@ jobs:
           ref: dev
           path: d
           persist-credentials: false
+      # `ref: main` above resolves the branch NAME when the runner clones, which is not
+      # necessarily the commit this run was created for. A deploy dispatched seconds after a
+      # promotion merge can clone the ref before it has propagated and publish the PREVIOUS
+      # commit -- reporting success the whole way, because every step did work, just on the
+      # wrong tree. Observed 2026-09-22: merge 67680c4 landed at 15:23:08Z, the deploy for it
+      # started at 15:23:12Z, and the site went out stamped ?v=9dff3c6, the promotion before.
+      # Two merged and promoted PRs were simply not live, with nothing red to show for it.
+      #
+      # Only when this run IS about main: a push to dev, or a PR, wants production as it
+      # currently stands, and github.sha then names a commit that is not on main at all.
+      - name: Pin production to the commit this run is for
+        if: github.ref == 'refs/heads/main'
+        env:
+          WANT: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          HAVE=$(git -C m rev-parse HEAD)
+          if [ "$HAVE" = "$WANT" ]; then
+            echo "production checkout is already $WANT"
+            exit 0
+          fi
+          echo "production checkout is $HAVE but this run is for $WANT -- re-pinning"
+          git -C m fetch --depth=1 origin "$WANT"
+          git -C m checkout --detach FETCH_HEAD
+          test "$(git -C m rev-parse HEAD)" = "$WANT"
+          echo "production now at $(git -C m rev-parse --short HEAD)"
       - name: Assemble site
         run: |
           # docs/byop/ is ~133 MB of PDFs (#105). Keep ONE copy at the
