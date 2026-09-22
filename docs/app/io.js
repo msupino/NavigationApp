@@ -485,6 +485,17 @@ function validateRoute(d) {
       }
       _v(w, 'lat',  'number', p, errs);
       _v(w, 'lng',  'number', p, errs);
+      // ...and a number that is actually a position. A corrupt share link decodes to
+      // coordinates like lat -21474.83648: the type check passed it, the schema gate passed
+      // it, and because loading a URL route makes boot SKIP restoreRoute(), the pilot's own
+      // saved route was displaced by a point that cannot exist -- on nothing louder than a
+      // console warning. Every producer here already works in degrees.
+      if (typeof w.lat === 'number' && Number.isFinite(w.lat) && Math.abs(w.lat) > 90) {
+        errs.push(p + '.lat: out of range (' + w.lat + ')');
+      }
+      if (typeof w.lng === 'number' && Number.isFinite(w.lng) && Math.abs(w.lng) > 180) {
+        errs.push(p + '.lng: out of range (' + w.lng + ')');
+      }
       _v(w, 'name', 'string', p, errs);
       if (Object.prototype.hasOwnProperty.call(w, 'hotspot') && typeof w.hotspot !== 'boolean') {
         errs.push(p + '.hotspot: expected boolean, got ' + _vKind(w.hotspot));
@@ -3859,6 +3870,10 @@ function showFlightPlan() {
   back._navaidClose = closeFlightPlan;
   const box = document.createElement('div');
   box.className = 'modal wide';
+  // Built by hand rather than by createDraggableModal, so it needs the same announcement the
+  // factory gives the others. No aria-modal: this backdrop is deliberately click-through, so
+  // the page behind really is not inert.
+  box.setAttribute('role', 'dialog');
   // The inspector is pinned top-right at z-index 2320, above this modal's 2000, so an
   // open selection covered the right-hand columns (Cum. fuel was unreadable). Hide it
   // while the plan is up and put it back on close if the selection still stands.
@@ -3875,7 +3890,9 @@ function showFlightPlan() {
 
   const title = document.createElement('div');
   title.className = 'modal-title';
+  title.id = 'flight-plan-title';
   title.textContent = S.flightPlan;
+  box.setAttribute('aria-labelledby', title.id);
   box.appendChild(title);
 
   // Drag-to-move on the title bar (mouse + touch), position remembered per language.
@@ -7060,9 +7077,23 @@ function createDraggableModal(titleText, className, onClose, options = {}) {
   if (options.chartKind) back.dataset.chartModal = options.chartKind;
   const box = document.createElement('div');
   box.className = className || 'modal wide';
+  // Say what this is. Three hand-built windows (the SIGWX and PWX viewers, the offline
+  // manager) declared role="dialog" and the nine built here declared nothing, so the same
+  // kind of window announced itself differently depending on which file made it.
+  //
+  // aria-modal only when the backdrop really does block. The factory traps Tab either way,
+  // so a keyboard user cannot leave any of these -- but a non-blocking one leaves the map
+  // live under the pointer on purpose, and telling assistive tech the rest of the page is
+  // inert would be a claim the window does not keep.
+  box.setAttribute('role', 'dialog');
+  if (!options.nonBlocking) box.setAttribute('aria-modal', 'true');
 
   const title = document.createElement('div');
   title.className = 'modal-title';
+  // The dialog's accessible name. Every one of these has a visible title and not one was
+  // pointing at it, so they all opened as an unnamed "dialog".
+  title.id = 'modal-title-' + (createDraggableModal._n = (createDraggableModal._n || 0) + 1);
+  box.setAttribute('aria-labelledby', title.id);
   if (options.titleDir) title.dir = options.titleDir;
   if (options.titleBidi) title.style.unicodeBidi = options.titleBidi;
   title.textContent = titleText || '';
