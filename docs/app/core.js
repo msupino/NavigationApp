@@ -1828,7 +1828,7 @@ window.S = Object.assign({
   tbAircraft: 'Aircraft',
   tbGph: 'Gallons per hour',
   tbGphTitle: 'Fuel consumption, gallons per hour',
-  tbTaxiGal: 'Taxi and Takeoff (gal)',
+  tbTaxiGal: 'Taxi and takeoff (gal)',
   tbTaxiGalTitle: 'Startup + taxi + takeoff fuel allowance in gallons',
   fpTaxiTip: function(g) { return '+ ' + g.toFixed(1) + ' gal taxi / takeoff included in total'; },
   pageOrientation: ' page — orientation',
@@ -2453,7 +2453,7 @@ window.S = Object.assign({
   ovAlignResetAllConfirm: 'Clear all local overlay alignments?',
   tbForceSnap: 'Snap to nearest point',
   tbForceSnapTitle: 'Always snap clicks to the nearest airfield or nav-waypoint (otherwise: 18 px radius)',
-  tbShowCommChange: 'Show/Add Freq Changes',
+  tbShowCommChange: 'Show/add freq changes',
   tbShowCommChangeTitle: 'Mark CVFR reporting points where pilots must change ATC frequency',
   legendTitle: 'Legend',
   legendAirfield: 'Airfield',
@@ -2895,7 +2895,7 @@ window.S = Object.assign({
   disclaimerAccept: 'I understand',
   tbPrivacy: 'Privacy',
   tbTerms: 'Terms',
-  tbIssues: 'Issues / Requests',
+  tbIssues: 'Issues / requests',
 
   // --- Keyboard-shortcuts cheat-sheet ---------------------------------
   // Opens via the toolbar '?' Help link or the '?' (Shift-/) shortcut.

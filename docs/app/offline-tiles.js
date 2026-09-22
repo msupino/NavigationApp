@@ -347,7 +347,12 @@
   }
 
   function openManager() {
-    if (manager) return;
+    // A stale guard must not lock the window shut. `manager` is cleared by close(), so any
+    // path that takes the backdrop out WITHOUT calling it leaves this pointing at a node
+    // that is no longer on the page -- and the button then does nothing for the rest of the
+    // session. Ask the DOM, not the variable.
+    if (manager && manager.back && manager.back.isConnected) return;
+    manager = null;
     const back = document.createElement('div');
     back.className = 'modal-back offline-manager-back';
     const box = document.createElement('div');
@@ -357,7 +362,29 @@
     const title = document.createElement('div');
     title.className = 'modal-title';
     title.textContent = t('offlineManagerTitle', 'Offline maps');
-    const close = () => { back.remove(); manager = null; };
+    const close = () => {
+      document.removeEventListener('keydown', onEsc, true);
+      back.remove();
+      manager = null;
+    };
+    // Escape, guarded on being the topmost backdrop so it cannot reach past a window opened
+    // over this one -- the same shape the other modals in the app use. Publishing
+    // _navaidClose below without this would be worse than not publishing it: the global
+    // handler reads that property as "this modal handles its own Escape" and stands back.
+    function onEsc(ev) {
+      if (ev.key !== 'Escape') return;
+      const backs = document.querySelectorAll('.modal-back');
+      if (backs.length && backs[backs.length - 1] !== back) return;
+      ev.preventDefault();
+      ev.stopPropagation();
+      close();
+    }
+    document.addEventListener('keydown', onEsc, true);
+    // Every other modal publishes its own closer here, and the global Escape handler checks
+    // for it: a backdrop WITHOUT one is removed with a bare back.remove(), which skips the
+    // bookkeeping above. Escape therefore took this window off the screen while leaving the
+    // guard set, and the button never opened it again.
+    back._navaidClose = close;
     if (typeof addModalCloseX === 'function') addModalCloseX(box, close);
     const intro = document.createElement('p');
     intro.className = 'offline-manager-copy';
