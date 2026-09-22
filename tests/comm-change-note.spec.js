@@ -1027,7 +1027,7 @@ test.describe('comm-change auto-note (#487)', () => {
     expect(out.tailDistancePx).toBeGreaterThan(90);
   });
 
-  test('turning Show/Add Freq Changes on seeds callouts for an existing route', async ({ page }) => {
+  test('turning Show/add freq changes on seeds callouts for an existing route', async ({ page }) => {
     await installCommChangeFixture(page);
     await boot(page);
     const out = await page.evaluate(t => {
@@ -1049,7 +1049,7 @@ test.describe('comm-change auto-note (#487)', () => {
     expect(note.lng).toBeCloseTo(TYONA.lng + NOTE_LNG_OFFSET, 4);
   });
 
-  test('turning Show/Add Freq Changes off hides existing callout arrows', async ({ page }) => {
+  test('turning Show/add freq changes off hides existing callout arrows', async ({ page }) => {
     await installCommChangeFixture(page);
     await boot(page);
     const before = await page.evaluate(t => {
@@ -1127,7 +1127,7 @@ test.describe('comm-change auto-note (#487)', () => {
     expect(shownAgain.strokes).toBeGreaterThan(0);
   });
 
-  test('persisted Show/Add Freq Changes seeds callouts after a saved route boots', async ({ page }) => {
+  test('persisted Show/add freq changes seeds callouts after a saved route boots', async ({ page }) => {
     await installCommChangeFixture(page);
     await page.addInitScript(t => {
       try {
