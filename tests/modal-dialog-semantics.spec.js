@@ -13,6 +13,9 @@
 // not keep.
 const { test, expect } = require('./_setup');
 
+// The suite switches the safety notice off by default; the test below is about it.
+test.use({ acknowledgeDisclaimer: false });
+
 const OPENERS = ['route-templates', 'freq-table', 'alt-pairs', 'nav-log', 'charts', 'sigwx-btn',
   'pwx-btn', 'sigmet-btn', 'route-check-btn', 'plan', 'route-library', 'offline-tiles-btn'];
 
@@ -89,6 +92,23 @@ test('every chart window is a named dialog', async ({ page }) => {
     'windows not declaring role="dialog"').toEqual([]);
   expect(rows.filter(r => !r.name).map(r => r.id),
     'dialogs with no accessible name').toEqual([]);
+});
+
+test('the safety notice is a named alertdialog', async ({ page }) => {
+  // It is the first thing the app puts on screen and the only window that must be read, so
+  // it keeps alertdialog rather than dialog -- but it was announcing itself without a name,
+  // like the rest of them.
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await page.goto('?lang=en&nogist');
+  await page.waitForSelector('.disclaimer-back', { timeout: 25000 });
+  const seen = await page.evaluate(() => {
+    const box = document.querySelector('.disclaimer-back .disclaimer-modal');
+    const by = box.getAttribute('aria-labelledby');
+    const label = by && document.getElementById(by);
+    return { role: box.getAttribute('role'), name: label ? label.textContent.trim() : '' };
+  });
+  expect(seen.role).toBe('alertdialog');
+  expect(seen.name, 'the safety notice has no accessible name').toBeTruthy();
 });
 
 test('a non-blocking window does not claim the page behind it is inert', async ({ page }) => {
