@@ -1217,12 +1217,39 @@ legendCtrl.addTo(map);
   // around a phone screen. Being covered by the menu you are reading is not a problem; being
   // somewhere new each time you close it is. The docked search panel stays, because it is
   // not transient: it sits there until it is dismissed.
+  //
+  // The map clock is on the list for the same reason. It has a fixed place along the bottom
+  // of the chart and it DIMS rather than vanishes when nothing answers to it, so it is not
+  // something that comes and goes -- and below about 1150px the card reached across the
+  // clock's row and sat on top of the control at its left end: the Now button in English,
+  // the hour readout in Hebrew, each covered to the point of being unusable. The card moves
+  // instead, because the clock cannot: it is a fixed strip and the card is the thing with
+  // somewhere else to be.
   function chromeRects() {
-    return ['search-overlay']
-      .map(id => document.getElementById(id))
-      .filter(el => el && !el.classList.contains('hidden'))
-      .map(el => el.getBoundingClientRect())
-      .filter(r => r.width && r.height);
+    const search = document.getElementById('search-overlay');
+    const rects = [];
+    if (search && !search.classList.contains('hidden')) rects.push(search.getBoundingClientRect());
+    const clock = document.getElementById('map-time');
+    // `hidden` is an attribute here, not a class, and the strip is also withdrawn by the
+    // gist and while a live position is showing.
+    if (clock && !clock.hidden && getComputedStyle(clock).display !== 'none') {
+      // The CONTROLS, not the strip. The strip spans the full width and is transparent and
+      // pointer-transparent; treating it as an obstacle would push the card off the bottom
+      // row at every width, including the wide screens where the two never met -- and an
+      // untouched legend would lose its Leaflet anchor for nothing.
+      let box = null;
+      for (const kid of clock.children) {
+        if (kid.hidden || getComputedStyle(kid).display === 'none') continue;
+        const k = kid.getBoundingClientRect();
+        if (!k.width || !k.height) continue;
+        box = box ? {
+          left: Math.min(box.left, k.left), top: Math.min(box.top, k.top),
+          right: Math.max(box.right, k.right), bottom: Math.max(box.bottom, k.bottom),
+        } : { left: k.left, top: k.top, right: k.right, bottom: k.bottom };
+      }
+      if (box) rects.push({ ...box, width: box.right - box.left, height: box.bottom - box.top });
+    }
+    return rects.filter(r => r.width && r.height);
   }
 
   function overlaps(x, y, w, h, obstacle) {
@@ -1307,14 +1334,15 @@ legendCtrl.addTo(map);
     const obstacles = chromeRects();
     const obstructed = obstacles.some(obstacle =>
       overlaps(r.left, r.top, r.width, r.height, obstacle));
+    // A legend the pilot has never dragged still has a place it belongs: where the stylesheet
+    // put it. Record that the first time we see it on screen, whether or not something is
+    // currently sitting over it -- being obstructed does not move where the card BELONGS,
+    // and a card first seen obstructed used to end up adopting the shove as its home, so
+    // the spot it was pushed to never gave way again once the obstruction went.
+    if (!home && !outside) home = { x: r.left, y: r.top };
     // Where it is is fine: leave it exactly where it is. Re-applying a position it already
-    // holds is how a card starts drifting a pixel at a time. Remember this spot as home if
-    // nothing has claimed one yet -- a legend the pilot has never dragged still has a place
-    // it belongs, and that is wherever it was sitting undisturbed.
-    if (!positioned && !outside && !obstructed) {
-      if (!home) home = { x: r.left, y: r.top };
-      return;
-    }
+    // holds is how a card starts drifting a pixel at a time.
+    if (!positioned && !outside && !obstructed) return;
     // Aim at HOME, not at where the card happens to be. Expanding a legend near the bottom
     // of a phone screen makes it too tall to fit, so it is clamped upwards; collapsing it
     // again used to re-apply that clamped position and leave the card somewhere new --
@@ -10769,7 +10797,7 @@ const NavWxTime = (function () {
   // used to leave a time selected that the new level does not publish: currentTime() then
   // found nothing and the overlay was REMOVED, even though that level had valid charts.
   // Changing level is itself a request to see that level, so this overrides a pin.
-  function prefer(times, force, self) {
+  function prefer(times, force, caller) {
     if (!sel || !Array.isArray(times) || !times.length) return false;
     // A pinned choice stands unless the pilot just asked for a different level: PWX must not
     // drag the shared dropdown off a SIGWX-only time the pilot chose deliberately.
@@ -10784,7 +10812,7 @@ const NavWxTime = (function () {
     // overlay by breaking the other, and the two would then take turns moving the dropdown.
     // Falling back to our own list is the honest outcome when the feeds share nothing: one
     // chart can be shown, and the other says so with its watermark.
-    const others = drawablePool(self);
+    const others = drawablePool(caller);
     const shared = others ? usable.filter(o => others.includes(o)) : [];
     const pool = shared.length ? shared : usable;
     const near = Math.max(0, imsNearestTimeIndex(pool.map(o => parse(o.value))));
@@ -11104,7 +11132,9 @@ const NavWxTime = (function () {
   }
   function refresh() {
     const timed = anyTimedLayer() || inspectorTimed() || planningFormOpen();
+    const was = el.hidden;
     el.hidden = !featureOn() || liveHides() || (!timed && idleHidesOnPhone());
+    if (el.hidden !== was) reseatLegend();
     // The panel's copy exists for one reason: on a phone the sheet covers the map's copy. So
     // it appears when there is something for a clock to move and not otherwise -- a waypoint,
     // an ADS-B aircraft or a note has nothing in it that answers to time, and a slider on
@@ -11117,6 +11147,11 @@ const NavWxTime = (function () {
     label();
   }
   NavAid.refreshMapClock = refresh;
+  // The legend keeps clear of this strip, so it has to be told when the strip comes or goes
+  // -- the gist withdrawing it, or a live position hiding it, frees the row again.
+  const reseatLegend = () => {
+    if (typeof window.reconcileLegendPosition === 'function') window.reconcileLegendPosition();
+  };
   // The inspector is rebuilt from scratch on every selection, so what it contains cannot be
   // asked once. Watching it is cheaper than making every caller that opens or closes a panel
   // remember to say so -- and refresh() is a class toggle and a label.
