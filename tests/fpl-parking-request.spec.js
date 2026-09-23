@@ -314,16 +314,52 @@ test('the phone answer waits for OK and names the field in the interface languag
     if (typeof airfields === 'undefined' || airfields === null) await loadAirfields();
     const park = airfieldParkingRule('LLMG');
     showParkingContactModal((S.fplParking || '') + ' — ' + park.label + ' (' + park.icao + ')',
-      S.fplParkingNoEmail(park.label) + '\n☎ ' + park.phone);
+      S.fplParkingNoEmail(park.label), park.phone);
   });
   const box = page.locator('.parking-contact-modal');
   await expect(box).toBeVisible();
   await expect(box).toContainText('מגידו');          // the Hebrew name, not just the code
   await expect(box).toContainText('LLMG');
   await expect(box).toContainText('04-6528847');     // the number, still on screen
+  // ...and it dials: the field with no email is the one the pilot has to phone, from the phone
+  // they are holding. Text to copy by hand was all this used to be.
+  await expect(box.locator('a.tel-link')).toHaveAttribute('href', 'tel:046528847');
+  await expect(box.locator('a.tel-link')).toHaveAttribute('dir', 'ltr');
   // It waits for the pilot rather than timing out.
   await page.waitForTimeout(1200);
   await expect(box).toBeVisible();
   await box.getByRole('button', { name: /אישור|OK/ }).click();
   await expect(box).toHaveCount(0);
+});
+
+test('the request form states the field phone as a link that dials it', async ({ page }) => {
+  await boot(page);
+  await openDialog(page);                              // LLHZ: an address AND a phone
+  const modal = page.locator('.modal-back[data-chart-modal="parking-request"]');
+  const tel = modal.locator('.fpl-hint a.tel-link');
+  await expect(tel).toHaveAttribute('href', 'tel:099719580');
+  await expect(tel).toContainText('09-9719580');
+  // The address is still stated beside it.
+  await expect(modal.locator('.fpl-hint')).toContainText('llhz.ops@iaa.gov.il');
+});
+
+test('in Hebrew the parking phone still reads left to right', async ({ page }) => {
+  await page.goto('?lang=he&nogist');
+  await page.waitForFunction(() => typeof showParkingContactModal === 'function'
+    && typeof airfieldParkingRule === 'function' && typeof loadAirfields === 'function');
+  await page.evaluate(async () => {
+    if (typeof airfields === 'undefined' || airfields === null) await loadAirfields();
+    const park = airfieldParkingRule('LLMG');
+    showParkingContactModal('x', S.fplParkingNoEmail(park.label), park.phone);
+  });
+  const visual = await page.locator('.parking-contact-modal a.tel-link').evaluate((a) => {
+    const node = [...a.childNodes].find(n => n.nodeType === 3);
+    const chars = [];
+    for (let i = 0; i < node.length; i++) {
+      const r = document.createRange(); r.setStart(node, i); r.setEnd(node, i + 1);
+      chars.push({ c: node.data[i], x: r.getBoundingClientRect().left });
+    }
+    return chars.sort((p, q) => p.x - q.x).map(o => o.c).join('').replace(/^\u260e\s*/, '');
+  });
+  expect(visual).toBe('04-6528847');
 });
