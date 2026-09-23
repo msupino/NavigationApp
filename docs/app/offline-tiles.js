@@ -375,6 +375,14 @@
     // handler reads that property as "this modal handles its own Escape" and stands back.
     function onEsc(ev) {
       if (ev.key !== 'Escape') return;
+      // A backdrop taken out WITHOUT close() -- the case the isConnected guard in
+      // openManager() exists for -- leaves this listener behind. It must stand down, not act:
+      // it runs in the capture phase and stops propagation, so an orphan swallowed every
+      // Escape for the rest of the session and the global handler never deselected again.
+      if (!back.isConnected) {
+        document.removeEventListener('keydown', onEsc, true);
+        return;
+      }
       const backs = document.querySelectorAll('.modal-back');
       if (backs.length && backs[backs.length - 1] !== back) return;
       ev.preventDefault();
