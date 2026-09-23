@@ -298,7 +298,8 @@ test('from training area 3 it returns to Herzliya via BAZRA at 1,200 and says wh
   expect(await page.evaluate(() => state.legs.map(l => l.inboundAltitude))).toEqual([1200, 1200]);
 });
 
-test('the card carries the tower light signals, open, in both languages', async ({ page }) => {
+test('the card carries the tower light signals, open on a larger screen, in both languages', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 900 });
   await boot(page, 'he');
   await page.evaluate(() => map.setView([32.9, 35.5], 10));
   await page.click('#commfail-btn');
@@ -307,4 +308,20 @@ test('the card carries the tower light signals, open, in both languages', async 
   await expect(lights.locator('dd')).toHaveCount(6);
   await expect(lights).toContainText('ירוק רציף');
   await expect(lights).toContainText('מותר לנחות');
+});
+
+test('on a phone the light signals start folded, and one tap opens them', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 800 });
+  await boot(page);
+  await page.evaluate(() => {
+    map.setView([32.9, 35.5], 10);
+    document.getElementById('boot-loading')?.remove();
+    document.documentElement.classList.remove('app-booting');
+  });
+  await page.locator('.deck-btn-commfail').click();
+  const lights = page.locator('[data-chart-modal="commfail"] .commfail-lights');
+  await expect(lights).not.toHaveAttribute('open', '');
+  await expect(lights.locator('dd').first()).toBeHidden();
+  await lights.locator('summary').click();
+  await expect(lights.locator('dd').first()).toBeVisible();
 });
