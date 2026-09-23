@@ -64,3 +64,19 @@ test('a backdrop removed by any other means does not lock the window shut', asyn
   await press(page);
   expect(await isOpen(page), 'guard left stale by a bare remove()').toBe(true);
 });
+
+test('an orphaned window does not swallow Escape for the rest of the page', async ({ page }) => {
+  await boot(page);
+  await page.evaluate(() => {
+    state.waypoints = [{ lat: 32.18, lng: 34.83, name: 'A' }, { lat: 32.78, lng: 35.04, name: 'B' }];
+    syncLegs(); draw();
+  });
+  await press(page);
+  // Taken out without close(): its Escape listener, registered in the capture phase with
+  // stopPropagation, used to outlive it and eat every Escape afterwards.
+  await page.evaluate(() => document.querySelector('.offline-manager-back').remove());
+  await page.evaluate(() => { state.selected = { type: 'wp', index: 0 }; showInspector(); });
+  await page.keyboard.press('Escape');
+  await expect.poll(() => page.evaluate(() => !!state.selected),
+    { message: 'Escape no longer deselects once the window was orphaned' }).toBe(false);
+});
