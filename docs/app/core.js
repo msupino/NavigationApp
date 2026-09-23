@@ -1110,6 +1110,26 @@ function fitOpts(padKey, zoomKey, extra) {
   return o;
 }
 
+// Anonymous usage counts -- how often a feature is USED, never by whom.
+//
+// A fixed vocabulary of event names and no parameters at all. That is deliberate: Google's
+// terms forbid sending anything that identifies a person to Analytics, and the privacy page
+// promises no route, position, flight plan or setting ever reaches it. With no parameter slot,
+// no caller -- now or later -- can put a registration, a name or an address in one by
+// accident; an unknown name is dropped rather than sent.
+//
+// window.gtag only exists where the tag was allowed to load (the public web site; never the
+// native app, previews, staging or local runs), so everywhere else this is a no-op.
+// These count the button, not the email: the pilot's own mail app sends it, and they can
+// still cancel there.
+const NAVAID_EVENTS = new Set(['fpl_mail_open', 'xc_mail_open', 'parking_mail_open']);
+function navaidEvent(name) {
+  if (!NAVAID_EVENTS.has(name)) return false;
+  if (typeof window === 'undefined' || typeof window.gtag !== 'function') return false;
+  try { window.gtag('event', name); return true; } catch (e) { return false; }
+}
+window.navaidEvent = navaidEvent;
+
 function tune(key) {
   const spec = NavAid.tuningDefaults && NavAid.tuningDefaults[key];
   if (!spec) return 0;
