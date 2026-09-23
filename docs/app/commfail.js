@@ -39,15 +39,51 @@
     return graphPromise;
   }
 
-  // Where the aeroplane is. A live fix when there is one; otherwise the middle of the map,
-  // and the card says so -- a route from the wrong place is worse than no route if nobody
-  // is told where it starts.
-  function origin() {
-    const live = typeof gpsPositionLive === 'function' && gpsPositionLive();
-    const fix = live && typeof gpsLastFix === 'function' ? gpsLastFix() : null;
-    if (fix && Number.isFinite(fix.lat) && Number.isFinite(fix.lng)) return { pos: fix, fromGps: true };
+  // How long to wait for a first fix after switching Location on. Long enough for a phone
+  // that has had GPS recently; a cold start that takes longer gets the map centre, and the
+  // card says so.
+  const FIX_WAIT_MS = 8000;
+
+  const liveFix = () => {
+    const f = typeof gpsOwn === 'object' && gpsOwn;
+    return f && Number.isFinite(f.lat) && Number.isFinite(f.lng) ? { lat: f.lat, lng: f.lng } : null;
+  };
+  function waitForFix(ms) {
+    return new Promise(resolve => {
+      const until = Date.now() + ms;
+      const tick = () => {
+        // gpsLastFix is cleared when Location starts, so it only answers with a fix from THIS
+        // session -- gpsOwn can still hold where the aeroplane was last time.
+        const f = typeof gpsLastFix === 'function' ? gpsLastFix() : null;
+        if (f || !gpsLiveOn || Date.now() >= until) { resolve(f); return; }
+        setTimeout(tick, 200);
+      };
+      tick();
+    });
+  }
+  function setLocation(on) {
+    const btn = document.getElementById('gps-live');
+    if (btn && !btn.disabled && !!gpsLiveOn !== on) btn.click();
+    return !!gpsLiveOn === on;
+  }
+
+  // Where the aeroplane is. Comm failure is an in-flight button, so it switches Location on
+  // when nothing is giving a position yet (a recording and the simulator both count), and
+  // waits briefly for the first fix. No fix: the middle of the map, and the card says so --
+  // a route from the wrong place is worse than no route if nobody is told where it starts.
+  async function origin() {
+    let startedLocation = false;
+    if (!(typeof gpsPositionLive === 'function' && gpsPositionLive())) {
+      startedLocation = setLocation(true);
+      if (startedLocation) {
+        if (typeof showToast === 'function') showToast(S_('commFailLocating', 'Getting your position…'));
+        await waitForFix(FIX_WAIT_MS);
+      }
+    }
+    const fix = typeof gpsPositionLive === 'function' && gpsPositionLive() ? liveFix() : null;
+    if (fix) return { pos: fix, fromGps: true, startedLocation };
     const c = map.getCenter();
-    return { pos: { lat: c.lat, lng: c.lng }, fromGps: false };
+    return { pos: { lat: c.lat, lng: c.lng }, fromGps: false, startedLocation };
   }
 
   function fieldLabel(icao) {
@@ -121,6 +157,7 @@
     }
     if (!was.chartWasOn) setBox(document.getElementById('commfail-cb'), false);
     if (was.filter) setFilter(was.filter);
+    if (was.startedLocation) setLocation(false);
     document.querySelectorAll('[data-chart-modal="commfail"]').forEach(el => el.remove());
     if (!restored && typeof refuse === 'function') {
       refuse(S_('commFailCancelKept', 'Comm failure cancelled. The route was edited since, so it stays.'));
@@ -208,7 +245,10 @@
       if (typeof refuse === 'function') refuse(S_('commFailNoData', 'Comm-failure procedures could not be loaded.'));
       return null;
     }
-    const { pos, fromGps } = origin();
+    const { pos, fromGps, startedLocation } = await origin();
+    // Location switched on here goes off again on the way out, unless a comm-failure route
+    // it belongs to is still up.
+    const giveBackLocation = () => { if (startedLocation && !active) setLocation(false); };
     const nodes = (graph && graph.nodes) || {};
     const wpAt = code => {
       const n = nodes[code];
@@ -220,6 +260,7 @@
     };
     const opts = commFailOptions(data, pos, wpAt, fieldAt);
     if (!opts.length) {
+      giveBackLocation();
       if (typeof refuse === 'function') refuse(S_('commFailNoData', 'Comm-failure procedures could not be loaded.'));
       return null;
     }
@@ -227,6 +268,7 @@
     const ask = String(S_('commFailReplace', 'Replace your route with the comm-failure route to {field}?'))
       .replace('{field}', fieldLabel(best.icao));
     if (!await askReplaceRoute(ask, S_('commFailReplaceOk', 'Route there'), S_('commFailHeading', 'Comm failure'))) {
+      giveBackLocation();
       return null;
     }
     const chartWas = document.getElementById('commfail-cb');
@@ -240,6 +282,7 @@
       depth: undoStack.length,
       chartWasOn: prior ? prior.chartWasOn : (changed.chartWasOn && !!chartWas),
       filter: prior ? prior.filter : changed.filter,
+      startedLocation: prior ? prior.startedLocation : startedLocation,
       opts, graph, fromGps, card: null,
     };
     try {

@@ -393,6 +393,7 @@ window.S = {
   commFailCancel: 'בטל כשל קשר',
   commFailCancelTitle: 'החזר את המסלול והמפות שהיו לפני כן',
   commFailCancelKept: 'כשל הקשר בוטל. המסלול נערך מאז, לכן הוא נשאר.',
+  commFailLocating: 'מאתר את המיקום שלך…',
   commFailChartNote: 'המפה המפורסמת מוצגת — טוס לפיה, לא לפי הקו הזה.',
   deckCommFail: 'כשל קשר',
   airfieldPhone: 'טלפון',

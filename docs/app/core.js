@@ -1714,6 +1714,7 @@ window.S = Object.assign({
   commFailCancel: 'Cancel comm failure',
   commFailCancelTitle: 'Put back the route and charts you had before',
   commFailCancelKept: 'Comm failure cancelled. The route was edited since, so it stays.',
+  commFailLocating: 'Getting your position…',
   commFailChartNote: 'The published chart is on the map — fly it, not this line.',
   deckCommFail: 'Comm fail',
   airfieldPhone: 'Phone',

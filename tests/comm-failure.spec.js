@@ -10,7 +10,23 @@ const DATA = JSON.parse(fs.readFileSync(path.join(__dirname, '../docs/data/commf
 const GRAPH = JSON.parse(fs.readFileSync(path.join(__dirname, '../docs/data/cvfr-route-graph.json'), 'utf8'));
 const AIRFIELDS = JSON.parse(fs.readFileSync(path.join(__dirname, '../docs/data/airfields.json'), 'utf8')).airfields;
 
-async function boot(page, lang = 'en') {
+// Location is switched on by the button. By default the browser refuses it, so these start
+// from the map centre; `fix` hands the watch a position instead, `hold` keeps it waiting.
+async function boot(page, lang = 'en', geo = 'deny') {
+  await page.addInitScript((mode) => {
+    window.__geoStarts = 0;
+    navigator.geolocation.watchPosition = (ok, err) => {
+      window.__geoStarts++;
+      window.__geoOk = ok;
+      if (mode === 'deny') setTimeout(() => err({ code: 1, message: 'denied' }), 0);
+      if (mode && typeof mode === 'object') {
+        setTimeout(() => ok({ coords: { latitude: mode.lat, longitude: mode.lng, accuracy: 5,
+          altitude: null, heading: null, speed: null }, timestamp: Date.now() }), 50);
+      }
+      return 77;
+    };
+    navigator.geolocation.clearWatch = () => {};
+  }, geo);
   await page.goto('?lang=' + lang + '&nogist');
   await page.waitForFunction(() => window.NavAid && NavAid.commFail && typeof commFailOptions === 'function'
     && typeof map === 'object' && map);
@@ -160,5 +176,47 @@ test('with the card closed, the button brings it back with Cancel instead of ask
   await expect(page.locator('.commfail-cancel')).toBeVisible();
   expect(await page.evaluate(() => window.__asked)).toBe(0);
   await page.click('.commfail-cancel');
+  expect(await page.evaluate(() => state.waypoints.map(w => w.name))).toEqual(['X', 'Y']);
+});
+
+test('with no position source it switches Location on and routes from the first fix', async ({ page }) => {
+  // Over the Galilee while the map shows Herzliya: the route must start at the fix.
+  await boot(page, 'en', { lat: 32.95, lng: 35.55 });
+  await page.evaluate(() => map.setView([32.2, 34.85], 10));
+  expect(await page.evaluate(() => gpsLiveOn)).toBe(false);
+  await page.click('#commfail-btn');
+  const card = page.locator('[data-chart-modal="commfail"] .commfail-card');
+  await expect(card.locator('.commfail-origin')).toContainText('GPS');
+  await expect(card.locator('.commfail-dest')).toContainText('LLIB');
+  const r = await page.evaluate(() => ({ live: gpsLiveOn, pressed: document.getElementById('gps-live').getAttribute('aria-pressed'),
+    first: state.waypoints[0] }));
+  expect(r.live).toBe(true);
+  expect(r.pressed).toBe('true');
+  expect(r.first.lat).toBeCloseTo(32.95, 3);
+  // Cancel turns off the Location it turned on.
+  await page.click('.commfail-cancel');
+  expect(await page.evaluate(() => gpsLiveOn)).toBe(false);
+});
+
+test('Location already on stays on after Cancel', async ({ page }) => {
+  await boot(page, 'en', { lat: 32.25, lng: 34.95 });
+  await page.click('#gps-live');
+  await page.waitForFunction(() => typeof gpsLastFix === 'function' && gpsLastFix());
+  await page.click('#commfail-btn');
+  await expect(page.locator('.commfail-cancel')).toBeVisible();
+  expect(await page.evaluate(() => window.__geoStarts)).toBe(1);
+  await page.click('.commfail-cancel');
+  expect(await page.evaluate(() => gpsLiveOn)).toBe(true);
+});
+
+test('No on the replace question turns off the Location it turned on', async ({ page }) => {
+  await boot(page, 'en', { lat: 32.25, lng: 34.95 });
+  await page.evaluate(() => {
+    state.waypoints = [{ lat: 31.5, lng: 34.8, name: 'X' }, { lat: 31.6, lng: 34.9, name: 'Y' }];
+    syncLegs(); draw();
+    window.askYesNo = async () => false;
+  });
+  await page.click('#commfail-btn');
+  await page.waitForFunction(() => window.__geoStarts === 1 && !gpsLiveOn);
   expect(await page.evaluate(() => state.waypoints.map(w => w.name))).toEqual(['X', 'Y']);
 });
