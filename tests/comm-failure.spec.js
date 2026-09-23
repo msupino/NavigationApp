@@ -325,3 +325,24 @@ test('on a phone the light signals start folded, and one tap opens them', async 
   await lights.locator('summary').click();
   await expect(lights.locator('dd').first()).toBeVisible();
 });
+
+test('NOW follows the aircraft, so the first leg stays measured from where it is', async ({ page }) => {
+  await boot(page, 'en', { lat: 32.40, lng: 34.95 });
+  await page.evaluate(() => {
+    state.waypoints = [{ lat: 31.5, lng: 34.8, name: 'X' }, { lat: 31.6, lng: 34.9, name: 'Y' }];
+    syncLegs(); draw();
+    window.askYesNo = async () => true;
+  });
+  await page.click('#commfail-btn');
+  await expect(page.locator('.commfail-dest')).toBeVisible();
+  const depth = await page.evaluate(() => undoStack.length);
+  await fixAt(page, 32.36, 34.93);                        // flown two and a half miles on
+  await page.waitForFunction(() => Math.abs(state.waypoints[0].lat - 32.36) < 1e-4, null, { timeout: 5000 });
+  const r = await page.evaluate(() => ({ n: state.waypoints.length, lng: state.waypoints[0].lng, depth: undoStack.length }));
+  expect(r.n).toBe(3);
+  expect(r.lng).toBeCloseTo(34.93, 4);
+  expect(r.depth).toBe(depth);                            // following is not an undo step
+  // ...and Cancel still goes back to the plan from before.
+  await page.click('.commfail-cancel');
+  expect(await page.evaluate(() => state.waypoints.map(w => w.name))).toEqual(['X', 'Y']);
+});

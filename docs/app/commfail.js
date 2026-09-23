@@ -146,6 +146,36 @@
       delete leg._legAltitudeAuto;
     }
     draw();   // draw -> persist -> one undo step, so Undo brings the planned route back
+    // A new route with the aircraft at its start: the leg pointer starts on the first leg,
+    // not wherever it had got to on the route this replaced.
+    if (typeof gpsResetLegAlerts === 'function') gpsResetLegAlerts();
+  }
+
+  // NOW follows the aircraft. A fixed first point left the first leg's bearing and distance
+  // measured from wherever the button was pressed, going stale with every minute flown. While
+  // comm failure is up and a position is live, the first point moves to the latest fix --
+  // until the aircraft is past it onto the entry leg, where it no longer matters.
+  const FOLLOW_MS = 2000;
+  const FOLLOW_MIN_M = 50;
+  let followTimer = 0;
+  function followTick() {
+    if (!active || !(typeof gpsPositionLive === 'function' && gpsPositionLive())) return;
+    if (typeof gpsAlertLegIndex === 'number' && gpsAlertLegIndex > 0) return;
+    const fix = liveFix();
+    const wp = state.waypoints[0];
+    // Only while the route is still the one comm failure drew: an edited route is the pilot's.
+    if (!fix || !wp || routeKey() !== active.route) return;
+    if (routeCheckNmBetween(wp, fix) * 1852 < FOLLOW_MIN_M) return;
+    const r = typeof r5 === 'function' ? r5 : v => v;
+    const move = () => { wp.lat = r(fix.lat); wp.lng = r(fix.lng); draw(); };
+    if (typeof persistWithoutUndo === 'function') persistWithoutUndo(move); else move();
+    active.route = routeKey();
+    const origin = document.querySelector('[data-chart-modal="commfail"] .commfail-origin');
+    if (origin) origin.textContent = S_('commFailFromGps', 'From your GPS position');
+  }
+  function follow(on) {
+    clearInterval(followTimer);
+    followTimer = on ? setInterval(followTick, FOLLOW_MS) : 0;
   }
 
   function setBox(box, on) {
@@ -182,6 +212,7 @@
     if (!active) return false;
     const was = active;
     active = null;
+    follow(false);
     refreshPressed();
     let restored = false;
     if (routeKey() === was.route && typeof undo === 'function' && was.depth > 0 && undoStack.length >= was.depth) {
@@ -383,6 +414,7 @@
       startedLocation: prior ? prior.startedLocation : startedLocation,
       opts, graph, fromGps, card: null,
     };
+    follow(true);
     try {
       map.fitBounds(L.latLngBounds(state.waypoints.map(w => [w.lat, w.lng])).pad(0.2));
     } catch (e) { /* a map with no size yet: the route is drawn, the view just stays put */ }
