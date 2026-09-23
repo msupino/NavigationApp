@@ -1421,7 +1421,25 @@ function fplDofToIsoDate(dof) {
 // A phone number is something the pilot has to write down, and a toast slides away while they
 // look for a pen. Say it in a dialog that waits for OK. Also used when nothing is on file, so
 // the two answers behave the same way.
-function showParkingContactModal(title, body) {
+// A phone number as a link that dials it. Text the pilot must copy by hand is the one thing a
+// parking request should not hand out: the field that publishes no email is the one they have
+// to phone, from the phone they are holding. LTR-isolated, because in Hebrew it is a Latin run
+// inside RTL prose and the area code can otherwise land at the wrong end.
+function telLink(shown) {
+  const text = String(shown || '').trim();
+  const dial = text.replace(/[^\d+]/g, '');
+  if (dial.length < 7) return null;
+  const a = document.createElement('a');
+  a.className = 'tel-link';
+  a.href = 'tel:' + dial;
+  a.dir = 'ltr';
+  a.textContent = '\u260e ' + text;
+  a.title = (S.callNumber || 'Call') + ' \u2014 ' + text;
+  return a;
+}
+window.telLink = telLink;
+
+function showParkingContactModal(title, body, phone) {
   const back = document.createElement('div');
   back.className = 'modal-back fpl-modal';
   back.dataset.chartModal = 'parking-contact';
@@ -1449,6 +1467,14 @@ function showParkingContactModal(title, body) {
   if (typeof fplSetBidiText === 'function') fplSetBidiText(p, body);
   else p.textContent = body;
   box.appendChild(p);
+  // The phone is passed apart from the prose so it can be a link rather than a run of text.
+  const tel = phone ? telLink(phone) : null;
+  if (tel) {
+    const line = document.createElement('div');
+    line.className = 'parking-contact-phone';
+    line.appendChild(tel);
+    box.appendChild(line);
+  }
   const btns = document.createElement('div');
   btns.className = 'fpl-actions';
   const ok = document.createElement('button');
@@ -1510,7 +1536,12 @@ function showParkingRequestModal(res, park, opts) {
   // wraps each run in <bdi>, which is what the filing step already does for the same reason.
   fplSetBidiText(to, (S.fplParkingTo || 'To') + ': ' +
     (park.email || (S.fplParkingNoAddress || 'no published address — you will need to fill it in')) +
-    (park.opsEmail ? '  ·  cc ' + park.opsEmail : '') + (park.phone ? '  ·  ☎ ' + park.phone : ''));
+    (park.opsEmail ? '  ·  cc ' + park.opsEmail : ''));
+  const toTel = park.phone ? telLink(park.phone) : null;
+  if (toTel) {
+    to.appendChild(document.createTextNode('  \u00b7  '));
+    to.appendChild(toTel);
+  }
   box.appendChild(to);
 
   const form = document.createElement('div');
@@ -11057,12 +11088,11 @@ function showFplDialog() {
           const heading = (S.fplParking || 'Request parking') + ' — ' + named;
           const body = (parkAf && parkAf.phone)
             ? ((typeof S.fplParkingNoEmail === 'function')
-              ? S.fplParkingNoEmail(named) : 'No email defined in AIP for ' + named) +
-              '\n☎ ' + parkAf.phone
+              ? S.fplParkingNoEmail(named) : 'No email defined in AIP for ' + named)
             : ((typeof S.fplParkingNoInfo === 'function')
               ? S.fplParkingNoInfo(named)
               : 'No parking contact on file for ' + named + ' — check the AIP');
-          showParkingContactModal(heading, body);
+          showParkingContactModal(heading, body, parkAf && parkAf.phone);
           return;
         }
         showParkingRequestModal(res, parkAf, { depTimeLocal: state1.time });
