@@ -1676,6 +1676,8 @@ window.S = Object.assign({
     return 'R-' + rad + '° / ' + dme + ' NM';
   },
   primary: 'Primary',
+  towerPhone: 'Tower phone',
+  towerPhoneTitle: 'Call the tower',
   atis: 'ATIS',
   commArrival: 'Arrival',
   commDeparture: 'Departure',
