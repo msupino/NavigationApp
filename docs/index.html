@@ -977,6 +977,13 @@
           <span class="footer-link-sizer" aria-hidden="true" data-i18n="tbGpsLiveStop"></span>
         </span>
       </button>
+      <!-- Lost radio: routes to the nearest field with a published comm-failure procedure and
+           puts its chart on the map. Next to the GPS buttons because it is used in the air. -->
+      <button id="commfail-btn" type="button" class="footer-link footer-link-button gps-footer-btn" aria-pressed="false"
+              data-i18n-title="commFailTitle" data-i18n-aria="commFail">
+        <span class="footer-link-icon gps-footer-icon" aria-hidden="true">📵</span>
+        <span class="footer-link-text" data-i18n="commFail"></span>
+      </button>
       <!-- Grouped with the GPS buttons, not a sibling after them: that keeps it on
            the SAME wrap-eligible flex item as far as #footer-links is concerned, so
            the mobile collapsed menu's flex-wrap never has a reason to break a new
@@ -1142,6 +1149,7 @@
         'app/alt-pair-directions.js' + v,
         'app/gdrive.js' + v,
         'app/gps.js' + v,
+        'app/commfail.js' + v,
         'app/ui.js' + v,
         'app/traffic.js' + v,
         'app/followme.js' + v,

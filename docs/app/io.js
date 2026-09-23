@@ -6615,6 +6615,16 @@ function recordUndoSnapshot(serialized) {
   refreshUndoButton();
 }
 
+// A route change that is not an edit -- the route following the aircraft -- so Undo skips
+// it: a hundred position updates are not a hundred steps back to the plan. The baseline
+// moves with it, so the next real edit's undo step lands on the route as it is now.
+function persistWithoutUndo(fn) {
+  undoing = true;
+  try { fn(); } finally { undoing = false; }
+  lastCommitted = JSON.stringify(routeSnapshotForStorage());
+}
+window.persistWithoutUndo = persistWithoutUndo;
+
 function refreshUndoButton() {
   const btn = document.getElementById('undo');
   if (btn) btn.disabled = undoStack.length === 0;

@@ -42,10 +42,17 @@ test('a phone gets the strip and the deck', async ({ page }) => {
   await boot(page);
   await expect(page.locator('#deck-bar')).toBeVisible();
   const labels = await page.locator('.deck-btn-label').allTextContents();
-  expect(labels).toEqual(['Map', 'Menu', 'Plan', 'Record', 'Location']);
+  expect(labels).toEqual(['Map', 'Menu', 'Plan', 'Record', 'Location', 'Comm fail']);
   // The deck replaces the closed menu card in its corner: everything it held is on the deck
   // or one tap inside it, and two menus for one app is how the corner got crowded.
   expect(await page.evaluate(() => getComputedStyle(document.getElementById('toolbar')).display)).toBe('none');
+});
+
+test('Comm fail on the deck opens the comm-failure card', async ({ page }) => {
+  await boot(page);
+  await page.evaluate(() => map.setView([32.25, 34.95], 10));
+  await page.locator('.deck-btn-commfail').click();
+  await expect(page.locator('[data-chart-modal="commfail"] .commfail-squawk')).toContainText('7600');
 });
 
 test('a desktop is not given a phone deck', async ({ page }) => {
