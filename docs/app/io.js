@@ -1664,6 +1664,7 @@ function showParkingRequestModal(res, park, opts) {
       return;
     }
     const t = compose();
+    if (typeof navaidEvent === 'function') navaidEvent('parking_mail_open');
     location.href = fplParkingMailtoUrl(res, park, { subject: t.subject, body: preview.value });
     close();
   };
@@ -10987,6 +10988,7 @@ function showFplDialog() {
       // The AIP prescribes no subject line (א'-11 §3.ב only names the address), so this
       // is our own convention: registration, the two fields, and the date of flight --
       // enough for the desk, and for the pilot's own sent folder, to identify the plan.
+      if (typeof navaidEvent === 'function') navaidEvent('fpl_mail_open');
       location.href = fplMailtoUrl(res, {
         reg: profileForSubject.reg,
         replyTo: profileForSubject.replyTo,
@@ -11626,6 +11628,7 @@ function showFplXcForm(opts) {
       q.push('cc=' + fplMailtoAddress(reply));
       q.push('reply-to=' + fplMailtoAddress(reply));
     }
+    if (typeof navaidEvent === 'function') navaidEvent('xc_mail_open');
     location.href = 'mailto:' + fplMailtoAddress(to) + '?' + q.join('&');
   };
   // The address this sheet will mail to, named on the sheet when it is not the published
