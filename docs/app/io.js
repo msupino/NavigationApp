@@ -6635,6 +6635,20 @@ function undo() {
   const prev = undoStack.pop();
   let snap;
   try { snap = JSON.parse(prev); } catch (_) { refreshUndoButton(); return; }
+  undoing = true;
+  lastCommitted = prev;            // align baseline so the redraw won't re-push
+  try {
+    applyRouteSnapshot(snap);
+  } finally {
+    undoing = false;
+  }
+  refreshUndoButton();
+}
+
+// Put a routeSnapshotForStorage() snapshot back on the map and redraw. Undo uses it with the
+// undo record suppressed; comm failure's Cancel uses it as an ordinary edit, because its
+// snapshot has to survive a reload that the undo stack does not.
+function applyRouteSnapshot(snap) {
   state.waypoints = Array.isArray(snap.waypoints) ? snap.waypoints : [];
   state.legs = Array.isArray(snap.legs)
     ? snap.legs.map(leg => ({
@@ -6658,16 +6672,10 @@ function undo() {
   // silently overwriting a saved route with unrelated content.
   currentRouteLibraryId = null;
   state.selected = null;
-  undoing = true;
-  lastCommitted = prev;            // align baseline so the redraw won't re-push
-  try {
-    draw();
-    if (typeof showInspector === 'function') showInspector();
-  } finally {
-    undoing = false;
-  }
-  refreshUndoButton();
+  draw();
+  if (typeof showInspector === 'function') showInspector();
 }
+window.applyRouteSnapshot = applyRouteSnapshot;
 
 // Returns one of:
 //   true       — saved route restored into state.

@@ -17,7 +17,27 @@
   // filter it replaced. null when no comm-failure route is active.
   let active = null;
   let waiting = null;          // the waiting card's answer box while a first fix is awaited
-  const routeKey = () => JSON.stringify(routeSnapshotForStorage());
+  // What makes the route still "the one comm failure drew": its points and altitudes. Not the
+  // whole storage snapshot -- that carries bookkeeping a save and reload does not round-trip
+  // exactly, and after a reload (a language switch is one) the same route has to match.
+  const routeKey = () => JSON.stringify([
+    state.waypoints.map(w => [w.lat, w.lng, w.name]),
+    state.legs.map(l => (Number.isFinite(l.inboundAltitude) ? l.inboundAltitude : null)),
+  ]);
+
+  // Comm failure survives a reload. Switching language reloads the page, and so does an APK
+  // killed mid-flight; the route survived both but the card, the lit button, NOW following and
+  // Cancel did not. The route from before is kept here too, because the undo stack does not
+  // survive a reload and Cancel has to be able to put it back.
+  const STORE_KEY = 'navaid.commFail';
+  function save() {
+    try {
+      if (!active) { localStorage.removeItem(STORE_KEY); return; }
+      const { before, route, chartWasOn, filter, startedLocation, opts, fromGps } = active;
+      localStorage.setItem(STORE_KEY, JSON.stringify({ v: 1, before, route, chartWasOn, filter,
+        startedLocation, opts, fromGps }));
+    } catch (e) { /* storage full or blocked: it just will not survive a reload */ }
+  }
 
   let dataPromise = null;
   let graphPromise = null;
@@ -170,6 +190,7 @@
     const move = () => { wp.lat = r(fix.lat); wp.lng = r(fix.lng); draw(); };
     if (typeof persistWithoutUndo === 'function') persistWithoutUndo(move); else move();
     active.route = routeKey();
+    save();
     const origin = document.querySelector('[data-chart-modal="commfail"] .commfail-origin');
     if (origin) origin.textContent = S_('commFailFromGps', 'From your GPS position');
   }
@@ -215,10 +236,10 @@
     follow(false);
     refreshPressed();
     let restored = false;
-    if (routeKey() === was.route && typeof undo === 'function' && was.depth > 0 && undoStack.length >= was.depth) {
-      undo();
-      restored = true;
+    if (routeKey() === was.route && was.before && typeof applyRouteSnapshot === 'function') {
+      try { applyRouteSnapshot(JSON.parse(was.before)); restored = true; } catch (e) { /* kept */ }
     }
+    save();
     if (!was.chartWasOn) setBox(document.getElementById('commfail-cb'), false);
     if (was.filter) setFilter(was.filter);
     if (was.startedLocation) setLocation(false);
@@ -313,7 +334,7 @@
       m.box.appendChild(phone);
     }
     m.box.appendChild(lightSignals());
-    m.box.appendChild(line('commfail-note', S_('commFailChartNote', 'The published chart is on the map — fly it, not this line.')));
+    m.box.appendChild(line('commfail-note', S_('commFailChartNote', 'Fly the comm-failure chart shown on the map. The drawn line only leads to the entry point.')));
     m.box.appendChild(line('commfail-origin', fromGps
       ? S_('commFailFromGps', 'From your GPS position')
       : S_('commFailFromMap', 'From the map centre — no GPS fix')));
@@ -404,17 +425,19 @@
     // A comm-failure route drawn over an earlier one: Cancel goes back to the plan before
     // the first, and the chart/filter state from before the first too.
     const prior = active;
+    const before = prior ? prior.before : JSON.stringify(routeSnapshotForStorage());
     buildRoute(Object.assign({ from: pos }, best));
     const changed = showChart(best.icao);
     active = {
       route: routeKey(),
-      depth: undoStack.length,
+      before,
       chartWasOn: prior ? prior.chartWasOn : (changed.chartWasOn && !!chartWas),
       filter: prior ? prior.filter : changed.filter,
       startedLocation: prior ? prior.startedLocation : startedLocation,
       opts, graph, fromGps, card: null,
     };
     follow(true);
+    save();
     try {
       map.fitBounds(L.latLngBounds(state.waypoints.map(w => [w.lat, w.lng])).pad(0.2));
     } catch (e) { /* a map with no size yet: the route is drawn, the view just stays put */ }
@@ -425,5 +448,25 @@
   const btn = document.getElementById('commfail-btn');
   if (btn) btn.addEventListener('click', () => { commFailGo(); });
   window.NavAid = window.NavAid || {};
-  NavAid.commFail = { go: commFailGo, cancel, isActive: () => !!active };
+  // Called by the boot once the saved route is back on the map (ui.js). Picks comm failure up
+  // where the reload left it -- in the new language, if that was the reload -- or forgets it
+  // when the route is no longer the one it drew.
+  async function resume() {
+    let saved = null;
+    try { saved = JSON.parse(localStorage.getItem(STORE_KEY) || 'null'); } catch (e) { saved = null; }
+    if (!saved || saved.v !== 1 || !Array.isArray(saved.opts) || !saved.opts.length) return false;
+    if (saved.route !== routeKey()) { try { localStorage.removeItem(STORE_KEY); } catch (e) {} return false; }
+    active = Object.assign({}, saved, { card: null, graph: null });
+    refreshPressed();
+    follow(true);
+    try {
+      active.graph = await loadGraph();
+      if (!airfields && typeof loadAirfields === 'function') await loadAirfields();
+    } catch (e) { /* the card still shows, with codes instead of names */ }
+    if (!active) return false;              // cancelled while the graph loaded
+    active.card = showCard(active.opts, active.graph, active.fromGps);
+    return true;
+  }
+
+  NavAid.commFail = { go: commFailGo, cancel, resume, isActive: () => !!active };
 })();

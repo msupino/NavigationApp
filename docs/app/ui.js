@@ -10136,6 +10136,9 @@ if (_savedView) {
   fitView();                              // first-time / cleared-storage path
 }
 draw();
+// Comm failure left on by the last page load (a language switch reloads) comes back now that
+// its route is on the map.
+if (window.NavAid && NavAid.commFail && typeof NavAid.commFail.resume === 'function') NavAid.commFail.resume();
 // Always load nav-waypoints in the background — they power both the
 // overlay toggle and the auto-snap on drop / drag.
 loadNavWaypoints().then(() => {

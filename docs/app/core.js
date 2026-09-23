@@ -1732,7 +1732,7 @@ window.S = Object.assign({
   commFailLightFlare: 'Do not land for the time being',
   commFailLightAck: 'Acknowledge: by day rock the wings (not on base or final); at night flash the landing or navigation lights twice.',
   commFailEnd: 'End comm failure',
-  commFailChartNote: 'The published chart is on the map — fly it, not this line.',
+  commFailChartNote: 'Fly the comm-failure chart shown on the map. The drawn line only leads to the entry point.',
   deckCommFail: 'Comm fail',
   airfieldPhone: 'Phone',
   callNumber: 'Call',
