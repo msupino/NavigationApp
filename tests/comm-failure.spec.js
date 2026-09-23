@@ -346,3 +346,43 @@ test('NOW follows the aircraft, so the first leg stays measured from where it is
   await page.click('.commfail-cancel');
   expect(await page.evaluate(() => state.waypoints.map(w => w.name))).toEqual(['X', 'Y']);
 });
+
+test('comm failure survives a language switch, and Cancel still puts the old route back', async ({ page }) => {
+  await boot(page);
+  await planned(page);
+  await page.click('#commfail-btn');
+  await expect(page.locator('.commfail-dest')).toBeVisible();
+  const drawn = await page.evaluate(() => state.waypoints.map(w => w.name));
+  // A language switch is a full reload.
+  await page.goto('?lang=he&nogist');
+  await page.waitForFunction(() => window.NavAid && NavAid.commFail && NavAid.commFail.isActive());
+  const card = page.locator('[data-chart-modal="commfail"] .commfail-card');
+  await expect(card.locator('.commfail-squawk')).toContainText('סקווק');
+  await expect(card.locator('.commfail-note')).toContainText('תרשים תקלת הקשר');
+  expect(await page.evaluate(() => [state.waypoints.map(w => w.name),
+    document.getElementById('commfail-btn').getAttribute('aria-pressed')])).toEqual([drawn, 'true']);
+  await card.locator('.commfail-cancel').click();
+  expect(await page.evaluate(() => state.waypoints.map(w => w.name))).toEqual(['X', 'Y']);
+  // ...and once ended it stays ended.
+  await page.goto('?lang=en&nogist');
+  await page.waitForFunction(() => window.NavAid && NavAid.commFail && typeof draw === 'function');
+  await page.waitForTimeout(500);
+  expect(await page.evaluate(() => NavAid.commFail.isActive())).toBe(false);
+  await expect(page.locator('[data-chart-modal="commfail"]')).toHaveCount(0);
+});
+
+test('a route edited in another way before the reload is not picked up as comm failure', async ({ page }) => {
+  await boot(page);
+  await planned(page);
+  await page.click('#commfail-btn');
+  await expect(page.locator('.commfail-dest')).toBeVisible();
+  await page.evaluate(() => {
+    const saved = JSON.parse(localStorage.getItem('navaid.commFail'));
+    saved.route = '"something else"';
+    localStorage.setItem('navaid.commFail', JSON.stringify(saved));
+  });
+  await page.goto('?lang=en&nogist');
+  await page.waitForFunction(() => window.NavAid && NavAid.commFail && typeof draw === 'function');
+  await page.waitForTimeout(500);
+  expect(await page.evaluate(() => [NavAid.commFail.isActive(), localStorage.getItem('navaid.commFail')])).toEqual([false, null]);
+});
