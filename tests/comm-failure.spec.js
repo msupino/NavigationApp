@@ -135,7 +135,7 @@ test('Cancel puts back the route and turns off the chart it turned on', async ({
   await planned(page);
   expect(await page.evaluate(() => document.getElementById('commfail-cb').checked)).toBe(false);
   await page.click('#commfail-btn');
-  await expect(page.locator('.commfail-cancel')).toBeVisible();
+  await expect(page.locator('.commfail-dest')).toBeVisible();
   expect(await page.evaluate(() => state.waypoints.length)).toBe(3);
   await page.click('.commfail-cancel');
   const after = await page.evaluate(() => ({
@@ -151,7 +151,7 @@ test('Cancel after the pilot edited the route keeps the edit', async ({ page }) 
   await boot(page);
   await planned(page);
   await page.click('#commfail-btn');
-  await expect(page.locator('.commfail-cancel')).toBeVisible();
+  await expect(page.locator('.commfail-dest')).toBeVisible();
   await page.evaluate(() => {
     state.waypoints.push({ lat: 32.2, lng: 34.7, name: 'Z' });
     syncLegs(); draw();
@@ -166,14 +166,14 @@ test('with the card closed, the button brings it back with Cancel instead of ask
   await boot(page);
   await planned(page);
   await page.click('#commfail-btn');
-  await expect(page.locator('.commfail-cancel')).toBeVisible();
+  await expect(page.locator('.commfail-dest')).toBeVisible();
   await page.evaluate(() => {
     document.querySelectorAll('[data-chart-modal="commfail"]').forEach(el => el.remove());
     window.__asked = 0;
     window.askYesNo = async () => { window.__asked++; return true; };
   });
   await page.click('#commfail-btn');
-  await expect(page.locator('.commfail-cancel')).toBeVisible();
+  await expect(page.locator('.commfail-dest')).toBeVisible();
   expect(await page.evaluate(() => window.__asked)).toBe(0);
   await page.click('.commfail-cancel');
   expect(await page.evaluate(() => state.waypoints.map(w => w.name))).toEqual(['X', 'Y']);
@@ -203,7 +203,7 @@ test('Location already on stays on after Cancel', async ({ page }) => {
   await page.click('#gps-live');
   await page.waitForFunction(() => typeof gpsLastFix === 'function' && gpsLastFix());
   await page.click('#commfail-btn');
-  await expect(page.locator('.commfail-cancel')).toBeVisible();
+  await expect(page.locator('.commfail-dest')).toBeVisible();
   expect(await page.evaluate(() => window.__geoStarts)).toBe(1);
   await page.click('.commfail-cancel');
   expect(await page.evaluate(() => gpsLiveOn)).toBe(true);
@@ -219,4 +219,42 @@ test('No on the replace question turns off the Location it turned on', async ({ 
   await page.click('#commfail-btn');
   await page.waitForFunction(() => window.__geoStarts === 1 && !gpsLiveOn);
   expect(await page.evaluate(() => state.waypoints.map(w => w.name))).toEqual(['X', 'Y']);
+});
+
+const fixAt = (page, lat, lng) => page.evaluate(([la, ln]) => window.__geoOk({ coords: { latitude: la, longitude: ln,
+  accuracy: 5, altitude: null, heading: null, speed: null }, timestamp: Date.now() }), [lat, lng]);
+
+test('it waits for the GPS as long as it takes, showing 7600 meanwhile', async ({ page }) => {
+  await boot(page, 'en', 'hold');
+  await page.evaluate(() => map.setView([32.2, 34.85], 10));
+  await page.click('#commfail-btn');
+  const card = page.locator('[data-chart-modal="commfail"] .commfail-card');
+  await expect(card.locator('.commfail-waiting')).toBeVisible();
+  await expect(card.locator('.commfail-squawk')).toContainText('7600');
+  await page.waitForTimeout(9000);                       // past the old 8 s give-up
+  expect(await page.evaluate(() => state.waypoints.length)).toBe(0);
+  await fixAt(page, 32.95, 35.55);
+  await expect(card.locator('.commfail-dest')).toContainText('LLIB');
+  await expect(card.locator('.commfail-origin')).toContainText('GPS');
+});
+
+test('Use map centre routes from the map without waiting', async ({ page }) => {
+  await boot(page, 'en', 'hold');
+  await page.evaluate(() => map.setView([32.25, 34.95], 10));
+  await page.click('#commfail-btn');
+  await page.click('.commfail-use-centre');
+  const card = page.locator('[data-chart-modal="commfail"] .commfail-card');
+  await expect(card.locator('.commfail-dest')).toContainText('LLHZ');
+  await expect(card.locator('.commfail-origin')).toContainText('map centre');
+});
+
+test('Cancel while waiting draws nothing and turns Location back off', async ({ page }) => {
+  await boot(page, 'en', 'hold');
+  await page.click('#commfail-btn');
+  await page.click('.commfail-cancel');
+  await expect(page.locator('[data-chart-modal="commfail"]')).toHaveCount(0);
+  expect(await page.evaluate(() => ({ n: state.waypoints.length, live: gpsLiveOn }))).toEqual({ n: 0, live: false });
+  await fixAt(page, 32.95, 35.55);                       // a late fix changes nothing
+  await page.waitForTimeout(400);
+  expect(await page.evaluate(() => state.waypoints.length)).toBe(0);
 });

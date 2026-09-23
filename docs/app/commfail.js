@@ -39,23 +39,20 @@
     return graphPromise;
   }
 
-  // How long to wait for a first fix after switching Location on. Long enough for a phone
-  // that has had GPS recently; a cold start that takes longer gets the map centre, and the
-  // card says so.
-  const FIX_WAIT_MS = 8000;
-
   const liveFix = () => {
     const f = typeof gpsOwn === 'object' && gpsOwn;
     return f && Number.isFinite(f.lat) && Number.isFinite(f.lng) ? { lat: f.lat, lng: f.lng } : null;
   };
-  function waitForFix(ms) {
+  // Until there is a fix, Location stops (refused, no GPS), or the pilot answers the waiting
+  // card. No timeout: a cold GPS can take a minute, and a route drawn from the map centre in
+  // the meantime would point a pilot with no radio somewhere they are not.
+  function waitForFix(stop) {
     return new Promise(resolve => {
-      const until = Date.now() + ms;
       const tick = () => {
         // gpsLastFix is cleared when Location starts, so it only answers with a fix from THIS
         // session -- gpsOwn can still hold where the aeroplane was last time.
         const f = typeof gpsLastFix === 'function' ? gpsLastFix() : null;
-        if (f || !gpsLiveOn || Date.now() >= until) { resolve(f); return; }
+        if (f || !gpsLiveOn || stop.answer) { resolve(f); return; }
         setTimeout(tick, 200);
       };
       tick();
@@ -67,17 +64,50 @@
     return !!gpsLiveOn === on;
   }
 
+  function closeCards() {
+    document.querySelectorAll('[data-chart-modal="commfail"]').forEach(el => el.remove());
+  }
+  // What the pilot sees while the GPS finds itself: the squawk, which needs no position, and
+  // the two ways out -- take the map centre now, or stop.
+  function showWaitingCard(stop) {
+    closeCards();
+    const m = createDraggableModal(S_('commFailHeading', 'Comm failure'), 'modal commfail-card',
+      () => { if (!stop.answer) stop.answer = 'cancel'; }, { nonBlocking: true, chartKind: 'commfail' });
+    m.box.appendChild(squawkLine());
+    m.box.appendChild(line('commfail-waiting', S_('commFailWaiting', 'Waiting for your GPS position…')));
+    const actions = line('commfail-actions');
+    const centre = document.createElement('button');
+    centre.type = 'button';
+    centre.className = 'commfail-use-centre';
+    centre.textContent = S_('commFailUseMapCentre', 'Use map centre');
+    centre.addEventListener('click', () => { stop.answer = 'centre'; });
+    const off = document.createElement('button');
+    off.type = 'button';
+    off.className = 'commfail-cancel';
+    off.textContent = S_('commFailCancel', 'Cancel comm failure');
+    off.addEventListener('click', () => { stop.answer = 'cancel'; });
+    actions.append(centre, off);
+    m.box.appendChild(actions);
+    m.show();
+  }
+
   // Where the aeroplane is. Comm failure is an in-flight button, so it switches Location on
-  // when nothing is giving a position yet (a recording and the simulator both count), and
-  // waits briefly for the first fix. No fix: the middle of the map, and the card says so --
-  // a route from the wrong place is worse than no route if nobody is told where it starts.
+  // when nothing is giving a position yet (a recording and the simulator both count) and waits
+  // for the first fix. The map centre only when the pilot asks for it or there is no GPS to
+  // wait for, and the card says so. null: the pilot cancelled while waiting.
   async function origin() {
     let startedLocation = false;
     if (!(typeof gpsPositionLive === 'function' && gpsPositionLive())) {
       startedLocation = setLocation(true);
       if (startedLocation) {
-        if (typeof showToast === 'function') showToast(S_('commFailLocating', 'Getting your position…'));
-        await waitForFix(FIX_WAIT_MS);
+        const stop = { answer: null };
+        showWaitingCard(stop);
+        await waitForFix(stop);
+        closeCards();
+        if (stop.answer === 'cancel') {
+          setLocation(false);
+          return null;
+        }
       }
     }
     const fix = typeof gpsPositionLive === 'function' && gpsPositionLive() ? liveFix() : null;
@@ -171,18 +201,21 @@
     if (text) el.textContent = text;
     return el;
   }
+  function squawkLine() {
+    const squawk = line('commfail-squawk');
+    squawk.append(S_('commFailSquawk', 'Squawk') + ' ');
+    const code = document.createElement('b');
+    code.textContent = '7600';
+    squawk.appendChild(code);
+    return squawk;
+  }
 
   function showCard(opts, graph, fromGps) {
     document.querySelectorAll('[data-chart-modal="commfail"]').forEach(el => el.remove());
     const best = opts[0];
     const m = createDraggableModal(S_('commFailHeading', 'Comm failure'), 'modal commfail-card', null,
       { nonBlocking: true, chartKind: 'commfail' });
-    const squawk = line('commfail-squawk');
-    squawk.append(S_('commFailSquawk', 'Squawk') + ' ');
-    const code = document.createElement('b');
-    code.textContent = '7600';
-    squawk.appendChild(code);
-    m.box.appendChild(squawk);
+    m.box.appendChild(squawkLine());
 
     const nm = n => Math.round(n) + ' NM';
     const dest = line('commfail-dest');
@@ -229,7 +262,15 @@
     return m;
   }
 
+  let busy = false;
   async function commFailGo() {
+    // A second press while the first is still waiting for GPS or an answer does nothing:
+    // the waiting card is already up.
+    if (busy) return null;
+    busy = true;
+    try { return await commFailRun(); } finally { busy = false; }
+  }
+  async function commFailRun() {
     // Already on: the button brings the card back (and with it Cancel) rather than asking
     // to replace a route that is already the comm-failure route.
     if (active && active.card && routeKey() === active.route) {
@@ -245,7 +286,9 @@
       if (typeof refuse === 'function') refuse(S_('commFailNoData', 'Comm-failure procedures could not be loaded.'));
       return null;
     }
-    const { pos, fromGps, startedLocation } = await origin();
+    const where = await origin();
+    if (!where) return null;
+    const { pos, fromGps, startedLocation } = where;
     // Location switched on here goes off again on the way out, unless a comm-failure route
     // it belongs to is still up.
     const giveBackLocation = () => { if (startedLocation && !active) setLocation(false); };
