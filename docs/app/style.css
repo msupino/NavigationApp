@@ -7732,7 +7732,7 @@ body.theme-light .route-library-gdrive-pii { color: #6b7787; border-inline-start
   background: #f7f9fb;
   border-top: 1px solid var(--navaid-ctrl-border-color);
   display: grid;
-  grid-template-columns: repeat(5, 1fr);
+  grid-template-columns: repeat(6, 1fr);
 }
 .deck-btn {
   border: 0;
@@ -8353,3 +8353,12 @@ body.theme-light .airfield-phone-row .airfield-phone,
 body.theme-light .airfield-phone-row .airfield-phone:visited { color: #1a5fb4; }
 
 .parking-contact-phone { margin-top: 8px; font-size: 1.1em; }
+
+/* Comm-failure card: read at a glance in a cockpit, so the squawk is the biggest thing on it. */
+.commfail-card { display: grid; gap: 6px; max-width: 360px; }
+.commfail-card .commfail-squawk { font-size: 1.6em; letter-spacing: .04em; }
+.commfail-card .commfail-squawk b { color: #c0392b; font-variant-numeric: tabular-nums; }
+.commfail-card .commfail-dest { font-size: 1.15em; }
+.commfail-card .commfail-note,
+.commfail-card .commfail-origin,
+.commfail-card .commfail-other { font-size: .9em; opacity: .8; }

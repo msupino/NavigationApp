@@ -1333,6 +1333,7 @@ window.S = Object.assign({
   // One graph per layer replaces the nav-waypoints / comm-change / leg-altitude files;
   // the ?v= cache-busts all three kinds, which now come from the same file.
   routeGraphUrl: 'data/cvfr-route-graph.json?v=2',  // resolved relative to index.html (docs/)
+  commfailUrl: 'data/commfail.json?v=1',  // published comm-failure entry points per field
   navWpSearchField: 'en',              // which locale label to show/search in results
   airfieldsUrl: 'data/airfields.json?v=40',  // resolved relative to index.html (docs/)
   airfieldLabelField: 'en',            // which locale label to show on the overlay
@@ -1696,6 +1697,21 @@ window.S = Object.assign({
     return 'R-' + rad + '° / ' + dme + ' NM';
   },
   primary: 'Primary',
+  commFail: 'Comm failure',
+  commFailTitle: 'Lost radio: route to the nearest field with a published comm-failure procedure',
+  commFailHeading: 'Comm failure',
+  commFailSquawk: 'Squawk',
+  commFailVia: 'via',
+  commFailAt: 'at',
+  commFailCallTower: 'If you have a phone, call the tower',
+  commFailFromGps: 'From your GPS position',
+  commFailFromMap: 'From the map centre — no GPS fix',
+  commFailReplace: 'Replace your route with the comm-failure route to {field}? Undo brings your route back.',
+  commFailReplaceOk: 'Route there',
+  commFailOther: 'Other fields',
+  commFailNoData: 'Comm-failure procedures could not be loaded.',
+  commFailChartNote: 'The published chart is on the map — fly it, not this line.',
+  deckCommFail: 'Comm fail',
   airfieldPhone: 'Phone',
   callNumber: 'Call',
   atis: 'ATIS',
@@ -6128,6 +6144,42 @@ function routeCheckNmBetween(p, q) {
   const dLng = (q.lng - p.lng) * 60 * Math.cos((p.lat + q.lat) / 2 * Math.PI / 180);
   return Math.hypot(dLat, dLng);
 }
+// Comm failure: the published procedure for each of the three fields that have one, ranked by
+// how far the aeroplane has to fly to reach it. Pure -- data and lookups in, options out -- so
+// it can be checked without a map.
+//
+// Each field's options are its published entry points; the aeroplane is routed to one and on to
+// the field at that entry's published altitude. The best entry is the one with the shortest
+// TOTAL leg (here -> entry -> field), not the nearest entry: the nearest entry to a Haifa
+// arrival from the south can be on the far side of the field.
+//
+// `wpAt(code)` and `fieldAt(icao)` return {lat, lng} or null. Anything that does not resolve is
+// skipped rather than guessed at: an entry point missing from the graph must drop out, not
+// become a point at 0,0.
+function commFailOptions(data, pos, wpAt, fieldAt) {
+  if (!data || !data.fields || !pos || !Number.isFinite(pos.lat) || !Number.isFinite(pos.lng)) return [];
+  const best = [];
+  for (const icao of Object.keys(data.fields)) {
+    const f = data.fields[icao] || {};
+    const field = fieldAt(icao);
+    if (!field) continue;
+    let pick = null;
+    for (const e of (Array.isArray(f.entries) ? f.entries : [])) {
+      const wp = e && wpAt(e.wp);
+      if (!wp || !Number.isFinite(e.alt)) continue;
+      const toEntryNm = routeCheckNmBetween(pos, wp);
+      const totalNm = toEntryNm + routeCheckNmBetween(wp, field);
+      if (!pick || totalNm < pick.totalNm) {
+        pick = { icao, entry: e.wp, alt: e.alt, entryAt: { lat: wp.lat, lng: wp.lng },
+          fieldAt: { lat: field.lat, lng: field.lng }, toEntryNm, totalNm,
+          phone: typeof f.phone === 'string' ? f.phone : '' };
+      }
+    }
+    if (pick) best.push(pick);
+  }
+  return best.sort((a, b) => a.totalNm - b.totalNm);
+}
+
 // A vertical band against a planned altitude. `base`/`top` null means "no stated limit" --
 // surface and unlimited respectively, which is how both feeds write them.
 function routeCheckAltInBand(altFt, baseFt, topFt) {

@@ -1,0 +1,42 @@
+{
+  "version": 1,
+  "source": "Comm-failure charts shipped in docs/commfail-img/ (LLHA 2019, LLHZ 2025, LLIB 2025). Entry points and altitudes transcribed from the charts and cross-checked against the inbound edges of cvfr-route-graph.json; coordinates are NOT here -- they come from the graph's nodes by name, so a moved waypoint cannot leave a stale copy behind.",
+  "squawk": "7600",
+  "fields": {
+    "LLHZ": {
+      "phone": "09-9719554",
+      "chart": "LLHZ_commfail.png",
+      "entries": [
+        { "wp": "SFAIM", "alt": 1200 },
+        { "wp": "BAZRA", "alt": 1200 },
+        { "wp": "GNYAM", "alt": 1200 },
+        { "wp": "KNTRY", "alt": 1200 }
+      ]
+    },
+    "LLHA": {
+      "phone": "04-8729361",
+      "chart": "LLHA_commfail.png",
+      "entries": [
+        { "wp": "KRYON", "alt": 2000 },
+        { "wp": "AFFEK", "alt": 2000 },
+        { "wp": "GILAM", "alt": 3000 },
+        { "wp": "GALIM", "alt": 1500 }
+      ],
+      "excluded": [
+        { "wp": "HASID", "why": "dashed on the chart: flown with controller approval, which a failed radio cannot obtain" },
+        { "wp": "DUGIT", "why": "controller-approval route in the graph, not on the comm-failure chart" }
+      ]
+    },
+    "LLIB": {
+      "phone": "04-6136210",
+      "chart": "LLIB_commfail.png",
+      "entries": [
+        { "wp": "HULAT", "alt": 3000 },
+        { "wp": "AMNON", "alt": 2500 }
+      ],
+      "excluded": [
+        { "wp": "(magenta lines)", "why": "helicopter routes per the chart legend" }
+      ]
+    }
+  }
+}

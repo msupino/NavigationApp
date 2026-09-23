@@ -1,0 +1,97 @@
+// @ts-check
+// The comm-failure button: nearest field with a published comm-failure procedure, a route to
+// its entry point at the published altitude, the chart on the map, and a card with 7600 and
+// the tower's phone.
+const { test, expect } = require('./_setup');
+const fs = require('fs');
+const path = require('path');
+
+const DATA = JSON.parse(fs.readFileSync(path.join(__dirname, '../docs/data/commfail.json'), 'utf8'));
+const GRAPH = JSON.parse(fs.readFileSync(path.join(__dirname, '../docs/data/cvfr-route-graph.json'), 'utf8'));
+const AIRFIELDS = JSON.parse(fs.readFileSync(path.join(__dirname, '../docs/data/airfields.json'), 'utf8')).airfields;
+
+async function boot(page, lang = 'en') {
+  await page.goto('?lang=' + lang + '&nogist');
+  await page.waitForFunction(() => window.NavAid && NavAid.commFail && typeof commFailOptions === 'function'
+    && typeof map === 'object' && map);
+}
+
+test('every entry point names a graph node and every field carries its chart', () => {
+  for (const [icao, f] of Object.entries(DATA.fields)) {
+    const af = AIRFIELDS.find(a => a.name === icao);
+    expect(af && af.commfail_overlay, icao + ' has a comm-failure chart').toBeTruthy();
+    expect(f.entries.length).toBeGreaterThan(0);
+    for (const e of f.entries) {
+      expect(GRAPH.nodes[e.wp], icao + ' entry ' + e.wp).toBeTruthy();
+      expect(Number.isFinite(e.alt) && e.alt > 0).toBe(true);
+    }
+  }
+});
+
+test('the planner ranks fields by total distance and drops what does not resolve', async ({ page }) => {
+  await boot(page);
+  const out = await page.evaluate(() => {
+    const data = { fields: {
+      NEAR: { phone: '1', entries: [{ wp: 'A', alt: 1000 }, { wp: 'B', alt: 2000 }, { wp: 'GONE', alt: 9 }] },
+      FAR: { entries: [{ wp: 'C', alt: 3000 }] },
+      LOST: { entries: [{ wp: 'A', alt: 1000 }] },
+    } };
+    const pts = { A: { lat: 32.0, lng: 35.0 }, B: { lat: 32.3, lng: 34.9 }, C: { lat: 33.0, lng: 35.5 } };
+    const fields = { NEAR: { lat: 32.3, lng: 34.8 }, FAR: { lat: 33.1, lng: 35.6 } };
+    return commFailOptions(data, { lat: 32.4, lng: 34.9 }, c => pts[c] || null, i => fields[i] || null);
+  });
+  expect(out.map(o => o.icao)).toEqual(['NEAR', 'FAR']);           // LOST has no field position
+  // B is nearer both to here and to the field than A, so it wins on the total leg.
+  expect(out[0]).toMatchObject({ entry: 'B', alt: 2000, phone: '1' });
+  expect(out[1].phone).toBe('');
+});
+
+test('from over the Sharon it routes to Herzliya and shows 7600 and a dialable phone', async ({ page }) => {
+  await boot(page);
+  await page.evaluate(() => map.setView([32.25, 34.95], 10));
+  await page.click('#commfail-btn');
+  const card = page.locator('[data-chart-modal="commfail"] .commfail-card');
+  await expect(card).toBeVisible();
+  await expect(card.locator('.commfail-squawk')).toContainText('7600');
+  await expect(card.locator('.commfail-dest')).toContainText('LLHZ');
+  await expect(card.locator('a.tel-link')).toHaveAttribute('href', 'tel:099719554');
+  await expect(card.locator('.commfail-origin')).toContainText('map centre');
+
+  const route = await page.evaluate(() => ({
+    names: state.waypoints.map(w => w.name),
+    alts: state.legs.map(l => l.inboundAltitude),
+    chart: document.getElementById('commfail-cb').checked,
+    plateType: document.getElementById('plate-type').value,
+  }));
+  expect(route.names).toHaveLength(3);
+  expect(route.names[2]).toBe('LLHZ');
+  const entry = DATA.fields.LLHZ.entries.find(e => e.wp === route.names[1]);
+  expect(entry, 'the middle point is a published Herzliya entry').toBeTruthy();
+  expect(route.alts).toEqual([entry.alt, entry.alt]);
+  expect(route.chart).toBe(true);
+  expect(route.plateType).toBe('commfail-cb');
+});
+
+test('a drawn route is not replaced without asking, and No keeps it', async ({ page }) => {
+  await boot(page);
+  await page.evaluate(() => {
+    state.waypoints = [{ lat: 31.5, lng: 34.8, name: 'X' }, { lat: 31.6, lng: 34.9, name: 'Y' }];
+    syncLegs(); draw();
+    map.setView([32.9, 35.4], 10);                   // Galilee: Rosh Pina's side
+    window.askYesNo = async () => false;
+  });
+  await page.click('#commfail-btn');
+  await page.waitForTimeout(300);
+  const names = await page.evaluate(() => state.waypoints.map(w => w.name));
+  expect(names).toEqual(['X', 'Y']);
+  await expect(page.locator('[data-chart-modal="commfail"]')).toHaveCount(0);
+});
+
+test('Hebrew labels the card in Hebrew', async ({ page }) => {
+  await boot(page, 'he');
+  await page.evaluate(() => map.setView([32.9, 35.5], 10));
+  await page.click('#commfail-btn');
+  const card = page.locator('[data-chart-modal="commfail"] .commfail-card');
+  await expect(card.locator('.commfail-squawk')).toContainText('סקווק');
+  await expect(card.locator('.commfail-dest')).toContainText('LLIB');
+});
