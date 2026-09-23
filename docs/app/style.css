@@ -8370,4 +8370,6 @@ body.theme-light .airfield-phone-row .airfield-phone:visited { color: #1a5fb4; }
 .commfail-card .commfail-dest { font-size: 1.15em; }
 .commfail-card .commfail-note,
 .commfail-card .commfail-origin,
+.commfail-card .commfail-entry-areas,
 .commfail-card .commfail-other { font-size: .9em; opacity: .8; }
+.commfail-card .commfail-actions { display: flex; justify-content: flex-end; margin-top: 4px; }

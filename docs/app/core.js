@@ -1333,7 +1333,7 @@ window.S = Object.assign({
   // One graph per layer replaces the nav-waypoints / comm-change / leg-altitude files;
   // the ?v= cache-busts all three kinds, which now come from the same file.
   routeGraphUrl: 'data/cvfr-route-graph.json?v=2',  // resolved relative to index.html (docs/)
-  commfailUrl: 'data/commfail.json?v=1',  // published comm-failure entry points per field
+  commfailUrl: 'data/commfail.json?v=2',  // published comm-failure entry points per field
   navWpSearchField: 'en',              // which locale label to show/search in results
   airfieldsUrl: 'data/airfields.json?v=40',  // resolved relative to index.html (docs/)
   airfieldLabelField: 'en',            // which locale label to show on the overlay
@@ -1710,6 +1710,10 @@ window.S = Object.assign({
   commFailReplaceOk: 'Route there',
   commFailOther: 'Other fields',
   commFailNoData: 'Comm-failure procedures could not be loaded.',
+  commFailFromAreas: '{alt} ft from training areas {areas}',
+  commFailCancel: 'Cancel comm failure',
+  commFailCancelTitle: 'Put back the route and charts you had before',
+  commFailCancelKept: 'Comm failure cancelled. The route was edited since, so it stays.',
   commFailChartNote: 'The published chart is on the map — fly it, not this line.',
   deckCommFail: 'Comm fail',
   airfieldPhone: 'Phone',
@@ -6172,7 +6176,11 @@ function commFailOptions(data, pos, wpAt, fieldAt) {
       if (!pick || totalNm < pick.totalNm) {
         pick = { icao, entry: e.wp, alt: e.alt, entryAt: { lat: wp.lat, lng: wp.lng },
           fieldAt: { lat: field.lat, lng: field.lng }, toEntryNm, totalNm,
-          phone: typeof f.phone === 'string' ? f.phone : '' };
+          phone: typeof f.phone === 'string' ? f.phone : '',
+          // A second published altitude for the same entry, flown only from named training
+          // areas (Herzliya's BAZRA: 1,600 from afar, 1,200 from areas 3, 8 and 9).
+          fromAreas: e.fromAreas && Number.isFinite(e.fromAreas.alt) && Array.isArray(e.fromAreas.areas)
+            ? { alt: e.fromAreas.alt, areas: e.fromAreas.areas.slice() } : null };
       }
     }
     if (pick) best.push(pick);

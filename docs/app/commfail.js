@@ -12,12 +12,18 @@
 (function () {
   const S_ = (k, fb) => (typeof S === 'object' && S && S[k]) || fb;
 
+  // What the button changed, so Cancel can put it back: the route snapshot it drew (to tell
+  // whether the pilot has edited it since), whether it turned the chart on, and the airfield
+  // filter it replaced. null when no comm-failure route is active.
+  let active = null;
+  const routeKey = () => JSON.stringify(routeSnapshotForStorage());
+
   let dataPromise = null;
   let graphPromise = null;
   const fetchJson = url => fetch(url).then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); });
   function loadData() {
     if (!dataPromise) {
-      dataPromise = fetchJson(S_('commfailUrl', 'data/commfail.json?v=1'))
+      dataPromise = fetchJson(S_('commfailUrl', 'data/commfail.json?v=2'))
         .catch(e => { dataPromise = null; throw e; });
     }
     return dataPromise;
@@ -74,20 +80,52 @@
     draw();   // draw -> persist -> one undo step, so Undo brings the planned route back
   }
 
+  function setBox(box, on) {
+    if (!box || box.checked === on) return;
+    box.checked = on;
+    box.dispatchEvent(new Event('change', { bubbles: true }));
+    if (typeof window.refreshPlateTypePicker === 'function') window.refreshPlateTypePicker();
+  }
+  function setFilter(value) {
+    const sel = document.getElementById('plate-airfield');
+    if (!sel) return;
+    sel.value = value;
+    sel.dispatchEvent(new Event('change'));
+  }
+
+  // Returns what it changed, for Cancel.
   function showChart(icao) {
     const box = document.getElementById('commfail-cb');
-    if (!box) return;
+    const was = { chartWasOn: !!(box && box.checked), filter: null };
+    if (!box) return was;
     // A filter naming another field would hide the chart just asked for.
-    const sel = document.getElementById('plate-airfield');
-    if (sel && window.plateAirfield && window.plateAirfield !== 'auto' && window.plateAirfield !== icao) {
-      sel.value = icao;
-      sel.dispatchEvent(new Event('change'));
+    if (window.plateAirfield && window.plateAirfield !== 'auto' && window.plateAirfield !== icao) {
+      was.filter = window.plateAirfield;
+      setFilter(icao);
     }
-    if (!box.checked) {
-      box.checked = true;
-      box.dispatchEvent(new Event('change', { bubbles: true }));
+    setBox(box, true);
+    return was;
+  }
+
+  // Back to the plan the pilot had. The route comes back through Undo only while it is still
+  // the one this drew: once the pilot has edited it, that edit is theirs and is not thrown away
+  // -- the chart and the card go, the route stays.
+  function cancel() {
+    if (!active) return false;
+    const was = active;
+    active = null;
+    let restored = false;
+    if (routeKey() === was.route && typeof undo === 'function' && was.depth > 0 && undoStack.length >= was.depth) {
+      undo();
+      restored = true;
     }
-    if (typeof window.refreshPlateTypePicker === 'function') window.refreshPlateTypePicker();
+    if (!was.chartWasOn) setBox(document.getElementById('commfail-cb'), false);
+    if (was.filter) setFilter(was.filter);
+    document.querySelectorAll('[data-chart-modal="commfail"]').forEach(el => el.remove());
+    if (!restored && typeof refuse === 'function') {
+      refuse(S_('commFailCancelKept', 'Comm failure cancelled. The route was edited since, so it stays.'));
+    }
+    return restored;
   }
 
   function line(cls, text) {
@@ -118,6 +156,11 @@
     m.box.appendChild(line('commfail-entry',
       S_('commFailVia', 'via') + ' ' + nodeLabel(graph, best.entry) + ' ' + S_('commFailAt', 'at') + ' '
       + best.alt.toLocaleString('en-US') + ' ft'));
+    if (best.fromAreas) {
+      m.box.appendChild(line('commfail-entry-areas', '(' + String(S_('commFailFromAreas', '{alt} ft from training areas {areas}'))
+        .replace('{alt}', best.fromAreas.alt.toLocaleString('en-US'))
+        .replace('{areas}', best.fromAreas.areas.join(', ')) + ')'));
+    }
 
     if (best.phone) {
       const phone = line('commfail-phone', S_('commFailCallTower', 'If you have a phone, call the tower') + ': ');
@@ -136,11 +179,27 @@
         + opts.slice(1).map(o => fieldLabel(o.icao) + ' ' + nm(o.totalNm)).join(' · '));
       m.box.appendChild(other);
     }
+    const actions = line('commfail-actions');
+    const off = document.createElement('button');
+    off.type = 'button';
+    off.className = 'commfail-cancel';
+    off.textContent = S_('commFailCancel', 'Cancel comm failure');
+    off.title = S_('commFailCancelTitle', 'Put back the route and charts you had before');
+    off.addEventListener('click', () => { cancel(); });
+    actions.appendChild(off);
+    m.box.appendChild(actions);
     m.show();
     return m;
   }
 
   async function commFailGo() {
+    // Already on: the button brings the card back (and with it Cancel) rather than asking
+    // to replace a route that is already the comm-failure route.
+    if (active && active.card && routeKey() === active.route) {
+      document.querySelectorAll('[data-chart-modal="commfail"]').forEach(el => el.remove());
+      active.card = showCard(active.opts, active.graph, active.fromGps);
+      return active.card;
+    }
     let data, graph;
     try {
       [data, graph] = await Promise.all([loadData(), loadGraph()]);
@@ -170,16 +229,28 @@
     if (!await askReplaceRoute(ask, S_('commFailReplaceOk', 'Route there'), S_('commFailHeading', 'Comm failure'))) {
       return null;
     }
+    const chartWas = document.getElementById('commfail-cb');
+    // A comm-failure route drawn over an earlier one: Cancel goes back to the plan before
+    // the first, and the chart/filter state from before the first too.
+    const prior = active;
     buildRoute(Object.assign({ from: pos }, best));
-    showChart(best.icao);
+    const changed = showChart(best.icao);
+    active = {
+      route: routeKey(),
+      depth: undoStack.length,
+      chartWasOn: prior ? prior.chartWasOn : (changed.chartWasOn && !!chartWas),
+      filter: prior ? prior.filter : changed.filter,
+      opts, graph, fromGps, card: null,
+    };
     try {
       map.fitBounds(L.latLngBounds(state.waypoints.map(w => [w.lat, w.lng])).pad(0.2));
     } catch (e) { /* a map with no size yet: the route is drawn, the view just stays put */ }
-    return showCard(opts, graph, fromGps);
+    active.card = showCard(opts, graph, fromGps);
+    return active.card;
   }
 
   const btn = document.getElementById('commfail-btn');
   if (btn) btn.addEventListener('click', () => { commFailGo(); });
   window.NavAid = window.NavAid || {};
-  NavAid.commFail = { go: commFailGo };
+  NavAid.commFail = { go: commFailGo, cancel, isActive: () => !!active };
 })();

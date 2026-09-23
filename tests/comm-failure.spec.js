@@ -95,3 +95,70 @@ test('Hebrew labels the card in Hebrew', async ({ page }) => {
   await expect(card.locator('.commfail-squawk')).toContainText('סקווק');
   await expect(card.locator('.commfail-dest')).toContainText('LLIB');
 });
+
+test('from north-east of Herzliya it enters at BAZRA at 1,600 and names the 1,200 from areas 3, 8, 9', async ({ page }) => {
+  await boot(page);
+  await page.evaluate(() => map.setView([32.26, 34.93], 11));
+  await page.click('#commfail-btn');
+  const card = page.locator('[data-chart-modal="commfail"] .commfail-card');
+  await expect(card.locator('.commfail-entry')).toContainText('BAZRA');
+  await expect(card.locator('.commfail-entry')).toContainText('1,600 ft');
+  await expect(card.locator('.commfail-entry-areas')).toContainText('1,200 ft from training areas 3, 8, 9');
+  expect(await page.evaluate(() => state.legs.map(l => l.inboundAltitude))).toEqual([1600, 1600]);
+});
+
+const planned = (page) => page.evaluate(() => {
+  state.waypoints = [{ lat: 31.5, lng: 34.8, name: 'X' }, { lat: 31.6, lng: 34.9, name: 'Y' }];
+  syncLegs(); draw();
+  map.setView([32.25, 34.95], 10);
+  window.askYesNo = async () => true;
+});
+
+test('Cancel puts back the route and turns off the chart it turned on', async ({ page }) => {
+  await boot(page);
+  await planned(page);
+  expect(await page.evaluate(() => document.getElementById('commfail-cb').checked)).toBe(false);
+  await page.click('#commfail-btn');
+  await expect(page.locator('.commfail-cancel')).toBeVisible();
+  expect(await page.evaluate(() => state.waypoints.length)).toBe(3);
+  await page.click('.commfail-cancel');
+  const after = await page.evaluate(() => ({
+    names: state.waypoints.map(w => w.name),
+    chart: document.getElementById('commfail-cb').checked,
+    active: NavAid.commFail.isActive(),
+  }));
+  expect(after).toEqual({ names: ['X', 'Y'], chart: false, active: false });
+  await expect(page.locator('[data-chart-modal="commfail"]')).toHaveCount(0);
+});
+
+test('Cancel after the pilot edited the route keeps the edit', async ({ page }) => {
+  await boot(page);
+  await planned(page);
+  await page.click('#commfail-btn');
+  await expect(page.locator('.commfail-cancel')).toBeVisible();
+  await page.evaluate(() => {
+    state.waypoints.push({ lat: 32.2, lng: 34.7, name: 'Z' });
+    syncLegs(); draw();
+  });
+  await page.click('.commfail-cancel');
+  const names = await page.evaluate(() => state.waypoints.map(w => w.name));
+  expect(names[names.length - 1]).toBe('Z');
+  expect(names).toHaveLength(4);
+});
+
+test('with the card closed, the button brings it back with Cancel instead of asking again', async ({ page }) => {
+  await boot(page);
+  await planned(page);
+  await page.click('#commfail-btn');
+  await expect(page.locator('.commfail-cancel')).toBeVisible();
+  await page.evaluate(() => {
+    document.querySelectorAll('[data-chart-modal="commfail"]').forEach(el => el.remove());
+    window.__asked = 0;
+    window.askYesNo = async () => { window.__asked++; return true; };
+  });
+  await page.click('#commfail-btn');
+  await expect(page.locator('.commfail-cancel')).toBeVisible();
+  expect(await page.evaluate(() => window.__asked)).toBe(0);
+  await page.click('.commfail-cancel');
+  expect(await page.evaluate(() => state.waypoints.map(w => w.name))).toEqual(['X', 'Y']);
+});

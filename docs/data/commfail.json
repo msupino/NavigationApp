@@ -8,7 +8,7 @@
       "chart": "LLHZ_commfail.png",
       "entries": [
         { "wp": "SFAIM", "alt": 1200 },
-        { "wp": "BAZRA", "alt": 1200 },
+        { "wp": "BAZRA", "alt": 1600, "fromAreas": { "alt": 1200, "areas": [3, 8, 9] } },
         { "wp": "GNYAM", "alt": 1200 },
         { "wp": "KNTRY", "alt": 1200 }
       ]
