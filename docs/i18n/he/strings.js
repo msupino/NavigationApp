@@ -376,6 +376,8 @@ window.S = {
   vorFrom: function(id) { return 'מ-' + id + ' VOR'; },
   vorRadialDme: function(rad, dme) { return 'R-' + rad + '° / ' + dme + ' NM'; },
   primary: 'ראשי',
+  towerPhone: 'טלפון מגדל',
+  towerPhoneTitle: 'חייג למגדל',
   atis: 'ATIS',
   commArrival: 'נחיתה',
   commDeparture: 'המראה',

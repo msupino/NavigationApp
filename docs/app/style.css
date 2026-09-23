@@ -8332,3 +8332,18 @@ body.theme-light .route-check-asked { border-bottom-color: rgba(0, 0, 0, 0.14); 
 .route-check-asked-partial { opacity: 1; color: #ffd9a0; }
 body.theme-light .route-check-asked-partial { color: #7a4a00; }
 body.theme-light .route-check-asked-missing { color: #8a1c00; }
+
+/* Tower phone in the airfield panel: a link, so it has to read as one -- but in the app's blue,
+   not the browser's visited purple, and big enough to hit with a thumb in a cockpit. */
+.tower-phone-row .tower-phone {
+  color: #6fb0ff;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  min-height: 32px;
+  display: inline-flex;
+  align-items: center;
+  unicode-bidi: isolate;
+}
+.tower-phone-row .tower-phone:visited { color: #6fb0ff; }
+body.theme-light .tower-phone-row .tower-phone,
+body.theme-light .tower-phone-row .tower-phone:visited { color: #1a5fb4; }
