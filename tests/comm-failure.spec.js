@@ -64,7 +64,7 @@ test('the planner ranks fields by total distance and drops what does not resolve
 
 test('from over the Sharon it routes to Herzliya and shows 7600 and a dialable phone', async ({ page }) => {
   await boot(page);
-  await page.evaluate(() => map.setView([32.25, 34.95], 10));
+  await page.evaluate(() => map.setView([32.36, 34.95], 10));   // north of training areas 8 and 9
   await page.click('#commfail-btn');
   const card = page.locator('[data-chart-modal="commfail"] .commfail-card');
   await expect(card).toBeVisible();
@@ -112,9 +112,9 @@ test('Hebrew labels the card in Hebrew', async ({ page }) => {
   await expect(card.locator('.commfail-dest')).toContainText('LLIB');
 });
 
-test('from north-east of Herzliya it enters at BAZRA at 1,600 and names the 1,200 from areas 3, 8, 9', async ({ page }) => {
+test('from north of the training areas it enters at BAZRA at 1,600 and names the 1,200 from areas 3, 8, 9', async ({ page }) => {
   await boot(page);
-  await page.evaluate(() => map.setView([32.26, 34.93], 11));
+  await page.evaluate(() => map.setView([32.36, 34.95], 11));   // north of the training areas: from afar
   await page.click('#commfail-btn');
   const card = page.locator('[data-chart-modal="commfail"] .commfail-card');
   await expect(card.locator('.commfail-entry')).toContainText('BAZRA');
@@ -162,23 +162,20 @@ test('Cancel after the pilot edited the route keeps the edit', async ({ page }) 
   expect(names).toHaveLength(4);
 });
 
-test('with the card closed, the button brings it back with Cancel instead of asking again', async ({ page }) => {
+test('the button is on/off like Location: pressed while active, and a second press ends it', async ({ page }) => {
   await boot(page);
   await planned(page);
+  const pressed = () => page.evaluate(() => [document.getElementById('commfail-btn').getAttribute('aria-pressed'),
+    NavAid.commFail.isActive()]);
+  expect(await pressed()).toEqual(['false', false]);
   await page.click('#commfail-btn');
   await expect(page.locator('.commfail-dest')).toBeVisible();
-  await page.evaluate(() => {
-    document.querySelectorAll('[data-chart-modal="commfail"]').forEach(el => el.remove());
-    window.__asked = 0;
-    window.askYesNo = async () => { window.__asked++; return true; };
-  });
+  expect(await pressed()).toEqual(['true', true]);
   await page.click('#commfail-btn');
-  await expect(page.locator('.commfail-dest')).toBeVisible();
-  expect(await page.evaluate(() => window.__asked)).toBe(0);
-  await page.click('.commfail-cancel');
+  expect(await pressed()).toEqual(['false', false]);
   expect(await page.evaluate(() => state.waypoints.map(w => w.name))).toEqual(['X', 'Y']);
+  await expect(page.locator('[data-chart-modal="commfail"]')).toHaveCount(0);
 });
-
 test('with no position source it switches Location on and routes from the first fix', async ({ page }) => {
   // Over the Galilee while the map shows Herzliya: the route must start at the fix.
   await boot(page, 'en', { lat: 32.95, lng: 35.55 });
@@ -257,4 +254,57 @@ test('Cancel while waiting draws nothing and turns Location back off', async ({ 
   await fixAt(page, 32.95, 35.55);                       // a late fix changes nothing
   await page.waitForTimeout(400);
   expect(await page.evaluate(() => state.waypoints.length)).toBe(0);
+});
+
+test('pressing again while it waits for GPS ends it', async ({ page }) => {
+  await boot(page, 'en', 'hold');
+  await page.click('#commfail-btn');
+  await expect(page.locator('.commfail-waiting')).toBeVisible();
+  expect(await page.evaluate(() => document.getElementById('commfail-btn').getAttribute('aria-pressed'))).toBe('true');
+  await page.click('#commfail-btn');
+  await expect(page.locator('[data-chart-modal="commfail"]')).toHaveCount(0);
+  expect(await page.evaluate(() => [gpsLiveOn, document.getElementById('commfail-btn').getAttribute('aria-pressed')]))
+    .toEqual([false, 'false']);
+});
+
+test('inside a listed training area its entry wins, at the areas\' altitude', async ({ page }) => {
+  await boot(page);
+  const out = await page.evaluate(() => {
+    const sq = [[32.3, 34.9], [32.3, 35.0], [32.2, 35.0], [32.2, 34.9]];
+    const data = { fields: { F: { trainingAreas: { areas: { 8: sq } }, entries: [
+      { wp: 'NEAR', alt: 1000 },
+      { wp: 'FAR', alt: 1600, fromAreas: { alt: 1200, areas: [3, 8, 9] } },
+    ] } } };
+    const pts = { NEAR: { lat: 32.25, lng: 34.96 }, FAR: { lat: 32.0, lng: 34.6 } };
+    const at = c => pts[c] || null;
+    const field = () => ({ lat: 32.1, lng: 34.8 });
+    return {
+      inside: commFailOptions(data, { lat: 32.25, lng: 34.95 }, at, field)[0],
+      outside: commFailOptions(data, { lat: 32.35, lng: 34.95 }, at, field)[0],
+    };
+  });
+  expect(out.inside).toMatchObject({ entry: 'FAR', alt: 1200, inArea: '8' });
+  expect(out.outside).toMatchObject({ entry: 'NEAR', alt: 1000, inArea: null });
+});
+
+test('from training area 3 it returns to Herzliya via BAZRA at 1,200 and says why', async ({ page }) => {
+  await boot(page);
+  await page.evaluate(() => map.setView([32.19, 34.93], 11));
+  await page.click('#commfail-btn');
+  const card = page.locator('[data-chart-modal="commfail"] .commfail-card');
+  await expect(card.locator('.commfail-entry')).toContainText('BAZRA');
+  await expect(card.locator('.commfail-entry')).toContainText('1,200 ft');
+  await expect(card.locator('.commfail-entry-areas')).toContainText('training area 3');
+  expect(await page.evaluate(() => state.legs.map(l => l.inboundAltitude))).toEqual([1200, 1200]);
+});
+
+test('the card carries the tower light signals, open, in both languages', async ({ page }) => {
+  await boot(page, 'he');
+  await page.evaluate(() => map.setView([32.9, 35.5], 10));
+  await page.click('#commfail-btn');
+  const lights = page.locator('[data-chart-modal="commfail"] .commfail-lights');
+  await expect(lights).toHaveAttribute('open', '');
+  await expect(lights.locator('dd')).toHaveCount(6);
+  await expect(lights).toContainText('ירוק רציף');
+  await expect(lights).toContainText('מותר לנחות');
 });

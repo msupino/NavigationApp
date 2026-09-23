@@ -8373,3 +8373,25 @@ body.theme-light .airfield-phone-row .airfield-phone:visited { color: #1a5fb4; }
 .commfail-card .commfail-entry-areas,
 .commfail-card .commfail-other { font-size: .9em; opacity: .8; }
 .commfail-card .commfail-actions { display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-end; margin-top: 4px; }
+.commfail-card .commfail-lights summary { cursor: pointer; font-weight: 600; }
+.commfail-card .commfail-lights dl {
+  display: grid; grid-template-columns: auto 1fr; gap: 2px 10px; margin: 4px 0 0; font-size: .9em;
+}
+.commfail-card .commfail-lights dt { display: flex; align-items: center; gap: 6px; white-space: nowrap; }
+.commfail-card .commfail-lights dd { margin: 0; }
+.commfail-card .commfail-lights-ack { font-size: .85em; opacity: .8; margin-top: 4px; }
+.commfail-lamp {
+  width: 10px; height: 10px; border-radius: 50%; flex: none;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, .35);
+}
+.commfail-lamp-green { background: #1fbf4a; }
+.commfail-lamp-red { background: #e0302a; }
+.commfail-lamp-white { background: #fff; }
+.commfail-lamp-flare { background: radial-gradient(circle, #ffd24a 0 30%, #e0302a 31%); }
+/* Flashing is part of the signal's meaning, so it blinks -- unless the pilot asked for no
+   motion, when a dashed ring says the same thing standing still. */
+.commfail-lamp-flash { animation: commfail-blink 1s steps(2, start) infinite; }
+@keyframes commfail-blink { to { visibility: hidden; } }
+@media (prefers-reduced-motion: reduce) {
+  .commfail-lamp-flash { animation: none; outline: 2px dashed currentColor; outline-offset: 1px; }
+}

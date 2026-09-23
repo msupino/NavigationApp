@@ -16,6 +16,7 @@
   // whether the pilot has edited it since), whether it turned the chart on, and the airfield
   // filter it replaced. null when no comm-failure route is active.
   let active = null;
+  let waiting = null;          // the waiting card's answer box while a first fix is awaited
   const routeKey = () => JSON.stringify(routeSnapshotForStorage());
 
   let dataPromise = null;
@@ -101,8 +102,9 @@
       startedLocation = setLocation(true);
       if (startedLocation) {
         const stop = { answer: null };
+        waiting = stop;
         showWaitingCard(stop);
-        await waitForFix(stop);
+        try { await waitForFix(stop); } finally { waiting = null; }
         closeCards();
         if (stop.answer === 'cancel') {
           setLocation(false);
@@ -180,6 +182,7 @@
     if (!active) return false;
     const was = active;
     active = null;
+    refreshPressed();
     let restored = false;
     if (routeKey() === was.route && typeof undo === 'function' && was.depth > 0 && undoStack.length >= was.depth) {
       undo();
@@ -201,6 +204,42 @@
     if (text) el.textContent = text;
     return el;
   }
+  // What the tower can still tell a pilot it cannot talk to: the ICAO light signals to an
+  // aircraft in flight, and how to answer them. Open by default -- this is the moment it is
+  // needed, and nobody should have to find it.
+  const LIGHTS = [
+    ['green', false, 'commFailLightGreen', 'Cleared to land'],
+    ['green', true, 'commFailLightGreenFlash', 'Return for landing'],
+    ['red', false, 'commFailLightRed', 'Give way and continue circling'],
+    ['red', true, 'commFailLightRedFlash', 'Aerodrome unsafe — do not land'],
+    ['white', true, 'commFailLightWhiteFlash', 'Land here and proceed to the apron'],
+    ['flare', false, 'commFailLightFlare', 'Do not land for the time being'],
+  ];
+  function lightSignals() {
+    const box = document.createElement('details');
+    box.className = 'commfail-lights';
+    box.open = true;
+    const sum = document.createElement('summary');
+    sum.textContent = S_('commFailLights', 'Light signals from the tower');
+    box.appendChild(sum);
+    const list = document.createElement('dl');
+    for (const [colour, flashing, key, fb] of LIGHTS) {
+      const dt = document.createElement('dt');
+      const lamp = document.createElement('span');
+      lamp.className = 'commfail-lamp commfail-lamp-' + colour + (flashing ? ' commfail-lamp-flash' : '');
+      lamp.setAttribute('aria-hidden', 'true');
+      dt.appendChild(lamp);
+      dt.append(S_(key + 'Name', colour));
+      const dd = document.createElement('dd');
+      dd.textContent = S_(key, fb);
+      list.append(dt, dd);
+    }
+    box.appendChild(list);
+    box.appendChild(line('commfail-lights-ack', S_('commFailLightAck',
+      'Acknowledge: by day rock the wings (not on base or final); at night flash the landing or navigation lights twice.')));
+    return box;
+  }
+
   function squawkLine() {
     const squawk = line('commfail-squawk');
     squawk.append(S_('commFailSquawk', 'Squawk') + ' ');
@@ -226,7 +265,10 @@
     m.box.appendChild(line('commfail-entry',
       S_('commFailVia', 'via') + ' ' + nodeLabel(graph, best.entry) + ' ' + S_('commFailAt', 'at') + ' '
       + best.alt.toLocaleString('en-US') + ' ft'));
-    if (best.fromAreas) {
+    if (best.inArea) {
+      m.box.appendChild(line('commfail-entry-areas', '(' + String(S_('commFailInArea', 'You are in training area {area}'))
+        .replace('{area}', best.inArea) + ')'));
+    } else if (best.fromAreas) {
       m.box.appendChild(line('commfail-entry-areas', '(' + String(S_('commFailFromAreas', '{alt} ft from training areas {areas}'))
         .replace('{alt}', best.fromAreas.alt.toLocaleString('en-US'))
         .replace('{areas}', best.fromAreas.areas.join(', ')) + ')'));
@@ -238,6 +280,7 @@
       phone.append(a || best.phone);
       m.box.appendChild(phone);
     }
+    m.box.appendChild(lightSignals());
     m.box.appendChild(line('commfail-note', S_('commFailChartNote', 'The published chart is on the map — fly it, not this line.')));
     m.box.appendChild(line('commfail-origin', fromGps
       ? S_('commFailFromGps', 'From your GPS position')
@@ -262,22 +305,33 @@
     return m;
   }
 
+  // On/off like Location: pressed while comm failure is up (or waiting for its fix), and a
+  // press then ends it -- the same as Cancel on the card.
   let busy = false;
+  function refreshPressed() {
+    const on = !!active || busy;
+    const btn = document.getElementById('commfail-btn');
+    for (const el of [btn, document.querySelector('.deck-btn-commfail')]) {
+      if (el) el.setAttribute('aria-pressed', String(on));
+    }
+    if (btn) {
+      const label = on ? S_('commFailEnd', 'End comm failure') : S_('commFail', 'Comm failure');
+      const t = btn.querySelector('.footer-link-text');
+      if (t) t.textContent = label;
+      btn.setAttribute('aria-label', label);
+      btn.title = on ? label : S_('commFailTitle', label);
+    }
+  }
   async function commFailGo() {
-    // A second press while the first is still waiting for GPS or an answer does nothing:
-    // the waiting card is already up.
+    if (waiting) { waiting.answer = 'cancel'; return null; }
+    if (active) { cancel(); return null; }
+    // Busy without a waiting card is the replace-route question: it is answered there.
     if (busy) return null;
     busy = true;
-    try { return await commFailRun(); } finally { busy = false; }
+    refreshPressed();
+    try { return await commFailRun(); } finally { busy = false; refreshPressed(); }
   }
   async function commFailRun() {
-    // Already on: the button brings the card back (and with it Cancel) rather than asking
-    // to replace a route that is already the comm-failure route.
-    if (active && active.card && routeKey() === active.route) {
-      document.querySelectorAll('[data-chart-modal="commfail"]').forEach(el => el.remove());
-      active.card = showCard(active.opts, active.graph, active.fromGps);
-      return active.card;
-    }
     let data, graph;
     try {
       [data, graph] = await Promise.all([loadData(), loadGraph()]);

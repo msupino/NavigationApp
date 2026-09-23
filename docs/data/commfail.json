@@ -7,35 +7,108 @@
       "phone": "09-9719554",
       "chart": "LLHZ_commfail.png",
       "entries": [
-        { "wp": "SFAIM", "alt": 1200 },
-        { "wp": "BAZRA", "alt": 1600, "fromAreas": { "alt": 1200, "areas": [3, 8, 9] } },
-        { "wp": "GNYAM", "alt": 1200 },
-        { "wp": "KNTRY", "alt": 1200 }
-      ]
+        {
+          "wp": "SFAIM",
+          "alt": 1200
+        },
+        {
+          "wp": "BAZRA",
+          "alt": 1600,
+          "fromAreas": {
+            "alt": 1200,
+            "areas": [
+              3,
+              8,
+              9
+            ]
+          }
+        },
+        {
+          "wp": "GNYAM",
+          "alt": 1200
+        },
+        {
+          "wp": "KNTRY",
+          "alt": 1200
+        }
+      ],
+      "trainingAreas": {
+        "source": "traced from the Herzliya training-areas chart (LLHZ_training.png) through its georeference; about 100 m",
+        "areas": {
+          "3": [
+            [32.22355, 34.89457],
+            [32.22779, 34.9703],
+            [32.20784, 34.95609],
+            [32.19878, 34.93992],
+            [32.16389, 34.94963],
+            [32.16232, 34.90248]
+          ],
+          "8": [
+            [32.3235, 34.84806],
+            [32.31975, 34.89035],
+            [32.22184, 34.87206],
+            [32.23234, 34.81778]
+          ],
+          "9": [
+            [32.31714, 34.91235],
+            [32.30851, 34.98136],
+            [32.28551, 34.97486],
+            [32.23925, 34.97528],
+            [32.23217, 34.89689]
+          ]
+        }
+      }
     },
     "LLHA": {
       "phone": "04-8729361",
       "chart": "LLHA_commfail.png",
       "entries": [
-        { "wp": "KRYON", "alt": 2000 },
-        { "wp": "AFFEK", "alt": 2000 },
-        { "wp": "GILAM", "alt": 3000 },
-        { "wp": "GALIM", "alt": 1500 }
+        {
+          "wp": "KRYON",
+          "alt": 2000
+        },
+        {
+          "wp": "AFFEK",
+          "alt": 2000
+        },
+        {
+          "wp": "GILAM",
+          "alt": 3000
+        },
+        {
+          "wp": "GALIM",
+          "alt": 1500
+        }
       ],
       "excluded": [
-        { "wp": "HASID", "why": "dashed on the chart: flown with controller approval, which a failed radio cannot obtain" },
-        { "wp": "DUGIT", "why": "controller-approval route in the graph, not on the comm-failure chart" }
+        {
+          "wp": "HASID",
+          "why": "dashed on the chart: flown with controller approval, which a failed radio cannot obtain"
+        },
+        {
+          "wp": "DUGIT",
+          "why": "controller-approval route in the graph, not on the comm-failure chart"
+        }
       ]
     },
     "LLIB": {
       "phone": "04-6136210",
       "chart": "LLIB_commfail.png",
       "entries": [
-        { "wp": "HULAT", "alt": 3000 },
-        { "wp": "AMNON", "alt": 2500 }
+        {
+          "wp": "HULAT",
+          "alt": 3000
+        },
+        {
+          "wp": "AMNON",
+          "alt": 2500
+        }
       ],
       "excluded": [
-        { "wp": "(magenta lines)", "why": "helicopter routes per the chart legend" }
+        {
+          "wp": "(magenta lines)",
+          "why": "helicopter routes per the chart legend"
+        }
       ]
     }
   }

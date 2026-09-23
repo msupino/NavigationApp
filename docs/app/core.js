@@ -1716,6 +1716,22 @@ window.S = Object.assign({
   commFailCancelKept: 'Comm failure cancelled. The route was edited since, so it stays.',
   commFailWaiting: 'Waiting for your GPS position…',
   commFailUseMapCentre: 'Use map centre',
+  commFailInArea: 'You are in training area {area}',
+  commFailLights: 'Light signals from the tower',
+  commFailLightGreenName: 'Steady green',
+  commFailLightGreen: 'Cleared to land',
+  commFailLightGreenFlashName: 'Flashing green',
+  commFailLightGreenFlash: 'Return for landing',
+  commFailLightRedName: 'Steady red',
+  commFailLightRed: 'Give way and continue circling',
+  commFailLightRedFlashName: 'Flashing red',
+  commFailLightRedFlash: 'Aerodrome unsafe — do not land',
+  commFailLightWhiteFlashName: 'Flashing white',
+  commFailLightWhiteFlash: 'Land here and proceed to the apron',
+  commFailLightFlareName: 'Red flare',
+  commFailLightFlare: 'Do not land for the time being',
+  commFailLightAck: 'Acknowledge: by day rock the wings (not on base or final); at night flash the landing or navigation lights twice.',
+  commFailEnd: 'End comm failure',
   commFailChartNote: 'The published chart is on the map — fly it, not this line.',
   deckCommFail: 'Comm fail',
   airfieldPhone: 'Phone',
@@ -6162,6 +6178,26 @@ function routeCheckNmBetween(p, q) {
 // `wpAt(code)` and `fieldAt(icao)` return {lat, lng} or null. Anything that does not resolve is
 // skipped rather than guessed at: an entry point missing from the graph must drop out, not
 // become a point at 0,0.
+// Which of `codes` (training-area numbers) the point lies in, by ray cast over the traced
+// outlines in the field's `trainingAreas`; null when none, or when the field has no outlines.
+function commFailAreaAt(training, codes, pos) {
+  const polys = training && training.areas;
+  if (!polys || !Array.isArray(codes)) return null;
+  for (const code of codes) {
+    const poly = polys[String(code)];
+    if (!Array.isArray(poly) || poly.length < 3) continue;
+    let inside = false;
+    for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+      const [yi, xi] = poly[i];
+      const [yj, xj] = poly[j];
+      if ((yi > pos.lat) !== (yj > pos.lat)
+          && pos.lng < (xj - xi) * (pos.lat - yi) / (yj - yi) + xi) inside = !inside;
+    }
+    if (inside) return String(code);
+  }
+  return null;
+}
+
 function commFailOptions(data, pos, wpAt, fieldAt) {
   if (!data || !data.fields || !pos || !Number.isFinite(pos.lat) || !Number.isFinite(pos.lng)) return [];
   const best = [];
@@ -6175,15 +6211,18 @@ function commFailOptions(data, pos, wpAt, fieldAt) {
       if (!wp || !Number.isFinite(e.alt)) continue;
       const toEntryNm = routeCheckNmBetween(pos, wp);
       const totalNm = toEntryNm + routeCheckNmBetween(wp, field);
-      if (!pick || totalNm < pick.totalNm) {
-        pick = { icao, entry: e.wp, alt: e.alt, entryAt: { lat: wp.lat, lng: wp.lng },
-          fieldAt: { lat: field.lat, lng: field.lng }, toEntryNm, totalNm,
-          phone: typeof f.phone === 'string' ? f.phone : '',
-          // A second published altitude for the same entry, flown only from named training
-          // areas (Herzliya's BAZRA: 1,600 from afar, 1,200 from areas 3, 8 and 9).
-          fromAreas: e.fromAreas && Number.isFinite(e.fromAreas.alt) && Array.isArray(e.fromAreas.areas)
-            ? { alt: e.fromAreas.alt, areas: e.fromAreas.areas.slice() } : null };
-      }
+      // A second published altitude for the same entry, flown only from named training areas
+      // (Herzliya's BAZRA: 1,600 from afar, 1,200 from areas 3, 8 and 9). Inside one of those
+      // areas that entry is THE way back -- the chart draws the line from the areas to it --
+      // so it wins whatever is nearer, at the areas' altitude.
+      const fromAreas = e.fromAreas && Number.isFinite(e.fromAreas.alt) && Array.isArray(e.fromAreas.areas)
+        ? { alt: e.fromAreas.alt, areas: e.fromAreas.areas.slice() } : null;
+      const inArea = fromAreas ? commFailAreaAt(f.trainingAreas, fromAreas.areas, pos) : null;
+      const better = !pick || (inArea && !pick.inArea) || (!pick.inArea && totalNm < pick.totalNm);
+      if (!better) continue;
+      pick = { icao, entry: e.wp, alt: inArea ? fromAreas.alt : e.alt,
+        entryAt: { lat: wp.lat, lng: wp.lng }, fieldAt: { lat: field.lat, lng: field.lng },
+        toEntryNm, totalNm, phone: typeof f.phone === 'string' ? f.phone : '', fromAreas, inArea };
     }
     if (pick) best.push(pick);
   }
