@@ -411,7 +411,7 @@ window.S = {
   commFailLightFlare: 'אל תנחת לעת עתה',
   commFailLightAck: 'אישור: ביום — נענוע כנפיים (לא בבסיס או בסופי); בלילה — הבהוב אורות נחיתה או ניווט פעמיים.',
   commFailEnd: 'סיים תקלת קשר',
-  commFailChartNote: 'המפה המפורסמת מוצגת — טוס לפיה, לא לפי הקו הזה.',
+  commFailChartNote: 'טוס לפי תרשים תקלת הקשר המוצג על המפה. הקו המשורטט רק מוביל לנקודת הכניסה.',
   deckCommFail: 'תקלת קשר',
   airfieldPhone: 'טלפון',
   callNumber: 'חייג',
