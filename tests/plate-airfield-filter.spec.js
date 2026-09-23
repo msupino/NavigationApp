@@ -139,3 +139,26 @@ test('all and auto are not a place, so the map stays', async ({ page }) => {
     expect(out.after[1]).toBeCloseTo(out.before[1], 3);
   }
 });
+
+test('"Show plates for" is only offered while airfield charts are on', async ({ page }) => {
+  // Choosing which airfields' plates to show means nothing while none are shown; the row
+  // stood there regardless, next to an unticked box.
+  await page.addInitScript(() => {
+    for (const s of ['build', 'view', 'display', 'charts', 'export', 'print'])
+      try { localStorage.setItem('navaid.sec.' + s, '1'); } catch (e) {}
+  });
+  await page.goto('?lang=en&nogist');
+  await page.waitForFunction(() => typeof window.refreshPlateTypePicker === 'function');
+  const row = page.locator('.tb-plate-airfield');
+  const set = on => page.evaluate((v) => {
+    const cb = document.getElementById('plate-enabled-cb');
+    cb.checked = v; cb.dispatchEvent(new Event('change', { bubbles: true }));
+  }, on);
+  const hidden = () => row.evaluate(el => el.hidden);
+  await set(false);
+  expect(await hidden()).toBe(true);
+  await set(true);
+  expect(await hidden()).toBe(false);
+  await set(false);
+  expect(await hidden()).toBe(true);
+});

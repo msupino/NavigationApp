@@ -8374,6 +8374,9 @@ window.plateMapLayer = plateMapLayer;
     .filter(Boolean);
   if (!boxes.length) return;
   const selectRow = select.closest('label');
+  // "Show plates for" chooses among plates that are not being shown while the box is off, so
+  // it goes with the type picker rather than standing there offering a choice about nothing.
+  const airfieldRow = document.querySelector('.tb-plate-airfield');
   const saved = lsGet(key);
   const active = boxes.find(box => box.checked);
   select.value = active ? active.id
@@ -8386,6 +8389,7 @@ window.plateMapLayer = plateMapLayer;
     const shown = boxes.find(box => box.checked);
     enabled.checked = !!shown;
     if (selectRow) selectRow.hidden = !enabled.checked;
+    if (airfieldRow) airfieldRow.hidden = !enabled.checked;
     if (shown) {
       select.value = shown.id;
       remember();
