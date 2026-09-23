@@ -22,7 +22,11 @@ test('an event is a bare name: nothing else can ride along', async ({ page }) =>
   await page.waitForFunction(() => typeof navaidEvent === 'function');
   await record(page);
   const r = await page.evaluate(() => ({
-    known: navaidEvent('fpl_mail_open', { reg: '4X-ABC', email: 'pilot@example.com' }),
+    // A careless future caller passing identifying data. navaidEvent takes no such argument --
+    // which is the point -- so it goes through Reflect.apply rather than a direct call that a
+    // linter would (rightly, anywhere else) flag as a superfluous argument.
+    known: Reflect.apply(navaidEvent, null,
+      ['fpl_mail_open', { reg: '4X-ABC', email: 'pilot@example.com' }]),
     unknown: navaidEvent('pilot_name_4X-ABC'),
   }));
   expect(r.known).toBe(true);
