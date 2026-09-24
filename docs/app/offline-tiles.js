@@ -429,9 +429,16 @@
         const packs = readPacks();
         for (const name of packs.charts) if (name !== 'ATS') for (const i of chartPlan(name)) others.add(i.liveUrl);
         for (const area of packs.areas) for (const i of areaPlan(area)) others.add(i.liveUrl);
-        const cvfr = cvfrPlan().map(i => i.liveUrl).filter(u => !others.has(u));
-        await Promise.all(cvfr.map(u => cache.delete(u)));
-        if (!others.size) await tileCaches.delete(TILE_CACHE);
+        if (!others.size) {
+          // Nothing else is kept: drop the whole store in one call.
+          await tileCaches.delete(TILE_CACHE);
+        } else {
+          // Only the tiles actually stored, never the plan's: at zooms 7-13 the plan is 14,000
+          // URLs, and in the APK each delete is a file-system call.
+          const cvfr = new Set(cvfrPlan().map(i => i.liveUrl));
+          const keys = await cache.keys();
+          await Promise.all(keys.filter(k => cvfr.has(k.url) && !others.has(k.url)).map(k => cache.delete(k)));
+        }
       }
       notifySw();
       setReport(await cvfrCoverage());
