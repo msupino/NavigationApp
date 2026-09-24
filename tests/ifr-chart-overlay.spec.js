@@ -157,7 +157,8 @@ test('instrument charts precede live traffic and match the airfield-chart contro
     return {
       beforeTraffic: Boolean(ifr.compareDocumentPosition(traffic) & Node.DOCUMENT_POSITION_FOLLOWING),
       ifrPickerVisible: !!document.getElementById('ifr-sheet').getClientRects().length,
-      platePickerVisible: !!document.getElementById('plate-type').getClientRects().length,
+      // A hidden row keeps its width, so it still has a box: ask whether it is visible.
+      platePickerVisible: document.getElementById('plate-type').checkVisibility({ visibilityProperty: true }),
       ifrSlider: !!ifr.querySelector('#ifr-opacity'),
       plateSlider: !!document.getElementById('plate-opacity'),
       ifrOrder: Array.from(ifr.querySelectorAll('input, select')).map(element => element.id),

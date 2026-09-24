@@ -109,7 +109,9 @@ test('airfield chart checkbox reveals its type dropdown like instrument charts',
     const legacy = document.getElementById('plate-type-state');
     return {
       pickerVisible: !!document.getElementById('plate-enabled-cb').getClientRects().length,
-      selectVisible: !!document.getElementById('plate-type').getClientRects().length,
+      // Hidden rows keep their width (the menu does not jump sideways), so "has a box" is not
+      // "shown": ask whether it is actually visible.
+      selectVisible: document.getElementById('plate-type').checkVisibility({ visibilityProperty: true }),
       legacyVisible: !!legacy.getClientRects().length,
       options: Array.from(document.getElementById('plate-type').options).map(option => option.value),
       visibleCheckboxes: Array.from(frame.querySelectorAll('input[type="checkbox"]'))
