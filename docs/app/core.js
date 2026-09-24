@@ -189,6 +189,7 @@ NavAid.tuningDefaults = {
   layerEnabledNavigation: { value: true, type: 'bool', label: 'Offer the Navigation layer' },
   layerEnabledSatellite: { value: true, type: 'bool', label: 'Offer the Satellite layer' },
   layerEnabledOpenStreetMap: { value: true, type: 'bool', label: 'Offer the OpenStreetMap layer' },
+  layerEnabledOpenFlightMaps: { value: true, type: 'bool', label: 'Offer the open flightmaps layer (Europe; no data over Israel)' },
   searchMaxVor: { value: 3, min: 0, max: 20, step: 1, label: 'Search: max VOR stations' },
   searchMaxBubbles: { value: 12, min: 0, max: 20, step: 1, label: 'Search: max LSA bubbles' },
   searchMaxNotams: { value: 4, min: 0, max: 20, step: 1, label: 'Search: max NOTAM results' },
@@ -1017,7 +1018,7 @@ NavAid.tuningGroups = [
   { name: 'LSA colors', keys: ['lsaHighlightColor', 'lsaWeekendColor', 'lsaAlwaysColor', 'lsaLabelColor'] },
   { name: 'GPS track', keys: ['gpsTrackColors', 'gpsTrackOutlineColor', 'gpsTrackStartColor', 'gpsTrackEndColor'] },
   { name: 'Base layers', keys: ['layerEnabledLowAlt', 'layerEnabledHelicopters', 'layerEnabledATS',
-    'layerEnabledNavigation', 'layerEnabledSatellite', 'layerEnabledOpenStreetMap',
+    'layerEnabledNavigation', 'layerEnabledSatellite', 'layerEnabledOpenStreetMap', 'layerEnabledOpenFlightMaps',
     'defaultBaseLayer', 'baseLayerOpacity'] },
   { name: 'Density altitude', keys: ['featureDensityAltitude', 'daWarnAboveElevFt', 'daForecastHours',
     'daMetarMaxAgeMin'] },
@@ -2312,8 +2313,10 @@ window.S = Object.assign({
   kmlDocName: 'NavAid flythrough',
   kmlRouteName: 'Route',
   kmlTourName: 'Fly the route',
+  layerNoDataOverIsrael: 'No data over Israel: open flightmaps covers about twenty regions, mostly in Europe. Move the map there to use it.',
   layerLabels: { 'CVFR': 'CVFR', 'Navigation': 'Navigation', 'Low Alt': 'Low Alt',
                  'Helicopters': 'Helicopters', 'Satellite': 'Satellite', 'OpenStreetMap': 'OpenStreetMap',
+                 'OpenFlightMaps': 'open flightmaps',
                  // A dataset, not a base chart: the ENR 6.1 sheet is an Extra-layers overlay,
                  // and this label names its points in the "Nav waypoints from" picker.
                  'ATS': 'ATS routes' },
@@ -5214,7 +5217,26 @@ const CHART_SPECS = {
   'OpenStreetMap': (pane) => L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
     withPane({ minZoom: 6, maxZoom: 18, subdomains: 'abc',
       attribution: '© OpenStreetMap contributors' }, pane)),
+  // open flightmaps' aeronautical chart: about twenty regions, mostly European (Greece, Italy,
+  // Croatia...) -- and nothing over Israel, where its tiles come back empty. The aero tiles
+  // are transparent, drawn to be laid over a map, so what fills them in is the underlay
+  // (Display -> under the chart). Published to z12; above that Leaflet scales z12 up rather
+  // than asking for tiles that are blank. CORS is open, so an export can read the canvas.
+  'OpenFlightMaps': (pane) => L.tileLayer(
+    'https://nwy-tiles-api.prod.newaydata.com/tiles/{z}/{x}/{y}.png?path=latest/aero/latest',
+    withPane({ minZoom: 6, maxZoom: 18, maxNativeZoom: 12, corsOk: true,
+      attribution: '<a href="https://www.openflightmaps.org/" target="_blank" rel="noopener">© open flightmaps association</a>' }, pane)),
 };
+// Where a chart has nothing to show. open flightmaps does not cover Israel, so over the
+// Israeli charts' own frame (the ATS sheet's, which spans the FIR) the layer is dimmed in the
+// picker, with the reason, rather than offered as a chart that draws nothing.
+const ISRAEL_CHART_FRAME = [[29.376677, 33.426611], [33.420846, 36.158314]];
+const LAYER_NO_DATA_OVER_ISRAEL = new Set(['OpenFlightMaps']);
+function layerHasNoDataHere(name, center) {
+  if (!LAYER_NO_DATA_OVER_ISRAEL.has(name) || !center) return false;
+  const [[s, w], [n, e]] = ISRAEL_CHART_FRAME;
+  return center.lat >= s && center.lat <= n && center.lng >= w && center.lng <= e;
+}
 // The picker's layers: every chart, in its normal pane.
 const layers = Object.fromEntries(
   Object.keys(CHART_SPECS).map(name => [name, CHART_SPECS[name](undefined)]));
