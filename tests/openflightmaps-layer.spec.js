@@ -6,7 +6,8 @@ const { test, expect } = require('./_setup');
 
 async function boot(page, lang = 'en') {
   // No tile traffic to the real service from the suite.
-  await page.route(/nwy-tiles-api\.prod\.newaydata\.com/, r => r.fulfill({ status: 204, body: '' }));
+  await page.route(url => url.hostname === 'nwy-tiles-api.prod.newaydata.com',
+    r => r.fulfill({ status: 204, body: '' }));
   await page.goto('?lang=' + lang + '&nogist');
   await page.waitForFunction(() => typeof layers !== 'undefined' && typeof rebuildLayerPicker === 'function');
 }
