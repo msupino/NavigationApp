@@ -162,3 +162,32 @@ test('"Show plates for" is only offered while airfield charts are on', async ({ 
   await set(false);
   expect(await hidden()).toBe(true);
 });
+
+for (const lang of ['en', 'he']) {
+  test(`the menu keeps its size when the plates box shows and hides its rows (${lang})`, async ({ page }) => {
+    // Hiding the row made the desktop menu panel narrower, so ticking the box widened it:
+    // the menu jumped sideways under the pointer. A hidden row keeps its width now, and
+    // still takes no height.
+    await page.setViewportSize({ width: 1280, height: 900 });
+    await page.goto('?lang=' + lang + '&nogist&deck=0');
+    await page.waitForFunction(() => typeof window.refreshPlateTypePicker === 'function');
+    const box = () => page.evaluate(() => {
+      const sec = document.getElementById('plate-enabled-cb').closest('.tb-section');
+      if (!sec.classList.contains('open')) sec.querySelector('.tb-section-head').click();
+      const b = (sec.querySelector('.tb-section-body') || sec).getBoundingClientRect();
+      const row = document.querySelector('.tb-plate-airfield').getBoundingClientRect();
+      return { w: Math.round(b.width), rowH: Math.round(row.height) };
+    });
+    const set = on => page.evaluate((v) => {
+      const cb = document.getElementById('plate-enabled-cb');
+      cb.checked = v; cb.dispatchEvent(new Event('change', { bubbles: true }));
+    }, on);
+    await set(false);
+    const off = await box();
+    await set(true);
+    const on = await box();
+    expect(on.w).toBe(off.w);
+    expect(off.rowH).toBe(0);
+    expect(on.rowH).toBeGreaterThan(0);
+  });
+}
