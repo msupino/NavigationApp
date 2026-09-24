@@ -532,7 +532,7 @@ test('opening the link watches, names the aircraft and dates the position', asyn
   expect(got.labelOverlapsPlane).toBe(false);
   expect(got.mapFollows).toBe(true);             // every new fix returns the aircraft to centre
   expect(got.orientVisible).toBe(true);           // North-up / track-up button is on the map
-  expect(got.orientTrack).toBe('090°');
+  expect(got.orientTrack).toBe('085°');           // magnetic, like the strip: 090 true, 5°E
   expect(got.distanceMarks).toEqual([2, 5, 10]);  // standard dashed predictor distances
   expect(got.trackUpBearing).toBe(270);           // 360 - 090 puts the aircraft direction up
   expect(got.northUpNoseBearing).toBe(90);

@@ -520,7 +520,7 @@ function vorIconSvg(color) {
 // `deg` turns the needle: the track being flown when the chart is north-up, and north
 // itself when the chart is turned to the track, so the needle always points at something
 // real on the screen. `hdg` is the track in degrees, written under the needle while a fix
-// is driving the map -- the number a pilot reads back.
+// is driving the map -- the number a pilot reads back, so the caller passes it magnetic.
 // Both angles are wrapped into 0-359 before they are used: a device that reports -1 (or a
 // computed course that has gone round the back) rendered as the readout '0-1'.
 const compassDeg = (v) => ((Math.round(v) % 360) + 360) % 360;
@@ -584,7 +584,10 @@ function refreshOrientControl() {
   // leaves the chart still, so the needle points where the aircraft is going.
   const trk = mapAircraftTrack();
   const needle = headingUpOn ? ((bearing % 360) + 360) % 360 : (trk == null ? 0 : trk);
-  orientBtn.innerHTML = compassIconSvg(needle, trk);
+  // The needle is geometry on the chart, so it stays true. The number is the heading a pilot
+  // reads back, so it is magnetic like the strip beside it: the button showed 354 while the
+  // strip said 349, the variation between the two.
+  orientBtn.innerHTML = compassIconSvg(needle, trk == null ? trk : toMagnetic(trk));
   orientBtn.classList.toggle('orient-on', headingUpOn);
   orientBtn.classList.toggle('orient-rotated', rotated);
   orientBtn.setAttribute('aria-pressed', headingUpOn ? 'true' : 'false');

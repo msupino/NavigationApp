@@ -54,13 +54,14 @@ test('the follow symbol is the one the chart draws for a station', async ({ page
 test('the compass points where the aircraft is going, and says the track', async ({ page }) => {
   await boot(page);
   await fix(page, 75);
-  await page.waitForFunction(() => /075/.test(document.getElementById('orient-toggle').textContent));
+  // The needle takes the true track; the number is magnetic, like the strip (5°E variation).
+  await page.waitForFunction(() => /070/.test(document.getElementById('orient-toggle').textContent));
   const northUp = await page.evaluate(() => {
     const b = document.getElementById('orient-toggle');
     return { rot: b.querySelector('g').getAttribute('transform'), hdg: b.textContent.trim() };
   });
   expect(northUp.rot).toBe('rotate(75 12 12)');          // the chart is still; the track turns
-  expect(northUp.hdg).toBe('075°');
+  expect(northUp.hdg).toBe('070°');
 });
 
 test('with the chart turned to the track, the needle points at north instead', async ({ page }) => {
@@ -96,6 +97,7 @@ test('a heading outside 0-359 is wrapped, not printed raw', async ({ page }) => 
     expect(s.text).toMatch(/^\d{3}°$/);
     expect(s.rot).toMatch(/^rotate\((?:[0-9]|[1-9][0-9]|[12][0-9]{2}|3[0-5][0-9]) 12 12\)$/);
   }
-  expect(seen.find(s => s.in === -1).text).toBe('359°');
-  expect(seen.find(s => s.in === 725).text).toBe('005°');
+  // Magnetic readout (5°E variation): -1 true is 354 magnetic, 725 (= 005) true is 000.
+  expect(seen.find(s => s.in === -1).text).toBe('354°');
+  expect(seen.find(s => s.in === 725).text).toBe('000°');
 });
