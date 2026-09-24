@@ -124,3 +124,81 @@ test('the service worker serves open flightmaps tiles from a pack', async ({ pag
   expect(sw).toMatch(/OFM_TILE_HOST = 'nwy-tiles-api\.prod\.newaydata\.com'/);
   expect(sw).toMatch(/url\.host === OFM_TILE_HOST/);
 });
+
+test('an area already kept is not saved again, and a new area starts at once beside CVFR', async ({ page }) => {
+  await boot(page);
+  const r = await page.evaluate(async () => {
+    const O = NavAidOfflineTiles;
+    await new Promise(d => { map.once('moveend', d); map.setView([47.43, 19.26], 11, { animate: false }); });
+    // CVFR's whole-country download running must not hold the area back.
+    const cvfr = O.downloadPack(() => {}, 7, 8);
+    const first = O.downloadArea('OpenFlightMaps');
+    const second = await O.downloadArea('OpenFlightMaps');     // same screen: refused
+    await first;
+    await cvfr;
+    return { areas: O.readPacks().areas.length, second, covered: O.screenArea('OpenFlightMaps').covered };
+  });
+  expect(r.areas).toBe(1);
+  expect(r.second).toBe(null);
+  expect(r.covered).toBe(true);
+  await page.evaluate(() => NavAidOfflineTiles.openManager());
+  await expect(page.locator('.offline-area-add')).toBeDisabled();
+  await expect(page.locator('.offline-manager-areas .offline-manager-note')).toContainText('already downloaded');
+  // A pack's status is its own, never CVFR's checking line.
+  await expect(page.locator('.offline-manager-area .offline-manager-state')).not.toContainText('CVFR');
+});
+
+test('on open flightmaps the map zooms out to Europe, and back in on the Israeli charts', async ({ page }) => {
+  await boot(page);
+  const r = await page.evaluate(() => {
+    const sel = document.getElementById('layer-select');
+    const choose = n => { sel.value = n; sel.dispatchEvent(new Event('change')); };
+    map.setView([47, 12], 9, { animate: false });
+    choose('OpenFlightMaps');
+    const wide = map.getMinZoom();
+    map.setView([48, 10], 5, { animate: false });
+    const out = map.getZoom();
+    choose('CVFR');
+    return { wide, out, back: map.getMinZoom(), zoomAfter: map.getZoom() };
+  });
+  expect(r.wide).toBe(4);
+  expect(r.out).toBe(5);
+  expect(r.back).toBe(8);
+  expect(r.zoomAfter).toBeGreaterThanOrEqual(8);
+});
+
+test('most of Europe: the detail levels say their size, the ones too big are dimmed', async ({ page }) => {
+  await boot(page);
+  await page.evaluate(() => new Promise(done => {
+    const sel = document.getElementById('layer-select');
+    sel.value = 'OpenFlightMaps'; sel.dispatchEvent(new Event('change'));
+    map.once('moveend', () => done());
+    map.fitBounds([[35, -11], [62, 32]], { animate: false });
+  }));
+  const a = await page.evaluate(() => NavAidOfflineTiles.screenArea('OpenFlightMaps'));
+  const z12 = a.levels.find(l => l.z === 12);
+  const z10 = a.levels.find(l => l.z === 10);
+  expect(z12.fits).toBe(false);                 // hundreds of thousands of tiles
+  expect(z10.fits).toBe(true);
+  expect(a.maxZ).toBeGreaterThanOrEqual(10);    // the most detail that fits is the default
+  expect(a.maxZ).toBeLessThan(12);
+  await page.evaluate(() => NavAidOfflineTiles.openManager());
+  const opts = await page.locator('.offline-area-zoom option').evaluateAll(os => os.map(o => ({ z: o.value, disabled: o.disabled, text: o.textContent })));
+  expect(opts.find(o => o.z === '12').disabled).toBe(true);
+  expect(opts.find(o => o.z === '10').disabled).toBe(false);
+  expect(opts.find(o => o.z === '10').text).toMatch(/tiles · ≈ [\d.]+ (MB|GB)/);
+  await expect(page.locator('.offline-area-add')).toBeEnabled();
+});
+
+test('the chosen detail is what the area keeps', async ({ page }) => {
+  await boot(page);
+  const r = await page.evaluate(async () => {
+    const O = NavAidOfflineTiles;
+    await new Promise(d => { map.once('moveend', d); map.setView([47.26, 11.35], 11, { animate: false }); });
+    await O.downloadArea('OpenFlightMaps', 9);
+    const area = O.readPacks().areas[0];
+    return { maxZ: area.maxZ, top: Math.max(...O.areaPlan(area).map(i => i.coords.z)), covered9: O.screenArea('OpenFlightMaps') };
+  });
+  expect(r.maxZ).toBe(9);
+  expect(r.top).toBe(9);
+});

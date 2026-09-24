@@ -27,11 +27,16 @@
   const WHOLE_CHARTS = ['Navigation', 'Low Alt', 'Helicopters'];
   // Area packs: a chart with no fixed frame, downloaded for the area on screen.
   const AREA_LAYERS = ['OpenFlightMaps'];
-  const AREA_MIN_Z = 7;
+  // From a continent's-eye view down to the detail level the pilot picks: most of Europe fits
+  // to z10 in about a gigabyte, z12 would be fourteen.
+  const AREA_MIN_Z = 5;
   const AREA_MAX_Z = 12;
-  // An area bigger than this is refused with the reason rather than started: at z12 it is a
-  // few hundred MB, and a pilot who wanted a country zooms in on it.
-  const AREA_TILE_LIMIT = 20000;
+  const AREA_DETAIL_ZOOMS = [8, 9, 10, 11, 12];
+  // A detail level bigger than this is offered dimmed, with its size, rather than started.
+  const AREA_TILE_LIMIT = 80000;
+  // For the size shown beside each detail level: open flightmaps' tiles average about this
+  // over land and sea together (a land tile is ~60 kB, a sea tile ~1 kB).
+  const AVG_TILE_KB = 40;
   const PACKS_KEY = 'navaid.offlinePacks';
 
   function offlineTileList(bounds, zMin, zMax) {
@@ -51,6 +56,25 @@
       }
     }
     return out;
+  }
+
+  // How many tiles offlineTileList would list, without listing them: the dialog asks on every
+  // pan, and over Europe the list is hundreds of thousands long.
+  function offlineTileCount(bounds, zMin, zMax) {
+    const yFrac = lat => {
+      const r = lat * Math.PI / 180;
+      return (1 - Math.log(Math.tan(r) + 1 / Math.cos(r)) / Math.PI) / 2;
+    };
+    let n = 0;
+    for (let z = zMin; z <= zMax; z++) {
+      const k = Math.pow(2, z);
+      const x0 = Math.max(0, Math.floor((bounds.west + 180) / 360 * k));
+      const x1 = Math.min(k - 1, Math.floor((bounds.east + 180) / 360 * k));
+      const y0 = Math.max(0, Math.floor(yFrac(bounds.north) * k));
+      const y1 = Math.min(k - 1, Math.floor(yFrac(bounds.south) * k));
+      if (x1 >= x0 && y1 >= y0) n += (x1 - x0 + 1) * (y1 - y0 + 1);
+    }
+    return n;
   }
 
   function layerNamed(name) {
@@ -94,13 +118,20 @@
     if (!layer || !range) return [];
     return tilePlan(layer, TILE.chartBounds, range.min, range.max);
   }
+  function chartTileCount(name) {
+    const layer = packableTileLayer(name);
+    const range = zoomRange();
+    if (!layer || !range) return 0;
+    const top = Number.isFinite(layer.options.maxNativeZoom) ? Math.min(range.max, layer.options.maxNativeZoom) : range.max;
+    return offlineTileCount(TILE.chartBounds, range.min, top);
+  }
   function cvfrPlan(zMin, zMax) {
     return cvfrLayer() ? chartPlan('CVFR', zMin, zMax) : [];
   }
   function areaPlan(area) {
     const layer = area && packableTileLayer(area.layer);
     if (!layer || !area.bounds) return [];
-    return tilePlan(layer, area.bounds, AREA_MIN_Z, AREA_MAX_Z);
+    return tilePlan(layer, area.bounds, AREA_MIN_Z, Number.isFinite(area.maxZ) ? area.maxZ : AREA_MAX_Z);
   }
 
   // ---- which packs the pilot has chosen (this device only) -------------------------
@@ -252,8 +283,7 @@
   let runningPromise = null;         // the CVFR download, for the API the tests and toolbar use
   let lastReport = null;             // CVFR's
   const reports = {};                // every pack's, by id ('CVFR', a chart name, 'ATS', an area id)
-  const running = new Set();         // ids with a download in flight or queued
-  let queue = Promise.resolve();     // one download at a time, whatever the pack
+  const running = new Map();         // id -> the promise of its download in flight
   let manager = null;
   let suppressAutoThisSession = false;
 
@@ -345,12 +375,17 @@
     return { ok: present, failed, fetched, placeholders, complete: final.complete };
   }
 
-  // Queue a job behind whatever is downloading. Returns the job's own promise.
+  // Start a pack's download now, beside any other. They used to queue one behind another,
+  // and opening the dialog from the toolbar starts the whole-country CVFR download -- so an
+  // area the pilot asked for sat behind fourteen thousand tiles, looking dead. Packs are on
+  // different hosts or share HTTP/2 connections, so running them together costs little.
+  // A second request for a pack already downloading gets the same download.
   function enqueue(id, job) {
-    running.add(id);
+    if (running.has(id)) return running.get(id);
+    if (!reports[id] || !reports[id].total) reports[id] = { name: id, starting: true, present: 0, total: 0, percent: 0 };
+    const p = Promise.resolve().then(job).finally(() => { running.delete(id); renderManager(); });
+    running.set(id, p);
     renderManager();
-    const p = queue.then(job, job);
-    queue = p.catch(() => {}).then(() => { running.delete(id); renderManager(); });
     return p;
   }
 
@@ -453,23 +488,40 @@
     setPackReport(name, name === 'ATS' ? await atsCoverage() : await chartCoverage(name));
   }
 
-  // The area on screen, as a pack: its bounds, and how many tiles that is.
+  // The area on screen, as a pack: its bounds, what each detail level would cost, and the
+  // one chosen -- the pilot's pick if it fits, else the most detail that does.
+  let areaDetailPick = null;
   function screenArea(layerName) {
     if (typeof map === 'undefined' || !map.getBounds) return null;
     const b = map.getBounds();
-    const bounds = { north: b.getNorth(), south: b.getSouth(), east: b.getEast(), west: b.getWest() };
+    const bounds = { north: Math.min(85, b.getNorth()), south: Math.max(-85, b.getSouth()),
+      east: Math.min(180, b.getEast()), west: Math.max(-180, b.getWest()) };
     const layer = packableTileLayer(layerName);
-    const tiles = layer ? tilePlan(layer, bounds, AREA_MIN_Z, AREA_MAX_Z).length : 0;
+    const top = layer && Number.isFinite(layer.options.maxNativeZoom) ? layer.options.maxNativeZoom : AREA_MAX_Z;
+    const levels = AREA_DETAIL_ZOOMS.filter(z => z <= top).map(z => {
+      const tiles = layer ? offlineTileCount(bounds, AREA_MIN_Z, z) : 0;
+      return { z, tiles, fits: tiles <= AREA_TILE_LIMIT, mb: Math.round(tiles * AVG_TILE_KB / 1024) };
+    });
+    const fitting = levels.filter(l => l.fits);
+    const pick = levels.find(l => l.z === areaDetailPick && l.fits) || fitting[fitting.length - 1] || null;
     const c = map.getCenter();
     const overIsrael = typeof layerHasNoDataHere === 'function' && layerHasNoDataHere(layerName, c);
-    return { layer: layerName, bounds, tiles, center: { lat: c.lat, lng: c.lng }, overIsrael };
+    // Already kept: a saved area of this chart that holds the whole screen at least this
+    // detailed. Pressing the button again used to save the same area again, once per press.
+    const covered = !!pick && readPacks().areas.some(a => a.layer === layerName
+      && (Number.isFinite(a.maxZ) ? a.maxZ : AREA_MAX_Z) >= pick.z
+      && a.bounds.north >= bounds.north && a.bounds.south <= bounds.south
+      && a.bounds.east >= bounds.east && a.bounds.west <= bounds.west);
+    return { layer: layerName, bounds, levels, maxZ: pick ? pick.z : null, tiles: pick ? pick.tiles : 0,
+      center: { lat: c.lat, lng: c.lng }, overIsrael, covered };
   }
-  function downloadArea(layerName) {
+  function downloadArea(layerName, maxZ) {
+    if (Number.isFinite(maxZ)) areaDetailPick = maxZ;
     const a = screenArea(layerName);
-    if (!a || !a.tiles || a.overIsrael || a.tiles > AREA_TILE_LIMIT) return Promise.resolve(null);
+    if (!a || !a.tiles || !a.maxZ || a.overIsrael || a.covered) return Promise.resolve(null);
     const packs = readPacks();
     const area = { id: 'area-' + Date.now().toString(36), layer: layerName, bounds: a.bounds,
-      center: a.center, at: new Date().toISOString() };
+      maxZ: a.maxZ, center: a.center, at: new Date().toISOString() };
     packs.areas.push(area);
     writePacks(packs);
     return enqueue(area.id, () => fetchPlan(area.id, areaPlan(area), null, false));
@@ -519,8 +571,11 @@
   }
 
   const layerLabel = name => (window.S && S.layerLabels && S.layerLabels[name]) || name;
-  const detail = r => r ? tf('offlineCvfrDetail', (present, total, p) => present + ' of ' + total + ' tiles · ' + p + '%',
-    r.present, r.total, r.percent) : t('offlineCvfrChecking', 'Offline CVFR: checking…');
+  // A pack's own words: not CVFR's "Offline CVFR: checking…" on an open flightmaps area.
+  const detail = r => !r ? t('offlinePackChecking', 'Checking…')
+    : r.starting ? t('offlinePackStarting', 'Starting download…')
+    : tf('offlineCvfrDetail', (present, total, p) => present + ' of ' + total + ' tiles · ' + p + '%',
+      r.present, r.total, r.percent);
   const offered = name => typeof layerOffered !== 'function' || layerOffered(name);
 
   function button(text, title, onClick, cls) {
@@ -568,6 +623,7 @@
     if (!manager) return;
     const report = lastReport;
     fill(manager, report);
+    if (!report) manager.state.textContent = t('offlineCvfrChecking', 'Offline CVFR: checking…');
     const complete = !!(report && report.complete);
     manager.repair.hidden = complete;
     manager.repair.disabled = !!runningPromise;
@@ -593,7 +649,7 @@
       if (chosen || (r && r.present)) fill(parts, r);
       else {
         parts.state.textContent = name === 'ATS' ? t('offlinePackOneImage', 'One image')
-          : tf('offlinePackTiles', n => n.toLocaleString() + ' tiles', chartPlan(name).length);
+          : tf('offlinePackTiles', n => n.toLocaleString() + ' tiles', chartTileCount(name));
         parts.track.hidden = true;
       }
       if (!chosen) {
@@ -653,18 +709,40 @@
       }
       const a = screenArea(layerName);
       // Dimmed, never removed, and it says why: over Israel there is nothing to download,
-      // zoomed out too far there is too much.
+      // already kept there is nothing new, and too big there is too much even at the least detail.
       const why = !a ? '' : a.overIsrael ? t('layerNoDataOverIsrael', 'No data over Israel')
-        : a.tiles > AREA_TILE_LIMIT ? tf('offlineAreaTooBig', (n, max) => n.toLocaleString() + ' tiles: zoom in to under ' + max.toLocaleString(), a.tiles, AREA_TILE_LIMIT)
+        : a.covered ? t('offlineAreaCovered', 'This area is already downloaded.')
+        : !a.maxZ ? tf('offlineAreaTooBig', (n, max) => n.toLocaleString() + ' tiles: zoom in to under ' + max.toLocaleString(),
+          a.levels.length ? a.levels[0].tiles : 0, AREA_TILE_LIMIT)
         : '';
+      const size = mb => mb >= 1024 ? (mb / 1024).toFixed(1) + ' GB' : Math.max(1, mb) + ' MB';
+      // How much detail: each level with its tile count and size, the ones over the cap dimmed.
+      const detail = document.createElement('label');
+      detail.className = 'offline-area-detail';
+      const detailText = document.createElement('span');
+      detailText.textContent = t('offlineAreaDetail', 'Detail');
+      const pick = document.createElement('select');
+      pick.className = 'offline-area-zoom';
+      for (const l of (a ? a.levels : [])) {
+        const o = document.createElement('option');
+        o.value = String(l.z);
+        o.textContent = tf('offlineAreaLevel', (z, n, sz) => 'up to zoom ' + z + ' · ' + n.toLocaleString() + ' tiles · ≈ ' + sz,
+          l.z, l.tiles, size(l.mb));
+        o.disabled = !l.fits;
+        if (a.maxZ === l.z) o.selected = true;
+        pick.appendChild(o);
+      }
+      pick.disabled = !!why && !a.covered;
+      pick.onchange = () => { areaDetailPick = Number(pick.value); renderManager(); };
+      detail.append(detailText, pick);
       const add = button(tf('offlineAreaDownload', n => '⬇ Download the area on screen (' + n.toLocaleString() + ' tiles)', a ? a.tiles : 0),
-        why || t('offlineAreaDownloadTitle', 'Keep this chart for the area the map shows now, zooms 7–12'),
-        () => { downloadArea(layerName).catch(() => {}); }, 'offline-area-add');
+        why || t('offlineAreaDownloadTitle', 'Keep this chart for the area the map shows now'),
+        () => { downloadArea(layerName, Number(pick.value)).catch(() => {}); }, 'offline-area-add');
       add.disabled = !!why;
       const row = document.createElement('div');
       row.className = 'offline-manager-actions';
       row.appendChild(add);
-      box.appendChild(row);
+      box.append(detail, row);
       if (why) {
         const note = document.createElement('div');
         note.className = 'offline-manager-note';
@@ -821,6 +899,6 @@
     cvfrCoverage, chartCoverage, areaCoverage, connectionSuitable, automaticCvfrWanted,
     downloadPack, fetchFloor, deletePack, packSize, auditAndMaintain, scheduleAuto,
     downloadChart, deleteChart, downloadArea, deleteArea, screenArea, readPacks, wantedTileUrls, openManager,
-    TILE_CACHE, OFFLINE_MIN_Z, OFFLINE_MAX_Z, AREA_TILE_LIMIT,
+    offlineTileCount, TILE_CACHE, OFFLINE_MIN_Z, OFFLINE_MAX_Z, AREA_TILE_LIMIT,
   };
 }());

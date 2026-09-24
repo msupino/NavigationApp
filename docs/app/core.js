@@ -2904,9 +2904,14 @@ window.S = Object.assign({
   offlinePackOneImage: 'One image',
   offlineAreaName: function(lat, lng) { return 'Area around ' + lat + ', ' + lng; },
   offlineAreaDownload: function(n) { return '⬇ Download the area on screen (' + n.toLocaleString('en-US') + ' tiles)'; },
-  offlineAreaDownloadTitle: 'Keep this chart for the area the map shows now, zooms 7–12',
+  offlineAreaDownloadTitle: 'Keep this chart for the area the map shows now',
+  offlineAreaDetail: 'Detail',
+  offlineAreaLevel: function(z, n, size) { return 'up to zoom ' + z + ' · ' + n.toLocaleString('en-US') + ' tiles · ≈ ' + size; },
   offlineAreaTooBig: function(n, max) { return n.toLocaleString('en-US') + ' tiles on screen: zoom in to under ' + max.toLocaleString('en-US') + '.'; },
   offlineAreaDeleteConfirm: 'Remove this area from this device?',
+  offlineAreaCovered: 'This area is already downloaded.',
+  offlinePackChecking: 'Checking…',
+  offlinePackStarting: 'Starting download…',
   offlineCvfrChecking: 'Offline CVFR: checking…',
   offlineCvfrReady: 'Offline CVFR: ready ✓',
   offlineCvfrProgress: function(p) { return '⬇ Download CVFR offline — ' + p + '%'; },
@@ -5229,7 +5234,7 @@ const CHART_SPECS = {
     'World_Imagery/MapServer/tile/{z}/{y}/{x}',
     withPane({ minZoom: 6, maxZoom: 18, attribution: 'Imagery © Esri' }, pane)),
   'OpenStreetMap': (pane) => L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
-    withPane({ minZoom: 6, maxZoom: 18, subdomains: 'abc',
+    withPane({ minZoom: 4, maxZoom: 18, subdomains: 'abc',
       attribution: '© OpenStreetMap contributors' }, pane)),
   // open flightmaps' aeronautical chart: about twenty regions, mostly European (Greece, Italy,
   // Croatia...) -- and nothing over Israel, where its tiles come back empty. The aero tiles
@@ -5238,7 +5243,7 @@ const CHART_SPECS = {
   // than asking for tiles that are blank. CORS is open, so an export can read the canvas.
   'OpenFlightMaps': (pane) => (window.NavAidNativeTiles ? NavAidNativeTiles.tileLayer : L.tileLayer)(
     'https://nwy-tiles-api.prod.newaydata.com/tiles/{z}/{x}/{y}.png?path=latest/aero/latest',
-    withPane({ minZoom: 6, maxZoom: 18, maxNativeZoom: 12, corsOk: true,
+    withPane({ minZoom: 4, maxZoom: 18, maxNativeZoom: 12, corsOk: true,
       attribution: '<a href="https://www.openflightmaps.org/" target="_blank" rel="noopener">© open flightmaps association</a>' }, pane)),
 };
 // Where a chart has nothing to show. open flightmaps does not cover Israel, so over the
@@ -5266,6 +5271,14 @@ function layerOffered(name) {
   return tune(key) !== false && tune(key) !== 0;
 }
 
+// The map stops zooming out at the Israeli charts' extent -- further out they are a speck.
+// open flightmaps covers much of Europe, and a pilot choosing an area to keep offline needs
+// to see a continent, so on that chart the map goes out to z4. The underlay OSM goes as far.
+const MAP_MIN_ZOOM = 8;
+const WIDE_MIN_ZOOM = 4;
+function mapMinZoomFor(layer) {
+  return typeof layers !== 'undefined' && layer && layer === layers.OpenFlightMaps ? WIDE_MIN_ZOOM : MAP_MIN_ZOOM;
+}
 const LAYER_KEY = 'navaid.layer';
 let initialLayer = layers.CVFR;
 try {
@@ -5296,7 +5309,7 @@ const _initialView = (() => {
 const map = L.map('map', {
   center: _initialView.center,
   zoom: _initialView.zoom,
-  minZoom: 8,                  // do not zoom out past the chart extent
+  minZoom: mapMinZoomFor(initialLayer),
   maxZoom: 15,
   layers: [initialLayer],
   zoomControl: false,
@@ -5347,7 +5360,7 @@ function underlayLayer(name) {
   if (name === 'OpenStreetMap') {
     if (!_underlayCache[name]) {
       _underlayCache[name] = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
-        { pane: 'basemapUnderlay', minZoom: 6, maxZoom: 18, subdomains: 'abc',
+        { pane: 'basemapUnderlay', minZoom: 4, maxZoom: 18, subdomains: 'abc',
           attribution: '© OpenStreetMap contributors' });
     }
   } else if (!_underlayCache[name]) {

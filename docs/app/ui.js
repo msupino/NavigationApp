@@ -344,6 +344,9 @@ layerSelect.onchange = () => {
     }
   }
   map.addLayer(layers[layerSelect.value]);
+  // Out to a continent on open flightmaps, back to the Israeli charts' extent elsewhere
+  // (Leaflet zooms in by itself if the map is further out than the new floor).
+  map.setMinZoom(mapMinZoomFor(layers[layerSelect.value]));
   if (typeof updateBasemapUnderlay === 'function') updateBasemapUnderlay();
   applyMapOpacity();
   reloadLayerDatasets();                  // swap waypoints/comm/leg to the new layer's source
