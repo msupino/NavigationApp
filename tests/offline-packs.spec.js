@@ -99,7 +99,7 @@ test('open flightmaps downloads the area on screen, several areas, each deletabl
   expect(r.cov.every(c => c.complete)).toBe(true);
   expect(r.left).toBe(1);
   expect(r.second.complete).toBe(true);
-  expect((await urls(page)).some(u => u.includes('newaydata.com'))).toBe(true);
+  expect((await urls(page)).some(u => new URL(u).hostname === 'nwy-tiles-api.prod.newaydata.com')).toBe(true);
 });
 
 test('over Israel the area button is dimmed and says why; over Europe it is offered', async ({ page }) => {
