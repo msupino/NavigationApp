@@ -19,3 +19,31 @@ test('the heading under the compass needle is magnetic, the needle true', async 
   expect(r.readout).toBe('349°');
   expect(r.turn).toContain('rotate(354 ');             // north-up: the needle along the true track
 });
+
+test('the bearing dial\'s red needle points at north on the turned chart', async ({ page }) => {
+  await page.goto('?lang=en&nogist');
+  await page.waitForFunction(() => typeof refreshDial === 'function' && typeof map.setBearing === 'function');
+  const r = await page.evaluate(() => {
+    // Heading up on a 354 track: the chart turns 6 degrees clockwise, so north is 6 right of up.
+    map.setBearing(6);
+    refreshDial();
+    return { needle: document.getElementById('rotate-needle').style.transform,
+      field: document.getElementById('rotate-hdg').value };
+  });
+  expect(r.needle).toBe('rotate(6deg)');
+  expect(r.field).toBe('354');                          // the field still says which way is up
+});
+
+test('dragging the dial moves the needle with the finger', async ({ page }) => {
+  await page.goto('?lang=en&nogist');
+  await page.waitForFunction(() => typeof refreshDial === 'function' && typeof map.setBearing === 'function');
+  const box = await page.locator('#rotate-dial').boundingBox();
+  const cx = box.x + box.width / 2, cy = box.y + box.height / 2;
+  await page.mouse.move(cx, cy - 10);
+  await page.mouse.down();
+  await page.mouse.move(cx + 10, cy, { steps: 4 });     // to the right: east
+  await page.mouse.up();
+  const bearing = await page.evaluate(() => Math.round(map.getBearing()));
+  expect(bearing).toBe(90);
+  expect(await page.locator('#rotate-needle').evaluate(el => el.style.transform)).toBe('rotate(90deg)');
+});

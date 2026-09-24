@@ -848,7 +848,11 @@ const rotHdg = document.getElementById('rotate-hdg');
 function mapBearing() { return map.getBearing ? map.getBearing() : 0; }
 function refreshDial() {
   const b = (((360 - Math.round(mapBearing())) % 360) + 360) % 360;
-  rotNeedle.style.transform = 'rotate(' + b + 'deg)';
+  // The red needle is a north arrow: it points where north is on the turned chart, the way
+  // the orientation button's needle does. It used to be drawn at the heading shown in the
+  // field, which mirrors it -- a chart turned to fly 354 has north 6 degrees RIGHT of up, and
+  // the needle leaned 6 degrees left.
+  rotNeedle.style.transform = 'rotate(' + ((Math.round(mapBearing()) % 360) + 360) % 360 + 'deg)';
   rotDial.title = S.dialTitle(b);
   rotDial.setAttribute('aria-valuenow', String(b));
   if (document.activeElement !== rotHdg) rotHdg.value = b;
@@ -893,7 +897,8 @@ rotDial.addEventListener('pointermove', e => {
     rotMoved = true;
   }
   orientNoteManualRotation();
-  map.setBearing(((360 - dialAngle(e)) % 360 + 360) % 360);
+  // Drag the north arrow: the needle follows the finger, and north goes where it is dropped.
+  map.setBearing(((dialAngle(e)) % 360 + 360) % 360);
 });
 function rotEnd(cycle) {
   if (cycle && rotDragging && !rotMoved) {
