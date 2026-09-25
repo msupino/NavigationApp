@@ -27,7 +27,7 @@ const panTo = (page, lat, lng) => page.evaluate(([a, b]) => new Promise(done => 
 test('over Israel it is dimmed with the reason; over Europe it is offered', async ({ page }) => {
   await boot(page);
   await panTo(page, 32.1, 34.9);
-  expect(await option(page)).toEqual({ disabled: true, label: 'open flightmaps',
+  expect(await option(page)).toEqual({ disabled: true, label: 'OpenFlightMaps',
     title: expect.stringContaining('No data over Israel') });
   await panTo(page, 47.3, 11.4);                      // Innsbruck
   expect(await option(page)).toMatchObject({ disabled: false });
