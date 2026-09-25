@@ -394,6 +394,7 @@ const GDRIVE_SETTINGS_KEYS = [
   // cruise/climb numbers with the aircraft profile.
   'navaid.vorFreqOverrides', 'navaid.vorRef', 'navaid.navDataPrefix',
   'navaid.defaultSpeed', 'navaid.profileVS', 'navaid.geTourSpeed',
+  'navaid.magVarAuto', 'navaid.magVarManual',
   // The pilot/aircraft profile follows the user across devices when settings sync is
   // explicitly enabled. The filing destination (aisEmail) stays device-local because it
   // decides where a plan is sent.

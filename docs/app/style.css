@@ -8438,3 +8438,12 @@ body.theme-light .airfield-phone-row .airfield-phone:visited { color: #1a5fb4; }
   color: #6d665b;
   text-shadow: 0 0 2px #f1ede3, 0 0 2px #f1ede3;
 }
+
+/* Magnetic variation row: number + E/W, and the value automatic is using right now. */
+/* One line where there is room, like the speed above; in the narrow floating card it wraps
+   whole controls rather than squeezing them until the mode reads "א." and the number is cut. */
+#toolbar .tb-magvar { flex-wrap: wrap; white-space: normal; row-gap: 4px; }
+#toolbar .tb-magvar #magvar-mode,
+#toolbar .tb-magvar #magvar-ew { flex: none; width: auto; }
+#toolbar .tb-magvar #magvar-deg { flex: none; width: 4.6em; direction: ltr; text-align: left; }
+#toolbar .tb-magvar #magvar-deg.magvar-readonly { opacity: .75; cursor: default; }

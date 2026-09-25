@@ -31,7 +31,7 @@ test('the bearing dial\'s red needle points at north on the turned chart', async
       field: document.getElementById('rotate-hdg').value };
   });
   expect(r.needle).toBe('rotate(6deg)');
-  expect(r.field).toBe('354');                          // the field still says which way is up
+  expect(r.field).toBe('349');                          // which way is up, magnetic (354 true, 5°E)
 });
 
 test('dragging the dial moves the needle with the finger', async ({ page }) => {
