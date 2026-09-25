@@ -8728,8 +8728,17 @@ function reapplyStoredTuneOverrides() {
 const DEFAULTSPEED_KEY = 'navaid.defaultSpeed';
 const DEFAULTSPEED_EL = document.getElementById('default-speed');
 const defaultSpeedOk = n => Number.isFinite(n) && n >= 20 && n <= 400;
+const DEFAULTSPEED_RESET = document.getElementById('default-speed-reset');
 function syncDefaultSpeedInput() {
   if (DEFAULTSPEED_EL) DEFAULTSPEED_EL.value = String(Math.round(tune('defaultLegSpeedKt')));
+  if (DEFAULTSPEED_RESET) {
+    // Back to the default: the gist's speed if it sets one, else the built-in. Dimmed, never
+    // hidden, when that is already the speed in force; the title names the number it goes to.
+    const base = Math.round(tuneBaseline('defaultLegSpeedKt'));
+    DEFAULTSPEED_RESET.disabled = Math.round(tune('defaultLegSpeedKt')) === base;
+    const t = S.tbDefaultSpeedReset;
+    DEFAULTSPEED_RESET.title = typeof t === 'function' ? t(base) : 'Back to the default (' + base + ' kt)';
+  }
 }
 // Single carry point. The toolbar input is not the only writer of the in-force
 // default -- the gist reload, the dev tuning panel (and its per-key reset), and a
@@ -8758,7 +8767,17 @@ if (DEFAULTSPEED_EL) {
     // Carry the legs that never had a speed typed on them, so setting the aircraft's
     // cruise once fixes the whole route rather than only the legs drawn after.
     carryDefaultSpeedToRoute();
+    syncDefaultSpeedInput();
   };
+  if (DEFAULTSPEED_RESET) {
+    DEFAULTSPEED_RESET.onclick = (e) => {
+      e.preventDefault();                 // inside a <label>: do not also focus the input
+      try { localStorage.removeItem(DEFAULTSPEED_KEY); } catch (err) { /* storage unavailable */ }
+      setTune('defaultLegSpeedKt', tuneBaseline('defaultLegSpeedKt'));
+      syncDefaultSpeedInput();
+      carryDefaultSpeedToRoute();
+    };
+  }
 }
 
 // Magnetic variation (menu, under the default speed). Automatic is the World Magnetic Model
@@ -9834,6 +9853,9 @@ function redrawAfterTune() {
   // legs following it come along -- and the toolbar input re-reads the new value.
   if (typeof applyDefaultSpeedToAutoLegs === 'function') applyDefaultSpeedToAutoLegs(tune('defaultLegSpeedKt'));
   if (typeof syncDefaultSpeedInput === 'function') syncDefaultSpeedInput();
+  // ...and the variation row (Navigation group: magVarAuto, magneticVariationDeg).
+  if (typeof refreshMagVarControl === 'function') refreshMagVarControl();
+  if (typeof refreshDial === 'function') refreshDial();
   draw();
   refreshInspectorIfVisible();
   // The IMS overlay is a Leaflet layer (not part of draw()) — refresh it so
@@ -10724,6 +10746,9 @@ if (typeof loadRemoteConfig === "function") {
     // Show whatever is in force now — the gist's value, or the pilot's saved one
     // that reapplyStoredTuneOverrides() just put back on top of it.
     if (typeof syncDefaultSpeedInput === 'function') syncDefaultSpeedInput();
+    // The variation row too: the gist can set the mode and the manual value.
+    if (typeof refreshMagVarControl === 'function') refreshMagVarControl();
+    if (typeof refreshDial === 'function') refreshDial();
     // A gist-shipped default is in force now, so the legs following it move too.
     if (typeof carryDefaultSpeedToRoute === 'function') carryDefaultSpeedToRoute();
     for (const [id, keys] of [['waypoint-color', ['waypointFillColor']],

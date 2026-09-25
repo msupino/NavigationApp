@@ -68,6 +68,12 @@ test.describe('Export PNG options modal', () => {
     // Layer defaults to Navigation.
     const sel = page.locator('#export-layer-select');
     expect(await sel.inputValue()).toBe('Navigation');
+    // Only charts an export can draw, and only offered ones: not the tile-less World map, and
+    // not Helicopters, which ships unoffered.
+    const offered = await sel.locator('option').evaluateAll(os => os.map(o => o.value));
+    expect(offered).toContain('CVFR');
+    expect(offered).not.toContain('World');
+    expect(offered).not.toContain('Helicopters');
     // Buttons present: Export, Print, Cancel.
     expect(await page.locator('.modal .modal-btns button').count()).toBe(3);
     // Cancel closes the modal.
