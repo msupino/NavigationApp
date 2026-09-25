@@ -147,7 +147,7 @@ test('the ground speed published is the one the readout derived', async ({ page 
 test('the magnetic heading is computed in the aeroplane, not on the ground', async ({ page }) => {
   await boot(page);
   const got = await page.evaluate(async () => {
-    setTune('magneticVariationDeg', -7);
+    setTune('magVarAuto', false); setTune('magneticVariationDeg', -7);
     window.gpsLiveOn = true;
     window.gpsRecording = false;
     onLivePosition({ coords: { latitude: 32.1, longitude: 34.9, altitude: 300, accuracy: 5, speed: 40, heading: 90 }, timestamp: Date.now() });

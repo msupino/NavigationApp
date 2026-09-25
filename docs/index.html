@@ -389,6 +389,22 @@
           <span data-i18n="tbDefaultSpeedLabel"></span>
           <input type="number" id="default-speed" min="20" max="400" step="5" inputmode="numeric">
         </label>
+        <!-- Magnetic variation: from the World Magnetic Model where the headings are (wmm.js,
+             offline), or the pilot's own number. The fields always hold the value in force --
+             read-only in automatic, with where it was taken beside them. -->
+        <!-- One row, like the default speed above it: the mode, then the value in force. -->
+        <label class="navtoggle tb-magvar" data-i18n-title="tbMagVarTitle">
+          <span data-i18n="tbMagVarLabel"></span>
+          <select id="magvar-mode">
+            <option value="auto" data-i18n="tbMagVarAuto"></option>
+            <option value="manual" data-i18n="tbMagVarManual"></option>
+          </select>
+          <input type="number" id="magvar-deg" min="0" max="30" step="1" inputmode="numeric" data-i18n-aria="tbMagVarManual">
+          <select id="magvar-ew" data-i18n-aria="tbMagVarEw">
+            <option value="E">E</option>
+            <option value="W">W</option>
+          </select>
+        </label>
         <div class="tb-group" data-i18n="tbGrpOverlays"></div>
         <label class="navtoggle" data-i18n-title="tbLegDirTitle">
           <span data-i18n="tbLegDir"></span>
@@ -1139,6 +1155,7 @@
         'https://cdn.jsdelivr.net/npm/leaflet-velocity@1.7.0/dist/leaflet-velocity.min.js',
         'i18n/' + window.__navLang + '/strings.js' + v,
         'app/native-tiles.js' + v,
+        'app/wmm.js' + v,
         'app/core.js' + v,
         'app/save-file.js' + v,
         'app/route-graph-shapes.js' + v,

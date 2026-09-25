@@ -120,7 +120,8 @@ test('turning the dial while heading-up hands control back to the pilot', async 
   expect(await page.evaluate(() => localStorage.getItem('navaid.headingUp'))).toBe('0');
   // ...and the next fix leaves the hand-set rotation alone.
   await fix(page, 200);
-  expect((await state_(page)).bearing).toBe(320);
+  // 40 typed is 40 magnetic, 45 true (5°E), so the chart turns by 360 - 45.
+  expect((await state_(page)).bearing).toBe(315);
 });
 
 test('the choice is remembered on this device', async ({ page }) => {

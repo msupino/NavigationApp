@@ -9,6 +9,9 @@ async function boot(page) {
   await page.waitForFunction(() => !!(window.NavAid && NavAid.navLog) && typeof draw === 'function'
     && Array.isArray(window.airfields) && window.airfields.length > 0);
   await page.evaluate(() => {
+    // The sheet's numbers here are written for the charts' 5E, so variation is manual. (The
+    // World Magnetic Model puts this route at 5.1E; tests/magvar.spec.js covers automatic.)
+    setTune('magVarAuto', false);
     state.waypoints = [
       { name: 'LLHZ', lat: 32.17944, lng: 34.83444 },
       { name: 'א', lat: 32.5, lng: 35.0 },
@@ -746,7 +749,7 @@ test('variation defaults to the app\'s own, in the sheet\'s sign', async ({ page
   expect(shown.field).toBe('5');
   expect(shown.column).toBe('5E');
   // A fleet that tunes the variation moves the form with it.
-  await page.evaluate(() => { setTune('magneticVariationDeg', -4); });
+  await page.evaluate(() => { setTune('magVarAuto', false); setTune('magneticVariationDeg', -4); });
   expect(await page.evaluate(() => NavAid.navLog.config().variationDeg)).toBe(4);
 });
 

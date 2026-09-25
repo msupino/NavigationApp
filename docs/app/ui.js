@@ -874,7 +874,10 @@ function refreshDial() {
   rotNeedle.style.transform = 'rotate(' + ((Math.round(mapBearing()) % 360) + 360) % 360 + 'deg)';
   rotDial.title = S.dialTitle(b);
   rotDial.setAttribute('aria-valuenow', String(b));
-  if (document.activeElement !== rotHdg) rotHdg.value = b;
+  // The number beside the dial is the heading up the screen, and every heading a pilot reads
+  // in this app is magnetic -- the strip, the orientation button. It said 209 beside a strip
+  // saying 204. The needle and the map's own rotation stay true; only the number is converted.
+  if (document.activeElement !== rotHdg) rotHdg.value = toMagnetic(b);
 }
 rotHdg.addEventListener('change', () => {
   // Empty / non-numeric input would flow through as NaN and could persist
@@ -885,7 +888,8 @@ rotHdg.addEventListener('change', () => {
   const v = ((raw % 360) + 360) % 360;
   rotHdg.value = v;
   orientNoteManualRotation();
-  map.setBearing((360 - v) % 360);
+  // Typed as magnetic, like the number it replaces; the map turns by the true angle.
+  map.setBearing((360 - fromMagnetic(v)) % 360);
 });
 rotHdg.addEventListener('keydown', e => {
   if (e.key === 'Enter') rotHdg.blur();
@@ -8757,6 +8761,85 @@ if (DEFAULTSPEED_EL) {
   };
 }
 
+// Magnetic variation (menu, under the default speed). Automatic is the World Magnetic Model
+// where the headings are; manual is the pilot's number, degrees east or west. Both are stored
+// the way the default speed is -- tune overrides, so the pilot's choice outranks the gist.
+const MAGVAR_AUTO_KEY = 'navaid.magVarAuto';
+const MAGVAR_MANUAL_KEY = 'navaid.magVarManual';
+const magVarMode = document.getElementById('magvar-mode');
+const magVarDeg = document.getElementById('magvar-deg');
+const magVarEw = document.getElementById('magvar-ew');
+
+function refreshMagVarControl() {
+  if (!magVarMode) return;
+  const info = typeof magVarInfo === 'function' ? magVarInfo() : null;
+  const auto = typeof magVarIsAuto === 'function' ? magVarIsAuto() : true;
+  magVarMode.value = auto ? 'auto' : 'manual';
+  // The fields hold the variation in force: in automatic the model's, read-only, so the number
+  // on screen is always the one the headings use; in manual the pilot's own.
+  const east = info && Number.isFinite(info.east) ? info.east : -Number(tune('magneticVariationDeg'));
+  if (document.activeElement !== magVarDeg) magVarDeg.value = String(Math.round(Math.abs(east)));
+  magVarEw.value = east < 0 ? 'W' : 'E';
+  magVarDeg.readOnly = auto;
+  magVarEw.disabled = auto;              // a select has no read-only; it shows its value either way
+  magVarDeg.classList.toggle('magvar-readonly', auto);
+  // Where the automatic value was taken, on the number itself: the row stays one line.
+  const from = info && info.auto ? ((S.magVarFrom && S.magVarFrom[info.from]) || info.from) : '';
+  magVarDeg.title = from ? (S.tbMagVarAuto || 'Automatic') + ' \u2014 ' + from : (S.tbMagVarManualTitle || '');
+}
+window.refreshMagVarControl = refreshMagVarControl;
+if (magVarMode) {
+  registerTuneOverride(MAGVAR_AUTO_KEY, ['magVarAuto'], v => (v === '1' ? true : v === '0' ? false : null));
+  registerTuneOverride(MAGVAR_MANUAL_KEY, ['magneticVariationDeg'], v => {
+    const n = Number(v);
+    return Number.isFinite(n) && Math.abs(n) <= 30 ? n : null;
+  });
+  const changed = () => {
+    refreshMagVarControl();
+    // Every heading on the chart and in the plan is drawn through toMagnetic.
+    if (typeof draw === 'function') draw();
+    refreshInspectorIfVisible();
+    if (typeof refreshDial === 'function') refreshDial();
+    if (typeof refreshOrientControl === 'function') refreshOrientControl();
+  };
+  magVarMode.onchange = () => {
+    const auto = magVarMode.value === 'auto';
+    // Manual starts from the value automatic was using here, not from an old number: the pilot
+    // who switches over is adjusting what they see.
+    if (!auto && magVarIsAuto()) {
+      const mv = currentMagVar();
+      setTune('magneticVariationDeg', mv);
+      try { localStorage.setItem(MAGVAR_MANUAL_KEY, String(mv)); } catch (e) { /* */ }
+    }
+    setTune('magVarAuto', auto);
+    try { localStorage.setItem(MAGVAR_AUTO_KEY, auto ? '1' : '0'); } catch (e) { /* */ }
+    changed();
+  };
+  const setManual = () => {
+    const n = Math.round(Number(magVarDeg.value));                    // whole degrees
+    if (!Number.isFinite(n) || n < 0 || n > 30) { refreshMagVarControl(); return; }
+    const mv = magVarEw.value === 'W' ? n : -n;              // magnetic = true + mv: east is negative
+    setTune('magneticVariationDeg', mv);
+    try { localStorage.setItem(MAGVAR_MANUAL_KEY, String(mv)); } catch (e) { /* */ }
+    changed();
+  };
+  magVarDeg.onchange = () => { if (!magVarDeg.readOnly) setManual(); };
+  magVarEw.onchange = setManual;
+  refreshMagVarControl();
+  // In automatic the value follows the aircraft, the route and the map: keep the line, and the
+  // magnetic numbers beside the dial and on the orientation button, honest as it moves.
+  let lastMv = currentMagVar();
+  map.on('moveend', () => {
+    if (!magVarIsAuto()) return;
+    refreshMagVarControl();
+    const mv = currentMagVar();
+    if (mv === lastMv) return;
+    lastMv = mv;
+    if (typeof refreshDial === 'function') refreshDial();
+    if (typeof refreshOrientControl === 'function') refreshOrientControl();
+  });
+}
+
 const KITEALPHA_KEY = 'navaid.legArrowAlpha';
 let gistKiteAlpha = tune('kiteNoteAlpha');
 const KITEALPHA_EL = document.getElementById('kite-alpha');
@@ -8994,7 +9077,7 @@ if (KITEALPHA_EL) {
 ['yellow-alpha', 'map-opacity', 'wp-size', 'leg-arrow-size', 'leg-line-width', 'drift-line-width',
  'mag-zoom', 'windfield-alt']
   .forEach(id => addSliderReset(document.getElementById(id)));
-// magVar is hardcoded at -5 (5°E) in core.js; the input was removed.
+// Magnetic variation has its own control under the default speed (magvar-mode).
 
 document.getElementById('page-a3').onclick = () => setPage('A3');
 document.getElementById('page-a4').onclick = () => setPage('A4');

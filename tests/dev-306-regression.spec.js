@@ -47,10 +47,12 @@ test.describe('#306 — Show waypoint names moved to View section', () => {
 });
 
 test.describe('#306 — Magnetic Variation removed from toolbar', () => {
+  // The free-text #mag-var input stays gone. Variation came back to the menu as its own row
+  // (automatic from the World Magnetic Model, or manual E/W -- tests/magvar.spec.js), which
+  // reuses the title key, so only the old element is checked for here.
   test('#mag-var DOM element no longer exists', async ({ page }) => {
     await boot(page);
     expect(await page.locator('#mag-var').count()).toBe(0);
-    expect(await page.locator('label[data-i18n-title="tbMagVarTitle"]').count()).toBe(0);
   });
 
   test('magVar is hardcoded at -5 (5°E for Israel)', async ({ page }) => {
