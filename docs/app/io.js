@@ -5374,7 +5374,12 @@ function showExportModal() {
   const layerSel = document.createElement('select');
   layerSel.id = 'export-layer-select';
   layerSel.style.cssText = 'font:inherit;font-size:12px;flex:1';
+  // Only charts an export can draw: a tile or image layer, and one this build offers. "World
+  // (offline)" is drawn on its own canvas and has no tiles, so choosing it exported nothing,
+  // silently; a chart the gist has pulled was listed here all the same.
   for (const name in layers) {
+    if (!layers[name] || !layers[name]._url) continue;
+    if (typeof layerOffered === 'function' && !layerOffered(name)) continue;
     const opt = document.createElement('option');
     opt.value = name;
     opt.textContent = (S.layerLabels && S.layerLabels[name]) || name;

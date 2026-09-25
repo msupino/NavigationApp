@@ -9834,6 +9834,9 @@ function redrawAfterTune() {
   // legs following it come along -- and the toolbar input re-reads the new value.
   if (typeof applyDefaultSpeedToAutoLegs === 'function') applyDefaultSpeedToAutoLegs(tune('defaultLegSpeedKt'));
   if (typeof syncDefaultSpeedInput === 'function') syncDefaultSpeedInput();
+  // ...and the variation row (Navigation group: magVarAuto, magneticVariationDeg).
+  if (typeof refreshMagVarControl === 'function') refreshMagVarControl();
+  if (typeof refreshDial === 'function') refreshDial();
   draw();
   refreshInspectorIfVisible();
   // The IMS overlay is a Leaflet layer (not part of draw()) — refresh it so
@@ -10724,6 +10727,9 @@ if (typeof loadRemoteConfig === "function") {
     // Show whatever is in force now — the gist's value, or the pilot's saved one
     // that reapplyStoredTuneOverrides() just put back on top of it.
     if (typeof syncDefaultSpeedInput === 'function') syncDefaultSpeedInput();
+    // The variation row too: the gist can set the mode and the manual value.
+    if (typeof refreshMagVarControl === 'function') refreshMagVarControl();
+    if (typeof refreshDial === 'function') refreshDial();
     // A gist-shipped default is in force now, so the legs following it move too.
     if (typeof carryDefaultSpeedToRoute === 'function') carryDefaultSpeedToRoute();
     for (const [id, keys] of [['waypoint-color', ['waypointFillColor']],
