@@ -260,7 +260,7 @@ const layerSelect = document.getElementById('layer-select');
 // Flight charts first (CVFR / LSA / Heli), then a separator, then base maps.
 // '---' is a non-selectable divider. Any layer not listed is appended after.
 const LAYER_ORDER = ['CVFR', 'Low Alt', 'Helicopters', 'ATS', '---',
-                     'Navigation', 'OpenFlightMaps', 'Satellite', 'OpenStreetMap'];
+                     'Navigation', 'OpenFlightMaps', 'Satellite', 'OpenStreetMap', 'World'];
 const orderedLayerNames = () => [
   ...LAYER_ORDER.filter(n => n === '---' || (layers[n] && layerOffered(n))),
   ...Object.keys(layers).filter(n => !LAYER_ORDER.includes(n) && layerOffered(n)),

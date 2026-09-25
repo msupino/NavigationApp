@@ -8426,3 +8426,15 @@ body.theme-light .airfield-phone-row .airfield-phone:visited { color: #1a5fb4; }
 @media (prefers-reduced-motion: reduce) {
   .commfail-lamp-flash { animation: none; outline: 2px dashed currentColor; outline-offset: 1px; }
 }
+
+/* Country names on the always-offline world map: quiet, under everything the pilot drew. */
+.world-label { background: none; border: 0; }
+.world-label span {
+  display: block;
+  transform: translate(-50%, -50%);
+  white-space: nowrap;
+  font: 600 11px/1.1 system-ui, sans-serif;
+  letter-spacing: .04em;
+  color: #6d665b;
+  text-shadow: 0 0 2px #f1ede3, 0 0 2px #f1ede3;
+}

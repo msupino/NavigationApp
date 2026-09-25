@@ -189,6 +189,7 @@ NavAid.tuningDefaults = {
   layerEnabledNavigation: { value: true, type: 'bool', label: 'Offer the Navigation layer' },
   layerEnabledSatellite: { value: true, type: 'bool', label: 'Offer the Satellite layer' },
   layerEnabledOpenStreetMap: { value: true, type: 'bool', label: 'Offer the OpenStreetMap layer' },
+  layerEnabledWorld: { value: true, type: 'bool', label: 'Offer the World (offline) layer: country outlines shipped with the app' },
   layerEnabledOpenFlightMaps: { value: true, type: 'bool', label: 'Offer the open flightmaps layer (Europe; no data over Israel)' },
   searchMaxVor: { value: 3, min: 0, max: 20, step: 1, label: 'Search: max VOR stations' },
   searchMaxBubbles: { value: 12, min: 0, max: 20, step: 1, label: 'Search: max LSA bubbles' },
@@ -1018,7 +1019,7 @@ NavAid.tuningGroups = [
   { name: 'LSA colors', keys: ['lsaHighlightColor', 'lsaWeekendColor', 'lsaAlwaysColor', 'lsaLabelColor'] },
   { name: 'GPS track', keys: ['gpsTrackColors', 'gpsTrackOutlineColor', 'gpsTrackStartColor', 'gpsTrackEndColor'] },
   { name: 'Base layers', keys: ['layerEnabledLowAlt', 'layerEnabledHelicopters', 'layerEnabledATS',
-    'layerEnabledNavigation', 'layerEnabledSatellite', 'layerEnabledOpenStreetMap', 'layerEnabledOpenFlightMaps',
+    'layerEnabledNavigation', 'layerEnabledSatellite', 'layerEnabledOpenStreetMap', 'layerEnabledOpenFlightMaps', 'layerEnabledWorld',
     'defaultBaseLayer', 'baseLayerOpacity'] },
   { name: 'Density altitude', keys: ['featureDensityAltitude', 'daWarnAboveElevFt', 'daForecastHours',
     'daMetarMaxAgeMin'] },
@@ -1334,7 +1335,8 @@ window.S = Object.assign({
   // One graph per layer replaces the nav-waypoints / comm-change / leg-altitude files;
   // the ?v= cache-busts all three kinds, which now come from the same file.
   routeGraphUrl: 'data/cvfr-route-graph.json?v=2',  // resolved relative to index.html (docs/)
-  commfailUrl: 'data/commfail.json?v=2',  // published comm-failure entry points per field
+  commfailUrl: 'data/commfail.json?v=2',
+  worldCountriesUrl: 'data/world-countries.json?v=1',  // country outlines + names, always offline  // published comm-failure entry points per field
   navWpSearchField: 'en',              // which locale label to show/search in results
   airfieldsUrl: 'data/airfields.json?v=40',  // resolved relative to index.html (docs/)
   airfieldLabelField: 'en',            // which locale label to show on the overlay
@@ -2316,7 +2318,7 @@ window.S = Object.assign({
   layerNoDataOverIsrael: 'No data over Israel: open flightmaps covers about twenty regions, mostly in Europe. Move the map there to use it.',
   layerLabels: { 'CVFR': 'CVFR', 'Navigation': 'Navigation', 'Low Alt': 'Low Alt',
                  'Helicopters': 'Helicopters', 'Satellite': 'Satellite', 'OpenStreetMap': 'OpenStreetMap',
-                 'OpenFlightMaps': 'open flightmaps',
+                 'OpenFlightMaps': 'open flightmaps', 'World': 'World (offline)',
                  // A dataset, not a base chart: the ENR 6.1 sheet is an Extra-layers overlay,
                  // and this label names its points in the "Nav waypoints from" picker.
                  'ATS': 'ATS routes' },
@@ -5098,8 +5100,11 @@ const FM_RENDER_BOUNDS = [
   [FM_BOUNDS.south + 1e-6, FM_BOUNDS.west + 1e-6],
   [FM_BOUNDS.north - 1e-6, FM_BOUNDS.east - 1e-6],
 ];
+// A 1x1 pixel with alpha 0. The one here before was named transparent and was opaque white, so
+// every chart tile that failed -- offline, or a gap in the sheet -- painted white over the
+// world map and the underlay beneath it.
 const TRANSPARENT_TILE_URL =
-  'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/p9sAAAAASUVORK5CYII=';
+  'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNgYAAAAAMAASsJTYQAAAAASUVORK5CYII=';
 const TILE = {
   minZoom: 6,
   maxZoom: 16,
@@ -5246,6 +5251,10 @@ const CHART_SPECS = {
     withPane({ minZoom: 4, maxZoom: 18, maxNativeZoom: 12, corsOk: true,
       attribution: '<a href="https://www.openflightmaps.org/" target="_blank" rel="noopener">© open flightmaps association</a>' }, pane)),
 };
+// The always-offline world map (world-offline.js) is drawn under every chart; as a chart of
+// its own it is an empty layer, so what shows is that world map alone, zoomable out to a
+// continent. Nothing to fetch, so nothing to download: it is offline by construction.
+CHART_SPECS['World'] = () => L.layerGroup();
 // Where a chart has nothing to show. open flightmaps does not cover Israel, so over the
 // Israeli charts' own frame (the ATS sheet's, which spans the FIR) the layer is dimmed in the
 // picker, with the reason, rather than offered as a chart that draws nothing.
@@ -5276,8 +5285,11 @@ function layerOffered(name) {
 // to see a continent, so on that chart the map goes out to z4. The underlay OSM goes as far.
 const MAP_MIN_ZOOM = 8;
 const WIDE_MIN_ZOOM = 4;
+const WORLD_MIN_ZOOM = 2;
 function mapMinZoomFor(layer) {
-  return typeof layers !== 'undefined' && layer && layer === layers.OpenFlightMaps ? WIDE_MIN_ZOOM : MAP_MIN_ZOOM;
+  if (typeof layers === 'undefined' || !layer) return MAP_MIN_ZOOM;
+  if (layer === layers.World) return WORLD_MIN_ZOOM;
+  return layer === layers.OpenFlightMaps ? WIDE_MIN_ZOOM : MAP_MIN_ZOOM;
 }
 const LAYER_KEY = 'navaid.layer';
 let initialLayer = layers.CVFR;

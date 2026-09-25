@@ -15,11 +15,12 @@
   const OFFLINE_MIN_Z = 7;
   const OFFLINE_MAX_Z = 13;
   const CONCURRENCY = 8;
+  // 1x1, alpha 0: what an outside-the-sheet cell is stored as. (It used to be opaque white.)
   const EMPTY_PNG = new Uint8Array([
     137, 80, 78, 71, 13, 10, 26, 10, 0, 0, 0, 13, 73, 72, 68, 82,
     0, 0, 0, 1, 0, 0, 0, 1, 8, 4, 0, 0, 0, 181, 28, 12, 2,
-    0, 0, 0, 11, 73, 68, 65, 84, 120, 218, 99, 252, 255, 31, 0, 3,
-    3, 2, 0, 239, 191, 219, 124, 0, 0, 0, 0, 73, 69, 78, 68, 174,
+    0, 0, 0, 11, 73, 68, 65, 84, 120, 218, 99, 96, 96, 0, 0, 0,
+    3, 0, 1, 43, 9, 77, 132, 0, 0, 0, 0, 73, 69, 78, 68, 174,
     66, 96, 130,
   ]);
   // Whole-chart packs the pilot can add, beside the automatic CVFR one. Each covers the

@@ -971,7 +971,7 @@ window.S = {
   kmlTourName: 'טוס את המסלול',
   layerLabels: { 'CVFR': 'CVFR', 'Navigation': 'ניווט', 'Low Alt': 'גובה נמוך',
                  'Helicopters': 'מסוקים', 'Satellite': 'לוויין', 'OpenStreetMap': 'OpenStreetMap',
-                 'OpenFlightMaps': 'open flightmaps', 'ATS': 'נתיבי ATS' },
+                 'OpenFlightMaps': 'open flightmaps', 'World': 'עולם (לא מקוון)', 'ATS': 'נתיבי ATS' },
   layerNoDataOverIsrael: 'אין נתונים מעל ישראל: open flightmaps מכסה כעשרים אזורים, רובם באירופה. הזיזו את המפה לשם כדי להשתמש בה.',
   tbHandleTitle: 'גרור להזזה',
   tbBrandTag: '— מתכנן טיסות CVFR לישראל',
