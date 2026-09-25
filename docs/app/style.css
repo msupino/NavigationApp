@@ -8449,5 +8449,9 @@ body.theme-light .airfield-phone-row .airfield-phone:visited { color: #1a5fb4; }
 }
 #toolbar .tb-magvar #magvar-mode,
 #toolbar .tb-magvar #magvar-ew { flex: none; width: auto; }
-#toolbar .tb-magvar #magvar-deg { flex: none; width: 4.6em; direction: ltr; text-align: left; }
+#toolbar .tb-magvar .magvar-value { display: inline-flex; align-items: center; gap: 4px; flex: none; }
+/* Two digits: variation is 0-30 degrees. No spinner arrows eating the width. */
+#toolbar .tb-magvar #magvar-deg { flex: none; width: 2.6em; text-align: center; -moz-appearance: textfield; appearance: textfield; }
+#toolbar .tb-magvar #magvar-deg::-webkit-inner-spin-button,
+#toolbar .tb-magvar #magvar-deg::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
 #toolbar .tb-magvar #magvar-deg.magvar-readonly { opacity: .75; cursor: default; }
