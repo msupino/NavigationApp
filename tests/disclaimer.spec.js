@@ -69,7 +69,7 @@ test('switching language asks again, in that language', async ({ page }) => {
   await page.locator('.disclaimer-accept').click();
   await openApp(page, 'he');
   await expect(notice(page)).toBeVisible();
-  await expect(page.locator('.disclaimer-accept')).toHaveText('הבנתי');
+  await expect(page.locator('.disclaimer-accept')).toHaveText('מסכים');
   const text = await notice(page).innerText();
   expect(text).toMatch(/כלי תכנון בלבד/);
   expect(text).toMatch(/הטייס המפקד/);
@@ -206,7 +206,7 @@ test('choosing Hebrew reopens the notice in Hebrew', async ({ page }) => {
     && typeof clearBootLoading === 'function');
   await page.evaluate(() => clearBootLoading());
   await expect(notice(page)).toBeVisible();
-  await expect(page.locator('.disclaimer-accept')).toHaveText('הבנתי');
+  await expect(page.locator('.disclaimer-accept')).toHaveText('מסכים');
   await expect(notice(page).locator('.disclaimer-lang-select')).toHaveValue('he');
   expect(new URL(page.url()).searchParams.get('lang')).toBe('he');
 });
@@ -277,7 +277,7 @@ test('the notice opens in Hebrew by default, and its choice is the app\'s langua
 });
 
 // The notice is the first thing a pilot sees, which makes it the honest place to say that the
-// web site counts visits -- and pressing "I understand" is the only acknowledgement in the app.
+// web site counts visits -- and pressing "Accept" is the only acknowledgement in the app.
 // Said where it is true and nowhere else: the line reads the same decision the tag itself made,
 // so it cannot outlive the tag or appear where the tag never loads.
 test.describe('the analytics line', () => {

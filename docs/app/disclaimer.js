@@ -85,7 +85,7 @@
 
   // Built by hand rather than through createDraggableModal: this one is not draggable, has
   // no close X, and does not answer to Escape or a click on the backdrop. A notice with a
-  // way out that is not "I understand" is a notice that can be dismissed without being read.
+  // way out that is not "Accept" is a notice that can be dismissed without being read.
   function build(onAccept) {
     // NOT a .modal-back: the app's global Escape handler removes those, and this one is
     // answered by pressing it, not by escaping it. Same reasoning as the simulator overlay.
@@ -173,7 +173,7 @@
     const ok = document.createElement('button');
     ok.type = 'button';
     ok.className = 'disclaimer-accept';
-    ok.textContent = textOf('disclaimerAccept', 'I understand');
+    ok.textContent = textOf('disclaimerAccept', 'Accept');
     ok.addEventListener('click', () => {
       back.remove();
       document.body.classList.remove('disclaimer-open');

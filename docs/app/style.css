@@ -8440,10 +8440,18 @@ body.theme-light .airfield-phone-row .airfield-phone:visited { color: #1a5fb4; }
 }
 
 /* Magnetic variation row: number + E/W, and the value automatic is using right now. */
-/* One line where there is room, like the speed above; in the narrow floating card it wraps
-   whole controls rather than squeezing them until the mode reads "א." and the number is cut. */
-#toolbar .tb-magvar { flex-wrap: wrap; white-space: normal; row-gap: 4px; }
+/* One line, like the speed above. A desktop menu panel sizes itself to its rows, so there it
+   never wraps (it did, and E/W sat alone on a second line). Only the narrow floating card on a
+   phone wraps whole controls, rather than squeezing them until the mode reads "א.". */
+#toolbar .tb-magvar { flex-wrap: nowrap; }
+@media (max-width: 680px) {
+  #toolbar .tb-magvar { flex-wrap: wrap; white-space: normal; row-gap: 4px; }
+}
 #toolbar .tb-magvar #magvar-mode,
 #toolbar .tb-magvar #magvar-ew { flex: none; width: auto; }
-#toolbar .tb-magvar #magvar-deg { flex: none; width: 4.6em; direction: ltr; text-align: left; }
+#toolbar .tb-magvar .magvar-value { display: inline-flex; align-items: center; gap: 4px; flex: none; }
+/* Two digits: variation is 0-30 degrees. No spinner arrows eating the width. */
+#toolbar .tb-magvar #magvar-deg { flex: none; width: 2.6em; text-align: center; -moz-appearance: textfield; appearance: textfield; }
+#toolbar .tb-magvar #magvar-deg::-webkit-inner-spin-button,
+#toolbar .tb-magvar #magvar-deg::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
 #toolbar .tb-magvar #magvar-deg.magvar-readonly { opacity: .75; cursor: default; }

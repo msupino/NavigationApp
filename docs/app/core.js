@@ -1272,6 +1272,23 @@ function applyCachedRemoteConfig() {
   }
 }
 NavAid.gistWarmStart = applyCachedRemoteConfig();
+// What a key comes back to when the pilot's own value is dropped: the gist's, if the last gist
+// seen sets it, else the built-in default. Non-destructive -- reads, and leaves the value in
+// force alone.
+function tuneBaseline(key) {
+  const had = Object.prototype.hasOwnProperty.call(NavAid.tuning, key);
+  const saved = NavAid.tuning[key];
+  delete NavAid.tuning[key];
+  try {
+    if (NavAid.configUrl && !NavAid.gistDisabled) {
+      const o = JSON.parse(localStorage.getItem(GIST_CACHE_KEY) || 'null');
+      if (o && typeof o === 'object' && key in o) setTune(key, o[key]);
+    }
+  } catch (e) { /* no cache: the built-in default */ }
+  const base = tune(key);
+  if (had) NavAid.tuning[key] = saved; else delete NavAid.tuning[key];
+  return base;
+}
 
 async function loadRemoteConfig() {
   if (!NavAid.configUrl || NavAid.gistDisabled) return 0;
@@ -2337,6 +2354,7 @@ window.S = Object.assign({
   tbMagVarManualTitle: 'Your variation, degrees east or west. Used when Manual is chosen.',
   tbMagVarEw: 'East or west',
   magVarFrom: { aircraft: 'at the aircraft', route: 'on the route', map: 'at the map centre' },
+  tbDefaultSpeedReset: function(kt) { return 'Back to the default (' + kt + ' kt)'; },
   tbDefaultSpeedLabel: 'Default speed (kt)',
   tbDefaultSpeedTitle: 'Speed given to a new leg when there is no earlier leg to copy from',
   tbLayerTitle: 'Base map layer',
@@ -2984,7 +3002,7 @@ window.S = Object.assign({
   disclaimerPointData: 'Chart, airspace, NOTAM and weather data here may be incomplete, delayed or wrong.',
   disclaimerPointPic: 'The pilot in command is responsible for the safe conduct of every flight.',
   disclaimerAnalytics: 'This site uses Google Analytics to count anonymous visits, and it sets Google\u2019s cookies. Your routes, positions and flight plans are never sent to it.',
-  disclaimerAccept: 'I understand',
+  disclaimerAccept: 'Accept',
   tbPrivacy: 'Privacy',
   tbTerms: 'Terms',
   tbIssues: 'Issues / requests',
