@@ -6205,6 +6205,15 @@ body.theme-light .overlay-loading {
 .offline-manager-progress > span { display: block; height: 100%; background: #4caf50; }
 .offline-manager-actions { display: flex; gap: 8px; flex-wrap: wrap; }
 .offline-manager-actions button { flex: 1 1 auto; }
+/* The pilot's packs under the automatic CVFR card: one card per chart, and one per chart
+   downloaded by area, holding its areas. The dialog scrolls rather than growing off-screen. */
+.offline-manager-modal { max-height: calc(100dvh - 48px); overflow-y: auto; }
+.offline-manager-packs { display: grid; gap: 8px; }
+.offline-manager-packs .offline-manager-card { margin: 0; }
+.offline-manager-areas { display: grid; gap: 8px; }
+.offline-manager-areas .offline-manager-area { padding: 8px; }
+.offline-manager-area .offline-manager-layer { font-size: 13px; font-weight: 600; }
+.offline-manager-note { font-size: 12px; opacity: 0.72; }
 
 /* --- Overlay align editor (Extra layers, ?align=1) ------------------ */
 /* Floating editor panel */
@@ -8416,4 +8425,16 @@ body.theme-light .airfield-phone-row .airfield-phone:visited { color: #1a5fb4; }
 @keyframes commfail-blink { to { visibility: hidden; } }
 @media (prefers-reduced-motion: reduce) {
   .commfail-lamp-flash { animation: none; outline: 2px dashed currentColor; outline-offset: 1px; }
+}
+
+/* Country names on the always-offline world map: quiet, under everything the pilot drew. */
+.world-label { background: none; border: 0; }
+.world-label span {
+  display: block;
+  transform: translate(-50%, -50%);
+  white-space: nowrap;
+  font: 600 11px/1.1 system-ui, sans-serif;
+  letter-spacing: .04em;
+  color: #6d665b;
+  text-shadow: 0 0 2px #f1ede3, 0 0 2px #f1ede3;
 }

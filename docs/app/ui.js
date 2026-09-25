@@ -260,7 +260,7 @@ const layerSelect = document.getElementById('layer-select');
 // Flight charts first (CVFR / LSA / Heli), then a separator, then base maps.
 // '---' is a non-selectable divider. Any layer not listed is appended after.
 const LAYER_ORDER = ['CVFR', 'Low Alt', 'Helicopters', 'ATS', '---',
-                     'Navigation', 'Satellite', 'OpenStreetMap'];
+                     'Navigation', 'OpenFlightMaps', 'Satellite', 'OpenStreetMap', 'World'];
 const orderedLayerNames = () => [
   ...LAYER_ORDER.filter(n => n === '---' || (layers[n] && layerOffered(n))),
   ...Object.keys(layers).filter(n => !LAYER_ORDER.includes(n) && layerOffered(n)),
@@ -277,6 +277,12 @@ function rebuildLayerPicker() {
     opt.value = name;
     opt.textContent = (S.layerLabels && S.layerLabels[name]) || name;
     if (map.hasLayer(layers[name])) opt.selected = true;
+    // Dimmed, never removed, where it has nothing to draw -- and never while it is the one
+    // showing, or the picker could not say what is on the map.
+    if (!opt.selected && typeof layerHasNoDataHere === 'function' && layerHasNoDataHere(name, map.getCenter())) {
+      opt.disabled = true;
+      opt.title = S.layerNoDataOverIsrael || '';
+    }
     layerSelect.appendChild(opt);
   }
   const active = (typeof currentLayerName === 'function') ? currentLayerName() : current;
@@ -287,6 +293,16 @@ function rebuildLayerPicker() {
   }
 }
 rebuildLayerPicker();
+// Over Israel or away from it decides whether open flightmaps has anything to draw, so the
+// picker follows the map. Only on a change of that answer: a rebuild per pan is a rebuild per
+// GPS fix in the air.
+let _layerNoDataKey = '';
+map.on('moveend', () => {
+  const key = Object.keys(layers).filter(n => layerHasNoDataHere(n, map.getCenter())).join(',');
+  if (key === _layerNoDataKey) return;
+  _layerNoDataKey = key;
+  rebuildLayerPicker();
+});
 // The three charts a route can be planned ON. Each carries its own route graph, its own
 // waypoints and its own reporting points, so a route drawn on one is a set of names the
 // other two do not have -- carrying it across silently leaves the pilot reading a plan
@@ -328,6 +344,9 @@ layerSelect.onchange = () => {
     }
   }
   map.addLayer(layers[layerSelect.value]);
+  // Out to a continent on open flightmaps, back to the Israeli charts' extent elsewhere
+  // (Leaflet zooms in by itself if the map is further out than the new floor).
+  map.setMinZoom(mapMinZoomFor(layers[layerSelect.value]));
   if (typeof updateBasemapUnderlay === 'function') updateBasemapUnderlay();
   applyMapOpacity();
   reloadLayerDatasets();                  // swap waypoints/comm/leg to the new layer's source
