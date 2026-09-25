@@ -19,8 +19,9 @@ async function boot(page, lang = 'en') {
 
 test('the shipped data is small, and names every country in English and Hebrew', () => {
   const file = path.join(__dirname, '../docs/data/world-countries.json');
-  expect(fs.statSync(file).size).toBeLessThan(1024 * 1024);
-  const d = JSON.parse(fs.readFileSync(file, 'utf8'));
+  const raw = fs.readFileSync(file);                  // read once: size and content are the same bytes
+  expect(raw.length).toBeLessThan(1024 * 1024);
+  const d = JSON.parse(raw.toString('utf8'));
   expect(d.countries.length).toBeGreaterThan(200);
   const il = d.countries.find(c => c.en === 'Israel');
   expect(il.he).toBe('ישראל');
