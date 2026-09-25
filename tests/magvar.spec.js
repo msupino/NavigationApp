@@ -116,3 +116,15 @@ test('the dial\'s magnetic number follows the variation as the map moves', async
   expect(r.israel).toBe('355');                               // north up, 5E
   expect(r.iceland).toBe('10');                               // north up, ~10W
 });
+
+test('a gist or tuning-panel change of the mode shows in the menu row at once', async ({ page }) => {
+  await boot(page);
+  const r = await page.evaluate(() => {
+    setTune('magVarAuto', false);
+    setTune('magneticVariationDeg', -7);
+    redrawAfterTune();                                   // what the tuning panel calls
+    return { mode: document.getElementById('magvar-mode').value, deg: document.getElementById('magvar-deg').value,
+      ew: document.getElementById('magvar-ew').value, ro: document.getElementById('magvar-deg').readOnly };
+  });
+  expect(r).toEqual({ mode: 'manual', deg: '7', ew: 'E', ro: false });
+});
