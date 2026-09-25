@@ -8770,11 +8770,6 @@ const magVarMode = document.getElementById('magvar-mode');
 const magVarDeg = document.getElementById('magvar-deg');
 const magVarEw = document.getElementById('magvar-ew');
 
-function magVarText(east) {
-  if (!Number.isFinite(east)) return '';
-  const deg = Math.abs(east).toFixed(1).replace(/\.0$/, '');
-  return deg + '\u00b0' + (east < 0 ? 'W' : 'E');
-}
 function refreshMagVarControl() {
   if (!magVarMode) return;
   const info = typeof magVarInfo === 'function' ? magVarInfo() : null;
@@ -8783,7 +8778,7 @@ function refreshMagVarControl() {
   // The fields hold the variation in force: in automatic the model's, read-only, so the number
   // on screen is always the one the headings use; in manual the pilot's own.
   const east = info && Number.isFinite(info.east) ? info.east : -Number(tune('magneticVariationDeg'));
-  if (document.activeElement !== magVarDeg) magVarDeg.value = Math.abs(east).toFixed(1).replace(/\.0$/, '');
+  if (document.activeElement !== magVarDeg) magVarDeg.value = String(Math.round(Math.abs(east)));
   magVarEw.value = east < 0 ? 'W' : 'E';
   magVarDeg.readOnly = auto;
   magVarEw.disabled = auto;              // a select has no read-only; it shows its value either way
@@ -8821,7 +8816,7 @@ if (magVarMode) {
     changed();
   };
   const setManual = () => {
-    const n = Number(magVarDeg.value);
+    const n = Math.round(Number(magVarDeg.value));                    // whole degrees
     if (!Number.isFinite(n) || n < 0 || n > 30) { refreshMagVarControl(); return; }
     const mv = magVarEw.value === 'W' ? n : -n;              // magnetic = true + mv: east is negative
     setTune('magneticVariationDeg', mv);

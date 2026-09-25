@@ -3493,7 +3493,8 @@ function magVarAutoEast(p) {
   const key = Math.round(p.lat * 4) + ',' + Math.round(p.lng * 4) + ',' + year.toFixed(2);
   if (!_magVarCache.has(key)) {
     if (_magVarCache.size > 500) _magVarCache.clear();
-    _magVarCache.set(key, Math.round(NavAidWmm.declination(p.lat, p.lng, 0, year) * 10) / 10);
+    // Whole degrees, the way a chart prints it: a tenth is finer than the model or any compass.
+    _magVarCache.set(key, Math.round(NavAidWmm.declination(p.lat, p.lng, 0, year)));
   }
   return _magVarCache.get(key);
 }
