@@ -8761,6 +8761,83 @@ if (DEFAULTSPEED_EL) {
   };
 }
 
+// Magnetic variation (menu, under the default speed). Automatic is the World Magnetic Model
+// where the headings are; manual is the pilot's number, degrees east or west. Both are stored
+// the way the default speed is -- tune overrides, so the pilot's choice outranks the gist.
+const MAGVAR_AUTO_KEY = 'navaid.magVarAuto';
+const MAGVAR_MANUAL_KEY = 'navaid.magVarManual';
+const magVarMode = document.getElementById('magvar-mode');
+const magVarDeg = document.getElementById('magvar-deg');
+const magVarEw = document.getElementById('magvar-ew');
+const magVarNow = document.getElementById('magvar-now');
+function magVarText(east) {
+  if (!Number.isFinite(east)) return '';
+  const deg = Math.abs(east).toFixed(1).replace(/\.0$/, '');
+  return deg + '\u00b0' + (east < 0 ? 'W' : 'E');
+}
+function refreshMagVarControl() {
+  if (!magVarMode) return;
+  const info = typeof magVarInfo === 'function' ? magVarInfo() : null;
+  const auto = typeof magVarIsAuto === 'function' ? magVarIsAuto() : true;
+  magVarMode.value = auto ? 'auto' : 'manual';
+  // The manual number shown is the one manual would use, whichever mode is on.
+  const manualEast = -Number(tune('magneticVariationDeg'));
+  if (document.activeElement !== magVarDeg) magVarDeg.value = String(Math.abs(manualEast));
+  magVarEw.value = manualEast < 0 ? 'W' : 'E';
+  // Dimmed, never hidden: in automatic the manual inputs stay where the pilot will look for them.
+  magVarDeg.disabled = auto;
+  magVarEw.disabled = auto;
+  if (magVarNow && info) {
+    const from = info.auto ? ((S.magVarFrom && S.magVarFrom[info.from]) || info.from) : '';
+    magVarNow.textContent = info.auto ? '= ' + magVarText(info.east) + ' ' + from : '';
+  }
+}
+window.refreshMagVarControl = refreshMagVarControl;
+if (magVarMode) {
+  registerTuneOverride(MAGVAR_AUTO_KEY, ['magVarAuto'], v => (v === '1' ? true : v === '0' ? false : null));
+  registerTuneOverride(MAGVAR_MANUAL_KEY, ['magneticVariationDeg'], v => {
+    const n = Number(v);
+    return Number.isFinite(n) && Math.abs(n) <= 30 ? n : null;
+  });
+  const changed = () => {
+    refreshMagVarControl();
+    // Every heading on the chart and in the plan is drawn through toMagnetic.
+    if (typeof draw === 'function') draw();
+    refreshInspectorIfVisible();
+    if (typeof refreshDial === 'function') refreshDial();
+    if (typeof refreshOrientControl === 'function') refreshOrientControl();
+  };
+  magVarMode.onchange = () => {
+    const auto = magVarMode.value === 'auto';
+    setTune('magVarAuto', auto);
+    try { localStorage.setItem(MAGVAR_AUTO_KEY, auto ? '1' : '0'); } catch (e) { /* */ }
+    changed();
+  };
+  const setManual = () => {
+    const n = Number(magVarDeg.value);
+    if (!Number.isFinite(n) || n < 0 || n > 30) { refreshMagVarControl(); return; }
+    const mv = magVarEw.value === 'W' ? n : -n;              // magnetic = true + mv: east is negative
+    setTune('magneticVariationDeg', mv);
+    try { localStorage.setItem(MAGVAR_MANUAL_KEY, String(mv)); } catch (e) { /* */ }
+    changed();
+  };
+  magVarDeg.onchange = setManual;
+  magVarEw.onchange = setManual;
+  refreshMagVarControl();
+  // In automatic the value follows the aircraft, the route and the map: keep the line, and the
+  // magnetic numbers beside the dial and on the orientation button, honest as it moves.
+  let lastMv = currentMagVar();
+  map.on('moveend', () => {
+    if (!magVarIsAuto()) return;
+    refreshMagVarControl();
+    const mv = currentMagVar();
+    if (mv === lastMv) return;
+    lastMv = mv;
+    if (typeof refreshDial === 'function') refreshDial();
+    if (typeof refreshOrientControl === 'function') refreshOrientControl();
+  });
+}
+
 const KITEALPHA_KEY = 'navaid.legArrowAlpha';
 let gistKiteAlpha = tune('kiteNoteAlpha');
 const KITEALPHA_EL = document.getElementById('kite-alpha');
@@ -8998,7 +9075,7 @@ if (KITEALPHA_EL) {
 ['yellow-alpha', 'map-opacity', 'wp-size', 'leg-arrow-size', 'leg-line-width', 'drift-line-width',
  'mag-zoom', 'windfield-alt']
   .forEach(id => addSliderReset(document.getElementById(id)));
-// magVar is hardcoded at -5 (5°E) in core.js; the input was removed.
+// Magnetic variation has its own control under the default speed (magvar-mode).
 
 document.getElementById('page-a3').onclick = () => setPage('A3');
 document.getElementById('page-a4').onclick = () => setPage('A4');

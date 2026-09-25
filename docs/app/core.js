@@ -28,7 +28,8 @@ function shortcutPlain(e, code, key) {
 // constants without editing source. Values are page-local and reset on reload.
 NavAid.tuning = {};
 NavAid.tuningDefaults = {
-  magneticVariationDeg: { value: -5, min: -30, max: 30, step: 0.5, label: 'Magnetic variation (° — negative = E)' },
+  magneticVariationDeg: { value: -5, min: -30, max: 30, step: 0.5, label: 'Magnetic variation, manual (° — negative = E)' },
+  magVarAuto: { value: true, type: 'bool', label: 'Magnetic variation from the World Magnetic Model at the aircraft / route / map (off: the manual value)' },
   msaBufferFt: { value: 1000, min: 0, max: 5000, step: 100, label: 'MSA clearance above terrain (ft)' },
   // A GNSS fix is a geometric height; a planned altitude is a pressure height. Correcting
   // the first into the second is what stops an aircraft flying exactly on plan from being
@@ -1006,7 +1007,7 @@ NavAid.tuningDefaults = {
 // interaction (hit testing), tools (alt pairs, export), and finally the
 // global colour palette.
 NavAid.tuningGroups = [
-  { name: 'Navigation', keys: ['magneticVariationDeg', 'msaBufferFt', 'altimetryCorrection', 'geoidUndulationFt', 'followResumeMs', 'followZoomFloor', 'followZoomCeiling', 'followZoomCtrFloor', 'followZoomCtrCeiling', 'gpsReadoutFontPx', 'gpsReadoutRefitPx', 'alertNotifyTtlSec', 'altToleranceFt', 'altMaxAlertsPerLeg', 'legEtaLeadSec', 'atisLeadSec', 'atisMarkerColor', 'atisMarkerRadiusPx', 'atisMarkerFontPx', 'liveHeadingEndLabel', 'legCaptureNm', 'driftTrackErrorDeg', 'driftCheckSec', 'coneUnknownSec', 'gpsMaxAccuracyM', 'gpsMinMoveM', 'gpsStaleSec', 'qnhMaxAgeMin', 'qnhMoveNm', 'compassMaxKt', 'compassFallback', 'headingUpMinDeltaDeg', 'crosshairSizePx', 'crosshairWidthPx', 'crosshairColor', 'crosshairHaloColor', 'crosshairAlpha'] },
+  { name: 'Navigation', keys: ['magVarAuto', 'magneticVariationDeg', 'msaBufferFt', 'altimetryCorrection', 'geoidUndulationFt', 'followResumeMs', 'followZoomFloor', 'followZoomCeiling', 'followZoomCtrFloor', 'followZoomCtrCeiling', 'gpsReadoutFontPx', 'gpsReadoutRefitPx', 'alertNotifyTtlSec', 'altToleranceFt', 'altMaxAlertsPerLeg', 'legEtaLeadSec', 'atisLeadSec', 'atisMarkerColor', 'atisMarkerRadiusPx', 'atisMarkerFontPx', 'liveHeadingEndLabel', 'legCaptureNm', 'driftTrackErrorDeg', 'driftCheckSec', 'coneUnknownSec', 'gpsMaxAccuracyM', 'gpsMinMoveM', 'gpsStaleSec', 'qnhMaxAgeMin', 'qnhMoveNm', 'compassMaxKt', 'compassFallback', 'headingUpMinDeltaDeg', 'crosshairSizePx', 'crosshairWidthPx', 'crosshairColor', 'crosshairHaloColor', 'crosshairAlpha'] },
   { name: 'Performance defaults', keys: ['profileClimbFpm', 'profileClimbKt', 'defaultGph', 'defaultTaxiGal'] },
   { name: 'Altitude inference', keys: ['legAltInferMaxHops', 'legAltInferMaxDistRatio', 'legAltInferMaxExtraNm'] },
   { name: 'Plan card', keys: ['planCardBaseRowPx', 'planCardGripPx', 'planCardBgColor', 'planCardHeaderBgColor', 'planCardTotalBgColor', 'planCardStripeBgColor', 'planCardGridColor', 'planCardTextColor', 'planCardGripColor', 'planCardGripLineColor'] },
@@ -2329,6 +2330,13 @@ window.S = Object.assign({
   tbAddNote: '📝 Add note (N)',
   tbAddNoteTitle: 'Click map to drop a note (click button again to stop)',
   tbLayerLabel: 'Layer',
+  tbMagVarLabel: 'Magnetic variation',
+  tbMagVarTitle: 'Automatic: the World Magnetic Model at the aircraft, else the route, else the map (works offline). Manual: your own number.',
+  tbMagVarAuto: 'Automatic',
+  tbMagVarManual: 'Manual',
+  tbMagVarManualTitle: 'Your variation, degrees east or west. Used when Manual is chosen.',
+  tbMagVarEw: 'East or west',
+  magVarFrom: { aircraft: 'at the aircraft', route: 'on the route', map: 'at the map centre' },
   tbDefaultSpeedLabel: 'Default speed (kt)',
   tbDefaultSpeedTitle: 'Speed given to a new leg when there is no earlier leg to copy from',
   tbLayerTitle: 'Base map layer',
@@ -3450,17 +3458,68 @@ function geo(a, b) {                   // a,b = {lat,lng} -> {dist NM, brg deg}
             Math.sin(phi1) * Math.cos(phi2) * Math.cos(dlam);
   return { dist, brg: ((Math.atan2(y, x) * 180) / Math.PI + 360) % 360 };
 }
+// --- magnetic variation ---------------------------------------------
+// Signed the way the app always has: magnetic = true + variation, so 5°E is -5.
+//
+// Manual: the pilot's number (menu, beside the default speed), else the gist's.
+// Automatic: the World Magnetic Model (wmm.js, offline) at the point the headings are about --
+// the aircraft when a position is live, else the middle of the route, else the middle of the
+// map. The fixed 5°E was Israel's; flown in Iceland it put every "magnetic" heading about 15°
+// out. Over Israel WMM gives 5.0°E, the value the charts print.
+function magVarPoint() {
+  const live = typeof gpsPositionLive === 'function' && gpsPositionLive();
+  if (live && typeof gpsOwn === 'object' && gpsOwn && Number.isFinite(gpsOwn.lat)) {
+    return { lat: gpsOwn.lat, lng: gpsOwn.lng, from: 'aircraft' };
+  }
+  const wps = (typeof state === 'object' && state && Array.isArray(state.waypoints)) ? state.waypoints : [];
+  const pts = wps.filter(w => w && Number.isFinite(w.lat) && Number.isFinite(w.lng));
+  if (pts.length) {
+    const lats = pts.map(w => w.lat), lngs = pts.map(w => w.lng);
+    return { lat: (Math.min(...lats) + Math.max(...lats)) / 2, lng: (Math.min(...lngs) + Math.max(...lngs)) / 2, from: 'route' };
+  }
+  if (typeof map === 'object' && map && map.getCenter) {
+    const c = map.getCenter();
+    return { lat: c.lat, lng: c.lng, from: 'map' };
+  }
+  return null;
+}
+// WMM is smooth: a quarter of a degree of position moves it by hundredths, so one answer per
+// quarter-degree cell (and per month) is exact enough and costs nothing per heading drawn.
+const _magVarCache = new Map();
+function magVarAutoEast(p) {
+  if (!p || typeof window === 'undefined' || !window.NavAidWmm) return null;
+  const now = new Date();
+  const year = now.getUTCFullYear() + now.getUTCMonth() / 12;
+  const key = Math.round(p.lat * 4) + ',' + Math.round(p.lng * 4) + ',' + year.toFixed(2);
+  if (!_magVarCache.has(key)) {
+    if (_magVarCache.size > 500) _magVarCache.clear();
+    _magVarCache.set(key, Math.round(NavAidWmm.declination(p.lat, p.lng, 0, year) * 10) / 10);
+  }
+  return _magVarCache.get(key);
+}
+function magVarIsAuto() {
+  return typeof tune !== 'function' || tune('magVarAuto') !== false;
+}
+// The variation in force, and where it came from -- for the menu line that says so.
+function magVarInfo() {
+  if (magVarIsAuto()) {
+    const p = magVarPoint();
+    const east = magVarAutoEast(p);
+    if (Number.isFinite(east)) return { mv: -east, east, auto: true, from: p.from };
+  }
+  const mv = typeof tune === 'function' ? Number(tune('magneticVariationDeg')) : magVar;
+  const v = Number.isFinite(mv) ? mv : magVar;
+  return { mv: v, east: -v, auto: false, from: 'manual' };
+}
+function currentMagVar() { return magVarInfo().mv; }
+if (typeof window !== 'undefined') { window.currentMagVar = currentMagVar; window.magVarInfo = magVarInfo; }
 function toMagnetic(deg) {
   // Magnetic = True + variation (so −5 means "subtract 5", i.e. 5°E variation).
-  // Read from the tune registry (key default -5) so it's adjustable; `magVar`
-  // remains the hardcoded fallback/default.
-  const mv = typeof tune === 'function' ? tune('magneticVariationDeg') : magVar;
-  return ((Math.round(deg + mv) % 360) + 360) % 360;
+  return ((Math.round(deg + currentMagVar()) % 360) + 360) % 360;
 }
 // The other way: a magnetic heading typed by the pilot, as the true angle the map turns by.
 function fromMagnetic(deg) {
-  const mv = typeof tune === 'function' ? tune('magneticVariationDeg') : magVar;
-  return ((Math.round(deg - mv) % 360) + 360) % 360;
+  return ((Math.round(deg - currentMagVar()) % 360) + 360) % 360;
 }
 // --- wind triangle --------------------------------------------------
 // Resolve the wind that applies to a leg: an explicit per-leg override (with

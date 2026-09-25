@@ -52,7 +52,7 @@ async function openPlan(page, route) {
     for (const l of state.legs) l.flightSpeed = 90;
     window.showReturn = false;
     showFlightPlan();
-    return { magVar: tune('magneticVariationDeg') };
+    return { magVar: currentMagVar() };
   }, route);
 }
 
@@ -132,7 +132,7 @@ test('the return table is the reciprocal AND both tables carry real numbers', as
     for (const l of state.legs) l.flightSpeed = 90;
     window.showReturn = true;
     showFlightPlan();
-    return { magVar: tune('magneticVariationDeg') };
+    return { magVar: currentMagVar() };
   }, ROUTE);
   const both = await page.evaluate(() => {
     const tables = document.querySelectorAll('.modal-back.flight-plan .flight-table');

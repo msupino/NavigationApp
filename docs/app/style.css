@@ -8438,3 +8438,8 @@ body.theme-light .airfield-phone-row .airfield-phone:visited { color: #1a5fb4; }
   color: #6d665b;
   text-shadow: 0 0 2px #f1ede3, 0 0 2px #f1ede3;
 }
+
+/* Magnetic variation row: number + E/W, and the value automatic is using right now. */
+#toolbar .tb-magvar-manual #magvar-deg { width: 4.2em; }
+#toolbar .tb-magvar-manual #magvar-ew { width: auto; }
+#toolbar .tb-magvar-manual .magvar-now { font-size: 11px; opacity: .8; white-space: nowrap; }
