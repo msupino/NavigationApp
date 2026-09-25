@@ -89,7 +89,7 @@ test('Hebrew labels the row and says where the value comes from', async ({ page 
   await page.goto('?lang=he&nogist');
   await page.waitForFunction(() => document.documentElement.lang === 'he' && typeof refreshMagVarControl === 'function');
   await page.evaluate(() => refreshMagVarControl());
-  await expect(page.locator('[data-i18n="tbMagVarLabel"]')).toHaveText('סטייה מגנטית');
+  await expect(page.locator('[data-i18n="tbMagVarLabel"]')).toHaveText('נטייה מגנטית')   // variation; סטייה is deviation;
   await expect(page.locator('#magvar-now')).toContainText('במרכז המפה');
 });
 
