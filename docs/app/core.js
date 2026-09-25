@@ -3002,7 +3002,7 @@ window.S = Object.assign({
   disclaimerPointData: 'Chart, airspace, NOTAM and weather data here may be incomplete, delayed or wrong.',
   disclaimerPointPic: 'The pilot in command is responsible for the safe conduct of every flight.',
   disclaimerAnalytics: 'This site uses Google Analytics to count anonymous visits, and it sets Google\u2019s cookies. Your routes, positions and flight plans are never sent to it.',
-  disclaimerAccept: 'I understand',
+  disclaimerAccept: 'Accept',
   tbPrivacy: 'Privacy',
   tbTerms: 'Terms',
   tbIssues: 'Issues / requests',
