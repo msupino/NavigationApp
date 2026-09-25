@@ -390,8 +390,8 @@
           <input type="number" id="default-speed" min="20" max="400" step="5" inputmode="numeric">
         </label>
         <!-- Magnetic variation: from the World Magnetic Model where the headings are (wmm.js,
-             offline), or the pilot's own number. The manual inputs dim, never vanish, while
-             automatic is chosen; the line under them says what is in force and from where. -->
+             offline), or the pilot's own number. The fields always hold the value in force --
+             read-only in automatic, with where it was taken beside them. -->
         <label class="navtoggle" data-i18n-title="tbMagVarTitle">
           <span data-i18n="tbMagVarLabel"></span>
           <select id="magvar-mode">
@@ -400,7 +400,7 @@
           </select>
         </label>
         <label class="navtoggle tb-magvar-manual" data-i18n-title="tbMagVarManualTitle">
-          <input type="number" id="magvar-deg" min="0" max="30" step="0.5" inputmode="decimal" data-i18n-aria="tbMagVarManual">
+          <input type="number" id="magvar-deg" min="0" max="30" step="0.1" inputmode="decimal" data-i18n-aria="tbMagVarManual">
           <select id="magvar-ew" data-i18n-aria="tbMagVarEw">
             <option value="E">E</option>
             <option value="W">W</option>

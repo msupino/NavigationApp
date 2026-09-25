@@ -63,9 +63,19 @@ test('the menu row sits under the default speed; manual E/W sets the variation a
     return speed.nextElementSibling && speed.nextElementSibling.querySelector('#magvar-mode') ? 'next' : 'elsewhere';
   });
   expect(order).toBe('next');
-  // Automatic: the manual inputs dim, and the line says what is in force.
-  expect(await page.locator('#magvar-deg').isDisabled()).toBe(true);
-  await expect(page.locator('#magvar-now')).toContainText('E');
+  // Automatic: the fields hold the model's value, read-only, and the line says where from.
+  await page.evaluate(() => { map.setView([64.08, -20.75], 9, { animate: false }); refreshMagVarControl(); });
+  const autoShown = await page.evaluate(() => ({ deg: document.getElementById('magvar-deg').value,
+    ew: document.getElementById('magvar-ew').value, ro: document.getElementById('magvar-deg').readOnly,
+    east: magVarInfo().east }));
+  expect(autoShown.ro).toBe(true);
+  expect(autoShown.ew).toBe('W');
+  expect(Number(autoShown.deg)).toBeCloseTo(-autoShown.east, 1);
+  await expect(page.locator('#magvar-now')).toContainText('map centre');
+  // Switching to manual starts from that value.
+  await page.evaluate(() => { const m = document.getElementById('magvar-mode'); m.value = 'manual'; m.dispatchEvent(new Event('change')); });
+  expect(await page.evaluate(() => magVarInfo())).toMatchObject({ auto: false, east: autoShown.east });
+  expect(await page.evaluate(() => document.getElementById('magvar-deg').readOnly)).toBe(false);
   await page.evaluate(() => {
     const mode = document.getElementById('magvar-mode');
     mode.value = 'manual'; mode.dispatchEvent(new Event('change'));

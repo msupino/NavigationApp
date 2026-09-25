@@ -8443,3 +8443,4 @@ body.theme-light .airfield-phone-row .airfield-phone:visited { color: #1a5fb4; }
 #toolbar .tb-magvar-manual #magvar-deg { width: 4.2em; }
 #toolbar .tb-magvar-manual #magvar-ew { width: auto; }
 #toolbar .tb-magvar-manual .magvar-now { font-size: 11px; opacity: .8; white-space: nowrap; }
+#toolbar .tb-magvar-manual #magvar-deg.magvar-readonly { opacity: .75; cursor: default; }

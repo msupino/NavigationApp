@@ -8780,16 +8780,16 @@ function refreshMagVarControl() {
   const info = typeof magVarInfo === 'function' ? magVarInfo() : null;
   const auto = typeof magVarIsAuto === 'function' ? magVarIsAuto() : true;
   magVarMode.value = auto ? 'auto' : 'manual';
-  // The manual number shown is the one manual would use, whichever mode is on.
-  const manualEast = -Number(tune('magneticVariationDeg'));
-  if (document.activeElement !== magVarDeg) magVarDeg.value = String(Math.abs(manualEast));
-  magVarEw.value = manualEast < 0 ? 'W' : 'E';
-  // Dimmed, never hidden: in automatic the manual inputs stay where the pilot will look for them.
-  magVarDeg.disabled = auto;
-  magVarEw.disabled = auto;
-  if (magVarNow && info) {
-    const from = info.auto ? ((S.magVarFrom && S.magVarFrom[info.from]) || info.from) : '';
-    magVarNow.textContent = info.auto ? '= ' + magVarText(info.east) + ' ' + from : '';
+  // The fields hold the variation in force: in automatic the model's, read-only, so the number
+  // on screen is always the one the headings use; in manual the pilot's own.
+  const east = info && Number.isFinite(info.east) ? info.east : -Number(tune('magneticVariationDeg'));
+  if (document.activeElement !== magVarDeg) magVarDeg.value = Math.abs(east).toFixed(1).replace(/\.0$/, '');
+  magVarEw.value = east < 0 ? 'W' : 'E';
+  magVarDeg.readOnly = auto;
+  magVarEw.disabled = auto;              // a select has no read-only; it shows its value either way
+  magVarDeg.classList.toggle('magvar-readonly', auto);
+  if (magVarNow) {
+    magVarNow.textContent = info && info.auto ? ((S.magVarFrom && S.magVarFrom[info.from]) || info.from) : '';
   }
 }
 window.refreshMagVarControl = refreshMagVarControl;
@@ -8809,6 +8809,13 @@ if (magVarMode) {
   };
   magVarMode.onchange = () => {
     const auto = magVarMode.value === 'auto';
+    // Manual starts from the value automatic was using here, not from an old number: the pilot
+    // who switches over is adjusting what they see.
+    if (!auto && magVarIsAuto()) {
+      const mv = currentMagVar();
+      setTune('magneticVariationDeg', mv);
+      try { localStorage.setItem(MAGVAR_MANUAL_KEY, String(mv)); } catch (e) { /* */ }
+    }
     setTune('magVarAuto', auto);
     try { localStorage.setItem(MAGVAR_AUTO_KEY, auto ? '1' : '0'); } catch (e) { /* */ }
     changed();
@@ -8821,7 +8828,7 @@ if (magVarMode) {
     try { localStorage.setItem(MAGVAR_MANUAL_KEY, String(mv)); } catch (e) { /* */ }
     changed();
   };
-  magVarDeg.onchange = setManual;
+  magVarDeg.onchange = () => { if (!magVarDeg.readOnly) setManual(); };
   magVarEw.onchange = setManual;
   refreshMagVarControl();
   // In automatic the value follows the aircraft, the route and the map: keep the line, and the
