@@ -22,11 +22,52 @@
   const SEA = '#cddbe6';
   const LAND = '#f1ede3';
   const BORDER = '#9a948a';
-  const renderer = L.canvas({ pane: PANE, padding: 0.5 });
   let labels = [];
   let loaded = null;
+  // The outlines live here, in this closure, pre-projected to Web Mercator on the unit square
+  // (0..1 each way) -- NOT as Leaflet layers. Hundreds of thousands of points as layers made
+  // the map object itself enormous, and anything that walks it (a test serialising `map`, a
+  // debugger) choked on it. One canvas renderer draws them all on each map update.
+  let rings = null;                       // Float64Array per ring: x0,y0,x1,y1,...
 
   const lang = () => ((document.documentElement.lang || 'en').toLowerCase().indexOf('he') === 0 ? 'he' : 'en');
+  const mercY = lat => {
+    const s = Math.sin(Math.max(-85.0511, Math.min(85.0511, lat)) * Math.PI / 180);
+    return 0.5 - Math.log((1 + s) / (1 - s)) / (4 * Math.PI);
+  };
+
+  // The renderer is Leaflet's own canvas, in its own pane: it is sized, positioned and (with
+  // leaflet-rotate) rotated like every other vector layer, and its context is already
+  // translated to layer pixels when it draws. Drawing there is all this has to do.
+  const renderer = L.canvas({ pane: PANE, padding: 0.5 });
+  function paint() {
+    const ctx = renderer._ctx;
+    const b = renderer._bounds;
+    if (!ctx || !b) return;
+    ctx.fillStyle = SEA;
+    ctx.fillRect(b.min.x, b.min.y, b.max.x - b.min.x, b.max.y - b.min.y);
+    if (!rings) return;
+    const scale = 256 * Math.pow(2, map.getZoom());
+    const o = map.getPixelOrigin();
+    ctx.beginPath();
+    for (const r of rings) {
+      ctx.moveTo(r[0] * scale - o.x, r[1] * scale - o.y);
+      for (let i = 2; i < r.length; i += 2) ctx.lineTo(r[i] * scale - o.x, r[i + 1] * scale - o.y);
+      ctx.closePath();
+    }
+    ctx.fillStyle = LAND;
+    ctx.fill('evenodd');
+    ctx.lineWidth = 0.8;
+    ctx.strokeStyle = BORDER;
+    ctx.stroke();
+  }
+  // Painted from the renderer's own draw step: on 'update' it would be wiped straight away,
+  // because the renderer clears its canvas and redraws its (zero) paths after that event.
+  renderer._draw = function () {
+    L.Canvas.prototype._draw.call(this);
+    paint();
+  };
+  map.addLayer(renderer);
 
   // Country names thin out as the map zooms out: Natural Earth's own label rank says which
   // matter at a continent's scale (1-2) and which only close in (6+).
@@ -45,15 +86,19 @@
     loaded = (async () => {
       const url = (window.S && S.worldCountriesUrl) || 'data/world-countries.json?v=1';
       const d = await (await fetch(url)).json();
-      // The sea first: a world-sized rectangle, so water reads as water and not as the grey
-      // of an empty map.
-      L.rectangle([[-85, -180], [85, 180]], { renderer, stroke: false, fillColor: SEA, fillOpacity: 1,
-        interactive: false, pane: PANE }).addTo(map);
       const key = lang();
+      const out = [];
       for (const c of d.countries || []) {
-        const latlngs = c.p.map(poly => poly.map(ring => ring.map(([lng, lat]) => [lat, lng])));
-        L.polygon(latlngs, { renderer, pane: PANE, color: BORDER, weight: 0.8, fillColor: LAND,
-          fillOpacity: 1, interactive: false, smoothFactor: 1 }).addTo(map);
+        for (const poly of c.p) {
+          for (const ring of poly) {
+            const r = new Float64Array(ring.length * 2);
+            for (let i = 0; i < ring.length; i++) {
+              r[2 * i] = (ring[i][0] + 180) / 360;
+              r[2 * i + 1] = mercY(ring[i][1]);
+            }
+            out.push(r);
+          }
+        }
         if (Array.isArray(c.at)) {
           const name = String(c[key] || c.en || '');
           // The name goes in as text, never as markup.
@@ -63,6 +108,8 @@
           labels.push({ marker, rank: Number.isFinite(c.rank) ? c.rank : 5 });
         }
       }
+      rings = out;
+      renderer._redraw();                 // draw now, not on the next pan
       map.on('zoomend', refreshLabels);
       refreshLabels();
       return true;
