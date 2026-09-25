@@ -28,7 +28,7 @@
   // (0..1 each way) -- NOT as Leaflet layers. Hundreds of thousands of points as layers made
   // the map object itself enormous, and anything that walks it (a test serialising `map`, a
   // debugger) choked on it. One canvas renderer draws them all on each map update.
-  let rings = null;                       // Float64Array per ring: x0,y0,x1,y1,...
+  let rings = null;                       // { pts: Float64Array x0,y0,x1,y1,..., box: [x0,y0,x1,y1] }
 
   const lang = () => ((document.documentElement.lang || 'en').toLowerCase().indexOf('he') === 0 ? 'he' : 'en');
   const mercY = lat => {
@@ -49,8 +49,15 @@
     if (!rings) return;
     const scale = 256 * Math.pow(2, map.getZoom());
     const o = map.getPixelOrigin();
+    // Only what the canvas covers: over Israel at a flying zoom that is a handful of outlines
+    // out of thousands, so a repaint on every map move costs next to nothing.
+    const vx0 = (b.min.x + o.x) / scale, vy0 = (b.min.y + o.y) / scale;
+    const vx1 = (b.max.x + o.x) / scale, vy1 = (b.max.y + o.y) / scale;
     ctx.beginPath();
-    for (const r of rings) {
+    for (const ring of rings) {
+      const [bx0, by0, bx1, by1] = ring.box;
+      if (bx1 < vx0 || bx0 > vx1 || by1 < vy0 || by0 > vy1) continue;
+      const r = ring.pts;
       ctx.moveTo(r[0] * scale - o.x, r[1] * scale - o.y);
       for (let i = 2; i < r.length; i += 2) ctx.lineTo(r[i] * scale - o.x, r[i + 1] * scale - o.y);
       ctx.closePath();
@@ -92,11 +99,15 @@
         for (const poly of c.p) {
           for (const ring of poly) {
             const r = new Float64Array(ring.length * 2);
+            const box = [Infinity, Infinity, -Infinity, -Infinity];
             for (let i = 0; i < ring.length; i++) {
-              r[2 * i] = (ring[i][0] + 180) / 360;
-              r[2 * i + 1] = mercY(ring[i][1]);
+              const x = (ring[i][0] + 180) / 360;
+              const y = mercY(ring[i][1]);
+              r[2 * i] = x; r[2 * i + 1] = y;
+              if (x < box[0]) box[0] = x; if (x > box[2]) box[2] = x;
+              if (y < box[1]) box[1] = y; if (y > box[3]) box[3] = y;
             }
-            out.push(r);
+            out.push({ pts: r, box });
           }
         }
         if (Array.isArray(c.at)) {
