@@ -3457,6 +3457,11 @@ function toMagnetic(deg) {
   const mv = typeof tune === 'function' ? tune('magneticVariationDeg') : magVar;
   return ((Math.round(deg + mv) % 360) + 360) % 360;
 }
+// The other way: a magnetic heading typed by the pilot, as the true angle the map turns by.
+function fromMagnetic(deg) {
+  const mv = typeof tune === 'function' ? tune('magneticVariationDeg') : magVar;
+  return ((Math.round(deg - mv) % 360) + 360) % 360;
+}
 // --- wind triangle --------------------------------------------------
 // Resolve the wind that applies to a leg: an explicit per-leg override (with
 // either field falling back to the route wind) beats the route-wide wind.

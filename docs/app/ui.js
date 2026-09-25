@@ -874,7 +874,10 @@ function refreshDial() {
   rotNeedle.style.transform = 'rotate(' + ((Math.round(mapBearing()) % 360) + 360) % 360 + 'deg)';
   rotDial.title = S.dialTitle(b);
   rotDial.setAttribute('aria-valuenow', String(b));
-  if (document.activeElement !== rotHdg) rotHdg.value = b;
+  // The number beside the dial is the heading up the screen, and every heading a pilot reads
+  // in this app is magnetic -- the strip, the orientation button. It said 209 beside a strip
+  // saying 204. The needle and the map's own rotation stay true; only the number is converted.
+  if (document.activeElement !== rotHdg) rotHdg.value = toMagnetic(b);
 }
 rotHdg.addEventListener('change', () => {
   // Empty / non-numeric input would flow through as NaN and could persist
@@ -885,7 +888,8 @@ rotHdg.addEventListener('change', () => {
   const v = ((raw % 360) + 360) % 360;
   rotHdg.value = v;
   orientNoteManualRotation();
-  map.setBearing((360 - v) % 360);
+  // Typed as magnetic, like the number it replaces; the map turns by the true angle.
+  map.setBearing((360 - fromMagnetic(v)) % 360);
 });
 rotHdg.addEventListener('keydown', e => {
   if (e.key === 'Enter') rotHdg.blur();
