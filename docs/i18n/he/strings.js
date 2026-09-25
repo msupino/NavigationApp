@@ -986,6 +986,7 @@ window.S = {
   tbMagVarManualTitle: 'הנטייה שלכם, במעלות מזרח או מערב. בשימוש כשנבחר ידני.',
   tbMagVarEw: 'מזרח או מערב',
   magVarFrom: { aircraft: 'במיקום המטוס', route: 'במסלול', map: 'במרכז המפה' },
+  tbDefaultSpeedReset: function(kt) { return 'חזרה לברירת המחדל (' + kt + ' קשר)'; },
   tbDefaultSpeedLabel: 'מהירות ברירת מחדל (קשר)',
   tbDefaultSpeedTitle: 'המהירות שתינתן לקטע חדש כשאין קטע קודם להעתיק ממנו',
   tbLayerTitle: 'שכבת מפה בסיסית',

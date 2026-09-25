@@ -388,6 +388,8 @@
         <label class="navtoggle" data-i18n-title="tbDefaultSpeedTitle">
           <span data-i18n="tbDefaultSpeedLabel"></span>
           <input type="number" id="default-speed" min="20" max="400" step="5" inputmode="numeric">
+          <!-- Title set by ui.js: it names the speed it returns to. -->
+          <button id="default-speed-reset" class="slider-reset" type="button">↻</button>
         </label>
         <!-- Magnetic variation: from the World Magnetic Model where the headings are (wmm.js,
              offline), or the pilot's own number. The fields always hold the value in force --
