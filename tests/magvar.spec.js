@@ -60,7 +60,9 @@ test('the menu row sits under the default speed; manual E/W sets the variation a
   await boot(page);
   const order = await page.evaluate(() => {
     const speed = document.getElementById('default-speed').closest('label');
-    return speed.nextElementSibling && speed.nextElementSibling.querySelector('#magvar-mode') ? 'next' : 'elsewhere';
+    const next = speed.nextElementSibling;
+    // One row, like the speed: the mode, the number and E/W all in the same label.
+    return next && next.querySelector('#magvar-mode') && next.querySelector('#magvar-deg') && next.querySelector('#magvar-ew') ? 'next' : 'elsewhere';
   });
   expect(order).toBe('next');
   // Automatic: the fields hold the model's value, read-only, and the line says where from.
@@ -71,7 +73,7 @@ test('the menu row sits under the default speed; manual E/W sets the variation a
   expect(autoShown.ro).toBe(true);
   expect(autoShown.ew).toBe('W');
   expect(Number(autoShown.deg)).toBeCloseTo(-autoShown.east, 1);
-  await expect(page.locator('#magvar-now')).toContainText('map centre');
+  expect(await page.locator('#magvar-deg').getAttribute('title')).toContain('map centre');
   // Switching to manual starts from that value.
   await page.evaluate(() => { const m = document.getElementById('magvar-mode'); m.value = 'manual'; m.dispatchEvent(new Event('change')); });
   expect(await page.evaluate(() => magVarInfo())).toMatchObject({ auto: false, east: autoShown.east });
@@ -100,7 +102,7 @@ test('Hebrew labels the row and says where the value comes from', async ({ page 
   await page.waitForFunction(() => document.documentElement.lang === 'he' && typeof refreshMagVarControl === 'function');
   await page.evaluate(() => refreshMagVarControl());
   await expect(page.locator('[data-i18n="tbMagVarLabel"]')).toHaveText('נטייה מגנטית')   // variation; סטייה is deviation;
-  await expect(page.locator('#magvar-now')).toContainText('במרכז המפה');
+  expect(await page.locator('#magvar-deg').getAttribute('title')).toContain('במרכז המפה');
 });
 
 test('the dial\'s magnetic number follows the variation as the map moves', async ({ page }) => {

@@ -8769,7 +8769,7 @@ const MAGVAR_MANUAL_KEY = 'navaid.magVarManual';
 const magVarMode = document.getElementById('magvar-mode');
 const magVarDeg = document.getElementById('magvar-deg');
 const magVarEw = document.getElementById('magvar-ew');
-const magVarNow = document.getElementById('magvar-now');
+
 function magVarText(east) {
   if (!Number.isFinite(east)) return '';
   const deg = Math.abs(east).toFixed(1).replace(/\.0$/, '');
@@ -8788,9 +8788,9 @@ function refreshMagVarControl() {
   magVarDeg.readOnly = auto;
   magVarEw.disabled = auto;              // a select has no read-only; it shows its value either way
   magVarDeg.classList.toggle('magvar-readonly', auto);
-  if (magVarNow) {
-    magVarNow.textContent = info && info.auto ? ((S.magVarFrom && S.magVarFrom[info.from]) || info.from) : '';
-  }
+  // Where the automatic value was taken, on the number itself: the row stays one line.
+  const from = info && info.auto ? ((S.magVarFrom && S.magVarFrom[info.from]) || info.from) : '';
+  magVarDeg.title = from ? (S.tbMagVarAuto || 'Automatic') + ' \u2014 ' + from : (S.tbMagVarManualTitle || '');
 }
 window.refreshMagVarControl = refreshMagVarControl;
 if (magVarMode) {
