@@ -2575,7 +2575,21 @@ body.theme-light .notam-raw-toggle:hover { background: #dfe4ec; color: #000; }
   height: auto;
   background: #fff;
   border-radius: 4px;
+  transform-origin: 0 0;
+  user-select: none;
+  -webkit-user-drag: none;
 }
+/* The frame the chart is zoomed and panned in: it keeps the fitted size, the image moves inside
+   it, and the page itself never scrolls or zooms under the fingers. */
+.sigwx-modal .sigwx-zoom {
+  position: relative;
+  overflow: hidden;
+  touch-action: none;
+  border-radius: 4px;
+  cursor: zoom-in;
+}
+.sigwx-modal .sigwx-zoom.zoomed { cursor: grab; }
+.sigwx-modal .sigwx-zoom[hidden] { display: none; }
 .shortcuts-help-list {
   display: grid;
   grid-template-columns: minmax(120px, auto) 1fr;
@@ -8455,3 +8469,16 @@ body.theme-light .airfield-phone-row .airfield-phone:visited { color: #1a5fb4; }
 #toolbar .tb-magvar #magvar-deg::-webkit-inner-spin-button,
 #toolbar .tb-magvar #magvar-deg::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
 #toolbar .tb-magvar #magvar-deg.magvar-readonly { opacity: .75; cursor: default; }
+/* The SIGWX legend on the map opens the chart in the viewer. */
+.leaflet-overlay-pane img.sigwx-ov-legend { cursor: zoom-in; }
+/* The SIGWX legend folded away on a turned map: a button in the corner that opens the chart. */
+.sigwx-legend-chip {
+  font: 600 12px/1 system-ui, sans-serif;
+  padding: 7px 10px;
+  border-radius: 6px;
+  border: 1px solid #3a3a3a;
+  background: #fff;
+  color: #1d2733;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, .3);
+  cursor: pointer;
+}

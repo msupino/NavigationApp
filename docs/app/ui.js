@@ -11691,6 +11691,95 @@ const NavWxAvailability = (function () {
 // No map overlay — these are wide-area prognostic charts. The button opens a
 // modal with a valid-time dropdown and the chart image. Hidden until the
 // ims-data sigwx manifest loads.
+// Pinch-zoom and pan for a chart image in a viewer. The app ships user-scalable=no, so a
+// phone cannot zoom the page: without this the SIGWX sheet sat at ~330 px wide and its table
+// could not be read. Two fingers zoom about the point between them, one finger pans once
+// zoomed, a double tap toggles 1x / 2.5x; on a desktop the wheel zooms about the pointer and a
+// drag pans. The image never leaves its frame. Returns reset(), for a new image.
+function makeImageZoomable(frame, img) {
+  const MAX = 6;
+  let s = 1, tx = 0, ty = 0;
+  const pts = new Map();
+  let gesture = null;
+  let lastTap = 0;
+  const rel = e => { const r = frame.getBoundingClientRect(); return { x: e.clientX - r.left, y: e.clientY - r.top }; };
+  function clamp() {
+    const W = frame.clientWidth, H = frame.clientHeight;
+    const w = img.offsetWidth * s, h = img.offsetHeight * s;
+    tx = w <= W ? (W - w) / 2 : Math.min(0, Math.max(W - w, tx));
+    ty = h <= H ? (H - h) / 2 : Math.min(0, Math.max(H - h, ty));
+  }
+  function apply() {
+    clamp();
+    img.style.transform = 'translate(' + tx + 'px,' + ty + 'px) scale(' + s + ')';
+    frame.classList.toggle('zoomed', s > 1.001);
+  }
+  // Zoom to `ns`, keeping the image point under (px, py) under it.
+  function zoomAt(ns, px, py) {
+    ns = Math.max(1, Math.min(MAX, ns));
+    const cx = (px - tx) / s, cy = (py - ty) / s;
+    s = ns; tx = px - cx * s; ty = py - cy * s;
+    apply();
+  }
+  function reset() { s = 1; tx = 0; ty = 0; pts.clear(); gesture = null; apply(); }
+  frame.addEventListener('pointerdown', e => {
+    if (frame.setPointerCapture) { try { frame.setPointerCapture(e.pointerId); } catch (err) { /* */ } }
+    pts.set(e.pointerId, rel(e));
+    const p = [...pts.values()];
+    if (p.length === 2) {
+      gesture = { d: Math.hypot(p[0].x - p[1].x, p[0].y - p[1].y) || 1, s, tx, ty,
+        mid: { x: (p[0].x + p[1].x) / 2, y: (p[0].y + p[1].y) / 2 } };
+    } else if (p.length === 1) {
+      gesture = { pan: true, x: p[0].x, y: p[0].y, tx, ty, at: Date.now(), moved: false };
+    }
+  });
+  frame.addEventListener('pointermove', e => {
+    if (!pts.has(e.pointerId) || !gesture) return;
+    pts.set(e.pointerId, rel(e));
+    const p = [...pts.values()];
+    if (p.length >= 2 && !gesture.pan) {
+      const d = Math.hypot(p[0].x - p[1].x, p[0].y - p[1].y);
+      const mid = { x: (p[0].x + p[1].x) / 2, y: (p[0].y + p[1].y) / 2 };
+      const ns = Math.max(1, Math.min(MAX, gesture.s * d / gesture.d));
+      const cx = (gesture.mid.x - gesture.tx) / gesture.s, cy = (gesture.mid.y - gesture.ty) / gesture.s;
+      s = ns; tx = mid.x - cx * s; ty = mid.y - cy * s;
+      apply();
+    } else if (gesture.pan) {
+      if (Math.hypot(p[0].x - gesture.x, p[0].y - gesture.y) > 8) gesture.moved = true;
+      if (s > 1.001) {
+        tx = gesture.tx + (p[0].x - gesture.x); ty = gesture.ty + (p[0].y - gesture.y);
+        apply();
+      }
+    }
+  });
+  const up = e => {
+    const was = gesture;
+    const at = pts.get(e.pointerId);
+    pts.delete(e.pointerId);
+    const p = [...pts.values()];
+    // A double tap is two real taps: one finger, down and up quickly, not moved. The fingers
+    // of a pinch, or a pan that follows one, are not taps.
+    if (was && was.pan && was.at && !was.moved && !p.length && e.pointerType !== 'mouse'
+        && Date.now() - was.at < 250 && at) {
+      const now = Date.now();
+      if (now - lastTap < 300) { zoomAt(s > 1.001 ? 1 : 2.5, at.x, at.y); lastTap = 0; }
+      else lastTap = now;
+    }
+    // One finger left after a pinch: carry on as a pan from where it is.
+    gesture = p.length === 1 ? { pan: true, x: p[0].x, y: p[0].y, tx, ty } : null;
+  };
+  frame.addEventListener('pointerup', up);
+  frame.addEventListener('pointercancel', up);
+  frame.addEventListener('wheel', e => {
+    e.preventDefault();
+    const q = rel(e);
+    zoomAt(s * Math.exp(-e.deltaY * 0.002), q.x, q.y);
+  }, { passive: false });
+  img.addEventListener('load', reset);
+  return { reset, zoomAt, state: () => ({ s, tx, ty }) };
+}
+window.makeImageZoomable = makeImageZoomable;
+
 (function imsSigwxViewer() {
   const RAW = 'https://raw.githubusercontent.com/msupino/NavigationApp/ims-data/';
   const btn = document.getElementById('sigwx-btn');
@@ -11698,14 +11787,17 @@ const NavWxAvailability = (function () {
   let manifest = null;
   let back = null;
 
+  let picked = '';
   function close() {
     if (back) { back.remove(); back = null; }
     document.removeEventListener('keydown', onEsc, true);
   }
   function onEsc(e) { if (e.key === 'Escape') { e.stopPropagation(); close(); } }
 
-  function open() {
+  function open(want) {
     if (back || !manifest) return;   // open even with zero times (show broken)
+    // Opened from the map's SIGWX legend: start on the chart the overlay is showing.
+    if (want && typeof want === 'object' && want.valid) picked = (want.day || '') + '|' + want.valid;
     // Behave like every chart: close other open charts + the toolbar dropdowns.
     if (typeof closeOpenChartModals === 'function') closeOpenChartModals();
     if (typeof window.closeToolbarMenus === 'function') window.closeToolbarMenus();
@@ -11731,7 +11823,6 @@ const NavWxAvailability = (function () {
     sel.setAttribute('aria-label', S.tbSigwxTime || 'Valid time');
     // The option VALUE is the manifest index, which a refresh renumbers; remember the
     // pilot's pick by the time it names so a rebuilt list can find it again.
-    let picked = '';
     const keyAt = i => {
       const t = manifest.times[i];
       return t ? (t.day || '') + '|' + t.valid : '';
@@ -11768,11 +11859,15 @@ const NavWxAvailability = (function () {
       const t = manifest.times[sel.selectedIndex];
       if (!t) return;
       note.hidden = true; img.hidden = false;
+      if (img.parentNode) img.parentNode.hidden = false;
       img.src = RAW + t.png + '?t=' + (manifest.generatedAt || '');
     };
     // If the PNG is missing (a forecast hour not yet published), show a note
     // instead of a broken-image icon.
-    img.addEventListener('error', () => { img.hidden = true; note.hidden = false; });
+    img.addEventListener('error', () => {
+      img.hidden = true; note.hidden = false;
+      if (img.parentNode) img.parentNode.hidden = true;
+    });
     sel.addEventListener('change', () => { picked = keyAt(sel.selectedIndex); load(); });
     if (manifest.times.length) {
       load();
@@ -11783,8 +11878,13 @@ const NavWxAvailability = (function () {
       note.hidden = false;
       note.textContent = S.sigwxUnavailable || 'SIGWX charts are temporarily unavailable.';
     }
-    box.appendChild(img);
+    // The image sits in a frame that pinch-zooms and pans it (see makeImageZoomable).
+    const frame = document.createElement('div');
+    frame.className = 'sigwx-zoom';
+    frame.appendChild(img);
+    box.appendChild(frame);
     box.appendChild(note);
+    box._sigwxZoom = makeImageZoomable(frame, img);
 
     if (typeof addModalCloseX === 'function') addModalCloseX(box, close);
     back.appendChild(box);
@@ -11797,7 +11897,8 @@ const NavWxAvailability = (function () {
     refresh().then(changed => { if (changed && back && sel.isConnected) { fillTimes(); load(); } });
   }
 
-  btn.addEventListener('click', open);
+  btn.addEventListener('click', () => open());
+  NavAid.openSigwxViewer = open;
 
   // Reveal the button whenever the manifest exists — even with zero times — so a
   // broken/empty run is visible (button opens to an "unavailable" note) rather than
@@ -11995,6 +12096,7 @@ const NavWxAvailability = (function () {
     if (mapLayer) { map.removeLayer(mapLayer); mapLayer = null; }
     if (tblLayer) { map.removeLayer(tblLayer); tblLayer = null; }
     if (hdrLayer) { map.removeLayer(hdrLayer); hdrLayer = null; }
+    if (typeof refreshLegendMode === 'function') refreshLegendMode();
   }
   // Crop a panel of the chart PNG client-side. `knockWhite` (map panel only)
   // makes the chart's white paper transparent so it doesn't read as a glaring
@@ -12004,6 +12106,67 @@ const NavWxAvailability = (function () {
     const m = /^#?([0-9a-f]{6})$/i.exec(String(h || ''));
     const v = m ? parseInt(m[1], 16) : 0x1d4e89;
     return { r: (v >> 16) & 255, g: (v >> 8) & 255, b: v & 255 };
+  }
+  // The table crop is mostly paper: the rows, a blank band as tall as a quarter of it, the
+  // notes, and another blank band. On the map that white block covered the chart for nothing.
+  // Keep each band that has ink, close every blank gap to a small space, drop the blank edges.
+  // Worked from the image itself: the number of rows changes with the day's areas. Resolves
+  // { data, frac } -- frac is the new height over the old, for the table's footprint.
+  const compactCache = {};
+  function compactTable(key, dataUrl) {
+    if (compactCache[key]) return Promise.resolve(compactCache[key]);
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => {
+        try {
+          const w = img.naturalWidth, h = img.naturalHeight;
+          const c = document.createElement('canvas');
+          c.width = w; c.height = h;
+          const ctx = c.getContext('2d');
+          ctx.drawImage(img, 0, 0);
+          const d = ctx.getImageData(0, 0, w, h).data;
+          const ink = y => {
+            for (let x = 0; x < w; x += 2) {
+              const i = (y * w + x) * 4;
+              if (d[i] < 200 || d[i + 1] < 200 || d[i + 2] < 200) return true;
+            }
+            return false;
+          };
+          const GAP = Math.max(8, Math.round(h * 0.016));
+          const bands = [];
+          let start = -1;
+          for (let y = 0; y < h; y++) {
+            if (ink(y)) { if (start < 0) start = y; }
+            else if (start >= 0) { bands.push([start, y]); start = -1; }
+          }
+          if (start >= 0) bands.push([start, h]);
+          // Join bands the paper between them is too thin to be a gap (table rules, text lines).
+          const merged = [];
+          for (const b of bands) {
+            const last = merged[merged.length - 1];
+            if (last && b[0] - last[1] <= GAP) last[1] = b[1]; else merged.push(b.slice());
+          }
+          if (!merged.length) { resolve({ data: dataUrl, frac: 1 }); return; }
+          const pad = Math.round(GAP / 2);
+          const outH = merged.reduce((n, b) => n + (b[1] - b[0]), 0) + GAP * (merged.length - 1) + pad * 2;
+          const o = document.createElement('canvas');
+          o.width = w; o.height = outH;
+          const octx = o.getContext('2d');
+          octx.fillStyle = '#fff';
+          octx.fillRect(0, 0, w, outH);
+          let y = pad;
+          for (const b of merged) {
+            octx.drawImage(c, 0, b[0], w, b[1] - b[0], 0, y, w, b[1] - b[0]);
+            y += b[1] - b[0] + GAP;
+          }
+          const out = { data: o.toDataURL('image/png'), frac: outH / h };
+          compactCache[key] = out;
+          resolve(out);
+        } catch (e) { reject(e); }
+      };
+      img.onerror = reject;
+      img.src = dataUrl;
+    });
   }
   function cropPanel(url, crop, knockWhite) {
     // Map panel: drop the chart's pale paper AND terrain/sea (light + low
@@ -12126,15 +12289,118 @@ const NavWxAvailability = (function () {
     el.style.transform = deg ? (base + ' rotate(' + deg + 'deg)') : base;
   }
   map.on('move zoom zoomend viewreset', applyRotation);
+
+  // The legend (header over table) is text. The overlay pane turns with the map, so on a
+  // map turned to the track the legend was sideways or upside down -- unreadable. Counter-turn
+  // both images by the map's bearing about the centre of the two together, so they stay one
+  // block, anchored where they are on the chart, with the text level.
+  function uprightLegend() {
+    const bearing = map.getBearing ? map.getBearing() : 0;
+    const els = [hdrLayer, tblLayer].map(l => l && l.getElement && l.getElement()).filter(Boolean);
+    if (!els.length) return;
+    const boxes = els.map(el => {
+      const p = L.DomUtil.getPosition(el) || L.point(0, 0);
+      return { el, x: p.x, y: p.y, w: el.offsetWidth || parseFloat(el.style.width) || 0,
+        h: el.offsetHeight || parseFloat(el.style.height) || 0 };
+    });
+    const x0 = Math.min(...boxes.map(b => b.x)), y0 = Math.min(...boxes.map(b => b.y));
+    const x1 = Math.max(...boxes.map(b => b.x + b.w)), y1 = Math.max(...boxes.map(b => b.y + b.h));
+    const cx = (x0 + x1) / 2, cy = (y0 + y1) / 2;
+    for (const b of boxes) {
+      const base = b.el.style.transform.replace(/\s*rotate\([^)]*\)/g, '');
+      b.el.style.transformOrigin = (cx - b.x) + 'px ' + (cy - b.y) + 'px';
+      b.el.style.transform = bearing ? base + ' rotate(' + (-bearing) + 'deg)' : base;
+    }
+  }
+  map.on('rotate', uprightLegend);
+
+  // On a turned map the legend is anchored east of the chart, so the turn swings it across
+  // the chart itself -- a block of white over the route. Past a few degrees it folds away into
+  // a button in the corner that opens the chart in the viewer (zoomable); north up, it is on
+  // the map as the chart prints it.
+  const LEGEND_FOLD_DEG = 10;
+  let legendChip = null;          // the button, once made
+  let legendCtl = null;           // the map-corner control holding it, when the time bar is not up
+  function legendFolded() {
+    const b = ((map.getBearing ? map.getBearing() : 0) % 360 + 360) % 360;
+    return Math.min(b, 360 - b) > LEGEND_FOLD_DEG;
+  }
+  function chipButton() {
+    if (legendChip) return legendChip;
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'sigwx-legend-chip';
+    btn.textContent = S.sigwxLegendChip || '\u2601 SIGWX legend';
+    btn.title = S.sigwxLegendOpen || 'Open the chart to read it';
+    L.DomEvent.disableClickPropagation(btn);
+    btn.addEventListener('click', () => openFromLegend());
+    legendChip = btn;
+    return btn;
+  }
+  function refreshLegendMode() {
+    const have = !!(hdrLayer || tblLayer) && cb.checked;
+    const folded = have && legendFolded();
+    for (const l of [hdrLayer, tblLayer]) {
+      const el = l && l.getElement && l.getElement();
+      if (el) el.style.visibility = folded ? 'hidden' : '';
+    }
+    if (!folded) {
+      if (legendChip) legendChip.remove();
+      if (legendCtl) { legendCtl.remove(); legendCtl = null; }
+      return;
+    }
+    // In the weather time bar when it is up -- the SIGWX controls already live there, and a
+    // corner button sat under it on a phone; otherwise in the map's bottom-left corner.
+    const bar = document.getElementById('map-time');
+    const btn = chipButton();
+    if (bar && !bar.hidden) {
+      if (legendCtl) { legendCtl.remove(); legendCtl = null; }
+      // At the bar's right-hand end in either language: its left end runs under the map
+      // legend on a desktop. RTL lays children out from the right, so there it goes first.
+      if (btn.parentNode !== bar) {
+        if (getComputedStyle(bar).direction === 'rtl') bar.insertBefore(btn, bar.firstChild);
+        else bar.appendChild(btn);
+      }
+    } else if (!legendCtl) {
+      legendCtl = L.control({ position: 'bottomleft' });
+      legendCtl.onAdd = () => { const w = L.DomUtil.create('div', 'leaflet-control'); w.appendChild(btn); return w; };
+      legendCtl.addTo(map);
+    }
+  }
+  map.on('rotate', refreshLegendMode);
+  // Leaflet rewrites an overlay's transform whenever it re-places it (zoom, view reset), which
+  // would drop the counter-turn: re-apply it straight after, on the layer's own reset.
+  function keepUpright(lyr) {
+    const reset = lyr._reset;
+    lyr._reset = function () { reset.apply(this, arguments); uprightLegend(); };
+  }
+  // Tapping the legend opens the chart in the viewer, full size, on the same valid time.
+  function openFromLegend(e) {
+    if (e && e.originalEvent) L.DomEvent.stop(e.originalEvent);
+    if (typeof NavAid.openSigwxViewer === 'function') NavAid.openSigwxViewer(currentTime());
+  }
   function place(which, data, bounds, op) {
     const ref = which === 'map' ? mapLayer : (which === 'header' ? hdrLayer : tblLayer);
     if (!ref) {
-      const lyr = L.imageOverlay(data, bounds, { opacity: op, interactive: false, pane: 'overlayPane', className: 'sigwx-ov-layer' });
+      const legend = which !== 'map';
+      // bubblingMouseEvents off: a tap on the legend opens the chart and goes no further --
+      // it used to reach the map as well and drop a waypoint under it.
+      const lyr = L.imageOverlay(data, bounds, { opacity: op, interactive: legend, bubblingMouseEvents: !legend,
+        pane: 'overlayPane', className: 'sigwx-ov-layer' + (legend ? ' sigwx-ov-legend' : '') });
+      if (legend) {
+        lyr.on('click', openFromLegend);
+        keepUpright(lyr);
+      }
       lyr.addTo(map);
       if (which === 'map') mapLayer = lyr; else if (which === 'header') hdrLayer = lyr; else tblLayer = lyr;
+      if (legend) {
+        const el = lyr.getElement();
+        if (el) el.title = S.sigwxLegendOpen || 'Open the chart to read it';
+      }
     } else {
       ref.setUrl(data); ref.setBounds(bounds); ref.setOpacity(op);
     }
+    if (which !== 'map') { uprightLegend(); refreshLegendMode(); }
   }
   // Cropping a SIGWX panel is asynchronous (image decode + canvas), and the pilot can
   // change the valid time while one is in flight. Without a generation token a slower crop
@@ -12188,10 +12454,14 @@ const NavWxAvailability = (function () {
     });
     const tblOp = off('sigwxTblOpacity') || 0.92;
     const tblBounds = boundsFrom(BOUNDS_TABLE, 'sigwxTblLatOffset', 'sigwxTblLngOffset', 'sigwxTblScale', 'sigwxTblScale');
-    cropPanel(url, CROP_TABLE, false).then(data => {
-      if (gen !== sigwxGen || !cb.checked) return;
-      place('table', data, tblBounds, tblOp);
-    }).catch(() => { /* table optional */ });
+    cropPanel(url, CROP_TABLE, false)
+      .then(data => compactTable(url, data).catch(() => ({ data, frac: 1 })))
+      .then(({ data, frac }) => {
+        if (gen !== sigwxGen || !cb.checked) return;
+        // Same top edge (the header sits on it) and width; the footprint shrinks with the paper.
+        const n = tblBounds[1][0], sLat = tblBounds[0][0];
+        place('table', data, [[n - (n - sLat) * frac, tblBounds[0][1]], [n, tblBounds[1][1]]], tblOp);
+      }).catch(() => { /* table optional */ });
     // Title header: full-width strip shrunk to the table's width, parked just
     // above the table (height keeps the strip's aspect at that width).
     cropPanel(url, CROP_HEADER, false).then(data => {
