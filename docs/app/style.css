@@ -8471,3 +8471,14 @@ body.theme-light .airfield-phone-row .airfield-phone:visited { color: #1a5fb4; }
 #toolbar .tb-magvar #magvar-deg.magvar-readonly { opacity: .75; cursor: default; }
 /* The SIGWX legend on the map opens the chart in the viewer. */
 .leaflet-overlay-pane img.sigwx-ov-legend { cursor: zoom-in; }
+/* The SIGWX legend folded away on a turned map: a button in the corner that opens the chart. */
+.sigwx-legend-chip {
+  font: 600 12px/1 system-ui, sans-serif;
+  padding: 7px 10px;
+  border-radius: 6px;
+  border: 1px solid #3a3a3a;
+  background: #fff;
+  color: #1d2733;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, .3);
+  cursor: pointer;
+}

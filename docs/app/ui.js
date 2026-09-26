@@ -12096,6 +12096,7 @@ window.makeImageZoomable = makeImageZoomable;
     if (mapLayer) { map.removeLayer(mapLayer); mapLayer = null; }
     if (tblLayer) { map.removeLayer(tblLayer); tblLayer = null; }
     if (hdrLayer) { map.removeLayer(hdrLayer); hdrLayer = null; }
+    if (typeof refreshLegendMode === 'function') refreshLegendMode();
   }
   // Crop a panel of the chart PNG client-side. `knockWhite` (map panel only)
   // makes the chart's white paper transparent so it doesn't read as a glaring
@@ -12105,6 +12106,67 @@ window.makeImageZoomable = makeImageZoomable;
     const m = /^#?([0-9a-f]{6})$/i.exec(String(h || ''));
     const v = m ? parseInt(m[1], 16) : 0x1d4e89;
     return { r: (v >> 16) & 255, g: (v >> 8) & 255, b: v & 255 };
+  }
+  // The table crop is mostly paper: the rows, a blank band as tall as a quarter of it, the
+  // notes, and another blank band. On the map that white block covered the chart for nothing.
+  // Keep each band that has ink, close every blank gap to a small space, drop the blank edges.
+  // Worked from the image itself: the number of rows changes with the day's areas. Resolves
+  // { data, frac } -- frac is the new height over the old, for the table's footprint.
+  const compactCache = {};
+  function compactTable(key, dataUrl) {
+    if (compactCache[key]) return Promise.resolve(compactCache[key]);
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => {
+        try {
+          const w = img.naturalWidth, h = img.naturalHeight;
+          const c = document.createElement('canvas');
+          c.width = w; c.height = h;
+          const ctx = c.getContext('2d');
+          ctx.drawImage(img, 0, 0);
+          const d = ctx.getImageData(0, 0, w, h).data;
+          const ink = y => {
+            for (let x = 0; x < w; x += 2) {
+              const i = (y * w + x) * 4;
+              if (d[i] < 200 || d[i + 1] < 200 || d[i + 2] < 200) return true;
+            }
+            return false;
+          };
+          const GAP = Math.max(8, Math.round(h * 0.016));
+          const bands = [];
+          let start = -1;
+          for (let y = 0; y < h; y++) {
+            if (ink(y)) { if (start < 0) start = y; }
+            else if (start >= 0) { bands.push([start, y]); start = -1; }
+          }
+          if (start >= 0) bands.push([start, h]);
+          // Join bands the paper between them is too thin to be a gap (table rules, text lines).
+          const merged = [];
+          for (const b of bands) {
+            const last = merged[merged.length - 1];
+            if (last && b[0] - last[1] <= GAP) last[1] = b[1]; else merged.push(b.slice());
+          }
+          if (!merged.length) { resolve({ data: dataUrl, frac: 1 }); return; }
+          const pad = Math.round(GAP / 2);
+          const outH = merged.reduce((n, b) => n + (b[1] - b[0]), 0) + GAP * (merged.length - 1) + pad * 2;
+          const o = document.createElement('canvas');
+          o.width = w; o.height = outH;
+          const octx = o.getContext('2d');
+          octx.fillStyle = '#fff';
+          octx.fillRect(0, 0, w, outH);
+          let y = pad;
+          for (const b of merged) {
+            octx.drawImage(c, 0, b[0], w, b[1] - b[0], 0, y, w, b[1] - b[0]);
+            y += b[1] - b[0] + GAP;
+          }
+          const out = { data: o.toDataURL('image/png'), frac: outH / h };
+          compactCache[key] = out;
+          resolve(out);
+        } catch (e) { reject(e); }
+      };
+      img.onerror = reject;
+      img.src = dataUrl;
+    });
   }
   function cropPanel(url, crop, knockWhite) {
     // Map panel: drop the chart's pale paper AND terrain/sea (light + low
@@ -12251,6 +12313,61 @@ window.makeImageZoomable = makeImageZoomable;
     }
   }
   map.on('rotate', uprightLegend);
+
+  // On a turned map the legend is anchored east of the chart, so the turn swings it across
+  // the chart itself -- a block of white over the route. Past a few degrees it folds away into
+  // a button in the corner that opens the chart in the viewer (zoomable); north up, it is on
+  // the map as the chart prints it.
+  const LEGEND_FOLD_DEG = 10;
+  let legendChip = null;          // the button, once made
+  let legendCtl = null;           // the map-corner control holding it, when the time bar is not up
+  function legendFolded() {
+    const b = ((map.getBearing ? map.getBearing() : 0) % 360 + 360) % 360;
+    return Math.min(b, 360 - b) > LEGEND_FOLD_DEG;
+  }
+  function chipButton() {
+    if (legendChip) return legendChip;
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'sigwx-legend-chip';
+    btn.textContent = S.sigwxLegendChip || '\u2601 SIGWX legend';
+    btn.title = S.sigwxLegendOpen || 'Open the chart to read it';
+    L.DomEvent.disableClickPropagation(btn);
+    btn.addEventListener('click', () => openFromLegend());
+    legendChip = btn;
+    return btn;
+  }
+  function refreshLegendMode() {
+    const have = !!(hdrLayer || tblLayer) && cb.checked;
+    const folded = have && legendFolded();
+    for (const l of [hdrLayer, tblLayer]) {
+      const el = l && l.getElement && l.getElement();
+      if (el) el.style.visibility = folded ? 'hidden' : '';
+    }
+    if (!folded) {
+      if (legendChip) legendChip.remove();
+      if (legendCtl) { legendCtl.remove(); legendCtl = null; }
+      return;
+    }
+    // In the weather time bar when it is up -- the SIGWX controls already live there, and a
+    // corner button sat under it on a phone; otherwise in the map's bottom-left corner.
+    const bar = document.getElementById('map-time');
+    const btn = chipButton();
+    if (bar && !bar.hidden) {
+      if (legendCtl) { legendCtl.remove(); legendCtl = null; }
+      // At the bar's right-hand end in either language: its left end runs under the map
+      // legend on a desktop. RTL lays children out from the right, so there it goes first.
+      if (btn.parentNode !== bar) {
+        if (getComputedStyle(bar).direction === 'rtl') bar.insertBefore(btn, bar.firstChild);
+        else bar.appendChild(btn);
+      }
+    } else if (!legendCtl) {
+      legendCtl = L.control({ position: 'bottomleft' });
+      legendCtl.onAdd = () => { const w = L.DomUtil.create('div', 'leaflet-control'); w.appendChild(btn); return w; };
+      legendCtl.addTo(map);
+    }
+  }
+  map.on('rotate', refreshLegendMode);
   // Leaflet rewrites an overlay's transform whenever it re-places it (zoom, view reset), which
   // would drop the counter-turn: re-apply it straight after, on the layer's own reset.
   function keepUpright(lyr) {
@@ -12283,7 +12400,7 @@ window.makeImageZoomable = makeImageZoomable;
     } else {
       ref.setUrl(data); ref.setBounds(bounds); ref.setOpacity(op);
     }
-    if (which !== 'map') uprightLegend();
+    if (which !== 'map') { uprightLegend(); refreshLegendMode(); }
   }
   // Cropping a SIGWX panel is asynchronous (image decode + canvas), and the pilot can
   // change the valid time while one is in flight. Without a generation token a slower crop
@@ -12337,10 +12454,14 @@ window.makeImageZoomable = makeImageZoomable;
     });
     const tblOp = off('sigwxTblOpacity') || 0.92;
     const tblBounds = boundsFrom(BOUNDS_TABLE, 'sigwxTblLatOffset', 'sigwxTblLngOffset', 'sigwxTblScale', 'sigwxTblScale');
-    cropPanel(url, CROP_TABLE, false).then(data => {
-      if (gen !== sigwxGen || !cb.checked) return;
-      place('table', data, tblBounds, tblOp);
-    }).catch(() => { /* table optional */ });
+    cropPanel(url, CROP_TABLE, false)
+      .then(data => compactTable(url, data).catch(() => ({ data, frac: 1 })))
+      .then(({ data, frac }) => {
+        if (gen !== sigwxGen || !cb.checked) return;
+        // Same top edge (the header sits on it) and width; the footprint shrinks with the paper.
+        const n = tblBounds[1][0], sLat = tblBounds[0][0];
+        place('table', data, [[n - (n - sLat) * frac, tblBounds[0][1]], [n, tblBounds[1][1]]], tblOp);
+      }).catch(() => { /* table optional */ });
     // Title header: full-width strip shrunk to the table's width, parked just
     // above the table (height keeps the strip's aspect at that width).
     cropPanel(url, CROP_HEADER, false).then(data => {

@@ -1401,6 +1401,7 @@ window.S = Object.assign({
   tbSigwxTime: 'Valid time',
   tbSigwxOverlay: 'Show significant weather',
   tbSigwxOverlayTitle: 'Overlay the low-level significant-weather (SIGWX) prog chart on the map by valid time. Approximate alignment — fine-tune with ?tune. Planning aid only.',
+  sigwxLegendChip: '\u2601 SIGWX legend',
   sigwxLegendOpen: 'Open the chart to read it',
   sigwxModalTitle: 'Significant weather charts (SIGWX)',
   sigwxMissing: 'Chart not available for this time yet.',
