@@ -42,6 +42,14 @@ clamp does not replace the preferred saved size; a completed resize gesture does
 
 ## Charts
 
+The SIGWX title and table are composed into one image pinned east of Israel
+(table top-left 37.1°E, 34.2°N by default). The combined image follows map pan,
+and zoom using a north-up projection relative to the current map center. Bearing
+changes neither the legend position nor its text orientation: text stays upright
+at 0° outside the rotated map pane.
+Existing table latitude/longitude offsets and scale tunables adjust its placement.
+It renders below map controls and lets map gestures pass through.
+
 The route-check source summary appears first below the checked time window,
 before either the findings or the clear-plan message.
 

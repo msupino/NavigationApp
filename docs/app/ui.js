@@ -11974,28 +11974,106 @@ const NavWxAvailability = (function () {
   const CROP_HEADER = { x0: 0.00000, x1: 0.99200, y0: 0.02258, y1: 0.10484 };
   const CROP_MAP = { x0: 0.01595, x1: 0.38860, y0: 0.10484, y1: 0.91774 };
   const CROP_TABLE = { x0: 0.39000, x1: 0.99200, y0: 0.10484, y1: 0.91774 };
-  // Header strip aspect (height/width in source px) — used to size it when it's
-  // scaled to the table's width.
-  const HEADER_ASPECT = (CROP_HEADER.y1 - CROP_HEADER.y0) / (CROP_HEADER.x1 - CROP_HEADER.x0)
-    * (1240 / 1755);
   // Map-panel geographic extent (re-solved for the header-trimmed crop) as a
   // similarity fit over three airfields shared with our own layers — LLHA, LLBS
   // and LLIB; LLIB constrains the longitude scale. ~-0.8° tilt → sigwxRotationDeg.
   const BOUNDS_MAP = { n: 33.97, s: 29.37, w: 33.29, e: 36.80 };
-  // The TABLE isn't geographic — park it just east of Israel (over Jordan) so it
-  // sits to the right of the map; position/size are tunable.
   const BOUNDS_TABLE = { n: 34.20, s: 29.60, w: 37.10, e: 40.60 };
-
-  let manifest = null, mapLayer = null, tblLayer = null, hdrLayer = null;
+  let manifest = null, mapLayer = null;
+  let sidePanel = null, tblImg = null;
   const off = k => (typeof tune === 'function' ? tune(k) : 0) || 0;
   const sc = k => { const v = typeof tune === 'function' ? tune(k) : 1; return v > 0 ? v : 1; };
-  const cropCache = {};                      // key → cropped dataURL
+  const cropCache = {};
 
   function removeLayers() {
     if (mapLayer) { map.removeLayer(mapLayer); mapLayer = null; }
-    if (tblLayer) { map.removeLayer(tblLayer); tblLayer = null; }
-    if (hdrLayer) { map.removeLayer(hdrLayer); hdrLayer = null; }
+    if (sidePanel) { sidePanel.remove(); sidePanel = null; tblImg = null; }
   }
+  const HEADER_ASPECT = (CROP_HEADER.y1 - CROP_HEADER.y0) * 1240
+    / ((CROP_HEADER.x1 - CROP_HEADER.x0) * 1755);
+
+  // Where the legend sits: the place it would occupy with north up, and its CENTRE pinned
+  // there.
+  //
+  // It was computed straight out of map.project(), which is the north-up CRS plane and knows
+  // nothing about the bearing, then written as left/top in screen space. Rotating alone looked
+  // right -- but a pan while rotated moves the map along a vector that is itself rotated, so
+  // the north-up projection of the anchor moved by a different vector: panning 120 px sideways
+  // slid the legend 85 left and 84 down. Reported as the legend keeping moving when north is
+  // not up, and that is exactly what it was doing.
+  //
+  // latLngToContainerPoint gives where the anchor REALLY is on screen, bearing included. Undo
+  // the bearing about the container centre and you have the north-up screen position, which is
+  // stable under pan (the rotation cancels) and stationary under rotation (nothing else
+  // changes). The panel's centre goes there.
+  function sigwxNorthUpCentre(latlng) {
+    const size = map.getSize();
+    const mid = L.point(size.x / 2, size.y / 2);
+    const here = map.latLngToContainerPoint(latlng);
+    const bearing = (typeof map.getBearing === 'function') ? (map.getBearing() || 0) : 0;
+    if (!bearing) return here;
+    const a = -bearing * Math.PI / 180;      // undo the bearing, not apply it again
+    const d = here.subtract(mid);
+    return L.point(mid.x + d.x * Math.cos(a) - d.y * Math.sin(a),
+      mid.y + d.x * Math.sin(a) + d.y * Math.cos(a));
+  }
+  function sizeSideBox() {
+    if (!sidePanel) return;
+    const bounds = boundsFrom(BOUNDS_TABLE, 'sigwxTblLatOffset', 'sigwxTblLngOffset',
+      'sigwxTblScale', 'sigwxTblScale');
+    const [[south, west], [north, east]] = bounds;
+    const width = Math.abs(map.project([north, east]).x - map.project([north, west]).x);
+    const height = width * HEADER_ASPECT;
+    const centre = sigwxNorthUpCentre([(south + north) / 2, (west + east) / 2]);
+    // No clamping. The legend is anchored to the map: pan away from where it lives and it goes
+    // off the edge, the way anything drawn on a chart does. I had it held inside the viewport
+    // at first, and that fights the whole point -- at a phone's width the table is wider than
+    // the screen, so it pinned to the edge and could not move at all, and it froze the tuning
+    // offsets too. Keeping it on screen is a different feature from putting it where it belongs.
+    const left = centre.x - width / 2;
+    const top = centre.y - height / 2;
+    // Unrounded, as it was: the tuning offsets and the scale are compared against exact
+    // projected widths, and rounding here put a half-pixel between them.
+    sidePanel.style.left = left + 'px';
+    sidePanel.style.top = top + 'px';
+    sidePanel.style.width = width + 'px';
+  }
+  // `rotate` is in the list so the north-up position is recomputed when the bearing changes --
+  // it cancels out, which is the point, but the pan that usually comes with it does not.
+  map.on('move zoom rotate resize', sizeSideBox);
+  function sideBox() {
+    if (sidePanel && sidePanel.isConnected) return sidePanel;
+    const host = map.getContainer();
+    sidePanel = document.createElement('div');
+    sidePanel.className = 'sigwx-side';
+    tblImg = document.createElement('img');
+    tblImg.className = 'sigwx-side-table';
+    tblImg.alt = (window.S || {}).sigwxTableTitle || 'Significant weather — table';
+    tblImg.onload = sizeSideBox;
+    sidePanel.appendChild(tblImg);
+    host.appendChild(sidePanel);
+    sizeSideBox();
+    return sidePanel;
+  }
+  window.sigwxSideBox = sideBox;
+  async function combineTable(headerUrl, tableUrl) {
+    const load = src => new Promise((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => resolve(img);
+      img.onerror = reject;
+      img.src = src;
+    });
+    const [header, table] = await Promise.all([load(headerUrl), load(tableUrl)]);
+    const canvas = document.createElement('canvas');
+    canvas.width = table.naturalWidth;
+    const headerHeight = Math.round(canvas.width * header.naturalHeight / header.naturalWidth);
+    canvas.height = headerHeight + table.naturalHeight;
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(header, 0, 0, canvas.width, headerHeight);
+    ctx.drawImage(table, 0, headerHeight);
+    return canvas.toDataURL('image/png');
+  }
+  window.sigwxCombineTable = combineTable;
   // Crop a panel of the chart PNG client-side. `knockWhite` (map panel only)
   // makes the chart's white paper transparent so it doesn't read as a glaring
   // print sheet over a dark-mode map (the table keeps its white, for legibility).
@@ -12127,13 +12205,19 @@ const NavWxAvailability = (function () {
   }
   map.on('move zoom zoomend viewreset', applyRotation);
   function place(which, data, bounds, op) {
-    const ref = which === 'map' ? mapLayer : (which === 'header' ? hdrLayer : tblLayer);
-    if (!ref) {
-      const lyr = L.imageOverlay(data, bounds, { opacity: op, interactive: false, pane: 'overlayPane', className: 'sigwx-ov-layer' });
-      lyr.addTo(map);
-      if (which === 'map') mapLayer = lyr; else if (which === 'header') hdrLayer = lyr; else tblLayer = lyr;
+    if (which !== 'map') {
+      const box = sideBox();
+      if (!box) return;
+      box.style.opacity = String(op);
+      if (tblImg.getAttribute('src') !== data) tblImg.src = data;
+      sizeSideBox();
+      return;
+    }
+    if (!mapLayer) {
+      mapLayer = L.imageOverlay(data, bounds, { opacity: op, interactive: false, pane: 'overlayPane', className: 'sigwx-ov-layer' });
+      mapLayer.addTo(map);
     } else {
-      ref.setUrl(data); ref.setBounds(bounds); ref.setOpacity(op);
+      mapLayer.setUrl(data); mapLayer.setBounds(bounds); mapLayer.setOpacity(op);
     }
   }
   // Cropping a SIGWX panel is asynchronous (image decode + canvas), and the pilot can
@@ -12186,21 +12270,13 @@ const NavWxAvailability = (function () {
       showLoading(false);
       removeLayers();
     });
+    // The upright table follows its own geographic anchor, separate from the weather overlay.
     const tblOp = off('sigwxTblOpacity') || 0.92;
-    const tblBounds = boundsFrom(BOUNDS_TABLE, 'sigwxTblLatOffset', 'sigwxTblLngOffset', 'sigwxTblScale', 'sigwxTblScale');
-    cropPanel(url, CROP_TABLE, false).then(data => {
+    Promise.all([cropPanel(url, CROP_HEADER, false), cropPanel(url, CROP_TABLE, false)])
+      .then(([header, table]) => combineTable(header, table)).then(data => {
       if (gen !== sigwxGen || !cb.checked) return;
-      place('table', data, tblBounds, tblOp);
+      place('table', data, null, tblOp);
     }).catch(() => { /* table optional */ });
-    // Title header: full-width strip shrunk to the table's width, parked just
-    // above the table (height keeps the strip's aspect at that width).
-    cropPanel(url, CROP_HEADER, false).then(data => {
-      if (gen !== sigwxGen || !cb.checked) return;
-      const w = tblBounds[0][1], e = tblBounds[1][1], nT = tblBounds[1][0];
-      const midLat = (tblBounds[0][0] + nT) / 2;
-      const hLat = (e - w) * Math.cos(midLat * Math.PI / 180) * HEADER_ASPECT;
-      place('header', data, [[nT, w], [nT + hLat, e]], tblOp);
-    }).catch(() => { /* header optional */ });
   }
   const drawer = NavWxTime.drawing(
     () => !!(cb && cb.checked),
