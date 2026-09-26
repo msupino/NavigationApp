@@ -12160,15 +12160,18 @@ const NavWxAvailability = (function () {
     lyr._reset = function () { reset.apply(this, arguments); uprightLegend(); };
   }
   // Tapping the legend opens the chart in the viewer, full size, on the same valid time.
-  function openFromLegend() {
+  function openFromLegend(e) {
+    if (e && e.originalEvent) L.DomEvent.stop(e.originalEvent);
     if (typeof NavAid.openSigwxViewer === 'function') NavAid.openSigwxViewer(currentTime());
   }
   function place(which, data, bounds, op) {
     const ref = which === 'map' ? mapLayer : (which === 'header' ? hdrLayer : tblLayer);
     if (!ref) {
       const legend = which !== 'map';
-      const lyr = L.imageOverlay(data, bounds, { opacity: op, interactive: legend, pane: 'overlayPane',
-        className: 'sigwx-ov-layer' + (legend ? ' sigwx-ov-legend' : '') });
+      // bubblingMouseEvents off: a tap on the legend opens the chart and goes no further --
+      // it used to reach the map as well and drop a waypoint under it.
+      const lyr = L.imageOverlay(data, bounds, { opacity: op, interactive: legend, bubblingMouseEvents: !legend,
+        pane: 'overlayPane', className: 'sigwx-ov-layer' + (legend ? ' sigwx-ov-legend' : '') });
       if (legend) {
         lyr.on('click', openFromLegend);
         keepUpright(lyr);

@@ -94,10 +94,25 @@ for (const [name, vp, deck] of [['desktop', { width: 1280, height: 900 }, '0'], 
     expect(Math.abs(zoomed - north.w / north.h)).toBeLessThan(0.05);
     // A tap on it opens the viewer on the same chart.
     await page.evaluate(() => {
-      const el = [...document.querySelectorAll('img.sigwx-ov-legend')].sort((a, b) => b.offsetHeight - a.offsetHeight)[0];
-      el.dispatchEvent(new MouseEvent('click', { bubbles: true, clientX: 1, clientY: 1 }));
+      // The menu the checkbox was ticked in stays open on desktop, over the map: put it away.
+      if (typeof window.closeToolbarMenus === 'function') window.closeToolbarMenus();
+      map.setBearing(0); map.setZoom(8, { animate: false });
+      // Add-waypoint mode, as in the report: a tap that reached the map would drop a point.
+      setMode('add');
     });
+    const box = await page.evaluate(() => {
+      const r = [...document.querySelectorAll('img.sigwx-ov-legend')].sort((a, b) => b.offsetHeight - a.offsetHeight)[0].getBoundingClientRect();
+      const m = map.getContainer().getBoundingClientRect();
+      // The middle of the part of the legend inside the map, and check nothing sits over it.
+      const x = (Math.max(r.left, m.left) + Math.min(r.right, m.right)) / 2;
+      const y = (Math.max(r.top, m.top) + Math.min(r.bottom, m.bottom)) / 2;
+      return { x, y, hit: document.elementFromPoint(x, y).className };
+    });
+    expect(String(box.hit)).toContain('sigwx-ov-legend');
+    await page.mouse.click(box.x, box.y);
     await expect(page.locator('.sigwx-modal')).toBeVisible();
     await expect(page.locator('.sigwx-modal .sigwx-time')).toHaveValue('0');
+    // ...and only that: the tap does not reach the map and drop a waypoint under the legend.
+    expect(await page.evaluate(() => state.waypoints.length)).toBe(0);
   });
 }
