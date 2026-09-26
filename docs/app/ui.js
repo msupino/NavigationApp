@@ -586,6 +586,9 @@ function applyHeadingUp() {
 window.applyHeadingUp = applyHeadingUp;
 
 function refreshOrientControl() {
+  // Location / recording / simulator on or off changes what the dial's number means. Through
+  // the hook the dial publishes once it exists: this can run before its consts are set up.
+  if (typeof window.refreshDialReady === 'function') window.refreshDialReady();
   const wrap = orientBtn && orientBtn.parentNode;
   if (!wrap) return;
   const ownShip = typeof gpsPositionLive === 'function' ? gpsPositionLive() : false;
@@ -865,6 +868,10 @@ const rotDial = document.getElementById('rotate-dial');
 const rotNeedle = document.getElementById('rotate-needle');
 const rotHdg = document.getElementById('rotate-hdg');
 function mapBearing() { return map.getBearing ? map.getBearing() : 0; }
+// A position driving the map (location, recording, simulator) makes the dial's number a heading.
+function dialReadsMagnetic() {
+  return typeof gpsPositionLive === 'function' && gpsPositionLive();
+}
 function refreshDial() {
   const b = (((360 - Math.round(mapBearing())) % 360) + 360) % 360;
   // The red needle is a north arrow: it points where north is on the turned chart, the way
@@ -874,11 +881,12 @@ function refreshDial() {
   rotNeedle.style.transform = 'rotate(' + ((Math.round(mapBearing()) % 360) + 360) % 360 + 'deg)';
   rotDial.title = S.dialTitle(b);
   rotDial.setAttribute('aria-valuenow', String(b));
-  // The number beside the dial is the heading up the screen, and every heading a pilot reads
-  // in this app is magnetic -- the strip, the orientation button. It said 209 beside a strip
-  // saying 204. The needle and the map's own rotation stay true; only the number is converted.
-  if (document.activeElement !== rotHdg) rotHdg.value = toMagnetic(b);
+  // In flight the number beside the dial is the heading up the screen, magnetic like every
+  // heading a pilot reads -- it said 209 beside a strip saying 204. While planning it is the
+  // map's rotation, true: north up is 0, not 355. The needle stays true either way.
+  if (document.activeElement !== rotHdg) rotHdg.value = dialReadsMagnetic() ? toMagnetic(b) : b;
 }
+window.refreshDialReady = refreshDial;
 rotHdg.addEventListener('change', () => {
   // Empty / non-numeric input would flow through as NaN and could persist
   // 'NaN' to localStorage, breaking rotation until reload.
@@ -888,8 +896,8 @@ rotHdg.addEventListener('change', () => {
   const v = ((raw % 360) + 360) % 360;
   rotHdg.value = v;
   orientNoteManualRotation();
-  // Typed as magnetic, like the number it replaces; the map turns by the true angle.
-  map.setBearing((360 - fromMagnetic(v)) % 360);
+  // Read the way the number it replaces was shown: magnetic in flight, true while planning.
+  map.setBearing((360 - (dialReadsMagnetic() ? fromMagnetic(v) : v)) % 360);
 });
 rotHdg.addEventListener('keydown', e => {
   if (e.key === 'Enter') rotHdg.blur();
