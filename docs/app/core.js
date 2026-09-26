@@ -190,6 +190,7 @@ NavAid.tuningDefaults = {
   layerEnabledNavigation: { value: true, type: 'bool', label: 'Offer the Navigation layer' },
   layerEnabledSatellite: { value: true, type: 'bool', label: 'Offer the Satellite layer' },
   layerEnabledOpenStreetMap: { value: true, type: 'bool', label: 'Offer the OpenStreetMap layer' },
+  mapMinZoom: { value: 2, min: 2, max: 10, step: 1, label: 'How far out the map zooms (2 = a continent; 8 = the old Israeli-charts floor)' },
   layerEnabledWorld: { value: true, type: 'bool', label: 'Offer the World (offline) layer: country outlines shipped with the app' },
   layerEnabledOpenFlightMaps: { value: true, type: 'bool', label: 'Offer the OpenFlightMaps layer (Europe; no data over Israel)' },
   searchMaxVor: { value: 3, min: 0, max: 20, step: 1, label: 'Search: max VOR stations' },
@@ -1020,7 +1021,7 @@ NavAid.tuningGroups = [
   { name: 'LSA colors', keys: ['lsaHighlightColor', 'lsaWeekendColor', 'lsaAlwaysColor', 'lsaLabelColor'] },
   { name: 'GPS track', keys: ['gpsTrackColors', 'gpsTrackOutlineColor', 'gpsTrackStartColor', 'gpsTrackEndColor'] },
   { name: 'Base layers', keys: ['layerEnabledLowAlt', 'layerEnabledHelicopters', 'layerEnabledATS',
-    'layerEnabledNavigation', 'layerEnabledSatellite', 'layerEnabledOpenStreetMap', 'layerEnabledOpenFlightMaps', 'layerEnabledWorld',
+    'layerEnabledNavigation', 'layerEnabledSatellite', 'layerEnabledOpenStreetMap', 'layerEnabledOpenFlightMaps', 'layerEnabledWorld', 'mapMinZoom',
     'defaultBaseLayer', 'baseLayerOpacity'] },
   { name: 'Density altitude', keys: ['featureDensityAltitude', 'daWarnAboveElevFt', 'daForecastHours',
     'daMetarMaxAgeMin'] },
@@ -5363,16 +5364,14 @@ function layerOffered(name) {
   return tune(key) !== false && tune(key) !== 0;
 }
 
-// The map stops zooming out at the Israeli charts' extent -- further out they are a speck.
-// open flightmaps covers much of Europe, and a pilot choosing an area to keep offline needs
-// to see a continent, so on that chart the map goes out to z4. The underlay OSM goes as far.
-const MAP_MIN_ZOOM = 8;
-const WIDE_MIN_ZOOM = 4;
-const WORLD_MIN_ZOOM = 2;
-function mapMinZoomFor(layer) {
-  if (typeof layers === 'undefined' || !layer) return MAP_MIN_ZOOM;
-  if (layer === layers.World) return WORLD_MIN_ZOOM;
-  return layer === layers.OpenFlightMaps ? WIDE_MIN_ZOOM : MAP_MIN_ZOOM;
+// How far out the map goes. It used to stop at z8 on the Israeli charts, because further out
+// they were a speck on an empty map. The world map is always underneath now, so zooming out is
+// never to nothing: below z6 the charts drop away and the countries show, down to a continent
+// in one screen (z2). Same floor on every chart; the gist can raise it (mapMinZoom).
+const MAP_MIN_ZOOM = 2;
+function mapMinZoomFor() {
+  const v = typeof tune === 'function' ? Number(tune('mapMinZoom')) : NaN;
+  return Number.isFinite(v) ? v : MAP_MIN_ZOOM;
 }
 const LAYER_KEY = 'navaid.layer';
 let initialLayer = layers.CVFR;

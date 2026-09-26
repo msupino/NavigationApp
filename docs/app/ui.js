@@ -344,9 +344,6 @@ layerSelect.onchange = () => {
     }
   }
   map.addLayer(layers[layerSelect.value]);
-  // Out to a continent on open flightmaps, back to the Israeli charts' extent elsewhere
-  // (Leaflet zooms in by itself if the map is further out than the new floor).
-  map.setMinZoom(mapMinZoomFor(layers[layerSelect.value]));
   if (typeof updateBasemapUnderlay === 'function') updateBasemapUnderlay();
   applyMapOpacity();
   reloadLayerDatasets();                  // swap waypoints/comm/leg to the new layer's source
@@ -9861,6 +9858,7 @@ function redrawAfterTune() {
   // legs following it come along -- and the toolbar input re-reads the new value.
   if (typeof applyDefaultSpeedToAutoLegs === 'function') applyDefaultSpeedToAutoLegs(tune('defaultLegSpeedKt'));
   if (typeof syncDefaultSpeedInput === 'function') syncDefaultSpeedInput();
+  if (typeof mapMinZoomFor === 'function') map.setMinZoom(mapMinZoomFor());
   // ...and the variation row (Navigation group: magVarAuto, magneticVariationDeg).
   if (typeof refreshMagVarControl === 'function') refreshMagVarControl();
   if (typeof refreshDial === 'function') refreshDial();
@@ -10754,6 +10752,8 @@ if (typeof loadRemoteConfig === "function") {
     // Show whatever is in force now — the gist's value, or the pilot's saved one
     // that reapplyStoredTuneOverrides() just put back on top of it.
     if (typeof syncDefaultSpeedInput === 'function') syncDefaultSpeedInput();
+    // The zoom-out floor is a gist setting too.
+    if (typeof mapMinZoomFor === 'function') map.setMinZoom(mapMinZoomFor());
     // The variation row too: the gist can set the mode and the manual value.
     if (typeof refreshMagVarControl === 'function') refreshMagVarControl();
     if (typeof refreshDial === 'function') refreshDial();
