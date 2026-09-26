@@ -5400,6 +5400,35 @@ const _initialView = (() => {
     return Number.isFinite(v) && v !== 0 ? v : d; };
   return { center: [num('defaultViewLat', 32.1), num('defaultViewLng', 34.95)], zoom: num('defaultViewZoom', 11) };
 })();
+// leaflet-rotate positions every vector renderer (canvas or SVG) by turning its top-left pixel
+// into a latitude/longitude and back (_updateTransform via this._topLeft). Latitude is clamped
+// to +-85 on the way, so once a renderer's padded bounds reach past the top of the world -- which
+// they do now that the map zooms out to a continent -- it was put hundreds of pixels too low:
+// the world map's coastlines sat a country away from their names, and any airspace shape with
+// them. The same position, worked in pixels, has no clamp: the renderer's top-left projected at
+// the zoom it was drawn at, scaled to the new zoom, less the new pixel origin (which is the
+// plugin's own, so rotation is handled as before).
+(function patchRendererTransform() {
+  if (typeof L === 'undefined' || !L.Renderer) return;
+  const proto = L.Renderer.prototype;
+  const origUpdate = proto._update;
+  const origTransform = proto._updateTransform;
+  proto._update = function () {
+    const r = origUpdate.apply(this, arguments);
+    if (this._map) this._originAtUpdate = this._map.getPixelOrigin();
+    return r;
+  };
+  proto._updateTransform = function (center, zoom) {
+    const m = this._map;
+    if (!m || !m._rotate || !this._bounds || !this._originAtUpdate || typeof m._getNewPixelOrigin !== 'function') {
+      return origTransform.apply(this, arguments);
+    }
+    const scale = m.getZoomScale(zoom, this._zoom);
+    const offset = this._bounds.min.add(this._originAtUpdate).multiplyBy(scale)
+      .subtract(m._getNewPixelOrigin(center, zoom));
+    L.DomUtil.setTransform(this._container, offset, scale);
+  };
+}());
 const map = L.map('map', {
   center: _initialView.center,
   zoom: _initialView.zoom,
