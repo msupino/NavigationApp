@@ -105,14 +105,21 @@ test('Hebrew labels the row and says where the value comes from', async ({ page 
   expect(await page.locator('#magvar-deg').getAttribute('title')).toContain('במרכז המפה');
 });
 
-test('the dial\'s magnetic number follows the variation as the map moves', async ({ page }) => {
+test('in flight the dial\'s magnetic number follows the variation where the aircraft is', async ({ page }) => {
   await boot(page);
-  const r = await page.evaluate(() => new Promise(done => {
-    map.setView([32.1, 34.9], 9, { animate: false });
-    const israel = document.getElementById('rotate-hdg').value;
-    map.once('moveend', () => setTimeout(() => done({ israel, iceland: document.getElementById('rotate-hdg').value }), 0));
-    map.setView([64.08, -20.75], 9, { animate: false });
-  }));
+  const r = await page.evaluate(() => {
+    const at = (lat, lng) => {
+      window.gpsLiveOn = true;
+      gpsOwn = { lat, lng, hdg: 0, t: Date.now() };
+      map.setView([lat, lng], 9, { animate: false });
+      map.setBearing(0);
+      refreshOrientControl();
+      return document.getElementById('rotate-hdg').value;
+    };
+    const out = { israel: at(32.1, 34.9), iceland: at(64.08, -20.75) };
+    window.gpsLiveOn = false;
+    return out;
+  });
   expect(r.israel).toBe('355');                               // north up, 5E
   expect(r.iceland).toBe('10');                               // north up, ~10W
 });
