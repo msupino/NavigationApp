@@ -1036,7 +1036,7 @@ test.describe('the turn restarts the cumulative clock', () => {
 // The menu is capped to the screen and scrolls, but a flex item still shrinks BELOW its
 // content by default -- so once the rows stopped fitting they compressed instead, and a row
 // whose label sits above its control squashed to one line with its select painting over the
-// row beneath. Reported as the VOR ref box overlapping "Show/Add Freq Changes".
+// row beneath. Reported as the VOR ref box overlapping "Show/add freq changes".
 test('a stacked row keeps its full height when the menu overflows', async ({ page }) => {
   // The capped, scrolling menu exists only from 681px up (below that the section is an
   // inline block with no height limit), so the squash can only happen there. Short height

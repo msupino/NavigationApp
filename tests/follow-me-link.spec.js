@@ -532,7 +532,7 @@ test('opening the link watches, names the aircraft and dates the position', asyn
   expect(got.labelOverlapsPlane).toBe(false);
   expect(got.mapFollows).toBe(true);             // every new fix returns the aircraft to centre
   expect(got.orientVisible).toBe(true);           // North-up / track-up button is on the map
-  expect(got.orientTrack).toBe('090°');
+  expect(got.orientTrack).toBe('085°');           // magnetic, like the strip: 090 true, 5°E
   expect(got.distanceMarks).toEqual([2, 5, 10]);  // standard dashed predictor distances
   expect(got.trackUpBearing).toBe(270);           // 360 - 090 puts the aircraft direction up
   expect(got.northUpNoseBearing).toBe(90);
@@ -1863,8 +1863,11 @@ test('a simulator fix is published when Follow me is sharing', async ({ page }) 
     });
     window.simOn = true;
     await window._simFetch();
-    await new Promise(r => setTimeout(r, 30));
-    const published = window.__sent.some(f => (f[0] & 0xf0) === 0x30 && f.length > 4);
+    // Until it is published (or a second passes), not a fixed 30 ms: a busy CI runner took
+    // longer than that and failed a publish that was on its way.
+    const isPublished = () => window.__sent.some(f => (f[0] & 0xf0) === 0x30 && f.length > 4);
+    for (let t = 0; t < 100 && !isPublished(); t++) await new Promise(r => setTimeout(r, 10));
+    const published = isPublished();
     window._simRequestData = originalRequest;
     window.simOn = false;
     F.stop();

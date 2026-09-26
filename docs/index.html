@@ -388,6 +388,27 @@
         <label class="navtoggle" data-i18n-title="tbDefaultSpeedTitle">
           <span data-i18n="tbDefaultSpeedLabel"></span>
           <input type="number" id="default-speed" min="20" max="400" step="5" inputmode="numeric">
+          <!-- Title set by ui.js: it names the speed it returns to. -->
+          <button id="default-speed-reset" class="slider-reset" type="button">↻</button>
+        </label>
+        <!-- Magnetic variation: from the World Magnetic Model where the headings are (wmm.js,
+             offline), or the pilot's own number. The fields always hold the value in force --
+             read-only in automatic, with where it was taken beside them. -->
+        <!-- One row, like the default speed above it: the mode, then the value in force. -->
+        <label class="navtoggle tb-magvar" data-i18n-title="tbMagVarTitle">
+          <span data-i18n="tbMagVarLabel"></span>
+          <select id="magvar-mode">
+            <option value="auto" data-i18n="tbMagVarAuto"></option>
+            <option value="manual" data-i18n="tbMagVarManual"></option>
+          </select>
+          <!-- The value reads as a chart writes it, "5 E", in either language. -->
+          <span class="magvar-value" dir="ltr">
+            <input type="number" id="magvar-deg" min="0" max="30" step="1" inputmode="numeric" data-i18n-aria="tbMagVarManual">
+            <select id="magvar-ew" data-i18n-aria="tbMagVarEw">
+              <option value="E">E</option>
+              <option value="W">W</option>
+            </select>
+          </span>
         </label>
         <div class="tb-group" data-i18n="tbGrpOverlays"></div>
         <label class="navtoggle" data-i18n-title="tbLegDirTitle">
@@ -977,6 +998,13 @@
           <span class="footer-link-sizer" aria-hidden="true" data-i18n="tbGpsLiveStop"></span>
         </span>
       </button>
+      <!-- Lost radio: routes to the nearest field with a published comm-failure procedure and
+           puts its chart on the map. Next to the GPS buttons because it is used in the air. -->
+      <button id="commfail-btn" type="button" class="footer-link footer-link-button gps-footer-btn" aria-pressed="false"
+              data-i18n-title="commFailTitle" data-i18n-aria="commFail">
+        <span class="footer-link-icon gps-footer-icon" aria-hidden="true">📵</span>
+        <span class="footer-link-text" data-i18n="commFail"></span>
+      </button>
       <!-- Grouped with the GPS buttons, not a sibling after them: that keeps it on
            the SAME wrap-eligible flex item as far as #footer-links is concerned, so
            the mobile collapsed menu's flex-wrap never has a reason to break a new
@@ -1132,6 +1160,7 @@
         'https://cdn.jsdelivr.net/npm/leaflet-velocity@1.7.0/dist/leaflet-velocity.min.js',
         'i18n/' + window.__navLang + '/strings.js' + v,
         'app/native-tiles.js' + v,
+        'app/wmm.js' + v,
         'app/core.js' + v,
         'app/save-file.js' + v,
         'app/route-graph-shapes.js' + v,
@@ -1142,7 +1171,9 @@
         'app/alt-pair-directions.js' + v,
         'app/gdrive.js' + v,
         'app/gps.js' + v,
+        'app/commfail.js' + v,
         'app/ui.js' + v,
+        'app/world-offline.js' + v,
         'app/traffic.js' + v,
         'app/followme.js' + v,
         'app/density-altitude.js' + v,

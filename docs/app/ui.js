@@ -260,7 +260,7 @@ const layerSelect = document.getElementById('layer-select');
 // Flight charts first (CVFR / LSA / Heli), then a separator, then base maps.
 // '---' is a non-selectable divider. Any layer not listed is appended after.
 const LAYER_ORDER = ['CVFR', 'Low Alt', 'Helicopters', 'ATS', '---',
-                     'Navigation', 'Satellite', 'OpenStreetMap'];
+                     'Navigation', 'OpenFlightMaps', 'Satellite', 'OpenStreetMap', 'World'];
 const orderedLayerNames = () => [
   ...LAYER_ORDER.filter(n => n === '---' || (layers[n] && layerOffered(n))),
   ...Object.keys(layers).filter(n => !LAYER_ORDER.includes(n) && layerOffered(n)),
@@ -277,6 +277,12 @@ function rebuildLayerPicker() {
     opt.value = name;
     opt.textContent = (S.layerLabels && S.layerLabels[name]) || name;
     if (map.hasLayer(layers[name])) opt.selected = true;
+    // Dimmed, never removed, where it has nothing to draw -- and never while it is the one
+    // showing, or the picker could not say what is on the map.
+    if (!opt.selected && typeof layerHasNoDataHere === 'function' && layerHasNoDataHere(name, map.getCenter())) {
+      opt.disabled = true;
+      opt.title = S.layerNoDataOverIsrael || '';
+    }
     layerSelect.appendChild(opt);
   }
   const active = (typeof currentLayerName === 'function') ? currentLayerName() : current;
@@ -287,6 +293,16 @@ function rebuildLayerPicker() {
   }
 }
 rebuildLayerPicker();
+// Over Israel or away from it decides whether open flightmaps has anything to draw, so the
+// picker follows the map. Only on a change of that answer: a rebuild per pan is a rebuild per
+// GPS fix in the air.
+let _layerNoDataKey = '';
+map.on('moveend', () => {
+  const key = Object.keys(layers).filter(n => layerHasNoDataHere(n, map.getCenter())).join(',');
+  if (key === _layerNoDataKey) return;
+  _layerNoDataKey = key;
+  rebuildLayerPicker();
+});
 // The three charts a route can be planned ON. Each carries its own route graph, its own
 // waypoints and its own reporting points, so a route drawn on one is a set of names the
 // other two do not have -- carrying it across silently leaves the pilot reading a plan
@@ -520,7 +536,7 @@ function vorIconSvg(color) {
 // `deg` turns the needle: the track being flown when the chart is north-up, and north
 // itself when the chart is turned to the track, so the needle always points at something
 // real on the screen. `hdg` is the track in degrees, written under the needle while a fix
-// is driving the map -- the number a pilot reads back.
+// is driving the map -- the number a pilot reads back, so the caller passes it magnetic.
 // Both angles are wrapped into 0-359 before they are used: a device that reports -1 (or a
 // computed course that has gone round the back) rendered as the readout '0-1'.
 const compassDeg = (v) => ((Math.round(v) % 360) + 360) % 360;
@@ -567,6 +583,9 @@ function applyHeadingUp() {
 window.applyHeadingUp = applyHeadingUp;
 
 function refreshOrientControl() {
+  // Location / recording / simulator on or off changes what the dial's number means. Through
+  // the hook the dial publishes once it exists: this can run before its consts are set up.
+  if (typeof window.refreshDialReady === 'function') window.refreshDialReady();
   const wrap = orientBtn && orientBtn.parentNode;
   if (!wrap) return;
   const ownShip = typeof gpsPositionLive === 'function' ? gpsPositionLive() : false;
@@ -584,7 +603,10 @@ function refreshOrientControl() {
   // leaves the chart still, so the needle points where the aircraft is going.
   const trk = mapAircraftTrack();
   const needle = headingUpOn ? ((bearing % 360) + 360) % 360 : (trk == null ? 0 : trk);
-  orientBtn.innerHTML = compassIconSvg(needle, trk);
+  // The needle is geometry on the chart, so it stays true. The number is the heading a pilot
+  // reads back, so it is magnetic like the strip beside it: the button showed 354 while the
+  // strip said 349, the variation between the two.
+  orientBtn.innerHTML = compassIconSvg(needle, trk == null ? trk : toMagnetic(trk));
   orientBtn.classList.toggle('orient-on', headingUpOn);
   orientBtn.classList.toggle('orient-rotated', rotated);
   orientBtn.setAttribute('aria-pressed', headingUpOn ? 'true' : 'false');
@@ -843,13 +865,25 @@ const rotDial = document.getElementById('rotate-dial');
 const rotNeedle = document.getElementById('rotate-needle');
 const rotHdg = document.getElementById('rotate-hdg');
 function mapBearing() { return map.getBearing ? map.getBearing() : 0; }
+// A position driving the map (location, recording, simulator) makes the dial's number a heading.
+function dialReadsMagnetic() {
+  return typeof gpsPositionLive === 'function' && gpsPositionLive();
+}
 function refreshDial() {
   const b = (((360 - Math.round(mapBearing())) % 360) + 360) % 360;
-  rotNeedle.style.transform = 'rotate(' + b + 'deg)';
+  // The red needle is a north arrow: it points where north is on the turned chart, the way
+  // the orientation button's needle does. It used to be drawn at the heading shown in the
+  // field, which mirrors it -- a chart turned to fly 354 has north 6 degrees RIGHT of up, and
+  // the needle leaned 6 degrees left.
+  rotNeedle.style.transform = 'rotate(' + ((Math.round(mapBearing()) % 360) + 360) % 360 + 'deg)';
   rotDial.title = S.dialTitle(b);
   rotDial.setAttribute('aria-valuenow', String(b));
-  if (document.activeElement !== rotHdg) rotHdg.value = b;
+  // In flight the number beside the dial is the heading up the screen, magnetic like every
+  // heading a pilot reads -- it said 209 beside a strip saying 204. While planning it is the
+  // map's rotation, true: north up is 0, not 355. The needle stays true either way.
+  if (document.activeElement !== rotHdg) rotHdg.value = dialReadsMagnetic() ? toMagnetic(b) : b;
 }
+window.refreshDialReady = refreshDial;
 rotHdg.addEventListener('change', () => {
   // Empty / non-numeric input would flow through as NaN and could persist
   // 'NaN' to localStorage, breaking rotation until reload.
@@ -859,7 +893,8 @@ rotHdg.addEventListener('change', () => {
   const v = ((raw % 360) + 360) % 360;
   rotHdg.value = v;
   orientNoteManualRotation();
-  map.setBearing((360 - v) % 360);
+  // Read the way the number it replaces was shown: magnetic in flight, true while planning.
+  map.setBearing((360 - (dialReadsMagnetic() ? fromMagnetic(v) : v)) % 360);
 });
 rotHdg.addEventListener('keydown', e => {
   if (e.key === 'Enter') rotHdg.blur();
@@ -890,7 +925,8 @@ rotDial.addEventListener('pointermove', e => {
     rotMoved = true;
   }
   orientNoteManualRotation();
-  map.setBearing(((360 - dialAngle(e)) % 360 + 360) % 360);
+  // Drag the north arrow: the needle follows the finger, and north goes where it is dropped.
+  map.setBearing(((dialAngle(e)) % 360 + 360) % 360);
 });
 function rotEnd(cycle) {
   if (cycle && rotDragging && !rotMoved) {
@@ -8374,6 +8410,9 @@ window.plateMapLayer = plateMapLayer;
     .filter(Boolean);
   if (!boxes.length) return;
   const selectRow = select.closest('label');
+  // "Show plates for" chooses among plates that are not being shown while the box is off, so
+  // it goes with the type picker rather than standing there offering a choice about nothing.
+  const airfieldRow = document.querySelector('.tb-plate-airfield');
   const saved = lsGet(key);
   const active = boxes.find(box => box.checked);
   select.value = active ? active.id
@@ -8386,6 +8425,7 @@ window.plateMapLayer = plateMapLayer;
     const shown = boxes.find(box => box.checked);
     enabled.checked = !!shown;
     if (selectRow) selectRow.hidden = !enabled.checked;
+    if (airfieldRow) airfieldRow.hidden = !enabled.checked;
     if (shown) {
       select.value = shown.id;
       remember();
@@ -8693,8 +8733,17 @@ function reapplyStoredTuneOverrides() {
 const DEFAULTSPEED_KEY = 'navaid.defaultSpeed';
 const DEFAULTSPEED_EL = document.getElementById('default-speed');
 const defaultSpeedOk = n => Number.isFinite(n) && n >= 20 && n <= 400;
+const DEFAULTSPEED_RESET = document.getElementById('default-speed-reset');
 function syncDefaultSpeedInput() {
   if (DEFAULTSPEED_EL) DEFAULTSPEED_EL.value = String(Math.round(tune('defaultLegSpeedKt')));
+  if (DEFAULTSPEED_RESET) {
+    // Back to the default: the gist's speed if it sets one, else the built-in. Dimmed, never
+    // hidden, when that is already the speed in force; the title names the number it goes to.
+    const base = Math.round(tuneBaseline('defaultLegSpeedKt'));
+    DEFAULTSPEED_RESET.disabled = Math.round(tune('defaultLegSpeedKt')) === base;
+    const t = S.tbDefaultSpeedReset;
+    DEFAULTSPEED_RESET.title = typeof t === 'function' ? t(base) : 'Back to the default (' + base + ' kt)';
+  }
 }
 // Single carry point. The toolbar input is not the only writer of the in-force
 // default -- the gist reload, the dev tuning panel (and its per-key reset), and a
@@ -8723,7 +8772,96 @@ if (DEFAULTSPEED_EL) {
     // Carry the legs that never had a speed typed on them, so setting the aircraft's
     // cruise once fixes the whole route rather than only the legs drawn after.
     carryDefaultSpeedToRoute();
+    syncDefaultSpeedInput();
   };
+  if (DEFAULTSPEED_RESET) {
+    DEFAULTSPEED_RESET.onclick = (e) => {
+      e.preventDefault();                 // inside a <label>: do not also focus the input
+      try { localStorage.removeItem(DEFAULTSPEED_KEY); } catch (err) { /* storage unavailable */ }
+      setTune('defaultLegSpeedKt', tuneBaseline('defaultLegSpeedKt'));
+      syncDefaultSpeedInput();
+      carryDefaultSpeedToRoute();
+    };
+  }
+}
+
+// Magnetic variation (menu, under the default speed). Automatic is the World Magnetic Model
+// where the headings are; manual is the pilot's number, degrees east or west. Both are stored
+// the way the default speed is -- tune overrides, so the pilot's choice outranks the gist.
+const MAGVAR_AUTO_KEY = 'navaid.magVarAuto';
+const MAGVAR_MANUAL_KEY = 'navaid.magVarManual';
+const magVarMode = document.getElementById('magvar-mode');
+const magVarDeg = document.getElementById('magvar-deg');
+const magVarEw = document.getElementById('magvar-ew');
+
+function refreshMagVarControl() {
+  if (!magVarMode) return;
+  const info = typeof magVarInfo === 'function' ? magVarInfo() : null;
+  const auto = typeof magVarIsAuto === 'function' ? magVarIsAuto() : true;
+  magVarMode.value = auto ? 'auto' : 'manual';
+  // The fields hold the variation in force: in automatic the model's, read-only, so the number
+  // on screen is always the one the headings use; in manual the pilot's own.
+  const east = info && Number.isFinite(info.east) ? info.east : -Number(tune('magneticVariationDeg'));
+  if (document.activeElement !== magVarDeg) magVarDeg.value = String(Math.round(Math.abs(east)));
+  magVarEw.value = east < 0 ? 'W' : 'E';
+  magVarDeg.readOnly = auto;
+  magVarEw.disabled = auto;              // a select has no read-only; it shows its value either way
+  magVarDeg.classList.toggle('magvar-readonly', auto);
+  // Where the automatic value was taken, on the number itself: the row stays one line.
+  const from = info && info.auto ? ((S.magVarFrom && S.magVarFrom[info.from]) || info.from) : '';
+  magVarDeg.title = from ? (S.tbMagVarAuto || 'Automatic') + ' \u2014 ' + from : (S.tbMagVarManualTitle || '');
+}
+window.refreshMagVarControl = refreshMagVarControl;
+if (magVarMode) {
+  registerTuneOverride(MAGVAR_AUTO_KEY, ['magVarAuto'], v => (v === '1' ? true : v === '0' ? false : null));
+  registerTuneOverride(MAGVAR_MANUAL_KEY, ['magneticVariationDeg'], v => {
+    const n = Number(v);
+    return Number.isFinite(n) && Math.abs(n) <= 30 ? n : null;
+  });
+  const changed = () => {
+    refreshMagVarControl();
+    // Every heading on the chart and in the plan is drawn through toMagnetic.
+    if (typeof draw === 'function') draw();
+    refreshInspectorIfVisible();
+    if (typeof refreshDial === 'function') refreshDial();
+    if (typeof refreshOrientControl === 'function') refreshOrientControl();
+  };
+  magVarMode.onchange = () => {
+    const auto = magVarMode.value === 'auto';
+    // Manual starts from the value automatic was using here, not from an old number: the pilot
+    // who switches over is adjusting what they see.
+    if (!auto && magVarIsAuto()) {
+      const mv = currentMagVar();
+      setTune('magneticVariationDeg', mv);
+      try { localStorage.setItem(MAGVAR_MANUAL_KEY, String(mv)); } catch (e) { /* */ }
+    }
+    setTune('magVarAuto', auto);
+    try { localStorage.setItem(MAGVAR_AUTO_KEY, auto ? '1' : '0'); } catch (e) { /* */ }
+    changed();
+  };
+  const setManual = () => {
+    const n = Math.round(Number(magVarDeg.value));                    // whole degrees
+    if (!Number.isFinite(n) || n < 0 || n > 30) { refreshMagVarControl(); return; }
+    const mv = magVarEw.value === 'W' ? n : -n;              // magnetic = true + mv: east is negative
+    setTune('magneticVariationDeg', mv);
+    try { localStorage.setItem(MAGVAR_MANUAL_KEY, String(mv)); } catch (e) { /* */ }
+    changed();
+  };
+  magVarDeg.onchange = () => { if (!magVarDeg.readOnly) setManual(); };
+  magVarEw.onchange = setManual;
+  refreshMagVarControl();
+  // In automatic the value follows the aircraft, the route and the map: keep the line, and the
+  // magnetic numbers beside the dial and on the orientation button, honest as it moves.
+  let lastMv = currentMagVar();
+  map.on('moveend', () => {
+    if (!magVarIsAuto()) return;
+    refreshMagVarControl();
+    const mv = currentMagVar();
+    if (mv === lastMv) return;
+    lastMv = mv;
+    if (typeof refreshDial === 'function') refreshDial();
+    if (typeof refreshOrientControl === 'function') refreshOrientControl();
+  });
 }
 
 const KITEALPHA_KEY = 'navaid.legArrowAlpha';
@@ -8963,7 +9101,7 @@ if (KITEALPHA_EL) {
 ['yellow-alpha', 'map-opacity', 'wp-size', 'leg-arrow-size', 'leg-line-width', 'drift-line-width',
  'mag-zoom', 'windfield-alt']
   .forEach(id => addSliderReset(document.getElementById(id)));
-// magVar is hardcoded at -5 (5°E) in core.js; the input was removed.
+// Magnetic variation has its own control under the default speed (magvar-mode).
 
 document.getElementById('page-a3').onclick = () => setPage('A3');
 document.getElementById('page-a4').onclick = () => setPage('A4');
@@ -9720,6 +9858,10 @@ function redrawAfterTune() {
   // legs following it come along -- and the toolbar input re-reads the new value.
   if (typeof applyDefaultSpeedToAutoLegs === 'function') applyDefaultSpeedToAutoLegs(tune('defaultLegSpeedKt'));
   if (typeof syncDefaultSpeedInput === 'function') syncDefaultSpeedInput();
+  if (typeof mapMinZoomFor === 'function') map.setMinZoom(mapMinZoomFor());
+  // ...and the variation row (Navigation group: magVarAuto, magneticVariationDeg).
+  if (typeof refreshMagVarControl === 'function') refreshMagVarControl();
+  if (typeof refreshDial === 'function') refreshDial();
   draw();
   refreshInspectorIfVisible();
   // The IMS overlay is a Leaflet layer (not part of draw()) — refresh it so
@@ -10136,6 +10278,9 @@ if (_savedView) {
   fitView();                              // first-time / cleared-storage path
 }
 draw();
+// Comm failure left on by the last page load (a language switch reloads) comes back now that
+// its route is on the map.
+if (window.NavAid && NavAid.commFail && typeof NavAid.commFail.resume === 'function') NavAid.commFail.resume();
 // Always load nav-waypoints in the background — they power both the
 // overlay toggle and the auto-snap on drop / drag.
 loadNavWaypoints().then(() => {
@@ -10607,6 +10752,11 @@ if (typeof loadRemoteConfig === "function") {
     // Show whatever is in force now — the gist's value, or the pilot's saved one
     // that reapplyStoredTuneOverrides() just put back on top of it.
     if (typeof syncDefaultSpeedInput === 'function') syncDefaultSpeedInput();
+    // The zoom-out floor is a gist setting too.
+    if (typeof mapMinZoomFor === 'function') map.setMinZoom(mapMinZoomFor());
+    // The variation row too: the gist can set the mode and the manual value.
+    if (typeof refreshMagVarControl === 'function') refreshMagVarControl();
+    if (typeof refreshDial === 'function') refreshDial();
     // A gist-shipped default is in force now, so the legs following it move too.
     if (typeof carryDefaultSpeedToRoute === 'function') carryDefaultSpeedToRoute();
     for (const [id, keys] of [['waypoint-color', ['waypointFillColor']],
@@ -11571,6 +11721,8 @@ const NavWxAvailability = (function () {
     const title = document.createElement('div');
     title.className = 'modal-title';
     title.style.cursor = 'default';
+    title.id = 'sigwx-viewer-title';
+    box.setAttribute('aria-labelledby', title.id);
     title.textContent = S.sigwxModalTitle || 'Significant weather (SIGWX)';
     box.appendChild(title);
 
@@ -11697,6 +11849,8 @@ const NavWxAvailability = (function () {
     const title = document.createElement('div');
     title.className = 'modal-title';
     title.style.cursor = 'default';
+    title.id = 'pwx-viewer-title';
+    box.setAttribute('aria-labelledby', title.id);
     title.textContent = S.pwxModalTitle || 'Wind / temperature charts (PWX)';
     box.appendChild(title);
 

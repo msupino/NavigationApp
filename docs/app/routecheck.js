@@ -459,6 +459,10 @@
         || 'Draw a route first.');
       return null;
     }
+    // Only one chart on screen. This panel was swept BY closeOpenChartModals -- it carries a
+    // data-chart-modal -- but never called it, so opening it left whatever was already up
+    // underneath: two full-width windows about the same route, one over the other.
+    if (typeof closeOpenChartModals === 'function') closeOpenChartModals();
     const modal = createDraggableModal(S2.routeCheckTitle || 'Route check',
       'modal wide route-check-modal', null, { chartKind: 'route-check' });
     const head = document.createElement('div');

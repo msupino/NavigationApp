@@ -282,7 +282,10 @@ test('a long flight plan shrinks enough to stay inside a zoomed-out A4 frame', a
     syncLegs();
     state.legs.forEach(l => { l.flightSpeed = 100; });
     setPage('A4');
-    map.setZoom(7, { animate: false });
+    // z8: the zoom this was written at (the map's floor then clamped the 7 asked for). Further
+    // out, now that the map can go to a continent, an A4 frame is a postage stamp no plan
+    // card is meant to fit.
+    map.setZoom(8, { animate: false });
     draw();
     showExportModal();
   });

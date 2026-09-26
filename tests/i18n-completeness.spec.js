@@ -3,7 +3,7 @@
 // locale-independent (same files, Hebrew text inside) and the Hebrew file says so.
 const { test, expect } = require('./_setup');
 
-const URL_KEYS = ['routeGraphUrl', 'airfieldsUrl', 'routeTemplatesUrl', 'vorUrl'];
+const URL_KEYS = ['routeGraphUrl', 'airfieldsUrl', 'routeTemplatesUrl', 'vorUrl', 'commfailUrl', 'worldCountriesUrl'];
 
 // Legitimately identical in Hebrew — do not "translate" these:
 //   aviation acronyms pilots read in latin on the charts and the radio,

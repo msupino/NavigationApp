@@ -3910,7 +3910,7 @@ function drawCommChangeRings() {
 // or repeated snaps never duplicate it. The same pass also removes tagged
 // notes whose route waypoint moved away from the referenced point. Seeding is
 // driven ONLY from explicit placement/snap/toggle actions (drop, drag-end,
-// search route-build, Show/Add Freq Changes); it must not be called from
+// search route-build, Show/add freq changes); it must not be called from
 // draw() / load / import / undo or it would resurrect notes the user deleted.
 // Returns true if any note was added, changed, or removed so the caller can
 // persist / repaint.

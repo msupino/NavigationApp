@@ -124,7 +124,7 @@
       const v = (typeof tune === 'function') ? Number(tune(k)) : NaN;
       return (Number.isFinite(v) && v > 0) ? v : d;
     };
-    const variation = (typeof tune === 'function') ? Number(tune('magneticVariationDeg')) : NaN;
+    const variation = (typeof currentMagVar === 'function') ? Number(currentMagVar()) : NaN;
     const cruiseSpeed = legs.map(l => l && Number(l.speed)).find(s => Number.isFinite(s) && s > 0);
     return {
       // The route's own planned level -- the number already on the leg lines. There is no field
@@ -636,6 +636,10 @@
     const S2 = window.S || {};
     if (typeof createDraggableModal !== 'function') return null;
     const cfg = config();
+    // Only one chart on screen. The form is swept BY closeOpenChartModals -- that function
+    // looks for .navlog-modal by name -- but it never called it, so opening the form left
+    // whatever was already up underneath.
+    if (typeof closeOpenChartModals === 'function') closeOpenChartModals();
     // Remembered like every other chart window: a refresh, or a language switch (which IS a
     // refresh -- it reloads with ?lang), brings it back. Reported as the form closing itself
     // when every other table on the toolbar survives.

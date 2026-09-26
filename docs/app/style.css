@@ -699,6 +699,28 @@ html[dir="rtl"] #toolbar {
    #toolbar .navtoggle sets display: flex, so setting the attribute on a toolbar row did
    exactly nothing. Anything that hides a row by attribute depends on this. */
 #toolbar .navtoggle[hidden] { display: none; }
+/* A row a checkbox shows and hides keeps its WIDTH while hidden, so a menu panel is as wide as
+   its widest state and does not jump sideways when the box is ticked -- reported as the
+   Charts menu widening when "Show plates for" appeared. Hidden it is invisible and has no
+   height; the -3px cancels the 3px flex gap it would otherwise still claim. (.navtoggle twice
+   over: the menubar's own min-height rule for rows is as specific as a single class.) Only rows that a
+   checkbox expands: a row hidden for good (another platform, a gist removal) must not
+   reserve space for something that never shows. */
+#toolbar .navtoggle.tb-plate-type[hidden],
+#toolbar .navtoggle.tb-plate-airfield[hidden],
+#toolbar .tb-group-box [id$="-controls"][hidden] {
+  display: flex;
+  visibility: hidden;
+  height: 0;
+  min-height: 0;
+  overflow: hidden;
+  padding-top: 0;
+  padding-bottom: 0;
+  border-top-width: 0;
+  border-bottom-width: 0;
+  margin-top: -3px;
+  margin-bottom: 0;
+}
 #toolbar .navtoggle input { cursor: pointer; margin: 0; }
 #toolbar .navtoggle input[type="range"] { flex: 1; width: 0; min-width: 0; }
 #toolbar #vor-ref-row {
@@ -929,7 +951,7 @@ html[dir="rtl"] #toolbar {
      content by default -- so once the rows no longer fit, they compressed instead of the
      menu scrolling. A row whose label sits above its control (VOR ref, leg kites) squashed
      to a single line's height and its select painted over the row beneath it. Reported as
-     the VOR ref box overlapping "Show/Add Freq Changes", and it only appeared once another
+     the VOR ref box overlapping "Show/add freq changes", and it only appeared once another
      row pushed the section past the cap.
      Every row keeps its own height; overflow-y: auto above then does what it says. */
   .tb-section-body > * { flex-shrink: 0; }
@@ -2290,6 +2312,12 @@ body.theme-light .insp-btn.insp-btn-safe.insp-btn-on:hover {
        of them it stays put, and any wrapping happens between the two labelled buttons. */
     order: -1;
   }
+  #toolbar > #footer-links #commfail-btn {
+    width: 44px;
+    padding: 0 8px;
+    justify-content: center;
+    order: -1;
+  }
 }
 #toolbar .footer-link {
   display: inline-flex;
@@ -2623,7 +2651,13 @@ body.theme-light .shortcuts-help-keys kbd {
 
 /* Print (browser Cmd+P): drop the UI, keep the map + route overlay. */
 @media print {
-  #toolbar, #inspector, #tuning-panel, .leaflet-control-container { display: none !important; }
+  /* Chrome off the paper. .leaflet-control-container covers everything Leaflet owns -- the
+     zoom keys, the legend card, the rotate dial, the Zulu clock, the attribution -- but the
+     map clock and the docked search panel are children of the map container and the body,
+     not Leaflet controls, so that sweep never reached them: a slider, a Now button and a
+     search box printed across the chart, over the waypoint labels underneath. */
+  #toolbar, #inspector, #tuning-panel, .leaflet-control-container,
+  #map-time, #search-overlay { display: none !important; }
   #map, #overlay { position: fixed; inset: 0; }
 }
 
@@ -2893,6 +2927,9 @@ body.theme-light .shortcuts-help-keys kbd {
      (broke the "closed menu is one row" / "does not cover the Zulu clock" checks).
      A plane-icon button next to two labelled ones is still self-explanatory. */
   #toolbar #sim-trigger .footer-link-text { display: none; }
+  /* The comm-failure button likewise: a labelled third button wrapped the closed card onto
+     another row. Its title and aria-label still name it, and 📵 is the icon it has on the deck. */
+  #toolbar #commfail-btn .footer-link-text { display: none; }
 
   /* Make the Edit-header separator (between the Save/Load buttons and the
      "Edit" label) span the full head like the dividers between sections: let
@@ -6168,6 +6205,15 @@ body.theme-light .overlay-loading {
 .offline-manager-progress > span { display: block; height: 100%; background: #4caf50; }
 .offline-manager-actions { display: flex; gap: 8px; flex-wrap: wrap; }
 .offline-manager-actions button { flex: 1 1 auto; }
+/* The pilot's packs under the automatic CVFR card: one card per chart, and one per chart
+   downloaded by area, holding its areas. The dialog scrolls rather than growing off-screen. */
+.offline-manager-modal { max-height: calc(100dvh - 48px); overflow-y: auto; }
+.offline-manager-packs { display: grid; gap: 8px; }
+.offline-manager-packs .offline-manager-card { margin: 0; }
+.offline-manager-areas { display: grid; gap: 8px; }
+.offline-manager-areas .offline-manager-area { padding: 8px; }
+.offline-manager-area .offline-manager-layer { font-size: 13px; font-weight: 600; }
+.offline-manager-note { font-size: 12px; opacity: 0.72; }
 
 /* --- Overlay align editor (Extra layers, ?align=1) ------------------ */
 /* Floating editor panel */
@@ -7726,7 +7772,7 @@ body.theme-light .route-library-gdrive-pii { color: #6b7787; border-inline-start
   background: #f7f9fb;
   border-top: 1px solid var(--navaid-ctrl-border-color);
   display: grid;
-  grid-template-columns: repeat(5, 1fr);
+  grid-template-columns: repeat(6, 1fr);
 }
 .deck-btn {
   border: 0;
@@ -8340,3 +8386,86 @@ body.theme-light .route-check-asked { border-bottom-color: rgba(0, 0, 0, 0.14); 
 .route-check-asked-partial { opacity: 1; color: #ffd9a0; }
 body.theme-light .route-check-asked-partial { color: #7a4a00; }
 body.theme-light .route-check-asked-missing { color: #8a1c00; }
+
+/* Phone links (airfield panel, parking request): a link, so it has to read as one -- but in the app's blue,
+   not the browser's visited purple, and big enough to hit with a thumb in a cockpit. */
+.tel-link,
+.airfield-phone-row .airfield-phone {
+  color: #6fb0ff;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  min-height: 32px;
+  display: inline-flex;
+  align-items: center;
+  unicode-bidi: isolate;
+}
+.tel-link:visited,
+.airfield-phone-row .airfield-phone:visited { color: #6fb0ff; }
+body.theme-light .tel-link,
+body.theme-light .tel-link:visited,
+body.theme-light .airfield-phone-row .airfield-phone,
+body.theme-light .airfield-phone-row .airfield-phone:visited { color: #1a5fb4; }
+
+.parking-contact-phone { margin-top: 8px; font-size: 1.1em; }
+
+/* Comm-failure card: read at a glance in a cockpit, so the squawk is the biggest thing on it. */
+.commfail-card { display: grid; gap: 6px; max-width: 360px; }
+.commfail-card .commfail-squawk { font-size: 1.6em; letter-spacing: .04em; }
+.commfail-card .commfail-squawk b { color: #c0392b; font-variant-numeric: tabular-nums; }
+.commfail-card .commfail-dest { font-size: 1.15em; }
+.commfail-card .commfail-note,
+.commfail-card .commfail-origin,
+.commfail-card .commfail-entry-areas,
+.commfail-card .commfail-other { font-size: .9em; opacity: .8; }
+.commfail-card .commfail-actions { display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-end; margin-top: 4px; }
+.commfail-card .commfail-lights summary { cursor: pointer; font-weight: 600; }
+.commfail-card .commfail-lights dl {
+  display: grid; grid-template-columns: auto 1fr; gap: 2px 10px; margin: 4px 0 0; font-size: .9em;
+}
+.commfail-card .commfail-lights dt { display: flex; align-items: center; gap: 6px; white-space: nowrap; }
+.commfail-card .commfail-lights dd { margin: 0; }
+.commfail-card .commfail-lights-ack { font-size: .85em; opacity: .8; margin-top: 4px; }
+.commfail-lamp {
+  width: 10px; height: 10px; border-radius: 50%; flex: none;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, .35);
+}
+.commfail-lamp-green { background: #1fbf4a; }
+.commfail-lamp-red { background: #e0302a; }
+.commfail-lamp-white { background: #fff; }
+.commfail-lamp-flare { background: radial-gradient(circle, #ffd24a 0 30%, #e0302a 31%); }
+/* Flashing is part of the signal's meaning, so it blinks -- unless the pilot asked for no
+   motion, when a dashed ring says the same thing standing still. */
+.commfail-lamp-flash { animation: commfail-blink 1s steps(2, start) infinite; }
+@keyframes commfail-blink { to { visibility: hidden; } }
+@media (prefers-reduced-motion: reduce) {
+  .commfail-lamp-flash { animation: none; outline: 2px dashed currentColor; outline-offset: 1px; }
+}
+
+/* Country names on the always-offline world map: quiet, under everything the pilot drew. */
+.world-label { background: none; border: 0; }
+.world-label span {
+  display: block;
+  transform: translate(-50%, -50%);
+  white-space: nowrap;
+  font: 600 11px/1.1 system-ui, sans-serif;
+  letter-spacing: .04em;
+  color: #6d665b;
+  text-shadow: 0 0 2px #f1ede3, 0 0 2px #f1ede3;
+}
+
+/* Magnetic variation row: number + E/W, and the value automatic is using right now. */
+/* One line, like the speed above. A desktop menu panel sizes itself to its rows, so there it
+   never wraps (it did, and E/W sat alone on a second line). Only the narrow floating card on a
+   phone wraps whole controls, rather than squeezing them until the mode reads "א.". */
+#toolbar .tb-magvar { flex-wrap: nowrap; }
+@media (max-width: 680px) {
+  #toolbar .tb-magvar { flex-wrap: wrap; white-space: normal; row-gap: 4px; }
+}
+#toolbar .tb-magvar #magvar-mode,
+#toolbar .tb-magvar #magvar-ew { flex: none; width: auto; }
+#toolbar .tb-magvar .magvar-value { display: inline-flex; align-items: center; gap: 4px; flex: none; }
+/* Two digits: variation is 0-30 degrees. No spinner arrows eating the width. */
+#toolbar .tb-magvar #magvar-deg { flex: none; width: 2.6em; text-align: center; -moz-appearance: textfield; appearance: textfield; }
+#toolbar .tb-magvar #magvar-deg::-webkit-inner-spin-button,
+#toolbar .tb-magvar #magvar-deg::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+#toolbar .tb-magvar #magvar-deg.magvar-readonly { opacity: .75; cursor: default; }

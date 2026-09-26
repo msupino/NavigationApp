@@ -89,13 +89,14 @@
   }
 
   // Each entry: the id of the button it drives, or a handler of its own. Nothing here
-  // implements a feature -- it is five shortcuts to controls that already work.
+  // implements a feature -- it is six shortcuts to controls that already work.
   const ITEMS = [
     { key: 'map', icon: '🗺', string: 'deckMap', run: showMap },
     { key: 'menu', icon: '▤', string: 'deckMenu', run: showMenu },
     { key: 'plan', icon: '📋', string: 'deckPlan', run: showPlan },
     { key: 'record', icon: '⏺', string: 'deckRecord', run: () => click('gps-record') },
     { key: 'here', icon: '📍', string: 'deckLocation', run: () => click('gps-live') },
+    { key: 'commfail', icon: '📵', string: 'deckCommFail', run: () => click('commfail-btn') },
   ];
 
   // ---- the sheet -------------------------------------------------------------------

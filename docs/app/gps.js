@@ -675,7 +675,7 @@ function gpsCompassTrue(groundSpeedKt) {
   if (!gpsCompassOn() || gpsCompassMag == null) return null;
   if (Date.now() - _gpsCompassAt > GPS_COMPASS_STALE_MS) return null;
   if (Number.isFinite(groundSpeedKt) && groundSpeedKt > gpsCompassMaxKt()) return null;
-  const mv = (typeof tune === 'function') ? tune('magneticVariationDeg') : -5;
+  const mv = (typeof currentMagVar === 'function') ? currentMagVar() : -5;
   // toMagnetic() adds the variation, so undo it to get back to true.
   return ((gpsCompassMag - mv) % 360 + 360) % 360;
 }

@@ -28,7 +28,8 @@ function shortcutPlain(e, code, key) {
 // constants without editing source. Values are page-local and reset on reload.
 NavAid.tuning = {};
 NavAid.tuningDefaults = {
-  magneticVariationDeg: { value: -5, min: -30, max: 30, step: 0.5, label: 'Magnetic variation (° — negative = E)' },
+  magneticVariationDeg: { value: -5, min: -30, max: 30, step: 0.5, label: 'Magnetic variation, manual (° — negative = E)' },
+  magVarAuto: { value: true, type: 'bool', label: 'Magnetic variation from the World Magnetic Model at the aircraft / route / map (off: the manual value)' },
   msaBufferFt: { value: 1000, min: 0, max: 5000, step: 100, label: 'MSA clearance above terrain (ft)' },
   // A GNSS fix is a geometric height; a planned altitude is a pressure height. Correcting
   // the first into the second is what stops an aircraft flying exactly on plan from being
@@ -189,6 +190,9 @@ NavAid.tuningDefaults = {
   layerEnabledNavigation: { value: true, type: 'bool', label: 'Offer the Navigation layer' },
   layerEnabledSatellite: { value: true, type: 'bool', label: 'Offer the Satellite layer' },
   layerEnabledOpenStreetMap: { value: true, type: 'bool', label: 'Offer the OpenStreetMap layer' },
+  mapMinZoom: { value: 2, min: 2, max: 10, step: 1, label: 'How far out the map zooms (2 = a continent; 8 = the old Israeli-charts floor)' },
+  layerEnabledWorld: { value: true, type: 'bool', label: 'Offer the World (offline) layer: country outlines shipped with the app' },
+  layerEnabledOpenFlightMaps: { value: true, type: 'bool', label: 'Offer the OpenFlightMaps layer (Europe; no data over Israel)' },
   searchMaxVor: { value: 3, min: 0, max: 20, step: 1, label: 'Search: max VOR stations' },
   searchMaxBubbles: { value: 12, min: 0, max: 20, step: 1, label: 'Search: max LSA bubbles' },
   searchMaxNotams: { value: 4, min: 0, max: 20, step: 1, label: 'Search: max NOTAM results' },
@@ -1004,7 +1008,7 @@ NavAid.tuningDefaults = {
 // interaction (hit testing), tools (alt pairs, export), and finally the
 // global colour palette.
 NavAid.tuningGroups = [
-  { name: 'Navigation', keys: ['magneticVariationDeg', 'msaBufferFt', 'altimetryCorrection', 'geoidUndulationFt', 'followResumeMs', 'followZoomFloor', 'followZoomCeiling', 'followZoomCtrFloor', 'followZoomCtrCeiling', 'gpsReadoutFontPx', 'gpsReadoutRefitPx', 'alertNotifyTtlSec', 'altToleranceFt', 'altMaxAlertsPerLeg', 'legEtaLeadSec', 'atisLeadSec', 'atisMarkerColor', 'atisMarkerRadiusPx', 'atisMarkerFontPx', 'liveHeadingEndLabel', 'legCaptureNm', 'driftTrackErrorDeg', 'driftCheckSec', 'coneUnknownSec', 'gpsMaxAccuracyM', 'gpsMinMoveM', 'gpsStaleSec', 'qnhMaxAgeMin', 'qnhMoveNm', 'compassMaxKt', 'compassFallback', 'headingUpMinDeltaDeg', 'crosshairSizePx', 'crosshairWidthPx', 'crosshairColor', 'crosshairHaloColor', 'crosshairAlpha'] },
+  { name: 'Navigation', keys: ['magVarAuto', 'magneticVariationDeg', 'msaBufferFt', 'altimetryCorrection', 'geoidUndulationFt', 'followResumeMs', 'followZoomFloor', 'followZoomCeiling', 'followZoomCtrFloor', 'followZoomCtrCeiling', 'gpsReadoutFontPx', 'gpsReadoutRefitPx', 'alertNotifyTtlSec', 'altToleranceFt', 'altMaxAlertsPerLeg', 'legEtaLeadSec', 'atisLeadSec', 'atisMarkerColor', 'atisMarkerRadiusPx', 'atisMarkerFontPx', 'liveHeadingEndLabel', 'legCaptureNm', 'driftTrackErrorDeg', 'driftCheckSec', 'coneUnknownSec', 'gpsMaxAccuracyM', 'gpsMinMoveM', 'gpsStaleSec', 'qnhMaxAgeMin', 'qnhMoveNm', 'compassMaxKt', 'compassFallback', 'headingUpMinDeltaDeg', 'crosshairSizePx', 'crosshairWidthPx', 'crosshairColor', 'crosshairHaloColor', 'crosshairAlpha'] },
   { name: 'Performance defaults', keys: ['profileClimbFpm', 'profileClimbKt', 'defaultGph', 'defaultTaxiGal'] },
   { name: 'Altitude inference', keys: ['legAltInferMaxHops', 'legAltInferMaxDistRatio', 'legAltInferMaxExtraNm'] },
   { name: 'Plan card', keys: ['planCardBaseRowPx', 'planCardGripPx', 'planCardBgColor', 'planCardHeaderBgColor', 'planCardTotalBgColor', 'planCardStripeBgColor', 'planCardGridColor', 'planCardTextColor', 'planCardGripColor', 'planCardGripLineColor'] },
@@ -1017,7 +1021,7 @@ NavAid.tuningGroups = [
   { name: 'LSA colors', keys: ['lsaHighlightColor', 'lsaWeekendColor', 'lsaAlwaysColor', 'lsaLabelColor'] },
   { name: 'GPS track', keys: ['gpsTrackColors', 'gpsTrackOutlineColor', 'gpsTrackStartColor', 'gpsTrackEndColor'] },
   { name: 'Base layers', keys: ['layerEnabledLowAlt', 'layerEnabledHelicopters', 'layerEnabledATS',
-    'layerEnabledNavigation', 'layerEnabledSatellite', 'layerEnabledOpenStreetMap',
+    'layerEnabledNavigation', 'layerEnabledSatellite', 'layerEnabledOpenStreetMap', 'layerEnabledOpenFlightMaps', 'layerEnabledWorld', 'mapMinZoom',
     'defaultBaseLayer', 'baseLayerOpacity'] },
   { name: 'Density altitude', keys: ['featureDensityAltitude', 'daWarnAboveElevFt', 'daForecastHours',
     'daMetarMaxAgeMin'] },
@@ -1109,6 +1113,26 @@ function fitOpts(padKey, zoomKey, extra) {
   }
   return o;
 }
+
+// Anonymous usage counts -- how often a feature is USED, never by whom.
+//
+// A fixed vocabulary of event names and no parameters at all. That is deliberate: Google's
+// terms forbid sending anything that identifies a person to Analytics, and the privacy page
+// promises no route, position, flight plan or setting ever reaches it. With no parameter slot,
+// no caller -- now or later -- can put a registration, a name or an address in one by
+// accident; an unknown name is dropped rather than sent.
+//
+// window.gtag only exists where the tag was allowed to load (the public web site; never the
+// native app, previews, staging or local runs), so everywhere else this is a no-op.
+// These count the button, not the email: the pilot's own mail app sends it, and they can
+// still cancel there.
+const NAVAID_EVENTS = new Set(['fpl_mail_open', 'xc_mail_open', 'parking_mail_open']);
+function navaidEvent(name) {
+  if (!NAVAID_EVENTS.has(name)) return false;
+  if (typeof window === 'undefined' || typeof window.gtag !== 'function') return false;
+  try { window.gtag('event', name); return true; } catch (e) { return false; }
+}
+window.navaidEvent = navaidEvent;
 
 function tune(key) {
   const spec = NavAid.tuningDefaults && NavAid.tuningDefaults[key];
@@ -1249,6 +1273,23 @@ function applyCachedRemoteConfig() {
   }
 }
 NavAid.gistWarmStart = applyCachedRemoteConfig();
+// What a key comes back to when the pilot's own value is dropped: the gist's, if the last gist
+// seen sets it, else the built-in default. Non-destructive -- reads, and leaves the value in
+// force alone.
+function tuneBaseline(key) {
+  const had = Object.prototype.hasOwnProperty.call(NavAid.tuning, key);
+  const saved = NavAid.tuning[key];
+  delete NavAid.tuning[key];
+  try {
+    if (NavAid.configUrl && !NavAid.gistDisabled) {
+      const o = JSON.parse(localStorage.getItem(GIST_CACHE_KEY) || 'null');
+      if (o && typeof o === 'object' && key in o) setTune(key, o[key]);
+    }
+  } catch (e) { /* no cache: the built-in default */ }
+  const base = tune(key);
+  if (had) NavAid.tuning[key] = saved; else delete NavAid.tuning[key];
+  return base;
+}
 
 async function loadRemoteConfig() {
   if (!NavAid.configUrl || NavAid.gistDisabled) return 0;
@@ -1313,6 +1354,8 @@ window.S = Object.assign({
   // One graph per layer replaces the nav-waypoints / comm-change / leg-altitude files;
   // the ?v= cache-busts all three kinds, which now come from the same file.
   routeGraphUrl: 'data/cvfr-route-graph.json?v=2',  // resolved relative to index.html (docs/)
+  commfailUrl: 'data/commfail.json?v=2',
+  worldCountriesUrl: 'data/world-countries.json?v=1',  // country outlines + names, always offline  // published comm-failure entry points per field
   navWpSearchField: 'en',              // which locale label to show/search in results
   airfieldsUrl: 'data/airfields.json?v=40',  // resolved relative to index.html (docs/)
   airfieldLabelField: 'en',            // which locale label to show on the overlay
@@ -1676,6 +1719,45 @@ window.S = Object.assign({
     return 'R-' + rad + '° / ' + dme + ' NM';
   },
   primary: 'Primary',
+  commFail: 'Comm failure',
+  commFailTitle: 'Lost radio: route to the nearest field with a published comm-failure procedure',
+  commFailHeading: 'Comm failure',
+  commFailSquawk: 'Squawk',
+  commFailVia: 'via',
+  commFailAt: 'at',
+  commFailCallTower: 'If you have a phone, call the tower',
+  commFailFromGps: 'From your GPS position',
+  commFailFromMap: 'From the map centre — no GPS fix',
+  commFailReplace: 'Replace your route with the comm-failure route to {field}? Undo brings your route back.',
+  commFailReplaceOk: 'Route there',
+  commFailOther: 'Other fields',
+  commFailNoData: 'Comm-failure procedures could not be loaded.',
+  commFailFromAreas: '{alt} ft from training areas {areas}',
+  commFailCancel: 'Cancel comm failure',
+  commFailCancelTitle: 'Put back the route and charts you had before',
+  commFailCancelKept: 'Comm failure cancelled. The route was edited since, so it stays.',
+  commFailWaiting: 'Waiting for your GPS position…',
+  commFailUseMapCentre: 'Use map centre',
+  commFailInArea: 'You are in training area {area}',
+  commFailLights: 'Light signals from the tower',
+  commFailLightGreenName: 'Steady green',
+  commFailLightGreen: 'Cleared to land',
+  commFailLightGreenFlashName: 'Flashing green',
+  commFailLightGreenFlash: 'Return for landing',
+  commFailLightRedName: 'Steady red',
+  commFailLightRed: 'Give way and continue circling',
+  commFailLightRedFlashName: 'Flashing red',
+  commFailLightRedFlash: 'Aerodrome unsafe — do not land',
+  commFailLightWhiteFlashName: 'Flashing white',
+  commFailLightWhiteFlash: 'Land here and proceed to the apron',
+  commFailLightFlareName: 'Red flare',
+  commFailLightFlare: 'Do not land for the time being',
+  commFailLightAck: 'Acknowledge: by day rock the wings (not on base or final); at night flash the landing or navigation lights twice.',
+  commFailEnd: 'End comm failure',
+  commFailChartNote: 'Fly the comm-failure chart shown on the map. The drawn line only leads to the entry point.',
+  deckCommFail: 'Comm fail',
+  airfieldPhone: 'Phone',
+  callNumber: 'Call',
   atis: 'ATIS',
   commArrival: 'Arrival',
   commDeparture: 'Departure',
@@ -1830,7 +1912,7 @@ window.S = Object.assign({
   tbAircraft: 'Aircraft',
   tbGph: 'Gallons per hour',
   tbGphTitle: 'Fuel consumption, gallons per hour',
-  tbTaxiGal: 'Taxi and Takeoff (gal)',
+  tbTaxiGal: 'Taxi and takeoff (gal)',
   tbTaxiGalTitle: 'Startup + taxi + takeoff fuel allowance in gallons',
   fpTaxiTip: function(g) { return '+ ' + g.toFixed(1) + ' gal taxi / takeoff included in total'; },
   pageOrientation: ' page — orientation',
@@ -2254,8 +2336,10 @@ window.S = Object.assign({
   kmlDocName: 'NavAid flythrough',
   kmlRouteName: 'Route',
   kmlTourName: 'Fly the route',
+  layerNoDataOverIsrael: 'No data over Israel: OpenFlightMaps covers about twenty regions, mostly in Europe. Move the map there to use it.',
   layerLabels: { 'CVFR': 'CVFR', 'Navigation': 'Navigation', 'Low Alt': 'Low Alt',
                  'Helicopters': 'Helicopters', 'Satellite': 'Satellite', 'OpenStreetMap': 'OpenStreetMap',
+                 'OpenFlightMaps': 'OpenFlightMaps', 'World': 'World (offline)',
                  // A dataset, not a base chart: the ENR 6.1 sheet is an Extra-layers overlay,
                  // and this label names its points in the "Nav waypoints from" picker.
                  'ATS': 'ATS routes' },
@@ -2266,6 +2350,14 @@ window.S = Object.assign({
   tbAddNote: '📝 Add note (N)',
   tbAddNoteTitle: 'Click map to drop a note (click button again to stop)',
   tbLayerLabel: 'Layer',
+  tbMagVarLabel: 'Magnetic variation',
+  tbMagVarTitle: 'Automatic: the World Magnetic Model at the aircraft, else the route, else the map (works offline). Manual: your own number.',
+  tbMagVarAuto: 'Automatic',
+  tbMagVarManual: 'Manual',
+  tbMagVarManualTitle: 'Your variation, degrees east or west. Used when Manual is chosen.',
+  tbMagVarEw: 'East or west',
+  magVarFrom: { aircraft: 'at the aircraft', route: 'on the route', map: 'at the map centre' },
+  tbDefaultSpeedReset: function(kt) { return 'Back to the default (' + kt + ' kt)'; },
   tbDefaultSpeedLabel: 'Default speed (kt)',
   tbDefaultSpeedTitle: 'Speed given to a new leg when there is no earlier leg to copy from',
   tbLayerTitle: 'Base map layer',
@@ -2455,7 +2547,7 @@ window.S = Object.assign({
   ovAlignResetAllConfirm: 'Clear all local overlay alignments?',
   tbForceSnap: 'Snap to nearest point',
   tbForceSnapTitle: 'Always snap clicks to the nearest airfield or nav-waypoint (otherwise: 18 px radius)',
-  tbShowCommChange: 'Show/Add Freq Changes',
+  tbShowCommChange: 'Show/add freq changes',
   tbShowCommChangeTitle: 'Mark CVFR reporting points where pilots must change ATC frequency',
   legendTitle: 'Legend',
   legendAirfield: 'Airfield',
@@ -2831,7 +2923,26 @@ window.S = Object.assign({
   tbOfflineChartsTitle: 'Show automatic offline CVFR coverage and storage details',
   offlineManagerTitle: 'Offline maps',
   offlineManagerAutomatic: 'CVFR is kept automatically for the whole chart at zooms 7–13.',
-  offlineManagerOnlineOnly: 'Online only: Navigation, Low Alt, Helicopters, ATS, Satellite and OpenStreetMap.',
+  offlineManagerOnlineOnly: 'Online only: Satellite and OpenStreetMap. Their providers do not allow downloading them for offline use.',
+  offlineManagerMore: 'Other charts, as many as you like:',
+  offlinePackDownload: '⬇ Download',
+  offlinePackDownloadTitle: function(n) { return 'Keep ' + n + ' on this device for offline use'; },
+  offlinePackRepair: '⬇ Download missing tiles',
+  offlinePackDelete: 'Delete',
+  offlinePackDeleteTitle: function(n) { return 'Remove ' + n + ' from this device'; },
+  offlinePackDeleteConfirm: function(n) { return 'Remove ' + n + ' from this device?'; },
+  offlinePackTiles: function(n) { return n.toLocaleString('en-US') + ' tiles'; },
+  offlinePackOneImage: 'One image',
+  offlineAreaName: function(lat, lng) { return 'Area around ' + lat + ', ' + lng; },
+  offlineAreaDownload: function(n) { return '⬇ Download the area on screen (' + n.toLocaleString('en-US') + ' tiles)'; },
+  offlineAreaDownloadTitle: 'Keep this chart for the area the map shows now',
+  offlineAreaDetail: 'Detail',
+  offlineAreaLevel: function(z, n, size) { return 'up to zoom ' + z + ' · ' + n.toLocaleString('en-US') + ' tiles · ≈ ' + size; },
+  offlineAreaTooBig: function(n, max) { return n.toLocaleString('en-US') + ' tiles on screen: zoom in to under ' + max.toLocaleString('en-US') + '.'; },
+  offlineAreaDeleteConfirm: 'Remove this area from this device?',
+  offlineAreaCovered: 'This area is already downloaded.',
+  offlinePackChecking: 'Checking…',
+  offlinePackStarting: 'Starting download…',
   offlineCvfrChecking: 'Offline CVFR: checking…',
   offlineCvfrReady: 'Offline CVFR: ready ✓',
   offlineCvfrProgress: function(p) { return '⬇ Download CVFR offline — ' + p + '%'; },
@@ -2894,10 +3005,10 @@ window.S = Object.assign({
   disclaimerPointData: 'Chart, airspace, NOTAM and weather data here may be incomplete, delayed or wrong.',
   disclaimerPointPic: 'The pilot in command is responsible for the safe conduct of every flight.',
   disclaimerAnalytics: 'This site uses Google Analytics to count anonymous visits, and it sets Google\u2019s cookies. Your routes, positions and flight plans are never sent to it.',
-  disclaimerAccept: 'I understand',
+  disclaimerAccept: 'Accept',
   tbPrivacy: 'Privacy',
   tbTerms: 'Terms',
-  tbIssues: 'Issues / Requests',
+  tbIssues: 'Issues / requests',
 
   // --- Keyboard-shortcuts cheat-sheet ---------------------------------
   // Opens via the toolbar '?' Help link or the '?' (Shift-/) shortcut.
@@ -3368,12 +3479,69 @@ function geo(a, b) {                   // a,b = {lat,lng} -> {dist NM, brg deg}
             Math.sin(phi1) * Math.cos(phi2) * Math.cos(dlam);
   return { dist, brg: ((Math.atan2(y, x) * 180) / Math.PI + 360) % 360 };
 }
+// --- magnetic variation ---------------------------------------------
+// Signed the way the app always has: magnetic = true + variation, so 5°E is -5.
+//
+// Manual: the pilot's number (menu, beside the default speed), else the gist's.
+// Automatic: the World Magnetic Model (wmm.js, offline) at the point the headings are about --
+// the aircraft when a position is live, else the middle of the route, else the middle of the
+// map. The fixed 5°E was Israel's; flown in Iceland it put every "magnetic" heading about 15°
+// out. Over Israel WMM gives 5.0°E, the value the charts print.
+function magVarPoint() {
+  const live = typeof gpsPositionLive === 'function' && gpsPositionLive();
+  if (live && typeof gpsOwn === 'object' && gpsOwn && Number.isFinite(gpsOwn.lat)) {
+    return { lat: gpsOwn.lat, lng: gpsOwn.lng, from: 'aircraft' };
+  }
+  const wps = (typeof state === 'object' && state && Array.isArray(state.waypoints)) ? state.waypoints : [];
+  const pts = wps.filter(w => w && Number.isFinite(w.lat) && Number.isFinite(w.lng));
+  if (pts.length) {
+    const lats = pts.map(w => w.lat), lngs = pts.map(w => w.lng);
+    return { lat: (Math.min(...lats) + Math.max(...lats)) / 2, lng: (Math.min(...lngs) + Math.max(...lngs)) / 2, from: 'route' };
+  }
+  if (typeof map === 'object' && map && map.getCenter) {
+    const c = map.getCenter();
+    return { lat: c.lat, lng: c.lng, from: 'map' };
+  }
+  return null;
+}
+// WMM is smooth: a quarter of a degree of position moves it by hundredths, so one answer per
+// quarter-degree cell (and per month) is exact enough and costs nothing per heading drawn.
+const _magVarCache = new Map();
+function magVarAutoEast(p) {
+  if (!p || typeof window === 'undefined' || !window.NavAidWmm) return null;
+  const now = new Date();
+  const year = now.getUTCFullYear() + now.getUTCMonth() / 12;
+  const key = Math.round(p.lat * 4) + ',' + Math.round(p.lng * 4) + ',' + year.toFixed(2);
+  if (!_magVarCache.has(key)) {
+    if (_magVarCache.size > 500) _magVarCache.clear();
+    // Whole degrees, the way a chart prints it: a tenth is finer than the model or any compass.
+    _magVarCache.set(key, Math.round(NavAidWmm.declination(p.lat, p.lng, 0, year)));
+  }
+  return _magVarCache.get(key);
+}
+function magVarIsAuto() {
+  return typeof tune !== 'function' || tune('magVarAuto') !== false;
+}
+// The variation in force, and where it came from -- for the menu line that says so.
+function magVarInfo() {
+  if (magVarIsAuto()) {
+    const p = magVarPoint();
+    const east = magVarAutoEast(p);
+    if (Number.isFinite(east)) return { mv: -east, east, auto: true, from: p.from };
+  }
+  const mv = typeof tune === 'function' ? Number(tune('magneticVariationDeg')) : magVar;
+  const v = Number.isFinite(mv) ? mv : magVar;
+  return { mv: v, east: -v, auto: false, from: 'manual' };
+}
+function currentMagVar() { return magVarInfo().mv; }
+if (typeof window !== 'undefined') { window.currentMagVar = currentMagVar; window.magVarInfo = magVarInfo; }
 function toMagnetic(deg) {
   // Magnetic = True + variation (so −5 means "subtract 5", i.e. 5°E variation).
-  // Read from the tune registry (key default -5) so it's adjustable; `magVar`
-  // remains the hardcoded fallback/default.
-  const mv = typeof tune === 'function' ? tune('magneticVariationDeg') : magVar;
-  return ((Math.round(deg + mv) % 360) + 360) % 360;
+  return ((Math.round(deg + currentMagVar()) % 360) + 360) % 360;
+}
+// The other way: a magnetic heading typed by the pilot, as the true angle the map turns by.
+function fromMagnetic(deg) {
+  return ((Math.round(deg - currentMagVar()) % 360) + 360) % 360;
 }
 // --- wind triangle --------------------------------------------------
 // Resolve the wind that applies to a leg: an explicit per-leg override (with
@@ -5018,8 +5186,11 @@ const FM_RENDER_BOUNDS = [
   [FM_BOUNDS.south + 1e-6, FM_BOUNDS.west + 1e-6],
   [FM_BOUNDS.north - 1e-6, FM_BOUNDS.east - 1e-6],
 ];
+// A 1x1 pixel with alpha 0. The one here before was named transparent and was opaque white, so
+// every chart tile that failed -- offline, or a gap in the sheet -- painted white over the
+// world map and the underlay beneath it.
 const TRANSPARENT_TILE_URL =
-  'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/p9sAAAAASUVORK5CYII=';
+  'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNgYAAAAAMAASsJTYQAAAAASUVORK5CYII=';
 const TILE = {
   minZoom: 6,
   maxZoom: 16,
@@ -5121,15 +5292,15 @@ const CHART_SPECS = {
     NAVAID_TILE_BASE + '/CVFR/{z}/{x}/{y}.png'),
     chartTileOptions(withPane({ ...TILE, attribution: FM_ATTR,
       exportUrl: NAVAID_TILE_BASE + '/CVFR/{z}/{x}/{y}.png' }, pane))),
-  'Navigation': (pane) => L.tileLayer(chartTileUrl('nav', 'https://flight-maps.com/tiles/nav/{z}/{x}/{y}.png',
+  'Navigation': (pane) => (window.NavAidNativeTiles ? NavAidNativeTiles.tileLayer : L.tileLayer)(chartTileUrl('nav', 'https://flight-maps.com/tiles/nav/{z}/{x}/{y}.png',
     NAVAID_TILE_BASE + '/Israel-Navigation/{z}/{x}/{y}.png'),
     chartTileOptions(withPane({ ...TILE, attribution: FM_ATTR,
       exportUrl: NAVAID_TILE_BASE + '/Israel-Navigation/{z}/{x}/{y}.png' }, pane))),
-  'Low Alt': (pane) => L.tileLayer(chartTileUrl('la', 'https://flight-maps.com/tiles/la/{z}/{x}/{y}.png',
+  'Low Alt': (pane) => (window.NavAidNativeTiles ? NavAidNativeTiles.tileLayer : L.tileLayer)(chartTileUrl('la', 'https://flight-maps.com/tiles/la/{z}/{x}/{y}.png',
     NAVAID_TILE_BASE + '/LSA-Low-Altitude/{z}/{x}/{y}.png'),
     chartTileOptions(withPane({ ...TILE, attribution: FM_ATTR,
       exportUrl: NAVAID_TILE_BASE + '/LSA-Low-Altitude/{z}/{x}/{y}.png' }, pane))),
-  'Helicopters': (pane) => L.tileLayer(chartTileUrl('il-hel', 'https://flight-maps.com/tiles/il-hel/{z}/{x}/{y}.png',
+  'Helicopters': (pane) => (window.NavAidNativeTiles ? NavAidNativeTiles.tileLayer : L.tileLayer)(chartTileUrl('il-hel', 'https://flight-maps.com/tiles/il-hel/{z}/{x}/{y}.png',
     NAVAID_TILE_BASE + '/Israel-Helicopters/{z}/{x}/{y}.png'),
     chartTileOptions(withPane({ ...TILE, maxNativeZoom: 12, attribution: FM_ATTR,
       exportUrl: NAVAID_TILE_BASE + '/Israel-Helicopters/{z}/{x}/{y}.png' }, pane))),
@@ -5154,9 +5325,32 @@ const CHART_SPECS = {
     'World_Imagery/MapServer/tile/{z}/{y}/{x}',
     withPane({ minZoom: 6, maxZoom: 18, attribution: 'Imagery © Esri' }, pane)),
   'OpenStreetMap': (pane) => L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
-    withPane({ minZoom: 6, maxZoom: 18, subdomains: 'abc',
+    withPane({ minZoom: 4, maxZoom: 18, subdomains: 'abc',
       attribution: '© OpenStreetMap contributors' }, pane)),
+  // open flightmaps' aeronautical chart: about twenty regions, mostly European (Greece, Italy,
+  // Croatia...) -- and nothing over Israel, where its tiles come back empty. The aero tiles
+  // are transparent, drawn to be laid over a map, so what fills them in is the underlay
+  // (Display -> under the chart). Published to z12; above that Leaflet scales z12 up rather
+  // than asking for tiles that are blank. CORS is open, so an export can read the canvas.
+  'OpenFlightMaps': (pane) => (window.NavAidNativeTiles ? NavAidNativeTiles.tileLayer : L.tileLayer)(
+    'https://nwy-tiles-api.prod.newaydata.com/tiles/{z}/{x}/{y}.png?path=latest/aero/latest',
+    withPane({ minZoom: 4, maxZoom: 18, maxNativeZoom: 12, corsOk: true,
+      attribution: '<a href="https://www.openflightmaps.org/" target="_blank" rel="noopener">© open flightmaps association</a>' }, pane)),
 };
+// The always-offline world map (world-offline.js) is drawn under every chart; as a chart of
+// its own it is an empty layer, so what shows is that world map alone, zoomable out to a
+// continent. Nothing to fetch, so nothing to download: it is offline by construction.
+CHART_SPECS['World'] = () => L.layerGroup();
+// Where a chart has nothing to show. open flightmaps does not cover Israel, so over the
+// Israeli charts' own frame (the ATS sheet's, which spans the FIR) the layer is dimmed in the
+// picker, with the reason, rather than offered as a chart that draws nothing.
+const ISRAEL_CHART_FRAME = [[29.376677, 33.426611], [33.420846, 36.158314]];
+const LAYER_NO_DATA_OVER_ISRAEL = new Set(['OpenFlightMaps']);
+function layerHasNoDataHere(name, center) {
+  if (!LAYER_NO_DATA_OVER_ISRAEL.has(name) || !center) return false;
+  const [[s, w], [n, e]] = ISRAEL_CHART_FRAME;
+  return center.lat >= s && center.lat <= n && center.lng >= w && center.lng <= e;
+}
 // The picker's layers: every chart, in its normal pane.
 const layers = Object.fromEntries(
   Object.keys(CHART_SPECS).map(name => [name, CHART_SPECS[name](undefined)]));
@@ -5172,6 +5366,15 @@ function layerOffered(name) {
   return tune(key) !== false && tune(key) !== 0;
 }
 
+// How far out the map goes. It used to stop at z8 on the Israeli charts, because further out
+// they were a speck on an empty map. The world map is always underneath now, so zooming out is
+// never to nothing: below z6 the charts drop away and the countries show, down to a continent
+// in one screen (z2). Same floor on every chart; the gist can raise it (mapMinZoom).
+const MAP_MIN_ZOOM = 2;
+function mapMinZoomFor() {
+  const v = typeof tune === 'function' ? Number(tune('mapMinZoom')) : NaN;
+  return Number.isFinite(v) ? v : MAP_MIN_ZOOM;
+}
 const LAYER_KEY = 'navaid.layer';
 let initialLayer = layers.CVFR;
 try {
@@ -5199,10 +5402,39 @@ const _initialView = (() => {
     return Number.isFinite(v) && v !== 0 ? v : d; };
   return { center: [num('defaultViewLat', 32.1), num('defaultViewLng', 34.95)], zoom: num('defaultViewZoom', 11) };
 })();
+// leaflet-rotate positions every vector renderer (canvas or SVG) by turning its top-left pixel
+// into a latitude/longitude and back (_updateTransform via this._topLeft). Latitude is clamped
+// to +-85 on the way, so once a renderer's padded bounds reach past the top of the world -- which
+// they do now that the map zooms out to a continent -- it was put hundreds of pixels too low:
+// the world map's coastlines sat a country away from their names, and any airspace shape with
+// them. The same position, worked in pixels, has no clamp: the renderer's top-left projected at
+// the zoom it was drawn at, scaled to the new zoom, less the new pixel origin (which is the
+// plugin's own, so rotation is handled as before).
+(function patchRendererTransform() {
+  if (typeof L === 'undefined' || !L.Renderer) return;
+  const proto = L.Renderer.prototype;
+  const origUpdate = proto._update;
+  const origTransform = proto._updateTransform;
+  proto._update = function () {
+    const r = origUpdate.apply(this, arguments);
+    if (this._map) this._originAtUpdate = this._map.getPixelOrigin();
+    return r;
+  };
+  proto._updateTransform = function (center, zoom) {
+    const m = this._map;
+    if (!m || !m._rotate || !this._bounds || !this._originAtUpdate || typeof m._getNewPixelOrigin !== 'function') {
+      return origTransform.apply(this, arguments);
+    }
+    const scale = m.getZoomScale(zoom, this._zoom);
+    const offset = this._bounds.min.add(this._originAtUpdate).multiplyBy(scale)
+      .subtract(m._getNewPixelOrigin(center, zoom));
+    L.DomUtil.setTransform(this._container, offset, scale);
+  };
+}());
 const map = L.map('map', {
   center: _initialView.center,
   zoom: _initialView.zoom,
-  minZoom: 8,                  // do not zoom out past the chart extent
+  minZoom: mapMinZoomFor(initialLayer),
   maxZoom: 15,
   layers: [initialLayer],
   zoomControl: false,
@@ -5253,7 +5485,7 @@ function underlayLayer(name) {
   if (name === 'OpenStreetMap') {
     if (!_underlayCache[name]) {
       _underlayCache[name] = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
-        { pane: 'basemapUnderlay', minZoom: 6, maxZoom: 18, subdomains: 'abc',
+        { pane: 'basemapUnderlay', minZoom: 4, maxZoom: 18, subdomains: 'abc',
           attribution: '© OpenStreetMap contributors' });
     }
   } else if (!_underlayCache[name]) {
@@ -6108,6 +6340,69 @@ function routeCheckNmBetween(p, q) {
   const dLng = (q.lng - p.lng) * 60 * Math.cos((p.lat + q.lat) / 2 * Math.PI / 180);
   return Math.hypot(dLat, dLng);
 }
+// Comm failure: the published procedure for each of the three fields that have one, ranked by
+// how far the aeroplane has to fly to reach it. Pure -- data and lookups in, options out -- so
+// it can be checked without a map.
+//
+// Each field's options are its published entry points; the aeroplane is routed to one and on to
+// the field at that entry's published altitude. The best entry is the one with the shortest
+// TOTAL leg (here -> entry -> field), not the nearest entry: the nearest entry to a Haifa
+// arrival from the south can be on the far side of the field.
+//
+// `wpAt(code)` and `fieldAt(icao)` return {lat, lng} or null. Anything that does not resolve is
+// skipped rather than guessed at: an entry point missing from the graph must drop out, not
+// become a point at 0,0.
+// Which of `codes` (training-area numbers) the point lies in, by ray cast over the traced
+// outlines in the field's `trainingAreas`; null when none, or when the field has no outlines.
+function commFailAreaAt(training, codes, pos) {
+  const polys = training && training.areas;
+  if (!polys || !Array.isArray(codes)) return null;
+  for (const code of codes) {
+    const poly = polys[String(code)];
+    if (!Array.isArray(poly) || poly.length < 3) continue;
+    let inside = false;
+    for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+      const [yi, xi] = poly[i];
+      const [yj, xj] = poly[j];
+      if ((yi > pos.lat) !== (yj > pos.lat)
+          && pos.lng < (xj - xi) * (pos.lat - yi) / (yj - yi) + xi) inside = !inside;
+    }
+    if (inside) return String(code);
+  }
+  return null;
+}
+
+function commFailOptions(data, pos, wpAt, fieldAt) {
+  if (!data || !data.fields || !pos || !Number.isFinite(pos.lat) || !Number.isFinite(pos.lng)) return [];
+  const best = [];
+  for (const icao of Object.keys(data.fields)) {
+    const f = data.fields[icao] || {};
+    const field = fieldAt(icao);
+    if (!field) continue;
+    let pick = null;
+    for (const e of (Array.isArray(f.entries) ? f.entries : [])) {
+      const wp = e && wpAt(e.wp);
+      if (!wp || !Number.isFinite(e.alt)) continue;
+      const toEntryNm = routeCheckNmBetween(pos, wp);
+      const totalNm = toEntryNm + routeCheckNmBetween(wp, field);
+      // A second published altitude for the same entry, flown only from named training areas
+      // (Herzliya's BAZRA: 1,600 from afar, 1,200 from areas 3, 8 and 9). Inside one of those
+      // areas that entry is THE way back -- the chart draws the line from the areas to it --
+      // so it wins whatever is nearer, at the areas' altitude.
+      const fromAreas = e.fromAreas && Number.isFinite(e.fromAreas.alt) && Array.isArray(e.fromAreas.areas)
+        ? { alt: e.fromAreas.alt, areas: e.fromAreas.areas.slice() } : null;
+      const inArea = fromAreas ? commFailAreaAt(f.trainingAreas, fromAreas.areas, pos) : null;
+      const better = !pick || (inArea && !pick.inArea) || (!pick.inArea && totalNm < pick.totalNm);
+      if (!better) continue;
+      pick = { icao, entry: e.wp, alt: inArea ? fromAreas.alt : e.alt,
+        entryAt: { lat: wp.lat, lng: wp.lng }, fieldAt: { lat: field.lat, lng: field.lng },
+        toEntryNm, totalNm, phone: typeof f.phone === 'string' ? f.phone : '', fromAreas, inArea };
+    }
+    if (pick) best.push(pick);
+  }
+  return best.sort((a, b) => a.totalNm - b.totalNm);
+}
+
 // A vertical band against a planned altitude. `base`/`top` null means "no stated limit" --
 // surface and unlimited respectively, which is how both feeds write them.
 function routeCheckAltInBand(altFt, baseFt, topFt) {

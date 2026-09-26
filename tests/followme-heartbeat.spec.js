@@ -215,7 +215,7 @@ test('the banner prints the numbers as sent', async ({ page }) => {
       await new Promise(r => setTimeout(r, 40));
     };
     // A viewer whose own config says something else entirely: it must change nothing.
-    setTune('magneticVariationDeg', -2);
+    setTune('magVarAuto', false); setTune('magneticVariationDeg', -2);
   });
   await page.evaluate(() => window.__send({ reg: '4X-TST', lat: 32.12345, lng: 34.98765,
     af: 261, kt: 97, mh: 83, trk: 90, t: Date.now(), seq: 1 }));

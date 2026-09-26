@@ -120,7 +120,7 @@ test('deletePack removes the offline tiles; packSize reports the count', async (
   expect(r.after).toBe(0);
 });
 
-test('one compact status button opens an explicit CVFR-only manager', async ({ page }) => {
+test('one compact status button opens the manager: CVFR first, then every other chart', async ({ page }) => {
   await boot(page);
   await page.evaluate(async () => {
     await caches.delete(NavAidOfflineTiles.TILE_CACHE);
@@ -133,10 +133,18 @@ test('one compact status button opens an explicit CVFR-only manager', async ({ p
   await expect(page.locator('#offline-tiles-btn')).toContainText('Download CVFR offline');
   await page.locator('#offline-tiles-btn').click();
   await expect(page.locator('.offline-manager-modal')).toBeVisible();
-  await expect(page.locator('.offline-manager-layer')).toHaveText('CVFR');
+  await expect(page.locator('.offline-manager-layer').first()).toHaveText('CVFR');
+  // Every other chart can be kept too: the offered Israeli charts whole, open flightmaps by
+  // area. Helicopters ships unoffered, so it has no card until the gist offers it.
+  await expect(page.locator('.offline-manager-card[data-pack]')).toHaveCount(5);
+  for (const key of ['Navigation', 'Low Alt', 'ATS', 'OpenFlightMaps']) {
+    await expect(page.locator('.offline-manager-card[data-pack="' + key + '"]')).toHaveCount(1);
+  }
+  // Only the two providers that forbid it stay online, and the dialog says why.
   await expect(page.locator('.offline-manager-online')).toContainText('Online only');
-  await expect(page.locator('.offline-manager-online')).toContainText('Navigation');
-  await expect(page.locator('.offline-manager-online')).toContainText('Helicopters');
+  await expect(page.locator('.offline-manager-online')).toContainText('Satellite');
+  await expect(page.locator('.offline-manager-online')).toContainText('OpenStreetMap');
+  await expect(page.locator('.offline-manager-online')).not.toContainText('Navigation');
   await expect(page.locator('#offline-tiles-btn')).toContainText('ready ✓');
 });
 

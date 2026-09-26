@@ -1922,10 +1922,43 @@ function appendAirfieldComms(body, af) {
   head.appendChild(lbl);
   sec.appendChild(head);
   appendAirfieldFrequencyRows(sec, af);
+  // The phone goes after every frequency, not beside the primary: the radios are read as one
+  // block, and a row that is not a frequency in the middle of them splits it.
+  const callSignId = af && Object.prototype.hasOwnProperty.call(AIRFIELD_CALL_SIGN_IDS, af.name)
+    ? AIRFIELD_CALL_SIGN_IDS[af.name] : null;
+  const phoneRow = callSignId ? airfieldPhoneRow(callSignId) : null;
+  if (phoneRow) sec.appendChild(phoneRow);
   // A field with no published frequency gets no empty frame.
   if (sec.querySelectorAll('.row').length) body.appendChild(sec);
 }
 
+
+// The field's phone, as a link that dials it. The call-sign catalog has carried a number for
+// most fields all along, but only the parking-request form ever used it -- and there as text,
+// to be copied by hand. Labelled "Phone", not "Tower phone": most of these fields have no
+// tower, and the data does not say which do -- inferring it from the CTR polygons would call
+// Hatzor and Palmachim uncontrolled. A wrong label is worse than a plain one.
+// Shown only when there is a number: an empty row would invite a tap that goes nowhere.
+function airfieldPhoneRow(callSignId) {
+  const cs = (typeof commCatalogCallSignRow === 'function') ? commCatalogCallSignRow(callSignId) : null;
+  const shown = cs && typeof cs.phone === 'string' ? cs.phone.trim() : '';
+  const dial = shown.replace(/[^\d+]/g, '');
+  if (dial.length < 7) return null;
+  const row = document.createElement('div');
+  row.className = 'row airfield-phone-row';
+  const l = document.createElement('label');
+  l.textContent = S.airfieldPhone || 'Phone';
+  const a = document.createElement('a');
+  a.className = 'val airfield-phone';
+  a.href = 'tel:' + dial;
+  // A number is a Latin run inside Hebrew prose: isolate it, or the bidi algorithm moves the
+  // area code to the wrong end of it.
+  a.dir = 'ltr';
+  a.textContent = '☎ ' + shown;
+  a.title = (S.callNumber || 'Call') + ' — ' + shown;
+  row.append(l, a);
+  return row;
+}
 
 function appendAirfieldFrequencyRows(body, af) {
   const id = af && Object.prototype.hasOwnProperty.call(AIRFIELD_CALL_SIGN_IDS, af.name)

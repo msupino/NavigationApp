@@ -485,6 +485,17 @@ function validateRoute(d) {
       }
       _v(w, 'lat',  'number', p, errs);
       _v(w, 'lng',  'number', p, errs);
+      // ...and a number that is actually a position. A corrupt share link decodes to
+      // coordinates like lat -21474.83648: the type check passed it, the schema gate passed
+      // it, and because loading a URL route makes boot SKIP restoreRoute(), the pilot's own
+      // saved route was displaced by a point that cannot exist -- on nothing louder than a
+      // console warning. Every producer here already works in degrees.
+      if (typeof w.lat === 'number' && Number.isFinite(w.lat) && Math.abs(w.lat) > 90) {
+        errs.push(p + '.lat: out of range (' + w.lat + ')');
+      }
+      if (typeof w.lng === 'number' && Number.isFinite(w.lng) && Math.abs(w.lng) > 180) {
+        errs.push(p + '.lng: out of range (' + w.lng + ')');
+      }
       _v(w, 'name', 'string', p, errs);
       if (Object.prototype.hasOwnProperty.call(w, 'hotspot') && typeof w.hotspot !== 'boolean') {
         errs.push(p + '.hotspot: expected boolean, got ' + _vKind(w.hotspot));
@@ -1410,7 +1421,25 @@ function fplDofToIsoDate(dof) {
 // A phone number is something the pilot has to write down, and a toast slides away while they
 // look for a pen. Say it in a dialog that waits for OK. Also used when nothing is on file, so
 // the two answers behave the same way.
-function showParkingContactModal(title, body) {
+// A phone number as a link that dials it. Text the pilot must copy by hand is the one thing a
+// parking request should not hand out: the field that publishes no email is the one they have
+// to phone, from the phone they are holding. LTR-isolated, because in Hebrew it is a Latin run
+// inside RTL prose and the area code can otherwise land at the wrong end.
+function telLink(shown) {
+  const text = String(shown || '').trim();
+  const dial = text.replace(/[^\d+]/g, '');
+  if (dial.length < 7) return null;
+  const a = document.createElement('a');
+  a.className = 'tel-link';
+  a.href = 'tel:' + dial;
+  a.dir = 'ltr';
+  a.textContent = '\u260e ' + text;
+  a.title = (S.callNumber || 'Call') + ' \u2014 ' + text;
+  return a;
+}
+window.telLink = telLink;
+
+function showParkingContactModal(title, body, phone) {
   const back = document.createElement('div');
   back.className = 'modal-back fpl-modal';
   back.dataset.chartModal = 'parking-contact';
@@ -1438,6 +1467,14 @@ function showParkingContactModal(title, body) {
   if (typeof fplSetBidiText === 'function') fplSetBidiText(p, body);
   else p.textContent = body;
   box.appendChild(p);
+  // The phone is passed apart from the prose so it can be a link rather than a run of text.
+  const tel = phone ? telLink(phone) : null;
+  if (tel) {
+    const line = document.createElement('div');
+    line.className = 'parking-contact-phone';
+    line.appendChild(tel);
+    box.appendChild(line);
+  }
   const btns = document.createElement('div');
   btns.className = 'fpl-actions';
   const ok = document.createElement('button');
@@ -1499,7 +1536,12 @@ function showParkingRequestModal(res, park, opts) {
   // wraps each run in <bdi>, which is what the filing step already does for the same reason.
   fplSetBidiText(to, (S.fplParkingTo || 'To') + ': ' +
     (park.email || (S.fplParkingNoAddress || 'no published address — you will need to fill it in')) +
-    (park.opsEmail ? '  ·  cc ' + park.opsEmail : '') + (park.phone ? '  ·  ☎ ' + park.phone : ''));
+    (park.opsEmail ? '  ·  cc ' + park.opsEmail : ''));
+  const toTel = park.phone ? telLink(park.phone) : null;
+  if (toTel) {
+    to.appendChild(document.createTextNode('  \u00b7  '));
+    to.appendChild(toTel);
+  }
   box.appendChild(to);
 
   const form = document.createElement('div');
@@ -1622,6 +1664,7 @@ function showParkingRequestModal(res, park, opts) {
       return;
     }
     const t = compose();
+    if (typeof navaidEvent === 'function') navaidEvent('parking_mail_open');
     location.href = fplParkingMailtoUrl(res, park, { subject: t.subject, body: preview.value });
     close();
   };
@@ -3859,6 +3902,10 @@ function showFlightPlan() {
   back._navaidClose = closeFlightPlan;
   const box = document.createElement('div');
   box.className = 'modal wide';
+  // Built by hand rather than by createDraggableModal, so it needs the same announcement the
+  // factory gives the others. No aria-modal: this backdrop is deliberately click-through, so
+  // the page behind really is not inert.
+  box.setAttribute('role', 'dialog');
   // The inspector is pinned top-right at z-index 2320, above this modal's 2000, so an
   // open selection covered the right-hand columns (Cum. fuel was unreadable). Hide it
   // while the plan is up and put it back on close if the selection still stands.
@@ -3875,7 +3922,9 @@ function showFlightPlan() {
 
   const title = document.createElement('div');
   title.className = 'modal-title';
+  title.id = 'flight-plan-title';
   title.textContent = S.flightPlan;
+  box.setAttribute('aria-labelledby', title.id);
   box.appendChild(title);
 
   // Drag-to-move on the title bar (mouse + touch), position remembered per language.
@@ -5325,7 +5374,12 @@ function showExportModal() {
   const layerSel = document.createElement('select');
   layerSel.id = 'export-layer-select';
   layerSel.style.cssText = 'font:inherit;font-size:12px;flex:1';
+  // Only charts an export can draw: a tile or image layer, and one this build offers. "World
+  // (offline)" is drawn on its own canvas and has no tiles, so choosing it exported nothing,
+  // silently; a chart the gist has pulled was listed here all the same.
   for (const name in layers) {
+    if (!layers[name] || !layers[name]._url) continue;
+    if (typeof layerOffered === 'function' && !layerOffered(name)) continue;
     const opt = document.createElement('option');
     opt.value = name;
     opt.textContent = (S.layerLabels && S.layerLabels[name]) || name;
@@ -6566,6 +6620,16 @@ function recordUndoSnapshot(serialized) {
   refreshUndoButton();
 }
 
+// A route change that is not an edit -- the route following the aircraft -- so Undo skips
+// it: a hundred position updates are not a hundred steps back to the plan. The baseline
+// moves with it, so the next real edit's undo step lands on the route as it is now.
+function persistWithoutUndo(fn) {
+  undoing = true;
+  try { fn(); } finally { undoing = false; }
+  lastCommitted = JSON.stringify(routeSnapshotForStorage());
+}
+window.persistWithoutUndo = persistWithoutUndo;
+
 function refreshUndoButton() {
   const btn = document.getElementById('undo');
   if (btn) btn.disabled = undoStack.length === 0;
@@ -6576,6 +6640,20 @@ function undo() {
   const prev = undoStack.pop();
   let snap;
   try { snap = JSON.parse(prev); } catch (_) { refreshUndoButton(); return; }
+  undoing = true;
+  lastCommitted = prev;            // align baseline so the redraw won't re-push
+  try {
+    applyRouteSnapshot(snap);
+  } finally {
+    undoing = false;
+  }
+  refreshUndoButton();
+}
+
+// Put a routeSnapshotForStorage() snapshot back on the map and redraw. Undo uses it with the
+// undo record suppressed; comm failure's Cancel uses it as an ordinary edit, because its
+// snapshot has to survive a reload that the undo stack does not.
+function applyRouteSnapshot(snap) {
   state.waypoints = Array.isArray(snap.waypoints) ? snap.waypoints : [];
   state.legs = Array.isArray(snap.legs)
     ? snap.legs.map(leg => ({
@@ -6599,16 +6677,10 @@ function undo() {
   // silently overwriting a saved route with unrelated content.
   currentRouteLibraryId = null;
   state.selected = null;
-  undoing = true;
-  lastCommitted = prev;            // align baseline so the redraw won't re-push
-  try {
-    draw();
-    if (typeof showInspector === 'function') showInspector();
-  } finally {
-    undoing = false;
-  }
-  refreshUndoButton();
+  draw();
+  if (typeof showInspector === 'function') showInspector();
 }
+window.applyRouteSnapshot = applyRouteSnapshot;
 
 // Returns one of:
 //   true       — saved route restored into state.
@@ -7060,9 +7132,23 @@ function createDraggableModal(titleText, className, onClose, options = {}) {
   if (options.chartKind) back.dataset.chartModal = options.chartKind;
   const box = document.createElement('div');
   box.className = className || 'modal wide';
+  // Say what this is. Three hand-built windows (the SIGWX and PWX viewers, the offline
+  // manager) declared role="dialog" and the nine built here declared nothing, so the same
+  // kind of window announced itself differently depending on which file made it.
+  //
+  // aria-modal only when the backdrop really does block. The factory traps Tab either way,
+  // so a keyboard user cannot leave any of these -- but a non-blocking one leaves the map
+  // live under the pointer on purpose, and telling assistive tech the rest of the page is
+  // inert would be a claim the window does not keep.
+  box.setAttribute('role', 'dialog');
+  if (!options.nonBlocking) box.setAttribute('aria-modal', 'true');
 
   const title = document.createElement('div');
   title.className = 'modal-title';
+  // The dialog's accessible name. Every one of these has a visible title and not one was
+  // pointing at it, so they all opened as an unnamed "dialog".
+  title.id = 'modal-title-' + (createDraggableModal._n = (createDraggableModal._n || 0) + 1);
+  box.setAttribute('aria-labelledby', title.id);
   if (options.titleDir) title.dir = options.titleDir;
   if (options.titleBidi) title.style.unicodeBidi = options.titleBidi;
   title.textContent = titleText || '';
@@ -10925,6 +11011,7 @@ function showFplDialog() {
       // The AIP prescribes no subject line (א'-11 §3.ב only names the address), so this
       // is our own convention: registration, the two fields, and the date of flight --
       // enough for the desk, and for the pilot's own sent folder, to identify the plan.
+      if (typeof navaidEvent === 'function') navaidEvent('fpl_mail_open');
       location.href = fplMailtoUrl(res, {
         reg: profileForSubject.reg,
         replyTo: profileForSubject.replyTo,
@@ -11026,12 +11113,11 @@ function showFplDialog() {
           const heading = (S.fplParking || 'Request parking') + ' — ' + named;
           const body = (parkAf && parkAf.phone)
             ? ((typeof S.fplParkingNoEmail === 'function')
-              ? S.fplParkingNoEmail(named) : 'No email defined in AIP for ' + named) +
-              '\n☎ ' + parkAf.phone
+              ? S.fplParkingNoEmail(named) : 'No email defined in AIP for ' + named)
             : ((typeof S.fplParkingNoInfo === 'function')
               ? S.fplParkingNoInfo(named)
               : 'No parking contact on file for ' + named + ' — check the AIP');
-          showParkingContactModal(heading, body);
+          showParkingContactModal(heading, body, parkAf && parkAf.phone);
           return;
         }
         showParkingRequestModal(res, parkAf, { depTimeLocal: state1.time });
@@ -11565,6 +11651,7 @@ function showFplXcForm(opts) {
       q.push('cc=' + fplMailtoAddress(reply));
       q.push('reply-to=' + fplMailtoAddress(reply));
     }
+    if (typeof navaidEvent === 'function') navaidEvent('xc_mail_open');
     location.href = 'mailto:' + fplMailtoAddress(to) + '?' + q.join('&');
   };
   // The address this sheet will mail to, named on the sheet when it is not the published
