@@ -31,7 +31,7 @@ test('the bearing dial\'s red needle points at north on the turned chart', async
       field: document.getElementById('rotate-hdg').value };
   });
   expect(r.needle).toBe('rotate(6deg)');
-  expect(r.field).toBe('349');                          // which way is up, magnetic (354 true, 5°E)
+  expect(r.field).toBe('354');                          // planning: the map's true rotation
 });
 
 test('dragging the dial moves the needle with the finger', async ({ page }) => {
@@ -46,4 +46,37 @@ test('dragging the dial moves the needle with the finger', async ({ page }) => {
   const bearing = await page.evaluate(() => Math.round(map.getBearing()));
   expect(bearing).toBe(90);
   expect(await page.locator('#rotate-needle').evaluate(el => el.style.transform)).toBe('rotate(90deg)');
+});
+
+test('while planning the dial\'s number is the map\'s true rotation; in flight the heading, magnetic', async ({ page }) => {
+  await page.goto('?lang=en&nogist');
+  await page.waitForFunction(() => typeof refreshDial === 'function' && typeof map.setBearing === 'function');
+  const r = await page.evaluate(() => {
+    const field = () => document.getElementById('rotate-hdg').value;
+    map.setView([32.1, 34.9], 9, { animate: false });
+    map.setBearing(0); refreshDial();
+    const northUp = field();
+    map.setBearing(6); refreshDial();
+    const turned = field();
+    window.gpsLiveOn = true; gpsOwn = { lat: 32.1, lng: 34.9, hdg: 354, t: Date.now() };
+    refreshOrientControl();
+    const flying = field();
+    window.gpsLiveOn = false; refreshOrientControl();
+    return { northUp, turned, flying, after: field() };
+  });
+  expect(r.northUp).toBe('0');                 // planning: north up is 0, not 355
+  expect(r.turned).toBe('354');                // planning: the true rotation
+  expect(r.flying).toBe('349');                // in flight: magnetic (5E)
+  expect(r.after).toBe('354');                 // back to true when the position stops
+});
+
+test('a heading typed while planning is true', async ({ page }) => {
+  await page.goto('?lang=en&nogist');
+  await page.waitForFunction(() => typeof refreshDial === 'function');
+  const bearing = await page.evaluate(() => {
+    const f = document.getElementById('rotate-hdg');
+    f.value = '40'; f.dispatchEvent(new Event('change'));
+    return Math.round(map.getBearing());
+  });
+  expect(bearing).toBe(320);
 });
