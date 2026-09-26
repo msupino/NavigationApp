@@ -148,23 +148,24 @@ test('an area already kept is not saved again, and a new area starts at once bes
   await expect(page.locator('.offline-manager-area .offline-manager-state')).not.toContainText('CVFR');
 });
 
-test('on open flightmaps the map zooms out to Europe, and back in on the Israeli charts', async ({ page }) => {
+test('every chart zooms out to a continent, and the gist can raise the floor', async ({ page }) => {
   await boot(page);
   const r = await page.evaluate(() => {
     const sel = document.getElementById('layer-select');
     const choose = n => { sel.value = n; sel.dispatchEvent(new Event('change')); };
-    map.setView([47, 12], 9, { animate: false });
-    choose('OpenFlightMaps');
-    const wide = map.getMinZoom();
-    map.setView([48, 10], 5, { animate: false });
-    const out = map.getZoom();
+    const floors = {};
+    for (const n of ['CVFR', 'OpenFlightMaps', 'World']) { choose(n); floors[n] = map.getMinZoom(); }
     choose('CVFR');
-    return { wide, out, back: map.getMinZoom(), zoomAfter: map.getZoom() };
+    map.setView([48, 10], 3, { animate: false });
+    const out = map.getZoom();
+    setTune('mapMinZoom', 8);
+    redrawAfterTune();                               // what a gist / tuning change runs
+    return { floors, out, raised: map.getMinZoom(), zoomAfter: map.getZoom() };
   });
-  expect(r.wide).toBe(4);
-  expect(r.out).toBe(5);
-  expect(r.back).toBe(8);
-  expect(r.zoomAfter).toBeGreaterThanOrEqual(8);
+  expect(r.floors).toEqual({ CVFR: 2, OpenFlightMaps: 2, World: 2 });
+  expect(r.out).toBe(3);                             // Europe in one screen, on CVFR
+  expect(r.raised).toBe(8);
+  expect(r.zoomAfter).toBeGreaterThanOrEqual(8);     // Leaflet zooms in to the new floor
 });
 
 test('most of Europe: the detail levels say their size, the ones too big are dimmed', async ({ page }) => {
