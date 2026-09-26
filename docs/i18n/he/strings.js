@@ -49,6 +49,7 @@ window.S = {
   tbSigwxTime: 'זמן תוקף',
   tbSigwxOverlay: 'הצג מזג אוויר משמעותי',
   tbSigwxOverlayTitle: 'הצג את מפת מזג האוויר המשמעותי (SIGWX, גובה נמוך) על המפה לפי זמן תוקף. יישור מקורב — לכיוונון השתמש ב-?tune. אמצעי תכנון בלבד.',
+  sigwxLegendOpen: 'פתיחת המפה לקריאה',
   sigwxModalTitle: 'מפות מזג אוויר משמעותי (SIGWX)',
   sigwxMissing: 'המפה אינה זמינה עדיין לזמן זה.',
   sigwxUnavailable: 'מפות מזג אוויר משמעותי אינן זמינות כעת.',

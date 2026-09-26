@@ -11698,14 +11698,17 @@ const NavWxAvailability = (function () {
   let manifest = null;
   let back = null;
 
+  let picked = '';
   function close() {
     if (back) { back.remove(); back = null; }
     document.removeEventListener('keydown', onEsc, true);
   }
   function onEsc(e) { if (e.key === 'Escape') { e.stopPropagation(); close(); } }
 
-  function open() {
+  function open(want) {
     if (back || !manifest) return;   // open even with zero times (show broken)
+    // Opened from the map's SIGWX legend: start on the chart the overlay is showing.
+    if (want && typeof want === 'object' && want.valid) picked = (want.day || '') + '|' + want.valid;
     // Behave like every chart: close other open charts + the toolbar dropdowns.
     if (typeof closeOpenChartModals === 'function') closeOpenChartModals();
     if (typeof window.closeToolbarMenus === 'function') window.closeToolbarMenus();
@@ -11731,7 +11734,6 @@ const NavWxAvailability = (function () {
     sel.setAttribute('aria-label', S.tbSigwxTime || 'Valid time');
     // The option VALUE is the manifest index, which a refresh renumbers; remember the
     // pilot's pick by the time it names so a rebuilt list can find it again.
-    let picked = '';
     const keyAt = i => {
       const t = manifest.times[i];
       return t ? (t.day || '') + '|' + t.valid : '';
@@ -11797,7 +11799,8 @@ const NavWxAvailability = (function () {
     refresh().then(changed => { if (changed && back && sel.isConnected) { fillTimes(); load(); } });
   }
 
-  btn.addEventListener('click', open);
+  btn.addEventListener('click', () => open());
+  NavAid.openSigwxViewer = open;
 
   // Reveal the button whenever the manifest exists — even with zero times — so a
   // broken/empty run is visible (button opens to an "unavailable" note) rather than
@@ -12126,15 +12129,60 @@ const NavWxAvailability = (function () {
     el.style.transform = deg ? (base + ' rotate(' + deg + 'deg)') : base;
   }
   map.on('move zoom zoomend viewreset', applyRotation);
+
+  // The legend (header over table) is text. The overlay pane turns with the map, so on a
+  // map turned to the track the legend was sideways or upside down -- unreadable. Counter-turn
+  // both images by the map's bearing about the centre of the two together, so they stay one
+  // block, anchored where they are on the chart, with the text level.
+  function uprightLegend() {
+    const bearing = map.getBearing ? map.getBearing() : 0;
+    const els = [hdrLayer, tblLayer].map(l => l && l.getElement && l.getElement()).filter(Boolean);
+    if (!els.length) return;
+    const boxes = els.map(el => {
+      const p = L.DomUtil.getPosition(el) || L.point(0, 0);
+      return { el, x: p.x, y: p.y, w: el.offsetWidth || parseFloat(el.style.width) || 0,
+        h: el.offsetHeight || parseFloat(el.style.height) || 0 };
+    });
+    const x0 = Math.min(...boxes.map(b => b.x)), y0 = Math.min(...boxes.map(b => b.y));
+    const x1 = Math.max(...boxes.map(b => b.x + b.w)), y1 = Math.max(...boxes.map(b => b.y + b.h));
+    const cx = (x0 + x1) / 2, cy = (y0 + y1) / 2;
+    for (const b of boxes) {
+      const base = b.el.style.transform.replace(/\s*rotate\([^)]*\)/g, '');
+      b.el.style.transformOrigin = (cx - b.x) + 'px ' + (cy - b.y) + 'px';
+      b.el.style.transform = bearing ? base + ' rotate(' + (-bearing) + 'deg)' : base;
+    }
+  }
+  map.on('rotate', uprightLegend);
+  // Leaflet rewrites an overlay's transform whenever it re-places it (zoom, view reset), which
+  // would drop the counter-turn: re-apply it straight after, on the layer's own reset.
+  function keepUpright(lyr) {
+    const reset = lyr._reset;
+    lyr._reset = function () { reset.apply(this, arguments); uprightLegend(); };
+  }
+  // Tapping the legend opens the chart in the viewer, full size, on the same valid time.
+  function openFromLegend() {
+    if (typeof NavAid.openSigwxViewer === 'function') NavAid.openSigwxViewer(currentTime());
+  }
   function place(which, data, bounds, op) {
     const ref = which === 'map' ? mapLayer : (which === 'header' ? hdrLayer : tblLayer);
     if (!ref) {
-      const lyr = L.imageOverlay(data, bounds, { opacity: op, interactive: false, pane: 'overlayPane', className: 'sigwx-ov-layer' });
+      const legend = which !== 'map';
+      const lyr = L.imageOverlay(data, bounds, { opacity: op, interactive: legend, pane: 'overlayPane',
+        className: 'sigwx-ov-layer' + (legend ? ' sigwx-ov-legend' : '') });
+      if (legend) {
+        lyr.on('click', openFromLegend);
+        keepUpright(lyr);
+      }
       lyr.addTo(map);
       if (which === 'map') mapLayer = lyr; else if (which === 'header') hdrLayer = lyr; else tblLayer = lyr;
+      if (legend) {
+        const el = lyr.getElement();
+        if (el) el.title = S.sigwxLegendOpen || 'Open the chart to read it';
+      }
     } else {
       ref.setUrl(data); ref.setBounds(bounds); ref.setOpacity(op);
     }
+    if (which !== 'map') uprightLegend();
   }
   // Cropping a SIGWX panel is asynchronous (image decode + canvas), and the pilot can
   // change the valid time while one is in flight. Without a generation token a slower crop

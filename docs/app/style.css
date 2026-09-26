@@ -8455,3 +8455,5 @@ body.theme-light .airfield-phone-row .airfield-phone:visited { color: #1a5fb4; }
 #toolbar .tb-magvar #magvar-deg::-webkit-inner-spin-button,
 #toolbar .tb-magvar #magvar-deg::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
 #toolbar .tb-magvar #magvar-deg.magvar-readonly { opacity: .75; cursor: default; }
+/* The SIGWX legend on the map opens the chart in the viewer. */
+.leaflet-overlay-pane img.sigwx-ov-legend { cursor: zoom-in; }

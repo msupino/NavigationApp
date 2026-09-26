@@ -51,3 +51,53 @@ test('no SIGWX times → overlay box stays hidden', async ({ page }) => {
   await page.waitForTimeout(400);
   await expect(page.locator('#sigwx-ov')).toBeHidden();
 });
+
+for (const [name, vp, deck] of [['desktop', { width: 1280, height: 900 }, '0'], ['phone', { width: 390, height: 800 }, '1']]) {
+  test(`the legend stays upright on a turned map, and a tap opens the chart (${name})`, async ({ page }) => {
+    await page.setViewportSize(vp);
+    await boot(page);
+    if (deck === '1') await page.goto('?lang=en&deck=1');
+    await page.waitForFunction(() => document.getElementById('sigwx-ov-cb'));
+    await page.evaluate(() => {
+      document.getElementById('boot-loading')?.remove(); document.documentElement.classList.remove('app-booting');
+      const cb = document.getElementById('sigwx-ov-cb'); if (!cb.checked) { cb.checked = true; cb.dispatchEvent(new Event('change')); }
+    });
+    await expect(page.locator('img.sigwx-ov-legend')).toHaveCount(2);
+    // Put the legend on screen, north up, and measure it.
+    // Which image is which by shape, not DOM order (the crops land in whichever order they
+    // finish): the header is the thin strip, the table the tall block.
+    const measure = () => page.evaluate(() => {
+      const [hdr, tbl] = [...document.querySelectorAll('img.sigwx-ov-legend')]
+        .sort((a, b) => a.offsetHeight - b.offsetHeight).map(e => e.getBoundingClientRect());
+      return { w: Math.round(tbl.width), h: Math.round(tbl.height), gap: Math.round(tbl.top - hdr.bottom),
+        hdrLeft: Math.round(hdr.left - tbl.left) };
+    });
+    await page.evaluate(() => {
+      const el = [...document.querySelectorAll('img.sigwx-ov-legend')].sort((a, b) => b.offsetHeight - a.offsetHeight)[0];
+      const lyr = Object.values(map._layers).find(l => l.getElement && l.getElement() === el);
+      map.setView(lyr.getBounds().getCenter(), 8, { animate: false });
+      map.setBearing(0);
+    });
+    const north = await measure();
+    // Turned a quarter: the pane turns with the map, the legend must not.
+    await page.evaluate(() => { map.setBearing(90); });
+    const turned = await measure();
+    expect(Math.abs(turned.w - north.w)).toBeLessThanOrEqual(2);
+    expect(Math.abs(turned.h - north.h)).toBeLessThanOrEqual(2);
+    expect(Math.abs(turned.gap - north.gap)).toBeLessThanOrEqual(2);     // header still directly above
+    // ...and still after a zoom, which re-places the images.
+    await page.evaluate(() => { map.setZoom(9, { animate: false }); });
+    const zoomed = await page.evaluate(() => {
+      const r = [...document.querySelectorAll('img.sigwx-ov-legend')].sort((a, b) => b.offsetHeight - a.offsetHeight)[0].getBoundingClientRect();
+      return r.width / r.height;
+    });
+    expect(Math.abs(zoomed - north.w / north.h)).toBeLessThan(0.05);
+    // A tap on it opens the viewer on the same chart.
+    await page.evaluate(() => {
+      const el = [...document.querySelectorAll('img.sigwx-ov-legend')].sort((a, b) => b.offsetHeight - a.offsetHeight)[0];
+      el.dispatchEvent(new MouseEvent('click', { bubbles: true, clientX: 1, clientY: 1 }));
+    });
+    await expect(page.locator('.sigwx-modal')).toBeVisible();
+    await expect(page.locator('.sigwx-modal .sigwx-time')).toHaveValue('0');
+  });
+}
