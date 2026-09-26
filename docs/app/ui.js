@@ -11691,6 +11691,95 @@ const NavWxAvailability = (function () {
 // No map overlay — these are wide-area prognostic charts. The button opens a
 // modal with a valid-time dropdown and the chart image. Hidden until the
 // ims-data sigwx manifest loads.
+// Pinch-zoom and pan for a chart image in a viewer. The app ships user-scalable=no, so a
+// phone cannot zoom the page: without this the SIGWX sheet sat at ~330 px wide and its table
+// could not be read. Two fingers zoom about the point between them, one finger pans once
+// zoomed, a double tap toggles 1x / 2.5x; on a desktop the wheel zooms about the pointer and a
+// drag pans. The image never leaves its frame. Returns reset(), for a new image.
+function makeImageZoomable(frame, img) {
+  const MAX = 6;
+  let s = 1, tx = 0, ty = 0;
+  const pts = new Map();
+  let gesture = null;
+  let lastTap = 0;
+  const rel = e => { const r = frame.getBoundingClientRect(); return { x: e.clientX - r.left, y: e.clientY - r.top }; };
+  function clamp() {
+    const W = frame.clientWidth, H = frame.clientHeight;
+    const w = img.offsetWidth * s, h = img.offsetHeight * s;
+    tx = w <= W ? (W - w) / 2 : Math.min(0, Math.max(W - w, tx));
+    ty = h <= H ? (H - h) / 2 : Math.min(0, Math.max(H - h, ty));
+  }
+  function apply() {
+    clamp();
+    img.style.transform = 'translate(' + tx + 'px,' + ty + 'px) scale(' + s + ')';
+    frame.classList.toggle('zoomed', s > 1.001);
+  }
+  // Zoom to `ns`, keeping the image point under (px, py) under it.
+  function zoomAt(ns, px, py) {
+    ns = Math.max(1, Math.min(MAX, ns));
+    const cx = (px - tx) / s, cy = (py - ty) / s;
+    s = ns; tx = px - cx * s; ty = py - cy * s;
+    apply();
+  }
+  function reset() { s = 1; tx = 0; ty = 0; pts.clear(); gesture = null; apply(); }
+  frame.addEventListener('pointerdown', e => {
+    if (frame.setPointerCapture) { try { frame.setPointerCapture(e.pointerId); } catch (err) { /* */ } }
+    pts.set(e.pointerId, rel(e));
+    const p = [...pts.values()];
+    if (p.length === 2) {
+      gesture = { d: Math.hypot(p[0].x - p[1].x, p[0].y - p[1].y) || 1, s, tx, ty,
+        mid: { x: (p[0].x + p[1].x) / 2, y: (p[0].y + p[1].y) / 2 } };
+    } else if (p.length === 1) {
+      gesture = { pan: true, x: p[0].x, y: p[0].y, tx, ty, at: Date.now(), moved: false };
+    }
+  });
+  frame.addEventListener('pointermove', e => {
+    if (!pts.has(e.pointerId) || !gesture) return;
+    pts.set(e.pointerId, rel(e));
+    const p = [...pts.values()];
+    if (p.length >= 2 && !gesture.pan) {
+      const d = Math.hypot(p[0].x - p[1].x, p[0].y - p[1].y);
+      const mid = { x: (p[0].x + p[1].x) / 2, y: (p[0].y + p[1].y) / 2 };
+      const ns = Math.max(1, Math.min(MAX, gesture.s * d / gesture.d));
+      const cx = (gesture.mid.x - gesture.tx) / gesture.s, cy = (gesture.mid.y - gesture.ty) / gesture.s;
+      s = ns; tx = mid.x - cx * s; ty = mid.y - cy * s;
+      apply();
+    } else if (gesture.pan) {
+      if (Math.hypot(p[0].x - gesture.x, p[0].y - gesture.y) > 8) gesture.moved = true;
+      if (s > 1.001) {
+        tx = gesture.tx + (p[0].x - gesture.x); ty = gesture.ty + (p[0].y - gesture.y);
+        apply();
+      }
+    }
+  });
+  const up = e => {
+    const was = gesture;
+    const at = pts.get(e.pointerId);
+    pts.delete(e.pointerId);
+    const p = [...pts.values()];
+    // A double tap is two real taps: one finger, down and up quickly, not moved. The fingers
+    // of a pinch, or a pan that follows one, are not taps.
+    if (was && was.pan && was.at && !was.moved && !p.length && e.pointerType !== 'mouse'
+        && Date.now() - was.at < 250 && at) {
+      const now = Date.now();
+      if (now - lastTap < 300) { zoomAt(s > 1.001 ? 1 : 2.5, at.x, at.y); lastTap = 0; }
+      else lastTap = now;
+    }
+    // One finger left after a pinch: carry on as a pan from where it is.
+    gesture = p.length === 1 ? { pan: true, x: p[0].x, y: p[0].y, tx, ty } : null;
+  };
+  frame.addEventListener('pointerup', up);
+  frame.addEventListener('pointercancel', up);
+  frame.addEventListener('wheel', e => {
+    e.preventDefault();
+    const q = rel(e);
+    zoomAt(s * Math.exp(-e.deltaY * 0.002), q.x, q.y);
+  }, { passive: false });
+  img.addEventListener('load', reset);
+  return { reset, zoomAt, state: () => ({ s, tx, ty }) };
+}
+window.makeImageZoomable = makeImageZoomable;
+
 (function imsSigwxViewer() {
   const RAW = 'https://raw.githubusercontent.com/msupino/NavigationApp/ims-data/';
   const btn = document.getElementById('sigwx-btn');
@@ -11770,11 +11859,15 @@ const NavWxAvailability = (function () {
       const t = manifest.times[sel.selectedIndex];
       if (!t) return;
       note.hidden = true; img.hidden = false;
+      if (img.parentNode) img.parentNode.hidden = false;
       img.src = RAW + t.png + '?t=' + (manifest.generatedAt || '');
     };
     // If the PNG is missing (a forecast hour not yet published), show a note
     // instead of a broken-image icon.
-    img.addEventListener('error', () => { img.hidden = true; note.hidden = false; });
+    img.addEventListener('error', () => {
+      img.hidden = true; note.hidden = false;
+      if (img.parentNode) img.parentNode.hidden = true;
+    });
     sel.addEventListener('change', () => { picked = keyAt(sel.selectedIndex); load(); });
     if (manifest.times.length) {
       load();
@@ -11785,8 +11878,13 @@ const NavWxAvailability = (function () {
       note.hidden = false;
       note.textContent = S.sigwxUnavailable || 'SIGWX charts are temporarily unavailable.';
     }
-    box.appendChild(img);
+    // The image sits in a frame that pinch-zooms and pans it (see makeImageZoomable).
+    const frame = document.createElement('div');
+    frame.className = 'sigwx-zoom';
+    frame.appendChild(img);
+    box.appendChild(frame);
     box.appendChild(note);
+    box._sigwxZoom = makeImageZoomable(frame, img);
 
     if (typeof addModalCloseX === 'function') addModalCloseX(box, close);
     back.appendChild(box);
