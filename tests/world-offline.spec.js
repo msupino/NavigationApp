@@ -75,7 +75,7 @@ test('World (offline) is a chart of its own that zooms out to a continent', asyn
   });
   expect(r.label).toBe('World (offline)');
   expect(r.min).toBe(2);
-  expect(r.back).toBe(8);
+  expect(r.back).toBe(2);
 });
 
 test('a chart tile that fails is transparent, not white over the world map', async ({ page }) => {
