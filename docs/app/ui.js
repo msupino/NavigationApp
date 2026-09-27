@@ -12082,8 +12082,8 @@ window.makeImageZoomable = makeImageZoomable;
   // Where the legend sits and how it looks are tunables (SIGWX overlay group): top edge
   // sigwxLegendTopLat, west edge sigwxLegendWestLng, width sigwxLegendWidthDeg, the step it
   // turns back in (sigwxLegendStepDeg), the gap left where blank paper is cut
-  // (sigwxLegendGapPct) and whether it is a square (sigwxLegendSquare). The older
-  // sigwxTblLat/LngOffset, sigwxTblScale and sigwxTblOpacity still apply on top.
+  // (sigwxLegendGapPct) and whether it is a square (sigwxLegendSquare). Of the older table
+  // tunables only sigwxTblOpacity still applies.
   const tv = (k, d) => { const v = typeof tune === 'function' ? Number(tune(k)) : NaN; return Number.isFinite(v) ? v : d; };
 
   let manifest = null, mapLayer = null, legendLayer = null;
@@ -12382,9 +12382,11 @@ window.makeImageZoomable = makeImageZoomable;
       cropPanel(url, CROP_HEADER, false).catch(() => null),
     ]).then(([tbl, hdr]) => squareLegend(url, hdr, tbl.data)).then(data => {
       if (gen !== sigwxGen || !cb.checked) return;
-      const w = tv('sigwxLegendWestLng', 37.1) + off('sigwxTblLngOffset');
-      const e = w + tv('sigwxLegendWidthDeg', 3.5) * sc('sigwxTblScale');
-      place('legend', data, legendBounds(tv('sigwxLegendTopLat', 33) + off('sigwxTblLatOffset'), w, e), tblOp);
+      // The legend's own settings only: the older table offsets were tuned for the old table's
+      // place (the live gist shifts it 0.48 west) and would move the legend off where it is set.
+      const w = tv('sigwxLegendWestLng', 36);
+      const e = w + tv('sigwxLegendWidthDeg', 3.5);
+      place('legend', data, legendBounds(tv('sigwxLegendTopLat', 33), w, e), tblOp);
     }).catch(() => { /* legend optional */ });
   }
   // A square on the screen: as tall in Web Mercator as it is wide, measured from its top edge.

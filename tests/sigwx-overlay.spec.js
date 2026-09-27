@@ -101,7 +101,7 @@ for (const [name, vp, deck] of [['desktop', { width: 1280, height: 900 }, '0'], 
   });
 }
 
-test('the legend sits at its tunable place: top 33N, west 37.1E, and every setting moves it', async ({ page }) => {
+test('the legend sits at its tunable place: top 33N, west 36E, and every setting moves it', async ({ page }) => {
   await boot(page);
   await page.evaluate(() => { const cb = document.getElementById('sigwx-ov-cb'); if (!cb.checked) { cb.checked = true; cb.dispatchEvent(new Event('change')); } });
   await page.waitForFunction(() => { const i = document.querySelector('img.sigwx-ov-legend'); return i && i.complete && i.naturalWidth > 0; });
@@ -112,7 +112,10 @@ test('the legend sits at its tunable place: top 33N, west 37.1E, and every setti
       nw: el.naturalWidth, nh: el.naturalHeight };
   });
   const def = await bounds();
-  expect(def).toMatchObject({ n: 33, w: 37.1, e: 40.6 });
+  expect(def).toMatchObject({ n: 33, w: 36, e: 39.5 });
+  // The old table offsets (the live gist sets one) no longer move it.
+  await page.evaluate(async () => { setTune('sigwxTblLngOffset', -0.48); setTune('sigwxTblLatOffset', 1); redrawAfterTune(); await new Promise(r => setTimeout(r, 500)); });
+  expect(await bounds()).toMatchObject({ n: 33, w: 36, e: 39.5 });
   expect(def.nw).toBe(def.nh);
   // Tuned: moved, wider, not a square, and turning in 45-degree steps.
   const tuned = await page.evaluate(async () => {
