@@ -203,3 +203,24 @@ test('the chosen detail is what the area keeps', async ({ page }) => {
   expect(r.maxZ).toBe(9);
   expect(r.top).toBe(9);
 });
+
+test('refreshing every pack\'s status lists the store once, not once per pack', async ({ page }) => {
+  await boot(page);
+  const lists = await page.evaluate(async () => {
+    const O = NavAidOfflineTiles;
+    await O.downloadChart('Navigation');
+    await new Promise(d => { map.once('moveend', d); map.setView([47.26, 11.35], 11, { animate: false }); });
+    await O.downloadArea('OpenFlightMaps');
+    // Count listings of the tile store while the dialog refreshes every pack.
+    const cache = await caches.open(O.TILE_CACHE);
+    const proto = Object.getPrototypeOf(cache);
+    const keys = proto.keys;
+    let n = 0;
+    proto.keys = function () { n++; return keys.apply(this, arguments); };
+    O.openManager();
+    await new Promise(r => setTimeout(r, 500));
+    proto.keys = keys;
+    return n;
+  });
+  expect(lists).toBeLessThanOrEqual(1);
+});

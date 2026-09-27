@@ -456,12 +456,14 @@
   }
 
   // ---- the pilot's packs ------------------------------------------------------------
-  async function chartCoverage(name) {
+  // `actual` is the set of stored URLs when the caller already has it: listing the store is a
+  // directory read of every tile in the APK, so a refresh lists it once for all the packs.
+  async function chartCoverage(name, actual) {
     if (name === 'ATS') return atsCoverage();
-    return coverageOf(name, chartPlan(name), await cacheUrlSet(false));
+    return coverageOf(name, chartPlan(name), actual !== undefined ? actual : await cacheUrlSet(false));
   }
-  async function areaCoverage(area) {
-    return coverageOf(area.id, areaPlan(area), await cacheUrlSet(false));
+  async function areaCoverage(area, actual) {
+    return coverageOf(area.id, areaPlan(area), actual !== undefined ? actual : await cacheUrlSet(false));
   }
   // The ATS sheet is one same-origin image: the service worker's app cache keeps it once it
   // has been fetched, so "downloading" it is fetching it. In the APK it ships in the bundle.
@@ -547,10 +549,13 @@
   // connection by auditAndMaintain.
   async function refreshPackReports() {
     const packs = readPacks();
+    // One listing of the store for every pack: it used to be listed twice per pack, and in the
+    // APK each listing reads a directory of tens of thousands of files.
+    const actual = await cacheUrlSet(false);
     for (const name of WHOLE_CHARTS.concat('ATS')) {
-      if (!running.has(name)) reports[name] = await chartCoverage(name);
+      if (!running.has(name)) reports[name] = await chartCoverage(name, actual);
     }
-    for (const area of packs.areas) if (!running.has(area.id)) reports[area.id] = await areaCoverage(area);
+    for (const area of packs.areas) if (!running.has(area.id)) reports[area.id] = await areaCoverage(area, actual);
     renderManager();
     return packs;
   }
