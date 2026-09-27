@@ -12087,16 +12087,14 @@ window.makeImageZoomable = makeImageZoomable;
   // sits to the right of the map; position/size are tunable.
   const BOUNDS_TABLE = { n: 34.20, s: 29.60, w: 37.10, e: 40.60 };
 
-  let manifest = null, mapLayer = null, tblLayer = null, hdrLayer = null;
+  let manifest = null, mapLayer = null, legendLayer = null;
   const off = k => (typeof tune === 'function' ? tune(k) : 0) || 0;
   const sc = k => { const v = typeof tune === 'function' ? tune(k) : 1; return v > 0 ? v : 1; };
   const cropCache = {};                      // key → cropped dataURL
 
   function removeLayers() {
     if (mapLayer) { map.removeLayer(mapLayer); mapLayer = null; }
-    if (tblLayer) { map.removeLayer(tblLayer); tblLayer = null; }
-    if (hdrLayer) { map.removeLayer(hdrLayer); hdrLayer = null; }
-    if (typeof refreshLegendMode === 'function') refreshLegendMode();
+    if (legendLayer) { map.removeLayer(legendLayer); legendLayer = null; }
   }
   // Crop a panel of the chart PNG client-side. `knockWhite` (map panel only)
   // makes the chart's white paper transparent so it doesn't read as a glaring
@@ -12290,117 +12288,40 @@ window.makeImageZoomable = makeImageZoomable;
   }
   map.on('move zoom zoomend viewreset', applyRotation);
 
-  // The legend (header over table) is text. The overlay pane turns with the map, so on a
-  // map turned to the track the legend was sideways or upside down -- unreadable. Counter-turn
-  // both images by the map's bearing about the centre of the two together, so they stay one
-  // block, anchored where they are on the chart, with the text level.
+  // The legend (the title header over the table) is one square image. The overlay pane turns
+  // with the map; the legend is turned back by the map's bearing ROUNDED TO A QUARTER TURN, so
+  // it moves in 90-degree steps and never leans more than 45 degrees -- and, being square, it
+  // covers the same patch of chart whichever way it faces. Not tappable: no popup over a
+  // crowded screen.
   function uprightLegend() {
+    const el = legendLayer && legendLayer.getElement && legendLayer.getElement();
+    if (!el) return;
     const bearing = map.getBearing ? map.getBearing() : 0;
-    const els = [hdrLayer, tblLayer].map(l => l && l.getElement && l.getElement()).filter(Boolean);
-    if (!els.length) return;
-    const boxes = els.map(el => {
-      const p = L.DomUtil.getPosition(el) || L.point(0, 0);
-      return { el, x: p.x, y: p.y, w: el.offsetWidth || parseFloat(el.style.width) || 0,
-        h: el.offsetHeight || parseFloat(el.style.height) || 0 };
-    });
-    const x0 = Math.min(...boxes.map(b => b.x)), y0 = Math.min(...boxes.map(b => b.y));
-    const x1 = Math.max(...boxes.map(b => b.x + b.w)), y1 = Math.max(...boxes.map(b => b.y + b.h));
-    const cx = (x0 + x1) / 2, cy = (y0 + y1) / 2;
-    for (const b of boxes) {
-      const base = b.el.style.transform.replace(/\s*rotate\([^)]*\)/g, '');
-      b.el.style.transformOrigin = (cx - b.x) + 'px ' + (cy - b.y) + 'px';
-      b.el.style.transform = bearing ? base + ' rotate(' + (-bearing) + 'deg)' : base;
-    }
+    const quarter = (Math.round(bearing / 90) * 90) % 360;
+    const base = el.style.transform.replace(/\s*rotate\([^)]*\)/g, '');
+    el.style.transformOrigin = '50% 50%';
+    el.style.transform = quarter ? base + ' rotate(' + (-quarter) + 'deg)' : base;
   }
   map.on('rotate', uprightLegend);
-
-  // On a turned map the legend is anchored east of the chart, so the turn swings it across
-  // the chart itself -- a block of white over the route. Past a few degrees it folds away into
-  // a button in the corner that opens the chart in the viewer (zoomable); north up, it is on
-  // the map as the chart prints it.
-  const LEGEND_FOLD_DEG = 10;
-  let legendChip = null;          // the button, once made
-  let legendCtl = null;           // the map-corner control holding it, when the time bar is not up
-  function legendFolded() {
-    const b = ((map.getBearing ? map.getBearing() : 0) % 360 + 360) % 360;
-    return Math.min(b, 360 - b) > LEGEND_FOLD_DEG;
-  }
-  function chipButton() {
-    if (legendChip) return legendChip;
-    const btn = document.createElement('button');
-    btn.type = 'button';
-    btn.className = 'sigwx-legend-chip';
-    btn.textContent = S.sigwxLegendChip || '\u2601 SIGWX legend';
-    btn.title = S.sigwxLegendOpen || 'Open the chart to read it';
-    L.DomEvent.disableClickPropagation(btn);
-    btn.addEventListener('click', () => openFromLegend());
-    legendChip = btn;
-    return btn;
-  }
-  function refreshLegendMode() {
-    const have = !!(hdrLayer || tblLayer) && cb.checked;
-    const folded = have && legendFolded();
-    for (const l of [hdrLayer, tblLayer]) {
-      const el = l && l.getElement && l.getElement();
-      if (el) el.style.visibility = folded ? 'hidden' : '';
-    }
-    if (!folded) {
-      if (legendChip) legendChip.remove();
-      if (legendCtl) { legendCtl.remove(); legendCtl = null; }
-      return;
-    }
-    // In the weather time bar when it is up -- the SIGWX controls already live there, and a
-    // corner button sat under it on a phone; otherwise in the map's bottom-left corner.
-    const bar = document.getElementById('map-time');
-    const btn = chipButton();
-    if (bar && !bar.hidden) {
-      if (legendCtl) { legendCtl.remove(); legendCtl = null; }
-      // At the bar's right-hand end in either language: its left end runs under the map
-      // legend on a desktop. RTL lays children out from the right, so there it goes first.
-      if (btn.parentNode !== bar) {
-        if (getComputedStyle(bar).direction === 'rtl') bar.insertBefore(btn, bar.firstChild);
-        else bar.appendChild(btn);
-      }
-    } else if (!legendCtl) {
-      legendCtl = L.control({ position: 'bottomleft' });
-      legendCtl.onAdd = () => { const w = L.DomUtil.create('div', 'leaflet-control'); w.appendChild(btn); return w; };
-      legendCtl.addTo(map);
-    }
-  }
-  map.on('rotate', refreshLegendMode);
   // Leaflet rewrites an overlay's transform whenever it re-places it (zoom, view reset), which
-  // would drop the counter-turn: re-apply it straight after, on the layer's own reset.
-  function keepUpright(lyr) {
+  // would drop the turn: re-apply it straight after, on the layer's own reset.
+  function keepTurned(lyr) {
     const reset = lyr._reset;
     lyr._reset = function () { reset.apply(this, arguments); uprightLegend(); };
   }
-  // Tapping the legend opens the chart in the viewer, full size, on the same valid time.
-  function openFromLegend(e) {
-    if (e && e.originalEvent) L.DomEvent.stop(e.originalEvent);
-    if (typeof NavAid.openSigwxViewer === 'function') NavAid.openSigwxViewer(currentTime());
-  }
   function place(which, data, bounds, op) {
-    const ref = which === 'map' ? mapLayer : (which === 'header' ? hdrLayer : tblLayer);
+    const ref = which === 'map' ? mapLayer : legendLayer;
     if (!ref) {
       const legend = which !== 'map';
-      // bubblingMouseEvents off: a tap on the legend opens the chart and goes no further --
-      // it used to reach the map as well and drop a waypoint under it.
-      const lyr = L.imageOverlay(data, bounds, { opacity: op, interactive: legend, bubblingMouseEvents: !legend,
-        pane: 'overlayPane', className: 'sigwx-ov-layer' + (legend ? ' sigwx-ov-legend' : '') });
-      if (legend) {
-        lyr.on('click', openFromLegend);
-        keepUpright(lyr);
-      }
+      const lyr = L.imageOverlay(data, bounds, { opacity: op, interactive: false, pane: 'overlayPane',
+        className: 'sigwx-ov-layer' + (legend ? ' sigwx-ov-legend' : '') });
+      if (legend) keepTurned(lyr);
       lyr.addTo(map);
-      if (which === 'map') mapLayer = lyr; else if (which === 'header') hdrLayer = lyr; else tblLayer = lyr;
-      if (legend) {
-        const el = lyr.getElement();
-        if (el) el.title = S.sigwxLegendOpen || 'Open the chart to read it';
-      }
+      if (legend) legendLayer = lyr; else mapLayer = lyr;
     } else {
       ref.setUrl(data); ref.setBounds(bounds); ref.setOpacity(op);
     }
-    if (which !== 'map') { uprightLegend(); refreshLegendMode(); }
+    if (which !== 'map') uprightLegend();
   }
   // Cropping a SIGWX panel is asynchronous (image decode + canvas), and the pilot can
   // change the valid time while one is in flight. Without a generation token a slower crop
@@ -12454,23 +12375,50 @@ window.makeImageZoomable = makeImageZoomable;
     });
     const tblOp = off('sigwxTblOpacity') || 0.92;
     const tblBounds = boundsFrom(BOUNDS_TABLE, 'sigwxTblLatOffset', 'sigwxTblLngOffset', 'sigwxTblScale', 'sigwxTblScale');
-    cropPanel(url, CROP_TABLE, false)
-      .then(data => compactTable(url, data).catch(() => ({ data, frac: 1 })))
-      .then(({ data, frac }) => {
-        if (gen !== sigwxGen || !cb.checked) return;
-        // Same top edge (the header sits on it) and width; the footprint shrinks with the paper.
-        const n = tblBounds[1][0], sLat = tblBounds[0][0];
-        place('table', data, [[n - (n - sLat) * frac, tblBounds[0][1]], [n, tblBounds[1][1]]], tblOp);
-      }).catch(() => { /* table optional */ });
-    // Title header: full-width strip shrunk to the table's width, parked just
-    // above the table (height keeps the strip's aspect at that width).
-    cropPanel(url, CROP_HEADER, false).then(data => {
+    // The legend: the title header over the trimmed table, as ONE square image, its top-left
+    // where the header's was (just east of the chart), as wide as the table was.
+    Promise.all([
+      cropPanel(url, CROP_TABLE, false).then(data => compactTable(url, data).catch(() => ({ data, frac: 1 }))),
+      cropPanel(url, CROP_HEADER, false).catch(() => null),
+    ]).then(([tbl, hdr]) => squareLegend(url, hdr, tbl.data)).then(data => {
       if (gen !== sigwxGen || !cb.checked) return;
       const w = tblBounds[0][1], e = tblBounds[1][1], nT = tblBounds[1][0];
       const midLat = (tblBounds[0][0] + nT) / 2;
-      const hLat = (e - w) * Math.cos(midLat * Math.PI / 180) * HEADER_ASPECT;
-      place('header', data, [[nT, w], [nT + hLat, e]], tblOp);
-    }).catch(() => { /* header optional */ });
+      const top = nT + (e - w) * Math.cos(midLat * Math.PI / 180) * HEADER_ASPECT;
+      place('legend', data, squareBounds(top, w, e), tblOp);
+    }).catch(() => { /* legend optional */ });
+  }
+  // A square on the screen: as tall in Web Mercator as it is wide, measured from its top edge.
+  const mercY = lat => { const r = lat * Math.PI / 180; return Math.log(Math.tan(Math.PI / 4 + r / 2)); };
+  const invMercY = y => (2 * Math.atan(Math.exp(y)) - Math.PI / 2) * 180 / Math.PI;
+  function squareBounds(north, west, east) {
+    const side = (east - west) * Math.PI / 180;          // width in the same units as mercY
+    return [[invMercY(mercY(north) - side), west], [north, east]];
+  }
+  // Header scaled to the table's width, table under it, on a white square as tall or as wide
+  // as the two need -- equal sides, so a quarter turn leaves the footprint where it was.
+  const squareCache = {};
+  function loadImg(src) {
+    return new Promise((resolve, reject) => { const i = new Image(); i.onload = () => resolve(i); i.onerror = reject; i.src = src; });
+  }
+  function squareLegend(key, hdrData, tblData) {
+    if (squareCache[key]) return Promise.resolve(squareCache[key]);
+    return Promise.all([hdrData ? loadImg(hdrData) : null, loadImg(tblData)]).then(([h, t]) => {
+      const W = t.naturalWidth;
+      const hh = h ? Math.round(h.naturalHeight * W / h.naturalWidth) : 0;
+      const side = Math.max(W, hh + t.naturalHeight);
+      const c = document.createElement('canvas');
+      c.width = side; c.height = side;
+      const ctx = c.getContext('2d');
+      ctx.fillStyle = '#fff';
+      ctx.fillRect(0, 0, side, side);
+      const x = Math.round((side - W) / 2);
+      if (h) ctx.drawImage(h, x, 0, W, hh);
+      ctx.drawImage(t, x, hh);
+      const out = c.toDataURL('image/png');
+      squareCache[key] = out;
+      return out;
+    });
   }
   const drawer = NavWxTime.drawing(
     () => !!(cb && cb.checked),
