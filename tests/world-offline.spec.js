@@ -55,9 +55,10 @@ test('zoomed out, only the major names stay', async ({ page }) => {
     const sel = document.getElementById('layer-select');
     sel.value = 'World'; sel.dispatchEvent(new Event('change'));
     map.setView([40, 20], 3, { animate: false });
-    const far = document.querySelectorAll('.world-label').length;
+    const shown = () => [...document.querySelectorAll('.world-label')].filter(e => e.style.display !== 'none').length;
+    const far = shown();
     map.setView([40, 20], 8, { animate: false });
-    return { far, near: document.querySelectorAll('.world-label').length };
+    return { far, near: shown() };
   });
   expect(counts.far).toBeGreaterThan(5);
   expect(counts.near).toBeGreaterThan(counts.far);
@@ -90,4 +91,32 @@ test('a chart tile that fails is transparent, not white over the world map', asy
     img.src = layers.CVFR.options.errorTileUrl;
   }));
   expect(alpha).toBe(0);
+});
+
+test('country names sit on their place and read level on a turned map, over the land', async ({ page }) => {
+  await boot(page);
+  const r = await page.evaluate(async () => {
+    const sel = document.getElementById('layer-select'); sel.value = 'World'; sel.dispatchEvent(new Event('change'));
+    const out = [];
+    for (const b of [0, 40, 120]) {
+      map.setView([36, 30], 4, { animate: false }); map.setBearing(b);
+      await new Promise(r => setTimeout(r, 50));
+      const el = [...document.querySelectorAll('.world-label')].find(e => e.textContent === 'Turkey');
+      const span = el.firstChild.getBoundingClientRect(), c = map.getContainer().getBoundingClientRect();
+      const want = map.latLngToContainerPoint([39.35, 34.51]);        // Natural Earth's label point for Turkey
+      const mid = { x: span.left + span.width / 2 - c.left, y: span.top + span.height / 2 - c.top };
+      // Over the land and under the charts: the names' pane shares the rotating pane with the
+      // world canvas and stacks above it, and below the tiles.
+      const lp = map.getPane('worldLabels'), wp = map.getPane('worldBase'), tp = map.getPane('tilePane');
+      const onTop = lp.parentNode === wp.parentNode && lp.parentNode === tp.parentNode
+        && +lp.style.zIndex > +wp.style.zIndex && +lp.style.zIndex < +(getComputedStyle(tp).zIndex);
+      out.push({ b, d: Math.hypot(mid.x - want.x, mid.y - want.y), level: span.width > span.height * 2, onTop });
+    }
+    return out;
+  });
+  for (const o of r) {
+    expect(o.d, JSON.stringify(o)).toBeLessThan(25);
+    expect(o.level, JSON.stringify(o)).toBe(true);
+    expect(o.onTop, JSON.stringify(o)).toBe(true);
+  }
 });
