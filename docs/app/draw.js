@@ -294,15 +294,35 @@ function measuredHeadingTurnRate(key, heading, sampleTime, receivedAt, disableTu
       const maxRate = Math.max(0.5, finiteTuneNumber('livePredictorTurnMaxDegSec', 4));
       const minRate = Math.max(0, finiteTuneNumber('livePredictorTurnMinDegSec', 0.25));
       if (Math.abs(slope) <= maxRate) {
-        if (Math.abs(slope) < minRate) {
-          rate = 0;      // below the floor: draw straight, do not decay a phantom curve
+        // Is it a turn? Above minRate, yes, as before. Below it, a fixed floor cannot tell a
+        // gentle turn from GPS-course jitter -- which is why the floor went up to 1 deg/s, and
+        // why a 5-degree-bank turn (~1 deg/s at 100 kt) drew a straight line. The pattern of
+        // fixes can: a turn moves the course steadily one way, jitter scatters it about a flat
+        // line. So down to livePredictorTurnGentleDegSec it is a turn when the slope stands
+        // out from its own scatter -- at least livePredictorTurnSignificance standard errors,
+        // over at least four fixes.
+        let turning = Math.abs(slope) >= minRate;
+        const gentle = Math.max(0, finiteTuneNumber('livePredictorTurnGentleDegSec', 0.25));
+        const sigma = Math.max(0, finiteTuneNumber('livePredictorTurnSignificance', 3));
+        if (!turning && n >= 4 && Math.abs(slope) >= gentle) {
+          let rss = 0;
+          for (const p of st.points) {
+            const r = (p.a - ma) - slope * ((p.t - mt) / 1000);
+            rss += r * r;
+          }
+          const se = Math.sqrt(rss / (n - 2) / den);
+          turning = Math.abs(slope) >= sigma * se;
+        }
+        if (!turning) {
+          rate = 0;      // not a turn: draw straight, do not decay a phantom curve
         } else {
           const smoothing = Math.max(0, Math.min(1,
             finiteTuneNumber('livePredictorTurnSmoothing', 0.5)));
-          // Smooth successive slopes, seeding on the first with the raw slope so a clean
-          // two-sample turn reads exactly -- the EMA only damps the jitter that survives
-          // the window.
-          rate = Number.isFinite(st.rate) ? st.rate * smoothing + slope * (1 - smoothing) : slope;
+          // Smooth successive slopes while turning, seeding with the raw slope when a turn
+          // begins -- from straight flight too. Seeding from the straight-flight 0 made the
+          // first curve 30% of the measured rate, which then fell back under the floor.
+          rate = Number.isFinite(st.rate) && st.rate !== 0
+            ? st.rate * smoothing + slope * (1 - smoothing) : slope;
         }
       }
       // An implausible slope (> maxRate) leaves rate null: a spike is not a turn.
@@ -339,9 +359,10 @@ function drawHeadingLine(pos, hdg, gsKt, opts) {
   const receivedAt = Number.isFinite(opts && opts.receivedAt) ? opts.receivedAt : sampleTime;
   const measuredRate = measuredHeadingTurnRate(opts && opts.trackKey, h, sampleTime,
     receivedAt, (opts && opts.disableTurn) || !haveSpeed || gsKt < minTurnKt);
-  const minRate = Math.max(0, finiteTuneNumber('livePredictorTurnMinDegSec', 0.25));
+  // Whether it is a turn was decided where it was measured (above the floor, or a clear
+  // gentle turn below it); re-applying the floor here dropped every gentle one again.
   const turnRate = haveSpeed && gsKt >= minTurnKt && Number.isFinite(measuredRate) &&
-    Math.abs(measuredRate) >= minRate ? measuredRate : null;
+    measuredRate !== 0 ? measuredRate : null;
   const maxArcDeg = Math.max(1, finiteTuneNumber('livePredictorTurnMaxArcDeg', 90));
   const speedNmSec = haveSpeed ? gsKt / 3600 : 0;
   const turnRadSec = Number.isFinite(turnRate) ? turnRate * Math.PI / 180 : 0;
