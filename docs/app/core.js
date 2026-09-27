@@ -3502,8 +3502,8 @@ function magVarPoint() {
   const wps = (typeof state === 'object' && state && Array.isArray(state.waypoints)) ? state.waypoints : [];
   const pts = wps.filter(w => w && Number.isFinite(w.lat) && Number.isFinite(w.lng));
   if (pts.length) {
-    const lats = pts.map(w => w.lat), lngs = pts.map(w => w.lng);
-    return { lat: (Math.min(...lats) + Math.max(...lats)) / 2, lng: (Math.min(...lngs) + Math.max(...lngs)) / 2, from: 'route' };
+    const latList = pts.map(w => w.lat), lngList = pts.map(w => w.lng);
+    return { lat: (Math.min(...latList) + Math.max(...latList)) / 2, lng: (Math.min(...lngList) + Math.max(...lngList)) / 2, from: 'route' };
   }
   if (typeof map === 'object' && map && map.getCenter) {
     const c = map.getCenter();
