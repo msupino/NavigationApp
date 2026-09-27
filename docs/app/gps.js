@@ -636,6 +636,9 @@ function _gpsOnDeviceOrientation(e) {
 }
 var _gpsCompassWatching = false;
 function gpsStartCompass() {
+  // The gyro for the turn predictor starts with the same sensors and the same user gesture
+  // (iOS asks once for motion and orientation). Independent of the compass fallback switch.
+  if (typeof window !== 'undefined' && window.NavAidGyro) window.NavAidGyro.start();
   if (_gpsCompassWatching || !gpsCompassOn()) return Promise.resolve(false);
   if (typeof window === 'undefined' || typeof window.addEventListener !== 'function') {
     return Promise.resolve(false);
@@ -661,6 +664,7 @@ function gpsStartCompass() {
   return Promise.resolve(listen());
 }
 function gpsStopCompass() {
+  if (typeof window !== 'undefined' && window.NavAidGyro) window.NavAidGyro.stop();
   if (!_gpsCompassWatching) return;
   _gpsCompassWatching = false;
   window.removeEventListener('deviceorientationabsolute', _gpsOnDeviceOrientation, true);
