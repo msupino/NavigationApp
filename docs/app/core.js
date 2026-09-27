@@ -95,6 +95,7 @@ NavAid.tuningDefaults = {
   livePredictorTurnMinKt: { value: 10, min: 0, max: 100, step: 1, label: 'Curve predictor above groundspeed (kt)' },
   livePredictorTurnHoldSec: { value: 6, min: 1, max: 30, step: 1, label: 'Keep measured turn rate for (s)' },
   livePredictorTurnSmoothing: { value: 0.7, min: 0, max: 1, step: 0.05, label: 'Curve predictor smoothing (0-1)' },
+  livePredictorGyro: { value: true, type: 'bool', label: "Use the phone's gyro to bend the predictor the moment a turn starts or stops" },
   livePredictorTurnGentleDegSec: { value: 0.25, min: 0, max: 3, step: 0.05, label: 'Curve predictor for a clear gentle turn down to (°/s)' },
   livePredictorTurnSignificance: { value: 3, min: 1, max: 10, step: 0.5, label: 'Gentle turn must stand out from GPS scatter by (standard errors)' },
   legEtaLeadSec: { value: 120, min: 15, max: 600, step: 15, label: 'Next-leg call, this far ahead (s)' },
@@ -1077,7 +1078,7 @@ NavAid.tuningGroups = [
   { name: 'Alt pairs', keys: ['altPairFocusColor', 'altPairFocusWidthPx', 'altPairFocusDashOnPx', 'altPairFocusDashOffPx', 'altPairFocusDotRadiusPx', 'altPairFocusDotColor', 'altPairFocusMs', 'altPairFocusLineAlpha', 'altPairFocusDotAlpha'] },
   { name: 'VOR stations', keys: ['vorMarkerRadiusPx', 'vorMarkerWidthPx', 'vorMarkerColor', 'vorSelectedColor', 'vorLabelFontPx'] },
   { name: 'Reporting badges', keys: ['reportBadgeRadiusPx', 'reportBadgeOffsetPx', 'reportBadgeFontPx', 'reportBadgeColor', 'reportBadgeTextColor'] },
-  { name: 'Live aircraft', keys: ['liveAircraftFillColor', 'liveAircraftOutlineColor', 'liveAircraftRadiusPx', 'liveHeadingLineColor', 'liveHeadingTextColor', 'liveHeadingNmTextColor', 'liveHeadingMinTextColor', 'liveHeadingLineWidthPx', 'liveHeadingDashPx', 'liveHeadingDashGapPx', 'liveHeadingTickPx', 'liveHeadingLabelPx', 'liveHeadingLabelGapPx', 'livePredictorTurnMinDegSec', 'livePredictorTurnMaxDegSec', 'livePredictorTurnMaxArcDeg', 'livePredictorTurnMinKt', 'livePredictorTurnHoldSec', 'livePredictorTurnSmoothing', 'livePredictorTurnGentleDegSec', 'livePredictorTurnSignificance'] },
+  { name: 'Live aircraft', keys: ['liveAircraftFillColor', 'liveAircraftOutlineColor', 'liveAircraftRadiusPx', 'liveHeadingLineColor', 'liveHeadingTextColor', 'liveHeadingNmTextColor', 'liveHeadingMinTextColor', 'liveHeadingLineWidthPx', 'liveHeadingDashPx', 'liveHeadingDashGapPx', 'liveHeadingTickPx', 'liveHeadingLabelPx', 'liveHeadingLabelGapPx', 'livePredictorTurnMinDegSec', 'livePredictorTurnMaxDegSec', 'livePredictorTurnMaxArcDeg', 'livePredictorTurnMinKt', 'livePredictorTurnHoldSec', 'livePredictorTurnSmoothing', 'livePredictorTurnGentleDegSec', 'livePredictorTurnSignificance', 'livePredictorGyro'] },
   { name: 'Terrain', keys: ['terrainWarnClearanceFt', 'terrainTintAlpha', 'terrainAlertColor', 'terrainCautionColor', 'terrainLegWarnWidthPx', 'terrainLegWarnAlpha', 'terrainWpWarnRingPx', 'terrainTintMinZoom', 'terrainTintMinCellPx'] },   // msaBufferFt lives in the Navigation group
   { name: 'Vertical profile', keys: ['profileTerrainColor', 'profileMsaColor', 'profileTerrainSamples', 'profileHeadroomFt', 'profileBgColor', 'profileGridColor', 'profileAxisColor', 'profileGroundColor', 'profileTextColor', 'profileNmTextColor', 'profileTimeTextColor', 'profileAreaColor', 'profileLineColor', 'profileSpeedColor', 'profilePlanColor', 'routeProfileHeightPx', 'trackProfileSmoothFixes', 'profileLegend', 'profileExportWidthPx', 'profileExportHeightPx', 'profileTocColor', 'profileMarkerHaloColor', 'profileAxisHeightPx', 'profileYPadPx'] },
   { name: 'SIGMETs', keys: ['sigmetTurbColor', 'sigmetIceColor', 'sigmetMtwColor', 'sigmetVaColor', 'sigmetDustColor', 'sigmetTcColor', 'sigmetDefaultColor', 'sigmetFillAlpha', 'sigmetLineWidthPx', 'sigmetDashOnPx', 'sigmetDashOffPx', 'sigmetLabelFontPx', 'airmetColor'] },
@@ -3501,8 +3502,8 @@ function magVarPoint() {
   const wps = (typeof state === 'object' && state && Array.isArray(state.waypoints)) ? state.waypoints : [];
   const pts = wps.filter(w => w && Number.isFinite(w.lat) && Number.isFinite(w.lng));
   if (pts.length) {
-    const lats = pts.map(w => w.lat), lngs = pts.map(w => w.lng);
-    return { lat: (Math.min(...lats) + Math.max(...lats)) / 2, lng: (Math.min(...lngs) + Math.max(...lngs)) / 2, from: 'route' };
+    const latList = pts.map(w => w.lat), lngList = pts.map(w => w.lng);
+    return { lat: (Math.min(...latList) + Math.max(...latList)) / 2, lng: (Math.min(...lngList) + Math.max(...lngList)) / 2, from: 'route' };
   }
   if (typeof map === 'object' && map && map.getCenter) {
     const c = map.getCenter();
