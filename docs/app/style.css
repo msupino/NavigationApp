@@ -8442,7 +8442,7 @@ body.theme-light .airfield-phone-row .airfield-phone:visited { color: #1a5fb4; }
 }
 
 /* Country names on the always-offline world map: quiet, under everything the pilot drew. */
-.world-label { background: none; border: 0; }
+.world-label { position: absolute; left: 0; top: 0; transform-origin: 0 0; pointer-events: none; }
 .world-label span {
   display: block;
   transform: translate(-50%, -50%);

@@ -67,18 +67,21 @@
   // Until there is a fix, Location stops (refused, no GPS), or the pilot answers the waiting
   // card. No timeout: a cold GPS can take a minute, and a route drawn from the map centre in
   // the meantime would point a pilot with no radio somewhere they are not.
-  function waitForFix(stop) {
+  // `fixNow` says whether there is a fix yet, `sourceOn` whether anything is still trying.
+  function waitForFix(stop, fixNow, sourceOn) {
     return new Promise(resolve => {
       const tick = () => {
-        // gpsLastFix is cleared when Location starts, so it only answers with a fix from THIS
-        // session -- gpsOwn can still hold where the aeroplane was last time.
-        const f = typeof gpsLastFix === 'function' ? gpsLastFix() : null;
-        if (f || !gpsLiveOn || stop.answer) { resolve(f); return; }
+        const f = fixNow();
+        if (f || !sourceOn() || stop.answer) { resolve(f); return; }
         setTimeout(tick, 200);
       };
       tick();
     });
   }
+  // gpsLastFix is cleared when Location starts, so it only answers with a fix from THIS session
+  // -- gpsOwn can still hold where the aeroplane was last time.
+  const locationFix = () => (typeof gpsLastFix === 'function' ? gpsLastFix() : null);
+  const positionLive = () => typeof gpsPositionLive === 'function' && gpsPositionLive();
   function setLocation(on) {
     const btn = document.getElementById('gps-live');
     if (btn && !btn.disabled && !!gpsLiveOn !== on) btn.click();
@@ -116,21 +119,27 @@
   // when nothing is giving a position yet (a recording and the simulator both count) and waits
   // for the first fix. The map centre only when the pilot asks for it or there is no GPS to
   // wait for, and the card says so. null: the pilot cancelled while waiting.
+  async function wait(fixNow, sourceOn) {
+    const stop = { answer: null };
+    waiting = stop;
+    showWaitingCard(stop);
+    try { await waitForFix(stop, fixNow, sourceOn); } finally { waiting = null; }
+    closeCards();
+    return stop.answer;
+  }
   async function origin() {
     let startedLocation = false;
-    if (!(typeof gpsPositionLive === 'function' && gpsPositionLive())) {
+    if (!positionLive()) {
       startedLocation = setLocation(true);
-      if (startedLocation) {
-        const stop = { answer: null };
-        waiting = stop;
-        showWaitingCard(stop);
-        try { await waitForFix(stop); } finally { waiting = null; }
-        closeCards();
-        if (stop.answer === 'cancel') {
-          setLocation(false);
-          return null;
-        }
+      if (startedLocation && await wait(locationFix, () => !!gpsLiveOn) === 'cancel') {
+        setLocation(false);
+        return null;
       }
+    } else if (!liveFix()) {
+      // A position source is on -- a recording just started, a simulator connecting -- but has
+      // not produced a fix yet. It used to fall straight through to the map centre, silently
+      // routing a pilot with no radio from wherever the map happened to be.
+      if (await wait(liveFix, positionLive) === 'cancel') return null;
     }
     const fix = typeof gpsPositionLive === 'function' && gpsPositionLive() ? liveFix() : null;
     if (fix) return { pos: fix, fromGps: true, startedLocation };

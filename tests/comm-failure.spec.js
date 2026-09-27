@@ -386,3 +386,21 @@ test('a route edited in another way before the reload is not picked up as comm f
   await page.waitForTimeout(500);
   expect(await page.evaluate(() => [NavAid.commFail.isActive(), localStorage.getItem('navaid.commFail')])).toEqual([false, null]);
 });
+
+test('a position source that is on but has no fix yet is waited for, not replaced by the map centre', async ({ page }) => {
+  await boot(page, 'en', 'hold');
+  await page.evaluate(() => {
+    map.setView([32.2, 34.85], 10, { animate: false });
+    // As if a recording had just started: live, and no fix yet.
+    window.gpsRecording = true;
+    gpsOwn = null;
+  });
+  await page.click('#commfail-btn');
+  await expect(page.locator('.commfail-waiting')).toBeVisible();
+  expect(await page.evaluate(() => state.waypoints.length)).toBe(0);
+  await page.evaluate(() => { gpsOwn = { lat: 32.95, lng: 35.55, hdg: 0, t: Date.now() }; });
+  const card = page.locator('[data-chart-modal="commfail"] .commfail-card');
+  await expect(card.locator('.commfail-dest')).toContainText('LLIB');
+  await expect(card.locator('.commfail-origin')).toContainText('GPS');
+  expect(await page.evaluate(() => { const w = state.waypoints[0]; window.gpsRecording = false; return w.lat; })).toBeCloseTo(32.95, 3);
+});

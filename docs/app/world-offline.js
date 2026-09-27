@@ -14,6 +14,10 @@
   map.createPane(PANE, map._rotatePane || undefined);
   map.getPane(PANE).style.zIndex = 100;                     // under the OSM/chart underlay (150)
   map.getPane(PANE).style.pointerEvents = 'none';
+  // The names are plain elements in a pane inside the rotating one -- above the land, under the
+  // charts -- each placed at its layer point and turned back by the bearing so it reads level.
+  // They were Leaflet markers, which leaflet-rotate positions for a pane OUTSIDE the rotating
+  // one: in here they were turned twice, slanted and a country away from their land.
   const LABEL_PANE = 'worldLabels';
   map.createPane(LABEL_PANE, map._rotatePane || undefined);
   map.getPane(LABEL_PANE).style.zIndex = 110;
@@ -81,10 +85,13 @@
   function refreshLabels() {
     const z = map.getZoom();
     const maxRank = z <= 3 ? 2 : z <= 4 ? 3 : z <= 5 ? 4 : z <= 6 ? 5 : 10;
+    const turn = -(map.getBearing ? map.getBearing() : 0);
     for (const l of labels) {
       const show = l.rank <= maxRank;
-      if (show && !map.hasLayer(l.marker)) l.marker.addTo(map);
-      else if (!show && map.hasLayer(l.marker)) map.removeLayer(l.marker);
+      l.el.style.display = show ? '' : 'none';
+      if (!show) continue;
+      const p = map.latLngToLayerPoint(l.at);
+      l.el.style.transform = 'translate3d(' + p.x + 'px,' + p.y + 'px,0) rotate(' + turn + 'deg)';
     }
   }
 
@@ -113,15 +120,20 @@
         if (Array.isArray(c.at)) {
           const name = String(c[key] || c.en || '');
           // The name goes in as text, never as markup.
-          const marker = L.marker(c.at, { pane: LABEL_PANE, interactive: false, keyboard: false,
-            icon: L.divIcon({ className: 'world-label', html: '<span dir="auto"></span>', iconSize: null }) });
-          marker.on('add', () => { const el = marker.getElement(); if (el && el.firstChild) el.firstChild.textContent = name; });
-          labels.push({ marker, rank: Number.isFinite(c.rank) ? c.rank : 5 });
+          const el = document.createElement('div');
+          el.className = 'world-label';
+          const span = document.createElement('span');
+          span.dir = 'auto';
+          span.textContent = name;
+          el.appendChild(span);
+          map.getPane(LABEL_PANE).appendChild(el);
+          labels.push({ el, at: L.latLng(c.at[0], c.at[1]), rank: Number.isFinite(c.rank) ? c.rank : 5 });
         }
       }
       rings = out;
       renderer._redraw();                 // draw now, not on the next pan
-      map.on('zoomend', refreshLabels);
+      // Layer points change on a zoom or a view reset, and the counter-turn with the bearing.
+      map.on('zoomend viewreset rotate', refreshLabels);
       refreshLabels();
       return true;
     })().catch(e => { loaded = null; console.warn('world map unavailable:', e); return false; });
