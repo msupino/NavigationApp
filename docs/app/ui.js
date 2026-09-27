@@ -12075,17 +12075,16 @@ window.makeImageZoomable = makeImageZoomable;
   const CROP_HEADER = { x0: 0.00000, x1: 0.99200, y0: 0.02258, y1: 0.10484 };
   const CROP_MAP = { x0: 0.01595, x1: 0.38860, y0: 0.10484, y1: 0.91774 };
   const CROP_TABLE = { x0: 0.39000, x1: 0.99200, y0: 0.10484, y1: 0.91774 };
-  // Header strip aspect (height/width in source px) — used to size it when it's
-  // scaled to the table's width.
-  const HEADER_ASPECT = (CROP_HEADER.y1 - CROP_HEADER.y0) / (CROP_HEADER.x1 - CROP_HEADER.x0)
-    * (1240 / 1755);
   // Map-panel geographic extent (re-solved for the header-trimmed crop) as a
   // similarity fit over three airfields shared with our own layers — LLHA, LLBS
   // and LLIB; LLIB constrains the longitude scale. ~-0.8° tilt → sigwxRotationDeg.
   const BOUNDS_MAP = { n: 33.97, s: 29.37, w: 33.29, e: 36.80 };
-  // The TABLE isn't geographic — park it just east of Israel (over Jordan) so it
-  // sits to the right of the map; position/size are tunable.
-  const BOUNDS_TABLE = { n: 34.20, s: 29.60, w: 37.10, e: 40.60 };
+  // Where the legend sits and how it looks are tunables (SIGWX overlay group): top edge
+  // sigwxLegendTopLat, west edge sigwxLegendWestLng, width sigwxLegendWidthDeg, the step it
+  // turns back in (sigwxLegendStepDeg), the gap left where blank paper is cut
+  // (sigwxLegendGapPct) and whether it is a square (sigwxLegendSquare). The older
+  // sigwxTblLat/LngOffset, sigwxTblScale and sigwxTblOpacity still apply on top.
+  const tv = (k, d) => { const v = typeof tune === 'function' ? Number(tune(k)) : NaN; return Number.isFinite(v) ? v : d; };
 
   let manifest = null, mapLayer = null, legendLayer = null;
   const off = k => (typeof tune === 'function' ? tune(k) : 0) || 0;
@@ -12112,6 +12111,7 @@ window.makeImageZoomable = makeImageZoomable;
   // { data, frac } -- frac is the new height over the old, for the table's footprint.
   const compactCache = {};
   function compactTable(key, dataUrl) {
+    key = key + '|' + tv('sigwxLegendGapPct', 1.6);
     if (compactCache[key]) return Promise.resolve(compactCache[key]);
     return new Promise((resolve, reject) => {
       const img = new Image();
@@ -12130,7 +12130,7 @@ window.makeImageZoomable = makeImageZoomable;
             }
             return false;
           };
-          const GAP = Math.max(8, Math.round(h * 0.016));
+          const GAP = Math.max(2, Math.round(h * tv('sigwxLegendGapPct', 1.6) / 100));
           const bands = [];
           let start = -1;
           for (let y = 0; y < h; y++) {
@@ -12297,7 +12297,8 @@ window.makeImageZoomable = makeImageZoomable;
     const el = legendLayer && legendLayer.getElement && legendLayer.getElement();
     if (!el) return;
     const bearing = map.getBearing ? map.getBearing() : 0;
-    const quarter = (Math.round(bearing / 90) * 90) % 360;
+    const step = tv('sigwxLegendStepDeg', 90);
+    const quarter = step > 0 ? (Math.round(bearing / step) * step) % 360 : 0;
     const base = el.style.transform.replace(/\s*rotate\([^)]*\)/g, '');
     el.style.transformOrigin = '50% 50%';
     el.style.transform = quarter ? base + ' rotate(' + (-quarter) + 'deg)' : base;
@@ -12374,26 +12375,28 @@ window.makeImageZoomable = makeImageZoomable;
       removeLayers();
     });
     const tblOp = off('sigwxTblOpacity') || 0.92;
-    const tblBounds = boundsFrom(BOUNDS_TABLE, 'sigwxTblLatOffset', 'sigwxTblLngOffset', 'sigwxTblScale', 'sigwxTblScale');
-    // The legend: the title header over the trimmed table, as ONE square image, its top-left
-    // where the header's was (just east of the chart), as wide as the table was.
+    // The legend: the title header over the trimmed table, as ONE square image, just east of
+    // the chart, as wide as the table was, its top edge at LEGEND_TOP_LAT (33N).
     Promise.all([
       cropPanel(url, CROP_TABLE, false).then(data => compactTable(url, data).catch(() => ({ data, frac: 1 }))),
       cropPanel(url, CROP_HEADER, false).catch(() => null),
     ]).then(([tbl, hdr]) => squareLegend(url, hdr, tbl.data)).then(data => {
       if (gen !== sigwxGen || !cb.checked) return;
-      const w = tblBounds[0][1], e = tblBounds[1][1], nT = tblBounds[1][0];
-      const midLat = (tblBounds[0][0] + nT) / 2;
-      const top = nT + (e - w) * Math.cos(midLat * Math.PI / 180) * HEADER_ASPECT;
-      place('legend', data, squareBounds(top, w, e), tblOp);
+      const w = tv('sigwxLegendWestLng', 37.1) + off('sigwxTblLngOffset');
+      const e = w + tv('sigwxLegendWidthDeg', 3.5) * sc('sigwxTblScale');
+      place('legend', data, legendBounds(tv('sigwxLegendTopLat', 33) + off('sigwxTblLatOffset'), w, e), tblOp);
     }).catch(() => { /* legend optional */ });
   }
   // A square on the screen: as tall in Web Mercator as it is wide, measured from its top edge.
   const mercY = lat => { const r = lat * Math.PI / 180; return Math.log(Math.tan(Math.PI / 4 + r / 2)); };
   const invMercY = y => (2 * Math.atan(Math.exp(y)) - Math.PI / 2) * 180 / Math.PI;
-  function squareBounds(north, west, east) {
-    const side = (east - west) * Math.PI / 180;          // width in the same units as mercY
-    return [[invMercY(mercY(north) - side), west], [north, east]];
+  // The legend's footprint from its top edge and width: as tall as the image is for that width
+  // (in Web Mercator, so it keeps its shape on screen) -- a square when sigwxLegendSquare is on.
+  const legendAspect = {};
+  function legendBounds(north, west, east) {
+    const width = (east - west) * Math.PI / 180;         // width in the same units as mercY
+    const aspect = legendAspect.last || 1;               // height / width of the composed image
+    return [[invMercY(mercY(north) - width * aspect), west], [north, east]];
   }
   // Header scaled to the table's width, table under it, on a white square as tall or as wide
   // as the two need -- equal sides, so a quarter turn leaves the footprint where it was.
@@ -12402,22 +12405,27 @@ window.makeImageZoomable = makeImageZoomable;
     return new Promise((resolve, reject) => { const i = new Image(); i.onload = () => resolve(i); i.onerror = reject; i.src = src; });
   }
   function squareLegend(key, hdrData, tblData) {
-    if (squareCache[key]) return Promise.resolve(squareCache[key]);
+    const square = typeof tune !== 'function' || tune('sigwxLegendSquare') !== false;
+    key = key + '|' + square;
+    if (squareCache[key]) { legendAspect.last = squareCache[key].aspect; return Promise.resolve(squareCache[key].data); }
     return Promise.all([hdrData ? loadImg(hdrData) : null, loadImg(tblData)]).then(([h, t]) => {
       const W = t.naturalWidth;
       const hh = h ? Math.round(h.naturalHeight * W / h.naturalWidth) : 0;
-      const side = Math.max(W, hh + t.naturalHeight);
+      const contentH = hh + t.naturalHeight;
+      const side = Math.max(W, contentH);
+      const cw = square ? side : W, ch = square ? side : contentH;
       const c = document.createElement('canvas');
-      c.width = side; c.height = side;
+      c.width = cw; c.height = ch;
       const ctx = c.getContext('2d');
       ctx.fillStyle = '#fff';
-      ctx.fillRect(0, 0, side, side);
-      const x = Math.round((side - W) / 2);
+      ctx.fillRect(0, 0, cw, ch);
+      const x = Math.round((cw - W) / 2);
       if (h) ctx.drawImage(h, x, 0, W, hh);
       ctx.drawImage(t, x, hh);
-      const out = c.toDataURL('image/png');
+      const out = { data: c.toDataURL('image/png'), aspect: ch / cw };
       squareCache[key] = out;
-      return out;
+      legendAspect.last = out.aspect;
+      return out.data;
     });
   }
   const drawer = NavWxTime.drawing(

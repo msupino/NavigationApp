@@ -100,3 +100,32 @@ for (const [name, vp, deck] of [['desktop', { width: 1280, height: 900 }, '0'], 
     expect(await legend.evaluate(e => e.classList.contains('leaflet-interactive'))).toBe(false);
   });
 }
+
+test('the legend sits at its tunable place: top 33N, west 37.1E, and every setting moves it', async ({ page }) => {
+  await boot(page);
+  await page.evaluate(() => { const cb = document.getElementById('sigwx-ov-cb'); if (!cb.checked) { cb.checked = true; cb.dispatchEvent(new Event('change')); } });
+  await page.waitForFunction(() => { const i = document.querySelector('img.sigwx-ov-legend'); return i && i.complete && i.naturalWidth > 0; });
+  const bounds = () => page.evaluate(() => {
+    const el = document.querySelector('img.sigwx-ov-legend');
+    const b = Object.values(map._layers).find(l => l.getElement && l.getElement() === el).getBounds();
+    return { n: +b.getNorth().toFixed(2), w: +b.getWest().toFixed(2), e: +b.getEast().toFixed(2), s: +b.getSouth().toFixed(2),
+      nw: el.naturalWidth, nh: el.naturalHeight };
+  });
+  const def = await bounds();
+  expect(def).toMatchObject({ n: 33, w: 37.1, e: 40.6 });
+  expect(def.nw).toBe(def.nh);
+  // Tuned: moved, wider, not a square, and turning in 45-degree steps.
+  const tuned = await page.evaluate(async () => {
+    setTune('sigwxLegendTopLat', 32.5); setTune('sigwxLegendWestLng', 36.9); setTune('sigwxLegendWidthDeg', 4);
+    setTune('sigwxLegendSquare', false); setTune('sigwxLegendStepDeg', 45);
+    redrawAfterTune();
+    await new Promise(r => setTimeout(r, 600));
+    map.setBearing(50);
+    const el = document.querySelector('img.sigwx-ov-legend');
+    return { turn: (/rotate\((-?[\d.]+)deg\)/.exec(el.style.transform) || [0, 0])[1] };
+  });
+  const moved = await bounds();
+  expect(moved).toMatchObject({ n: 32.5, w: 36.9, e: 40.9 });
+  expect(moved.nh).not.toBe(moved.nw);                  // as tall as its content
+  expect(Number(tuned.turn)).toBe(-45);                  // 50 degrees rounds to one 45-degree step
+});

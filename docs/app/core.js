@@ -631,6 +631,12 @@ NavAid.tuningDefaults = {
   sigwxTblLngOffset: { value: 0, min: -4, max: 6, step: 0.02, label: 'SIGWX table longitude nudge (°)' },
   sigwxTblScale: { value: 1, min: 0.4, max: 2, step: 0.02, label: 'SIGWX table size' },
   sigwxTblOpacity: { value: 0.92, min: 0.2, max: 1, step: 0.05, label: 'SIGWX table opacity' },
+  sigwxLegendTopLat: { value: 33, min: 27, max: 37, step: 0.1, label: 'SIGWX legend: top edge (°N)' },
+  sigwxLegendWestLng: { value: 37.1, min: 30, max: 45, step: 0.1, label: 'SIGWX legend: west edge (°E)' },
+  sigwxLegendWidthDeg: { value: 3.5, min: 0.5, max: 10, step: 0.1, label: 'SIGWX legend: width (° of longitude)' },
+  sigwxLegendStepDeg: { value: 90, min: 0, max: 180, step: 1, label: 'SIGWX legend: turns back in steps of (°; 0 = turns with the map)' },
+  sigwxLegendGapPct: { value: 1.6, min: 0, max: 10, step: 0.1, label: 'SIGWX legend: gap left where blank paper is cut (% of height)' },
+  sigwxLegendSquare: { value: true, type: 'bool', label: 'SIGWX legend: a square (off: as tall as its content)' },
 
   windFieldDefaultAltFt: { value: 1500, min: 1000, max: 5000, step: 500, label: 'Wind field default altitude (ft)' },
   windFieldDefaultOpacity: { value: 0.7, min: 0.2, max: 1, step: 0.05, label: 'Wind field default opacity' },
@@ -1077,7 +1083,7 @@ NavAid.tuningGroups = [
   { name: 'NOTAMs', keys: ['notamColor', 'notamFillAlpha', 'notamLineWidthPx', 'notamRouteWidthPx', 'notamDivertColor', 'featureNotamFreqRows'] },
   { name: 'Overlay opacity', keys: ['overlayOpacity'] },
   { name: 'Weather (IMS)', keys: ['imsPwxOpacity', 'imsPwxLatOffset', 'imsPwxLngOffset', 'imsPwxLatScale', 'imsPwxLngScale', 'imsPwxRotationDeg', 'imsPwxDarkBackdropAlpha', 'imsPwxBackdropBandPct'] },
-  { name: 'SIGWX overlay', keys: ['sigwxOpacity', 'sigwxLatOffset', 'sigwxLngOffset', 'sigwxLatScale', 'sigwxLngScale', 'sigwxRotationDeg', 'sigwxWhiteKnockout', 'sigwxKnockoutSat', 'sigwxCoastWidthPx', 'sigwxCoastColor', 'sigwxCoastAlpha', 'sigwxTblOpacity', 'sigwxTblLatOffset', 'sigwxTblLngOffset', 'sigwxTblScale'] },
+  { name: 'SIGWX overlay', keys: ['sigwxOpacity', 'sigwxLatOffset', 'sigwxLngOffset', 'sigwxLatScale', 'sigwxLngScale', 'sigwxRotationDeg', 'sigwxWhiteKnockout', 'sigwxKnockoutSat', 'sigwxCoastWidthPx', 'sigwxCoastColor', 'sigwxCoastAlpha', 'sigwxTblOpacity', 'sigwxTblLatOffset', 'sigwxTblLngOffset', 'sigwxTblScale', 'sigwxLegendTopLat', 'sigwxLegendWestLng', 'sigwxLegendWidthDeg', 'sigwxLegendStepDeg', 'sigwxLegendGapPct', 'sigwxLegendSquare'] },
   // Wind-field render params + grid + defaults. The altitude/time/opacity
   // sliders are live menu controls; their defaults live here.
   // The map's own clock: one control for every time-dependent layer, so it is not a
