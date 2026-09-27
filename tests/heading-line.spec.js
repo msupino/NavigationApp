@@ -424,3 +424,74 @@ test('a steady turn buried in course jitter is still measured', async ({ page })
   expect(out.turnRate).toBeGreaterThan(1.5);
   expect(out.turnRate).toBeLessThan(2.5);         // ~2 deg/s, not thrown off by the wobble
 });
+
+// Gentle turns. With the live gist's floor of 1 deg/s a 5-degree-bank turn (~1 deg/s at 100 kt)
+// drew straight. Below the floor a turn now counts when it stands out from its own scatter.
+const GIST = () => { setTune('livePredictorTurnMinDegSec', 1); setTune('livePredictorTurnSmoothing', 0.7);
+  setTune('livePredictorTurnHoldSec', 6); };
+
+test('a gentle 0.6 deg/s turn in GPS noise curves the predictor, under the gist\'s 1 deg/s floor', async ({ page }) => {
+  await boot(page);
+  const out = await page.evaluate((gist) => {
+    eval(gist)();
+    resetHeadingPredictor();
+    const now = Date.now();
+    const noise = [0.15, -0.2, 0.1, -0.1, 0.2, -0.15, 0.05];
+    let last = null;
+    noise.forEach((w, i) => {
+      const t = now - (noise.length - 1 - i) * 1000;
+      drawHeadingLine({ lat: 32.1, lng: 34.9, t }, 90 + i * 0.6 + w, 100, { trackKey: 'gentle', sampleTime: t, receivedAt: t });
+      last = window.__headingLine;
+    });
+    return { curved: last.curved, turnRate: last.turnRate, endLat: last.path.at(-1).lat };
+  }, '(' + GIST.toString() + ')');
+  expect(out.curved).toBe(true);
+  expect(out.turnRate).toBeGreaterThan(0.4);
+  expect(out.turnRate).toBeLessThan(0.8);
+  expect(out.endLat).toBeLessThan(32.1);          // a right turn from east bends south
+});
+
+test('straight flight with ordinary course jitter stays straight under the gentle-turn test', async ({ page }) => {
+  await boot(page);
+  const out = await page.evaluate((gist) => {
+    eval(gist)();
+    const runs = [
+      [0.3, -0.3, 0.2, -0.25, 0.3, -0.2, 0.25],
+      [0.4, 0.1, -0.3, 0.2, -0.4, 0.3, -0.1],
+      [0, 0.3, 0.3, -0.3, -0.3, 0.3, 0.3],
+      [0, 0, 0, 0, 0, 0, 1],
+    ];
+    return runs.map((w, k) => {
+      resetHeadingPredictor();
+      const now = Date.now();
+      let last = null;
+      w.forEach((d, i) => {
+        const t = now - (w.length - 1 - i) * 1000;
+        drawHeadingLine({ lat: 32.1, lng: 34.9, t }, 90 + d, 100, { trackKey: 'straight' + k, sampleTime: t, receivedAt: t });
+        last = window.__headingLine;
+      });
+      return last.curved;
+    });
+  }, '(' + GIST.toString() + ')');
+  expect(out).toEqual([false, false, false, false]);
+});
+
+test('a turn rolled into from straight flight curves at its measured rate, not a damped fraction', async ({ page }) => {
+  await boot(page);
+  const out = await page.evaluate((gist) => {
+    eval(gist)();
+    resetHeadingPredictor();
+    const now = Date.now();
+    // Four seconds straight, then a standard-rate (3 deg/s) turn.
+    const hdgs = [90, 90, 90, 90, 93, 96, 99, 102];
+    let last = null;
+    hdgs.forEach((h, i) => {
+      const t = now - (hdgs.length - 1 - i) * 1000;
+      drawHeadingLine({ lat: 32.1, lng: 34.9, t }, h, 100, { trackKey: 'entry', sampleTime: t, receivedAt: t });
+      last = window.__headingLine;
+    });
+    return { curved: last.curved, turnRate: last.turnRate };
+  }, '(' + GIST.toString() + ')');
+  expect(out.curved).toBe(true);
+  expect(out.turnRate).toBeGreaterThan(1.5);
+});
