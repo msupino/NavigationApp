@@ -244,7 +244,7 @@ function measuredHeadingTurnRate(key, heading, sampleTime, receivedAt, disableTu
   // recompute -- it would stack duplicate samples and drag the slope. Return what the last
   // real sample produced, subject to the same freshness gate.
   if (st && st.lastT === sampleTime) {
-    return Date.now() - st.seenAt <= holdSec * 1000 ? st.rate : null;
+    return Date.now() - st.seenAt <= holdSec * 1000 ? withGyro(key, st, st.rate, st.rawSlope) : null;
   }
   if (!st) {
     st = { points: [], rate: null, prevHeading: null, unwrapped: 0, lastT: null, seenAt };
@@ -279,6 +279,7 @@ function measuredHeadingTurnRate(key, heading, sampleTime, receivedAt, disableTu
   const n = st.points.length;
   const span = n >= 2 ? (st.points[n - 1].t - st.points[0].t) / 1000 : 0;
   let rate = null;
+  let rawSlope = null;
   if (n >= 2 && span >= 0.25) {
     let st_ = 0, sa = 0;
     for (const p of st.points) { st_ += p.t; sa += p.a; }
@@ -290,6 +291,7 @@ function measuredHeadingTurnRate(key, heading, sampleTime, receivedAt, disableTu
       den += dtp * dtp;
     }
     const slope = den > 0 ? num / den : null;   // deg/s
+    rawSlope = slope;
     if (Number.isFinite(slope)) {
       const maxRate = Math.max(0.5, finiteTuneNumber('livePredictorTurnMaxDegSec', 4));
       const minRate = Math.max(0, finiteTuneNumber('livePredictorTurnMinDegSec', 0.25));
@@ -329,7 +331,32 @@ function measuredHeadingTurnRate(key, heading, sampleTime, receivedAt, disableTu
     }
   }
   st.rate = rate;
-  return Date.now() - seenAt <= holdSec * 1000 ? rate : null;
+  st.rawSlope = rawSlope;
+  // A clear GPS turn teaches the gyro how it relates to the aircraft's turn (own ship on a real
+  // fix only: the simulator's and a followed aircraft's turns are not this phone's).
+  if (key === 'own' && ownGyroApplies() && n >= 2 && Number.isFinite(rawSlope)) {
+    window.NavAidGyro.observe(rawSlope, st.points.map(p => p.t));
+  }
+  return Date.now() - seenAt <= holdSec * 1000 ? withGyro(key, st, rate, rawSlope) : null;
+}
+function ownGyroApplies() {
+  return typeof window !== 'undefined' && window.NavAidGyro &&
+    typeof gpsTrackingLive === 'function' && gpsTrackingLive() &&
+    !(typeof simOn !== 'undefined' && simOn);
+}
+// The GPS rate with the gyro's head start (see gyro-turn.js): the turn is on the line the
+// moment it is rolled into, and off it the moment it is rolled out of. The fusion takes the
+// UNSMOOTHED GPS slope -- the gyro is fitted over the same fixes, so the two cancel exactly in
+// a steady turn, and the smoothing's lag is what the gyro is there to remove. Same rules after
+// the fusion as before it: nothing above maxRate, nothing under the gentle-turn floor.
+function withGyro(key, st, gpsRate, gpsSlope) {
+  if (key !== 'own' || !ownGyroApplies() || !st || st.points.length < 2) return gpsRate;
+  const fused = window.NavAidGyro.fuse(Number.isFinite(gpsSlope) ? gpsSlope : gpsRate, st.points.map(p => p.t));
+  if (fused == null) return gpsRate;
+  const maxRate = Math.max(0.5, finiteTuneNumber('livePredictorTurnMaxDegSec', 4));
+  const gentle = Math.max(0, finiteTuneNumber('livePredictorTurnGentleDegSec', 0.25));
+  const r = Math.max(-maxRate, Math.min(maxRate, fused));
+  return Math.abs(r) < gentle ? 0 : r;
 }
 // A canvas takes its paragraph direction from the interface language, so in Hebrew everything
 // drawn on the map is laid out RTL -- and bidi then reorders any label that is a Latin or

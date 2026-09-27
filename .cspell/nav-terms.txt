@@ -345,3 +345,4 @@ zoom
 AIRMET
 AIRMETs
 adws
+commfail
