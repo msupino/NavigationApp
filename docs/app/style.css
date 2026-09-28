@@ -8549,6 +8549,27 @@ body.theme-light .airfield-phone-row .airfield-phone:visited { color: #1a5fb4; }
   text-shadow: 0 0 2px #f1ede3, 0 0 2px #f1ede3;
 }
 
+/* Major cities: a dot at the place, the name beside it (the side the text runs to). A capital's
+   dot is ringed. Smaller and darker than the country names, which are the larger idea. */
+.world-city span {
+  transform: translate(0, -50%);
+  padding-inline-start: 9px;
+  font: 600 10.5px/1.1 system-ui, sans-serif;
+  letter-spacing: 0;
+  color: #4a4439;
+  position: relative;
+}
+.world-city span::before {
+  content: ''; position: absolute; inset-inline-start: 0; top: 50%;
+  width: 5px; height: 5px; margin-top: -2.5px; border-radius: 50%;
+  background: #4a4439;
+}
+.world-capital span::before { width: 7px; height: 7px; margin-top: -3.5px; inset-inline-start: -1px;
+  background: #f1ede3; border: 2px solid #4a4439; box-sizing: border-box; }
+/* The dot is the place: in RTL the name runs left of it, so the element starts at the dot's
+   right edge and is pulled back by its own width. */
+[dir="rtl"] .world-city span { transform: translate(-100%, -50%); }
+
 /* Magnetic variation row: number + E/W, and the value automatic is using right now. */
 /* One line, like the speed above. A desktop menu panel sizes itself to its rows, so there it
    never wraps (it did, and E/W sat alone on a second line). Only the narrow floating card on a
