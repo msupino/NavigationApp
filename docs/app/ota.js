@@ -118,12 +118,25 @@
     return false;
   }
 
+  // On Android the embedded app is served at navaid.supino.org itself (it keeps the site's saved
+  // data that way), so a WebView fetch of the manifest is answered from the package -- 404.
+  // The native HTTP client goes to the real server.
+  async function getJson(url) {
+    const cap = window.Capacitor;
+    const http = cap && cap.Plugins && cap.Plugins.CapacitorHttp;
+    if (http && typeof http.get === 'function') {
+      const res = await http.get({ url: url + '?t=' + Date.now(), headers: { 'Cache-Control': 'no-cache' } });
+      if (!res || res.status < 200 || res.status >= 300) return null;
+      return typeof res.data === 'string' ? JSON.parse(res.data) : res.data;
+    }
+    const res = await fetch(url, { cache: 'no-store' });
+    return res.ok ? res.json() : null;
+  }
+
   async function readManifest() {
     // A 404, a parse error, no network: all the same answer -- there is no update today.
     try {
-      const res = await fetch(MANIFEST, { cache: 'no-store' });
-      if (!res.ok) return null;
-      const data = await res.json();
+      const data = await getJson(MANIFEST);
       if (!data || typeof data.version !== 'string' || typeof data.url !== 'string') return null;
       if (typeof data.checksum !== 'string' || !data.checksum) return null;
       return data;
@@ -173,6 +186,13 @@
     if (!p || !embedded() || !featureOn()) return { checked: false, reason: 'not an embedded native build' };
     if (!o.force && !(await onUnmeteredConnection())) {
       return { checked: false, reason: 'not on an unmetered connection' };
+    }
+    // The CVFR tiles the APK carries live in its web files until they are copied into the
+    // chart store (native-tiles.js). An update replaces those files, so none is taken until the
+    // copy is done -- or the chart would go with them.
+    const tiles = window.NavAidNativeTiles;
+    if (tiles && typeof tiles.bundledSeeded === 'function' && !(await tiles.bundledSeeded())) {
+      return { checked: false, reason: 'charts still being copied' };
     }
     const manifest = o.manifest || await readManifest();
     if (!manifest) return { checked: true, updated: false, reason: 'no manifest' };

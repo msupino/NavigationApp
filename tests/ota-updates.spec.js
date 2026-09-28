@@ -455,3 +455,42 @@ test('an ordinary launch is still vouched for', async ({ page }) => {
   await page.waitForFunction(() => window.__readyCalls > 0, { timeout: 10000 });
   expect(await page.evaluate(() => window.__navaidBootBroke)).toBe(false);
 });
+
+// The APK is served at navaid.supino.org itself (to keep the site's saved data), so a WebView
+// fetch of the manifest is answered from the package. The native HTTP client is what reaches
+// the real server; fetch() must not even be tried when it is there.
+test('the manifest is read with the native HTTP client, which reaches the real site', async ({ page }) => {
+  await boot(page);
+  await stub(page, {});
+  const got = await page.evaluate((m) => {
+    const asked = [];
+    Capacitor.Plugins.CapacitorHttp = { get: async (o) => { asked.push(o.url); return { status: 200, data: m }; } };
+    const real = window.fetch;
+    let fetched = 0;
+    window.fetch = async () => { fetched++; return { ok: false, status: 404, json: async () => ({}) }; };
+    return NavAid.ota.readManifest()
+      .then((manifest) => ({ manifest, asked, fetched }))
+      .finally(() => { window.fetch = real; });
+  }, MANIFEST);
+  expect(got.manifest.version).toBe(MANIFEST.version);
+  expect(got.asked[0].startsWith('https://navaid.supino.org/ota/manifest.json?t=')).toBe(true);
+  expect(got.fetched).toBe(0);
+});
+
+// An update replaces the package's web files, and the CVFR tiles the APK carries are among
+// them until they are copied into the chart store. No update before the copy is done.
+test('no update is taken while the packed chart is still being copied', async ({ page }) => {
+  await boot(page);
+  await stub(page, { running: '1.0-old' });
+  const waiting = await page.evaluate((m) => {
+    window.NavAidNativeTiles = { bundledSeeded: async () => false };
+    return NavAid.ota.checkForUpdate({ manifest: m });
+  }, MANIFEST);
+  expect(waiting.checked).toBe(false);
+  expect(waiting.reason).toBe('charts still being copied');
+  const done = await page.evaluate((m) => {
+    window.NavAidNativeTiles = { bundledSeeded: async () => true };
+    return NavAid.ota.checkForUpdate({ manifest: m });
+  }, MANIFEST);
+  expect(done.updated).toBe(true);
+});

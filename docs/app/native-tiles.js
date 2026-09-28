@@ -60,19 +60,33 @@
   const BUNDLED_INDEX = 'charts/cvfr/index.json';
   const SEEDED_KEY = 'navaid.bundledChartsSeeded';
   let bundled = null;                 // Map: mirror URL -> packaged path
+  let bundledId = '';                 // which chart edition the APK carries (index.json `id`)
   const bundledReady = !enabled ? Promise.resolve() : fetch(BUNDLED_INDEX)
     .then(res => (res.ok ? res.json() : null))
     .then(index => {
       if (!index || !Array.isArray(index.tiles)) return;
       bundled = new Map(index.tiles.map(t => [index.base + '/' + t + '.png', 'charts/cvfr/' + t + '.png']));
+      bundledId = String(index.id || index.tiles.length);
     })
     .catch(() => {});
+  const seededId = () => { try { return localStorage.getItem(SEEDED_KEY); } catch (e) { return null; } };
+
+  // Nothing packed (the web app, an update bundle), or packed and already copied.
+  async function bundledSeeded() {
+    await bundledReady;
+    return !bundled || !bundled.size || seededId() === bundledId;
+  }
 
   async function seedBundled() {
     await bundledReady;
     if (!bundled || !bundled.size) return 0;
-    try { if (localStorage.getItem(SEEDED_KEY) === String(bundled.size)) return 0; } catch (e) { /* private */ }
-    const have = new Set((await cache.keys()).map(k => k.url));
+    const before = seededId();
+    if (before === bundledId) return 0;
+    // A new APK with a new edition of the chart: its tiles replace the ones copied from the
+    // last one. Otherwise tiles already there (downloaded, or copied by an interrupted launch)
+    // are kept.
+    const replace = before != null && before !== bundledId;
+    const have = replace ? new Set() : new Set((await cache.keys()).map(k => k.url));
     let copied = 0;
     for (const [url, local] of bundled) {
       if (have.has(url)) continue;
@@ -83,7 +97,7 @@
         copied++;
       } catch (e) { return copied; }   // storage full, app closing: carry on next launch
     }
-    try { localStorage.setItem(SEEDED_KEY, String(bundled.size)); } catch (e) { /* private */ }
+    try { localStorage.setItem(SEEDED_KEY, bundledId); } catch (e) { /* private */ }
     return copied;
   }
 
@@ -134,7 +148,7 @@
     return new NativeTileLayer(url, options);
   }
 
-  window.NavAidNativeTiles = { enabled, storage, imageUrl, tileLayer, seedBundled };
+  window.NavAidNativeTiles = { enabled, storage, imageUrl, tileLayer, seedBundled, bundledSeeded };
   // After the chart is up, not while it is being drawn: ~1,500 small file writes.
   if (enabled) {
     const later = () => setTimeout(() => { seedBundled().catch(() => {}); }, 20000);

@@ -5267,6 +5267,10 @@ const LOCAL_FM_ATTR =
 // automated visit to that URL, on someone else's bandwidth under our name.
 function liveChartTilesAllowed() {
   try {
+    // The embedded app is served AT navaid.supino.org on Android (so it keeps the site's saved
+    // data), but its charts are the mirror's: the tiles packed in the APK and the ones the
+    // offline download stores are keyed by mirror URL (native-tiles.js).
+    if (window.__navaidEmbedded === true) return false;
     if (location.hostname !== 'navaid.supino.org') return false;
     const path = location.pathname || '/';
     // Same origin, different builds: /pr/<n>/ previews and /staging/ are not the live site.
@@ -5276,9 +5280,10 @@ function liveChartTilesAllowed() {
   }
 }
 const LIVE_CHART_TILES = liveChartTilesAllowed();
-// Where a link someone else will open should point. The embedded app runs from its own package
-// (https://localhost on Android, capacitor://localhost on iOS) -- an address that means nothing
-// on anyone else's phone -- so a shared route or a follow-me link names the live site instead.
+// Where a link someone else will open should point. The embedded iOS app runs from its own
+// package at capacitor://localhost -- an address that means nothing on anyone else's phone -- so
+// a shared route or a follow-me link names the live site instead. (The APK is served at the
+// live site's own address; see mobile/scripts/bundle-web.mjs, androidHostname.)
 function publicAppUrl() {
   if (window.__navaidEmbedded === true) return 'https://navaid.supino.org/';
   return location.origin + location.pathname;

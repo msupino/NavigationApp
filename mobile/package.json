@@ -7,7 +7,7 @@
     "validate": "node scripts/validate-capacitor.mjs",
     "bundle": "node scripts/bundle-web.mjs",
     "bundle:check": "node scripts/bundle-web.mjs --check",
-    "embed": "node scripts/bundle-web.mjs --embed && npm run validate && cap sync",
+    "embed": "node scripts/bundle-web.mjs --embed && npm run validate && cap sync && node scripts/bundle-web.mjs --android-hostname",
     "remote": "node scripts/bundle-web.mjs --remote && npm run sync",
     "copy": "npm run validate && cap copy",
     "sync": "npm run validate && cap sync",

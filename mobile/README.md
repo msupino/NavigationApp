@@ -54,8 +54,16 @@ Bump `versionCode` / `versionName` in `android/app/build.gradle` for every APK.
 
 Embedded CVFR downloads use the existing Filesystem plugin and load directly into the map
 and magnifier without a service worker. Plates remain online at the production BYOP URL.
-Shared route and follow-me links name `https://navaid.supino.org/`, never the package's own
-`https://localhost`.
+**Android is served at `https://navaid.supino.org`** (`--android-hostname`, the last step of
+`npm run embed`), not Capacitor's default `https://localhost`. The APK before 1.9 loaded the live
+site, so a pilot's saved routes, recordings and settings live under that address, and a WebView
+keeps each address's storage apart: 1.9.0, served at localhost, opened on an empty app. At that
+address every WebView request is answered from the package, so the update manifest is read with
+the native HTTP client and approach plates come from `raw.githubusercontent.com`. The embedded app
+also unregisters the old APK's service worker. iOS stays at `capacitor://localhost` (its native
+origin policy trusts only that), so shared route and follow-me links always name
+`https://navaid.supino.org/`. After a bare `npx cap sync`, run
+`node scripts/bundle-web.mjs --android-hostname` again.
 
 **Updates without a new APK.** Every production deploy (`.github/workflows/deploy.yml`) runs
 `scripts/build-ota.mjs` on the assembled site and publishes `/ota/navaid-1.0-<sha>.zip` and
