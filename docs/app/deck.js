@@ -591,6 +591,19 @@
       buttons[item.key] = btn;
     }
     document.body.appendChild(deck);
+    // How tall the bar is without the home-indicator inset: 52px at the normal font size, more
+    // when the phone's font is larger. The sheet, the inspector, toasts and dialogs sit above it.
+    const measureBar = () => {
+      const pad = parseFloat(getComputedStyle(deck).paddingBottom) || 0;
+      document.documentElement.style.setProperty('--navaid-deck-bar-h',
+        Math.round(deck.getBoundingClientRect().height - pad) + 'px');
+    };
+    if (typeof ResizeObserver === 'function') {
+      const roBar = new ResizeObserver(measureBar);
+      roBar.observe(deck);
+      observers.push(roBar);
+    }
+    measureBar();
   }
 
   // What the strip says and which deck buttons read as engaged. Driven by the elements that
@@ -688,6 +701,7 @@
     if (strip) strip.remove();
     if (deck) deck.remove();
     document.documentElement.style.removeProperty('--navaid-deck-strip-h');
+    document.documentElement.style.removeProperty('--navaid-deck-bar-h');
     strip = deck = stripLeg = stripVals = stripSub = null;
     for (const key of Object.keys(buttons)) delete buttons[key];
     document.body.classList.remove('deck-on');

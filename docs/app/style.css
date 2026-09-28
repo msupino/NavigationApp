@@ -467,8 +467,11 @@ body.theme-light .print-clip-warn { color: #7a4a00; background: rgba(196, 127, 2
 /* Large phone fonts: the two buttons wrap onto a row each rather than cutting their words off,
    and a label wraps inside its button before it is ever clipped. */
 .route-file-row:not(.route-file-compact) { flex-wrap: wrap; }
+/* Never narrower than its words, icon and badge (min-content): a button squeezed below that
+   clipped them -- the route count "11" read "1" at a larger phone font. Too wide for both on
+   one row, they wrap instead. */
 .route-file-row:not(.route-file-compact) .route-file-btn,
-#toolbar .route-file-row:not(.route-file-compact) .route-file-btn { flex: 1 1 150px; overflow: hidden; }
+#toolbar .route-file-row:not(.route-file-compact) .route-file-btn { flex: 1 1 auto; min-width: min-content; }
 .route-file-row:not(.route-file-compact) .rf-label { white-space: normal; text-align: center; line-height: 1.15; overflow-wrap: anywhere; }    /* the menubar's pair; shown in the media rule below */
 .route-file-row .rf-text { display: flex; flex-direction: column; align-items: center; min-width: 0; line-height: 1.15; }
 .route-file-row .rf-label { overflow: hidden; text-overflow: ellipsis; max-width: 100%; flex-shrink: 0; }
@@ -1333,8 +1336,13 @@ body.theme-dark #map-crosshair::after {
 /* edit lock — same square as the rest of the column */
 .editlock-ctrl { display: flex; justify-content: center; margin-bottom: 3px !important; }
 .editlock-ctrl button {
-  width: 44px;
-  height: 44px;
+  /* 44px square at the normal size; min- so a larger phone font grows the button around its
+     icon rather than the icon out of it. */
+  min-width: 44px;
+  min-height: 44px;
+  width: auto;
+  height: auto;
+  padding: 0 4px;
   font-size: 22px;
   line-height: 1;
   cursor: pointer;
@@ -2979,8 +2987,10 @@ body.theme-light .shortcuts-help-keys kbd {
   .fp-scroll td { padding: 3px 4px; }
   /* Leave room for four altitude digits beside the native number spinner.
      At 42px, 800 rendered as 80 and 1500 as 15 on a real phone viewport. */
+  /* In em, not px: the same at the normal size (12px text), and as wide as the digits when the
+     phone's font size is larger -- in px, 1200 read 120 at 160%. */
   .fp-scroll .plan-num {
-    width: 52px;
+    width: 4.35em;
     -moz-appearance: textfield;
     appearance: textfield;
   }
@@ -2989,7 +2999,7 @@ body.theme-light .shortcuts-help-keys kbd {
     margin: 0;
     -webkit-appearance: none;
   }
-  .fp-scroll input[type="text"] { width: 58px; min-width: 0; }
+  .fp-scroll input[type="text"] { width: 4.85em; min-width: 0; }
   /* While a modal is open, the floating map legend and toolbar would overlap
      it on a small screen — hide them until it closes. */
   body:has(.modal-back) .map-legend,
@@ -3801,7 +3811,7 @@ body.theme-light .route-library-row { border-color: #c6ccd6; }
 }
 .flight-table tbody tr:hover { background: rgba(255, 255, 255, 0.04); }
 .plan-name {
-  width: 96px;
+  width: 7.4em;               /* 96px at 13px text, and it grows with a larger phone font */
   font: inherit;
   font-size: 13px;
   color: #e8e8e8;
@@ -3813,8 +3823,9 @@ body.theme-light .route-library-row { border-color: #c6ccd6; }
 .plan-name:focus { outline: 1px solid #1d6fe0; }
 .plan-num {
   /* Wide enough for the "Unknown" / "לא ידוע" placeholder the tables use for an
-     unset altitude — at 64px it rendered as "Unkno". */
-  width: 78px;
+     unset altitude — at 64px it rendered as "Unkno". In em (78px at 13px) so a larger phone
+  font widens it too. */
+  width: 6em;
   font: inherit;
   font-size: 13px;
   color: #e8e8e8;
@@ -3957,7 +3968,9 @@ body.theme-light .insp-charts-btn:hover, body.theme-light .insp-charts-btn:focus
 }
 .charts-fields-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  /* A column at least as wide as ~10 characters of the name (150px at the normal size), so a
+     larger phone font makes fewer, wider columns rather than names spilling out of their card. */
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 10.7em), 1fr));
   gap: 8px;
 }
 .charts-field {
@@ -3976,7 +3989,7 @@ body.theme-light .insp-charts-btn:hover, body.theme-light .insp-charts-btn:focus
   cursor: pointer;
 }
 .charts-field:hover, .charts-field:focus-visible { background: #3a3636; border-color: #1d6fe0; }
-.charts-field-name { font-size: 16px; font-weight: 700; line-height: 1.2; }
+.charts-field-name { font-size: 16px; font-weight: 700; line-height: 1.2; min-width: 0; overflow-wrap: break-word; }
 .charts-field-code { grid-column: 1; font-size: 12px; color: #9aa4b0; letter-spacing: 0.04em; }
 /* How many plates the field has: the one number that says whether it is worth opening. */
 .charts-field-count {
@@ -7876,7 +7889,9 @@ body.theme-light .route-library-gdrive-pii { color: #6b7787; border-inline-start
   position: fixed;
   left: 0; right: 0; bottom: 0;
   z-index: 2400;
-  height: calc(52px + env(safe-area-inset-bottom, 0px));
+  /* 52px at the normal size; taller when a larger phone font needs it (the labels were cut at
+     the bottom). deck.js measures it into --navaid-deck-bar-h for everything placed above it. */
+  min-height: calc(52px + env(safe-area-inset-bottom, 0px));
   padding-bottom: env(safe-area-inset-bottom, 0px);
   padding-inline: env(safe-area-inset-left, 0px) env(safe-area-inset-right, 0px);
   background: #f7f9fb;
@@ -7943,18 +7958,18 @@ body.theme-dark .deck-btn-here[aria-pressed="true"] { color: #6fdc9a; background
 
 /* The chart's own furniture moves up out of the deck's way, and the closed menu card gives
    up its corner: everything it held is on the deck or one tap inside it. */
-body.deck-on .leaflet-bottom { margin-bottom: calc(52px + env(safe-area-inset-bottom, 0px)); }
+body.deck-on .leaflet-bottom { margin-bottom: calc(var(--navaid-deck-bar-h, 52px) + env(safe-area-inset-bottom, 0px)); }
 body.deck-on #toolbar.collapsed { display: none; }
 /* The open menu starts below the strip. It used to open at the top of the screen with the
    strip drawn over it, so the language picker and the hamburger -- the row that closes it
    again -- were behind an opaque bar. Reported: top banner hides menu in new dock. */
 body.deck-on #toolbar {
   top: calc(var(--navaid-deck-strip-h, 46px) + 8px);
-  max-height: calc(100dvh - var(--navaid-deck-strip-h, 46px) - 52px - 24px
+  max-height: calc(100dvh - var(--navaid-deck-strip-h, 46px) - var(--navaid-deck-bar-h, 52px) - 24px
                    - env(safe-area-inset-bottom, 0px));
   overflow-y: auto;
 }
-body.deck-on #inspector { bottom: calc(52px + env(safe-area-inset-bottom, 0px)); }
+body.deck-on #inspector { bottom: calc(var(--navaid-deck-bar-h, 52px) + env(safe-area-inset-bottom, 0px)); }
 /* The bottom of a phone screen, in order upward: the deck, the route hint, the clock. Each
    was placed for a screen whose bottom edge was the map's; the deck moved that edge. */
 body.deck-on #empty-route-hint { bottom: calc(64px + env(safe-area-inset-bottom, 0px)); }
@@ -7968,22 +7983,23 @@ body.deck-on .zulu-clock { display: none; }     /* the strip carries the Zulu ti
    z-index 5000, the deck 2400), so on a phone they did not sit beside the five buttons --
    they sat on top of them, and a warning that has to be read covered the menu that answers
    it. Each keeps the gap it had from the bottom of the screen, measured from the top of the
-   deck instead: 52px of deck, plus the home-indicator inset, plus its own gap.
+   deck instead: the deck's height (--navaid-deck-bar-h, 52px at the normal font size), plus
+   the home-indicator inset, plus its own gap.
    Reported: in mobile mode a popup warning hides the bottom menu. */
-body.deck-on .toast { bottom: calc(76px + env(safe-area-inset-bottom, 0px)); }          /* 52 + 24 */
-body.deck-on .build-update-notice { bottom: calc(70px + env(safe-area-inset-bottom, 0px)); }  /* 52 + 18 */
-body.deck-on .overlay-loading { bottom: calc(120px + env(safe-area-inset-bottom, 0px)); }     /* 52 + 68 */
+body.deck-on .toast { bottom: calc(var(--navaid-deck-bar-h, 52px) + 24px + env(safe-area-inset-bottom, 0px)); }
+body.deck-on .build-update-notice { bottom: calc(var(--navaid-deck-bar-h, 52px) + 18px + env(safe-area-inset-bottom, 0px)); }
+body.deck-on .overlay-loading { bottom: calc(var(--navaid-deck-bar-h, 52px) + 68px + env(safe-area-inset-bottom, 0px)); }
 /* The mode chip is the other way round -- it sits UNDER the deck (z 1600), so the deck hid
    the chip rather than the chip hiding the deck. Same cause, same move. The class+id
    selector beats the phone media block that placed it at 80px, whatever the source order. */
-body.deck-on #mode-chip { bottom: calc(132px + env(safe-area-inset-bottom, 0px)); }      /* 52 + 80 */
+body.deck-on #mode-chip { bottom: calc(var(--navaid-deck-bar-h, 52px) + 80px + env(safe-area-inset-bottom, 0px)); }
 /* The sheet: one surface for everything that is not the chart, at one of three heights.
    It sits above the deck and below the strip, and the chart behind it stays live -- that is
    the point of the peek height. */
 .deck-sheet {
   position: fixed;
   left: 0; right: 0;
-  bottom: calc(52px + env(safe-area-inset-bottom, 0px));
+  bottom: calc(var(--navaid-deck-bar-h, 52px) + env(safe-area-inset-bottom, 0px));
   z-index: 2390;                      /* over the chart and its controls, under a modal */
   display: flex;
   flex-direction: column;
@@ -8101,7 +8117,7 @@ body.theme-dark .deck-here-btn { background: #1e2831; }
 body.deck-on .modal-back,
 body.deck-on .sim-overlay {
   top: var(--navaid-deck-strip-h, 46px);
-  bottom: calc(52px + env(safe-area-inset-bottom, 0px));
+  bottom: calc(var(--navaid-deck-bar-h, 52px) + env(safe-area-inset-bottom, 0px));
 }
 body.deck-on .modal-back > .modal,
 body.deck-on .sim-overlay > .modal {
@@ -8123,11 +8139,12 @@ body.deck-on .sim-overlay > .modal {
   border: 1px solid var(--navaid-ctrl-border-color);
   border-radius: var(--navaid-ctrl-radius);
 }
-.follow-me-ask-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 12px; }
+.follow-me-ask-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; margin-top: 12px; }
 .follow-me-ask-actions button {
   min-height: 44px;
   min-width: 96px;
   padding: 0 14px;
+  white-space: normal;
   font: inherit;
   font-weight: 600;
   border-radius: var(--navaid-ctrl-radius);
@@ -8591,3 +8608,10 @@ body.theme-light .airfield-phone-row .airfield-phone:visited { color: #1a5fb4; }
    MainActivity sets it from the system font scale). The browser's own text autosizer would
    otherwise enlarge some blocks and not others -- large buttons beside small menu rows. */
 html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+
+/* On a phone the menu's buttons wrap a long label onto a second line rather than running past
+   their edge: at a larger phone font "Download CVFR for offline use -- 0%" no longer fits one line
+   of a phone's width. (The desktop menubar keeps its one-line labels.) */
+@media (max-width: 680px), (pointer: coarse) {
+  #toolbar button { white-space: normal; overflow-wrap: break-word; }
+}
