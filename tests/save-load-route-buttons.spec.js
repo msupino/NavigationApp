@@ -1,8 +1,9 @@
-// Edit-header Save / Load route buttons.
-//   Load route  -> always opens the Saved routes menu.
-//   Save route  -> if the current route was loaded from (or saved as) a
-//                  library entry, overwrite that same entry after a confirm
-//                  warning; otherwise open the Saved routes menu to name it.
+// Save / My routes: two labeled buttons above the menu's sections (and at the top of the
+// flight plan), replacing two bare icons in a corner of the Edit header.
+//   My routes -> always opens the Saved routes menu, and shows how many there are.
+//   Save      -> if the current route was loaded from (or saved as) a library entry and has
+//                changed, asks IN THE APP: save over it, save as new, or cancel (confirm() is
+//                silent in the APK). Otherwise opens the Saved routes menu to name it.
 const { test, expect } = require('./_setup');
 
 async function boot(page, lang = 'en') {
@@ -42,35 +43,71 @@ const stored = page => page.evaluate(() =>
 const currentId = page => page.evaluate(() => currentRouteLibraryId);
 
 test.describe('Edit-header Save / Load route buttons', () => {
-  test('both buttons render on their own line above the Edit label', async ({ page }) => {
+  test('both buttons are labeled, on their own row above the Edit section', async ({ page }) => {
     await boot(page);
-    const save = page.locator('#tool-save-route');
-    const load = page.locator('#tool-load-route');
-    await expect(save).toBeVisible();
-    await expect(load).toBeVisible();
-    // Two-line Edit header: the Save/Load buttons sit on their own row ABOVE the
-    // "Edit" label (a separator divides them). Both stay inside the section head.
+    await expect(page.locator('#tool-save-route')).toContainText('Save route');
+    await expect(page.locator('#tool-load-route')).toContainText('My routes');
     const geo = await page.evaluate(() => {
       const head = document.querySelector('.tb-section[data-sec="build"] .tb-section-head');
       const sv = document.getElementById('tool-save-route').getBoundingClientRect();
-      const title = head.querySelector('.tb-section-title').getBoundingClientRect();
       return { inHead: !!document.getElementById('tool-save-route').closest('.tb-section-head'),
-               saveAboveTitle: sv.bottom <= title.top + 2 };
+               above: sv.bottom <= head.getBoundingClientRect().top + 2 };
     });
-    expect(geo.inHead).toBe(true);
-    expect(geo.saveAboveTitle).toBe(true);
+    expect(geo.inHead).toBe(false);      // not tucked into the Edit header any more
+    expect(geo.above).toBe(true);
+    // Only one pair in this layout: the menubar's compact pair stays hidden.
+    await expect(page.locator('#tool-save-route-wide')).toBeHidden();
   });
 
-  test('in Hebrew (RTL) the buttons still sit above the Edit label', async ({ page }) => {
+  test('in Hebrew (RTL) Save is on the right, the route name isolated on its own line', async ({ page }) => {
     await boot(page, 'he');
-    const geo = await page.evaluate(() => {
-      const head = document.querySelector('.tb-section[data-sec="build"] .tb-section-head');
-      const sv = document.getElementById('tool-save-route').getBoundingClientRect();
-      const title = head.querySelector('.tb-section-title').getBoundingClientRect();
-      return { dir: document.documentElement.dir, saveAboveTitle: sv.bottom <= title.top + 2 };
-    });
+    await setRoute(page, ['LLHZ', 'BAZRA']);
+    await page.evaluate(() => { routeLibrarySaveCurrent('LLHZ–BAZRA'); });
+    await expect(page.locator('#tool-save-route .rf-label')).toHaveText('שמור');
+    await expect(page.locator('#tool-save-route .rf-sub')).toHaveText('LLHZ–BAZRA');
+    const geo = await page.evaluate(() => ({
+      dir: document.documentElement.dir,
+      saveRight: document.getElementById('tool-save-route').getBoundingClientRect().left >
+                 document.getElementById('tool-load-route').getBoundingClientRect().left,
+      sub: document.querySelector('#tool-save-route .rf-sub').tagName,
+    }));
     expect(geo.dir).toBe('rtl');
-    expect(geo.saveAboveTitle).toBe(true);
+    expect(geo.saveRight).toBe(true);
+    expect(geo.sub).toBe('BDI');
+  });
+
+  test('Save shows which saved route it goes to, and a dot while there are unsaved changes', async ({ page }) => {
+    await boot(page);
+    await setRoute(page, ['A', 'B']);
+    await expect(page.locator('#tool-save-route .rf-dot')).toBeVisible();   // a route, never saved
+    await page.evaluate(() => { routeLibrarySaveCurrent('My Route'); });
+    await expect(page.locator('#tool-save-route .rf-label')).toHaveText('Save');
+    await expect(page.locator('#tool-save-route .rf-sub')).toHaveText('My Route');
+    await expect(page.locator('#tool-save-route .rf-dot')).toBeHidden();    // just saved
+    await expect(page.locator('#tool-load-route .rf-count')).toHaveText('1');
+    await page.evaluate(() => { state.waypoints.push({ lat: 32.5, lng: 35.1, name: 'C' }); syncLegs(); draw(); persist(); });
+    await expect(page.locator('#tool-save-route .rf-dot')).toBeVisible();   // changed since
+  });
+
+  test('Save is dimmed, not hidden, while there is nothing to save', async ({ page }) => {
+    await boot(page);
+    const save = page.locator('#tool-save-route');
+    await expect(save).toBeVisible();
+    await expect(save).toHaveClass(/is-dim/);
+    await expect(save).toBeEnabled();      // still pressable: it says why there is nothing to save
+    await setRoute(page, ['A', 'B']);
+    await expect(save).not.toHaveClass(/is-dim/);
+  });
+
+  test('the flight plan carries the same row on a phone (the Plan tab)', async ({ page }) => {
+    await boot(page);
+    await page.evaluate(() => document.body.classList.add('deck-on'));
+    await setRoute(page, ['A', 'B']);
+    await page.evaluate(() => showFlightPlan());
+    const row = page.locator('.fp-route-file-row');
+    await expect(row.locator('.route-file-save')).toContainText('Save route');
+    await row.locator('.route-file-load').click();
+    await expect(page.locator('.route-library-modal')).toBeVisible();
   });
 
   test('Load route opens the Saved routes menu', async ({ page }) => {
@@ -90,6 +127,8 @@ test.describe('Edit-header Save / Load route buttons', () => {
     // Desktop-menubar: standalone pair visible, in-header pair hidden.
     await expect(page.locator('#tool-save-route-wide')).toBeVisible();
     await expect(page.locator('#tool-load-route-wide')).toBeVisible();
+    // Compact at 1280: the icons, the tooltip says what they do (labels from 1440 px).
+    await expect(page.locator('#tool-save-route-wide')).toHaveAttribute('title', /Save route/);
     await expect(page.locator('#tool-save-route')).toBeHidden();
     // Load opens the Saved routes menu.
     await page.locator('#tool-load-route-wide').click();
@@ -149,7 +188,7 @@ test.describe('Edit-header Save / Load route buttons', () => {
       .toHaveValue('מ־שפיים אל צומת אשדוד');
   });
 
-  test('Save on a loaded route overwrites the same entry after a warning', async ({ page }) => {
+  test('Save on a changed saved route asks in the app, and Save over it overwrites the same entry', async ({ page }) => {
     await boot(page);
     const dialogs = [];
     page.on('dialog', d => { dialogs.push(d.message()); d.accept(); });
@@ -168,13 +207,40 @@ test.describe('Edit-header Save / Load route buttons', () => {
     // Edit the route, then Save again from the header → overwrites in place.
     await setRoute(page, ['A', 'B', 'C']);
     await page.locator('#tool-save-route').click();
+    const ask = page.locator('.route-overwrite-modal');
+    await expect(ask).toBeVisible();
+    await expect(ask).toContainText('My Route');
+    await ask.getByRole('button', { name: /Save over it/ }).click();
+    await expect(ask).toHaveCount(0);
     await expect(page.locator('.route-library-modal')).toHaveCount(0);   // no menu; overwrote
-    expect(dialogs.some(m => /overwrite|my route/i.test(m))).toBe(true); // warned
+    expect(dialogs).toEqual([]);          // never a browser dialog: silent in the APK
 
     const all = await stored(page);
     expect(all.filter(e => e && !e.deleted).length).toBe(1);             // still one entry
     expect(all[0].id).toBe(id1);                                         // same id
     expect(all[0].data.waypoints.length).toBe(3);                        // updated content
+  });
+
+  test('Save as a new route opens the menu to name it and leaves the saved one alone', async ({ page }) => {
+    await boot(page);
+    await setRoute(page, ['A', 'B']);
+    await page.evaluate(() => { routeLibrarySaveCurrent('Kept'); });
+    await setRoute(page, ['A', 'B', 'C']);
+    await page.locator('#tool-save-route').click();
+    await page.locator('.route-overwrite-modal').getByRole('button', { name: /new route/ }).click();
+    await expect(page.locator('.route-library-modal')).toBeVisible();
+    const all = await stored(page);
+    expect(all.filter(e => e && !e.deleted).length).toBe(1);
+    expect(all[0].data.waypoints.length).toBe(2);                        // untouched
+  });
+
+  test('Save with no changes since saving says so and asks nothing', async ({ page }) => {
+    await boot(page);
+    await setRoute(page, ['A', 'B']);
+    await page.evaluate(() => { routeLibrarySaveCurrent('Same'); });
+    await page.locator('#tool-save-route').click();
+    await expect(page.locator('.route-overwrite-modal')).toHaveCount(0);
+    await expect(page.locator('.toast')).toContainText('Same');
   });
 
   test('opening Saved routes via the toolbar button does not prefill the name field', async ({ page }) => {
@@ -242,4 +308,54 @@ test.describe('Edit-header Save / Load route buttons', () => {
     await expect(page.locator('.toast')).toContainText(/no valid routes/i);
     expect(await libLen(page)).toBe(0);                 // nothing written
   });
+});
+
+test('a route clicked on the map, with no names, is named by date in the interface language', async ({ page }) => {
+  await page.goto('?lang=he');
+  await page.waitForFunction(() => typeof defaultSavedRouteName === 'function' && typeof state !== 'undefined');
+  const name = await page.evaluate(() => {
+    // Out at sea: no chart point within 5 NM to name them by.
+    state.waypoints = [0, 1].map(i => ({ lat: 32.3 + i * 0.1, lng: 34.2, name: '' }));
+    return defaultSavedRouteName();
+  });
+  expect(name).toMatch(/^מסלול \d\d\.\d\d \d\d:\d\d$/);
+});
+
+test('an unnamed end point is suggested by the nearest chart point, the waypoint left unnamed', async ({ page }) => {
+  await page.goto('?lang=en');
+  await page.waitForFunction(() => typeof defaultSavedRouteName === 'function' && typeof nearestReference === 'function'
+    && Array.isArray(window.airfields || (typeof airfields !== 'undefined' ? airfields : null)) && (typeof airfields !== 'undefined' && airfields.length > 0));
+  const out = await page.evaluate(() => {
+    const hz = airfields.find(a => a.name === 'LLHZ');
+    const bg = airfields.find(a => a.name === 'LLBG');
+    // Clicked on the map a few hundred metres from each field: no names.
+    state.waypoints = [
+      { lat: hz.lat + 0.003, lng: hz.lng + 0.003, name: '' },
+      { lat: bg.lat - 0.003, lng: bg.lng + 0.003, name: '' },
+    ];
+    return { name: defaultSavedRouteName(), wp0: state.waypoints[0].name };
+  });
+  expect(out.name).toMatch(/^LLHZ.*→.*LLBG/);
+  expect(out.wp0).toBe('');
+});
+
+test('the desktop menubar stays one row at 1280 px, with words from 1440 px', async ({ page }) => {
+  for (const [w, labeled, lang] of [[1280, false, 'en'], [1280, false, 'he'], [1500, true, 'en']]) {
+    await page.setViewportSize({ width: w, height: 800 });
+    await page.goto('?lang=' + lang);
+    await page.waitForFunction(() => document.querySelector('.tb-quick') && typeof routeLibrarySaveCurrent === 'function');
+    // The widest it gets: a two-digit route count and the unsaved-changes dot.
+    await page.evaluate(() => {
+      state.waypoints = [{ lat: 32.18, lng: 34.83, name: 'LLHZ' }, { lat: 32.2, lng: 34.93, name: 'BAZRA' }]; syncLegs(); draw();
+      for (let i = 0; i < 12; i++) routeLibrarySaveCurrent('R' + i);
+      state.waypoints.push({ lat: 32.4, lng: 34.9, name: 'HADRA' }); syncLegs(); draw(); persist();
+    });
+    await page.waitForTimeout(100);
+    const out = await page.evaluate(() => ({
+      h: document.getElementById('toolbar').getBoundingClientRect().height,
+      label: getComputedStyle(document.querySelector('#tool-save-route-wide .rf-text')).display,
+    }));
+    if (!labeled) expect(out.h).toBeLessThan(50);
+    expect(out.label === 'none').toBe(!labeled);
+  }
 });

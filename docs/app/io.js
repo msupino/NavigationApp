@@ -3246,6 +3246,7 @@ function persistRouteLibrary(list, opts) {
     localStorage.setItem(ROUTE_LIBRARY_KEY, JSON.stringify(list));
     NavAid.routeLibraryCorrupt = false;   // a successful write clears the flag
     scheduleRouteAutoSync();
+    if (typeof window.refreshRouteFileRows === 'function') window.refreshRouteFileRows();
     return true;
   } catch (e) {
     refuse(S.errStorageFull || 'Storage is full — delete some saved routes or export them.');
@@ -3289,14 +3290,28 @@ function scheduleRouteAutoSync() {
 function routeLibraryId() {
   return 'r' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
 }
-// Default name for a manually-saved route: "Saved - YYYY-MM-DD HH:MM".
+// Default name for a manually-saved route: "first → last" waypoint, or -- for points clicked on
+// the map, which have no name -- "Route 28.09 11:52" in the interface language.
 function defaultSavedRouteName() {
   // Prefer "first → last" waypoint names (localised via navName); fall back to
   // a timestamp for unnamed/off-grid endpoints.
   const wps = state.waypoints;
   if (wps && wps.length >= 2) {
+    // A point clicked on the map has no name. It is still somewhere: the nearest airfield or
+    // reporting point within 5 NM names it for the suggestion (only the suggestion -- the
+    // waypoint itself is not renamed, and the pilot can edit the name before saving).
+    const nearbyName = (w) => {
+      if (!w || typeof nearestReference !== 'function' || typeof L === 'undefined') return '';
+      try {
+        const hit = nearestReference(L.latLng(w.lat, w.lng), { force: true });
+        const ref = hit && hit.ref;
+        if (!ref || !ref.name) return '';
+        const nmi = L.latLng(w.lat, w.lng).distanceTo(L.latLng(ref.lat, ref.lng)) / 1852;
+        return nmi <= 5 ? ref.name : '';
+      } catch (e) { return ''; }
+    };
     const nm = (w) => {
-      const raw = (w && w.name) ? w.name : '';
+      const raw = (w && w.name) ? w.name : nearbyName(w);
       const disp = (raw && typeof navName === 'function') ? navName(raw) : raw;
       return (disp || '').toString().trim();
     };
@@ -3336,10 +3351,13 @@ function defaultSavedRouteName() {
     }
     if (a || b) return a || b;
   }
+  // Short enough to read on the Save button's second line. It was "Saved - 2026-09-28 11:52",
+  // English in a Hebrew app and cut off before the time, which is the part that tells two
+  // map-clicked routes apart.
   const d = new Date();
   const p = n => String(n).padStart(2, '0');
-  return 'Saved - ' + d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate())
-       + ' ' + p(d.getHours()) + ':' + p(d.getMinutes());
+  const when = p(d.getDate()) + '.' + p(d.getMonth() + 1) + ' ' + p(d.getHours()) + ':' + p(d.getMinutes());
+  return (typeof S.routeDefaultName === 'function') ? S.routeDefaultName(when) : 'Route ' + when;
 }
 // Save the current route as a new named library entry. Returns the entry or null.
 function routeLibrarySaveCurrent(name) {
@@ -3926,6 +3944,12 @@ function showFlightPlan() {
   title.textContent = S.flightPlan;
   box.setAttribute('aria-labelledby', title.id);
   box.appendChild(title);
+  // Save / My routes where the plan is read -- on a phone, where this is the Plan tab. Not on a
+  // desktop: the menubar has both already, and the extra height pushed the plan's close button
+  // under the menubar.
+  if (document.body.classList.contains('deck-on') && typeof window.buildRouteFileRow === 'function') {
+    box.appendChild(window.buildRouteFileRow('fp-route-file-row'));
+  }
 
   // Drag-to-move on the title bar (mouse + touch), position remembered per language.
   const stopPlanDrag = makeModalDraggable(box, title, 'navaid.fpPos');
@@ -6538,6 +6562,8 @@ function persist() {
   if (window.NavAid && NavAid.navLog && typeof NavAid.navLog.routeChanged === 'function') {
     NavAid.navLog.routeChanged();
   }
+  // Save's label and its unsaved-changes dot follow the route.
+  if (typeof window.refreshRouteFileRows === 'function') window.refreshRouteFileRows();
   if (persistTimer || quotaWarned) return;
   persistTimer = setTimeout(function tick() {
     // Export started after this timer was scheduled. Don't write (the export mutates

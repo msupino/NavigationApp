@@ -437,6 +437,61 @@ body.theme-light .print-clip-warn { color: #7a4a00; background: rgba(196, 127, 2
 /* Standalone Save/Load pair for the wide desktop-menubar layout; hidden in the
    stacked/accordion layout (which shows the in-header .tb-head-actions pair). */
 .tb-quick { display: none; }
+
+/* (body-qualified: these must outrank the menubar block further down.) */
+@media (min-width: 1440px) {
+  body #toolbar .tb-quick.route-file-row .rf-text { display: flex; flex-direction: row; gap: 5px; align-items: baseline; min-width: 0; }
+  body #toolbar .tb-quick.route-file-row .route-file-load .rf-label { display: inline; }
+  body #toolbar .tb-quick.route-file-row .rf-sub { display: none; }
+  body #toolbar .tb-quick.route-file-row .route-file-btn { padding: 3px 12px; }
+}
+/* Save / My routes: two labeled buttons, full width, in the stacked menu and at the top of
+   the flight plan. Save is the one to press, so it is the filled one; dimmed (not hidden)
+   while there is nothing to save; an amber dot while the route has changes not saved. */
+.route-file-row { display: flex; gap: 8px; padding: 8px 10px; border-bottom: 1px solid #3a3636; }
+.route-file-row .route-file-btn,
+#toolbar .route-file-row .route-file-btn {
+  flex: 1 1 0; min-width: 0; min-height: 44px;
+  display: flex; align-items: center; justify-content: center; gap: 6px;
+  padding: 6px 10px; font: inherit; font-size: 15px; font-weight: 600;
+  color: #e8eef3; background: #232b38; border: 1px solid #3a4456; border-radius: 10px;
+  cursor: pointer; white-space: nowrap;
+}
+.route-file-row .route-file-save,
+#toolbar .route-file-row .route-file-save { background: #1f5f9e; border-color: #2b78c4; color: #fff; }
+.route-file-row .route-file-btn:hover,
+#toolbar .route-file-row .route-file-btn:hover { filter: brightness(1.12); }
+.route-file-row .route-file-btn.is-dim,
+#toolbar .route-file-row .route-file-btn.is-dim { opacity: 0.45; }
+.tb-quick.route-file-row { display: none; }    /* the menubar's pair; shown in the media rule below */
+.route-file-row .rf-text { display: flex; flex-direction: column; align-items: center; min-width: 0; line-height: 1.15; }
+.route-file-row .rf-label { overflow: hidden; text-overflow: ellipsis; max-width: 100%; flex-shrink: 0; }
+.route-file-row .rf-sub {
+  font-size: 12px; font-weight: 500; opacity: 0.85; max-width: 100%;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; unicode-bidi: isolate;
+}
+.route-file-row .rf-sub[hidden] { display: none; }
+.route-file-row .route-file-load .rf-label { white-space: normal; text-align: center; line-height: 1.15; }
+.route-file-row .rf-count {
+  flex: 0 0 auto; min-width: 20px; padding: 1px 6px; border-radius: 10px;
+  font-size: 12px; font-weight: 700; line-height: 16px; text-align: center;
+  background: rgba(255, 255, 255, 0.14);
+}
+.route-file-row .rf-count:empty { display: none; }
+body.theme-light .route-file-row .route-file-load .rf-count { background: rgba(0, 0, 0, 0.09); }
+.route-file-row .rf-icon { flex: 0 0 auto; }
+/* The overwrite question: three answers, one under the other, the likely one first. */
+.route-overwrite-modal .route-overwrite-actions { flex-direction: column-reverse; align-items: stretch; }
+.route-overwrite-modal .route-overwrite-actions button { width: 100%; }
+.route-file-row .rf-dot { flex: 0 0 auto; width: 8px; height: 8px; border-radius: 50%; background: #f5a623; }
+.route-file-row .rf-dot[hidden] { display: none; }
+body.theme-light .route-file-row { border-bottom-color: #c6ccd6; }
+body.theme-light .route-file-row .route-file-btn,
+body.theme-light #toolbar .route-file-row .route-file-btn { background: #eef1f5; color: #1c2430; border-color: #c6ccd6; }
+body.theme-light .route-file-row .route-file-save,
+body.theme-light #toolbar .route-file-row .route-file-save { background: #1f5f9e; border-color: #1f5f9e; color: #fff; }
+.fp-route-file-row { border-bottom: 0; padding: 4px 0 8px; }
+.fp-route-file-row .route-file-btn { font-size: 14px; }
 .tb-section-head::after {
   content: '▶';
   font-size: 8px;
@@ -913,14 +968,30 @@ html[dir="rtl"] #toolbar {
      pair beside the Edit menu instead. The in-header pair stays in the
      stacked/accordion toolbar. */
   .tb-head-actions { display: none; }
-  .tb-quick {
+  #toolbar .route-file-row:not(.route-file-compact) { display: none; }
+  #toolbar .tb-quick.route-file-row {
     display: flex;
     align-items: center;
-    gap: 0;
+    gap: 6px;
     flex: 0 0 auto;
-    padding: 0;
+    padding: 0 6px;
+    border-bottom: 0;
   }
-  .tb-quick button.tb-head-btn { font-size: 15px; padding: 4px 5px; }
+  /* The menubar's own height: a pill each, the label kept short (a long route name is cut
+     with an ellipsis, the full one is in the tooltip and the accessible name). */
+  #toolbar .tb-quick.route-file-row .route-file-btn {
+    flex: 0 1 auto; min-height: 30px; max-width: 220px;
+    padding: 3px 12px; font-size: 13px; border-radius: 15px; gap: 5px;
+  }
+  /* The menubar has no room to spare: at 1280 px two labeled pills wrapped it onto a second
+     row. Icon, unsaved dot and route count here; the words from 1440 px; the route name is
+     in the tooltip. */
+  #toolbar .tb-quick.route-file-row .rf-text,
+  #toolbar .tb-quick.route-file-row .route-file-load .rf-label { display: none; }
+  #toolbar .tb-quick.route-file-row .route-file-btn { padding: 2px 6px; gap: 3px; min-height: 26px; }
+  #toolbar .tb-quick.route-file-row .rf-count { min-width: 16px; padding: 0 4px; font-size: 11px; line-height: 14px; }
+  #toolbar .tb-quick.route-file-row .rf-dot { width: 7px; height: 7px; }
+  #toolbar .tb-quick.route-file-row { gap: 4px; padding: 0 4px; }
 
   .tb-section-head:hover,
   .tb-section.open .tb-section-head {
