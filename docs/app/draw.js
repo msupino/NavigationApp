@@ -390,11 +390,17 @@ function drawHeadingLine(pos, hdg, gsKt, opts) {
   // gentle turn below it); re-applying the floor here dropped every gentle one again.
   const turnRate = haveSpeed && gsKt >= minTurnKt && Number.isFinite(measuredRate) &&
     measuredRate !== 0 ? measuredRate : null;
-  const maxArcDeg = Math.max(1, finiteTuneNumber('livePredictorTurnMaxArcDeg', 90));
+  const maxArcDeg = Math.max(1, finiteTuneNumber('livePredictorTurnMaxArcDeg', 60));
   const speedNmSec = haveSpeed ? gsKt / 3600 : 0;
   const turnRadSec = Number.isFinite(turnRate) ? turnRate * Math.PI / 180 : 0;
+  // The turn is drawn for at most maxArcSec of flying, then the line runs on straight. Capped
+  // by degrees alone, a slow or gentle turn bent the whole line: at 30 kt, or at 0.25 deg/s,
+  // the full 90 degrees fitted inside the line and it pointed off the wing. A turn is
+  // predicted as far as it can be believed -- a G1000's trend vector looks 30 s ahead.
+  const maxArcSec = Math.max(1, finiteTuneNumber('livePredictorTurnMaxArcSec', 30));
   const arcLimitNm = turnRadSec
-    ? speedNmSec * (maxArcDeg * Math.PI / 180) / Math.abs(turnRadSec) : Infinity;
+    ? speedNmSec * Math.min((maxArcDeg * Math.PI / 180) / Math.abs(turnRadSec), maxArcSec)
+    : Infinity;
   const geoAtNm = (nm) => {
     let northNm, eastNm, pathHeading = h;
     if (!turnRadSec || nm <= 0) {

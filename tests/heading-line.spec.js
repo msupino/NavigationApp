@@ -140,7 +140,7 @@ test('successive own-location tracks bend the predictor in the measured turn dir
   expect(out.curved).toBe(true);
   expect(out.turnRate).toBeCloseTo(3, 4);
   expect(out.path.length).toBeGreaterThan(2);
-  expect(out.endHeading).toBeCloseTo(93, 4); // current track + the default 90° arc cap
+  expect(out.endHeading).toBeCloseTo(63, 4); // current track + the default 60° arc cap
   expect(out.path.at(-1).lng).toBeGreaterThan(34.9); // a right turn from north bends east
 });
 
@@ -157,7 +157,7 @@ test('turn measurement crosses north by the shortest direction', async ({ page }
   });
   expect(out.curved).toBe(true);
   expect(out.turnRate).toBeCloseTo(-2, 4);
-  expect(out.endHeading).toBeCloseTo(269, 4);
+  expect(out.endHeading).toBeCloseTo(299, 4); // 2 deg/s for the 30 s look-ahead
 });
 
 test('predictor stays straight without a fresh plausible airborne turn measurement', async ({ page }) => {
@@ -229,7 +229,7 @@ test('every heading-line knob is registered and exposed in the tune menu', async
     const keys = ['liveHeadingLineColor', 'liveHeadingTextColor', 'liveHeadingLineWidthPx',
       'liveHeadingDashPx', 'liveHeadingDashGapPx', 'liveHeadingTickPx',
       'liveHeadingLabelPx', 'liveHeadingLabelGapPx', 'livePredictorTurnMinDegSec',
-      'livePredictorTurnMaxDegSec', 'livePredictorTurnMaxArcDeg',
+      'livePredictorTurnMaxDegSec', 'livePredictorTurnMaxArcDeg', 'livePredictorTurnMaxArcSec',
       'livePredictorTurnMinKt', 'livePredictorTurnHoldSec',
       'livePredictorTurnSmoothing'];
     const group = NavAid.tuningGroups.find(g => g.name === 'Live aircraft');
@@ -449,6 +449,29 @@ test('a gentle 0.6 deg/s turn in GPS noise curves the predictor, under the gist\
   expect(out.turnRate).toBeGreaterThan(0.4);
   expect(out.turnRate).toBeLessThan(0.8);
   expect(out.endLat).toBeLessThan(32.1);          // a right turn from east bends south
+});
+
+test('the turn is drawn for at most 30 s and 60 deg, so a slow or gentle turn does not bend the whole line', async ({ page }) => {
+  await boot(page);
+  const out = await page.evaluate(() => {
+    resetHeadingPredictor();
+    const run = (key, rate, kt) => {
+      const now = Date.now();
+      for (let i = 0; i < 5; i++) {
+        const t = now - (4 - i) * 1000;
+        drawHeadingLine({ lat: 32.1, lng: 34.9, t }, 14 + i * rate, kt, { trackKey: key, sampleTime: t, receivedAt: t });
+      }
+      return window.__headingLine;
+    };
+    // The screenshot: 30 kt, a left bend in the road at 3 deg/s. Once drew a line 90 deg off;
+    // now 60 deg at most -- no aeroplane turns further on one trend.
+    const slow = run('slow', -3, 30);
+    // A gentle 0.5 deg/s drift at 100 kt: once bent 90 deg over the 10 NM line.
+    const gentle = run('gentle', 0.5, 100);
+    return { slow: slow.endHeading, slowNow: 14 - 3 * 4, gentle: gentle.endHeading, gentleNow: 14 + 0.5 * 4 };
+  });
+  expect(out.slow).toBeCloseTo(((out.slowNow - 60) % 360 + 360) % 360, 0);
+  expect(out.gentle).toBeCloseTo(out.gentleNow + 0.5 * 30, 0);
 });
 
 test('straight flight with ordinary course jitter stays straight under the gentle-turn test', async ({ page }) => {
