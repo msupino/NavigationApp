@@ -143,6 +143,28 @@ document.getElementById('app-version').textContent = 'v' + NavAid.version;
   const lv = document.getElementById('legend-version');
   if (lv) lv.textContent = 'v' + NavAid.version;
 }
+// In the native app, the package's own version beside the web one: the web version says which
+// build is running, the package version which APK / App Store release is installed -- the one
+// that decides which native features (plugins, permissions) there are.
+async function showNativeAppVersion() {
+  const cap = window.Capacitor;
+  const app = cap && cap.Plugins && cap.Plugins.App;
+  if (!app || typeof app.getInfo !== 'function' ||
+      typeof cap.isNativePlatform !== 'function' || !cap.isNativePlatform()) return '';
+  try {
+    const info = await app.getInfo();
+    if (!info || !info.version) return '';
+    const kind = typeof cap.getPlatform === 'function' && cap.getPlatform() === 'ios' ? 'iOS' : 'APK';
+    const text = 'v' + NavAid.version + ' · ' + kind + ' ' + info.version;
+    for (const id of ['app-version', 'legend-version']) {
+      const el = document.getElementById(id);
+      if (el) el.textContent = text;
+    }
+    return text;
+  } catch (e) { return ''; }
+}
+NavAid.showNativeAppVersion = showNativeAppVersion;
+showNativeAppVersion();
 
 // Paint the legend's VOR swatch with drawVorSymbol() — the very function drawVors()
 // uses — so the key cannot drift from the symbol it explains. Scaled to the 18px box:

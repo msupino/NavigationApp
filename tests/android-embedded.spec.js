@@ -94,3 +94,23 @@ test('npm run embed prepares Android as well as iOS', () => {
   expect(plugins).toContain('capgo-capacitor-updater');
   expect(plugins).toContain('capacitor-network');
 });
+
+test('the native app shows its package version beside the web version', async ({ page }) => {
+  await page.addInitScript(() => {
+    window.Capacitor = {
+      isNativePlatform: () => true, getPlatform: () => 'android',
+      Plugins: { App: { getInfo: async () => ({ version: '1.9', build: '9' }) } },
+    };
+  });
+  await page.goto('?lang=en&nogist');
+  await page.waitForFunction(() => typeof NavAid.showNativeAppVersion === 'function');
+  await expect(page.locator('#legend-version')).toHaveText(/^v.+ · APK 1\.9$/);
+  const text = await page.evaluate(() => document.getElementById('app-version').textContent);
+  expect(text).toMatch(/ · APK 1\.9$/);
+});
+
+test('the web app shows only the web version', async ({ page }) => {
+  await page.goto('?lang=en&nogist');
+  await page.waitForFunction(() => typeof NavAid.showNativeAppVersion === 'function');
+  expect(await page.evaluate(() => document.getElementById('app-version').textContent)).not.toContain('APK');
+});
