@@ -132,6 +132,7 @@ window.S = {
   appUpdateUnknown: 'לא ניתן לבדוק עדכונים (אין חיבור?)',
   appUpdateChecking: 'בודק…',
   appUpdateDownloading: 'מוריד…',
+  appUpdateDownloadingPct: function (pct) { return 'מוריד… ' + pct + '%'; },
   appUpdateCheck: 'בדוק שוב',
   appUpdateDownload: 'הורד עכשיו',
   appUpdateFailed: function (why) { return 'ההורדה נכשלה: ' + why; },
