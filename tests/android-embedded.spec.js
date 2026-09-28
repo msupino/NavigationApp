@@ -47,7 +47,8 @@ test('the update bundle is built from the assembled production site, and only fr
   fs.cpSync(path.join(repoRoot, 'docs', 'index.html'), path.join(site, 'index.html'));
   fs.cpSync(path.join(repoRoot, 'docs', 'app'), path.join(site, 'app'), { recursive: true });
   fs.cpSync(path.join(repoRoot, 'docs', 'i18n'), path.join(site, 'i18n'), { recursive: true });
-  for (const f of ['manifest.json', 'terms.html', 'privacy.html']) {
+  for (const f of ['manifest.json', 'terms.html', 'privacy.html', 'data/gist-snapshot.js']) {
+    fs.mkdirSync(path.dirname(path.join(site, f)), { recursive: true });
     fs.cpSync(path.join(repoRoot, 'docs', f), path.join(site, f));
   }
   // What sits beside production in the deploy and must never ship inside the app.

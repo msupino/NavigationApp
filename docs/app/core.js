@@ -1282,9 +1282,23 @@ function applyCachedRemoteConfig() {
     return 0;                                  // unreadable/corrupt cache -> shipped defaults
   }
 }
+// The gist as it was when this build was made (data/gist-snapshot.js, written by every deploy
+// and by `npm run embed`). Applied BEFORE the cached copy, which is newer whenever there is
+// one: this is for the device that has never downloaded the gist -- a fresh APK opened in the
+// aeroplane -- which otherwise ran on the built-in defaults alone. ?nogist skips it too, so the
+// built-in defaults can still be seen (and tested) on their own.
+function applyBundledGist() {
+  if (!NavAid.configUrl || NavAid.gistDisabled) return 0;
+  // The test suite runs on the built-in defaults (tests/_setup.js sets this); a spec about
+  // the snapshot opts back in.
+  if (typeof window !== 'undefined' && window.__navaidNoGistSnapshot) return 0;
+  const o = typeof window !== 'undefined' ? window.__navaidGistSnapshot : null;
+  return o && typeof o === 'object' ? applyRemoteConfigValues(o) : 0;
+}
+NavAid.gistSnapshotApplied = applyBundledGist();
 NavAid.gistWarmStart = applyCachedRemoteConfig();
 // What a key comes back to when the pilot's own value is dropped: the gist's, if the last gist
-// seen sets it, else the built-in default. Non-destructive -- reads, and leaves the value in
+// seen (or, never having seen one, the bundled snapshot) sets it, else the built-in default. Non-destructive -- reads, and leaves the value in
 // force alone.
 function tuneBaseline(key) {
   const had = Object.prototype.hasOwnProperty.call(NavAid.tuning, key);
@@ -1293,7 +1307,9 @@ function tuneBaseline(key) {
   try {
     if (NavAid.configUrl && !NavAid.gistDisabled) {
       const o = JSON.parse(localStorage.getItem(GIST_CACHE_KEY) || 'null');
+      const snap = typeof window !== 'undefined' && !window.__navaidNoGistSnapshot ? window.__navaidGistSnapshot : null;
       if (o && typeof o === 'object' && key in o) setTune(key, o[key]);
+      else if (snap && typeof snap === 'object' && key in snap) setTune(key, snap[key]);
     }
   } catch (e) { /* no cache: the built-in default */ }
   const base = tune(key);
