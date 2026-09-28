@@ -243,6 +243,24 @@ jobs:
           }
           check_ga_survived m/docs/index.html site/index.html
           check_ga_survived d/docs/index.html site/staging/index.html
+      # The APK and the App Store build carry the web app inside them, so they start with no
+      # network -- and a deploy does not reach them. This is how it does: the production build,
+      # zipped, with a manifest docs/app/ota.js reads at /ota/manifest.json. The app downloads
+      # it on Wi-Fi, checks the checksum, and switches on the next cold start, never mid-flight.
+      # Built from site/ (main's docs after the cache-bust rewrite), so the bundle is exactly
+      # what the site serves. Same commit, same zip: SOURCE_DATE_EPOCH pins the one timestamp.
+      - name: Publish the update bundle for the embedded apps
+        run: |
+          set -euo pipefail
+          SHA_M=$(git -C m rev-parse --short HEAD)
+          export SOURCE_DATE_EPOCH=$(git -C m log -1 --format=%ct)
+          rm -rf site/ota
+          node m/mobile/scripts/build-ota.mjs --from site --out site/ota \
+            --manifest site/ota/manifest.json --version "1.0-$SHA_M" \
+            --base-url https://navaid.supino.org/ota
+          rm -rf m/mobile/www
+          test -s "site/ota/navaid-1.0-$SHA_M.zip"
+
       - name: Build previews for every open PR
         # Pages publishes the WHOLE site from one artifact, so every deploy has to
         # rebuild every preview -- otherwise a push to dev would delete the previews of

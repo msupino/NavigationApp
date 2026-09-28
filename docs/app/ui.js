@@ -10713,8 +10713,13 @@ function isNativeCapacitorShell() {
 // server.url) loads the production site instead, and offline (app shell +
 // downloaded chart packs) DEPENDS on the SW — so only skip the legacy local
 // origins, and register normally when the shell shows the live site.
+// The embedded build (APK, App Store) is local too: the app is in the package, and on Android
+// it runs at https://localhost, which the protocol test above does not catch. A service worker
+// there would only cache files that are already on the phone -- and would serve the old ones
+// after an update bundle has replaced them.
 function isNativeLocalOrigin() {
-  return location.hostname === 'app.navaid.local' || location.protocol === 'capacitor:';
+  return location.hostname === 'app.navaid.local' || location.protocol === 'capacitor:' ||
+    window.__navaidEmbedded === true;
 }
 
 if ('serviceWorker' in navigator && !isNativeLocalOrigin()) {
