@@ -467,8 +467,11 @@ body.theme-light .print-clip-warn { color: #7a4a00; background: rgba(196, 127, 2
 /* Large phone fonts: the two buttons wrap onto a row each rather than cutting their words off,
    and a label wraps inside its button before it is ever clipped. */
 .route-file-row:not(.route-file-compact) { flex-wrap: wrap; }
+/* Never narrower than its words, icon and badge (min-content): a button squeezed below that
+   clipped them -- the route count "11" read "1" at a larger phone font. Too wide for both on
+   one row, they wrap instead. */
 .route-file-row:not(.route-file-compact) .route-file-btn,
-#toolbar .route-file-row:not(.route-file-compact) .route-file-btn { flex: 1 1 150px; overflow: hidden; }
+#toolbar .route-file-row:not(.route-file-compact) .route-file-btn { flex: 1 1 auto; min-width: min-content; }
 .route-file-row:not(.route-file-compact) .rf-label { white-space: normal; text-align: center; line-height: 1.15; overflow-wrap: anywhere; }    /* the menubar's pair; shown in the media rule below */
 .route-file-row .rf-text { display: flex; flex-direction: column; align-items: center; min-width: 0; line-height: 1.15; }
 .route-file-row .rf-label { overflow: hidden; text-overflow: ellipsis; max-width: 100%; flex-shrink: 0; }
