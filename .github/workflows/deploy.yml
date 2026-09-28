@@ -249,6 +249,26 @@ jobs:
       # it on Wi-Fi, checks the checksum, and switches on the next cold start, never mid-flight.
       # Built from site/ (main's docs after the cache-bust rewrite), so the bundle is exactly
       # what the site serves. Same commit, same zip: SOURCE_DATE_EPOCH pins the one timestamp.
+      # The live gist, into the app itself: an app that has never downloaded it (a fresh APK
+      # opened offline) starts from this rather than the built-in defaults alone. Before the
+      # update bundle below, so that carries it too. A gist that cannot be fetched keeps the
+      # committed snapshot (the script says so and exits 0). rm first: site/ is hard-linked to
+      # the checkouts, and writing through a link would edit them.
+      - name: Refresh the bundled gist snapshot
+        run: |
+          set -euo pipefail
+          for ROOT in site site/staging; do
+            SCRIPT=m/scripts/write-gist-snapshot.mjs
+            [ "$ROOT" = site/staging ] && SCRIPT=d/scripts/write-gist-snapshot.mjs
+            if [ ! -f "$SCRIPT" ]; then echo "no $SCRIPT yet; keeping $ROOT's snapshot"; continue; fi
+            if [ -f "$ROOT/data/gist-snapshot.js" ]; then
+              cp "$ROOT/data/gist-snapshot.js" "$ROOT/data/gist-snapshot.js.tmp"
+              rm -f "$ROOT/data/gist-snapshot.js"
+              mv "$ROOT/data/gist-snapshot.js.tmp" "$ROOT/data/gist-snapshot.js"
+            fi
+            node "$SCRIPT" "$ROOT/data/gist-snapshot.js"
+          done
+
       - name: Publish the update bundle for the embedded apps
         run: |
           set -euo pipefail

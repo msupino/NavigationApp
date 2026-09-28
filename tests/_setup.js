@@ -73,7 +73,8 @@ function mirrorUrlFor(url) {
 
 exports.test = base.test.extend({
   acknowledgeDisclaimer: [true, { option: true }],
-  page: async ({ page, context, acknowledgeDisclaimer }, use) => {
+  useGistSnapshot: [false, { option: true }],
+  page: async ({ page, context, acknowledgeDisclaimer, useGistSnapshot }, use) => {
     // 1. Network-level: every Google Analytics / GTM request aborts before it
     //    leaves the test harness. Catches both the gtag/js loader and the
     //    /g/collect beacons that the in-page script would have fired.
@@ -143,6 +144,12 @@ exports.test = base.test.extend({
     // test.use({ acknowledgeDisclaimer: false }).
     if (acknowledgeDisclaimer) await context.addInitScript(() => {
       window.__navaidNoDisclaimer = true;
+    });
+    // The suite runs on the built-in defaults, as it did before the gist was bundled
+    // (data/gist-snapshot.js): the snapshot changes whenever the gist does, and a test must
+    // not. tests/gist-snapshot.spec.js opts back in.
+    if (useGistSnapshot !== true) await context.addInitScript(() => {
+      window.__navaidNoGistSnapshot = true;
     });
 
     // 2b. Page-level: make map.setView() land instantly under test. Specs read

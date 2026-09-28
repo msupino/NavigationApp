@@ -38,6 +38,7 @@ export const LEAVE_ON_THE_SERVER = [
 // bundle, it is a broken app that would pass review and fail on a phone.
 export const MUST_BUNDLE = [
   'index.html',
+  'data/gist-snapshot.js',
   'manifest.json',
   'app/core.js',
   'app/native-tiles.js',
@@ -249,6 +250,11 @@ async function main(argv) {
   console.error('Bundled %d files, %s into mobile/www.', manifest.files, human(manifest.bytes));
   if (args.has('--embed')) {
     // The native package only: the update zip is built from copyBundle() alone.
+    // The live gist into the package (scripts/write-gist-snapshot.mjs): a fresh APK opened with
+    // no network starts with today's settings. Unreachable: the committed snapshot stays.
+    const { writeSnapshot } = await import('../../scripts/write-gist-snapshot.mjs');
+    const snap = await writeSnapshot(path.join(wwwDir, 'data', 'gist-snapshot.js'));
+    console.error(snap.ok ? 'Gist snapshot: %d keys.' : 'Gist snapshot not refreshed (%s); using the committed one.', snap.ok ? snap.keys : snap.reason);
     // NAVAID_CHARTS=0 leaves them out (CI, which checks the app bundle, not the chart).
     if (process.env.NAVAID_CHARTS !== '0') {
       const { bundleCharts } = await import('./bundle-charts.mjs');
