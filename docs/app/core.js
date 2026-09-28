@@ -1381,7 +1381,7 @@ window.S = Object.assign({
   // the ?v= cache-busts all three kinds, which now come from the same file.
   routeGraphUrl: 'data/cvfr-route-graph.json?v=2',  // resolved relative to index.html (docs/)
   commfailUrl: 'data/commfail.json?v=2',
-  worldCountriesUrl: 'data/world-countries.json?v=1',  // country outlines + names, always offline  // published comm-failure entry points per field
+  worldCountriesUrl: 'data/world-countries.json?v=2',  // country outlines + names, always offline  // published comm-failure entry points per field
   navWpSearchField: 'en',              // which locale label to show/search in results
   airfieldsUrl: 'data/airfields.json?v=40',  // resolved relative to index.html (docs/)
   airfieldLabelField: 'en',            // which locale label to show on the overlay
