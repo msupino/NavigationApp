@@ -2265,6 +2265,18 @@ body.theme-light .insp-btn.insp-btn-safe.insp-btn-on:hover {
   cursor: default;
 }
 .insp-btn:disabled:hover { background: #b03636; }
+.app-update {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  padding: 8px 10px; border-top: 1px solid #3a3636; font-size: 14px;
+}
+.app-update[hidden] { display: none; }
+.app-update-text { min-width: 0; }
+.app-update-text small { display: block; font-size: 12px; opacity: 0.7; }
+#toolbar .app-update .app-update-btn {
+  flex: 0 0 auto; min-height: 38px; padding: 6px 12px; border-radius: 8px; font-weight: 600;
+}
+#toolbar .app-update.has-update .app-update-btn { background: #1f5f9e; border-color: #2b78c4; color: #fff; }
+body.theme-light .app-update { border-top-color: #c6ccd6; }
 #app-version {
   display: block;
   text-align: right;
@@ -2460,7 +2472,8 @@ body.theme-dark #toolbar button.gps-footer-btn[aria-pressed="true"] .footer-link
 }
 
 @media (min-width: 681px) and (hover: hover) and (pointer: fine) {
-  #app-version {
+  #app-version,
+  #app-update {
     display: none;
   }
 
