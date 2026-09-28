@@ -166,6 +166,78 @@ async function showNativeAppVersion() {
 NavAid.showNativeAppVersion = showNativeAppVersion;
 showNativeAppVersion();
 
+// App version row (installed app only): up to date, an update to download now -- on mobile data
+// too, after asking -- or one waiting for the next start. ota.js does the work; this says it.
+const appUpdate = (function () {
+  const row = document.getElementById('app-update');
+  if (!row) return null;
+  const text = row.querySelector('.app-update-text');
+  const btn = row.querySelector('.app-update-btn');
+  let last = null;
+  const ota = () => (window.NavAid && NavAid.ota && typeof NavAid.ota.status === 'function') ? NavAid.ota : null;
+  const mb = (bytes) => (bytes ? Math.max(1, Math.round(bytes / 1048576)) : 0);
+  // A number with its unit, and a build id, read left to right inside a Hebrew sentence: isolated,
+  // or "26 MB" comes out "MB 26" and "1.0-90a0542" breaks around its hyphen.
+  const ltr = (t) => '\u2066' + t + '\u2069';
+  function paint(st, busy) {
+    const version = (window.NavAid && NavAid.version) || '';
+    let line = '', action = null;
+    if (busy === 'checking') line = S.appUpdateChecking || 'Checking…';
+    else if (busy === 'downloading') line = S.appUpdateDownloading || 'Downloading…';
+    else if (st.state === 'current') { line = S.appUpdateCurrent || 'Up to date'; action = 'check'; }
+    else if (st.state === 'available') {
+      line = typeof S.appUpdateAvailable === 'function' ? S.appUpdateAvailable(mb(st.bytes) ? ltr(mb(st.bytes) + ' MB') : '') : 'Update available';
+      action = 'download';
+    } else if (st.state === 'pending') line = S.appUpdatePending || 'Update ready: installs the next time NavAid starts';
+    else { line = S.appUpdateUnknown || 'Could not check for updates'; action = 'check'; }
+    text.textContent = line;
+    const sub = document.createElement('small');
+    sub.textContent = typeof S.appUpdateVersion === 'function' ? S.appUpdateVersion(ltr(version)) : 'App version ' + version;
+    text.appendChild(sub);
+    row.classList.toggle('has-update', action === 'download');
+    btn.hidden = !action || !!busy;
+    btn.textContent = action === 'download' ? (S.appUpdateDownload || 'Download now') : (S.appUpdateCheck || 'Check again');
+    btn.dataset.action = action || '';
+  }
+  async function refresh() {
+    const o = ota();
+    if (!o) return;
+    const first = await o.status();
+    if (first.state === 'none') { row.hidden = true; return; }
+    row.hidden = false;
+    paint({ state: 'unknown' }, 'checking');
+    last = first;
+    paint(last);
+  }
+  btn.addEventListener('click', async () => {
+    const o = ota();
+    if (!o) return;
+    if (btn.dataset.action === 'check') { paint(last || {}, 'checking'); last = await o.status(); paint(last); return; }
+    if (btn.dataset.action !== 'download') return;
+    if (!(await o.onUnmeteredConnection())) {
+      const size = mb(last && last.bytes) || 26;
+      const ok = typeof window.askYesNo === 'function'
+        ? await window.askYesNo(S.appUpdateCellularTitle || 'Download on mobile data?',
+          typeof S.appUpdateCellularText === 'function' ? S.appUpdateCellularText(ltr(size + ' MB')) : 'About ' + size + ' MB of mobile data.',
+          S.appUpdateDownload || 'Download now')
+        : false;
+      if (!ok) return;
+    }
+    paint(last || {}, 'downloading');
+    const r = await o.downloadNow({ manifest: last && last.manifest });
+    if (r && r.updated) { last = { state: 'pending', version: r.version }; paint(last); return; }
+    last = await o.status();
+    paint(last);
+    if (r && r.reason && r.reason !== 'already running it' && typeof showToast === 'function') {
+      showToast(typeof S.appUpdateFailed === 'function' ? S.appUpdateFailed(r.reason) : r.reason, { warn: true });
+    }
+  });
+  return { refresh, paint };
+}());
+NavAid.appUpdate = appUpdate;
+// After ota.js has loaded and the app is up; and whenever the menu is opened again.
+window.addEventListener('load', () => setTimeout(() => { if (appUpdate) appUpdate.refresh(); }, 3000));
+
 // Paint the legend's VOR swatch with drawVorSymbol() — the very function drawVors()
 // uses — so the key cannot drift from the symbol it explains. Scaled to the 18px box:
 // the radius leaves room for the ticks, and stroke/tick/dot follow the same ratios as

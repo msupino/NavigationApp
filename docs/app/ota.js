@@ -197,7 +197,7 @@
     const manifest = o.manifest || await readManifest();
     if (!manifest) return { checked: true, updated: false, reason: 'no manifest' };
     const running = await runningVersion(p);
-    if (running && running === manifest.version) {
+    if ((running && running === manifest.version) || sameBuild(webVersion(), manifest.version)) {
       return { checked: true, updated: false, reason: 'already running it' };
     }
     try {
@@ -274,9 +274,53 @@
     }
   }
 
+  // The web build this app is running, as the app states it ('1.0-<commit>'). The plugin's own
+  // name for the bundle the APK shipped with is 'builtin', which matches no manifest -- so an
+  // APK built from the very commit the site serves would download itself again.
+  const webVersion = () => (window.NavAid && NavAid.version) || '';
+  // Same commit, however short each side abbreviated it (git picks 7 or 8 characters).
+  function sameBuild(a, b) {
+    const sha = (v) => { const m = /-([0-9a-f]{7,40})$/i.exec(String(v || '')); return m ? m[1].toLowerCase() : ''; };
+    const x = sha(a), y = sha(b);
+    return !!x && !!y && (x.startsWith(y) || y.startsWith(x));
+  }
+
+  // What the App version row shows: 'current' | 'available' | 'pending' | 'unknown'.
+  async function status(opts) {
+    const o = opts || {};
+    const p = o.plugin || plugin();
+    if (!p || !embedded()) return { state: 'none' };
+    try {
+      const next = typeof p.getNextBundle === 'function' ? await p.getNextBundle() : null;
+      if (next && next.id && next.status !== 'error') {
+        const cur = await currentBundle(p);
+        if (!cur || cur.id !== next.id) return { state: 'pending', version: next.version || '' };
+      }
+    } catch (e) { /* no pending bundle */ }
+    const manifest = o.manifest || await readManifest();
+    if (!manifest) return { state: 'unknown' };
+    const running = await runningVersion(p);
+    if (running === manifest.version || sameBuild(webVersion(), manifest.version)) {
+      return { state: 'current', version: manifest.version };
+    }
+    return { state: 'available', version: manifest.version, bytes: Number(manifest.bytes) || 0, manifest };
+  }
+
+  // The pilot asked for it: on mobile data too (the row asks first), and the packed chart is
+  // copied now rather than waited for -- the one thing an update must not overtake.
+  async function downloadNow(opts) {
+    const o = opts || {};
+    const tiles = window.NavAidNativeTiles;
+    if (tiles && typeof tiles.seedBundled === 'function') {
+      try { await tiles.seedBundled(); } catch (e) { /* the gate below says so */ }
+    }
+    return checkForUpdate({ ...o, force: true });
+  }
+
   window.NavAid = window.NavAid || {};
   NavAid.ota = {
     notifyReady, checkForUpdate, readManifest, appIsUp, installPendingAtStartup, MANIFEST,
+    status, downloadNow, onUnmeteredConnection, sameBuild,
   };
 
   async function boot() {
