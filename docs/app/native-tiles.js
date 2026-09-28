@@ -59,6 +59,10 @@
   // the index is simply not there, and none of this does anything.
   const BUNDLED_INDEX = 'charts/cvfr/index.json';
   const SEEDED_KEY = 'navaid.bundledChartsSeeded';
+  // A copy that could not finish (storage full) is not waited for again: an update would take
+  // away the packed tiles not copied, but a phone that can never update is worse, and every one
+  // of those tiles can still be downloaded.
+  const SEED_FAILED_KEY = 'navaid.bundledChartsSeedFailed';
   let bundled = null;                 // Map: mirror URL -> packaged path
   let bundledId = '';                 // which chart edition the APK carries (index.json `id`)
   const bundledReady = !enabled ? Promise.resolve() : fetch(BUNDLED_INDEX)
@@ -72,9 +76,10 @@
   const seededId = () => { try { return localStorage.getItem(SEEDED_KEY); } catch (e) { return null; } };
 
   // Nothing packed (the web app, an update bundle), or packed and already copied.
+  const seedFailedId = () => { try { return localStorage.getItem(SEED_FAILED_KEY); } catch (e) { return null; } };
   async function bundledSeeded() {
     await bundledReady;
-    return !bundled || !bundled.size || seededId() === bundledId;
+    return !bundled || !bundled.size || seededId() === bundledId || seedFailedId() === bundledId;
   }
 
   async function seedBundled() {
@@ -95,7 +100,12 @@
         if (!res.ok) continue;
         await cache.put(url, res);
         copied++;
-      } catch (e) { return copied; }   // storage full, app closing: carry on next launch
+      } catch (e) {
+        // Storage full, or the app closing: carry on next launch -- but say so, so the update
+        // gate stops waiting on a copy that may never finish.
+        try { localStorage.setItem(SEED_FAILED_KEY, bundledId); } catch (_) { /* private */ }
+        return copied;
+      }
     }
     try { localStorage.setItem(SEEDED_KEY, bundledId); } catch (e) { /* private */ }
     return copied;
