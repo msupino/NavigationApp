@@ -3,6 +3,7 @@ package org.supino.navaid;
 import android.content.Intent;
 import android.os.Bundle;
 import android.util.Log;
+import android.webkit.WebView;
 
 import com.getcapacitor.BridgeActivity;
 import com.getcapacitor.Plugin;
@@ -24,6 +25,31 @@ public class MainActivity extends BridgeActivity
   public void onCreate(Bundle savedInstanceState) {
     registerPlugin(XPlaneDiscoveryPlugin.class);
     super.onCreate(savedInstanceState);
+    applySystemFontScale();
+  }
+
+  // The phone's font size (Settings -> Display -> Font size), applied to ALL of the app's text.
+  // Left to itself the WebView enlarged some blocks and not others (its text autosizer picks
+  // blocks by width), so one pilot saw large buttons beside small menu rows, and the buttons
+  // overflowed. textZoom scales every font the same; the page turns the autosizer off
+  // (text-size-adjust: 100% in style.css). Read again on resume: the setting can change while
+  // the app is in the background.
+  private void applySystemFontScale() {
+    try {
+      WebView webView = getBridge() != null ? getBridge().getWebView() : null;
+      if (webView == null) return;
+      float scale = getResources().getConfiguration().fontScale;
+      int zoom = Math.round(Math.max(0.85f, Math.min(2.0f, scale)) * 100);
+      if (webView.getSettings().getTextZoom() != zoom) webView.getSettings().setTextZoom(zoom);
+    } catch (Exception e) {
+      Log.w("MainActivity", "could not apply the system font scale", e);
+    }
+  }
+
+  @Override
+  public void onResume() {
+    super.onResume();
+    applySystemFontScale();
   }
 
   @Override
