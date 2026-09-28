@@ -54,8 +54,9 @@ test('the snapshot is a script loaded before core.js, and the deploy refreshes i
   expect(deploy.indexOf('Refresh the bundled gist snapshot')).toBeGreaterThan(-1);
   expect(deploy.indexOf('Refresh the bundled gist snapshot')).toBeLessThan(deploy.indexOf('Publish the update bundle'));
   const { snapshotSource } = await import('../scripts/write-gist-snapshot.mjs');
-  const src = snapshotSource({ a: 1 }, 'T');
+  // Only plain settings reach the file the app executes.
+  const src = snapshotSource({ a: 1, b: 'x', c: true, n: null, nested: { x: 1 }, 'bad key': 1, list: [1] }, 'T');
   const w = {};
   new Function('window', src)(w);
-  expect(w.__navaidGistSnapshot).toEqual({ a: 1 });
+  expect(w.__navaidGistSnapshot).toEqual({ a: 1, b: 'x', c: true, n: null });
 });
