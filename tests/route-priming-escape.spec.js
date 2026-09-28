@@ -7,6 +7,9 @@
 // marked in edit mode under edit" — the map behaved like a mode nobody had entered, so there
 // was nothing lit to explain the crosshair and nothing to press to leave.
 const { test, expect } = require('./_setup');
+const { bootTunes } = require('./_tune');
+// Shipped off in the gist (and so in the built-in defaults); this spec is about it.
+test.beforeEach(async ({ page }) => { await bootTunes(page, { featureRouteIntro: true }); });
 
 async function fresh(page) {
   await page.addInitScript(() => {

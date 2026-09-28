@@ -51,7 +51,7 @@ test.describe('Display checkbox toggles', () => {
   const cases = [
     { id: '#ret-cb',      key: 'navaid.showReturn',     startsChecked: false },
     { id: '#mid-cb',      key: 'navaid.showMidLeg',     startsChecked: false },
-    { id: '#diff-cb',     key: 'navaid.highlightDiff',  startsChecked: false },
+    { id: '#diff-cb',     key: 'navaid.highlightDiff',  startsChecked: true  },
     { id: '#limit-kites-cb', key: 'navaid.limitLegKites', startsChecked: true },
     { id: '#drift-cb',    key: 'navaid.showDrift',      startsChecked: true  },
     { id: '#navwp-cb',    key: 'navaid.showNavWP',      startsChecked: true  },

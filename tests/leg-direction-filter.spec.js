@@ -2,6 +2,9 @@
 // On an out-and-back route the direction selector is a complete view filter: route
 // geometry, waypoints, annotations and calculated display totals all follow it.
 const { test, expect } = require('./_setup');
+const { bootTunes } = require('./_tune');
+// Shipped off in the gist (and so in the built-in defaults); this spec is about it.
+test.beforeEach(async ({ page }) => { await bootTunes(page, { defaultShowHotspots: true }); });
 
 async function boot(page) {
   await page.goto('?lang=en&nogist');
