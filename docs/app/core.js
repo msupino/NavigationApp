@@ -1510,6 +1510,7 @@ window.S = Object.assign({
   appUpdateUnknown: 'Could not check for updates (no connection?)',
   appUpdateChecking: 'Checking…',
   appUpdateDownloading: 'Downloading…',
+  appUpdateDownloadingPct: function (pct) { return 'Downloading… ' + pct + '%'; },
   appUpdateCheck: 'Check again',
   appUpdateDownload: 'Download now',
   appUpdateFailed: function (why) { return 'Download failed: ' + why; },
