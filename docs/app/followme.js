@@ -660,7 +660,7 @@
       // The public half rides in the fragment beside the key, so it reaches a viewer without
       // ever reaching the relay -- and a viewer verifies against the key from ITS OWN link,
       // never one offered inside a packet, which a forger would simply supply.
-      link: location.origin + location.pathname + '?follow=' + id + '#k=' + raw.k
+      link: publicAppUrl() + '?follow=' + id + '#k=' + raw.k
         + (raw.v ? '&v=' + raw.v : ''),
     };
     if (pendingStop) {

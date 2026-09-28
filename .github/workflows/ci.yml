@@ -123,7 +123,9 @@ jobs:
         run: |
           cd mobile
           node scripts/test-ios-origin.mjs
-          npm run embed
+          # No chart tiles: 1,500 fetches from every CI run is what the mirror rate-limits (429),
+          # and this job verifies the app bundle, not the chart. The APK is built locally.
+          NAVAID_CHARTS=0 npm run embed
           xcodebuild -project ios/App/App.xcodeproj -scheme App -sdk iphonesimulator \
             -destination 'generic/platform=iOS Simulator' -derivedDataPath ios/App/DerivedData \
             -configuration Release CODE_SIGNING_ALLOWED=NO build

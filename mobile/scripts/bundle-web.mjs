@@ -24,6 +24,12 @@ export const LEAVE_ON_THE_SERVER = [
   'byop',          // bring-your-own-plates uploads: the largest directory by far
   'legacy',        // the pre-rewrite app, kept for links
   'tiles',         // offline tile packs are downloaded on request, by the pilot
+  'ota',           // the update manifest describes a bundle; it is not part of one
+  // When the bundle is built from the ASSEMBLED site (the deploy does, see build-ota.mjs),
+  // these sit beside production: the dev build and the PR previews. Never ship them.
+  'staging',
+  'pr',
+  'branch',
 ];
 
 // A file the app cannot start without. If the bundle is missing one of these it is not a
@@ -140,24 +146,31 @@ export function embeddedIndex(index) {
   return index.replace('<head>', '<head>\n  <script>window.__navaidEmbedded = true;</script>');
 }
 
-export function copyBundle() {
-  validateVendorAssets();
-  const files = walk(docsDir);
+// `srcDir` is docs/ for a local build. The deploy passes the assembled production site
+// instead, so the bundle carries the same cache-busted build the site serves.
+export function copyBundle(srcDir = docsDir) {
+  const srcIndex = fs.readFileSync(path.join(srcDir, 'index.html'), 'utf8');
+  validateVendorAssets(srcIndex);
+  const files = walk(srcDir);
   fs.rmSync(wwwDir, { recursive: true, force: true });
   for (const { rel } of files) {
     const dest = path.join(wwwDir, rel);
     fs.mkdirSync(path.dirname(dest), { recursive: true });
-    fs.copyFileSync(path.join(docsDir, rel), dest);
+    fs.copyFileSync(path.join(srcDir, rel), dest);
   }
   const missing = MUST_BUNDLE.filter((rel) => !fs.existsSync(path.join(wwwDir, rel)));
   if (missing.length) {
     throw new Error('bundle is missing files the app cannot start without: ' + missing.join(', '));
   }
   fs.cpSync(vendorDir, path.join(wwwDir, 'vendor'), { recursive: true });
-  fs.writeFileSync(path.join(wwwDir, 'index.html'), embeddedIndex(fs.readFileSync(path.join(docsDir, 'index.html'), 'utf8')));
+  fs.writeFileSync(path.join(wwwDir, 'index.html'), embeddedIndex(srcIndex));
   const bundled = walk(wwwDir);
   const manifest = {
-    builtAt: new Date().toISOString(),
+    // SOURCE_DATE_EPOCH (the commit time) when the deploy sets it: every deploy rebuilds the
+    // update zip for the same production commit, and a zip that differed by a timestamp would
+    // change its checksum under a phone that was halfway through downloading it.
+    builtAt: (process.env.SOURCE_DATE_EPOCH
+      ? new Date(Number(process.env.SOURCE_DATE_EPOCH) * 1000) : new Date()).toISOString(),
     files: bundled.length,
     bytes: bundled.reduce((sum, f) => sum + f.size, 0),
     leftOnTheServer: LEAVE_ON_THE_SERVER,
@@ -171,7 +184,7 @@ function human(bytes) {
   return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
 }
 
-function main(argv) {
+async function main(argv) {
   const args = new Set(argv.slice(2));
   if (args.has('--remote')) {
     writeConfig(remoteConfig());
@@ -195,9 +208,16 @@ function main(argv) {
   const manifest = copyBundle();
   console.error('Bundled %d files, %s into mobile/www.', manifest.files, human(manifest.bytes));
   if (args.has('--embed')) {
+    // The native package only: the update zip is built from copyBundle() alone.
+    // NAVAID_CHARTS=0 leaves them out (CI, which checks the app bundle, not the chart).
+    if (process.env.NAVAID_CHARTS !== '0') {
+      const { bundleCharts } = await import('./bundle-charts.mjs');
+      const charts = await bundleCharts(wwwDir);
+      console.error('Bundled CVFR z7-z12: %d tiles, %s.', charts.tiles, human(charts.bytes));
+    }
     writeConfig(embeddedConfig());
     console.error('capacitor.config.json -> embedded build (no server.url).');
-    console.error('Build and test this embedded binary before App Store submission.');
+    console.error('Build and test this embedded binary (APK, or App Store candidate) before release.');
   } else {
     console.error('Config untouched: add --embed to point the native app at it.');
   }
@@ -206,5 +226,5 @@ function main(argv) {
 }
 
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
-  process.exit(main(process.argv));
+  main(process.argv).then((code) => process.exit(code), (e) => { console.error(e.message); process.exit(1); });
 }

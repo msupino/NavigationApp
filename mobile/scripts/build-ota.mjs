@@ -1,8 +1,8 @@
 #!/usr/bin/env node
-// Build the over-the-air bundle the embedded iOS app downloads.
+// Build the over-the-air bundle the embedded apps download.
 //
-// The App Store build carries the web app inside the binary, so a web deploy does not reach
-// it. This packs the same bundle as a zip and writes the manifest docs/app/ota.js reads --
+// The APK and the App Store build carry the web app inside the binary -- so they start with
+// no network at all -- and a web deploy does not reach them. This packs the same bundle as a zip and writes the manifest docs/app/ota.js reads --
 // guideline 2.5.2 permits updating the interpreted code a WebView runs, and nothing else
 // here is native.
 //
@@ -10,8 +10,13 @@
 //   node scripts/build-ota.mjs --version 1.0-ab12cd
 //   node scripts/build-ota.mjs --base-url https://github.com/.../releases/download/ota-1.0-ab12cd
 //
-// The zip is ~28 MB and is NOT committed: upload it as a release asset and commit only the
-// manifest, which is what the app fetches. `mobile/appstore/README.md` has the two commands.
+// The deploy runs it on every production build (.github/workflows/deploy.yml), from the
+// assembled site, and publishes both on the site itself:
+//
+//   node scripts/build-ota.mjs --from site --out site/ota --manifest site/ota/manifest.json \
+//     --version 1.0-<sha> --base-url https://navaid.supino.org/ota
+//
+// The zip is ~28 MB and is NOT committed.
 import fs from 'node:fs';
 import path from 'node:path';
 import zlib from 'node:zlib';
@@ -116,27 +121,32 @@ function arg(name, fallback) {
 function main() {
   const version = arg('version', currentVersion());
   const baseUrl = arg('base-url', 'https://github.com/msupino/NavigationApp/releases/download/ota-' + version);
-  copyBundle();
+  const from = arg('from', null);
+  const out = path.resolve(arg('out', outDir));
+  const manifestOut = path.resolve(arg('manifest', manifestPath));
+  copyBundle(from ? path.resolve(from) : undefined);
   const entries = bundleEntries();
   if (!entries.some((e) => e.name === 'index.html')) {
     throw new Error('index.html is not at the root of the bundle');
   }
   const zip = zipFiles(entries);
   const name = 'navaid-' + version + '.zip';
-  fs.mkdirSync(outDir, { recursive: true });
-  fs.writeFileSync(path.join(outDir, name), zip);
+  fs.mkdirSync(out, { recursive: true });
+  fs.writeFileSync(path.join(out, name), zip);
   const manifest = {
     version,
     url: baseUrl.replace(/\/$/, '') + '/' + name,
     checksum: createHash('sha256').update(zip).digest('hex'),
-    builtAt: new Date().toISOString(),
+    builtAt: (process.env.SOURCE_DATE_EPOCH
+      ? new Date(Number(process.env.SOURCE_DATE_EPOCH) * 1000) : new Date()).toISOString(),
     bytes: zip.length,
   };
-  fs.mkdirSync(path.dirname(manifestPath), { recursive: true });
-  fs.writeFileSync(manifestPath, JSON.stringify(manifest, null, 2) + '\n');
+  fs.mkdirSync(path.dirname(manifestOut), { recursive: true });
+  fs.writeFileSync(manifestOut, JSON.stringify(manifest, null, 2) + '\n');
   console.error('%s -- %d files, %s MB', name, entries.length, (zip.length / 1048576).toFixed(1));
-  console.error('  zip:      %s', path.relative(repoRoot, path.join(outDir, name)));
-  console.error('  manifest: %s (commit this)', path.relative(repoRoot, manifestPath));
+  console.error('  zip:      %s', path.join(out, name));
+  console.error('  manifest: %s', manifestOut);
+  if (from) return 0;
   console.error('\nUpload the zip, then deploy the manifest:');
   console.error('  gh release create ota-%s %s --title "OTA %s" --notes "Web bundle for the embedded iOS app"',
     version, path.relative(repoRoot, path.join(outDir, name)), version);

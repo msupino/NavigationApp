@@ -52,14 +52,51 @@
     },
   };
 
+  // The CVFR chart the APK carries (mobile/scripts/bundle-charts.mjs): z7-z12, in the package
+  // at charts/cvfr/. Shown straight from there, and copied once into the store above -- the
+  // one the offline download fills -- because an update bundle replaces the package's web
+  // files and the copy is what outlives it. Absent from the web app and from update bundles:
+  // the index is simply not there, and none of this does anything.
+  const BUNDLED_INDEX = 'charts/cvfr/index.json';
+  const SEEDED_KEY = 'navaid.bundledChartsSeeded';
+  let bundled = null;                 // Map: mirror URL -> packaged path
+  const bundledReady = !enabled ? Promise.resolve() : fetch(BUNDLED_INDEX)
+    .then(res => (res.ok ? res.json() : null))
+    .then(index => {
+      if (!index || !Array.isArray(index.tiles)) return;
+      bundled = new Map(index.tiles.map(t => [index.base + '/' + t + '.png', 'charts/cvfr/' + t + '.png']));
+    })
+    .catch(() => {});
+
+  async function seedBundled() {
+    await bundledReady;
+    if (!bundled || !bundled.size) return 0;
+    try { if (localStorage.getItem(SEEDED_KEY) === String(bundled.size)) return 0; } catch (e) { /* private */ }
+    const have = new Set((await cache.keys()).map(k => k.url));
+    let copied = 0;
+    for (const [url, local] of bundled) {
+      if (have.has(url)) continue;
+      try {
+        const res = await fetch(local);
+        if (!res.ok) continue;
+        await cache.put(url, res);
+        copied++;
+      } catch (e) { return copied; }   // storage full, app closing: carry on next launch
+    }
+    try { localStorage.setItem(SEEDED_KEY, String(bundled.size)); } catch (e) { /* private */ }
+    return copied;
+  }
+
   async function imageUrl(url) {
     // Only hosts an offline pack can hold: every chart on our mirror, and open flightmaps. Any
     // other host (Satellite, OpenStreetMap) goes straight to the network without a file read.
     if (!enabled || !/^https:\/\/(navaid-tiles\.supino\.org\/|nwy-tiles-api\.prod\.newaydata\.com\/)/.test(url)) return url;
     try {
       const data = await readData(url);
-      return data ? 'data:image/png;base64,' + data : url;
-    } catch (error) { return url; }
+      if (data) return 'data:image/png;base64,' + data;
+    } catch (error) { /* fall through */ }
+    await bundledReady;
+    return (bundled && bundled.get(url)) || url;
   }
 
   let NativeTileLayer;
@@ -97,5 +134,11 @@
     return new NativeTileLayer(url, options);
   }
 
-  window.NavAidNativeTiles = { enabled, storage, imageUrl, tileLayer };
+  window.NavAidNativeTiles = { enabled, storage, imageUrl, tileLayer, seedBundled };
+  // After the chart is up, not while it is being drawn: ~1,500 small file writes.
+  if (enabled) {
+    const later = () => setTimeout(() => { seedBundled().catch(() => {}); }, 20000);
+    if (document.readyState === 'complete') later();
+    else window.addEventListener('load', later);
+  }
 }());

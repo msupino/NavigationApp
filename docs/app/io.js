@@ -8872,7 +8872,7 @@ function buildShareUrl() {
     }
     return triple.join(',');
   }).join(';');
-  const base = location.origin + location.pathname;
+  const base = publicAppUrl();
   const params = new URLSearchParams(location.search);
   // Preserve ?lang= so the receiver opens in the sender's language. Drop
   // any previous share params so re-shares don't double up.

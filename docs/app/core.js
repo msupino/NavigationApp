@@ -5276,6 +5276,13 @@ function liveChartTilesAllowed() {
   }
 }
 const LIVE_CHART_TILES = liveChartTilesAllowed();
+// Where a link someone else will open should point. The embedded app runs from its own package
+// (https://localhost on Android, capacitor://localhost on iOS) -- an address that means nothing
+// on anyone else's phone -- so a shared route or a follow-me link names the live site instead.
+function publicAppUrl() {
+  if (window.__navaidEmbedded === true) return 'https://navaid.supino.org/';
+  return location.origin + location.pathname;
+}
 NavAid.liveChartTiles = LIVE_CHART_TILES;
 function chartTileUrl(kind, remoteUrl, mirrorUrl) {
   if (LOCAL_CHART_TILES) return 'tiles/' + kind + '/{z}/{x}/{y}.png';

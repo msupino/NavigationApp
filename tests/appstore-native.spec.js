@@ -103,3 +103,32 @@ test('the generated embedded app boots with every external request blocked', asy
   expect(await page.evaluate(() => ({ native: NavAidNativeTiles.enabled, leaflet: L.version })))
     .toEqual({ native: true, leaflet: '1.9.4' });
 });
+
+// The APK carries CVFR z7-z12 (mobile/scripts/bundle-charts.mjs). Shown from the package with
+// nothing downloaded, then copied once into the store the offline download fills -- the copy is
+// what survives an update bundle replacing the package's web files.
+test('the CVFR tiles packed in the APK show with nothing downloaded, and are copied into the store once', async ({ page }) => {
+  const base = 'https://navaid-tiles.supino.org/CVFR';
+  await page.route('**/charts/cvfr/index.json', r => r.fulfill({
+    status: 200, contentType: 'application/json',
+    body: JSON.stringify({ chart: 'CVFR', base, minZoom: 7, maxZoom: 7, tiles: ['7/77/52', '7/78/52'] }),
+  }));
+  await page.route('**/charts/cvfr/7/**', r => r.fulfill({
+    status: 200, contentType: 'image/png', body: Buffer.from(PNG, 'base64'),
+  }));
+  const files = await embedded(page);
+  const out = await page.evaluate(async (base) => {
+    const shown = await NavAidNativeTiles.imageUrl(base + '/7/77/52.png');
+    const notPacked = await NavAidNativeTiles.imageUrl(base + '/7/1/1.png');
+    const first = await NavAidNativeTiles.seedBundled();
+    const again = await NavAidNativeTiles.seedBundled();
+    const fromStore = await NavAidNativeTiles.imageUrl(base + '/7/78/52.png');
+    return { shown, notPacked, first, again, fromStore };
+  }, base);
+  expect(out.shown).toBe('charts/cvfr/7/77/52.png');
+  expect(out.notPacked).toBe(base + '/7/1/1.png');
+  expect(out.first).toBe(2);
+  expect(out.again).toBe(0);
+  expect(files.size).toBe(2);
+  expect(out.fromStore).toMatch(/^data:image\/png;base64,/);
+});
