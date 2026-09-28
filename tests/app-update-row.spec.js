@@ -71,11 +71,12 @@ test('an update on mobile data is downloaded now, after asking, and waits for th
   await ask.getByRole('button', { name: 'Download now' }).click();
   // Progress while it downloads: the plugin's percent, and a bar.
   await expect(row).toContainText('Downloading… 45%');
-  await expect(row.locator('.app-update-progress')).toBeVisible();
+  // (State, not on-screen visibility: the menu sheet it sits in is not always open in CI.)
+  await expect(row.locator('.app-update-progress')).not.toHaveAttribute('hidden', '');
   expect(await row.locator('.app-update-progress').evaluate(b => b.value)).toBe(45);
   await page.evaluate(() => window.__ota.finish());
   await expect(row).toContainText('installs the next time NavAid starts');
-  await expect(row.locator('.app-update-progress')).toBeHidden();
+  await expect(row.locator('.app-update-progress')).toHaveAttribute('hidden', '');
   expect(await page.evaluate(() => (window.__ota.listeners.download || []).length)).toBe(0);   // listener removed
   expect(await page.evaluate(() => window.__ota.downloads)).toBe(1);
   expect(dialogs).toEqual([]);                       // asked in the app, never window.confirm
