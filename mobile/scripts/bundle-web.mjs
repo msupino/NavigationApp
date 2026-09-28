@@ -209,9 +209,12 @@ async function main(argv) {
   console.error('Bundled %d files, %s into mobile/www.', manifest.files, human(manifest.bytes));
   if (args.has('--embed')) {
     // The native package only: the update zip is built from copyBundle() alone.
-    const { bundleCharts } = await import('./bundle-charts.mjs');
-    const charts = await bundleCharts(wwwDir);
-    console.error('Bundled CVFR z7-z12: %d tiles, %s.', charts.tiles, human(charts.bytes));
+    // NAVAID_CHARTS=0 leaves them out (CI, which checks the app bundle, not the chart).
+    if (process.env.NAVAID_CHARTS !== '0') {
+      const { bundleCharts } = await import('./bundle-charts.mjs');
+      const charts = await bundleCharts(wwwDir);
+      console.error('Bundled CVFR z7-z12: %d tiles, %s.', charts.tiles, human(charts.bytes));
+    }
     writeConfig(embeddedConfig());
     console.error('capacitor.config.json -> embedded build (no server.url).');
     console.error('Build and test this embedded binary (APK, or App Store candidate) before release.');

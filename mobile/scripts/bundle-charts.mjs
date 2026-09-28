@@ -44,23 +44,39 @@ export function tileList(bounds, zMin, zMax) {
   return out;
 }
 
+const PNG = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+const isPng = (data) => data.length > PNG.length && data.subarray(0, PNG.length).equals(PNG);
+const readOrNull = (file) => {
+  try { return fs.readFileSync(file); } catch (e) { if (e.code === 'ENOENT') return null; throw e; }
+};
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
 async function fetchTile(chart, { z, x, y }) {
+  // Numbers only, from tileList(): the cache path cannot be steered anywhere else.
+  if (![z, x, y].every(Number.isInteger)) throw new Error('bad tile coordinates');
   const rel = `${z}/${x}/${y}.png`;
   const hit = path.join(cacheDir, chart.name, rel);
-  if (fs.existsSync(hit)) return fs.readFileSync(hit);
-  if (fs.existsSync(hit + '.none')) return null;
-  for (let attempt = 0; attempt < 3; attempt++) {
+  const cached = readOrNull(hit);
+  if (cached) return cached;
+  if (readOrNull(hit + '.none')) return null;
+  for (let attempt = 0; attempt < 6; attempt++) {
     try {
       const res = await fetch(`${chart.base}/${rel}`);
       fs.mkdirSync(path.dirname(hit), { recursive: true });
       // No tile there (sea, the edge of the chart): the app shows nothing there either.
-      if (res.status === 404) { fs.writeFileSync(hit + '.none', ''); return null; }
+      if (res.status === 404) { fs.writeFileSync(hit + '.none', 'none'); return null; }
+      // The mirror rate-limits a burst: back off and try again rather than fail the build.
+      if (res.status === 429 || res.status >= 500) throw new Error('HTTP ' + res.status);
       if (!res.ok) throw new Error('HTTP ' + res.status);
       const data = Buffer.from(await res.arrayBuffer());
+      // Only a PNG goes into the app: an error page served with a 200 would otherwise be
+      // packed as a chart tile.
+      if (!isPng(data)) throw new Error('not a PNG');
       fs.writeFileSync(hit, data);
       return data;
     } catch (e) {
-      if (attempt === 2) throw new Error(`${chart.base}/${rel}: ${e.message}`);
+      if (attempt === 5) throw new Error(`${chart.base}/${rel}: ${e.message}`);
+      await sleep(1000 * 2 ** attempt);
     }
   }
   return null;
@@ -85,7 +101,7 @@ export async function bundleCharts(wwwDir, chart = CVFR) {
       bytes += data.length;
     }
   };
-  await Promise.all(Array.from({ length: 16 }, worker));
+  await Promise.all(Array.from({ length: 8 }, worker));
   kept.sort();
   fs.writeFileSync(path.join(outDir, 'index.json'), JSON.stringify({
     chart: chart.name, base: chart.base, minZoom: chart.minZoom, maxZoom: chart.maxZoom, tiles: kept,

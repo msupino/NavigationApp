@@ -252,6 +252,12 @@ jobs:
       - name: Publish the update bundle for the embedded apps
         run: |
           set -euo pipefail
+          # The script comes from main, like the site. Until main has the version that builds
+          # from the assembled site, there is nothing to publish -- say so and carry on.
+          if ! grep -q "arg('from'" m/mobile/scripts/build-ota.mjs; then
+            echo "::notice::main's build-ota.mjs cannot build from the site yet; no update bundle this deploy."
+            exit 0
+          fi
           SHA_M=$(git -C m rev-parse --short HEAD)
           export SOURCE_DATE_EPOCH=$(git -C m log -1 --format=%ct)
           rm -rf site/ota
