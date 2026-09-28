@@ -294,7 +294,7 @@ function measuredHeadingTurnRate(key, heading, sampleTime, receivedAt, disableTu
     rawSlope = slope;
     if (Number.isFinite(slope)) {
       const maxRate = Math.max(0.5, finiteTuneNumber('livePredictorTurnMaxDegSec', 4));
-      const minRate = Math.max(0, finiteTuneNumber('livePredictorTurnMinDegSec', 0.25));
+      const minRate = Math.max(0, finiteTuneNumber('livePredictorTurnMinDegSec', 1));
       if (Math.abs(slope) <= maxRate) {
         // Is it a turn? Above minRate, yes, as before. Below it, a fixed floor cannot tell a
         // gentle turn from GPS-course jitter -- which is why the floor went up to 1 deg/s, and

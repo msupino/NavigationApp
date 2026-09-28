@@ -5,12 +5,14 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { createHash } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
+import { execFileSync } from 'node:child_process';
 
 const scriptDir = path.dirname(fileURLToPath(import.meta.url));
 export const mobileRoot = path.resolve(scriptDir, '..');
 export const repoRoot = path.resolve(mobileRoot, '..');
 export const docsDir = path.join(repoRoot, 'docs');
-export const wwwDir = path.join(mobileRoot, 'www');
+// NAVAID_WWW lets a test build somewhere else instead of over a developer's APK build.
+export const wwwDir = process.env.NAVAID_WWW ? path.resolve(process.env.NAVAID_WWW) : path.join(mobileRoot, 'www');
 export const configPath = path.join(mobileRoot, 'capacitor.config.json');
 
 export const REMOTE_URL = 'https://navaid.supino.org';
@@ -119,6 +121,27 @@ export function embeddedConfig() {
   return config;
 }
 
+// The APK is served at the live site's own address, not Capacitor's default https://localhost.
+// The APK before 1.9 LOADED the live site, so every saved route, recording and setting a pilot
+// has is stored under https://navaid.supino.org -- and a WebView keeps each address's storage
+// apart. Served anywhere else, the update opens on an empty app (1.9.0 did).
+//
+// Android only, which is why it is written into the synced Android config rather than into
+// capacitor.config.json: iOS trusts capacitor://localhost (AppDelegate.isTrustedAppURL) and has
+// no older data to keep. The cost, handled where it matters: at this address every request is
+// answered from the package, so what the site serves that the package does not -- the update
+// manifest (docs/app/ota.js, native HTTP) and the approach plates (io.js plateBase) -- is
+// fetched another way.
+export const ANDROID_HOSTNAME = 'navaid.supino.org';
+export const androidConfigPath = path.join(mobileRoot, 'android/app/src/main/assets/capacitor.config.json');
+export function patchAndroidHostname(file = androidConfigPath) {
+  const config = JSON.parse(fs.readFileSync(file, 'utf8'));
+  if (config.server && config.server.url) throw new Error('remote config: nothing to serve locally');
+  config.server = { ...(config.server || {}), hostname: ANDROID_HOSTNAME, androidScheme: 'https' };
+  fs.writeFileSync(file, JSON.stringify(config, null, '\t') + '\n');
+  return config;
+}
+
 export function writeConfig(config) {
   fs.writeFileSync(configPath, JSON.stringify(config, null, 2) + '\n');
 }
@@ -164,6 +187,9 @@ export function copyBundle(srcDir = docsDir) {
   }
   fs.cpSync(vendorDir, path.join(wwwDir, 'vendor'), { recursive: true });
   fs.writeFileSync(path.join(wwwDir, 'index.html'), embeddedIndex(srcIndex));
+  // A local build (from docs/, not the deployed site) still says which commit it is, the way
+  // the deploy stamps the site: 'v1.0' alone names nothing.
+  if (srcDir === docsDir) stampVersion(path.join(wwwDir, 'app', 'core.js'));
   const bundled = walk(wwwDir);
   const manifest = {
     // SOURCE_DATE_EPOCH (the commit time) when the deploy sets it: every deploy rebuilds the
@@ -180,12 +206,26 @@ export function copyBundle(srcDir = docsDir) {
   return manifest;
 }
 
+function stampVersion(core) {
+  let sha = 'local';
+  try {
+    sha = execFileSync('git', ['rev-parse', '--short', 'HEAD'], { cwd: repoRoot, encoding: 'utf8' }).trim();
+  } catch (e) { /* not a checkout */ }
+  const src = fs.readFileSync(core, 'utf8');
+  fs.writeFileSync(core, src.replace(/version: '([0-9]+\.[0-9]+)(-[A-Za-z0-9]+)?'/, "version: '$1-" + sha + "'"));
+}
+
 function human(bytes) {
   return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
 }
 
 async function main(argv) {
   const args = new Set(argv.slice(2));
+  if (args.has('--android-hostname')) {
+    patchAndroidHostname();
+    console.error('Android config -> served at https://%s (keeps the saved data of the APK before 1.9).', ANDROID_HOSTNAME);
+    return 0;
+  }
   if (args.has('--remote')) {
     writeConfig(remoteConfig());
     console.error('capacitor.config.json -> self-updating remote shell (' + REMOTE_URL + ')');

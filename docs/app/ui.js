@@ -10736,13 +10736,27 @@ function isNativeCapacitorShell() {
 // downloaded chart packs) DEPENDS on the SW — so only skip the legacy local
 // origins, and register normally when the shell shows the live site.
 // The embedded build (APK, App Store) is local too: the app is in the package, and on Android
-// it runs at https://localhost, which the protocol test above does not catch. A service worker
-// there would only cache files that are already on the phone -- and would serve the old ones
-// after an update bundle has replaced them.
+// it is served at https://navaid.supino.org, which the tests above do not catch. A service
+// worker there would only cache files that are already on the phone -- and would serve the old
+// ones after an update bundle has replaced them.
 function isNativeLocalOrigin() {
   return location.hostname === 'app.navaid.local' || location.protocol === 'capacitor:' ||
     window.__navaidEmbedded === true;
 }
+
+// The APK before 1.9 loaded the live site, and its service worker is still registered for
+// https://navaid.supino.org -- the address the embedded APK is served at, so it would go on
+// answering requests there. Unregistered here. Its caches are left alone: they hold chart
+// packs, not the app, and a worker that is gone serves none of them.
+function retireServiceWorkers() {
+  if (!isNativeLocalOrigin() || !('serviceWorker' in navigator) ||
+      typeof navigator.serviceWorker.getRegistrations !== 'function') return Promise.resolve(0);
+  return navigator.serviceWorker.getRegistrations()
+    .then(regs => Promise.all(regs.map(r => r.unregister())).then(() => regs.length))
+    .catch(() => 0);
+}
+window.retireServiceWorkers = retireServiceWorkers;
+retireServiceWorkers();
 
 if ('serviceWorker' in navigator && !isNativeLocalOrigin()) {
   watchBuildUpdateCheckTriggers();

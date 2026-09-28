@@ -33,10 +33,12 @@ async function embedded(page) {
   return files;
 }
 
-test('embedded plates and manifest use the production server', async ({ page }) => {
+// The APK is served at navaid.supino.org itself, where a request never leaves the phone: the
+// plates come from the repository they are published from.
+test('embedded plates come from the published repository, not the address the app is served at', async ({ page }) => {
   await embedded(page);
   expect(await page.evaluate(() => plateUrl('A B.pdf')))
-    .toBe('https://navaid.supino.org/byop/A%20B.pdf');
+    .toBe('https://raw.githubusercontent.com/msupino/NavigationApp/main/docs/byop/A%20B.pdf');
 });
 
 test('native downloaded CVFR survives reload and renders without network or a service worker', async ({ page }) => {
@@ -131,4 +133,25 @@ test('the CVFR tiles packed in the APK show with nothing downloaded, and are cop
   expect(out.again).toBe(0);
   expect(files.size).toBe(2);
   expect(out.fromStore).toMatch(/^data:image\/png;base64,/);
+});
+
+test('a new APK with a new edition of the chart copies its tiles over the old ones', async ({ page }) => {
+  const base = 'https://navaid-tiles.supino.org/CVFR';
+  let id = 'edition-1';
+  await page.route('**/charts/cvfr/index.json', r => r.fulfill({
+    status: 200, contentType: 'application/json',
+    body: JSON.stringify({ chart: 'CVFR', base, minZoom: 7, maxZoom: 7, id, tiles: ['7/77/52'] }),
+  }));
+  await page.route('**/charts/cvfr/7/**', r => r.fulfill({
+    status: 200, contentType: 'image/png', body: Buffer.from(PNG, 'base64'),
+  }));
+  const files = await embedded(page);
+  expect(await page.evaluate(() => NavAidNativeTiles.seedBundled())).toBe(1);
+  expect(await page.evaluate(() => NavAidNativeTiles.bundledSeeded())).toBe(true);
+  id = 'edition-2';                           // the next APK
+  await page.reload();
+  await page.waitForFunction(() => window.NavAidOfflineTiles && typeof map !== 'undefined');
+  expect(await page.evaluate(() => NavAidNativeTiles.bundledSeeded())).toBe(false);
+  expect(await page.evaluate(() => NavAidNativeTiles.seedBundled())).toBe(1);   // replaced, not skipped
+  expect(files.size).toBe(1);
 });
