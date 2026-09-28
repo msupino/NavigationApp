@@ -2,6 +2,10 @@
 // Fixes from the UI audit. Each test pins a specific thing a first-time or phone user
 // could not do before, so a regression shows up as a failing behaviour, not a diff.
 const { test, expect } = require('./_setup');
+const { bootTunes } = require('./_tune');
+// The empty-route hint and first-click priming are featureRouteIntro, which the gist (and so
+// the built-in default) switches off; several tests here are about them.
+test.beforeEach(async ({ page }) => { await bootTunes(page, { featureRouteIntro: true }); });
 
 async function boot(page, w, h) {
   if (w) await page.setViewportSize({ width: w, height: h });

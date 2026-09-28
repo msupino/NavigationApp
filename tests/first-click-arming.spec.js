@@ -4,6 +4,9 @@
 // dropped a waypoint on every returning user who cleared the map and clicked to look at
 // something.
 const { test, expect } = require('./_setup');
+const { bootTunes } = require('./_tune');
+// Shipped off in the gist (and so in the built-in defaults); this spec is about it.
+test.beforeEach(async ({ page }) => { await bootTunes(page, { featureRouteIntro: true }); });
 
 async function fresh(page) {
   await page.goto('?lang=en&nogist');
@@ -189,9 +192,11 @@ test.describe('the featureRouteIntro switch', () => {
     expect(r.mode).toBeNull();
   });
 
-  test('on is the shipped default', async ({ page }) => {
-    await fresh(page);
-    expect(await page.evaluate(() => tune('featureRouteIntro'))).toBe(true);
+  test('off is the shipped default, matching the gist', async ({ page }) => {
+    await page.addInitScript(() => { window.__navaidTuneBoot = {}; });   // no boot override
+    await page.goto('?lang=en&nogist');
+    await page.waitForFunction(() => typeof tune === 'function');
+    expect(await page.evaluate(() => NavAid.tuningDefaults.featureRouteIntro.value)).toBe(false);
   });
 });
 
