@@ -200,6 +200,14 @@
     if ((running && running === manifest.version) || sameBuild(webVersion(), manifest.version)) {
       return { checked: true, updated: false, reason: 'already running it' };
     }
+    // Downloaded already and waiting for the next start (the automatic Wi-Fi check got there
+    // first): not again -- it was 26 MB, and this time it might be on mobile data.
+    try {
+      const next = typeof p.getNextBundle === 'function' ? await p.getNextBundle() : null;
+      if (next && next.id && next.status !== 'error' && next.version === manifest.version) {
+        return { checked: true, updated: false, pending: true, reason: 'already downloaded' };
+      }
+    } catch (e) { /* nothing pending */ }
     try {
       const bundle = await p.download({
         url: manifest.url, version: manifest.version, checksum: manifest.checksum,

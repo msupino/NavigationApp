@@ -208,15 +208,31 @@ const appUpdate = (function () {
     btn.textContent = action === 'download' ? (S.appUpdateDownload || 'Download now') : (S.appUpdateCheck || 'Check again');
     btn.dataset.action = action || '';
   }
+  let refreshing = null;
+  let refreshedAt = 0;
   async function refresh() {
     const o = ota();
     if (!o) return;
-    const first = await o.status();
-    if (first.state === 'none') { row.hidden = true; return; }
-    row.hidden = false;
-    paint({ state: 'unknown' }, 'checking');
-    last = first;
-    paint(last);
+    if (refreshing) return refreshing;
+    refreshing = (async () => {
+      if (!row.hidden) paint(last || { state: 'unknown' }, 'checking');   // while it asks, not after
+      const st = await o.status();
+      if (st.state === 'none') { row.hidden = true; return; }
+      row.hidden = false;
+      last = st;
+      refreshedAt = Date.now();
+      paint(last);
+    })().finally(() => { refreshing = null; });
+    return refreshing;
+  }
+  // Whenever the row comes into view -- the menu opened again -- if the last look is a minute
+  // old: an automatic download may have finished since, and "Update available" would then
+  // offer the same 26 MB again.
+  if (typeof IntersectionObserver === 'function') {
+    new IntersectionObserver((entries) => {
+      if (entries.some(e => e.isIntersecting) && !row.hidden && Date.now() - refreshedAt > 60000 &&
+          btn.dataset.action !== '' ) refresh();
+    }).observe(row);
   }
   btn.addEventListener('click', async () => {
     const o = ota();
@@ -249,7 +265,7 @@ const appUpdate = (function () {
     let r;
     try { r = await o.downloadNow({ manifest: last && last.manifest }); }
     finally { try { if (handle && handle.remove) await handle.remove(); } catch (e) { /* gone */ } pct = null; }
-    if (r && r.updated) { last = { state: 'pending', version: r.version }; paint(last); return; }
+    if (r && (r.updated || r.pending)) { last = { state: 'pending', version: r.version || '' }; paint(last); return; }
     last = await o.status();
     paint(last);
     if (r && r.reason && r.reason !== 'already running it' && typeof showToast === 'function') {
@@ -2859,6 +2875,20 @@ function showRouteLibraryModal(focusSave) {
   if (focusSave) {
     if (typeof defaultSavedRouteName === 'function') nameInput.value = defaultSavedRouteName();
     setTimeout(() => { try { nameInput.focus(); nameInput.select(); } catch (e) { /* */ } }, 0);
+    // An unnamed end point is named by the nearest chart point -- which needs the chart points.
+    // With their overlays off they may never have loaded: load them, and suggest again if the
+    // pilot has not typed over the first suggestion meanwhile.
+    const first = nameInput.value;
+    const jobs = [];
+    if (typeof navWP !== 'undefined' && navWP == null && typeof loadNavWaypoints === 'function') jobs.push(loadNavWaypoints());
+    if (typeof airfields !== 'undefined' && airfields == null && typeof loadAirfields === 'function') jobs.push(loadAirfields());
+    if (jobs.length) {
+      Promise.all(jobs.map(j => Promise.resolve(j).catch(() => null))).then(() => {
+        if (nameInput.value !== first || typeof defaultSavedRouteName !== 'function') return;
+        nameInput.value = defaultSavedRouteName();
+        if (document.activeElement === nameInput) { try { nameInput.select(); } catch (e) { /* */ } }
+      });
+    }
   }
 
   // Which of the two kinds to show. A pilot with a season of recordings opens this menu to
@@ -4262,18 +4292,38 @@ function askRouteOverwrite(entry) {
   });
 }
 
+// The saved-route library as last read, parsed again only when the stored text changes. The
+// Save / My routes row repaints after every route change -- every frame of a waypoint drag -- and
+// parsing a season's library each time was the cost of it.
+const routeFileCache = { raw: undefined, list: [], count: 0, entryJson: new Map() };
+function cachedRouteLibrary() {
+  let raw = null;
+  try { raw = localStorage.getItem('navaid.routes'); } catch (e) { raw = null; }
+  if (raw !== routeFileCache.raw && typeof loadRouteLibrary === 'function') {
+    routeFileCache.raw = raw;
+    routeFileCache.list = loadRouteLibrary();
+    routeFileCache.count = routeFileCache.list.filter(x => x && !x.deleted && x.data).length;
+    routeFileCache.entryJson.clear();
+  }
+  return routeFileCache;
+}
 // The saved entry the route on the map came from, if it still exists.
 function currentSavedRouteEntry() {
   const id = currentRouteLibraryId;
   if (!id || typeof loadRouteLibrary !== 'function') return null;
-  return loadRouteLibrary().find(x => x && x.id === id && !x.deleted && x.data) || null;
+  return cachedRouteLibrary().list.find(x => x && x.id === id && !x.deleted && x.data) || null;
 }
 // Has the route changed since `entry` was saved? A route that is not a saved entry at all has
 // nothing saved to differ from: it is unsaved as soon as it is a route.
 function routeFileDirty(entry) {
   if (state.waypoints.length < 2) return false;
   if (!entry) return true;
-  try { return JSON.stringify(serializeRoute()) !== JSON.stringify(entry.data); } catch (e) { return true; }
+  try {
+    const c = routeFileCache.entryJson;
+    const key = entry.id + '|' + entry.savedAt;
+    if (!c.has(key)) c.set(key, JSON.stringify(entry.data));
+    return JSON.stringify(serializeRoute()) !== c.get(key);
+  } catch (e) { return true; }
 }
 
 // Every Save / My routes row on the page -- the menu's, and the flight plan's while it is open.
@@ -4293,7 +4343,7 @@ function paintRouteFileRows() {
   const tooShort = state.waypoints.length < 2;
   const dirty = routeFileDirty(entry);
   let count = 0;
-  try { count = loadRouteLibrary().filter(x => x && !x.deleted && x.data).length; } catch (e) { count = 0; }
+  try { count = cachedRouteLibrary().count; } catch (e) { count = 0; }
   // The button says Save; which saved route it goes to is a second line of its own. On one
   // line a Latin route name inside a Hebrew label reordered and was cut from the wrong end.
   const saveText = entry

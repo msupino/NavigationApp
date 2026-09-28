@@ -155,3 +155,22 @@ test('a new APK with a new edition of the chart copies its tiles over the old on
   expect(await page.evaluate(() => NavAidNativeTiles.seedBundled())).toBe(1);   // replaced, not skipped
   expect(files.size).toBe(1);
 });
+
+// A copy of the packed tiles that cannot finish (storage full) must not stop updates for good.
+test('a copy that failed does not hold updates back for ever', async ({ page }) => {
+  await page.route('**/charts/cvfr/index.json', r => r.fulfill({
+    status: 200, contentType: 'application/json',
+    body: JSON.stringify({ chart: 'CVFR', base: 'https://navaid-tiles.supino.org/CVFR', minZoom: 7, maxZoom: 7, id: 'e1', tiles: ['7/77/52'] }),
+  }));
+  await page.route('**/charts/cvfr/7/**', r => r.fulfill({ status: 200, contentType: 'image/png', body: Buffer.from(PNG, 'base64') }));
+  await embedded(page);
+  const out = await page.evaluate(async () => {
+    Capacitor.Plugins.Filesystem.writeFile = async () => { throw new Error('No space left'); };
+    const before = await NavAidNativeTiles.bundledSeeded();
+    const copied = await NavAidNativeTiles.seedBundled();
+    return { before, copied, after: await NavAidNativeTiles.bundledSeeded() };
+  });
+  expect(out.before).toBe(false);
+  expect(out.copied).toBe(0);
+  expect(out.after).toBe(true);
+});

@@ -105,3 +105,13 @@ test('the web app has no such row', async ({ page }) => {
   await page.evaluate(() => NavAid.appUpdate.refresh());
   await expect(page.locator('#app-update')).toBeHidden();
 });
+
+test('an update already downloaded and waiting is not downloaded again', async ({ page }) => {
+  const row = await boot(page, { manifest: MANIFEST, network: 'wifi', running: '1.0-0000000' });
+  await page.evaluate((v) => { window.__ota.next = { id: 'dl', version: v }; }, MANIFEST.version);
+  const r = await page.evaluate(() => NavAid.ota.downloadNow({}));
+  expect(r.reason).toBe('already downloaded');
+  expect(await page.evaluate(() => window.__ota.downloads)).toBe(0);
+  await page.evaluate(() => NavAid.appUpdate.refresh());
+  await expect(row).toContainText('installs the next time');
+});
