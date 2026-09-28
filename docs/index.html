@@ -883,6 +883,12 @@
     </div>
 
     <span id="app-version"></span>
+    <!-- The installed app only (ota.js): which build it runs, and an update to take now, on
+         mobile data too. Automatic updates stay Wi-Fi only. -->
+    <div id="app-update" class="app-update" hidden>
+      <span class="app-update-text" aria-live="polite"></span>
+      <button type="button" class="app-update-btn"></button>
+    </div>
     <div id="footer-links">
       <button id="help-trigger" type="button" class="footer-link footer-link-button"
               data-i18n-title="shortcutsHelpButtonTitle" data-i18n-aria="shortcutsHelpAriaLabel">
