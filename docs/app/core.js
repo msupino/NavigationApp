@@ -124,7 +124,7 @@ NavAid.tuningDefaults = {
   headingUpMinDeltaDeg: { value: 3, min: 1, max: 30, step: 1, label: 'Heading-up rotation step (°)' },
   crosshairSizePx: { value: 34, min: 10, max: 120, step: 2, label: 'Centre crosshair size (px)' },
   crosshairWidthPx: { value: 1, min: 1, max: 6, step: 1, label: 'Centre crosshair line (px)' },
-  crosshairColor: { value: '#231f20', type: 'color', label: 'Centre crosshair colour' },
+  crosshairColor: { value: '#231F20', type: 'color', label: 'Centre crosshair colour' },
   crosshairHaloColor: { value: '#ffffff', type: 'color', label: 'Centre crosshair halo' },
   crosshairAlpha: { value: 0.85, min: 0.1, max: 1, step: 0.05, label: 'Centre crosshair opacity' },
 
@@ -632,7 +632,7 @@ NavAid.tuningDefaults = {
   sigwxCoastColor: { value: '#1d4e89', type: 'color', label: 'SIGWX coastline color' },
   sigwxCoastAlpha: { value: 0.9, min: 0, max: 1, step: 0.05, label: 'SIGWX coastline opacity (0-1)' },
   sigwxTblLatOffset: { value: 0, min: -3, max: 3, step: 0.02, label: 'SIGWX table latitude nudge (°) (old table; no longer used by the legend)' },
-  sigwxTblLngOffset: { value: -0.48, min: -4, max: 6, step: 0.02, label: 'SIGWX table longitude nudge (°) (old table; no longer used by the legend)' },
+  sigwxTblLngOffset: { value: 0, min: -4, max: 6, step: 0.02, label: 'SIGWX table longitude nudge (°) (old table; no longer used by the legend)' },
   sigwxTblScale: { value: 1, min: 0.4, max: 2, step: 0.02, label: 'SIGWX table size (old table; no longer used by the legend)' },
   sigwxTblOpacity: { value: 0.92, min: 0.2, max: 1, step: 0.05, label: 'SIGWX table opacity' },
   sigwxLegendTopLat: { value: 33, min: 27, max: 37, step: 0.1, label: 'SIGWX legend: top edge (°N)' },
@@ -816,7 +816,7 @@ NavAid.tuningDefaults = {
     label: 'Update the offline CVFR chart only on a suitable connection' },
   offlineCvfrMinZoom: { value: 7, min: 5, max: 12, step: 1, label: 'Offline CVFR: widest zoom' },
   offlineCvfrMaxZoom: { value: 13, min: 6, max: 13, step: 1, label: 'Offline CVFR: closest zoom' },
-  featureFollowMe: { value: true, type: 'bool', label: 'Feature: share a live position link' },
+  featureFollowMe: { value: false, type: 'bool', label: 'Feature: share a live position link' },
   followMeBroker: { value: 'wss://broker.emqx.io:8084/mqtt', type: 'text',
     label: 'Follow me: public broker WebSocket URL' },
   followMeRateSec: { value: 2, min: 1, max: 30, step: 1, label: 'Follow me: publish every (s)' },
@@ -874,7 +874,7 @@ NavAid.tuningDefaults = {
   // priming that goes with it (an empty map's first plain click drops a waypoint instead of
   // inspecting). Both are the same onboarding gesture, so one switch governs them: off, and
   // the map behaves for everyone the way it does for a pilot who has already seen the hint.
-  featureRouteIntro: { value: false, type: 'bool', label: 'Feature: new-user route intro' },
+  featureRouteIntro: { value: true, type: 'bool', label: 'Feature: new-user route intro' },
   // The inspector stays shut while a real fix is driving the map (recording or showing
   // location). Set true to have a tap open it in flight, the way it used to.
   featureInspectorWhileTracking: { value: false, type: 'bool', label: 'Feature: inspector while tracking' },
@@ -935,7 +935,7 @@ NavAid.tuningDefaults = {
   defaultShowNavWP: { value: true, type: 'bool', label: 'Default: show VFR reporting points' },
   defaultShowAirfields: { value: true, type: 'bool', label: 'Default: show airfields' },
   defaultShowVor: { value: true, type: 'bool', label: 'Default: show VOR stations' },
-  defaultShowHotspots: { value: false, type: 'bool', label: 'Default: show route hotspots' },
+  defaultShowHotspots: { value: true, type: 'bool', label: 'Default: show route hotspots' },
   defaultShowWpNames: { value: true, type: 'bool', label: 'Default: show waypoint names' },
   defaultShowCumTime: { value: true, type: 'bool', label: 'Default: show cumulative time' },
   defaultShowDrift: { value: true, type: 'bool', label: 'Default: show drift lines' },
@@ -946,7 +946,7 @@ NavAid.tuningDefaults = {
   // the gist had no way to hand a fresh phone a talking cockpit.
   defaultVoiceAlerts: { value: false, type: 'bool', label: 'Default: speak alerts' },
   defaultShowMidLeg: { value: false, type: 'bool', label: 'Default: show mid-leg marks' },
-  defaultHighlightDiff: { value: true, type: 'bool', label: 'Default: highlight speed/alt change' },
+  defaultHighlightDiff: { value: false, type: 'bool', label: 'Default: highlight speed/alt change' },
   defaultLimitLegKites: { value: true, type: 'bool', label: 'Default: limit leg kites' },
   defaultShowMsa: { value: false, type: 'bool', label: 'Default: show MSA' },
   defaultShowReporting: { value: false, type: 'bool', label: 'Default: show reporting points' },
@@ -972,7 +972,7 @@ NavAid.tuningDefaults = {
   // the map, however the switch under it was left. It only appears in the APK in any case
   // (see traffic.js: a browser cannot read these feeds), so this is the switch that turns
   // it on for everyone flying with the app, without an app release.
-  featureLiveTraffic: { value: true, type: 'bool', label: 'Feature: live ADS-B traffic' },
+  featureLiveTraffic: { value: false, type: 'bool', label: 'Feature: live ADS-B traffic' },
   featureDensityAltitude: { value: true, type: 'bool', label: 'Feature: density altitude in the airfield panel' },
   defaultShowAirspace: { value: false, type: 'bool', label: 'Default: show airspace areas' },
   airspaceProhibitedColor: { value: '#c0392b', type: 'color', label: 'Prohibited area outline color' },
@@ -1283,13 +1283,6 @@ function applyCachedRemoteConfig() {
   }
 }
 NavAid.gistWarmStart = applyCachedRemoteConfig();
-// Settings in force from the first line of the app, for tests and for reproducing a report:
-// set window.__navaidTuneBoot = { key: value } before the page loads (an init script). Applied
-// like a cached gist, and works with ?nogist. The built-in defaults mirror the live gist, so a
-// test about a feature the gist has switched off asks for it here.
-if (typeof window !== 'undefined' && window.__navaidTuneBoot && typeof window.__navaidTuneBoot === 'object') {
-  applyRemoteConfigValues(window.__navaidTuneBoot);
-}
 // What a key comes back to when the pilot's own value is dropped: the gist's, if the last gist
 // seen sets it, else the built-in default. Non-destructive -- reads, and leaves the value in
 // force alone.

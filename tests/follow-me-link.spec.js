@@ -2007,7 +2007,6 @@ test('storage failure refuses to create a link that cannot publish', async ({ pa
 });
 
 test('a truncated follower URL keeps ordinary route onboarding', async ({ page }) => {
-  await page.addInitScript(() => { window.__navaidTuneBoot = { featureRouteIntro: true }; });   // off in the gist
   await installStub(page);
   await page.goto('?lang=en&nogist&follow=missing-key');
   await page.waitForFunction(() => typeof routePrimingArmed === 'function');
