@@ -13,6 +13,32 @@ building iOS and Android apps from the same static `docs/` app.
 - **Repo:** https://github.com/msupino/NavigationApp
 - **Wiki:** https://github.com/msupino/NavigationApp/wiki — full documentation / תיעוד מלא
 
+## Install the Android app
+
+The APK is published on [GitHub Releases](https://github.com/msupino/NavigationApp/releases)
+(`android-v*` tags, file `navaid-<version>.apk`). It carries the whole app and the CVFR chart
+(z7–z12), so it starts without a network, and it takes web updates by itself: on Wi-Fi
+automatically, or on mobile data from **Menu → App version → Download now**. A new APK is
+needed only for native changes.
+
+**Directly:** download the APK from the latest release, open it, allow *Install unknown apps*
+for your browser if Android asks, and install. It updates an installed NavAid in place (same
+signing key); don't uninstall first, that erases your saved routes.
+
+**With [Obtainium](https://github.com/ImranR98/Obtainium)** — notified of every new APK release:
+
+1. Install Obtainium: from its [releases](https://github.com/ImranR98/Obtainium/releases),
+   download `app-arm64-v8a-release.apk` and install it (or get it from F-Droid / IzzyOnDroid).
+2. In Obtainium tap **Add App**, source URL `https://github.com/msupino/NavigationApp`.
+3. Under the additional options set
+   - *Filter release titles by regular expression*: `NavAid Android APK`
+   - *Filter APKs by regular expression*: `navaid-.*\.apk`
+4. **Add**. An installed NavAid is picked up and tracked; **Update** installs a new release over
+   it, keeping your data.
+
+If Obtainium reports an update while you are already on the latest (the app says `1.10`, the
+release is `android-v1.10.0`), turn off *version detection* in NavAid's settings in Obtainium.
+
 ## Run locally
 
 ```bash
