@@ -81,13 +81,16 @@
   map.addLayer(renderer);
 
   // Country names thin out as the map zooms out: Natural Earth's own label rank says which
-  // matter at a continent's scale (1-2) and which only close in (6+).
+  // matter at a continent's scale (1-2) and which only close in (6+). Cities the same by their
+  // scale rank (0 = Cairo, London; 7-8 = Haifa): the biggest from a continent's view, all of
+  // them by a country's.
   function refreshLabels() {
     const z = map.getZoom();
     const maxRank = z <= 3 ? 2 : z <= 4 ? 3 : z <= 5 ? 4 : z <= 6 ? 5 : 10;
+    const maxCity = z <= 3 ? 0 : z <= 4 ? 1 : z <= 5 ? 3 : z <= 6 ? 4 : 10;
     const turn = -(map.getBearing ? map.getBearing() : 0);
     for (const l of labels) {
-      const show = l.rank <= maxRank;
+      const show = l.city ? l.rank <= maxCity : l.rank <= maxRank;
       l.el.style.display = show ? '' : 'none';
       if (!show) continue;
       const p = map.latLngToLayerPoint(l.at);
@@ -98,7 +101,7 @@
   async function load() {
     if (loaded) return loaded;
     loaded = (async () => {
-      const url = (window.S && S.worldCountriesUrl) || 'data/world-countries.json?v=1';
+      const url = (window.S && S.worldCountriesUrl) || 'data/world-countries.json?v=2';
       const d = await (await fetch(url)).json();
       const key = lang();
       const out = [];
@@ -129,6 +132,18 @@
           map.getPane(LABEL_PANE).appendChild(el);
           labels.push({ el, at: L.latLng(c.at[0], c.at[1]), rank: Number.isFinite(c.rank) ? c.rank : 5 });
         }
+      }
+      // Major cities: a dot and a name. After the countries, so over them.
+      for (const c of d.cities || []) {
+        if (!Array.isArray(c.at)) continue;
+        const el = document.createElement('div');
+        el.className = 'world-label world-city' + (c.cap ? ' world-capital' : '');
+        const span = document.createElement('span');
+        span.dir = 'auto';
+        span.textContent = String(c[key] || c.en || '');     // text, never markup
+        el.appendChild(span);
+        map.getPane(LABEL_PANE).appendChild(el);
+        labels.push({ el, at: L.latLng(c.at[0], c.at[1]), rank: Number.isFinite(c.rank) ? c.rank : 8, city: true });
       }
       rings = out;
       renderer._redraw();                 // draw now, not on the next pan

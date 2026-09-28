@@ -120,3 +120,31 @@ test('country names sit on their place and read level on a turned map, over the 
     expect(o.onTop, JSON.stringify(o)).toBe(true);
   }
 });
+
+test('major cities ship too: capitals and the million-plus, named in English and Hebrew', () => {
+  const d = JSON.parse(fs.readFileSync(path.join(__dirname, '../docs/data/world-countries.json'), 'utf8'));
+  expect(d.cities.length).toBeGreaterThan(500);
+  const jer = d.cities.find(c => c.en === 'Jerusalem');
+  expect(jer.he).toBe('ירושלים');
+  expect(jer.cap).toBe(1);
+  const haifa = d.cities.find(c => c.en === 'Haifa');
+  expect(haifa.he).toBe('חיפה');
+  for (const c of d.cities) {
+    expect(typeof c.en).toBe('string');
+    expect(Array.isArray(c.at) && c.at.length).toBe(2);
+    expect(Number.isFinite(c.rank)).toBe(true);
+  }
+});
+
+test('cities thin out with zoom: the biggest from a continent away, all of them close in', async ({ page }) => {
+  await boot(page);
+  const shown = (name) => page.evaluate((n) => {
+    const el = [...document.querySelectorAll('.world-city span')].find(s => s.textContent === n);
+    return !!el && el.parentElement.style.display !== 'none';
+  }, name);
+  await page.evaluate(() => { map.setView([31, 33], 3, { animate: false }); NavAid.worldOffline.refreshLabels(); });
+  expect(await shown('Cairo')).toBe(true);
+  expect(await shown('Haifa')).toBe(false);
+  await page.evaluate(() => { map.setView([32.8, 35], 8, { animate: false }); NavAid.worldOffline.refreshLabels(); });
+  expect(await shown('Haifa')).toBe(true);
+});
