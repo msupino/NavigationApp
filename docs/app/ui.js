@@ -4107,24 +4107,162 @@ function saveRouteFromHeader(e) {
     ? loadRouteLibrary().find(x => x && x.id === id && !x.deleted && x.data)
     : null;
   if (!existing) { showRouteLibraryModal(true); return; }
-  const msg = (typeof S.routeLibrarySaveConfirm === 'function')
-    ? S.routeLibrarySaveConfirm(existing.name)
-    : ('Overwrite "' + existing.name + '" with the current route?');
-  if (!confirm(msg)) return;
-  const entry = routeLibraryUpdate(id);
-  if (!entry) return;
-  if (typeof refreshRouteLibrary === 'function') refreshRouteLibrary();
-  if (typeof showToast === 'function') {
-    showToast(typeof S.routeLibrarySaved === 'function'
-      ? S.routeLibrarySaved(entry.name) : entry.name + ' saved');
+  // Nothing changed since it was saved: say so rather than ask about overwriting it.
+  if (!routeFileDirty(existing)) {
+    if (typeof showToast === 'function') {
+      showToast(typeof S.routeLibrarySaved === 'function' ? S.routeLibrarySaved(existing.name) : existing.name + ' saved');
+    }
+    return;
+  }
+  // Asked in the app. window.confirm() is silent in the APK's WebView -- it answered "no"
+  // without showing anything, so Save on a route opened from the library did nothing at all.
+  askRouteOverwrite(existing).then((choice) => {
+    if (choice === 'new') { showRouteLibraryModal(true); return; }
+    if (choice !== 'over') return;
+    const entry = routeLibraryUpdate(id);
+    if (!entry) return;
+    if (typeof refreshRouteLibrary === 'function') refreshRouteLibrary();
+    refreshRouteFileRows();
+    if (typeof showToast === 'function') {
+      showToast(typeof S.routeLibrarySaved === 'function'
+        ? S.routeLibrarySaved(entry.name) : entry.name + ' saved');
+    }
+  });
+}
+
+// Save over the entry, save as a new one, or neither. Resolves 'over' | 'new' | null.
+function askRouteOverwrite(entry) {
+  return new Promise((resolve) => {
+    // The name isolated: a Latin route name in a Hebrew sentence otherwise drags the quote and
+    // the question mark to the wrong end ('?"LLHZ–BAZRA"').
+    const shown = '\u2068' + entry.name + '\u2069';
+    const title = typeof S.routeFileOverwriteTitle === 'function'
+      ? S.routeFileOverwriteTitle(shown) : 'Save "' + shown + '"?';
+    if (typeof createDraggableModal !== 'function') { resolve('over'); return; }
+    let answered = false;
+    const done = (v) => { if (!answered) { answered = true; resolve(v); } };
+    const modal = createDraggableModal(title, 'modal follow-me-ask-modal route-overwrite-modal', () => done(null));
+    const body = document.createElement('p');
+    body.className = 'follow-me-ask-text';
+    body.textContent = S.routeFileOverwriteText || 'This route was opened from My routes and has changed since.';
+    const row = document.createElement('div');
+    row.className = 'follow-me-ask-actions route-overwrite-actions';
+    const mk = (cls, text, value) => {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = cls;
+      b.textContent = text;
+      b.addEventListener('click', () => { done(value); modal.close(); });
+      return b;
+    };
+    const over = mk('follow-me-ask-ok route-overwrite-over', '💾 ' + (S.routeFileOverwrite || 'Save over it'), 'over');
+    row.append(
+      mk('follow-me-ask-cancel', S.cancel || 'Cancel', null),
+      mk('route-overwrite-new', '➕ ' + (S.routeFileSaveAsNew || 'Save as a new route…'), 'new'),
+      over);
+    modal.box.append(body, row);
+    modal.show();
+    try { over.focus(); } catch (e) { /* not focusable yet */ }
+  });
+}
+
+// The saved entry the route on the map came from, if it still exists.
+function currentSavedRouteEntry() {
+  const id = currentRouteLibraryId;
+  if (!id || typeof loadRouteLibrary !== 'function') return null;
+  return loadRouteLibrary().find(x => x && x.id === id && !x.deleted && x.data) || null;
+}
+// Has the route changed since `entry` was saved? A route that is not a saved entry at all has
+// nothing saved to differ from: it is unsaved as soon as it is a route.
+function routeFileDirty(entry) {
+  if (state.waypoints.length < 2) return false;
+  if (!entry) return true;
+  try { return JSON.stringify(serializeRoute()) !== JSON.stringify(entry.data); } catch (e) { return true; }
+}
+
+// Every Save / My routes row on the page -- the menu's, and the flight plan's while it is open.
+// Called after every route change (persist), every library change, and on language change;
+// batched to one repaint.
+let routeFileRefreshQueued = false;
+function refreshRouteFileRows() {
+  if (routeFileRefreshQueued) return;
+  routeFileRefreshQueued = true;
+  const run = () => { routeFileRefreshQueued = false; paintRouteFileRows(); };
+  if (typeof requestAnimationFrame === 'function') requestAnimationFrame(run); else setTimeout(run, 0);
+}
+function paintRouteFileRows() {
+  const rows = document.querySelectorAll('.route-file-row');
+  if (!rows.length) return;
+  const entry = currentSavedRouteEntry();
+  const tooShort = state.waypoints.length < 2;
+  const dirty = routeFileDirty(entry);
+  let count = 0;
+  try { count = loadRouteLibrary().filter(x => x && !x.deleted && x.data).length; } catch (e) { count = 0; }
+  // The button says Save; which saved route it goes to is a second line of its own. On one
+  // line a Latin route name inside a Hebrew label reordered and was cut from the wrong end.
+  const saveText = entry
+    ? (typeof S.routeFileSaveTo === 'function' ? S.routeFileSaveTo(entry.name) : 'Save to "' + entry.name + '"')
+    : (S.routeFileSave || 'Save route');
+  const saveMain = entry ? (S.routeFileSaveShort || 'Save') : (S.routeFileSave || 'Save route');
+  const loadText = S.routeFileMyRoutes || 'My routes';
+  for (const row of rows) {
+    const save = row.querySelector('.route-file-save');
+    const load = row.querySelector('.route-file-load');
+    if (save) {
+      save.querySelector('.rf-label').textContent = saveMain;
+      const sub = save.querySelector('.rf-sub');
+      if (sub) { sub.textContent = entry ? entry.name : ''; sub.hidden = !entry; }
+      // Dimmed, never hidden or disabled: pressing it still says why there is nothing to save.
+      // (Not aria-disabled: that tells a screen reader it cannot be pressed, and pressing it is
+      // how the pilot hears why.)
+      save.classList.toggle('is-dim', tooShort);
+      const dot = save.querySelector('.rf-dot');
+      if (dot) {
+        dot.hidden = !dirty;
+        dot.title = dirty ? (S.routeFileUnsaved || 'Unsaved changes') : '';
+      }
+      save.setAttribute('aria-label', saveText + (dirty ? ' — ' + (S.routeFileUnsaved || 'Unsaved changes') : ''));
+      save.title = saveText + (dirty ? ' — ' + (S.routeFileUnsaved || 'Unsaved changes') : '');
+    }
+    if (load) {
+      load.querySelector('.rf-label').textContent = loadText;
+      load.querySelector('.rf-count').textContent = count ? String(count) : '';
+      load.setAttribute('aria-label', loadText + (count ? ' (' + count + ')' : ''));
+    }
   }
 }
+// The same row, built for a panel that is not the menu (the flight plan).
+function buildRouteFileRow(extraClass) {
+  const row = document.createElement('div');
+  row.className = 'route-file-row' + (extraClass ? ' ' + extraClass : '');
+  const mk = (cls, icon, tail) => {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'route-file-btn ' + cls;
+    b.innerHTML = '<span class="rf-icon" aria-hidden="true">' + icon + '</span><span class="rf-label"></span>' + tail;
+    return b;
+  };
+  const save = mk('route-file-save', '💾', '<span class="rf-dot" hidden></span>');
+  save.querySelector('.rf-label').insertAdjacentHTML('afterend', '<bdi class="rf-sub" hidden></bdi>');
+  { const t = document.createElement('span'); t.className = 'rf-text';
+    const l = save.querySelector('.rf-label'), sub = save.querySelector('.rf-sub');
+    l.before(t); t.append(l, sub); }
+  const load = mk('route-file-load', '📂', '<span class="rf-count"></span>');
+  save.onclick = saveRouteFromHeader;
+  load.onclick = loadRouteFromHeader;
+  row.append(save, load);
+  refreshRouteFileRows();
+  return row;
+}
+window.refreshRouteFileRows = refreshRouteFileRows;
+window.buildRouteFileRow = buildRouteFileRow;
 function loadRouteFromHeader(e) {
   if (e) e.stopPropagation();
   showRouteLibraryModal();
 }
 for (const el of document.querySelectorAll('.js-save-route')) el.onclick = saveRouteFromHeader;
 for (const el of document.querySelectorAll('.js-load-route')) el.onclick = loadRouteFromHeader;
+refreshRouteFileRows();
 
 // Draggable inspector — grab the header bar (but not the editable title or the
 // close button) to reposition the panel; the spot persists across selections
@@ -11187,6 +11325,26 @@ const NavWxTime = (function () {
 // they are forecasts valid at a time, so the sheet for 16:00Z is the 18:00Z one rather than
 // a 12:00Z already four hours stale -- and the readout says which one that is, rather than
 // leaving two layers quietly disagreeing about what "now + 3" means.
+// How far down the floating menubar reaches, for the Zulu clock to sit under it (style.css,
+// .zulu-clock). The bar wraps onto a second row when a live position's readout joins it, so a
+// fixed offset cleared one row and let the second cover the clock. Only while the bar is in the
+// top band: dragged down the screen, it is not over the clock and the clock stays put.
+(function trackToolbarBottom() {
+  const tb = document.getElementById('toolbar');
+  if (!tb || typeof ResizeObserver !== 'function') return;
+  const root = document.documentElement.style;
+  const update = () => {
+    const r = tb.getBoundingClientRect();
+    const inTopBand = r.height > 0 && r.top < 60;
+    root.setProperty('--navaid-toolbar-bottom', Math.round(inTopBand ? r.bottom : 48) + 'px');
+  };
+  new ResizeObserver(update).observe(tb);
+  window.addEventListener('resize', update);
+  // A drag moves the bar without resizing it.
+  new MutationObserver(update).observe(tb, { attributes: true, attributeFilter: ['style', 'class'] });
+  update();
+}());
+
 (function mapClock() {
   const el = document.getElementById('map-time');
   const slider = document.getElementById('map-time-slider');
