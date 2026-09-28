@@ -463,7 +463,13 @@ body.theme-light .print-clip-warn { color: #7a4a00; background: rgba(196, 127, 2
 #toolbar .route-file-row .route-file-btn:hover { filter: brightness(1.12); }
 .route-file-row .route-file-btn.is-dim,
 #toolbar .route-file-row .route-file-btn.is-dim { opacity: 0.45; }
-.tb-quick.route-file-row { display: none; }    /* the menubar's pair; shown in the media rule below */
+.tb-quick.route-file-row { display: none; }
+/* Large phone fonts: the two buttons wrap onto a row each rather than cutting their words off,
+   and a label wraps inside its button before it is ever clipped. */
+.route-file-row:not(.route-file-compact) { flex-wrap: wrap; }
+.route-file-row:not(.route-file-compact) .route-file-btn,
+#toolbar .route-file-row:not(.route-file-compact) .route-file-btn { flex: 1 1 150px; overflow: hidden; }
+.route-file-row:not(.route-file-compact) .rf-label { white-space: normal; text-align: center; line-height: 1.15; overflow-wrap: anywhere; }    /* the menubar's pair; shown in the media rule below */
 .route-file-row .rf-text { display: flex; flex-direction: column; align-items: center; min-width: 0; line-height: 1.15; }
 .route-file-row .rf-label { overflow: hidden; text-overflow: ellipsis; max-width: 100%; flex-shrink: 0; }
 .route-file-row .rf-sub {
@@ -8556,3 +8562,8 @@ body.theme-light .airfield-phone-row .airfield-phone:visited { color: #1a5fb4; }
 #toolbar .tb-magvar #magvar-deg::-webkit-inner-spin-button,
 #toolbar .tb-magvar #magvar-deg::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
 #toolbar .tb-magvar #magvar-deg.magvar-readonly { opacity: .75; cursor: default; }
+
+/* The phone's font size reaches every piece of text through the WebView's text zoom (the APK's
+   MainActivity sets it from the system font scale). The browser's own text autosizer would
+   otherwise enlarge some blocks and not others -- large buttons beside small menu rows. */
+html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
