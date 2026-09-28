@@ -6789,7 +6789,12 @@ function restoreRoute() {
 // '/NavigationApp/') — so the deploy pipeline no longer has to rewrite a
 // per-environment absolute path (which 404'd on the custom domain).
 function plateBase(pathname) {
-  if (window.__navaidEmbedded === true) return 'https://navaid.supino.org/byop/';
+  // The embedded app does not ship the plates (mobile/scripts/bundle-web.mjs). On Android it is
+  // served at navaid.supino.org itself, so a request there never leaves the phone: the plates
+  // come from the repository they are published from instead (public, CORS *).
+  if (window.__navaidEmbedded === true) {
+    return 'https://raw.githubusercontent.com/msupino/NavigationApp/main/docs/byop/';
+  }
   let dir = (pathname || location.pathname).replace(/[^/]*$/, '');  // drop filename, keep trailing '/'
   // Preview suffix → shared root. `branch/.+` (not `[^/]+`) so branch names
   // that contain a slash (e.g. feat/loading-charts-indicator) strip fully,

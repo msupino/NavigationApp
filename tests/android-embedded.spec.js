@@ -18,7 +18,7 @@ async function boot(page, embedded) {
   await page.waitForFunction(() => typeof buildShareUrl === 'function' && typeof publicAppUrl === 'function');
 }
 
-test('a shared route from the embedded app opens the live site, not https://localhost', async ({ page }) => {
+test('a shared route from the embedded app opens the live site, not the package address', async ({ page }) => {
   await boot(page, true);
   const out = await page.evaluate(() => {
     state.waypoints = [{ lat: 32.1, lng: 34.9, name: 'A' }, { lat: 32.3, lng: 35.1, name: 'B' }];
@@ -61,7 +61,7 @@ test('the update bundle is built from the assembled production site, and only fr
     execFileSync('node', [path.join(repoRoot, 'mobile/scripts/build-ota.mjs'), '--from', site,
       '--out', out, '--manifest', path.join(out, 'manifest.json'), '--version', '1.0-test',
       '--base-url', 'https://navaid.supino.org/ota'],
-    { env: { ...process.env, SOURCE_DATE_EPOCH: '1790000000' }, stdio: 'pipe' });
+    { env: { ...process.env, SOURCE_DATE_EPOCH: '1790000000', NAVAID_WWW: path.join(tmp, 'www') }, stdio: 'pipe' });
     return JSON.parse(fs.readFileSync(path.join(out, 'manifest.json'), 'utf8'));
   };
   const a = build(path.join(tmp, 'a'));
@@ -89,7 +89,7 @@ test('every production deploy publishes the update bundle on the site', () => {
 
 test('npm run embed prepares Android as well as iOS', () => {
   const pkg = JSON.parse(fs.readFileSync(path.join(repoRoot, 'mobile/package.json'), 'utf8'));
-  expect(pkg.scripts.embed).toMatch(/cap sync$/);
+  expect(pkg.scripts.embed).toContain('cap sync &&');     // both platforms, not `cap sync ios`
   const plugins = fs.readFileSync(path.join(repoRoot, 'mobile/android/capacitor.settings.gradle'), 'utf8');
   expect(plugins).toContain('capgo-capacitor-updater');
   expect(plugins).toContain('capacitor-network');
@@ -113,4 +113,50 @@ test('the web app shows only the web version', async ({ page }) => {
   await page.goto('?lang=en&nogist');
   await page.waitForFunction(() => typeof NavAid.showNativeAppVersion === 'function');
   expect(await page.evaluate(() => document.getElementById('app-version').textContent)).not.toContain('APK');
+});
+
+// The APK before 1.9 loaded the live site, so a pilot's saved routes, recordings and settings
+// are stored under https://navaid.supino.org. 1.9.0 was served at https://localhost and opened
+// on an empty app. The APK is served at the site's own address again -- Android only.
+test('the APK is served at the live site address, keeping the data saved by the APK before it', async () => {
+  const bundle = await import('../mobile/scripts/bundle-web.mjs');
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'navaid-cfg-'));
+  const file = path.join(tmp, 'capacitor.config.json');
+  fs.writeFileSync(file, JSON.stringify(bundle.embeddedConfig()));
+  const patched = bundle.patchAndroidHostname(file);
+  expect(patched.server.hostname).toBe('navaid.supino.org');
+  expect(patched.server.androidScheme).toBe('https');
+  expect(patched.server.url).toBeUndefined();
+  // Not in capacitor.config.json itself: iOS trusts capacitor://localhost only.
+  expect(bundle.embeddedConfig().server.hostname).toBeUndefined();
+  // A remote config is not patched: it loads the site, there is nothing to serve locally.
+  fs.writeFileSync(file, JSON.stringify(bundle.remoteConfig()));
+  expect(() => bundle.patchAndroidHostname(file)).toThrow();
+  fs.rmSync(tmp, { recursive: true, force: true });
+  const pkg = JSON.parse(fs.readFileSync(path.join(repoRoot, 'mobile/package.json'), 'utf8'));
+  expect(pkg.scripts.embed).toMatch(/cap sync && node scripts\/bundle-web\.mjs --android-hostname$/);
+});
+
+test('at the live site address the embedded app still uses the mirror charts and fetches plates from GitHub', async ({ page }) => {
+  await boot(page, true);
+  const out = await page.evaluate(() => ({
+    live: NavAid.liveChartTiles, plate: plateUrl('LLHZ_airport_Chart-p01.png'),
+  }));
+  expect(out.live).toBe(false);
+  expect(out.plate).toBe('https://raw.githubusercontent.com/msupino/NavigationApp/main/docs/byop/LLHZ_airport_Chart-p01.png');
+});
+
+test('the old APK service worker is unregistered in the embedded app', async ({ page }) => {
+  await page.addInitScript(() => {
+    window.__navaidEmbedded = true;
+    window.__unregistered = 0;
+    const reg = { unregister: async () => { window.__unregistered++; return true; } };
+    Object.defineProperty(navigator, 'serviceWorker', { configurable: true, value: {
+      getRegistrations: async () => [reg], register: async () => reg, addEventListener() {},
+    } });
+  });
+  await page.goto('?lang=en&nogist');
+  await page.waitForFunction(() => typeof retireServiceWorkers === 'function');
+  await page.waitForFunction(() => window.__unregistered === 1);
+  expect(await page.evaluate(() => retireServiceWorkers())).toBe(1);
 });

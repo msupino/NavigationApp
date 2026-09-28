@@ -1,8 +1,8 @@
 // The CVFR chart, inside the APK, for the zooms a pilot actually flies it at.
 //
 // A pilot who opens the app for the first time in the aeroplane, or whose phone never sat on
-// Wi-Fi long enough for the offline download, still gets the chart. z7-z12 (~2,800 tiles,
-// ~25 MB) is the chart from "all of Israel" down to the 1:250,000 print read comfortably on a
+// Wi-Fi long enough for the offline download, still gets the chart. z7-z12 (~1,540 tiles with
+// chart on them, ~32 MB) is the chart from "all of Israel" down to the 1:250,000 print read comfortably on a
 // phone; z13 (4x that again) stays a Wi-Fi download (Extra layers -> Download charts for
 // offline).
 //
@@ -13,6 +13,7 @@
 // Tiles are fetched from our mirror once and kept in mobile/.chart-cache (not committed), so
 // rebuilding the APK does not download them again.
 import fs from 'node:fs';
+import { createHash } from 'node:crypto';
 import path from 'node:path';
 import { mobileRoot } from './bundle-web.mjs';
 
@@ -57,7 +58,7 @@ async function fetchTile(chart, { z, x, y }) {
   const rel = `${z}/${x}/${y}.png`;
   const hit = path.join(cacheDir, chart.name, rel);
   const cached = readOrNull(hit);
-  if (cached) return cached;
+  if (cached && isPng(cached)) return cached;
   if (readOrNull(hit + '.none')) return null;
   for (let attempt = 0; attempt < 6; attempt++) {
     try {
@@ -103,8 +104,13 @@ export async function bundleCharts(wwwDir, chart = CVFR) {
   };
   await Promise.all(Array.from({ length: 8 }, worker));
   kept.sort();
+  // Which edition of the chart this is: a new APK with new tiles gets them copied again over
+  // the last APK's (native-tiles.js seedBundled), and the same tiles are not copied twice.
+  const id = createHash('sha256');
+  for (const t of kept) id.update(t).update(fs.readFileSync(path.join(outDir, t + '.png')));
   fs.writeFileSync(path.join(outDir, 'index.json'), JSON.stringify({
-    chart: chart.name, base: chart.base, minZoom: chart.minZoom, maxZoom: chart.maxZoom, tiles: kept,
+    chart: chart.name, base: chart.base, minZoom: chart.minZoom, maxZoom: chart.maxZoom,
+    id: id.digest('hex').slice(0, 16), tiles: kept,
   }) + '\n');
   return { tiles: kept.length, bytes };
 }

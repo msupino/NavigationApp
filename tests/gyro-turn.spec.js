@@ -16,6 +16,12 @@ async function boot(page) {
   await page.evaluate(() => { map.setView([32.1, 34.9], 9); window.gpsLiveOn = true; });
 }
 
+// Calibration flying: four separate 10 s turns (the gyro reporting the opposite sign, as some
+// platforms' axes do -- k has to learn that too), wings level in between.
+const CALIBRATE = `(function (fly, st) {
+  for (let i = 0; i < 4; i++) { fly(st, 10, 3, -3); fly(st, 10, 0, 0); }
+})`;
+
 // Fly `secs` seconds: a GPS fix every second at `rateDeg` of turn (the predictor's input), and
 // gyro events every 100 ms reporting `gyroDeg` about the phone's up axis (flat phone).
 const FLY = `(function (state, secs, rateDeg, gyroDeg) {
@@ -67,13 +73,11 @@ test('uncalibrated, the gyro changes nothing', async ({ page }) => {
 
 test('calibrated, the line bends at the roll-in and straightens at the roll-out -- before GPS sees either', async ({ page }) => {
   await boot(page);
-  const r = await page.evaluate(async (fly) => {
+  const r = await page.evaluate(async ({ fly, cal }) => {
     await NavAidGyro.start(); NavAidGyro.reset(); resetHeadingPredictor();
     const st = { h: 90 };
-    // Calibrate: steady 3 deg/s right turns. The gyro reports the opposite sign (as some
-    // platforms' axes do); k has to learn that too.
-    eval(fly)(st, 40, 3, -3);
-    const cal = NavAidGyro.state();
+    eval(cal)(eval(fly), st);
+    const learned = NavAidGyro.state();
     eval(fly)(st, 8, 0, 0);                      // wings level long enough for GPS to agree
     const level = eval(fly)(st, 1, 0, 0).pop();
     // Roll in: the gyro sees it now; GPS still has a straight window.
@@ -82,10 +86,11 @@ test('calibrated, the line bends at the roll-in and straightens at the roll-out 
     eval(fly)(st, 8, 3, -3);
     // Roll out: the gyro is quiet at once; the GPS window is still full of turn.
     const rollOut = eval(fly)(st, 1, 0, 0).pop();
-    return { cal, level, rollIn, rollOut };
-  }, FLY);
-  expect(r.cal.k).toBeLessThan(-0.8);            // learned: opposite sign, about the same size
-  expect(r.cal.k).toBeGreaterThan(-1.2);
+    return { learned, level, rollIn, rollOut };
+  }, { fly: FLY, cal: CALIBRATE });
+  expect(r.learned.cal).toBe(4);                 // four turns, not forty fixes
+  expect(r.learned.k).toBeLessThan(-0.8);        // learned: opposite sign, about the same size
+  expect(r.learned.k).toBeGreaterThan(-1.2);
   expect(r.level.curved).toBe(false);
   expect(r.rollIn.curved).toBe(true);
   expect(r.rollIn.rate).toBeGreaterThan(2);
@@ -94,11 +99,10 @@ test('calibrated, the line bends at the roll-in and straightens at the roll-out 
 
 test('switched off, or flying the simulator, the gyro is not used', async ({ page }) => {
   await boot(page);
-  const r = await page.evaluate(async (fly) => {
+  const r = await page.evaluate(async ({ fly, cal }) => {
     await NavAidGyro.start(); NavAidGyro.reset(); resetHeadingPredictor();
     const st = { h: 90 };
-    eval(fly)(st, 40, 3, -3);
-    eval(fly)(st, 8, 0, 0);
+    eval(cal)(eval(fly), st);
     setTune('livePredictorGyro', false);
     const off = eval(fly)(st, 1, 0, -3).pop();
     setTune('livePredictorGyro', true);
@@ -107,7 +111,21 @@ test('switched off, or flying the simulator, the gyro is not used', async ({ pag
     const sim = eval(fly)(st, 1, 0, -3).pop();
     window.simOn = false;
     return { off, sim };
-  }, FLY);
+  }, { fly: FLY, cal: CALIBRATE });
   expect(r.off.curved).toBe(false);
   expect(r.sim.curved).toBe(false);
+});
+
+test('one long turn is not four: the gyro stays unused until it has seen separate turns', async ({ page }) => {
+  await boot(page);
+  const r = await page.evaluate(async (fly) => {
+    await NavAidGyro.start(); NavAidGyro.reset(); resetHeadingPredictor();
+    const st = { h: 90 };
+    eval(fly)(st, 40, 3, -3);                    // forty seconds, one turn
+    const learned = NavAidGyro.state();
+    eval(fly)(st, 8, 0, 0);
+    return { learned, rollIn: eval(fly)(st, 1, 0.1, -3).pop() };
+  }, FLY);
+  expect(r.learned.cal).toBe(1);
+  expect(r.rollIn.curved).toBe(false);
 });

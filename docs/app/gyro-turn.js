@@ -20,15 +20,19 @@
 (function () {
   const KEEP_MS = 20000;               // samples kept, comfortably past the GPS window
   const FRESH_MS = 600;                // a gyro reading older than this is not "now"
-  const MIN_CAL = 4;                   // clear-turn windows before k is trusted
+  const MIN_CAL = 4;                   // separate clear turns before k is trusted
+  const NEW_TURN_MS = 8000;            // a clear turn this long after the last one is another turn
   const LP_SEC = 0.15;                 // gyro smoothing time constant
   const samples = [];                  // { t, y, a }: low-passed yaw rate (raw sign, deg/s), its integral
   let lp = null;
   let ang = 0;
   let lastAt = 0;
   let on = false;
-  // Calibration: running (decaying) least squares of GPS rate on gyro mean.
-  let sxy = 0, syy = 0, cal = 0, k = null;
+  // Calibration: running (decaying) least squares of GPS rate on gyro mean. `cal` counts TURNS,
+  // not fixes: a fix a second through one turn is the same evidence again and again, and four
+  // seconds of a single turn -- the phone moved in its mount halfway through, say -- must not be
+  // enough to trust it.
+  let sxy = 0, syy = 0, cal = 0, k = null, lastClearAt = -Infinity;
 
   const tuneOn = () => typeof tune !== 'function' || tune('livePredictorGyro') !== false;
 
@@ -105,7 +109,9 @@
     if (gm == null || Math.abs(gm) < 0.5) return;
     sxy = sxy * 0.9 + gm * gpsRate;
     syy = syy * 0.9 + gm * gm;
-    cal++;
+    const at = times[times.length - 1];
+    if (at - lastClearAt > NEW_TURN_MS) cal++;
+    lastClearAt = at;
     const kk = syy > 0 ? sxy / syy : null;
     // Plausible only: the same rate, give or take the bank and the mount. Anything else is a
     // phone being handled, not a turn being flown.
@@ -120,7 +126,7 @@
     if (g == null || gm == null) return null;
     return (Number.isFinite(gpsRate) ? gpsRate : 0) + k * (g - gm);
   }
-  function reset() { sxy = 0; syy = 0; cal = 0; k = null; }
+  function reset() { sxy = 0; syy = 0; cal = 0; k = null; lastClearAt = -Infinity; }
 
   window.NavAidGyro = { start, stop, observe, fuse, now, reset,
     state: () => ({ on, k, cal, samples: samples.length }), _yawFrom: yawFrom };
