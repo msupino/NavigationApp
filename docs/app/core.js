@@ -5492,7 +5492,7 @@ const _initialView = (() => {
 const map = L.map('map', {
   center: _initialView.center,
   zoom: _initialView.zoom,
-  minZoom: mapMinZoomFor(initialLayer),
+  minZoom: mapMinZoomFor(),
   maxZoom: 15,
   layers: [initialLayer],
   zoomControl: false,
