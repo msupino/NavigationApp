@@ -149,6 +149,7 @@ const NOT_A_SYNCED_SETTING = [
   [/^navaid\.gpsLiveOn$/,        'whether live location is on, per device -- resumed on reload, not synced to others'],
   [/^navaid\.offlinePacks$/,     'which charts and areas this device keeps offline -- storage on this device, not a setting'],
   [/^navaid\.commFail$/,         'a comm failure in progress on this aircraft, resumed on reload -- not a setting'],
+  [/^navaid\.bundledChartsSeeded$/, 'whether the CVFR tiles packed in this APK were copied into this device\'s chart store -- about this phone\'s storage, and syncing it would stop another device ever copying its own'],
   [/^navaid\.otaInstalling$/,   'one launch\'s attempt at installing a downloaded web bundle -- about this device\'s install, not a setting, and syncing it would stop another device ever trying that bundle'],
   [/^navaid\.followMeCode$/,     'the aircraft code typed for a follow-me link -- belongs to the aeroplane being flown from THIS device, not to the pilot account'],
   [/^navaid\.followVerified$/,  'the verify keys this device has seen for Follow me links -- a note about links opened HERE, kept so a link with the key stripped cannot talk this device out of checking signatures; syncing it would spread one device\'s browsing to the others'],

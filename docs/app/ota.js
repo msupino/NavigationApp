@@ -1,11 +1,12 @@
 'use strict';
 
-// Over-the-air updates for the embedded iOS build.
+// Over-the-air updates for the embedded builds: the APK and the App Store app.
 //
-// The Android app and the web app load the live site, so a deploy reaches them the moment it
-// lands. The App Store build cannot: it carries the app inside the binary (see
-// mobile/scripts/bundle-web.mjs and why), and without this every fixed typo would be a
-// submission and a review.
+// The web app loads the live site, so a deploy reaches it the moment it lands. The embedded
+// builds cannot: they carry the app inside the package (see mobile/scripts/bundle-web.mjs and
+// why) -- which is what lets them start with no network at all -- and without this every fixed
+// typo would be a new APK, or a submission and a review. Every production deploy publishes the
+// bundle this reads (.github/workflows/deploy.yml).
 //
 // App Review guideline 2.5.2 allows exactly this and no more: interpreted code -- the HTML,
 // CSS and JavaScript a WebView runs -- may be updated, as long as the app stays the app it

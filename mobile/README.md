@@ -1,10 +1,11 @@
 # NavAid Mobile (Capacitor)
 
-Native iOS and Android shell for NavAid. The WebView loads the **live site**
-(`capacitor.config.json` → `server.url = https://navaid.supino.org`), so the
-installed app **updates itself with every web deploy** — rebuild the native
-app only when the shell itself changes: a Capacitor/plugin upgrade, manifest /
-permission changes, `capacitor.config.json`, icons, or signing.
+Native iOS and Android shell for NavAid. The released apps are the **embedded** build (below):
+the web app is inside the package, so NavAid starts with no network, and each web deploy
+reaches it as an update bundle on the next launch. Rebuild the native app only when the shell
+itself changes: a Capacitor/plugin upgrade, manifest / permission changes, icons, or signing.
+The committed `capacitor.config.json` is the **remote** development shell, which loads the
+live site (`server.url = https://navaid.supino.org`).
 
 Native bits baked into the shell:
 
@@ -28,27 +29,43 @@ Native bits baked into the shell:
 
 ## Two builds: remote and embedded
 
-The default config is the **remote** development/Android shell described above. Use the
-**embedded** build for App Store submission and its TestFlight candidate. It packages the
-web app and pinned Leaflet assets locally. Bundling alone does not guarantee App Review
-acceptance; review evaluates functionality and the complete experience.
+The **embedded** build is what ships: the APK and the App Store app. It packages the web app
+and pinned Leaflet assets, so it starts with no network at all, and the APK also carries the
+CVFR chart at z7-z12 (~1,500 tiles, ~32 MB, `scripts/bundle-charts.mjs`; fetched once into
+the git-ignored `mobile/.chart-cache/`). On first launch those tiles are copied into the same
+on-device store the offline download fills; z13 remains a Wi-Fi download. The **remote**
+config above is the development shell and the one committed.
 
 ```sh
 npm run bundle:check   # validate local assets and dependency integrity
-npm run embed          # docs + vendor -> mobile/www, configure and sync iOS only
+npm run embed          # docs + vendor + CVFR tiles -> mobile/www, sync iOS and Android
 npm run remote         # restore remote configuration and sync native projects
 ```
 
+Building the APK (JDK 21):
+
+```sh
+npm run embed
+cd android && JAVA_HOME=/usr/lib/jvm/java-21-openjdk-amd64 ./gradlew assembleRelease
+cd .. && node scripts/bundle-web.mjs --remote   # back to the committed config
+```
+
+Bump `versionCode` / `versionName` in `android/app/build.gradle` for every APK.
+
 Embedded CVFR downloads use the existing Filesystem plugin and load directly into the map
 and magnifier without a service worker. Plates remain online at the production BYOP URL.
+Shared route and follow-me links name `https://navaid.supino.org/`, never the package's own
+`https://localhost`.
 
-The embedded build can still be updated without a submission: `scripts/build-ota.mjs` packs
-the same bundle as a zip, and `docs/app/ota.js` fetches it, verifies it and arms it for the
-NEXT launch -- never swapping it under a pilot mid-flight. Guideline 2.5.2 allows exactly
-this for interpreted code; native changes still need a release.
+**Updates without a new APK.** Every production deploy (`.github/workflows/deploy.yml`) runs
+`scripts/build-ota.mjs` on the assembled site and publishes `/ota/navaid-1.0-<sha>.zip` and
+`/ota/manifest.json`. `docs/app/ota.js` fetches the manifest on Wi-Fi, downloads and verifies
+the zip, and installs it on the NEXT cold start -- never mid-flight -- rolling back if the new
+bundle does not come up. Update zips carry the web app only, not the chart tiles. Native
+changes (plugins, permissions) still need a new APK. For iOS, guideline 2.5.2 allows exactly
+this for interpreted code.
 
-See [appstore/README.md](appstore/README.md) for archive validation, device checks and the
-two commands that publish a web update.
+See [appstore/README.md](appstore/README.md) for archive validation and device checks.
 
 ## First setup
 
