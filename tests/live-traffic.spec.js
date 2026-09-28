@@ -44,14 +44,10 @@ async function stubNative(page, opts) {
 
 async function boot(page, opts) {
   await stubNative(page, opts);
-  // Switched off by the gist, from the first line of the app.
-  if (opts && opts.feature === false) {
-    await page.addInitScript(() => { window.__navaidTuneBoot = { featureLiveTraffic: false }; });
-  }
   await page.goto('?lang=en&nogist');
   await page.waitForFunction(() => typeof window.trafficRefresh === 'function');
-  // On in the gist and the built-in default; set anyway, so these tests are about the layer
-  // rather than the switch above it.
+  // The feature is off in the shipped gist (featureLiveTraffic): turn it on the way the
+  // gist would, so these tests are about the layer rather than the switch above it.
   if (!opts || opts.feature !== false) {
     await page.evaluate(() => { setTune('featureLiveTraffic', true); refreshTrafficFeature(); });
     await page.waitForTimeout(300);
@@ -94,7 +90,7 @@ test('a plain browser keeps the switch, dimmed, and says why', async ({ page }) 
 });
 
 test('the gist switch is the only thing that takes it away', async ({ page }) => {
-  await boot(page, { feature: false });           // the gist switched off
+  await boot(page, { feature: false });           // shipped state: featureLiveTraffic off
   expect(await page.evaluate(() => tune('featureLiveTraffic'))).toBe(false);
   expect(await frameShown(page)).toBe(false);
   await fly(page);

@@ -41,7 +41,7 @@ test('the gist can turn it off, and does not need an app release to turn it back
   });
   expect(wired.key).toBe('navaid.showHotspots2');   // bumped, so every device re-reads the default
   expect(wired.tunable).toBe('defaultShowHotspots');
-  expect(wired.shipped).toBe(false);         // the app's own default mirrors the gist: off
+  expect(wired.shipped).toBe(true);          // the app's own default is unchanged
 
   // A gist saying false reconciles a device that never chose for itself.
   await page.evaluate(() => {

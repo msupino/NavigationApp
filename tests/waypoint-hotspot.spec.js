@@ -1,9 +1,6 @@
 // @ts-check
 // Route-waypoint hotspot defaults, inspector override, drawing and persistence.
 const { test, expect } = require('./_setup');
-const { bootTunes } = require('./_tune');
-// Shipped off in the gist (and so in the built-in defaults); this spec is about it.
-test.beforeEach(async ({ page }) => { await bootTunes(page, { defaultShowHotspots: true }); });
 
 async function boot(page, lang = 'en') {
   await page.goto(`?lang=${lang}&nogist`);
@@ -60,7 +57,7 @@ test('global hotspot visibility controls only defaults while inspector overrides
     showInspector();
   });
   expect(await page.evaluate(() => ({
-    defaultValue: tune('defaultShowHotspots'),      // on for this spec (bootTunes)
+    defaultValue: NavAid.tuningDefaults.defaultShowHotspots.value,
     drawn: window.__hotspotWaypointIndexes,
     overrides: state.waypoints.map(wp => ({
       own: Object.prototype.hasOwnProperty.call(wp, 'hotspot'),
