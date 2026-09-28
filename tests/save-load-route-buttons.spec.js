@@ -65,14 +65,17 @@ test.describe('Edit-header Save / Load route buttons', () => {
     await page.evaluate(() => { routeLibrarySaveCurrent('LLHZ–BAZRA'); });
     await expect(page.locator('#tool-save-route .rf-label')).toHaveText('שמור');
     await expect(page.locator('#tool-save-route .rf-sub')).toHaveText('LLHZ–BAZRA');
-    const geo = await page.evaluate(() => ({
-      dir: document.documentElement.dir,
-      saveRight: document.getElementById('tool-save-route').getBoundingClientRect().left >
-                 document.getElementById('tool-load-route').getBoundingClientRect().left,
-      sub: document.querySelector('#tool-save-route .rf-sub').tagName,
-    }));
+    const geo = await page.evaluate(() => {
+      const s = document.getElementById('tool-save-route').getBoundingClientRect();
+      const l = document.getElementById('tool-load-route').getBoundingClientRect();
+      // Side by side, Save leads -- on the right in Hebrew. Stacked (a large font, a narrow
+      // panel), Save is on top.
+      const sameRow = Math.abs(s.top - l.top) < 4;
+      return { dir: document.documentElement.dir, leads: sameRow ? s.left > l.left : s.top < l.top,
+        sub: document.querySelector('#tool-save-route .rf-sub').tagName };
+    });
     expect(geo.dir).toBe('rtl');
-    expect(geo.saveRight).toBe(true);
+    expect(geo.leads).toBe(true);
     expect(geo.sub).toBe('BDI');
   });
 
