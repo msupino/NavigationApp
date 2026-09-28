@@ -173,7 +173,9 @@ const appUpdate = (function () {
   if (!row) return null;
   const text = row.querySelector('.app-update-text');
   const btn = row.querySelector('.app-update-btn');
+  const bar = row.querySelector('.app-update-progress');
   let last = null;
+  let pct = null;                    // download progress 0-100 while downloading, from the plugin
   const ota = () => (window.NavAid && NavAid.ota && typeof NavAid.ota.status === 'function') ? NavAid.ota : null;
   const mb = (bytes) => (bytes ? Math.max(1, Math.round(bytes / 1048576)) : 0);
   // A number with its unit, and a build id, read left to right inside a Hebrew sentence: isolated,
@@ -183,7 +185,10 @@ const appUpdate = (function () {
     const version = (window.NavAid && NavAid.version) || '';
     let line = '', action = null;
     if (busy === 'checking') line = S.appUpdateChecking || 'Checking…';
-    else if (busy === 'downloading') line = S.appUpdateDownloading || 'Downloading…';
+    else if (busy === 'downloading') {
+      line = pct != null && typeof S.appUpdateDownloadingPct === 'function'
+        ? S.appUpdateDownloadingPct(pct) : (S.appUpdateDownloading || 'Downloading…');
+    }
     else if (st.state === 'current') { line = S.appUpdateCurrent || 'Up to date'; action = 'check'; }
     else if (st.state === 'available') {
       line = typeof S.appUpdateAvailable === 'function' ? S.appUpdateAvailable(mb(st.bytes) ? ltr(mb(st.bytes) + ' MB') : '') : 'Update available';
@@ -194,6 +199,10 @@ const appUpdate = (function () {
     const sub = document.createElement('small');
     sub.textContent = typeof S.appUpdateVersion === 'function' ? S.appUpdateVersion(ltr(version)) : 'App version ' + version;
     text.appendChild(sub);
+    if (bar) {
+      bar.hidden = busy !== 'downloading';
+      if (pct != null) bar.value = pct; else bar.removeAttribute('value');   // indeterminate until the first report
+    }
     row.classList.toggle('has-update', action === 'download');
     btn.hidden = !action || !!busy;
     btn.textContent = action === 'download' ? (S.appUpdateDownload || 'Download now') : (S.appUpdateCheck || 'Check again');
@@ -223,8 +232,23 @@ const appUpdate = (function () {
         : false;
       if (!ok) return;
     }
+    // The plugin reports progress as it goes ('download', { percent }): 26 MB on mobile data is
+    // long enough to wonder whether anything is happening.
+    pct = null;
     paint(last || {}, 'downloading');
-    const r = await o.downloadNow({ manifest: last && last.manifest });
+    const updater = window.Capacitor && Capacitor.Plugins && Capacitor.Plugins.CapacitorUpdater;
+    let handle = null;
+    try {
+      if (updater && typeof updater.addListener === 'function') {
+        handle = await updater.addListener('download', (e) => {
+          const p = Math.max(0, Math.min(100, Math.round(Number(e && e.percent))));
+          if (Number.isFinite(p) && p !== pct) { pct = p; paint(last || {}, 'downloading'); }
+        });
+      }
+    } catch (e) { handle = null; }
+    let r;
+    try { r = await o.downloadNow({ manifest: last && last.manifest }); }
+    finally { try { if (handle && handle.remove) await handle.remove(); } catch (e) { /* gone */ } pct = null; }
     if (r && r.updated) { last = { state: 'pending', version: r.version }; paint(last); return; }
     last = await o.status();
     paint(last);
