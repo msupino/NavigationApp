@@ -334,22 +334,27 @@
          labels, so the Save/Load route shortcuts live here as a standalone pair
          beside the Edit menu (hidden in the stacked/accordion layout, which
          uses the in-header pair below). -->
-    <div class="tb-quick">
-      <button id="tool-save-route-wide" type="button" class="tb-head-btn js-save-route"
-              data-i18n-title="tbSaveRouteTitle" data-i18n-aria="tbSaveRoute">💾</button>
-      <button id="tool-load-route-wide" type="button" class="tb-head-btn js-load-route"
-              data-i18n-title="tbLoadRouteTitle" data-i18n-aria="tbLoadRoute">📂</button>
+    <div class="tb-quick route-file-row route-file-compact">
+      <button id="tool-save-route-wide" type="button" class="route-file-btn route-file-save js-save-route"
+              data-i18n-title="tbSaveRouteTitle"><span class="rf-icon" aria-hidden="true">💾</span><span class="rf-text"><span class="rf-label"></span><bdi class="rf-sub" hidden></bdi></span><span class="rf-dot" hidden></span></button>
+      <button id="tool-load-route-wide" type="button" class="route-file-btn route-file-load js-load-route"
+              data-i18n-title="tbLoadRouteTitle"><span class="rf-icon" aria-hidden="true">📂</span><span class="rf-label"></span><span class="rf-count"></span></button>
+    </div>
+
+    <!-- Save / My routes, labeled, above the sections (stacked layout and the phone's menu
+         sheet). Two bare icons in a corner of the Edit header were missed; this says what
+         each does and whether the route on the map is saved. Filled in by
+         refreshRouteFileRows() in ui.js; the flight plan carries the same row. -->
+    <div class="route-file-row" id="route-file-row-menu">
+      <button id="tool-save-route" type="button" class="route-file-btn route-file-save js-save-route"
+              data-i18n-title="tbSaveRouteTitle"><span class="rf-icon" aria-hidden="true">💾</span><span class="rf-text"><span class="rf-label"></span><bdi class="rf-sub" hidden></bdi></span><span class="rf-dot" hidden></span></button>
+      <button id="tool-load-route" type="button" class="route-file-btn route-file-load js-load-route"
+              data-i18n-title="tbLoadRouteTitle"><span class="rf-icon" aria-hidden="true">📂</span><span class="rf-label"></span><span class="rf-count"></span></button>
     </div>
 
     <div class="tb-section" data-sec="build">
       <div class="tb-section-head" tabindex="0" role="button" data-i18n-aria="tbSecBuild">
         <span class="tb-head-left">
-          <span class="tb-head-actions">
-            <button id="tool-save-route" type="button" class="tb-head-btn js-save-route"
-                    data-i18n-title="tbSaveRouteTitle" data-i18n-aria="tbSaveRoute">💾</button>
-            <button id="tool-load-route" type="button" class="tb-head-btn js-load-route"
-                    data-i18n-title="tbLoadRouteTitle" data-i18n-aria="tbLoadRoute">📂</button>
-          </span>
           <span class="tb-section-title" data-i18n="tbSecBuild"></span>
         </span>
       </div>
