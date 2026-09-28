@@ -11325,6 +11325,26 @@ const NavWxTime = (function () {
 // they are forecasts valid at a time, so the sheet for 16:00Z is the 18:00Z one rather than
 // a 12:00Z already four hours stale -- and the readout says which one that is, rather than
 // leaving two layers quietly disagreeing about what "now + 3" means.
+// How far down the floating menubar reaches, for the Zulu clock to sit under it (style.css,
+// .zulu-clock). The bar wraps onto a second row when a live position's readout joins it, so a
+// fixed offset cleared one row and let the second cover the clock. Only while the bar is in the
+// top band: dragged down the screen, it is not over the clock and the clock stays put.
+(function trackToolbarBottom() {
+  const tb = document.getElementById('toolbar');
+  if (!tb || typeof ResizeObserver !== 'function') return;
+  const root = document.documentElement.style;
+  const update = () => {
+    const r = tb.getBoundingClientRect();
+    const inTopBand = r.height > 0 && r.top < 60;
+    root.setProperty('--navaid-toolbar-bottom', Math.round(inTopBand ? r.bottom : 48) + 'px');
+  };
+  new ResizeObserver(update).observe(tb);
+  window.addEventListener('resize', update);
+  // A drag moves the bar without resizing it.
+  new MutationObserver(update).observe(tb, { attributes: true, attributeFilter: ['style', 'class'] });
+  update();
+}());
+
 (function mapClock() {
   const el = document.getElementById('map-time');
   const slider = document.getElementById('map-time-slider');

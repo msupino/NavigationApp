@@ -870,9 +870,12 @@ html[dir="rtl"] #toolbar {
 
   /* The floating menu bar sits in the top band (top 12px, ~36px tall). Shift
      the Zulu clock below it so the bar never covers it at narrow desktop widths
-     or in RTL. transform (not margin) keeps the tunable clock margin intact. */
+     or in RTL. transform (not margin) keeps the tunable clock margin intact.
+     Below the bar's REAL bottom (--navaid-toolbar-bottom, measured in ui.js): a
+     fixed 46px cleared one row, and a live position's readout wraps the bar onto
+     a second, which then covered the clock. */
   .leaflet-control.zulu-clock {
-    transform: translateY(46px);
+    transform: translateY(calc(var(--navaid-toolbar-bottom, 48px) - 2px));
   }
 
   #toolbar-toggle,
@@ -1431,9 +1434,9 @@ html[dir="rtl"] .leaflet-control.zulu-clock {
   left: 12px;
   right: auto;
   margin: 0;
-  /* Same vertical drop English uses (below the top band) so it clears the menu
-     bar and matches the English placement. */
-  transform: translateY(46px);
+  /* Same vertical drop English uses: below the menu bar's real bottom, one row
+     or two. */
+  transform: translateY(calc(var(--navaid-toolbar-bottom, 48px) - 2px));
 }
 .coord-readout.show { display: block; }
 /* Measurements read left to right in both languages: "18 kt · 390 ft", not the

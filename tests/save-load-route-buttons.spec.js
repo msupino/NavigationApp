@@ -359,3 +359,25 @@ test('the desktop menubar stays one row at 1280 px, with words from 1440 px', as
     expect(out.label === 'none').toBe(!labeled);
   }
 });
+
+for (const lang of ['en', 'he']) test(`the Zulu clock stays below the desktop menubar when a live readout wraps it onto two rows (${lang})`, async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await page.goto('?lang=' + lang);
+  await page.waitForFunction(() => document.querySelector('.leaflet-control.zulu-clock') && document.getElementById('gps-readout'));
+  const gap = () => page.evaluate(() => {
+    const tb = document.getElementById('toolbar').getBoundingClientRect();
+    const clock = document.querySelector('.leaflet-control.zulu-clock').getBoundingClientRect();
+    return { rows: tb.height > 50 ? 2 : 1, clear: clock.top >= tb.bottom };
+  });
+  expect(await gap()).toEqual({ rows: 1, clear: true });
+  // What a live position does: the readout joins the bar and wraps it.
+  // (Stood in for by a wide element in the same place: the readout only shows with a fix.)
+  await page.evaluate(() => {
+    const s = document.createElement('span');
+    s.style.cssText = 'display:inline-block;width:420px;height:20px';
+    document.getElementById('footer-links').appendChild(s);
+  });
+  await page.waitForFunction(() => document.getElementById('toolbar').getBoundingClientRect().height > 50);
+  await page.waitForTimeout(100);
+  expect(await gap()).toEqual({ rows: 2, clear: true });
+});
