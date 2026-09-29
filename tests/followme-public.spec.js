@@ -105,7 +105,7 @@ test('the layer draws signed public aircraft, refuses a forged one, and fades th
       return { signKey: pair.privateKey, verifyB64: F._b64url.from(new Uint8Array(await crypto.subtle.exportKey('raw', pair.publicKey))) };
     };
     const own = await mk(), forger = await mk();
-    const id = 'AbCdEfGhIjKlMnOp';
+    const id = await F._publicIdForKey(own.verifyB64);   // the id is the key's fingerprint
     const topic = 'navaid/public/v1/' + id;
     const now = Date.now();
     const a = await F._publicPacket(own, { reg: '4X-AAA', lat: 32.1, lng: 34.9, af: 3000, kt: 100, mh: 45, trk: 50, t: now - 1000 });
@@ -118,20 +118,22 @@ test('the layer draws signed public aircraft, refuses a forged one, and fades th
     const label = { who: lab.querySelector('b').textContent, readout: lab.querySelector('small').textContent };
     // Silent past the dim threshold.
     setTune('followMePublicDimSec', 10);
-    const old = await F._publicPacket(own, { reg: '4X-AAA', lat: 32.2, lng: 34.9, af: 3000, kt: 100, trk: 90, t: now - 60000 });
-    await P._onMessage('navaid/public/v1/ZZZZZZZZZZZZZZZZ', old);
+    const other = await mk();
+    const otherId = await F._publicIdForKey(other.verifyB64);
+    const old = await F._publicPacket(other, { reg: '4X-OLD', lat: 32.2, lng: 34.9, af: 3000, kt: 100, trk: 90, t: now - 60000 });
+    await P._onMessage('navaid/public/v1/' + otherId, old, true);    // the relay's retained copy
     P._sweep();
-    const stale = P.list().find(p => p.id === 'ZZZZZZZZZZZZZZZZ').stale;
+    const stale = P.list().find(p => p.id === otherId).stale;
     // Cleared by its owner: gone.
     await P._onMessage(topic, new Uint8Array(0));
-    return { first, afterForge, label, stale, after: P.list().map(p => p.id) };
+    return { first, afterForge, label, stale, after: P.list().map(p => p.id), otherId };
   });
   expect(out.first).toHaveLength(1);
   expect(out.first[0]).toMatchObject({ reg: '4X-AAA', lat: 32.1, af: 3000 });
   expect(out.afterForge[0].lat).toBe(32.1);            // the forger did not move it
   expect(out.label).toEqual({ who: '4X-AAA', readout: '100 kt · 3000 ft' });   // the icon shows the direction
   expect(out.stale).toBe(true);
-  expect(out.after).toEqual(['ZZZZZZZZZZZZZZZZ']);
+  expect(out.after).toEqual([out.otherId]);
 });
 
 test('Extra layers has the switch, and the share dialog the Public option', async ({ page }) => {
@@ -190,7 +192,7 @@ test('the aircraft and its label grow a little zoomed in, and shrink a little zo
     const k = { signKey: pair.privateKey, verifyB64: F._b64url.from(new Uint8Array(await crypto.subtle.exportKey('raw', pair.publicKey))) };
     const size = async (z) => {
       map.setView([32.1, 34.9], z, { animate: false });
-      await P._onMessage('navaid/public/v1/SizeSizeSizeSize', await F._publicPacket(k, { reg: 'X', lat: 32.1, lng: 34.9, af: 1000, kt: 90, trk: 0, t: Date.now() + z }));
+      await P._onMessage('navaid/public/v1/' + await F._publicIdForKey(k.verifyB64), await F._publicPacket(k, { reg: 'X', lat: 32.1, lng: 34.9, af: 1000, kt: 90, trk: 0, t: Date.now() + z }));
       const el = document.querySelector('.public-pilot-mark');
       return { icon: el.offsetWidth, font: parseFloat(getComputedStyle(el.querySelector('.follow-me-label')).fontSize) };
     };
@@ -200,4 +202,39 @@ test('the aircraft and its label grow a little zoomed in, and shrink a little zo
   expect(out.z9.icon).toBeGreaterThan(out.z7.icon);
   expect(out.z12.font).toBeGreaterThan(out.z9.font);
   expect(out.z12.icon / out.z9.icon).toBeLessThanOrEqual(1.6);
+});
+
+test('a packet under another pilot id is refused even by a viewer that never saw the real key', async ({ page }) => {
+  await boot(page);
+  const out = await page.evaluate(async () => {
+    const F = NavAid.followMe, P = NavAid.publicPilots;
+    const mk = async () => {
+      const pair = await crypto.subtle.generateKey({ name: 'ECDSA', namedCurve: 'P-256' }, true, ['sign', 'verify']);
+      return { signKey: pair.privateKey, verifyB64: F._b64url.from(new Uint8Array(await crypto.subtle.exportKey('raw', pair.publicKey))) };
+    };
+    const victim = await mk(), forger = await mk();
+    const victimId = await F._publicIdForKey(victim.verifyB64);
+    // The forger's retained packet is the first thing a newcomer sees under the victim's id.
+    await P._onMessage('navaid/public/v1/' + victimId, await F._publicPacket(forger, { reg: 'FAKE', lat: 31, lng: 34, t: Date.now() }), true);
+    const afterForged = P.list().length;
+    await P._onMessage('navaid/public/v1/' + victimId, await F._publicPacket(victim, { reg: 'REAL', lat: 32, lng: 35, t: Date.now() }));
+    return { afterForged, list: P.list().map(p => p.reg) };
+  });
+  expect(out.afterForged).toBe(0);
+  expect(out.list).toEqual(['REAL']);
+});
+
+test('a live packet from a phone whose clock runs behind is not shown as silent', async ({ page }) => {
+  await boot(page);
+  const stale = await page.evaluate(async () => {
+    const F = NavAid.followMe, P = NavAid.publicPilots;
+    setTune('followMePublicDimSec', 10);
+    const pair = await crypto.subtle.generateKey({ name: 'ECDSA', namedCurve: 'P-256' }, true, ['sign', 'verify']);
+    const k = { signKey: pair.privateKey, verifyB64: F._b64url.from(new Uint8Array(await crypto.subtle.exportKey('raw', pair.publicKey))) };
+    const id = await F._publicIdForKey(k.verifyB64);
+    await P._onMessage('navaid/public/v1/' + id, await F._publicPacket(k, { reg: 'SLOW', lat: 32, lng: 35, t: Date.now() - 120000 }), false);
+    P._sweep();
+    return P.list()[0].stale;
+  });
+  expect(stale).toBe(false);
 });

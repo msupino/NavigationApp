@@ -405,18 +405,31 @@
   function followMePublicOn() {
     try { return publicFeatureOn() && localStorage.getItem(PUBLIC_PREF) === '1'; } catch (e) { return false; }
   }
-  // One public id per DEVICE, not per share: a viewer's map keeps showing the same aircraft
-  // under the same id from one flight to the next. Unrelated to the private link's topic, so
-  // the public feed says nothing about where the private one is.
+  // The public id IS the signing key's fingerprint: the first 16 bytes of the SHA-256 of the
+  // public key, base64url. A viewer checks every packet's key against its id, so a packet for
+  // this aircraft signed by anyone else is refused -- always, not only by viewers who happened
+  // to see the real key first. (Trusting the first key seen was not enough: the relay keeps
+  // only the LAST retained packet per id, so a forger's could be the first one a newcomer saw.)
+  // Unrelated to the private link's topic, so the public feed says nothing about that one.
+  async function publicIdForKey(pkB64) {
+    if (typeof pkB64 !== 'string' || !pkB64 || !(crypto && crypto.subtle)) return null;
+    const d = new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(pkB64)));
+    return b64url.from(d.subarray(0, 16));
+  }
+  // This device's public id for the share running now (null when not sharing). Remembered so
+  // the layer can leave out this device's own aircraft.
+  let ownPublicId = null;
   function followMePublicId() {
-    try {
-      let id = localStorage.getItem(PUBLIC_ID_KEY);
-      if (!id || !/^[A-Za-z0-9_-]{16,32}$/.test(id)) {
-        id = b64url.from(randomBytes(12));
-        localStorage.setItem(PUBLIC_ID_KEY, id);
-      }
-      return id;
-    } catch (e) { return null; }
+    try { return ownPublicId || localStorage.getItem(PUBLIC_ID_KEY) || null; } catch (e) { return ownPublicId; }
+  }
+  async function publicIdFor(s) {
+    if (!s) return null;
+    if (!s.publicId) s.publicId = await publicIdForKey(s.verifyB64);
+    if (s.publicId) {
+      ownPublicId = s.publicId;
+      try { localStorage.setItem(PUBLIC_ID_KEY, s.publicId); } catch (e) { /* private mode */ }
+    }
+    return s.publicId;
   }
   function followMeSetPublic(on) {
     const was = followMePublicOn();
@@ -426,7 +439,7 @@
     if (typeof window.refreshPublicPilotsFeature === 'function') window.refreshPublicPilotsFeature();
   }
   function clearPublic(s) {
-    const id = followMePublicId();
+    const id = s && s.publicId;
     if (!s || !s.client || !s.client.ready || !id) return false;
     try { s.client.publish(publicTopicFor(id), new Uint8Array(0), { retain: true, qos: 0 }); return true; }
     catch (e) { return false; }
@@ -1095,7 +1108,7 @@
         trk: Number.isFinite(fix.trk) ? Math.round(fix.trk) : null,
         t: now,
       }).catch(() => null) : null;
-      const pubId = pub ? followMePublicId() : null;
+      const pubId = pub ? await publicIdFor(s).catch(() => null) : null;
       // Avoid waiting behind a Stop that deliberately holds the lifecycle lock through
       // PUBACK. Shared storage provides the cross-tab revocation signal synchronously here.
       if (session !== s || s.status === 'stopping' || !sessionAuthorized(s)) {
@@ -1756,7 +1769,8 @@
       if (p && p.el) p.el.remove();
       pilots.delete(id);
     }
-    async function onMessage(topic, payload) {
+    const MAX_PILOTS = 200;          // a flood of made-up ids must not bury the map
+    async function onMessage(topic, payload, retained) {
       const m = /^navaid\/public\/v1\/([A-Za-z0-9_-]{16,32})$/.exec(topic);
       if (!m) return;
       const id = m[1];
@@ -1767,23 +1781,30 @@
       if (!msg || msg.v !== 1 || typeof msg.pk !== 'string' || typeof msg.sig !== 'string') return;
       if (!Number.isFinite(msg.lat) || msg.lat < -90 || msg.lat > 90 ||
           !Number.isFinite(msg.lng) || msg.lng < -180 || msg.lng > 180 || !Number.isFinite(msg.t)) return;
-      const first = keys.get(id);
-      if (first && first !== msg.pk) return;          // someone else's key on this aircraft
+      // The id is the key's fingerprint: a packet whose key does not hash to its id is someone
+      // else's, whatever it says.
       try {
+        if (keys.get(id) !== msg.pk) {
+          if ((await publicIdForKey(msg.pk)) !== id) return;
+          keys.set(id, msg.pk);
+        }
         const { sig, ...rest } = msg;
         const vk = await importVerifyKey(msg.pk);
         if (!vk || !(await crypto.subtle.verify(SIGN_PARAMS, vk, b64url.to(sig), signedBytes(rest)))) return;
       } catch (e) { return; }
-      if (!first) keys.set(id, msg.pk);
       const now = Date.now();
       if ((now - msg.t) / 1000 > dropSec() || msg.t > now + 300000) return;   // long gone, or from the future
+      if (!pilots.has(id) && pilots.size >= MAX_PILOTS) return;
       const p = pilots.get(id) || {};
       if (p.fix && msg.t <= p.fix.t) return;           // older than what is drawn
       p.fix = { reg: typeof msg.reg === 'string' ? msg.reg.slice(0, 16) : '', lat: msg.lat, lng: msg.lng,
                 af: Number.isFinite(msg.af) ? msg.af : null, kt: Number.isFinite(msg.kt) ? msg.kt : null,
                 mh: Number.isFinite(msg.mh) ? msg.mh : null,
                 trk: Number.isFinite(msg.trk) ? msg.trk : null, t: msg.t };
-      p.at = Math.min(now, msg.t);
+      // How old it is: a live packet left the aeroplane just now, whatever its phone's clock says
+      // (a clock running behind made a flying aircraft look silent). Only the relay's retained
+      // copy -- possibly from a share that ended hours ago -- is aged by its own stamp.
+      p.at = retained ? Math.min(now, msg.t) : now;
       pilots.set(id, p);
       draw(p);
       sweep();
@@ -1819,7 +1840,7 @@
       if (client || typeof map === 'undefined' || !allowed()) return;
       client = mqttConnect(brokerUrl(), { clientId: 'navaid-pub-' + b64url.from(randomBytes(6)) });
       client.onOpen = () => client.subscribe(PUBLIC_WILDCARD);
-      client.onMessage = (topic, payload) => { onMessage(topic, payload); };
+      client.onMessage = (topic, payload, retained) => { onMessage(topic, payload, retained); };
       map.on('move zoom viewreset resize', onMove);
       map.on('rotate zoomend', onTurn);
       timer = setInterval(sweep, 10000);
@@ -1855,7 +1876,7 @@
     _encodeLength: encodeLength, _readLength: readLength,
     age: followMeAge, topicFor, brokerUrl, importKey, randomBytes,
     publicOn: followMePublicOn, setPublic: followMeSetPublic, publicId: followMePublicId,
-    publicTopicFor, _publicPacket: publicPacket,
+    publicTopicFor, _publicPacket: publicPacket, _publicIdForKey: publicIdForKey,
   };
   window.followMeAge = followMeAge;
 
