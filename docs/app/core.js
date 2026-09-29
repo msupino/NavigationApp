@@ -2998,6 +2998,7 @@ window.S = Object.assign({
   offlineCvfrRepair: '⬇ Download missing CVFR tiles',
   offlineCvfrRepairTitle: 'Fetch only the missing CVFR tiles now',
   offlineDelete: 'Clear offline CVFR',
+  offlineDeleteConfirmKeep: function (a, b) { return 'Clear the downloaded CVFR tiles from this device? The built-in chart (zooms ' + a + '–' + b + ') stays.'; },
   offlineDeleteTitle: 'Remove the downloaded CVFR chart from this device; automatic maintenance resumes next time the app opens',
   offlineDeleteConfirm: 'Clear the offline CVFR chart from this device?',
   tbLegDir: '🧭 Route direction',

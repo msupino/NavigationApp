@@ -66,8 +66,10 @@ test('native downloaded CVFR survives reload and renders without network or a se
   });
   expect(loaded.complete).toBe(true);
   expect(loaded.src).toMatch(/^data:image\/png;base64,/);
+  // Zoom 7 is within the built-in chart an APK carries (7-12), which Clear offline CVFR keeps.
+  const kept = files.size;
   await page.evaluate(() => NavAidOfflineTiles.deletePack());
-  expect(files.size).toBe(0);
+  expect(files.size).toBe(kept);
 });
 
 test('failed native writes cannot report a ready chart pack', async ({ page }) => {
@@ -173,4 +175,30 @@ test('a copy that failed does not hold updates back for ever', async ({ page }) 
   expect(out.before).toBe(false);
   expect(out.copied).toBe(0);
   expect(out.after).toBe(true);
+});
+
+// Clear offline CVFR removes what was downloaded, and keeps the chart the APK carries: after an
+// update the package's own files are out of reach, so a cleared built-in chart would be gone
+// until a Wi-Fi download.
+test('Clear offline CVFR keeps the built-in zooms and removes only what was downloaded beyond them', async ({ page }) => {
+  const base = 'https://navaid-tiles.supino.org/CVFR';
+  await page.route('**/charts/cvfr/index.json', r => r.fulfill({
+    status: 200, contentType: 'application/json',
+    body: JSON.stringify({ chart: 'CVFR', base, minZoom: 7, maxZoom: 7, id: 'e1', tiles: ['7/77/52'] }),
+  }));
+  await page.route('**/charts/cvfr/7/**', r => r.fulfill({ status: 200, contentType: 'image/png', body: Buffer.from(PNG, 'base64') }));
+  const files = await embedded(page);
+  const out = await page.evaluate(async () => {
+    await NavAidNativeTiles.seedBundled();                        // the built-in z7 tile
+    await NavAidOfflineTiles.downloadPack(null, 8, 8);            // and a downloaded z8
+    const before = (await (await NavAidNativeTiles.storage.open()).keys()).map(k => k.url);
+    await NavAidOfflineTiles.deletePack();
+    const after = (await (await NavAidNativeTiles.storage.open()).keys()).map(k => k.url);
+    return { before, after, zooms: NavAidNativeTiles.builtinZooms() };
+  });
+  expect(out.zooms).toEqual({ min: 7, max: 7 });
+  expect(out.before.some(u => /\/CVFR\/8\//.test(u))).toBe(true);
+  expect(out.after.every(u => /\/CVFR\/7\//.test(u))).toBe(true);    // z8 gone
+  expect(out.after).toContain(base + '/7/77/52.png');                  // built-in kept
+  expect(files.size).toBe(out.after.length);
 });
