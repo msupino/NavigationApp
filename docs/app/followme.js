@@ -1793,6 +1793,8 @@
       try {
         if (keys.get(id) !== msg.pk) {
           if ((await publicIdForKey(msg.pk)) !== id) return;
+          // Bounded like the aircraft: keys of ids no longer drawn are forgotten first.
+          if (keys.size >= MAX_PILOTS * 2) for (const k of [...keys.keys()]) if (!pilots.has(k)) keys.delete(k);
           keys.set(id, msg.pk);
         }
         const { sig, ...rest } = msg;
