@@ -1717,7 +1717,12 @@
         pane().appendChild(p.el);
       }
       const f = p.fix;
-      const px = Math.round(Number(tune('followMePlanePx', 26)) || 26);
+      // A little larger zoomed in, a little smaller zoomed out: at zoom 9 as set, ~12% a level,
+      // within 80-160%. A fixed size read as too small close in and crowded far out.
+      const grow = Number(tune('followMePublicZoomGrow', 0.12));
+      const scale = Math.max(0.8, Math.min(1.6, 1 + (map.getZoom() - 9) * (Number.isFinite(grow) ? grow : 0.12)));
+      const px = Math.round((Number(tune('followMePlanePx', 26)) || 26) * scale);
+      p.el.style.fontSize = (12 * scale).toFixed(1) + 'px';      // the label's size (em below)
       const turn = (Number.isFinite(f.trk) ? f.trk : 0) + (typeof map.getBearing === 'function' ? map.getBearing() : 0);
       // Beside the icon: who, and what they are doing -- speed and altitude, as the pilot's own
       // screen shows them. No heading figure: the icon already points along the true track.
@@ -1816,12 +1821,12 @@
       client.onOpen = () => client.subscribe(PUBLIC_WILDCARD);
       client.onMessage = (topic, payload) => { onMessage(topic, payload); };
       map.on('move zoom viewreset resize', onMove);
-      map.on('rotate', onTurn);
+      map.on('rotate zoomend', onTurn);
       timer = setInterval(sweep, 10000);
     }
     function stop() {
       if (client) { try { client.close(); } catch (e) { /* gone */ } client = null; }
-      if (typeof map !== 'undefined') { map.off('move zoom viewreset resize', onMove); map.off('rotate', onTurn); }
+      if (typeof map !== 'undefined') { map.off('move zoom viewreset resize', onMove); map.off('rotate zoomend', onTurn); }
       clearInterval(timer);
       for (const id of [...pilots.keys()]) remove(id);
     }

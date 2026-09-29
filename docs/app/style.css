@@ -8656,6 +8656,7 @@ body.deck-on .modal-back.flight-plan > .modal.wide .fp-scroll {
   /* Its own backing: over a chart full of names the readout otherwise ran into them. */
   background: rgba(255, 255, 255, 0.88); border: 1px solid rgba(122, 79, 214, 0.55);
   border-radius: 4px; padding: 1px 4px; text-shadow: none;
+  font-size: 1em;                  /* follows the mark, which scales with zoom (followme.js) */
 }
 body.theme-dark .public-pilot-label { background: rgba(24, 28, 36, 0.88); }
 .public-pilot-label small { font-size: 0.85em; font-weight: 600; white-space: nowrap; }

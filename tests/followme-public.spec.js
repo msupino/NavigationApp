@@ -181,3 +181,23 @@ test('the switch is dimmed, not hidden, and says why while this device does not 
   await expect(label).toHaveClass(/is-dim/);
   await expect(label).toHaveAttribute('title', /Public to see others/);
 });
+
+test('the aircraft and its label grow a little zoomed in, and shrink a little zoomed out', async ({ page }) => {
+  await boot(page);
+  const out = await page.evaluate(async () => {
+    const F = NavAid.followMe, P = NavAid.publicPilots;
+    const pair = await crypto.subtle.generateKey({ name: 'ECDSA', namedCurve: 'P-256' }, true, ['sign', 'verify']);
+    const k = { signKey: pair.privateKey, verifyB64: F._b64url.from(new Uint8Array(await crypto.subtle.exportKey('raw', pair.publicKey))) };
+    const size = async (z) => {
+      map.setView([32.1, 34.9], z, { animate: false });
+      await P._onMessage('navaid/public/v1/SizeSizeSizeSize', await F._publicPacket(k, { reg: 'X', lat: 32.1, lng: 34.9, af: 1000, kt: 90, trk: 0, t: Date.now() + z }));
+      const el = document.querySelector('.public-pilot-mark');
+      return { icon: el.offsetWidth, font: parseFloat(getComputedStyle(el.querySelector('.follow-me-label')).fontSize) };
+    };
+    return { z7: await size(7), z9: await size(9), z12: await size(12) };
+  });
+  expect(out.z12.icon).toBeGreaterThan(out.z9.icon);
+  expect(out.z9.icon).toBeGreaterThan(out.z7.icon);
+  expect(out.z12.font).toBeGreaterThan(out.z9.font);
+  expect(out.z12.icon / out.z9.icon).toBeLessThanOrEqual(1.6);
+});
