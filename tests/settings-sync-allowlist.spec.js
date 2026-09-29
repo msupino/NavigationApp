@@ -149,6 +149,7 @@ const NOT_A_SYNCED_SETTING = [
   [/^navaid\.gpsLiveOn$/,        'whether live location is on, per device -- resumed on reload, not synced to others'],
   [/^navaid\.offlinePacks$/,     'which charts and areas this device keeps offline -- storage on this device, not a setting'],
   [/^navaid\.commFail$/,         'a comm failure in progress on this aircraft, resumed on reload -- not a setting'],
+  [/^navaid\.bundledCharts$/, 'which chart and zooms this APK carries built in -- about this phone\'s package, so Clear offline CVFR keeps them'],
   [/^navaid\.bundledChartsSeedFailed$/, 'a copy of the packed CVFR tiles that could not finish on this device (storage full) -- about this phone, not a setting'],
   [/^navaid\.bundledChartsSeeded$/, 'whether the CVFR tiles packed in this APK were copied into this device\'s chart store -- about this phone\'s storage, and syncing it would stop another device ever copying its own'],
   [/^navaid\.otaInstalling$/,   'one launch\'s attempt at installing a downloaded web bundle -- about this device\'s install, not a setting, and syncing it would stop another device ever trying that bundle'],

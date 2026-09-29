@@ -63,6 +63,10 @@
   // away the packed tiles not copied, but a phone that can never update is worse, and every one
   // of those tiles can still be downloaded.
   const SEED_FAILED_KEY = 'navaid.bundledChartsSeedFailed';
+  // Which tiles came with the APK (chart, zooms), remembered on the device: after an update the
+  // package's own files are out of reach, and Clear offline CVFR must still know which of the
+  // stored tiles are the built-in chart it keeps.
+  const BUILTIN_KEY = 'navaid.bundledCharts';
   let bundled = null;                 // Map: mirror URL -> packaged path
   let bundledId = '';                 // which chart edition the APK carries (index.json `id`)
   const bundledReady = !enabled ? Promise.resolve() : fetch(BUNDLED_INDEX)
@@ -71,6 +75,10 @@
       if (!index || !Array.isArray(index.tiles)) return;
       bundled = new Map(index.tiles.map(t => [index.base + '/' + t + '.png', 'charts/cvfr/' + t + '.png']));
       bundledId = String(index.id || index.tiles.length);
+      try {
+        localStorage.setItem(BUILTIN_KEY, JSON.stringify({
+          chart: index.chart || 'CVFR', base: index.base, minZoom: index.minZoom, maxZoom: index.maxZoom }));
+      } catch (e) { /* private */ }
     })
     .catch(() => {});
   const seededId = () => { try { return localStorage.getItem(SEEDED_KEY); } catch (e) { return null; } };
@@ -158,7 +166,30 @@
     return new NativeTileLayer(url, options);
   }
 
-  window.NavAidNativeTiles = { enabled, storage, imageUrl, tileLayer, seedBundled, bundledSeeded };
+  // Is this stored tile part of the chart the APK carries? Clear offline CVFR keeps those: the
+  // built-in chart is the offline floor, and once the app has taken an update it cannot be
+  // copied out of the package again.
+  // Not recorded (an app already running an update when this was added never saw the package's
+  // index): what every APK since 1.9 has carried, CVFR 7-12 (mobile/scripts/bundle-charts.mjs).
+  // Keeping those on a clear is harmless even where they were downloaded: the same chart.
+  const BUILTIN_DEFAULT = { chart: 'CVFR', base: 'https://navaid-tiles.supino.org/CVFR', minZoom: 7, maxZoom: 12 };
+  function builtinRecord() {
+    try { return JSON.parse(localStorage.getItem(BUILTIN_KEY) || 'null') || BUILTIN_DEFAULT; } catch (e) { return BUILTIN_DEFAULT; }
+  }
+  function builtinTile(url) {
+    if (!enabled) return false;
+    const b = builtinRecord();
+    if (!b || !b.base || typeof url !== 'string' || url.indexOf(b.base + '/') !== 0) return false;
+    const z = Number(url.slice(b.base.length + 1).split('/')[0]);
+    return Number.isFinite(z) && z >= b.minZoom && z <= b.maxZoom;
+  }
+  function builtinZooms() {
+    if (!enabled) return null;
+    const b = builtinRecord();
+    return b && Number.isFinite(b.minZoom) && Number.isFinite(b.maxZoom) ? { min: b.minZoom, max: b.maxZoom } : null;
+  }
+
+  window.NavAidNativeTiles = { enabled, storage, imageUrl, tileLayer, seedBundled, bundledSeeded, builtinTile, builtinZooms };
   // After the chart is up, not while it is being drawn: ~1,500 small file writes.
   if (enabled) {
     const later = () => setTimeout(() => { seedBundled().catch(() => {}); }, 20000);
