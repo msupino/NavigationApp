@@ -124,15 +124,17 @@ test('the layer draws signed public aircraft, refuses a forged one, and fades th
     await P._onMessage('navaid/public/v1/' + otherId, old, true);    // the relay's retained copy
     P._sweep();
     const stale = P.list().find(p => p.id === otherId).stale;
+    const staleLabel = [...document.querySelectorAll('.public-pilot-mark small')].map(e => e.textContent).find(t => /min/.test(t));
     // Cleared by its owner: gone.
     await P._onMessage(topic, new Uint8Array(0));
-    return { first, afterForge, label, stale, after: P.list().map(p => p.id), otherId };
+    return { first, afterForge, label, stale, staleLabel, after: P.list().map(p => p.id), otherId };
   });
   expect(out.first).toHaveLength(1);
   expect(out.first[0]).toMatchObject({ reg: '4X-AAA', lat: 32.1, af: 3000 });
   expect(out.afterForge[0].lat).toBe(32.1);            // the forger did not move it
   expect(out.label).toEqual({ who: '4X-AAA', readout: '100 kt · 3000 ft' });   // the icon shows the direction
   expect(out.stale).toBe(true);
+  expect(out.staleLabel).toBe('100 kt · 3000 ft · 1 min');   // how long ago it was last heard
   expect(out.after).toEqual([out.otherId]);
 });
 

@@ -1739,8 +1739,12 @@
       const turn = (Number.isFinite(f.trk) ? f.trk : 0) + (typeof map.getBearing === 'function' ? map.getBearing() : 0);
       // Beside the icon: who, and what they are doing -- speed and altitude, as the pilot's own
       // screen shows them. No heading figure: the icon already points along the true track.
+      // A silent aircraft says how long ago it was last heard: faded alone, 3 minutes and 25
+      // looked the same.
+      const silentMin = p.at ? Math.floor((Date.now() - p.at) / 60000) : 0;
+      const quiet = p.at && (Date.now() - p.at) / 1000 > dimSec() ? Math.max(1, silentMin) + ' min' : null;
       const readout = [Number.isFinite(f.kt) ? f.kt + ' kt' : null,
-                       Number.isFinite(f.af) ? f.af + ' ft' : null].filter(Boolean).join(' · ');
+                       Number.isFinite(f.af) ? f.af + ' ft' : null, quiet].filter(Boolean).join(' · ');
       p.el.style.width = px + 'px';
       p.el.style.height = px + 'px';
       p.el.innerHTML = '<span class="follow-me-arrow" style="transform:rotate(' + turn + 'deg)">'
@@ -1761,7 +1765,10 @@
       for (const [id, p] of pilots) {
         const age = (now - p.at) / 1000;
         if (age > dropSec()) { if (p.el) p.el.remove(); pilots.delete(id); continue; }
-        if (p.el) p.el.classList.toggle('public-pilot-stale', age > dimSec());
+        if (p.el) {
+          p.el.classList.toggle('public-pilot-stale', age > dimSec());
+          if (age > dimSec()) draw(p);                 // its "N min" moves on
+        }
       }
     }
     function remove(id) {
@@ -1834,7 +1841,10 @@
     function fitAll() {
       const pts = [...pilots.values()].map(p => [p.fix.lat, p.fix.lng]);
       if (!pts.length || typeof L === 'undefined') return;
-      map.fitBounds(L.latLngBounds(pts).pad(0.2), { maxZoom: 10, animate: false });
+      // Room for the map's own buttons (right) and the strip / tab bar (top, bottom): fitted
+      // edge to edge, a phone put an aircraft under the zoom buttons.
+      map.fitBounds(L.latLngBounds(pts), {
+        maxZoom: 10, animate: false, paddingTopLeft: [40, 70], paddingBottomRight: [110, 130] });
     }
     function start() {
       if (client || typeof map === 'undefined' || !allowed()) return;
