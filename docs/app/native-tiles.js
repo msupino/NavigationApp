@@ -94,12 +94,14 @@
     await bundledReady;
     if (!bundled || !bundled.size) return 0;
     const before = seededId();
-    if (before === bundledId) return 0;
     // A new APK with a new edition of the chart: its tiles replace the ones copied from the
     // last one. Otherwise tiles already there (downloaded, or copied by an interrupted launch)
-    // are kept.
+    // are kept -- and any that are MISSING are put back, even when this edition was copied
+    // before: a Clear offline CVFR (before it learned to keep them) or a storage clean-up took
+    // them, and while the package is running they can still be copied out of it.
     const replace = before != null && before !== bundledId;
     const have = replace ? new Set() : new Set((await cache.keys()).map(k => k.url));
+    if (!replace && before === bundledId && [...bundled.keys()].every(u => have.has(u))) return 0;
     let copied = 0;
     for (const [url, local] of bundled) {
       if (have.has(url)) continue;
