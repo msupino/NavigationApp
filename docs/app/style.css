@@ -6695,7 +6695,9 @@ html[data-theme="light"] #insp-body .insp-actions {
   font-size: 13px;
   font-weight: 700;
   padding: 4px 0 6px;
-  color: #1f252c;
+  /* The window's own text colour: a fixed dark one was dark on the dark theme's dark window,
+     and the legs / NM / time / fuel line could hardly be seen. */
+  color: inherit;
 }
 
 /* Separator above the destructive storage wipe, so it reads as set apart from the
@@ -8615,3 +8617,23 @@ html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
 @media (max-width: 680px), (pointer: coarse) {
   #toolbar button { white-space: normal; overflow-wrap: break-word; }
 }
+
+/* The flight plan on a phone: the whole window scrolls, not just the legs table at its bottom.
+   With a larger phone font the parts above it -- Save / My routes, aircraft, the vertical
+   profile, Columns -- took the whole height, and the table the legs are in was squeezed to a
+   single row. Scrolling the window, the legs are always one swipe away. */
+body.deck-on .modal-back.flight-plan > .modal.wide {
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+}
+body.deck-on .modal-back.flight-plan > .modal.wide .fp-scroll {
+  flex: none;
+  min-height: auto;
+  overflow-y: visible;
+}
+/* And the Save / My routes pair there is one compact line: the route's name is in the title
+   above the plan, not needed again under Save. */
+.fp-route-file-row .rf-sub { display: none; }
+.fp-route-file-row:not(.route-file-compact) .route-file-btn,
+#toolbar .fp-route-file-row .route-file-btn { min-height: 38px; padding: 4px 8px; font-size: 14px; }
