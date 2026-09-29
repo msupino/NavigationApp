@@ -4881,7 +4881,31 @@ function askFollowMeCode(current) {
       if (ev.key === 'Enter') { ev.preventDefault(); submit(); }
     });
     row.append(cancel, ok);
-    modal.box.append(text, input, row);
+    // Public: every NavAid user sees this aircraft too (Extra layers -> Show public NavAid
+    // pilots). Beside the private link, never instead of it; off unless ticked, remembered.
+    const F = window.NavAid && NavAid.followMe;
+    let pub = null;
+    if (F && typeof F.setPublic === 'function' && tune('featureFollowMePublic') !== false) {
+      pub = document.createElement('label');
+      pub.className = 'follow-me-public';
+      const cb = document.createElement('input');
+      cb.type = 'checkbox';
+      cb.className = 'follow-me-public-cb';
+      cb.checked = F.publicOn();
+      const words = document.createElement('span');
+      const strong = document.createElement('strong');
+      strong.textContent = S.followMePublic || 'Public: every NavAid user can see this aircraft';
+      const hint = document.createElement('small');
+      hint.textContent = S.followMePublicHint || 'Identifier, position, altitude and speed, not encrypted. Your link stays private.';
+      words.append(strong, hint);
+      pub.append(cb, words);
+      const keep = () => { try { F.setPublic(cb.checked); } catch (e) { /* storage */ } };
+      ok.addEventListener('click', keep, { capture: true });
+      input.addEventListener('keydown', (ev) => { if (ev.key === 'Enter') keep(); }, { capture: true });
+    }
+    modal.box.append(text, input);
+    if (pub) modal.box.append(pub);
+    modal.box.append(row);
     modal.show();
     try { input.focus(); input.select(); } catch (e) { /* not focusable yet */ }
   });
@@ -8570,6 +8594,54 @@ function plateMapLayer(filename) {
 }
 window.plateMapLayer = plateMapLayer;
 
+// Public NavAid pilots: everyone who ticked Public when sharing (followme.js publicPilots).
+// Remembered on this device; the frame goes when the gist switches public sharing off.
+(function () {
+  const cb = document.getElementById('public-pilots-cb');
+  if (!cb) return;
+  const KEY = 'navaid.showPublicPilots';
+  const offered = () => typeof tune !== 'function' || tune('featureFollowMePublic') !== false;
+  const label = cb.closest('label');
+  // Seeing others is the other half of being seen: the switch works while this device shares
+  // publicly (or on a secret viewing link). Otherwise dimmed, never hidden, and it says why.
+  const apply = () => {
+    const P = window.NavAid && NavAid.publicPilots;
+    if (!P) return;
+    const ok = P.allowed();
+    if (label) {
+      label.classList.toggle('is-dim', !ok);
+      label.title = ok ? (S.tbShowPublicPilotsTitle || '') : (S.tbShowPublicPilotsLocked || 'Share your position as Public to see others');
+    }
+    if (cb.checked && offered() && ok) P.start(); else P.stop();
+  };
+  cb.checked = lsGet(KEY) === '1';
+  cb.onchange = () => {
+    try { localStorage.setItem(KEY, cb.checked ? '1' : '0'); } catch (_) {}
+    const P = window.NavAid && NavAid.publicPilots;
+    if (cb.checked && P && !P.allowed() && typeof showToast === 'function') {
+      showToast(S.tbShowPublicPilotsLocked || 'Share your position as Public to see others');
+    }
+    apply();
+  };
+  window.refreshPublicPilotsFeature = function () {
+    const frame = document.getElementById('public-pilots-frame');
+    if (frame) frame.hidden = !offered();
+    apply();
+  };
+  // followme.js loads after this file: wire up once everything is there. A secret viewing
+  // link (?pilots=<secret>) switches the layer on for this page and fits everyone in view.
+  window.addEventListener('load', async () => {
+    let secret = null;
+    try { secret = new URLSearchParams(location.search).get('pilots'); } catch (e) { secret = null; }
+    const P = window.NavAid && NavAid.publicPilots;
+    if (secret && P && await P.unlock(secret)) {
+      cb.checked = true;
+      P.fitNext();
+    }
+    window.refreshPublicPilotsFeature();
+  });
+}());
+
 // Live traffic toggle. The layer itself only ever draws while a fix is driving the map
 // (traffic.js), so this switch says "when I am flying, show it" rather than "show it now".
 (function () {
@@ -10333,6 +10405,7 @@ function createTuningPanel() {
       if (typeof refreshAssistantFeature === 'function') refreshAssistantFeature();
       if (typeof refreshEmptyRouteHint === 'function') refreshEmptyRouteHint();
       if (typeof refreshTrafficFeature === 'function') refreshTrafficFeature();
+      if (typeof refreshPublicPilotsFeature === 'function') refreshPublicPilotsFeature();
       redrawAfterTune();
       return;
     }

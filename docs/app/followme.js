@@ -384,6 +384,59 @@
   // one packet because they change at completely different rates: a fix every couple of
   // seconds, a route once a flight. A viewer joining late gets the retained copy of each.
   const routeTopicFor = (id) => topicFor(id) + '/route';
+
+  // --- public share -------------------------------------------------------------------
+  // Asked for: a share every NavAid user can see, beside the private link. Off unless the
+  // pilot ticks it (the Share dialog), and the private link is unchanged by it.
+  //
+  // PUBLIC means public: the relay is a public broker and these packets are NOT encrypted --
+  // anyone on it reads the identifier, position, altitude and speed. They are SIGNED with the
+  // share's own signing key and carry its public key, and a viewer holds each public id to the
+  // first key it saw (the same rule as the private viewer): nobody else can move this aircraft
+  // on everyone's map. Anyone can publish an aircraft of their own -- as on any public feed.
+  //
+  // One retained packet per public id, cleared on Stop. A share that ends without its Stop
+  // (a crash, a dead phone) leaves its last packet retained; viewers age it out by its stamp.
+  const PUBLIC_PREF = 'navaid.followMePublic';
+  const PUBLIC_ID_KEY = 'navaid.followMePublicId';
+  const publicTopicFor = (id) => 'navaid/public/v1/' + id;
+  const PUBLIC_WILDCARD = 'navaid/public/v1/+';
+  const publicFeatureOn = () => typeof tune !== 'function' || tune('featureFollowMePublic') !== false;
+  function followMePublicOn() {
+    try { return publicFeatureOn() && localStorage.getItem(PUBLIC_PREF) === '1'; } catch (e) { return false; }
+  }
+  // One public id per DEVICE, not per share: a viewer's map keeps showing the same aircraft
+  // under the same id from one flight to the next. Unrelated to the private link's topic, so
+  // the public feed says nothing about where the private one is.
+  function followMePublicId() {
+    try {
+      let id = localStorage.getItem(PUBLIC_ID_KEY);
+      if (!id || !/^[A-Za-z0-9_-]{16,32}$/.test(id)) {
+        id = b64url.from(randomBytes(12));
+        localStorage.setItem(PUBLIC_ID_KEY, id);
+      }
+      return id;
+    } catch (e) { return null; }
+  }
+  function followMeSetPublic(on) {
+    const was = followMePublicOn();
+    try { localStorage.setItem(PUBLIC_PREF, on ? '1' : '0'); } catch (e) { /* private mode */ }
+    // Switched off during a share: take the aircraft off everyone's map now.
+    if (was && !on) clearPublic(session);
+    if (typeof window.refreshPublicPilotsFeature === 'function') window.refreshPublicPilotsFeature();
+  }
+  function clearPublic(s) {
+    const id = followMePublicId();
+    if (!s || !s.client || !s.client.ready || !id) return false;
+    try { s.client.publish(publicTopicFor(id), new Uint8Array(0), { retain: true, qos: 0 }); return true; }
+    catch (e) { return false; }
+  }
+  async function publicPacket(s, pos) {
+    if (!s || !s.signKey || !s.verifyB64 || !canSign()) return null;
+    const obj = Object.assign({ v: 1, pk: s.verifyB64 }, pos);
+    const sig = new Uint8Array(await crypto.subtle.sign(SIGN_PARAMS, s.signKey, signedBytes(obj)));
+    return new TextEncoder().encode(JSON.stringify(Object.assign({}, obj, { sig: b64url.from(sig) })));
+  }
   const routeSharingOn = () => typeof tune !== 'function' || tune('featureFollowMeRoute') !== false;
 
   // How old a fix has to be before the viewer stops calling it live. Not a guess about the
@@ -620,6 +673,9 @@
       // must not still hand out where it was going.
       try { s.client.publish(routeTopicFor(s.id), new Uint8Array(0), { retain: true, qos: 0 }); }
       catch (e) { /* the position tombstone below is the one that gates the stop */ }
+      // Off everyone's map too, if this share was ever on it (the box may have been unticked
+      // since, on another tab); a share that never went public sends nothing more.
+      if (s.publicSent || followMePublicOn()) clearPublic(s);
       packetId = s.client.publish(
         topicFor(s.id), new Uint8Array(0), { retain: true, qos: 1 });
     } catch (e) { packetId = null; }
@@ -860,6 +916,16 @@
   }
 
   function followMeSharing() { return !!session && session.status !== 'stopping'; }
+  // The public-pilots layer follows sharing (it shows others only while this device shares
+  // publicly): look again whenever sharing may have started or stopped.
+  let lastPublicSharing = false;
+  setInterval(() => {
+    const now = followMeSharing() && followMePublicOn();
+    if (now !== lastPublicSharing) {
+      lastPublicSharing = now;
+      if (typeof window.refreshPublicPilotsFeature === 'function') window.refreshPublicPilotsFeature();
+    }
+  }, 2000);
   function followMeStatus() { return session ? session.status : 'idle'; }
 
   // Called from the fix handler. Rate-limited: a public broker is a courtesy, and one
@@ -1017,6 +1083,19 @@
         t: now,
         seq: s.seq,
       }, s.signKey);
+      // The same fix on the public channel, when the pilot chose to be seen by everyone: the
+      // identifier and the readouts a traffic picture needs, signed, not encrypted.
+      const pub = !heartbeat && followMePublicOn() ? await publicPacket(s, {
+        reg: s.reg,
+        lat: Math.round(fix.lat * 1e5) / 1e5,
+        lng: Math.round(fix.lng * 1e5) / 1e5,
+        af: Number.isFinite(fix.af) ? Math.round(fix.af) : null,
+        kt: Number.isFinite(fix.kt) ? Math.round(fix.kt) : null,
+        mh: Number.isFinite(fix.mh) ? Math.round(fix.mh) : null,     // magnetic, as displayed
+        trk: Number.isFinite(fix.trk) ? Math.round(fix.trk) : null,
+        t: now,
+      }).catch(() => null) : null;
+      const pubId = pub ? followMePublicId() : null;
       // Avoid waiting behind a Stop that deliberately holds the lifecycle lock through
       // PUBACK. Shared storage provides the cross-tab revocation signal synchronously here.
       if (session !== s || s.status === 'stopping' || !sessionAuthorized(s)) {
@@ -1030,7 +1109,11 @@
         }
         // The final authorization and retained send do not yield. A later Stop tombstone
         // therefore cannot be followed by this older retained position.
-        return s.client.publish(topicFor(s.id), payload, { retain: !heartbeat });
+        const sent = s.client.publish(topicFor(s.id), payload, { retain: !heartbeat });
+        if (pub && pubId && followMePublicOn()) {
+          try { s.client.publish(publicTopicFor(pubId), pub, { retain: true }); s.publicSent = true; } catch (e) { /* the private feed went */ }
+        }
+        return sent;
       });
     });
   }
@@ -1600,6 +1683,153 @@
 
   function followMeViewing() { return !!viewer; }
 
+  // --- public pilots: everyone sharing publicly, as a layer ---------------------------------
+  // Extra layers -> Show public NavAid pilots. Its own connection to the relay, subscribed to
+  // every public id. Each aircraft is held to the first signing key seen for its id; a packet
+  // signed by anyone else is dropped. Silent aircraft dim, then go (by their own stamp, so a
+  // retained packet from a share that ended without its Stop does not linger for ever).
+  const publicPilots = (function () {
+    let client = null;
+    const pilots = new Map();          // id -> { fix, at, pk, el }
+    const keys = new Map();            // id -> first public key seen (b64)
+    let timer = 0;
+    const dimSec = () => Math.max(10, Number(tune('followMePublicDimSec', 120)) || 120);
+    const dropSec = () => Math.max(60, Number(tune('followMePublicDropSec', 1800)) || 1800);
+    function pane() {
+      let p = map.getPane('publicPilots');
+      if (!p) {
+        p = map.createPane('publicPilots', map.getContainer());
+        p.style.zIndex = String(FOLLOW_ME_PANE_Z - 1);
+        p.style.pointerEvents = 'none';
+      }
+      return p;
+    }
+    function place(p) {
+      if (!p.el || typeof map === 'undefined') return;
+      const pt = map.latLngToContainerPoint([p.fix.lat, p.fix.lng]);
+      p.el.style.left = pt.x + 'px';
+      p.el.style.top = pt.y + 'px';
+    }
+    function draw(p) {
+      if (!p.el) {
+        p.el = document.createElement('div');
+        p.el.className = 'follow-me-mark public-pilot-mark';
+        pane().appendChild(p.el);
+      }
+      const f = p.fix;
+      const px = Math.round(Number(tune('followMePlanePx', 26)) || 26);
+      const turn = (Number.isFinite(f.trk) ? f.trk : 0) + (typeof map.getBearing === 'function' ? map.getBearing() : 0);
+      // Beside the icon: who, and what they are doing -- speed and altitude, as the pilot's own
+      // screen shows them. No heading figure: the icon already points along the true track.
+      const readout = [Number.isFinite(f.kt) ? f.kt + ' kt' : null,
+                       Number.isFinite(f.af) ? f.af + ' ft' : null].filter(Boolean).join(' · ');
+      p.el.style.width = px + 'px';
+      p.el.style.height = px + 'px';
+      p.el.innerHTML = '<span class="follow-me-arrow" style="transform:rotate(' + turn + 'deg)">'
+        + '<svg class="follow-me-plane" viewBox="0 0 24 24" width="' + px + '" height="' + px
+        + '" aria-hidden="true"><path d="' + FOLLOW_ME_PLANE + '"/></svg></span>'
+        + '<span class="follow-me-label public-pilot-label" dir="ltr"><b>' + escapeHtml(f.reg || '?') + '</b>'
+        + (readout ? '<small>' + escapeHtml(readout) + '</small>' : '') + '</span>';
+      place(p);
+    }
+    function sweep() {
+      // Sharing stopped, or went private: the other half goes with it.
+      if (client && !allowed()) {
+        stop();
+        if (typeof window.refreshPublicPilotsFeature === 'function') window.refreshPublicPilotsFeature();
+        return;
+      }
+      const now = Date.now();
+      for (const [id, p] of pilots) {
+        const age = (now - p.at) / 1000;
+        if (age > dropSec()) { if (p.el) p.el.remove(); pilots.delete(id); continue; }
+        if (p.el) p.el.classList.toggle('public-pilot-stale', age > dimSec());
+      }
+    }
+    function remove(id) {
+      const p = pilots.get(id);
+      if (p && p.el) p.el.remove();
+      pilots.delete(id);
+    }
+    async function onMessage(topic, payload) {
+      const m = /^navaid\/public\/v1\/([A-Za-z0-9_-]{16,32})$/.exec(topic);
+      if (!m) return;
+      const id = m[1];
+      if (id === followMePublicId()) return;           // this device's own aircraft
+      if (!payload || !payload.length) { remove(id); return; }
+      let msg;
+      try { msg = JSON.parse(new TextDecoder().decode(payload)); } catch (e) { return; }
+      if (!msg || msg.v !== 1 || typeof msg.pk !== 'string' || typeof msg.sig !== 'string') return;
+      if (!Number.isFinite(msg.lat) || msg.lat < -90 || msg.lat > 90 ||
+          !Number.isFinite(msg.lng) || msg.lng < -180 || msg.lng > 180 || !Number.isFinite(msg.t)) return;
+      const first = keys.get(id);
+      if (first && first !== msg.pk) return;          // someone else's key on this aircraft
+      try {
+        const { sig, ...rest } = msg;
+        const vk = await importVerifyKey(msg.pk);
+        if (!vk || !(await crypto.subtle.verify(SIGN_PARAMS, vk, b64url.to(sig), signedBytes(rest)))) return;
+      } catch (e) { return; }
+      if (!first) keys.set(id, msg.pk);
+      const now = Date.now();
+      if ((now - msg.t) / 1000 > dropSec() || msg.t > now + 300000) return;   // long gone, or from the future
+      const p = pilots.get(id) || {};
+      if (p.fix && msg.t <= p.fix.t) return;           // older than what is drawn
+      p.fix = { reg: typeof msg.reg === 'string' ? msg.reg.slice(0, 16) : '', lat: msg.lat, lng: msg.lng,
+                af: Number.isFinite(msg.af) ? msg.af : null, kt: Number.isFinite(msg.kt) ? msg.kt : null,
+                mh: Number.isFinite(msg.mh) ? msg.mh : null,
+                trk: Number.isFinite(msg.trk) ? msg.trk : null, t: msg.t };
+      p.at = Math.min(now, msg.t);
+      pilots.set(id, p);
+      draw(p);
+      sweep();
+      if (fitPending) { fitPending = false; setTimeout(fitAll, 1500); }
+    }
+    const onMove = () => { for (const p of pilots.values()) place(p); };
+    const onTurn = () => { for (const p of pilots.values()) draw(p); };
+    // Who may see everyone: a pilot who is sharing publicly right now -- seeing others is the
+    // other half of being seen -- or a page opened with the secret viewing link
+    // (?pilots=<secret>, its SHA-256 in publicPilotsViewHash). A gate in the app, not privacy:
+    // the public channel itself is unencrypted on a public relay.
+    let unlocked = false;
+    try { unlocked = sessionStorage.getItem('navaid.publicPilotsUnlocked') === '1'; } catch (e) { /* private */ }
+    const allowed = () => unlocked || (followMeSharing() && followMePublicOn());
+    async function unlock(secret) {
+      const want = String(tune('publicPilotsViewHash', '') || '').toLowerCase();
+      if (!secret || !want || !(crypto && crypto.subtle)) return false;
+      const got = Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(String(secret)))))
+        .map(b => b.toString(16).padStart(2, '0')).join('');
+      if (got !== want) return false;
+      unlocked = true;
+      try { sessionStorage.setItem('navaid.publicPilotsUnlocked', '1'); } catch (e) { /* private */ }
+      return true;
+    }
+    // Once, after the first packets of a secret-link page: the map fits everyone.
+    let fitPending = false;
+    function fitAll() {
+      const pts = [...pilots.values()].map(p => [p.fix.lat, p.fix.lng]);
+      if (!pts.length || typeof L === 'undefined') return;
+      map.fitBounds(L.latLngBounds(pts).pad(0.2), { maxZoom: 10, animate: false });
+    }
+    function start() {
+      if (client || typeof map === 'undefined' || !allowed()) return;
+      client = mqttConnect(brokerUrl(), { clientId: 'navaid-pub-' + b64url.from(randomBytes(6)) });
+      client.onOpen = () => client.subscribe(PUBLIC_WILDCARD);
+      client.onMessage = (topic, payload) => { onMessage(topic, payload); };
+      map.on('move zoom viewreset resize', onMove);
+      map.on('rotate', onTurn);
+      timer = setInterval(sweep, 10000);
+    }
+    function stop() {
+      if (client) { try { client.close(); } catch (e) { /* gone */ } client = null; }
+      if (typeof map !== 'undefined') { map.off('move zoom viewreset resize', onMove); map.off('rotate', onTurn); }
+      clearInterval(timer);
+      for (const id of [...pilots.keys()]) remove(id);
+    }
+    return { start, stop, running: () => !!client, allowed, unlock, unlocked: () => unlocked,
+      fitNext: () => { fitPending = true; }, list: () => [...pilots.entries()].map(([id, p]) => ({ id, ...p.fix, stale: !!(p.el && p.el.classList.contains('public-pilot-stale')) })), _onMessage: onMessage, _sweep: sweep };
+  }());
+  NS.publicPilots = publicPilots;
+
   NS.followMe = {
     viewerStart: followMeViewerStart, viewerStop: followMeViewerStop, viewing: followMeViewing,
     viewerLeave: followMeViewerLeave,
@@ -1619,6 +1849,8 @@
     _mqtt: mqttConnect, _seal: seal, _open: open, _b64url: b64url,
     _encodeLength: encodeLength, _readLength: readLength,
     age: followMeAge, topicFor, brokerUrl, importKey, randomBytes,
+    publicOn: followMePublicOn, setPublic: followMeSetPublic, publicId: followMePublicId,
+    publicTopicFor, _publicPacket: publicPacket,
   };
   window.followMeAge = followMeAge;
 
