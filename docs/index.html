@@ -126,6 +126,25 @@
        asserts this tag is HERE as well as asserting it never fires anywhere but
        production, so a second silent removal fails the build. Disclosed in
        docs/privacy.html, in both languages. -->
+  <!-- The secret public-pilots viewing link (?pilots=<secret>, or #pilots=<secret>) is taken OUT
+       of the address before anything can report it: the analytics tag below sends the page's
+       full URL, and a secret left in the address bar also lands in history and screenshots.
+       Kept in this tab's sessionStorage for ui.js to check (followme.js publicPilots.unlock). -->
+  <script>
+    (function () {
+      try {
+        var u = new URL(location.href);
+        var h = new URLSearchParams(u.hash.replace(/^#/, ''));
+        var secret = u.searchParams.get('pilots') || h.get('pilots');
+        if (!secret) return;
+        sessionStorage.setItem('navaid.pilotsSecret', secret);
+        u.searchParams.delete('pilots');
+        h.delete('pilots');
+        var rest = h.toString();
+        history.replaceState(history.state, '', u.pathname + u.search + (rest ? '#' + rest : ''));
+      } catch (e) { /* no storage or history: the link just does not unlock */ }
+    }());
+  </script>
   <script>
     if (location.hostname !== 'app.navaid.local' &&
         typeof window.Capacitor === 'undefined' &&   // native shell loads the prod URL — keep GA browser-only

@@ -240,3 +240,30 @@ test('a live packet from a phone whose clock runs behind is not shown as silent'
   });
   expect(stale).toBe(false);
 });
+
+for (const form of ['?pilots=', '#pilots=']) {
+  test(`the secret viewing link (${form}) is taken out of the address before anything can report it`, async ({ page }) => {
+    await page.addInitScript(() => { window.__hrefAtGa = null; });
+    // A secret whose hash the test sets as the gist would.
+    await page.goto('?lang=en&nogist' + (form[0] === '#' ? '' : '&') + (form[0] === '#' ? form.replace('#', '#') : form.slice(1)) + 'test-secret');
+    await page.waitForFunction(() => !!(window.NavAid && NavAid.publicPilots));
+    const out = await page.evaluate(() => ({ href: location.href }));
+    expect(out.href).not.toContain('test-secret');
+    expect(out.href).not.toContain('pilots=');
+  });
+}
+
+test('the label reads in the dark theme too: light text on its dark backing', async ({ page }) => {
+  await page.addInitScript(() => { try { localStorage.setItem('navaid.theme', 'dark'); } catch (e) {} });
+  await boot(page);
+  const c = await page.evaluate(async () => {
+    const F = NavAid.followMe, P = NavAid.publicPilots;
+    const pair = await crypto.subtle.generateKey({ name: 'ECDSA', namedCurve: 'P-256' }, true, ['sign', 'verify']);
+    const k = { signKey: pair.privateKey, verifyB64: F._b64url.from(new Uint8Array(await crypto.subtle.exportKey('raw', pair.publicKey))) };
+    await P._onMessage('navaid/public/v1/' + await F._publicIdForKey(k.verifyB64), await F._publicPacket(k, { reg: 'QQQQ', lat: 32, lng: 35, kt: 41, af: 1049, t: Date.now() }));
+    const cs = getComputedStyle(document.querySelector('.public-pilot-label'));
+    const lum = (rgb) => { const [r, g, b] = rgb.match(/\d+(\.\d+)?/g).map(Number); return 0.2126 * r + 0.7152 * g + 0.0722 * b; };
+    return { text: lum(cs.color), bg: lum(cs.backgroundColor) };
+  });
+  expect(c.text - c.bg).toBeGreaterThan(120);   // light on dark, well apart
+});
