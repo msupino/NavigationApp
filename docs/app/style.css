@@ -8637,3 +8637,26 @@ body.deck-on .modal-back.flight-plan > .modal.wide .fp-scroll {
 .fp-route-file-row .rf-sub { display: none; }
 .fp-route-file-row:not(.route-file-compact) .route-file-btn,
 #toolbar .fp-route-file-row .route-file-btn { min-height: 38px; padding: 4px 8px; font-size: 14px; }
+
+/* Share dialog: the Public option, and its plain statement of what everyone gets to see. */
+.follow-me-public { display: flex; gap: 8px; align-items: flex-start; margin-top: 10px; cursor: pointer; }
+.follow-me-public input { margin-top: 3px; flex: 0 0 auto; }
+.follow-me-public span { display: flex; flex-direction: column; gap: 2px; }
+.follow-me-public small { opacity: 0.75; font-size: 12px; line-height: 1.3; }
+/* Public NavAid pilots: other pilots' aircraft, a shade apart from the one being followed;
+   a silent one fades. */
+.public-pilot-mark .follow-me-plane path { fill: #7a4fd6; }
+.public-pilot-mark.public-pilot-stale { opacity: 0.45; }
+/* Locked (not sharing publicly): dimmed, still there, and its tooltip says why. */
+#public-pilots-frame label.is-dim { opacity: 0.5; }
+
+/* A public pilot's label: the identifier, and under it speed, altitude and heading. */
+.public-pilot-label {
+  display: flex; flex-direction: column; align-items: flex-start; line-height: 1.15;
+  /* Its own backing: over a chart full of names the readout otherwise ran into them. */
+  background: rgba(255, 255, 255, 0.88); border: 1px solid rgba(122, 79, 214, 0.55);
+  border-radius: 4px; padding: 1px 4px; text-shadow: none;
+  font-size: 1em;                  /* follows the mark, which scales with zoom (followme.js) */
+}
+body.theme-dark .public-pilot-label { background: rgba(24, 28, 36, 0.88); }
+.public-pilot-label small { font-size: 0.85em; font-weight: 600; white-space: nowrap; }
