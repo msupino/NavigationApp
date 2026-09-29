@@ -202,3 +202,23 @@ test('Clear offline CVFR keeps the built-in zooms and removes only what was down
   expect(out.after).toContain(base + '/7/77/52.png');                  // built-in kept
   expect(files.size).toBe(out.after.length);
 });
+
+// Copied once, then cleared: while the package runs, the missing built-in tiles go back in.
+test('built-in tiles missing from the store are copied back, even after an earlier copy', async ({ page }) => {
+  const base = 'https://navaid-tiles.supino.org/CVFR';
+  await page.route('**/charts/cvfr/index.json', r => r.fulfill({
+    status: 200, contentType: 'application/json',
+    body: JSON.stringify({ chart: 'CVFR', base, minZoom: 7, maxZoom: 7, id: 'e1', tiles: ['7/77/52', '7/78/52'] }),
+  }));
+  await page.route('**/charts/cvfr/7/**', r => r.fulfill({ status: 200, contentType: 'image/png', body: Buffer.from(PNG, 'base64') }));
+  const files = await embedded(page);
+  const out = await page.evaluate(async () => {
+    const first = await NavAidNativeTiles.seedBundled();
+    await NavAidNativeTiles.storage.delete();                     // gone, as an old Clear did
+    const again = await NavAidNativeTiles.seedBundled();
+    const idle = await NavAidNativeTiles.seedBundled();           // all there: nothing to do
+    return { first, again, idle };
+  });
+  expect(out).toEqual({ first: 2, again: 2, idle: 0 });
+  expect(files.size).toBe(2);
+});
