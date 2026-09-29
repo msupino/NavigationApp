@@ -8631,9 +8631,10 @@ window.plateMapLayer = plateMapLayer;
   // followme.js loads after this file: wire up once everything is there. A secret viewing
   // link (?pilots=<secret>) switches the layer on for this page and fits everyone in view.
   window.addEventListener('load', async () => {
-    // index.html has already moved it out of the address (before analytics could report it).
-    let secret = null;
-    try { secret = sessionStorage.getItem('navaid.pilotsSecret'); sessionStorage.removeItem('navaid.pilotsSecret'); } catch (e) { secret = null; }
+    // index.html has already moved it out of the address (before analytics could report it),
+    // into memory only; used once and dropped.
+    const secret = window.__navaidPilotsSecret || null;
+    try { delete window.__navaidPilotsSecret; } catch (e) { window.__navaidPilotsSecret = undefined; }
     const P = window.NavAid && NavAid.publicPilots;
     if (secret && P && await P.unlock(secret)) {
       cb.checked = true;

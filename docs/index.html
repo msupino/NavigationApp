@@ -129,7 +129,7 @@
   <!-- The secret public-pilots viewing link (?pilots=<secret>, or #pilots=<secret>) is taken OUT
        of the address before anything can report it: the analytics tag below sends the page's
        full URL, and a secret left in the address bar also lands in history and screenshots.
-       Kept in this tab's sessionStorage for ui.js to check (followme.js publicPilots.unlock). -->
+       Held only in memory, never in storage, for ui.js to check (followme.js publicPilots.unlock). -->
   <script>
     (function () {
       try {
@@ -137,7 +137,7 @@
         var h = new URLSearchParams(u.hash.replace(/^#/, ''));
         var secret = u.searchParams.get('pilots') || h.get('pilots');
         if (!secret) return;
-        sessionStorage.setItem('navaid.pilotsSecret', secret);
+        window.__navaidPilotsSecret = secret;
         u.searchParams.delete('pilots');
         h.delete('pilots');
         var rest = h.toString();

@@ -149,7 +149,6 @@ const NOT_A_SYNCED_SETTING = [
   [/^navaid\.gpsLiveOn$/,        'whether live location is on, per device -- resumed on reload, not synced to others'],
   [/^navaid\.offlinePacks$/,     'which charts and areas this device keeps offline -- storage on this device, not a setting'],
   [/^navaid\.commFail$/,         'a comm failure in progress on this aircraft, resumed on reload -- not a setting'],
-  [/^navaid\.pilotsSecret$/, 'a secret viewing link, held in THIS tab (sessionStorage) for a moment after index.html takes it out of the address -- never a setting'],
   [/^navaid\.publicPilotsUnlocked$/, 'a secret viewing link opened in THIS tab (sessionStorage) -- never a setting, never synced'],
   [/^navaid\.followMePublic$/, 'whether THIS device shares its position publicly -- a choice about this phone, never to be switched on for another device by a sync'],
   [/^navaid\.followMePublicId$/, 'this device\'s public share id -- an identity of this phone; syncing it would put two phones under one aircraft'],

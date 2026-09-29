@@ -245,9 +245,12 @@ for (const form of ['?pilots=', '#pilots=']) {
   test(`the secret viewing link (${form}) is taken out of the address before anything can report it`, async ({ page }) => {
     await page.addInitScript(() => { window.__hrefAtGa = null; });
     // A secret whose hash the test sets as the gist would.
-    await page.goto('?lang=en&nogist' + (form[0] === '#' ? '' : '&') + (form[0] === '#' ? form.replace('#', '#') : form.slice(1)) + 'test-secret');
+    const url = form === '?pilots=' ? '?lang=en&nogist&pilots=test-secret' : '?lang=en&nogist#pilots=test-secret';
+    await page.goto(url);
     await page.waitForFunction(() => !!(window.NavAid && NavAid.publicPilots));
-    const out = await page.evaluate(() => ({ href: location.href }));
+    const out = await page.evaluate(() => ({ href: location.href,
+      stored: Object.keys(sessionStorage).concat(Object.keys(localStorage)).filter(k => /secret/i.test(k) || /test-secret/.test(String(sessionStorage.getItem(k) || localStorage.getItem(k)))) }));
+    expect(out.stored).toEqual([]);                   // never written to storage
     expect(out.href).not.toContain('test-secret');
     expect(out.href).not.toContain('pilots=');
   });
