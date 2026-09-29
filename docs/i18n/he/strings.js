@@ -1451,6 +1451,7 @@ window.S = {
   offlineCvfrRepair: '⬇ הורדת אריחי CVFR חסרים',
   offlineCvfrRepairTitle: 'הורדה עכשיו של אריחי CVFR החסרים בלבד',
   offlineDelete: 'ניקוי CVFR לא מקוון',
+  offlineDeleteConfirmKeep: function (a, b) { return 'למחוק מהמכשיר את אריחי ה־CVFR שהורדו? המפה המובנית (רמות ' + '\u2066' + a + '–' + b + '\u2069' + ') נשארת.'; },
   offlineDeleteTitle: 'מחיקת מפת CVFR שהורדה מהמכשיר; התחזוקה האוטומטית תחזור בהפעלה הבאה',
   offlineDeleteConfirm: 'לנקות מהמכשיר את מפת CVFR הלא מקוונת?',
   tbLegDir: '🧭 כיוון המסלול',

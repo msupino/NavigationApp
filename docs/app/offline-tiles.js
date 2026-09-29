@@ -430,7 +430,13 @@
         const packs = readPacks();
         for (const name of packs.charts) if (name !== 'ATS') for (const i of chartPlan(name)) others.add(i.liveUrl);
         for (const area of packs.areas) for (const i of areaPlan(area)) others.add(i.liveUrl);
-        if (!others.size) {
+        // The APK's built-in chart (zooms 7-12) stays: it is the offline floor, and after an
+        // update it cannot be copied out of the package again. Only what was downloaded beyond
+        // it goes.
+        const native = window.NavAidNativeTiles;
+        const builtin = native && typeof native.builtinTile === 'function' && native.builtinZooms && native.builtinZooms()
+          ? native.builtinTile : null;
+        if (!others.size && !builtin) {
           // Nothing else is kept: drop the whole store in one call.
           await tileCaches.delete(TILE_CACHE);
         } else {
@@ -438,7 +444,8 @@
           // URLs, and in the APK each delete is a file-system call.
           const cvfr = new Set(cvfrPlan().map(i => i.liveUrl));
           const keys = await cache.keys();
-          await Promise.all(keys.filter(k => cvfr.has(k.url) && !others.has(k.url)).map(k => cache.delete(k)));
+          await Promise.all(keys.filter(k => cvfr.has(k.url) && !others.has(k.url) && !(builtin && builtin(k.url)))
+            .map(k => cache.delete(k)));
         }
       }
       notifySw();
@@ -827,8 +834,11 @@
     const clear = button(t('offlineDelete', 'Clear offline CVFR'),
       t('offlineDeleteTitle', 'Remove the downloaded CVFR chart from this device'),
       async () => {
-        if (!await ask(t('offlineDeleteConfirm', 'Clear the offline CVFR chart from this device?'),
-          t('offlineDelete', 'Clear offline CVFR'))) return;
+        const zooms = window.NavAidNativeTiles && NavAidNativeTiles.builtinZooms ? NavAidNativeTiles.builtinZooms() : null;
+        const question = zooms
+          ? tf('offlineDeleteConfirmKeep', (a, b) => 'Clear the downloaded CVFR tiles from this device? The built-in chart (zooms ' + a + '–' + b + ') stays.', zooms.min, zooms.max)
+          : t('offlineDeleteConfirm', 'Clear the offline CVFR chart from this device?');
+        if (!await ask(question, t('offlineDelete', 'Clear offline CVFR'))) return;
         await deletePack();
       });
     cvfr.actions.append(repair, clear);
