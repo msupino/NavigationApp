@@ -92,7 +92,7 @@ NavAid.tuningDefaults = {
   livePredictorTurnMinDegSec: { value: 1, min: 0, max: 3, step: 0.05, label: 'Curve predictor above turn rate (°/s)' },
   livePredictorTurnMaxDegSec: { value: 4, min: 0.5, max: 12, step: 0.25, label: 'Curve predictor maximum valid turn rate (°/s)' },
   livePredictorTurnMaxArcDeg: { value: 60, min: 10, max: 180, step: 5, label: 'Curve predictor maximum arc (°)' },
-  livePredictorTurnMaxArcSec: { value: 60, min: 5, max: 300, step: 5, label: 'Trend vector in a turn: seconds of flying ahead (G1000-style; no straight tail)' },
+  livePredictorTurnMaxArcSec: { value: 60, min: 5, max: 300, step: 5, label: 'Trend vector in a turn: flying time ahead (s), G1000-style, no straight tail' },
   livePredictorTurnMinKt: { value: 10, min: 0, max: 100, step: 1, label: 'Curve predictor above groundspeed (kt)' },
   livePredictorTurnHoldSec: { value: 6, min: 1, max: 30, step: 1, label: 'Keep measured turn rate for (s)' },
   livePredictorTurnSmoothing: { value: 0.7, min: 0, max: 1, step: 0.05, label: 'Curve predictor smoothing (0-1)' },
