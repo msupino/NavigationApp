@@ -615,6 +615,35 @@ function orderMapControls(corner) {
 }
 window.orderMapControls = orderMapControls;
 
+// One line-icon set for the whole in-flight column: 24-unit box, 2-unit round strokes in
+// currentColor, so the button's state colour (style.css, "The in-flight column") drives them.
+// The follow target's centre fills while it is holding the map on the aircraft.
+const NEEDLE_COLOR = '#ff5a45';        // compass north half: red, readable on dark and on blue
+const MAP_ICON_OPEN = '<svg viewBox="0 0 24 24" width="26" height="26" aria-hidden="true"'
+  + ' focusable="false" fill="none" stroke="currentColor" stroke-width="2"'
+  + ' stroke-linecap="round" stroke-linejoin="round">';
+const SPEAKER = '<path d="M3.5 9.5h3.5L11.5 5.5v13L7 14.5H3.5z" fill="currentColor" fill-opacity=".18"/>';
+const MAP_ICONS = {
+  voiceOn: SPEAKER + '<path d="M15 9a4.2 4.2 0 0 1 0 6M17.8 6.3a8 8 0 0 1 0 11.4"/>',
+  voiceOff: SPEAKER + '<path d="M15.5 9.5l5 5M20.5 9.5l-5 5"/>',
+  followOn: '<circle cx="12" cy="12" r="6.8"/><path d="M12 2.2v3M12 18.8v3M2.2 12h3M18.8 12h3"/>'
+    + '<circle cx="12" cy="12" r="2.6" fill="currentColor" stroke="none"/>',
+  followOff: '<circle cx="12" cy="12" r="6.8"/><path d="M12 2.2v3M12 18.8v3M2.2 12h3M18.8 12h3"/>'
+    + '<circle cx="12" cy="12" r="2.2"/>',
+  share: '<circle cx="12" cy="12" r="2.3" fill="currentColor" stroke="none"/>'
+    + '<path d="M8.3 8.3a5.2 5.2 0 0 0 0 7.4M15.7 8.3a5.2 5.2 0 0 1 0 7.4'
+    + 'M5.3 5.3a9.5 9.5 0 0 0 0 13.4M18.7 5.3a9.5 9.5 0 0 1 0 13.4"/>',
+  lockShut: '<rect x="5" y="10.5" width="14" height="10" rx="2.2" fill="currentColor" fill-opacity=".18"/>'
+    + '<path d="M8.2 10.5V7.8a3.8 3.8 0 0 1 7.6 0v2.7"/>',
+  lockOpen: '<rect x="5" y="10.5" width="14" height="10" rx="2.2" fill="currentColor" fill-opacity=".18"/>'
+    + '<path d="M8.2 10.5V7.8a3.8 3.8 0 0 1 7.3-1.4"/>',
+};
+function setMapIcon(btn, name) {
+  if (!btn || btn.dataset.icon === name) return;
+  btn.innerHTML = MAP_ICON_OPEN + MAP_ICONS[name] + '</svg>';
+  btn.dataset.icon = name;
+}
+
 // Voice alerts, as a map control rather than only a checkbox buried in View/Set: it is a
 // thing a pilot turns on WHILE flying (the cabin got noisy, or a passenger is asleep), and a
 // toggle you have to open a menu for is one you leave where it is. Same square as the
@@ -637,7 +666,7 @@ function refreshVoiceControl() {
   wrap.style.display = tracking ? '' : 'none';
   orderMapControls(wrap.parentNode);
   const on = window.voiceAlerts === true;
-  voiceBtn.textContent = on ? '\ud83d\udd0a' : '\ud83d\udd07';     // speaker on / muted
+  setMapIcon(voiceBtn, on ? 'voiceOn' : 'voiceOff');
   voiceBtn.classList.toggle('voice-on', on);
   // Every place that starts or stops a live position already calls this -- it is the app's
   // one notification that a fix has begun or ceased driving the map -- and the map clock
@@ -681,21 +710,11 @@ orientCtrl.onAdd = function () {
 orientCtrl.addTo(map);
 const orientBtn = document.getElementById('orient-toggle');
 
-// The two in-flight controls draw their own icons rather than borrowing emoji, which
-// rendered differently on every phone and said nothing about aviation. The follow button
-// wears the VOR symbol the map itself uses for a station -- a ring, four ticks and a filled
-// centre -- because that is exactly what it does: hold the chart on one point. The
-// orientation button is a compass needle that points where the aircraft is going, the
-// convention ForeFlight, Garmin Pilot and Google Maps all settled on.
-const VOR_ON_COLOR = '#c8442e';        // lit: the map is held on the aircraft
-const VOR_OFF_COLOR = '#7a7a7a';       // grey: the map stays where the pilot put it
-function vorIconSvg(color) {
-  return '<svg viewBox="0 0 24 24" width="26" height="26" aria-hidden="true" focusable="false">'
-    + '<circle cx="12" cy="12" r="7" fill="none" stroke="' + color + '" stroke-width="2"/>'
-    + '<path d="M12 5V2 M12 19v3 M5 12H2 M19 12h3" stroke="' + color
-    + '" stroke-width="2" stroke-linecap="round"/>'
-    + '<circle cx="12" cy="12" r="2.4" fill="' + color + '"/></svg>';
-}
+// The in-flight controls draw their own icons rather than borrowing emoji, which rendered
+// differently on every phone and said nothing about aviation. The follow button is a target
+// -- a ring, four ticks and a centre -- because that is what it does: hold the chart on one
+// point. The orientation button is a compass needle that points where the aircraft is going,
+// the convention ForeFlight, Garmin Pilot and Google Maps all settled on.
 // `deg` turns the needle: the track being flown when the chart is north-up, and north
 // itself when the chart is turned to the track, so the needle always points at something
 // real on the screen. `hdg` is the track in degrees, written under the needle while a fix
@@ -709,10 +728,10 @@ function compassIconSvg(deg, hdg) {
     : '';
   return '<span class="orient-face">'
     + '<svg viewBox="0 0 24 24" width="26" height="26" aria-hidden="true" focusable="false">'
-    + '<circle cx="12" cy="12" r="9.2" fill="none" stroke="#8a8a8a" stroke-width="1.2"/>'
+    + '<circle cx="12" cy="12" r="9.3" fill="none" stroke="currentColor" stroke-width="2"/>'
     + '<g transform="rotate(' + (Number.isFinite(deg) ? compassDeg(deg) : 0) + ' 12 12)">'
-    + '<path d="M12 3.4 L15.4 13 L12 11 L8.6 13 Z" fill="' + VOR_ON_COLOR + '"/>'
-    + '<path d="M12 20.6 L8.6 13.6 L12 15.4 L15.4 13.6 Z" fill="#9a9a9a"/>'
+    + '<path d="M12 4.6 15 12H9z" fill="' + NEEDLE_COLOR + '"/>'
+    + '<path d="M12 19.4 9 12h6z" fill="currentColor" fill-opacity=".55"/>'
     + '</g></svg>' + readout + '</span>';
 }
 
@@ -848,7 +867,7 @@ function refreshGpsFollowControl() {
   // The VOR symbol, not a padlock: this one holds the MAP ONTO the aircraft, and the padlock
   // belongs to the edit lock below, which is a lock in the ordinary sense -- it refuses
   // input. Red and lit when it is holding, grey when the map is the pilot's to move.
-  followBtn.innerHTML = vorIconSvg(on ? VOR_ON_COLOR : VOR_OFF_COLOR);
+  setMapIcon(followBtn, on ? 'followOn' : 'followOff');
   followBtn.classList.toggle('follow-on', on);
   followBtn.setAttribute('aria-pressed', on ? 'true' : 'false');
   const label = on ? (S.followLockOn || 'Following the aircraft — tap to stop following')
@@ -882,8 +901,9 @@ function refreshFollowMeMapControl() {
   orderMapControls(wrap.parentNode);
   const status = F && typeof F.status === 'function' ? F.status() : 'idle';
   const active = status !== 'idle';
-  followMeBtn.textContent = status === 'connected' ? '\u25C9' : (active ? '\u25CC' : '\u21EA');
+  setMapIcon(followMeBtn, 'share');
   followMeBtn.classList.toggle('follow-me-on', status === 'connected');
+  followMeBtn.classList.toggle('follow-me-pending', active && status !== 'connected');
   followMeBtn.setAttribute('aria-pressed', active ? 'true' : 'false');
   const label = status === 'connected'
     ? (S.followMeSharingNow || 'Sharing your position — tap to stop')
@@ -968,7 +988,7 @@ function refreshEditLockControl() {
   const auto = editLockAutoNow();
   const on = routeEditLocked();
   // The padlock, in its ordinary sense: shut, nothing on the route moves; open, it does.
-  editLockBtn.textContent = on ? '\ud83d\udd12' : '\ud83d\udd13';
+  setMapIcon(editLockBtn, on ? 'lockShut' : 'lockOpen');
   editLockBtn.classList.toggle('editlock-on', on);
   editLockBtn.classList.toggle('editlock-auto', auto && on);
   editLockBtn.setAttribute('aria-pressed', on ? 'true' : 'false');

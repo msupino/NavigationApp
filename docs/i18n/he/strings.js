@@ -19,7 +19,7 @@ window.S = {
   summaryWaypoints: 'ציוני דרך',                     // פאנל סטטיסטיקה
   tbAddWp: '✏️ הוסף ציון דרך (A)',                   // כפתור עריכה בסרגל
   tbAddWpTitle: 'לחץ על המפה להוספת ציון דרך (לחץ שוב לעצירה)',
-  tbShowHotspots: 'הצג נוקודות חמות',
+  tbShowHotspots: 'הצג נקודות חמות',
   tbShowHotspotsTitle: 'הצג הדגשת נקודות חמות מבלי לשנות את הגדרות ציוני הדרך',
   tbShowWpNames: 'הצג שמות ציוני דרך',              // מתג בקטע תצוגה
   tbShowWpNamesTitle: 'הצג שמות ציוני דרך (כבוי = עיגול ריק)',
@@ -1206,7 +1206,7 @@ window.S = {
   legendReportCompulsory: 'נקודת דיווח חובה',
   legendVor: 'תחנת VOR',
   tbMoreLinks: 'קישורים נוספים (מאגר, ויקי, תקלות, אודות, פרטיות, תנאים)',
-  legendHotspot: 'צומת',
+  legendHotspot: 'נקודה חמה',
   legendAtcChange: 'שינוי תדר',
   commChangeBadge: '📡 נקודת שינוי תדר',
   commChangeNoteText: 'שינוי תדר',

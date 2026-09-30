@@ -1245,7 +1245,6 @@ body.theme-dark #map-crosshair::after {
   box-shadow: var(--navaid-ctrl-shadow);
   touch-action: manipulation;
 }
-.voice-ctrl button.voice-on { background: #d8f0d8; border-color: #4a8a4a; }
 
 /* north-up / heading-up toggle — directly above the follow lock, same square so the two
    read as one column of in-flight controls. */
@@ -1262,20 +1261,18 @@ body.theme-dark #map-crosshair::after {
   box-shadow: var(--navaid-ctrl-shadow);
   touch-action: manipulation;
 }
-.orient-ctrl button.orient-on { background: #ffe3de; border-color: #c8442e; }
 /* The needle and the track it reads out share the square: the number sits under the face,
    small enough not to crowd it and large enough to read at arm's length. */
 .orient-ctrl button .orient-face { position: relative; display: block; line-height: 0; }
 .orient-ctrl button .orient-hdg {
   position: absolute; left: 0; right: 0; bottom: -10px;
-  font: 700 9px/1 system-ui, sans-serif; color: #333; text-align: center;
+  font: 700 9px/1 system-ui, sans-serif; color: inherit; text-align: center;
 }
 /* With the track written underneath, the pair is centred as a pair: the needle lifts by
    half the readout so the two together sit in the middle of the square. */
 .orient-ctrl button:has(.orient-hdg) .orient-face { transform: translateY(-4px); }
 /* Hand-rotated: neither north-up nor heading-up. Marked so the button is not silently
    claiming an orientation the chart does not have. */
-.orient-ctrl button.orient-rotated { background: #fdf0d5; border-color: #b8860b; }
 
 /* follow lock — sits above the rotation dial, only while a fix is driving the map */
 .follow-ctrl { display: flex; justify-content: center; margin-bottom: 3px !important; }
@@ -1295,7 +1292,6 @@ body.theme-dark #map-crosshair::after {
 }
 /* Following is the state that changes the map under you, so it is the one that reads as
    engaged rather than the one that reads as normal. */
-.follow-ctrl button.follow-on { background: #ffe3de; border-color: #c8442e; }
 /* Drawn marks, not text: without this the SVG rides the button's text baseline and sits
    high in the square instead of in the middle of it. */
 .follow-ctrl button, .orient-ctrl button {
@@ -1323,7 +1319,57 @@ body.theme-dark #map-crosshair::after {
   touch-action: manipulation;
 }
 /* Locked is the state that refuses input, so it is the one that reads as engaged. */
-.editlock-ctrl button.editlock-on { background: #f3e2c7; border-color: #a5772c; }
+
+/* The in-flight column (voice, orientation, follow, follow me, edit lock): round dark-glass
+   buttons with white line icons drawn from one set (ui.js MAP_ICONS), so the five read as one
+   family over any chart -- the emoji they replaced drew differently on every phone. A state
+   is a filled ground, not only a coloured glyph: blue = on, green = sharing, amber = the route
+   is locked or the chart is turned by hand. The later, more specific selectors win over the
+   per-control rules above, which keep only size and layout. */
+:root {
+  --navaid-mapbtn-bg: rgba(22, 30, 40, 0.82);
+  --navaid-mapbtn-fg: #ffffff;
+  --navaid-mapbtn-on: #0b62d6;
+  --navaid-mapbtn-live: #1f8a4c;
+  --navaid-mapbtn-warn: #b07a12;
+}
+.leaflet-control.voice-ctrl button,
+.leaflet-control.orient-ctrl button,
+.leaflet-control.follow-ctrl button,
+.leaflet-control.follow-me-ctrl button,
+.leaflet-control.editlock-ctrl button {
+  display: flex; align-items: center; justify-content: center;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  color: var(--navaid-mapbtn-fg);
+  background: var(--navaid-mapbtn-bg);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.35);
+  -webkit-tap-highlight-color: transparent;
+}
+.leaflet-control.voice-ctrl button svg,
+.leaflet-control.follow-me-ctrl button svg,
+.leaflet-control.editlock-ctrl button svg { display: block; }
+.leaflet-control.voice-ctrl button:focus-visible,
+.leaflet-control.orient-ctrl button:focus-visible,
+.leaflet-control.follow-ctrl button:focus-visible,
+.leaflet-control.follow-me-ctrl button:focus-visible,
+.leaflet-control.editlock-ctrl button:focus-visible {
+  outline: 2px solid #ffffff;
+  outline-offset: 2px;
+  box-shadow: 0 0 0 4px var(--navaid-mapbtn-on);
+}
+.leaflet-control.voice-ctrl button.voice-on,
+.leaflet-control.orient-ctrl button.orient-on,
+.leaflet-control.follow-ctrl button.follow-on { background: var(--navaid-mapbtn-on); }
+.leaflet-control.follow-me-ctrl button.follow-me-on { background: var(--navaid-mapbtn-live); }
+/* Connecting / reconnecting: sharing is asked for but not yet reaching anyone. */
+.leaflet-control.follow-me-ctrl button.follow-me-pending {
+  background: var(--navaid-mapbtn-bg);
+  box-shadow: 0 0 0 2px var(--navaid-mapbtn-live), 0 2px 6px rgba(0, 0, 0, 0.35);
+}
+.leaflet-control.orient-ctrl button.orient-rotated,
+.leaflet-control.editlock-ctrl button.editlock-on { background: var(--navaid-mapbtn-warn); }
 
 /* rotate dial — Google-Maps-style compass needle by the zoom buttons */
 .rotate-ctrl {
@@ -7696,11 +7742,6 @@ body.theme-light .follow-me-banner.holding { color: #4a3608; background: rgba(25
 /* Lit while it is actually sharing -- the one state a pilot must be able to see at a glance,
    because the cost of not noticing is a link still broadcasting after the flight. Engaged
    the way the rest of the column shows it: a tinted ground, not only a coloured glyph. */
-.follow-me-ctrl button.follow-me-on {
-  color: #1d5c2a;
-  background: #d8f0d8;
-  border-color: #4a8a4a;
-}
 
 /* Parking-request dialog: the AIP asks for things the plan cannot know (which kind of
    parking, until when, fuel), so they are chosen here and the message is shown -- and
