@@ -6,7 +6,7 @@
 //
 // The rest of Clear map already worked and is pinned here too, because it is the kind of
 // behaviour that gets lost in a refactor: no route, no notes, chart north-up, inspector shut.
-const { test, expect } = require('./_setup');
+const { test, expect, answerAppDialogs } = require('./_setup');
 
 async function boot(page) {
   await page.goto('?lang=en&nogist');
@@ -35,7 +35,7 @@ test('Clear map switches off the extra layers the flight was planned with', asyn
   await switchOn(page, ids);
   expect(await checked(page, ids)).toEqual(ids);
 
-  page.once('dialog', d => d.accept());
+  await answerAppDialogs(page, true);
   await page.evaluate(() => document.getElementById('clear').click());
   expect(await checked(page, ids)).toEqual([]);
 });
@@ -55,7 +55,7 @@ test('every toggle in the Extra layers menu is cleared, not a hand-listed few', 
       if (cb) cb.checked = true;
     }
   }, all);
-  page.once('dialog', d => d.accept());
+  await answerAppDialogs(page, true);
   await page.evaluate(() => document.getElementById('clear').click());
   expect(await checked(page, all)).toEqual([]);
 });
@@ -72,7 +72,7 @@ test('Clear map still empties the route, squares the chart and shuts the inspect
   });
   expect(await page.evaluate(() => document.getElementById('inspector').classList.contains('hidden'))).toBe(false);
 
-  page.once('dialog', d => d.accept());
+  await answerAppDialogs(page, true);
   await page.evaluate(() => document.getElementById('clear').click());
   const after = await page.evaluate(() => ({
     wps: state.waypoints.length,
@@ -87,7 +87,7 @@ test('Clear map still empties the route, squares the chart and shuts the inspect
 test('a layer switched off by Clear map stays off across a reload', async ({ page }) => {
   await boot(page);
   await switchOn(page, ['msa-cb']);
-  page.once('dialog', d => d.accept());
+  await answerAppDialogs(page, true);
   await page.evaluate(() => document.getElementById('clear').click());
   // Each toggle is cleared through its own handler, so it persists exactly as a click would.
   // Otherwise the layer would come back on the next boot and the map would un-clear itself.

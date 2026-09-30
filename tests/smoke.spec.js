@@ -1,5 +1,5 @@
 // @ts-check
-const { test, expect } = require('./_setup');
+const { test, expect, answerAppDialogs } = require('./_setup');
 
 test.describe('NavAid smoke', () => {
   test.beforeEach(async ({ page }) => {
@@ -88,7 +88,7 @@ test.describe('NavAid smoke', () => {
       syncLegs();
       draw();
     });
-    page.once('dialog', d => d.accept());
+    await answerAppDialogs(page, true);
     await page.locator('#clear').click();
     const wpCount = await page.evaluate(() => state.waypoints.length);
     expect(wpCount).toBe(0);

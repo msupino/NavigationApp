@@ -1,6 +1,6 @@
 // @ts-check
 // Tests for the #162 shareable route link.
-const { test, expect } = require('./_setup');
+const { test, expect, answerAppDialogs } = require('./_setup');
 const { LLHZ, LLHA } = require('./_airfieldArp');
 
 // Same 11-waypoint LLHZ → LLHA fixture as tests/flight-plan.spec.js (PR #153),
@@ -216,7 +216,7 @@ test.describe('Share route link', () => {
         outLabel: { a: 0, p: -44 },
       }));
     }, ROUTE);
-    page.once('dialog', d => d.accept());        // share-success alert
+    await answerAppDialogs(page, true);        // share-success alert
     await page.locator('#share').click();
     const clip = await page.evaluate(() => navigator.clipboard.readText());
     expect(clip).toContain('r=');

@@ -5027,7 +5027,7 @@ window.askYesNo = askYesNo;
 
 // The app's confirm(): the same question, asked in the app. A promise -- await it.
 function appConfirm(text, okLabel, title) {
-  return askYesNo(title || S.appConfirmTitle || 'NavAid', text, okLabel);
+  return askYesNo(title || 'NavAid', text, okLabel);
 }
 window.appConfirm = appConfirm;
 
