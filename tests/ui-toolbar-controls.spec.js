@@ -80,12 +80,15 @@ test.describe('Map legend', () => {
     await expect(legend).toBeVisible();
     await expect(legend).toContainText('Legend');
     await expect(legend).toContainText('Airfield');
-    await expect(legend).toContainText('Waypoint');
+    // ICAO reporting points: a filled triangle when compulsory, an open one on request.
+    await expect(legend).toContainText('Compulsory reporting point');
+    await expect(legend).toContainText('Reporting point (on request)');
     // The ringed circle is the hotspot symbol now; a frequency change announces itself in a
     // callout, with the frequency in it, and needs no legend entry.
     await expect(legend).toContainText('Hotspot');
     await expect(legend.locator('.legend-airfield')).toBeVisible();
     await expect(legend.locator('.legend-waypoint')).toBeVisible();
+    await expect(legend.locator('.legend-report-compulsory')).toBeVisible();
     await expect(legend.locator('.legend-atc')).toBeVisible();
     // #526: lifted out of the View menu into a top-right Leaflet control on
     // the map, so it reads as a chart legend rather than a menu item.

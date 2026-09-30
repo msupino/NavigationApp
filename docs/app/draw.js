@@ -113,6 +113,11 @@ function legKiteAlongHalfPx(sc) {
 // both the simulator aircraft and the live GPS position). Top-down airplane
 // silhouette: nose up in local frame, rotated to (heading − map bearing) so it
 // tracks correctly on a rotated map.
+const OWN_SHIP_PATH = typeof Path2D === 'function' ? new Path2D(
+  'M0,-15 C2.2,-15 2.6,-12 2.6,-9 L2.6,-5.2 L15,-4.6 C16,-4.5 16,-1.6 15,-1.5 L2.6,-1 L2,7'
+  + ' L6.8,8.2 C7.6,8.4 7.6,10.6 6.8,10.8 L1.4,11.4 L0,14 L-1.4,11.4 L-6.8,10.8'
+  + ' C-7.6,10.6 -7.6,8.4 -6.8,8.2 L-2,7 L-2.6,-1 L-15,-1.5 C-16,-1.6 -16,-4.5 -15,-4.6'
+  + ' L-2.6,-5.2 L-2.6,-9 C-2.6,-12 -2.2,-15 0,-15 Z') : null;
 function drawOwnShip(pos, hdg, gsKt) {
   if (!pos) return;
   // A frozen fix is drawn faded, and without the heading predictor: extrapolating a track
@@ -148,50 +153,21 @@ function drawOwnShip(pos, hdg, gsKt) {
   octx.translate(s.x, s.y);
   octx.rotate(screenAngle);
 
-  const fc = tune('liveAircraftFillColor');
-  const oc = colorWithAlpha(tune('liveAircraftOutlineColor'), 0.9);
-
-  function roundRect(x, y, w, h, radius) {
-    const rx = Math.min(radius, w / 2, h / 2);
-    octx.beginPath();
-    octx.moveTo(x + rx, y);
-    octx.lineTo(x + w - rx, y);
-    octx.quadraticCurveTo(x + w, y, x + w, y + rx);
-    octx.lineTo(x + w, y + h - rx);
-    octx.quadraticCurveTo(x + w, y + h, x + w - rx, y + h);
-    octx.lineTo(x + rx, y + h);
-    octx.quadraticCurveTo(x, y + h, x, y + h - rx);
-    octx.lineTo(x, y + rx);
-    octx.quadraticCurveTo(x, y, x + rx, y);
-    octx.closePath();
-  }
-
-  // Cessna-style: straight full-span wing, slim fuselage, tailplane, spinner.
-  // Proportions match the footer SVG (viewBox 0 0 16 16, fuselage half-length = r).
-  const fw = r * 0.24;   // fuselage half-width
-  const wr = r * 0.14;   // rounded corner radius
-
-  // fuselage
-  roundRect(-fw, -r, fw * 2, r * 2, wr);
-  octx.fillStyle = fc; octx.fill();
-  octx.lineWidth = 1.5; octx.strokeStyle = oc; octx.stroke();
-
-  // full-span straight wing (at ~-0.14r from center)
-  roundRect(-r * 1.13, -r * 0.27, r * 2.26, r * 0.27, wr);
-  octx.fillStyle = fc; octx.fill();
-  octx.lineWidth = 1; octx.strokeStyle = oc; octx.stroke();
-
-  // tailplane (shorter, near tail)
-  roundRect(-r * 0.55, r * 0.63, r * 1.1, r * 0.22, wr * 0.5);
-  octx.fillStyle = fc; octx.fill();
-  octx.lineWidth = 1; octx.strokeStyle = oc; octx.stroke();
-
-  // spinner (nose circle)
-  octx.beginPath();
-  octx.arc(0, -r, r * 0.14, 0, Math.PI * 2);
-  octx.fillStyle = fc; octx.fill();
-  octx.lineWidth = 1; octx.strokeStyle = oc; octx.stroke();
-
+  // A smooth high-wing silhouette, nose up, drawn at 1 unit = r/13.5 px (span ~2.4r), in the
+  // app's blue with a white halo and a soft shadow so it lifts off light and dark charts alike.
+  // The same outline, in a 24-unit box, is the follow-me / public-pilot mark (followme.js).
+  const k = r / 13.5;
+  octx.scale(k, k);
+  octx.lineJoin = 'round';
+  octx.shadowColor = 'rgba(0,0,0,0.35)';
+  octx.shadowBlur = 4;
+  octx.shadowOffsetY = 1.5;
+  octx.lineWidth = 3.2;
+  octx.strokeStyle = tune('ownShipHaloColor');
+  octx.stroke(OWN_SHIP_PATH);
+  octx.shadowColor = 'transparent';
+  octx.fillStyle = tune('ownShipColor');
+  octx.fill(OWN_SHIP_PATH);
   octx.restore();
 }
 
@@ -3558,34 +3534,71 @@ function routeReturnsHome() {
 }
 window.routeReturnsHome = routeReturnsHome;
 
-// Distinct from nav-WPs: airfields are rendered as a blue-filled upward
-// triangle (▲) outline, sized to ~7 px at typical zooms. The ICAO and
-// localised name appear next to the marker at zoom ≥ 10. Suppressed when
+// ICAO aerodrome symbol (Annex 4 VFR chart): a circle. Where airfields.json lists the
+// runways, their directions are drawn across it (a 12/30 bar lies along 120°/300°), so the
+// field reads the way it looks from the air; a field without that data gets a centre dot.
+// A triangle would say "reporting point" on a chart -- that is what drawNavWaypoints uses.
+// The ICAO and localised name appear next to the marker at zoom >= 10. Suppressed when
 // a route waypoint sits on the airfield (proximity-based, like nav-WPs).
+function runwayBearingsDeg(af) {
+  const out = [];
+  for (const rw of (af && Array.isArray(af.runways) ? af.runways : [])) {
+    const n = parseInt(String(rw).split('/')[0], 10);   // '08/26' -> 80°; L/R/C suffixes ignored
+    if (Number.isFinite(n) && n >= 1 && n <= 36) out.push(n * 10);
+  }
+  return out;
+}
+function drawAirfieldSymbol(ctx, s, r, af) {
+  const col = tune('airfieldFillColor');
+  const lw = tune('airfieldStrokeWidthPx');
+  ctx.beginPath();
+  ctx.arc(s.x, s.y, r, 0, Math.PI * 2);
+  ctx.fillStyle = tune('airfieldCenterColor');
+  ctx.fill();
+  ctx.lineWidth = lw;
+  ctx.strokeStyle = col;
+  ctx.stroke();
+  const rwys = runwayBearingsDeg(af);
+  if (!rwys.length) {
+    ctx.beginPath();
+    ctx.arc(s.x, s.y, Math.max(1.5, r * 0.35), 0, Math.PI * 2);
+    ctx.fillStyle = col;
+    ctx.fill();
+    return;
+  }
+  // Runway designators are magnetic; the screen direction comes from a projected offset, as
+  // for the aircraft symbol, so the bars stay right on a rotated (heading-up) chart.
+  const mag = typeof fromMagnetic === 'function' ? fromMagnetic : (d => d);
+  const len = r * 0.72;
+  ctx.save();
+  ctx.lineCap = 'round';
+  ctx.lineWidth = lw * 1.3;
+  ctx.strokeStyle = col;
+  for (const deg of rwys) {
+    const to = mag(deg) * Math.PI / 180;
+    const p2 = proj({ lat: af.lat + Math.cos(to) * 0.02,
+                      lng: af.lng + Math.sin(to) * 0.02 / Math.cos(af.lat * Math.PI / 180) });
+    const a = Math.atan2(p2.y - s.y, p2.x - s.x);
+    ctx.beginPath();
+    ctx.moveTo(s.x - Math.cos(a) * len, s.y - Math.sin(a) * len);
+    ctx.lineTo(s.x + Math.cos(a) * len, s.y + Math.sin(a) * len);
+    ctx.stroke();
+  }
+  ctx.restore();
+}
 function drawAirfields() {
   if (!showAirfields || !airfields || airfields.length === 0) return;
   const showLabels = map.getZoom() >= tune('airfieldLabelMinZoom');
   const r = tune('airfieldMarkerRadiusPx');
-  const wFactor = tune('airfieldMarkerWidthFactor');
-  const bFactor = tune('airfieldMarkerBaseFactor');
   const labelOffset = tune('airfieldLabelOffsetPx');
-  octx.font = `bold ${tune('airfieldLabelFontPx')}px sans-serif`;
-  octx.textAlign = 'left';
-  octx.textBaseline = 'middle';
   for (const af of airfields) {
     if (routeOccupiesPoint(af)) continue;
     const s = proj(af);                  // no viewport cull: also drawn into
                                          // the larger PNG-export canvas
-    octx.beginPath();
-    octx.moveTo(s.x,          s.y - r);
-    octx.lineTo(s.x + r * wFactor, s.y + r * bFactor);
-    octx.lineTo(s.x - r * wFactor, s.y + r * bFactor);
-    octx.closePath();
-    octx.fillStyle = tune('airfieldFillColor');          // saturated blue — distinct from white nav-WP dots
-    octx.fill();
-    octx.lineWidth = tune('airfieldStrokeWidthPx');
-    octx.strokeStyle = tune('airfieldOutlineColor');
-    octx.stroke();
+    drawAirfieldSymbol(octx, s, r, af);
+    octx.font = `bold ${tune('airfieldLabelFontPx')}px sans-serif`;
+    octx.textAlign = 'left';
+    octx.textBaseline = 'middle';
     if (showLabels) {
       const label = ltrIsolate(referenceOverlayLabel(af, 'airfield'));
       octx.lineWidth = tune('airfieldLabelHaloPx');
@@ -3598,12 +3611,27 @@ function drawAirfields() {
   octx.lineWidth = 1;
 }
 
+// ICAO reporting-point symbol: a filled triangle for a compulsory point, an open one for a
+// point on request (and for the few with no class in the data).
+function drawReportingPointSymbol(ctx, x, y, r, compulsory, fill) {
+  ctx.beginPath();
+  ctx.moveTo(x, y - r);
+  ctx.lineTo(x + r * 0.866, y + r * 0.5);
+  ctx.lineTo(x - r * 0.866, y + r * 0.5);
+  ctx.closePath();
+  ctx.fillStyle = fill || (compulsory ? tune('inkColor') : tune('navWaypointDotColor'));
+  ctx.fill();
+  ctx.lineJoin = 'round';
+  ctx.strokeStyle = tune('inkColor');
+  ctx.stroke();
+  ctx.lineJoin = 'miter';
+}
 function drawNavWaypoints() {
   if (!showNavWP || !navWP || navWP.length === 0) return;
-  // Suppress nav-WP dot when a route waypoint sits on it (by position),
+  // Suppress nav-WP symbol when a route waypoint sits on it (by position),
   // regardless of whether the WP name was changed after snapping.
   const showLabels = map.getZoom() >= tune('navWpLabelMinZoom');
-  const dotRadius = tune('navWaypointRadiusPx');
+  const r = tune('reportingPointRadiusPx');
   const labelOffset = tune('navWaypointLabelOffsetPx');
   octx.font = `bold ${tune('navWaypointLabelFontPx')}px sans-serif`;
   octx.textAlign = 'left';
@@ -3612,13 +3640,8 @@ function drawNavWaypoints() {
     if (routeOccupiesPoint(wp)) continue;
     const s = proj(wp);                  // no viewport cull: also drawn into
                                          // the larger PNG-export canvas
-    octx.fillStyle = tune('navWaypointDotColor');
-    octx.strokeStyle = tune('inkColor');
     octx.lineWidth = tune('navWaypointStrokeWidthPx');
-    octx.beginPath();
-    octx.arc(s.x, s.y, dotRadius, 0, Math.PI * 2);
-    octx.fill();
-    octx.stroke();
+    drawReportingPointSymbol(octx, s.x, s.y, r, wp.report === 'mandatory');
     if (showLabels) {
       const label = ltrIsolate(referenceOverlayLabel(wp, 'navwp'));
       octx.lineWidth = tune('navWaypointLabelHaloPx');
@@ -3791,27 +3814,21 @@ function reportingFor(name) {
 // so it tracks the dedicated "Show mandatory reports" toggle. On-request
 // points are not badged (they are the common case); the inspector still
 // reports both classes for any selected waypoint.
+// "Show mandatory reports": the chart's compulsory-report symbol (a filled triangle) beside
+// every compulsory point, so it still shows where a route waypoint covers the point or the
+// nav-waypoint layer is off. Where that layer already draws the point as a filled triangle,
+// a second one beside it would say nothing more.
 function drawReportingBadges() {
   if (!showReporting || !navWP || !navWP.length) return;
   const r = tune('reportBadgeRadiusPx');
   const off = tune('reportBadgeOffsetPx');
   octx.save();
-  octx.textAlign = 'center';
-  octx.textBaseline = 'middle';
-  octx.font = `bold ${tune('reportBadgeFontPx')}px sans-serif`;
+  octx.lineWidth = 1.5;
   for (const wp of navWP) {
     if (wp.report !== 'mandatory') continue;
+    if (showNavWP && !routeOccupiesPoint(wp)) continue;
     const s = proj(wp);
-    const cx = s.x + off, cy = s.y - off;
-    octx.beginPath();
-    octx.arc(cx, cy, r, 0, Math.PI * 2);
-    octx.fillStyle = tune('reportBadgeColor');
-    octx.fill();
-    octx.lineWidth = 1.5;
-    octx.strokeStyle = tune('inkColor');
-    octx.stroke();
-    octx.fillStyle = tune('reportBadgeTextColor');
-    octx.fillText('M', cx, cy + 0.5);
+    drawReportingPointSymbol(octx, s.x + off, s.y - off, r, true);
   }
   octx.restore();
   octx.lineWidth = 1;
@@ -6603,7 +6620,7 @@ function hotspotsOverlayEnabled() {
 }
 function drawHotspotOverlay() {
   if (!hotspotsOverlayEnabled() || !navWP || !navWP.length) return;
-  const dotRadius = tune('navWaypointRadiusPx');
+  const dotRadius = tune('reportingPointRadiusPx');
   const gap = tune('waypointHotspotRingGapPx');
   const labels = map.getZoom() >= tune('navWpLabelMinZoom');
   octx.save();
@@ -6625,10 +6642,10 @@ function drawHotspotOverlay() {
     // With the nav layer off there is no dot underneath, so the ring would be an empty circle
     // on the chart: fill it in the hotspot colour so the point reads as a point.
     if (!showNavWP) {
-      octx.fillStyle = tune('waypointHotspotFillColor');
-      octx.beginPath();
-      octx.arc(s.x, s.y, dotRadius, 0, Math.PI * 2);
-      octx.fill();
+      octx.save();
+      octx.lineWidth = tune('navWaypointStrokeWidthPx');
+      drawReportingPointSymbol(octx, s.x, s.y, dotRadius, false, tune('waypointHotspotFillColor'));
+      octx.restore();
       if (labels) {
         const label = referenceOverlayLabel(wp, 'navwp');
         const off = tune('navWaypointLabelOffsetPx') + gap;

@@ -178,8 +178,8 @@ test.describe('Hidden tuning panel', () => {
         windArrowColor: '#336699',
         windArrowHaloColor: '#abcdef',
         windTextHaloColor: '#fedcba',
-        liveAircraftFillColor: '#cc1122',
-        liveAircraftOutlineColor: '#eeeeee',
+        ownShipColor: '#cc1122',
+        ownShipHaloColor: '#eeeeee',
         commChangeRings: true,          // the ring ships off; this test is about its colour
         commChangeRingColor: '#990000',
         profileBgColor: '#001122',
@@ -367,7 +367,7 @@ test.describe('Hidden tuning panel', () => {
     expect(out.fills).toContain('rgba(136, 153, 170, 0.4)');
     expect(out.strokes).toContain('rgba(171, 205, 239, 0.85)');
     expect(out.strokes).toContain('rgba(254, 220, 186, 0.9)');
-    expect(out.strokes).toContain('rgba(238, 238, 238, 0.9)');
+    expect(out.strokes).toContain('#eeeeee');
     expect(out.strokes).toContain('#990000');
     expect(out.strokes).toContain('#334455');
     expect(out.strokes).toContain('#8899aa');

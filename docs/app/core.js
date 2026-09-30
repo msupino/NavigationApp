@@ -340,15 +340,13 @@ NavAid.tuningDefaults = {
   waypointHotspotRingWidthPx: { value: 3, min: 1, max: 10, step: 0.5, label: 'Hotspot ring width (px)' },
   waypointHotspotRingGapPx: { value: 3, min: 0, max: 12, step: 0.5, label: 'Hotspot ring gap (px)' },
 
-  airfieldMarkerRadiusPx: { value: 7, min: 2, max: 40, step: 1, label: 'Airfield triangle radius (px)' },
-  airfieldMarkerWidthFactor: { value: 0.95, min: 0.1, max: 2, step: 0.05, label: 'Airfield triangle width, as a share of its height' },
-  airfieldMarkerBaseFactor: { value: 0.65, min: 0.1, max: 2, step: 0.05, label: 'Airfield triangle base overhang, as a share of its width' },
-  airfieldStrokeWidthPx: { value: 1.5, min: 0.25, max: 8, step: 0.25, label: 'Airfield stroke width (px)' },
+  airfieldMarkerRadiusPx: { value: 7, min: 2, max: 40, step: 1, label: 'Airfield circle radius (px)' },
+  airfieldStrokeWidthPx: { value: 1.5, min: 0.25, max: 8, step: 0.25, label: 'Airfield circle and runway line width (px)' },
   airfieldLabelFontPx: { value: 11, min: 4, max: 30, step: 1, label: 'Airfield label text size (px)' },
   airfieldLabelOffsetPx: { value: 3, min: 0, max: 40, step: 1, label: 'Airfield label offset (px)' },
   airfieldLabelHaloPx: { value: 2.5, min: 0.25, max: 10, step: 0.25, label: 'Airfield label halo width (px)' },
 
-  navWaypointRadiusPx: { value: 3.5, min: 1, max: 20, step: 0.5, label: 'Nav waypoint dot radius (px)' },
+  reportingPointRadiusPx: { value: 6, min: 2, max: 20, step: 0.5, label: 'Reporting point triangle radius (px)' },
   navWaypointStrokeWidthPx: { value: 1.5, min: 0.25, max: 8, step: 0.25, label: 'Nav waypoint stroke width (px)' },
   navWaypointLabelFontPx: { value: 10, min: 4, max: 28, step: 1, label: 'Nav waypoint label text size (px)' },
   navWaypointLabelOffsetPx: { value: 6, min: 0, max: 40, step: 1, label: 'Nav waypoint label offset (px)' },
@@ -488,9 +486,10 @@ NavAid.tuningDefaults = {
   labelFillColor: { value: '#fff6aa', type: 'color', label: 'Default label fill color' },
   kiteTextColor: { value: '#000000', type: 'color', label: 'Leg label box text color' },
   legKiteHaloColor: { value: '#8e44ad', type: 'color', label: 'Leg label box halo color' },
-  airfieldFillColor: { value: '#2f6fd0', type: 'color', label: 'Airfield fill color' },
-  airfieldOutlineColor: { value: '#0a1a2a', type: 'color', label: 'Airfield outline color' },
-  navWaypointDotColor: { value: '#ffffff', type: 'color', label: 'Nav waypoint dot color' },
+  airfieldFillColor: { value: '#2f6fd0', type: 'color', label: 'Airfield symbol color (circle, runways)' },
+  airfieldCenterColor: { value: '#ffffff', type: 'color', label: 'Airfield circle inside color' },
+  airfieldOutlineColor: { value: '#0a1a2a', type: 'color', label: 'Airfield label color' },
+  navWaypointDotColor: { value: '#ffffff', type: 'color', label: 'On-request reporting point (open triangle) inside color' },
 
   driftLineColor: { value: '#141414', type: 'color', label: 'Drift line color' },
   driftLineAlpha: { value: 0.6, min: 0, max: 1, step: 0.05, label: 'Drift line opacity (0-1)' },
@@ -523,8 +522,8 @@ NavAid.tuningDefaults = {
   // read darker/more opaque than the map. Gist-tunable.
   exportBgColor: { value: '#e7ebf0', type: 'color', label: 'PNG export background color' },
 
-  liveAircraftFillColor: { value: '#000000', type: 'color', label: 'Live aircraft fill color' },
-  liveAircraftOutlineColor: { value: '#ffffff', type: 'color', label: 'Live aircraft outline color' },
+  ownShipColor: { value: '#0b62d6', type: 'color', label: 'Live aircraft color' },
+  ownShipHaloColor: { value: '#ffffff', type: 'color', label: 'Live aircraft outline (halo) color' },
   liveHeadingLineColor: { value: '#e53935', type: 'color', label: 'Live heading line color' },
   liveHeadingTextColor: { value: '#ffffff', type: 'color', label: 'Live heading label color' },
   // Distance and time marks sit on the same line and read alike at a glance ("5 nm" / "5 min"
@@ -742,11 +741,8 @@ NavAid.tuningDefaults = {
   vorMarkerColor: { value: '#127a7a', type: 'color', label: 'VOR marker color' },
   vorSelectedColor: { value: '#e67e22', type: 'color', label: 'VOR selected (reference) color' },
   vorLabelFontPx: { value: 10, min: 4, max: 28, step: 1, label: 'VOR label text size (px)' },
-  reportBadgeRadiusPx: { value: 7, min: 3, max: 20, step: 0.5, label: 'Reporting badge radius (px)' },
-  reportBadgeOffsetPx: { value: 9, min: 0, max: 40, step: 1, label: 'Reporting badge offset (px)' },
-  reportBadgeFontPx: { value: 9, min: 4, max: 24, step: 1, label: 'Reporting badge text size (px)' },
-  reportBadgeColor: { value: '#d63b3b', type: 'color', label: 'Reporting badge fill' },
-  reportBadgeTextColor: { value: '#ffffff', type: 'color', label: 'Reporting badge text color' },
+  reportBadgeRadiusPx: { value: 7, min: 3, max: 20, step: 0.5, label: 'Compulsory-report badge (▲) radius (px)' },
+  reportBadgeOffsetPx: { value: 9, min: 0, max: 40, step: 1, label: 'Compulsory-report badge offset (px)' },
 
   inspectorDefaultTopPx: { value: 96, min: 40, max: 240, step: 1, label: 'Inspector default top (px)' },
   inspectorBottomGapPx: { value: 12, min: 0, max: 120, step: 1, label: 'Inspector bottom gap (px)' },
@@ -1068,8 +1064,8 @@ NavAid.tuningGroups = [
   { name: 'Minute markers', keys: ['minuteMarkerFontPx', 'minuteTickEvenPx', 'minuteTickOddPx', 'minuteTickEvenWidthPx', 'minuteTickOddWidthPx', 'minuteLabelOffsetPx'] },
   { name: 'Distance badges', keys: ['distanceBadgeRadiusPx', 'distanceBadgeBorderPx', 'distanceBadgeFontPx', 'distanceBadgeFillColor'] },
   { name: 'Route waypoints', keys: ['waypointBaseRadiusPx', 'waypointPrintDiaMm', 'waypointFontPx', 'waypointTextFitFactor', 'waypointMinZoomScale', 'waypointSelectedRadiusAddPx', 'waypointStrokeWidthPx', 'waypointFillColor', 'waypointHotspotFillColor', 'waypointHotspotRingColor', 'waypointHotspotRingWidthPx', 'waypointHotspotRingGapPx'] },
-  { name: 'Airfields', keys: ['airfieldMarkerRadiusPx', 'airfieldMarkerWidthFactor', 'airfieldMarkerBaseFactor', 'airfieldStrokeWidthPx', 'airfieldLabelFontPx', 'airfieldLabelOffsetPx', 'airfieldLabelHaloPx', 'airfieldFillColor', 'airfieldOutlineColor'] },
-  { name: 'Nav waypoints', keys: ['navWaypointRadiusPx', 'navWaypointStrokeWidthPx', 'navWaypointLabelFontPx', 'navWaypointLabelOffsetPx', 'navWaypointLabelHaloPx', 'navWaypointDotColor'] },
+  { name: 'Airfields', keys: ['airfieldMarkerRadiusPx', 'airfieldStrokeWidthPx', 'airfieldLabelFontPx', 'airfieldLabelOffsetPx', 'airfieldLabelHaloPx', 'airfieldFillColor', 'airfieldCenterColor', 'airfieldOutlineColor'] },
+  { name: 'Nav waypoints', keys: ['reportingPointRadiusPx', 'navWaypointStrokeWidthPx', 'navWaypointLabelFontPx', 'navWaypointLabelOffsetPx', 'navWaypointLabelHaloPx', 'navWaypointDotColor'] },
   { name: 'Overlay labels', keys: ['overlayLabelHaloColor', 'overlayLabelHaloAlpha'] },
   { name: 'Frequency changes', keys: ['commCalloutAngleDeg', 'commChangeRings', 'commChangeRingRadiusPx', 'commChangeRingWidthPx', 'commChangeRingColor', 'commChangeNoteLatOffset', 'commChangeNoteLngOffset', 'commChangeArrowStartGapPx', 'commChangeArrowWidthPx', 'commChangeArrowColor', 'commChangeArrowLineCap', 'commChangeArrowLineJoin', 'commChangeArrowMiterLimit', 'commChangeArrowHaloPx', 'commChangeArrowHaloColor', 'commChangeArrowHaloAlpha', 'commChangeSelectedColor', 'commChangeSelectedAlpha', 'commChangeSelectedWidthAddPx', 'commChangeArrowBoltPx', 'commChangeArrowBoltAngleDeg', 'commChangeArrowBend1Along', 'commChangeArrowBend2Along', 'commChangeNameFontPx', 'commChangeFreqFontPx', 'commChangeTextColor', 'commChangeTextHaloColor', 'commChangeTextHaloAlpha', 'commChangeTextAlong', 'commChangeTextGapPx', 'commChangeNameHaloWidthPx', 'commChangeFreqHaloWidthPx'] },
   { name: 'Notes', keys: ['noteFontPx', 'notePadXPx', 'notePadYPx', 'noteLineHeightPx', 'noteMinWidthPx', 'notePrintWidthMm', 'notePrintHeightMm', 'noteStrokeWidthPx', 'noteSelectedStrokeWidthPx', 'noteDefaultFillColor'] },
@@ -1083,8 +1079,8 @@ NavAid.tuningGroups = [
   { name: 'Hit testing', keys: ['hitWaypointExtraPx', 'hitLegPx', 'hitLegLabelMinPx', 'hitCumLabelMinPx'] },
   { name: 'Alt pairs', keys: ['altPairFocusColor', 'altPairFocusWidthPx', 'altPairFocusDashOnPx', 'altPairFocusDashOffPx', 'altPairFocusDotRadiusPx', 'altPairFocusDotColor', 'altPairFocusMs', 'altPairFocusLineAlpha', 'altPairFocusDotAlpha'] },
   { name: 'VOR stations', keys: ['vorMarkerRadiusPx', 'vorMarkerWidthPx', 'vorMarkerColor', 'vorSelectedColor', 'vorLabelFontPx'] },
-  { name: 'Reporting badges', keys: ['reportBadgeRadiusPx', 'reportBadgeOffsetPx', 'reportBadgeFontPx', 'reportBadgeColor', 'reportBadgeTextColor'] },
-  { name: 'Live aircraft', keys: ['liveAircraftFillColor', 'liveAircraftOutlineColor', 'liveAircraftRadiusPx', 'liveHeadingLineColor', 'liveHeadingTextColor', 'liveHeadingNmTextColor', 'liveHeadingMinTextColor', 'liveHeadingLineWidthPx', 'liveHeadingDashPx', 'liveHeadingDashGapPx', 'liveHeadingTickPx', 'liveHeadingLabelPx', 'liveHeadingLabelGapPx', 'livePredictorTurnMinDegSec', 'livePredictorTurnMaxDegSec', 'livePredictorTurnMaxArcDeg', 'livePredictorTurnMaxArcSec', 'livePredictorTurnMinKt', 'livePredictorTurnHoldSec', 'livePredictorTurnSmoothing', 'livePredictorTurnGentleDegSec', 'livePredictorTurnSignificance', 'livePredictorGyro'] },
+  { name: 'Reporting badges', keys: ['reportBadgeRadiusPx', 'reportBadgeOffsetPx'] },
+  { name: 'Live aircraft', keys: ['ownShipColor', 'ownShipHaloColor', 'liveAircraftRadiusPx', 'liveHeadingLineColor', 'liveHeadingTextColor', 'liveHeadingNmTextColor', 'liveHeadingMinTextColor', 'liveHeadingLineWidthPx', 'liveHeadingDashPx', 'liveHeadingDashGapPx', 'liveHeadingTickPx', 'liveHeadingLabelPx', 'liveHeadingLabelGapPx', 'livePredictorTurnMinDegSec', 'livePredictorTurnMaxDegSec', 'livePredictorTurnMaxArcDeg', 'livePredictorTurnMaxArcSec', 'livePredictorTurnMinKt', 'livePredictorTurnHoldSec', 'livePredictorTurnSmoothing', 'livePredictorTurnGentleDegSec', 'livePredictorTurnSignificance', 'livePredictorGyro'] },
   { name: 'Terrain', keys: ['terrainWarnClearanceFt', 'terrainTintAlpha', 'terrainAlertColor', 'terrainCautionColor', 'terrainLegWarnWidthPx', 'terrainLegWarnAlpha', 'terrainWpWarnRingPx', 'terrainTintMinZoom', 'terrainTintMinCellPx'] },   // msaBufferFt lives in the Navigation group
   { name: 'Vertical profile', keys: ['profileTerrainColor', 'profileMsaColor', 'profileTerrainSamples', 'profileHeadroomFt', 'profileBgColor', 'profileGridColor', 'profileAxisColor', 'profileGroundColor', 'profileTextColor', 'profileNmTextColor', 'profileTimeTextColor', 'profileAreaColor', 'profileLineColor', 'profileSpeedColor', 'profilePlanColor', 'routeProfileHeightPx', 'trackProfileSmoothFixes', 'profileLegend', 'profileExportWidthPx', 'profileExportHeightPx', 'profileTocColor', 'profileMarkerHaloColor', 'profileAxisHeightPx', 'profileYPadPx'] },
   { name: 'SIGMETs', keys: ['sigmetTurbColor', 'sigmetIceColor', 'sigmetMtwColor', 'sigmetVaColor', 'sigmetDustColor', 'sigmetTcColor', 'sigmetDefaultColor', 'sigmetFillAlpha', 'sigmetLineWidthPx', 'sigmetDashOnPx', 'sigmetDashOffPx', 'sigmetLabelFontPx', 'airmetColor'] },
@@ -1415,7 +1411,7 @@ window.S = Object.assign({
   tbShowNavWp: 'Show/pin nav waypoints',            // Map overlay toggle
   tbShowNavWpTitle: 'Overlay published Israeli VFR reporting points',
   tbShowReporting: 'Show mandatory reports',        // reporting-type overlay toggle
-  tbShowReportingTitle: 'Badge waypoints that are mandatory (חובה) reporting points',
+  tbShowReportingTitle: 'Mark compulsory (חובה) reporting points with a ▲, also where the route covers them',
   tbImsPwx: 'Show wind/temp',                       // IMS PWX overlay toggle
   tbImsPwxTitle: 'Overlay the IMS PWX wind & temperature forecast on the map',
   tbImsPwxLevel: 'Level',
@@ -2614,7 +2610,8 @@ window.S = Object.assign({
   tbShowCommChangeTitle: 'Mark CVFR reporting points where pilots must change ATC frequency',
   legendTitle: 'Legend',
   legendAirfield: 'Airfield',
-  legendWaypoint: 'Waypoint',
+  legendWaypoint: 'Reporting point (on request)',
+  legendReportCompulsory: 'Compulsory reporting point',
   legendVor: 'VOR station',
   tbMoreLinks: 'More links (repo, wiki, issues, about, privacy, terms)',
   legendAtcChange: 'Freq change',
