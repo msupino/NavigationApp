@@ -451,7 +451,7 @@ test('a gentle 0.6 deg/s turn in GPS noise curves the predictor, under the gist\
   expect(out.endLat).toBeLessThan(32.1);          // a right turn from east bends south
 });
 
-test('the turn is drawn for at most 30 s and 60 deg, so a slow or gentle turn does not bend the whole line', async ({ page }) => {
+test('the turn is drawn for at most 60 s and 60 deg, so a slow or gentle turn does not bend too far', async ({ page }) => {
   await boot(page);
   const out = await page.evaluate(() => {
     resetHeadingPredictor();
@@ -471,7 +471,33 @@ test('the turn is drawn for at most 30 s and 60 deg, so a slow or gentle turn do
     return { slow: slow.endHeading, slowNow: 14 - 3 * 4, gentle: gentle.endHeading, gentleNow: 14 + 0.5 * 4 };
   });
   expect(out.slow).toBeCloseTo(((out.slowNow - 60) % 360 + 360) % 360, 0);
-  expect(out.gentle).toBeCloseTo(out.gentleNow + 0.5 * 30, 0);
+  expect(out.gentle).toBeCloseTo(out.gentleNow + 0.5 * 60, 0);
+});
+
+// Reported: "the G1000 curve line lost its curve". Capped at 30 s and 60 deg, the arc was half
+// a mile long under a 10 NM straight tail -- hidden by the aircraft symbol. In a turn the line
+// is now a trend vector: 60 s of flying, curved, no tail; rolled out, the full line is back.
+test('in a turn the line is a 60 s trend vector with no straight 10 NM tail', async ({ page }) => {
+  await boot(page);
+  const out = await page.evaluate(() => {
+    resetHeadingPredictor();
+    const fly = (key, rate) => {
+      const now = Date.now();
+      for (let i = 0; i < 6; i++) {
+        const t = now - (5 - i) * 1000;
+        drawHeadingLine({ lat: 32.1, lng: 34.9, t }, 90 + i * rate, 90, { trackKey: key, sampleTime: t, receivedAt: t });
+      }
+      const l = window.__headingLine;
+      return { curved: l.curved, lengthNm: l.lengthNm, trendSec: l.trendSec, lastNm: l.path.at(-1).nm };
+    };
+    return { turning: fly('turn', 3), straight: fly('level', 0) };
+  });
+  expect(out.turning.curved).toBe(true);
+  expect(out.turning.trendSec).toBe(60);
+  expect(out.turning.lengthNm).toBeCloseTo(90 / 60, 2);      // one minute at 90 kt
+  expect(out.turning.lastNm).toBeCloseTo(90 / 60, 2);
+  expect(out.straight.curved).toBe(false);
+  expect(out.straight.lengthNm).toBeGreaterThanOrEqual(10);  // the 10 NM line and its marks
 });
 
 test('straight flight with ordinary course jitter stays straight under the gentle-turn test', async ({ page }) => {
