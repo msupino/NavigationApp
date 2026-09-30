@@ -5823,6 +5823,12 @@ body.theme-light .point-choice-option:focus .point-choice-meta {
     background: #d8dde5;
   }
 }
+/* The canvas swatches are painted exactly as on the chart -- black triangles, dark rings --
+   so on the dark legend each sits on a chip of chart paper instead of disappearing. */
+body.theme-dark .map-legend canvas.legend-symbol {
+  background: #f1efe6;
+  border-radius: 4px;
+}
 body.theme-light .map-legend {
   background: rgba(250, 252, 255, 0.88);
   border-color: #c6ccd6;
