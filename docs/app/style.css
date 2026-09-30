@@ -253,40 +253,10 @@ body.theme-light .leaflet-image-layer.ims-pwx-layer {
   height: 18px;
   flex: 0 0 18px;
 }
-.legend-airfield::before,
-.legend-airfield::after {
-  content: '';
-  position: absolute;
-  left: 50%;
-  width: 0;
-  height: 0;
-  transform: translateX(-50%);
-}
-.legend-airfield::before {
-  top: 1px;
-  border-left: 8px solid transparent;
-  border-right: 8px solid transparent;
-  border-bottom: 15px solid #0a1a2a;
-}
-.legend-airfield::after {
-  top: 4px;
-  border-left: 6px solid transparent;
-  border-right: 6px solid transparent;
-  border-bottom: 11px solid #2f6fd0;
-}
-.legend-waypoint::before,
 .legend-atc::before {
   content: '';
   position: absolute;
   border-radius: 50%;
-}
-.legend-waypoint::before {
-  left: 4px;
-  top: 4px;
-  width: 9px;
-  height: 9px;
-  background: #fff;
-  border: 1.5px solid #161412;
 }
 .legend-atc::before {
   left: 2px;
@@ -5852,6 +5822,12 @@ body.theme-light .point-choice-option:focus .point-choice-meta {
   body.theme-light .tb-section[data-sec="print"] .tb-print-separator {
     background: #d8dde5;
   }
+}
+/* The canvas swatches are painted exactly as on the chart -- black triangles, dark rings --
+   so on the dark legend each sits on a chip of chart paper instead of disappearing. */
+body.theme-dark .map-legend canvas.legend-symbol {
+  background: #f1efe6;
+  border-radius: 4px;
 }
 body.theme-light .map-legend {
   background: rgba(250, 252, 255, 0.88);

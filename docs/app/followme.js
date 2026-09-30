@@ -1586,9 +1586,11 @@
 
   // A top-down aircraft whose unrotated nose points north. A font glyph has a device-specific
   // diagonal heading, so applying the reported track to it cannot produce a reliable bearing.
-  const FOLLOW_ME_PLANE = 'M12 1.6 13.35 6.4 13.35 9.6 22.4 14.9 22.4 17 13.35 14.3'
-    + ' 13.35 19.4 16.1 21.3 16.1 22.6 12 21.4 7.9 22.6 7.9 21.3 10.65 19.4'
-    + ' 10.65 14.3 1.6 17 1.6 14.9 10.65 9.6 10.65 6.4Z';
+  // The own-ship's outline (draw.js OWN_SHIP_PATH) scaled into the 24-unit box, nose at (12,1.85).
+  const FOLLOW_ME_PLANE = 'M12 1.85C13.54 1.85 13.82 3.95 13.82 6.05L13.82 8.71 22.5 9.13'
+    + 'C23.2 9.2 23.2 11.23 22.5 11.3L13.82 11.65 13.4 17.25 16.76 18.09C17.32 18.23 17.32 19.77 16.76 19.91'
+    + 'L12.98 20.33 12 22.15 11.02 20.33 7.24 19.91C6.68 19.77 6.68 18.23 7.24 18.09L10.6 17.25 10.18 11.65'
+    + ' 1.5 11.3C0.8 11.23 0.8 9.2 1.5 9.13L10.18 8.71 10.18 6.05C10.18 3.95 10.46 1.85 12 1.85Z';
 
   function followMeViewerDraw() {
     if (!viewer || !viewer.state.fix || typeof L === 'undefined' || typeof map === 'undefined') return;

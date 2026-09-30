@@ -41,10 +41,11 @@ test('LSA waypoints draw via the shared nav-waypoint overlay', async ({ page }) 
     map.addLayer(layers['Low Alt']);
     window.navWP = null; window.showNavWP = true; await loadNavWaypoints();
     map.setView([32.0, 34.9], 9);
-    let n = 0; const orig = octx.arc;
-    octx.arc = function (...a) { n++; return orig.apply(this, a); };
+    // Each point is the ICAO reporting-point triangle: one closed path per point.
+    let n = 0; const orig = octx.closePath;
+    octx.closePath = function (...a) { n++; return orig.apply(this, a); };
     drawNavWaypoints();
-    octx.arc = orig; return n;
+    octx.closePath = orig; return n;
   });
   expect(drawn).toBeGreaterThan(0);
 });
