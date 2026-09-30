@@ -1049,3 +1049,34 @@ test('a gist recolour of the stations repaints the legend swatch', async ({ page
   expect(r.after[2]).toBeLessThan(60);
   expect(r.before).not.toEqual(r.after);
 });
+
+// The chart convention, as asked for: VOR/DME a square with the hexagon inside it (corners cut)
+// and a dot; DME only a square with a dot; a plain VOR a hexagon with a dot.
+test('each station is drawn with its own chart symbol: VOR/DME, DME, VOR', async ({ page }) => {
+  await page.goto('?lang=en&nogist');
+  await page.waitForFunction(() => typeof drawVorSymbol === 'function' && typeof vorKind === 'function');
+  const out = await page.evaluate(() => {
+    // Ink at a point of a 60px symbol drawn alone on a canvas.
+    const draw = (type) => {
+      const cv = document.createElement('canvas'); cv.width = cv.height = 80;
+      const ctx = cv.getContext('2d');
+      drawVorSymbol(ctx, 40, 40, 30, '#000000', 2, 0, type);
+      const at = (x, y) => ctx.getImageData(x, y, 1, 1).data[3] > 60;
+      return {
+        corner: at(10, 10),           // the square's top-left corner
+        topMid: at(40, 10),           // the flat top edge
+        leftMid: at(10, 40),          // the left point / side
+        cut: at(17, 25),              // on the slanted edge that cuts the top-left corner
+        dot: at(40, 40),
+      };
+    };
+    return { kinds: ['VOR/DME', 'DVOR/DME', 'DME', 'VOR', 'VORTAC'].map(vorKind),
+             vordme: draw('VOR/DME'), dme: draw('DME'), vor: draw('VOR') };
+  });
+  expect(out.kinds).toEqual(['vordme', 'vordme', 'dme', 'vor', 'vordme']);
+  expect(out.vordme).toEqual({ corner: true, topMid: true, leftMid: true, cut: true, dot: true });
+  expect(out.dme).toEqual({ corner: true, topMid: true, leftMid: true, cut: false, dot: true });
+  expect(out.vor.corner).toBe(false);     // no square
+  expect(out.vor.leftMid).toBe(true);     // the hexagon's point
+  expect(out.vor.dot).toBe(true);
+});
