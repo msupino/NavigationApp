@@ -3631,33 +3631,56 @@ function drawNavWaypoints() {
   octx.lineWidth = 1;
 }
 
-// VOR/DME station overlay. Each station draws a compass-rose glyph (ring +
-// N/E/S/W ticks + centre dot) with an ident + frequency label. The selected
+// VOR/DME station overlay. Each station draws its chart symbol (see drawVorSymbol) with an
+// ident + frequency label. The selected
 // reference VOR is highlighted so it is obvious which one feeds the radial/
 // DME readouts. Gated by the "Show VOR stations" toggle.
 // `force` draws the stations regardless of the "Show VOR stations" toggle —
 // used by the PNG export so the exported chart shows the stations and their
 // ident/frequency labels whenever it carries VOR info (plan-card Radial/DME
 // columns), even with the toggle off or below the normal label zoom threshold.
-// The VOR station symbol, in one place: ring, four N/E/S/W ticks just outside it, and
-// a filled centre dot. Shared with the map legend's swatch (ui.js paints it into a
-// small canvas) -- the legend used to approximate this in CSS and looked nothing like
-// it, because stroke width, tick length and dot size are all ratios of the radius.
-function drawVorSymbol(ctx, x, y, r, col, lineWidth, tickLen) {
-  const tick = Number.isFinite(tickLen) ? tickLen : 4;
+// The station symbol, in one place: the chart convention for what the station IS.
+//   VOR        a hexagon (points left and right) with a centre dot
+//   VOR/DME    a square with the hexagon inside it -- its corners cut across -- and the dot
+//   DME        a square with a centre dot
+// Shared with the map legend's swatch (ui.js paints it into a small canvas), so the key and
+// the map cannot drift apart; stroke and dot are ratios of the radius. `r` is half the
+// square's side (and the hexagon's point-to-centre distance). `tickLen` is unused since the
+// compass-rose glyph went; kept so callers' arguments still line up.
+function vorKind(type) {
+  const t = String(type || '').toUpperCase();
+  const vor = /VOR|VORTAC/.test(t);
+  const dme = /DME|TACAN|VORTAC/.test(t);
+  if (vor && dme) return 'vordme';
+  if (dme) return 'dme';
+  return 'vor';
+}
+function drawVorSymbol(ctx, x, y, r, col, lineWidth, tickLen, type) {
+  const kind = vorKind(type === undefined ? 'VOR/DME' : type);
   ctx.save();
   ctx.strokeStyle = col;
   ctx.fillStyle = col;
   ctx.lineWidth = lineWidth;
+  ctx.lineJoin = 'miter';
   ctx.beginPath();
-  ctx.arc(x, y, r, 0, Math.PI * 2);
-  ctx.stroke();
-  for (const [dx, dy] of [[0, -1], [1, 0], [0, 1], [-1, 0]]) {
-    ctx.beginPath();
-    ctx.moveTo(x + dx * r, y + dy * r);
-    ctx.lineTo(x + dx * (r + tick), y + dy * (r + tick));
-    ctx.stroke();
+  if (kind === 'vor') {
+    // Regular hexagon, points at left and right.
+    for (let i = 0; i < 6; i++) {
+      const a = i * Math.PI / 3;
+      const px = x + r * Math.cos(a), py = y + r * Math.sin(a);
+      if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+    }
+    ctx.closePath();
+  } else {
+    ctx.rect(x - r, y - r, 2 * r, 2 * r);
+    if (kind === 'vordme') {
+      // The hexagon inside: its flat top and bottom are the square's, its points touch the
+      // square's sides -- so only the four slanted edges are drawn, cutting the corners.
+      ctx.moveTo(x - r / 2, y - r); ctx.lineTo(x - r, y); ctx.lineTo(x - r / 2, y + r);
+      ctx.moveTo(x + r / 2, y - r); ctx.lineTo(x + r, y); ctx.lineTo(x + r / 2, y + r);
+    }
   }
+  ctx.stroke();
   ctx.beginPath();
   ctx.arc(x, y, Math.max(1.5, r * 0.22), 0, Math.PI * 2);
   ctx.fill();
@@ -3730,7 +3753,7 @@ function drawVors(force) {
     const s = proj(v);
     const sel = v.ident === selIdent;
     const col = sel ? tune('vorSelectedColor') : tune('vorMarkerColor');
-    drawVorSymbol(octx, s.x, s.y, r, col, tune('vorMarkerWidthPx') * (sel ? 1.6 : 1));
+    drawVorSymbol(octx, s.x, s.y, r, col, tune('vorMarkerWidthPx') * (sel ? 1.6 : 1), undefined, v.type);
     if (showLabels) {
       const label = v.ident + '  ' + (typeof vorEffectiveFreq === 'function' ? vorEffectiveFreq(v) : v.freq);
       const lx = s.x + r + 6, ly = s.y;
