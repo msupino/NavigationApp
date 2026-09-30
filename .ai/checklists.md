@@ -26,7 +26,8 @@ Use these as quick pre-commit reminders.
 - Add/update `tests/bidi-regression.spec.js` for mixed-direction text.
 - Prefer existing row builders and modal patterns.
 - Check light and dark theme too (`navaid.theme`), not only LTR/RTL.
-- No `alert()` / `confirm()` / `prompt()`: they are silent in the APK WebView. Use
+- No `alert()` / `confirm()` / `prompt()`: in the APK they are native dialogs with English-only
+  buttons and no theme (and a browser may suppress them). Use
   `appConfirm` / `askText` / `showCopyText` / `refuse` (see ui-patterns.md, Dialogs).
 - Map symbols: change the shared painter (`drawAirfieldSymbol`, `drawReportingPointSymbol`,
   `drawVorSymbol`, `OWN_SHIP_PATH`); the legend swatches repaint from it.

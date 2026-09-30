@@ -24,8 +24,8 @@
   // Leaflet renders a string tooltip as HTML — escape user-entered names so a
   // name like "<img onerror=…>" can't execute (self-XSS in this dev-only tool).
   var esc = escapeXml;                   // one escaper, defined in core.js
-  // The app's own dialogs (ui.js), not the browser's: the APK WebView never shows
-  // alert()/confirm()/prompt(). Fallbacks only for a build without ui.js.
+  // The app's own dialogs (ui.js), not the browser's alert()/confirm()/prompt(): one look
+  // and one language across the app. Fallbacks only for a build without ui.js.
   var ask = function (text) {
     return typeof window.appConfirm === 'function' ? window.appConfirm(text)
       : Promise.resolve(window.confirm(text));
