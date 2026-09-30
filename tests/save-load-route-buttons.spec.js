@@ -4,7 +4,7 @@
 //   Save      -> if the current route was loaded from (or saved as) a library entry and has
 //                changed, asks IN THE APP: save over it, save as new, or cancel (confirm() is
 //                silent in the APK). Otherwise opens the Saved routes menu to name it.
-const { test, expect } = require('./_setup');
+const { test, expect, answerAppDialogs } = require('./_setup');
 
 async function boot(page, lang = 'en') {
   // The header Save/Load buttons live in the stacked/accordion toolbar; they
@@ -174,7 +174,7 @@ test.describe('Edit-header Save / Load route buttons', () => {
 
   test('Hebrew suggests the name with the direction in words', async ({ page }) => {
     await boot(page, 'he');
-    page.on('dialog', d => d.accept());
+    await answerAppDialogs(page, true);
     await page.evaluate(() => {
       state.waypoints = [
         { lat: 32.2, lng: 34.8, name: 'שפיים' },
@@ -272,7 +272,7 @@ test.describe('Edit-header Save / Load route buttons', () => {
 
   test('clearing the route makes Save open the menu again', async ({ page }) => {
     await boot(page);
-    page.on('dialog', d => d.accept());
+    await answerAppDialogs(page, true);
     await setRoute(page, ['A', 'B']);
     await page.evaluate(() => { currentRouteLibraryId = 'someid'; });
     // Clear the route via the toolbar Clear button.
@@ -282,7 +282,7 @@ test.describe('Edit-header Save / Load route buttons', () => {
 
   test('deleting the tracked saved route clears its id so Save cannot overwrite a tombstone', async ({ page }) => {
     await boot(page);
-    page.on('dialog', d => d.accept());
+    await answerAppDialogs(page, true);
     await setRoute(page, ['A', 'B']);
     // Save through the menu → this becomes the tracked entry.
     await page.locator('#tool-save-route').click();

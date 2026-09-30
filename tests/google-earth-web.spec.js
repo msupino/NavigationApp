@@ -3,7 +3,7 @@
 //  - builds an earth.google.com/web/@ URL from the first waypoint and opens it,
 //  - #145: rejects tampered / out-of-range first-waypoint coords before the
 //    string-concat so a malformed lat/lng can't leak into the opened URL.
-const { test, expect } = require('./_setup');
+const { test, expect, answerAppDialogs } = require('./_setup');
 const { LLHZ, LLHA } = require('./_airfieldArp');
 
 async function boot(page) {
@@ -34,7 +34,7 @@ test.describe('Google Earth Web mode (flyRoute)', () => {
   test('valid route opens an earth.google.com/web URL from the first waypoint', async ({ page }) => {
     await boot(page);
     await setRoute(page, [LLHZ, LLHA]);
-    page.once('dialog', d => d.accept());            // geWebConfirm
+    await answerAppDialogs(page, true);            // geWebConfirm
     const downloadPromise = page.waitForEvent('download');   // KML still downloads
     await page.locator('#fly').click();
     await page.getByRole('button', { name: 'Google Earth Web' }).click();
@@ -52,8 +52,8 @@ test.describe('Google Earth Web mode (flyRoute)', () => {
     // Corrupt the first waypoint's latitude to an out-of-range value.
     await page.evaluate(() => { state.waypoints[0].lat = 999; });
     const dialogs = [];
-    page.on('dialog', d => { dialogs.push(d.message()); d.accept(); });
-    // The confirm is still a dialog; the refusal that follows it is a toast.
+    await answerAppDialogs(page, true);             // geWebConfirm, asked in the app
+    // The refusal that follows it is a toast.
     await page.evaluate(() => {
       window.__said = [];
       const real = window.showToast;

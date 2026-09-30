@@ -202,3 +202,59 @@ exports.test = base.test.extend({
 });
 
 exports.expect = base.expect;
+
+// The app asks its questions in its own dialog (askYesNo / appConfirm / askText -- the APK's
+// WebView never shows confirm() or prompt()), so a test answers the way a user does: it fills
+// the input and presses OK, or presses Cancel. `answers` is one answer for every question, or
+// a list used in order (the last one repeats): true = OK, false = Cancel, a string = type it,
+// then OK. Survives navigation. Returns nothing to await beyond the install.
+exports.answerAppDialogs = async (page, answers) => {
+  const list = Array.isArray(answers) ? answers : [answers];
+  const install = (spec) => {
+    window.__appDialogAnswers = spec.slice();
+    if (window.__appDialogObserver) return;
+    const answerAll = () => {
+      document.querySelectorAll('.follow-me-ask-modal').forEach((m) => {
+        if (m.__answered || !m.isConnected) return;
+        const ok = m.querySelector('.follow-me-ask-ok');
+        if (!ok) return;
+        m.__answered = true;
+        const q = window.__appDialogAnswers;
+        const a = q.length > 1 ? q.shift() : q[0];
+        (window.__appDialogAsked = window.__appDialogAsked || []).push(
+          (m.querySelector('.follow-me-ask-text') || m).textContent);
+        if (a === false || a === null) {
+          (m.querySelector('.follow-me-ask-cancel') || ok).click();
+          return;
+        }
+        const input = m.querySelector('.follow-me-ask-input');
+        if (input && typeof a === 'string') input.value = a;
+        ok.click();
+      });
+    };
+    const start = () => {
+      window.__appDialogObserver = new MutationObserver(answerAll);
+      window.__appDialogObserver.observe(document.documentElement, { childList: true, subtree: true });
+      answerAll();
+    };
+    if (document.documentElement) start();
+    else document.addEventListener('DOMContentLoaded', start);
+  };
+  await page.addInitScript(install, list);
+  try { await page.evaluate(install, list); } catch (e) { /* not navigated yet */ }
+};
+
+// What the app said in toasts (refuse() and showToast), in order -- the editor's refusals and
+// other one-way messages used to be alert()s, which the APK never shows. Call after the page
+// has loaded; returns a function that reads the list.
+exports.captureToasts = async (page) => {
+  await page.evaluate(() => {
+    window.__toasts = window.__toasts || [];
+    const real = window.showToast;
+    if (typeof real !== 'function' || real.__captured) return;
+    const wrapped = function (msg) { window.__toasts.push(String(msg)); return real.apply(this, arguments); };
+    wrapped.__captured = true;
+    window.showToast = wrapped;
+  });
+  return () => page.evaluate(() => (window.__toasts || []).slice());
+};

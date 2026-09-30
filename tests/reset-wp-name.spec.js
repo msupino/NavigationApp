@@ -9,7 +9,7 @@
 //      that point's 5-letter code (e.g. 'TYONA').
 //   3. Otherwise → wp.name is cleared ('') so the UI shows the dimmed
 //      sequence placeholder (S.wpPrefix + 1-based index).
-const { test, expect } = require('./_setup');
+const { test, expect, answerAppDialogs } = require('./_setup');
 const { LLHZ, LLHA, LLBG } = require('./_airfieldArp');
 
 // e2e-deployed runs many workers against one live preview; script + JSON
@@ -183,7 +183,7 @@ test.describe('#418 — waypoint-name reset button', () => {
       state.selected = { type: 'wp', index: 0 };
       syncLegs(); draw(); showInspector();
     }, [{ lat: 32.00472, lng: 34.72722 }, LLBG]);
-    page.once('dialog', d => d.accept());
+    await answerAppDialogs(page, true);
     await page.locator('#tool-reset-all-wp-names').click();
     const names = await page.evaluate(() => state.waypoints.map(w => w.name));
     expect(names).toEqual(['TYONA', 'LLBG', '']);
@@ -197,7 +197,7 @@ test.describe('#418 — waypoint-name reset button', () => {
       ];
       syncLegs(); draw();
     });
-    page.once('dialog', d => d.dismiss());
+    await answerAppDialogs(page, false);
     await page.locator('#tool-reset-all-wp-names').click();
     const name = await page.evaluate(() => state.waypoints[0].name);
     expect(name).toBe('KEEP');

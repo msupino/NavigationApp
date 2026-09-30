@@ -11,7 +11,7 @@
 //  4. loadAreas() must not issue a request for a layer with no areas file.
 //  5. Clearing the route unpins it, so a fresh route re-derives from the
 //     then-active layer's table.
-const { test, expect } = require('./_setup');
+const { test, expect, captureToasts } = require('./_setup');
 
 async function boot(page) {
   await page.addInitScript(() => { try { localStorage.clear(); } catch (e) {} });
@@ -189,16 +189,14 @@ test('editor "Load known" refuses layers without a known set and refuses the cvf
   await page.goto('?lang=en&editor=1');
   await page.waitForSelector('#editor-panel');
   await page.waitForFunction(() => typeof layers !== 'undefined');
-  const alerts = [];
-  page.on('dialog', d => { alerts.push(d.message()); d.accept(); });
-  // Satellite: no known set — must alert and import nothing.
+  const toasts = await captureToasts(page);
+  // Satellite: no known set — must say so (a toast) and import nothing.
   await page.evaluate(() => {
     for (const k in layers) if (map.hasLayer(layers[k])) map.removeLayer(layers[k]);
     map.addLayer(layers['Satellite']);
   });
   await page.click('#ed-load');
-  // The alert is async (dialog event) — poll for it instead of sleeping.
-  await expect.poll(() => alerts.some(m => /No known waypoint set/.test(m))).toBe(true);
+  await expect.poll(async () => (await toasts()).some(m => /No known waypoint set/.test(m))).toBe(true);
   const stored = await page.evaluate(() => JSON.parse(localStorage.getItem('navaid.editor.points') || '[]').length);
   expect(stored).toBe(0);
   // Low Alt whose own dataset failed to load: must alert and import nothing.
@@ -215,7 +213,7 @@ test('editor "Load known" refuses layers without a known set and refuses the cvf
     map.addLayer(layers['Low Alt']);
   });
   await page.click('#ed-load');
-  await expect.poll(() => alerts.some(m => /failed to load|Failed to load|fallback/i.test(m))).toBe(true);
+  await expect.poll(async () => (await toasts()).some(m => /failed to load|Failed to load|fallback/i.test(m))).toBe(true);
   const stored2 = await page.evaluate(() => JSON.parse(localStorage.getItem('navaid.editor.points') || '[]').length);
   expect(stored2).toBe(0);                 // CVFR points must NOT be imported as Low Alt
 });

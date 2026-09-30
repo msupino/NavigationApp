@@ -4,7 +4,7 @@
 // to which. Each half of the pair now steps to its own right — out on one side, back on the
 // other. Picking a direction in the leg filter puts the visible one back on the track it
 // describes, because then there is only one of the pair on screen.
-const { test, expect } = require('./_setup');
+const { test, expect, answerAppDialogs } = require('./_setup');
 
 async function boot(page) {
   await page.goto('?lang=en&nogist');
@@ -144,12 +144,12 @@ test('splitRetracedLegs is on by default and turns the whole thing off', async (
 test('Clear map puts the direction picker back to both', async ({ page }) => {
   await boot(page);
   await outAndBack(page);
-  page.on('dialog', d => d.accept());
-  const after = await page.evaluate(() => {
+  await answerAppDialogs(page, true);
+  const after = await page.evaluate(async () => {
     const sel = document.getElementById('leg-dir-select');
     window.legDirFilter = 'back';
     if (sel) { sel.value = 'back'; sel.dispatchEvent(new Event('change', { bubbles: true })); }
-    document.getElementById('clear').click();
+    await document.getElementById('clear').onclick();
     return { filter: window.legDirFilter, picker: sel ? sel.value : 'both',
              legs: state.legs.length };
   });
@@ -161,13 +161,13 @@ test('Clear map puts the direction picker back to both', async ({ page }) => {
 test('the stored choice goes back to both as well', async ({ page }) => {
   await boot(page);
   await outAndBack(page);
-  page.on('dialog', d => d.accept());
-  const out = await page.evaluate(() => {
+  await answerAppDialogs(page, true);
+  const out = await page.evaluate(async () => {
     const sel = document.getElementById('leg-dir-select');
     sel.value = 'back';
     sel.dispatchEvent(new Event('change', { bubbles: true }));
     const before = localStorage.getItem('navaid.legDirFilter');
-    document.getElementById('clear').click();
+    await document.getElementById('clear').onclick();
     return { before, after: localStorage.getItem('navaid.legDirFilter'), picker: sel.value };
   });
   expect(out.before).toBe('back');

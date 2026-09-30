@@ -29,17 +29,19 @@ async function kmlFor(page, speed) {
     HTMLAnchorElement.prototype.click = function () {};
     const realRevoke = URL.revokeObjectURL;
     URL.revokeObjectURL = () => {};
-    const realConfirm = window.confirm;
-    window.confirm = () => true;
+    const realConfirm = window.appConfirm;
+    window.appConfirm = () => true;
     try {
       await flyRoute();
+      window.__kmlBlob = null;
       document.querySelector('.modal-btns button:nth-child(2)').click();
+      for (let i = 0; i < 200 && !window.__kmlBlob; i++) await new Promise(r => setTimeout(r, 5));
       text = await window.__kmlBlob.text();
     } finally {
       URL.createObjectURL = realCreate;
       URL.revokeObjectURL = realRevoke;
       HTMLAnchorElement.prototype.click = realClick;
-      window.confirm = realConfirm;
+      window.appConfirm = realConfirm;
       document.querySelectorAll('.modal-back').forEach(e => e.remove());
     }
     return text;

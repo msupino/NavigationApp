@@ -1351,9 +1351,8 @@ async function loadRemoteConfig() {
 // go. The toast does both, and carries the warning floor -- a refusal is never as brief as an
 // acknowledgement.
 //
-// alert() remains the fallback for the case where the toast itself is not up yet (a failure
-// during boot), and for the hidden editor tools, which are desktop-only and expect a dialog
-// they must dismiss before the next step.
+// alert() remains the fallback only for the case where the toast itself is not up yet (a
+// failure during boot).
 function refuse(message) {
   if (message == null || message === '') return;
   const say = String(message);
@@ -2767,6 +2766,8 @@ window.S = Object.assign({
   platesNone: 'No charts available — see official AIP',
   overlayLoading: 'Loading charts…',
   exitConfirm: 'Close NavAid?',
+  exitConfirmOk: 'Close NavAid',
+  copyTextClose: 'Close',
   plateLoading: 'Loading…',
   plateLoadError: 'Failed to load chart.',
   chartsBack: '← All airfields',

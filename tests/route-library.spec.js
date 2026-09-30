@@ -1,6 +1,6 @@
 // Route library (#677): save multiple named routes locally, then load /
 // rename / duplicate / delete them.
-const { test, expect } = require('./_setup');
+const { test, expect, answerAppDialogs } = require('./_setup');
 const { clickToolbarControl, hideToolbarMenus } = require('./_toolbar');
 
 async function boot(page, lang = 'en') {
@@ -31,7 +31,7 @@ test.describe('Route library', () => {
 
   test('save, list, load, rename, duplicate, delete', async ({ page }) => {
     await boot(page);
-    page.on('dialog', d => d.accept());   // accept any confirm/prompt
+    await answerAppDialogs(page, true);   // accept any confirm/prompt
     await setRoute(page, ['LLSD', 'BAZRA', 'LLHA']);
 
     await clickToolbarControl(page, '#route-library');
@@ -74,7 +74,7 @@ test.describe('Route library', () => {
 
   test('per-row Save overwrites the saved route with the current one (same id/name)', async ({ page }) => {
     await boot(page);
-    page.on('dialog', d => d.accept());
+    await answerAppDialogs(page, true);
     await setRoute(page, ['LLSD', 'BAZRA', 'LLHA']);   // 3 WP
     await clickToolbarControl(page, '#route-library');
     const modal = page.locator('.route-library-modal');

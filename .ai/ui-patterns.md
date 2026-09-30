@@ -114,9 +114,17 @@ Inspector-local VOR selection:
 ## Dialogs
 
 Never `alert()`, `confirm()` or `prompt()`: the APK WebView answers them silently (a
-confirm returns false unseen). Ask in the app with `window.askYesNo(title, text, yesLabel)`
-(returns a Promise<boolean>) or `askRouteOverwrite`; report with `showToast`. The one known
-leftover is **Reset all marker positions** (`ui.js`) and the editor tools in `editor.js`.
+confirm returns false unseen, a prompt null). Ask in the app, and await it:
+
+- `appConfirm(text, okLabel?, title?)` / `askYesNo(title, text, okLabel)` → Promise<boolean>
+- `askText(title, label, value, okLabel?)` → Promise<string|null>
+- `showCopyText(title, text)` when the clipboard refuses (instead of `prompt(label, text)`)
+- `refuse(message)` / `showToast` for one-way messages (instead of `alert`)
+
+`tests/no-browser-dialogs.spec.js` pins the only remaining calls (fallbacks for a build with
+no modal factory). In tests, answer with `answerAppDialogs(page, true|false|'text'|[...])` and
+read toasts with `captureToasts(page)` (`tests/_setup.js`); a click handler that asks is async,
+so wait for its effect rather than reading state straight after `click()`.
 
 ## RTL / LTR Guardrails
 

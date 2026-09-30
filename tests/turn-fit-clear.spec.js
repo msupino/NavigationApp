@@ -2,7 +2,7 @@
 // Three things that were available when they should not have been, and one that was not
 // when it should: a turning point on a one-way route, Fit page to route before a page had
 // been chosen by hand, and a page frame that outlived the route it was chosen for.
-const { test, expect } = require('./_setup');
+const { test, expect, answerAppDialogs } = require('./_setup');
 
 async function boot(page) {
   await page.goto('?lang=en&nogist');
@@ -124,7 +124,7 @@ test('Clear map takes the page frame with the route', async ({ page }) => {
   await route(page, ['LLHZ', 'LLIB', 'LLHZ']);
   await page.evaluate(() => setPage('A4'));
   expect(await page.evaluate(() => pageSize)).toBe('A4');
-  page.on('dialog', d => d.accept());
+  await answerAppDialogs(page, true);
   await page.evaluate(() => document.getElementById('clear').click());
   const after = await page.evaluate(() => ({
     size: pageSize,
@@ -230,7 +230,7 @@ test('the fit probe is not run on every draw of a route that fits', async ({ pag
 test('Clear map forgets where the sheet had been dragged', async ({ page }) => {
   await boot(page);
   await route(page, ['LLHZ', 'LLHZ', 'LLHZ']);
-  page.on('dialog', d => d.accept());
+  await answerAppDialogs(page, true);
   await page.evaluate(() => {
     setPage('A4');
     pageOffset = { x: 120, y: -80 };

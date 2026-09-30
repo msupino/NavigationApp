@@ -27,7 +27,7 @@ Use these as quick pre-commit reminders.
 - Prefer existing row builders and modal patterns.
 - Check light and dark theme too (`navaid.theme`), not only LTR/RTL.
 - No `alert()` / `confirm()` / `prompt()`: they are silent in the APK WebView. Use
-  `askYesNo` / `askRouteOverwrite` or a toast.
+  `appConfirm` / `askText` / `showCopyText` / `refuse` (see ui-patterns.md, Dialogs).
 - Map symbols: change the shared painter (`drawAirfieldSymbol`, `drawReportingPointSymbol`,
   `drawVorSymbol`, `OWN_SHIP_PATH`); the legend swatches repaint from it.
 - In-flight map buttons: icons come from `MAP_ICONS` via `setMapIcon`, never emoji.

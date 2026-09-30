@@ -6,7 +6,7 @@
 // flat array, the shape of the retired *-nav-waypoints.json files; pasting that back over
 // a graph would have destroyed it. POLYGON mode still exports an array (LSA bubbles), so
 // the two modes are asserted differently below.
-const { test, expect } = require('./_setup');
+const { test, expect, answerAppDialogs, captureToasts } = require('./_setup');
 
 test('capture panel appears only with ?editor=1', async ({ page }) => {
   await page.addInitScript(() => { try { localStorage.clear(); } catch (e) {} });
@@ -92,7 +92,7 @@ test('Load known fills the editor with the selected layer dataset', async ({ pag
   await page.goto('?lang=en&editor=1');
   await page.waitForSelector('#editor-panel');
   await page.waitForFunction(() => typeof layers !== 'undefined');
-  page.on('dialog', d => d.accept());
+  await answerAppDialogs(page, true);
   await page.evaluate(() => { for (const n in layers) if (map.hasLayer(layers[n])) map.removeLayer(layers[n]); map.addLayer(layers['CVFR']); });
   await page.click('#ed-load');
   await page.waitForFunction(() => Object.keys(JSON.parse(document.getElementById('ed-json').value).nodes || {}).length > 100);
@@ -109,13 +109,14 @@ test('undo and clear work', async ({ page }) => {
   await page.addInitScript(() => { try { localStorage.clear(); } catch (e) {} });
   await page.goto('?lang=en&editor=1');
   await page.waitForSelector('#editor-panel');
-  page.on('dialog', d => d.accept());
-  const r = await page.evaluate(() => {
+  await answerAppDialogs(page, true);
+  const r = await page.evaluate(async () => {
     map.fire('click', { latlng: L.latLng(32.1, 34.8) });
     map.fire('click', { latlng: L.latLng(32.2, 34.9) });
     document.getElementById('ed-undo').click();
     const afterUndo = Object.keys(JSON.parse(document.getElementById('ed-json').value).nodes || {}).length;
     document.getElementById('ed-clear').click();
+    await new Promise(res => setTimeout(res, 100));    // the in-app "Clear points?" is answered
     const afterClear = Object.keys(JSON.parse(document.getElementById('ed-json').value).nodes || {}).length;
     return { afterUndo, afterClear };
   });
@@ -152,7 +153,7 @@ test('polygon undo removes the last vertex, then the last polygon', async ({ pag
   await page.goto('?lang=en&editor=1');
   await page.waitForSelector('#editor-panel');
   await page.waitForFunction(() => typeof map !== 'undefined');
-  page.on('dialog', d => d.accept());
+  await answerAppDialogs(page, true);
   const r = await page.evaluate(async () => {
     map.setView([32.0, 34.9], 11);
     document.querySelector('input[name=ed-m][value=polygon]').click();
@@ -172,7 +173,7 @@ test('clicking a point marker names it (applied to JSON)', async ({ page }) => {
   await page.goto('?lang=en&editor=1');
   await page.waitForSelector('#editor-panel');
   await page.waitForFunction(() => typeof map !== 'undefined');
-  page.on('dialog', d => d.accept('SFAIM'));     // prompt → enter a name
+  await answerAppDialogs(page, 'SFAIM');     // prompt → enter a name
   const r = await page.evaluate(async () => {
     map.setView([32.0, 34.9], 11);
     map.fire('click', { latlng: L.latLng(32.0, 34.8) });
@@ -192,7 +193,7 @@ test('unnamed point markers flash; naming stops the flash', async ({ page }) => 
   await page.waitForFunction(() => typeof map !== 'undefined');
   await page.evaluate(() => { map.setView([32.0, 34.9], 11); map.fire('click', { latlng: L.latLng(32.0, 34.8) }); });
   await expect(page.locator('.editor-flash')).toHaveCount(1);     // unnamed → flashing
-  page.on('dialog', d => d.accept('NAMED'));
+  await answerAppDialogs(page, 'NAMED');
   await page.evaluate(async () => {
     let mk = null; map.eachLayer(l => { if (l instanceof L.Marker && l.options.draggable) mk = l; });
     mk.fire('click', {}); await new Promise(r => setTimeout(r, 30));
@@ -205,7 +206,7 @@ test('Load known (polygon mode) imports the shipped LSA bubbles for naming', asy
   await page.goto('?lang=en&editor=1');
   await page.waitForSelector('#editor-panel');
   await page.waitForFunction(() => typeof layers !== 'undefined');
-  page.on('dialog', d => d.accept());
+  await answerAppDialogs(page, true);
   await page.evaluate(() => {
     for (const n in layers) if (map.hasLayer(layers[n])) map.removeLayer(layers[n]);
     map.addLayer(layers['Low Alt']);
@@ -232,9 +233,8 @@ test('polygon naming sets active type — weekend exported, always omitted', asy
   await page.goto('?lang=en&editor=1');
   await page.waitForSelector('#editor-panel');
   await page.waitForFunction(() => typeof layers !== 'undefined');
-  const answers = ['WK', 'WkEn', 'WkHe', 'weekend'];   // name, en, he, active prompts (in order)
-  let di = 0;
-  page.on('dialog', d => { d.accept(answers[Math.min(di, answers.length - 1)]); di++; });
+  // name, en, he, active -- the four questions, in order, answered in the app's own dialog
+  await answerAppDialogs(page, ['WK', 'WkEn', 'WkHe', 'weekend']);
   await page.evaluate(() => {
     for (const n in layers) if (map.hasLayer(layers[n])) map.removeLayer(layers[n]);
     map.addLayer(layers['Low Alt']);
@@ -255,8 +255,9 @@ test('polygon naming sets active type — weekend exported, always omitted', asy
     let poly = null;
     map.eachLayer(l => { if (!poly && l instanceof L.Polygon && l.options.fillColor === '#4caf50') poly = l; });
     poly.fire('click', {});
-    await new Promise(r => setTimeout(r, 60));
   });
+  await page.waitForFunction((n) =>
+    JSON.parse(document.getElementById('ed-json').value).filter(o => 'active' in o).length > n, initialWeekend);
   const out = await page.evaluate(() => JSON.parse(document.getElementById('ed-json').value));
   expect(out.some(o => o.active === 'weekend')).toBe(true);           // named one is weekend
   expect(out.filter(o => 'active' in o).length).toBe(initialWeekend + 1); // exactly one more
@@ -267,15 +268,14 @@ test('Load known (polygon mode) refuses on a layer with no areas file (CVFR)', a
   await page.goto('?lang=en&editor=1');
   await page.waitForSelector('#editor-panel');
   await page.waitForFunction(() => typeof layers !== 'undefined');
-  const alerts = [];
-  page.on('dialog', d => { alerts.push(d.message()); d.accept(); });
+  const toasts = await captureToasts(page);
   await page.evaluate(() => {
     for (const n in layers) if (map.hasLayer(layers[n])) map.removeLayer(layers[n]);
     map.addLayer(layers['CVFR']);
     document.querySelector('input[name=ed-m][value=polygon]').click();
   });
   await page.click('#ed-load');
-  await expect.poll(() => alerts.some(m => /No known LSA areas/i.test(m))).toBe(true);
+  await expect.poll(async () => (await toasts()).some(m => /No known LSA areas/i.test(m))).toBe(true);
   const stored = await page.evaluate(() => JSON.parse(localStorage.getItem('navaid.editor.polys') || '[]').length);
   expect(stored).toBe(0);          // nothing imported on a non-area layer
 });
@@ -320,8 +320,7 @@ test('Load known refuses to import when the base layer changes mid-fetch', async
   await page.goto('?lang=en&editor=1');
   await page.waitForSelector('#editor-panel');
   await page.waitForFunction(() => typeof layers !== 'undefined' && typeof fetchLayerData === 'function');
-  const alerts = [];
-  page.on('dialog', d => { alerts.push(d.message()); d.accept(); });
+  const toasts = await captureToasts(page);
   await page.evaluate(() => {
     for (const k in layers) if (map.hasLayer(layers[k])) map.removeLayer(layers[k]);
     map.addLayer(layers['Low Alt']);
@@ -338,7 +337,7 @@ test('Load known refuses to import when the base layer changes mid-fetch', async
     };
   });
   await page.click('#ed-load');
-  await expect.poll(() => alerts.some(m => /Layer changed/i.test(m))).toBe(true);
+  await expect.poll(async () => (await toasts()).some(m => /Layer changed/i.test(m))).toBe(true);
   const stored = await page.evaluate(() => JSON.parse(localStorage.getItem('navaid.editor.points') || '[]').length);
   expect(stored).toBe(0);      // nothing imported under the wrong layer tag
 });
@@ -351,7 +350,7 @@ test('the round-trip preserves fields the editor does not edit (icao, altitudes,
   await page.goto('?lang=en&editor=1');
   await page.waitForSelector('#editor-panel');
   await page.waitForFunction(() => typeof layers !== 'undefined');
-  page.on('dialog', d => d.accept());
+  await answerAppDialogs(page, true);
   await page.evaluate(() => {
     for (const n in layers) if (map.hasLayer(layers[n])) map.removeLayer(layers[n]);
     map.addLayer(layers['Low Alt']);

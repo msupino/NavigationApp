@@ -2,7 +2,7 @@
 // Reversing the route turns the chart round with it. What was ahead of the aircraft is now
 // behind it, so a map left facing the old way is showing the flight that is no longer
 // planned — and the pilot had to rotate it by hand after every reversal.
-const { test, expect } = require('./_setup');
+const { test, expect, answerAppDialogs } = require('./_setup');
 
 async function boot(page) {
   await page.goto('?lang=en&nogist');
@@ -75,7 +75,7 @@ test('heading-up mode is left to drive the bearing itself', async ({ page }) => 
 test('clearing the map straightens it back to north', async ({ page }) => {
   await boot(page);
   await page.evaluate(() => { map.setBearing(200); });
-  page.on('dialog', d => d.accept());
+  await answerAppDialogs(page, true);
   await page.evaluate(() => document.getElementById('clear').click());
   expect(await bearing(page)).toBe(0);
   expect(await page.evaluate(() => state.waypoints.length)).toBe(0);
@@ -83,7 +83,7 @@ test('clearing the map straightens it back to north', async ({ page }) => {
 
 test('...but not while heading-up is driving the bearing', async ({ page }) => {
   await boot(page);
-  page.on('dialog', d => d.accept());
+  await answerAppDialogs(page, true);
   const after = await page.evaluate(() => {
     map.setBearing(75);
     headingUpOn = true;

@@ -106,23 +106,23 @@ test('with several tracks shown the export names the one it writes', async ({ pa
   await page.setViewportSize({ width: 1280, height: 800 });
   await page.goto('?lang=en&nogist');
   await page.waitForFunction(() => typeof loadRouteLibrary === 'function');
-  const out = await page.evaluate(() => {
+  const out = await page.evaluate(async () => {
     const mk = (id, name) => ({ id, name, kind: 'gps', savedAt: new Date().toISOString(),
       track: [{ lat: 32, lng: 34.9, t: 1 }, { lat: 32.1, lng: 34.95, t: 2 }] });
     localStorage.setItem('navaid.routes', JSON.stringify([mk('a', 'First'), mk('b', 'Second')]));
     window.shownTracks = [{ id: 'a', name: 'First' }, { id: 'b', name: 'Second' }];
     let asked = null, downloaded = false;
-    const realConfirm = window.confirm, realCreate = URL.createObjectURL;
+    const realConfirm = window.appConfirm, realCreate = URL.createObjectURL;
     const realClick = HTMLAnchorElement.prototype.click;
-    window.confirm = m => { asked = m; return true; };
+    window.appConfirm = m => { asked = m; return true; };
     URL.createObjectURL = () => { downloaded = true; return 'blob:stub'; };
     HTMLAnchorElement.prototype.click = function () {};
     try {
       const sel = document.getElementById('export-select');
       sel.value = 'json-track';
-      sel.onchange({ target: sel });
+      await sel.onchange({ target: sel });
     } finally {
-      window.confirm = realConfirm; URL.createObjectURL = realCreate;
+      window.appConfirm = realConfirm; URL.createObjectURL = realCreate;
       HTMLAnchorElement.prototype.click = realClick;
     }
     return { asked, downloaded };

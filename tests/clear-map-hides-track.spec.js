@@ -5,7 +5,7 @@
 // the extra layers -- all of which Clear map takes away. The flown line stayed, drawn over
 // an otherwise empty chart, and the only way to be rid of it was to remember which library
 // row had put it there and click Show again.
-const { test, expect } = require('./_setup');
+const { test, expect, answerAppDialogs } = require('./_setup');
 
 async function boot(page) {
   await page.addInitScript(() => {
@@ -35,7 +35,7 @@ const state = (page) => page.evaluate(() => ({
 test('Clear map takes the shown track with it', async ({ page }) => {
   await boot(page);
   expect((await showTrack(page)).shown).toEqual(['T1']);
-  page.on('dialog', d => d.accept());
+  await answerAppDialogs(page, true);
   await page.evaluate(() => document.getElementById('clear').click());
   const after = await state(page);
   expect(after.shown).toEqual([]);
@@ -51,7 +51,7 @@ test('Clear map takes the shown track with it', async ({ page }) => {
 test('the C shortcut clears it too -- it is the same button', async ({ page }) => {
   await boot(page);
   await showTrack(page);
-  page.on('dialog', d => d.accept());
+  await answerAppDialogs(page, true);
   await page.locator('#map').click({ position: { x: 5, y: 5 } });
   await page.keyboard.press('c');
   await expect.poll(async () => (await state(page)).shown).toEqual([]);
@@ -67,12 +67,12 @@ test('a route and a track go together, and the confirm still guards the route', 
   });
   // Declining the confirm leaves everything alone -- the track included. Clear map is one
   // action, and half of it happening after "no" would be worse than none of it.
-  page.once('dialog', d => d.dismiss());
+  await answerAppDialogs(page, false);
   await page.evaluate(() => document.getElementById('clear').click());
   expect((await state(page)).shown).toEqual(['T1']);
   expect(await page.evaluate(() => state.waypoints.length)).toBe(2);
 
-  page.once('dialog', d => d.accept());
+  await answerAppDialogs(page, true);
   await page.evaluate(() => document.getElementById('clear').click());
   expect((await state(page)).shown).toEqual([]);
   expect(await page.evaluate(() => state.waypoints.length)).toBe(0);

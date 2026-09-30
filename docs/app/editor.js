@@ -24,6 +24,17 @@
   // Leaflet renders a string tooltip as HTML — escape user-entered names so a
   // name like "<img onerror=…>" can't execute (self-XSS in this dev-only tool).
   var esc = escapeXml;                   // one escaper, defined in core.js
+  // The app's own dialogs (ui.js), not the browser's: the APK WebView never shows
+  // alert()/confirm()/prompt(). Fallbacks only for a build without ui.js.
+  var ask = function (text) {
+    return typeof window.appConfirm === 'function' ? window.appConfirm(text)
+      : Promise.resolve(window.confirm(text));
+  };
+  var askLine = function (label, value) {
+    return typeof window.askText === 'function' ? window.askText('Editor', label, value)
+      : Promise.resolve(window.prompt(label, value));
+  };
+  var say = function (text) { if (typeof refuse === 'function') refuse(text); else window.alert(text); };
 
   function load(key) { try { var a = JSON.parse(localStorage.getItem(key) || '[]'); return Array.isArray(a) ? a : []; } catch (e) { return []; } }
   var points = load(KEY);
@@ -83,7 +94,7 @@
         savePoints(); render(); redraw();
         return;
       }
-      var name = prompt('Waypoint name (blank to delete):', points[i].name || '');
+      askLine('Waypoint name (blank to delete):', points[i].name || '').then(function (name) {
       if (name === null) return;                  // cancel — no change
       name = name.trim();
       if (name) {
@@ -99,7 +110,7 @@
             String(q.name || '').trim().toUpperCase() === up;
         });
         if (clash) {
-          alert('Another point on this layer is already named "' + name + '". ' +
+          say('Another point on this layer is already named "' + name + '". ' +
             'Two points sharing a name would collapse into one on export -- rename or move one first.');
           return;
         }
@@ -108,6 +119,7 @@
         points.splice(i, 1);
       }
       savePoints(); render(); redraw();           // name lands in the exported JSON
+      });
     });
     // savePointsSoon, not savePoints: the localStorage write is debounced, but render()
     // still runs synchronously every time, so the panel's count and #ed-json stay live --
@@ -135,20 +147,29 @@
       poly.on('click', function (ev) {            // click = name/type (shift-click = delete)
         L.DomEvent.stopPropagation(ev);
         if (ev.originalEvent && ev.originalEvent.shiftKey) {
-          if (!confirm('Delete this polygon?')) return;
-          polys.splice(i, 1); savePolys(); render(); redraw(); return;
+          ask('Delete this polygon?').then(function (yes) {
+            if (!yes) return;
+            polys.splice(i, 1); savePolys(); render(); redraw();
+          });
+          return;
         }
-        var name = prompt('Bubble code / name (blank to clear):', polys[i].name || '');
-        if (name === null) return;                 // cancel — no change
-        var en = prompt('English name:', polys[i].en || '');
-        if (en === null) return;
-        var he = prompt('Hebrew name:', polys[i].he || '');
-        if (he === null) return;
-        var typ = prompt('Active — "weekend" or "always":', polys[i].active || 'always');
-        if (typ === null) return;
-        polys[i].name = name.trim(); polys[i].en = en.trim(); polys[i].he = he.trim();
-        polys[i].active = /^\s*w/i.test(typ) ? 'weekend' : 'always';
-        savePolys(); render(); redraw();           // lands in the exported JSON
+        // One question at a time, each cancellable -- cancel anywhere changes nothing.
+        var got = {};
+        askLine('Bubble code / name (blank to clear):', polys[i].name || '').then(function (v) {
+          if (v === null) return null;
+          got.name = v; return askLine('English name:', polys[i].en || '');
+        }).then(function (v) {
+          if (v === null) return null;
+          got.en = v; return askLine('Hebrew name:', polys[i].he || '');
+        }).then(function (v) {
+          if (v === null) return null;
+          got.he = v; return askLine('Active — "weekend" or "always":', polys[i].active || 'always');
+        }).then(function (typ) {
+          if (typ === null || got.he === undefined) return;
+          polys[i].name = got.name.trim(); polys[i].en = got.en.trim(); polys[i].he = got.he.trim();
+          polys[i].active = /^\s*w/i.test(typ) ? 'weekend' : 'always';
+          savePolys(); render(); redraw();         // lands in the exported JSON
+        });
       });
       group.addLayer(poly);
     });
@@ -255,8 +276,12 @@
   }
   function loadKnown() {
     var lyr = currentLayer();
-    if (!satelliteModalIsChartLayer(lyr)) { alert('No known waypoint set for ' + (lyr || 'this layer')); return; }
-    if (curPoints().length && !confirm('Replace ' + curPoints().length + ' point(s) on ' + lyr + ' with the known set?')) return;
+    if (!satelliteModalIsChartLayer(lyr)) { say('No known waypoint set for ' + (lyr || 'this layer')); return; }
+    var go = curPoints().length
+      ? ask('Replace ' + curPoints().length + ' point(s) on ' + lyr + ' with the known set?') : Promise.resolve(true);
+    go.then(function (yes) { if (yes) loadKnownNow(lyr); });
+  }
+  function loadKnownNow(lyr) {
     // Reuse the shared per-layer resolver (draw.js) for the URL/prefix logic,
     // but REFUSE its silent cvfr fallback: if the layer's own file failed to
     // load (404/network), importing CVFR points tagged as this layer would
@@ -272,11 +297,11 @@
     // strip them on paste-back. Each editor point keeps its whole source record in `_node`.
     routeGraphData(expected).then(function (g) {
       if (currentLayer() !== lyr) {
-        alert('Layer changed while loading — not importing. Try again on ' + lyr + '.');
+        say('Layer changed while loading — not importing. Try again on ' + lyr + '.');
         return;
       }
       if (!g || !g.nodes) {
-        alert('The ' + lyr + ' route graph failed to load — not importing. Try again.');
+        say('The ' + lyr + ' route graph failed to load — not importing. Try again.');
         return;
       }
       var loaded = Object.keys(g.nodes).map(function (id) { return g.nodes[id]; })
@@ -292,7 +317,7 @@
         });
       points = points.filter(function (p) { return (p.layer || '') !== lyr; }).concat(loaded);
       savePoints(); render(); redraw();
-    }).catch(function (e) { alert('Failed to load known set: ' + e); });
+    }).catch(function (e) { say('Failed to load known set: ' + e); });
   }
   // Polygon-mode counterpart of loadKnown: pull the shipped LSA bubbles into the
   // editor so their name/en/he can be set by clicking, then Copy JSON to paste
@@ -301,15 +326,19 @@
   function loadKnownAreas() {
     var lyr = currentLayer();
     var expected = prefixForLayer(lyr);
-    if (expected === 'cvfr') { alert('No known LSA areas for ' + (lyr || 'this layer')); return; }
-    if (curPolys().length && !confirm('Replace ' + curPolys().length + ' polygon(s) on ' + lyr + ' with the known set?')) return;
+    if (expected === 'cvfr') { say('No known LSA areas for ' + (lyr || 'this layer')); return; }
+    var go = curPolys().length
+      ? ask('Replace ' + curPolys().length + ' polygon(s) on ' + lyr + ' with the known set?') : Promise.resolve(true);
+    go.then(function (yes) { if (yes) loadKnownAreasNow(lyr, expected); });
+  }
+  function loadKnownAreasNow(lyr, expected) {
     fetchLayerData('areas').then(function (res) {
       if (currentLayer() !== lyr) {
-        alert('Layer changed while loading — not importing. Try again on ' + lyr + '.');
+        say('Layer changed while loading — not importing. Try again on ' + lyr + '.');
         return;
       }
       if (res.prefix !== expected) {
-        alert('The ' + lyr + ' areas set failed to load (got the ' + res.prefix +
+        say('The ' + lyr + ' areas set failed to load (got the ' + res.prefix +
           ' fallback instead) — not importing. Try again.');
         return;
       }
@@ -329,7 +358,7 @@
       });
       polys = polys.filter(function (p) { return (p.layer || '') !== lyr; }).concat(loaded);
       savePolys(); render(); redraw();
-    }).catch(function (e) { alert('Failed to load known areas: ' + e); });
+    }).catch(function (e) { say('Failed to load known areas: ' + e); });
   }
 
   // ---- actions ----------------------------------------------------------
@@ -421,14 +450,19 @@
     };
     box.querySelector('#ed-clear').onclick = function () {
       var cur = currentLayer();
-      if (mode === 'polygon') {
-        if ((curPolys().length || draft.length) && !confirm('Clear polygons on this layer?')) return;
-        draft = []; polys = polys.filter(function (p) { return (p.layer || '') !== cur; }); savePolys();
-      } else {
-        if (curPoints().length && !confirm('Clear points on this layer?')) return;
-        points = points.filter(function (p) { return (p.layer || '') !== cur; }); savePoints();
-      }
-      render(); redraw();
+      var polyMode = mode === 'polygon';
+      var any = polyMode ? (curPolys().length || draft.length) : curPoints().length;
+      var go = any ? ask(polyMode ? 'Clear polygons on this layer?' : 'Clear points on this layer?')
+        : Promise.resolve(true);
+      go.then(function (yes) {
+        if (!yes) return;
+        if (polyMode) {
+          draft = []; polys = polys.filter(function (p) { return (p.layer || '') !== cur; }); savePolys();
+        } else {
+          points = points.filter(function (p) { return (p.layer || '') !== cur; }); savePoints();
+        }
+        render(); redraw();
+      });
     };
     box.querySelector('#ed-copy').onclick = function () {
       taEl.select();
