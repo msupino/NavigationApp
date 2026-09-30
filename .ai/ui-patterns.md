@@ -111,6 +111,13 @@ Inspector-local VOR selection:
 - Should not overwrite the global VOR reference.
 - Should reset to the global reference when the inspector closes.
 
+## Dialogs
+
+Never `alert()`, `confirm()` or `prompt()`: the APK WebView answers them silently (a
+confirm returns false unseen). Ask in the app with `window.askYesNo(title, text, yesLabel)`
+(returns a Promise<boolean>) or `askRouteOverwrite`; report with `showToast`. The one known
+leftover is **Reset all marker positions** (`ui.js`) and the editor tools in `editor.js`.
+
 ## RTL / LTR Guardrails
 
 Regression-prone text:
