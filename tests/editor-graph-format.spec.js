@@ -7,7 +7,7 @@
 // than reimplementing json()'s merge logic inline. A hand-copied reimplementation cannot
 // catch a regression in the code it claims to guard -- it only proves the copy still agrees
 // with itself.
-const { test, expect } = require('./_setup');
+const { test, expect, answerAppDialogs, captureToasts } = require('./_setup');
 
 async function boot(page) {
   await page.addInitScript(() => { try { localStorage.clear(); } catch (e) {} });
@@ -18,7 +18,7 @@ async function boot(page) {
 
 test('Load known + drag: the real export is a nodes map with fields riding through', async ({ page }) => {
   await boot(page);
-  page.on('dialog', d => d.accept());
+  await answerAppDialogs(page, true);
   await page.evaluate(() => {
     for (const n in layers) if (map.hasLayer(layers[n])) map.removeLayer(layers[n]);
     map.addLayer(layers['CVFR']);
@@ -61,7 +61,7 @@ test('Load known + drag: the real export is a nodes map with fields riding throu
 
 test('a node built by the editor satisfies the graph validator', async ({ page }) => {
   await boot(page);
-  page.on('dialog', d => d.accept('TESTX'));
+  await answerAppDialogs(page, 'TESTX');
   const n = await page.evaluate(async () => {
     map.setView([32.1, 34.9], 11);
     map.fire('click', { latlng: L.latLng(32.1, 34.9) });
@@ -83,7 +83,8 @@ test('a node built by the editor satisfies the graph validator', async ({ page }
 test('two points named alike are refused at the rename prompt, not silently merged', async ({ page }) => {
   await boot(page);
   // First point: named SFAIM without incident.
-  page.once('dialog', d => d.accept('SFAIM'));
+  await answerAppDialogs(page, 'SFAIM');
+  const toasts = await captureToasts(page);
   await page.evaluate(() => {
     map.setView([32.0, 34.9], 11);
     map.fire('click', { latlng: L.latLng(32.00, 34.80) });
@@ -95,10 +96,8 @@ test('two points named alike are refused at the rename prompt, not silently merg
     await new Promise(r => setTimeout(r, 30));
   });
 
-  // Second point: try to name it SFAIM too. The rename prompt must refuse via alert(),
-  // not silently let the export collapse two records into one.
-  const dialogs = [];
-  page.on('dialog', d => { dialogs.push(d.type()); d.accept(d.type() === 'prompt' ? 'SFAIM' : undefined); });
+  // Second point: try to name it SFAIM too. The rename must be refused -- said in a toast,
+  // the app's one-way channel -- not silently let the export collapse two records into one.
   await page.evaluate(() => { map.fire('click', { latlng: L.latLng(32.10, 34.90) }); });
   const out = await page.evaluate(async () => {
     let mk = null;
@@ -111,7 +110,7 @@ test('two points named alike are refused at the rename prompt, not silently merg
     return JSON.parse(document.getElementById('ed-json').value).nodes;
   });
 
-  expect(dialogs).toContain('alert');                 // the collision was refused, audibly
+  expect((await toasts()).some(m => /already named "SFAIM"/.test(m))).toBe(true);   // refused, out loud
   expect(Object.keys(out)).not.toContain('SFAIM__DUP2');  // refused at the prompt: no
                                                            // collision ever reached the export
   const names = Object.values(out).map(n => n.name).filter(Boolean);

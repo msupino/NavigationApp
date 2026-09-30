@@ -1342,18 +1342,17 @@ async function loadRemoteConfig() {
 // Something the pilot can see.
 //
 // alert() is one of the three dialogs a page does not own: a browser may suppress it after one
-// is dismissed, and a WebView shows it only if the host app implements onJsAlert -- which is
-// exactly where this app runs, inside the APK. A message nobody sees reads as a control that
-// does nothing, which is how three separate bugs arrived: the follow-me identifier through
-// prompt(), Stop through a wait nobody could end, and the flight plan refusing in silence.
+// is dismissed, and in the APK it is Capacitor's native dialog -- English "OK" in the Hebrew
+// UI, outside the app's theme. A message the pilot misses reads as a control that does
+// nothing, which is how three separate reports arrived: the follow-me identifier,
+// Stop through a wait nobody could end, and the flight plan refusing without a word.
 //
 // It also costs a press. A refusal has nothing to acknowledge: it should say what happened and
 // go. The toast does both, and carries the warning floor -- a refusal is never as brief as an
 // acknowledgement.
 //
-// alert() remains the fallback for the case where the toast itself is not up yet (a failure
-// during boot), and for the hidden editor tools, which are desktop-only and expect a dialog
-// they must dismiss before the next step.
+// alert() remains the fallback only for the case where the toast itself is not up yet (a
+// failure during boot).
 function refuse(message) {
   if (message == null || message === '') return;
   const say = String(message);
@@ -2767,6 +2766,8 @@ window.S = Object.assign({
   platesNone: 'No charts available — see official AIP',
   overlayLoading: 'Loading charts…',
   exitConfirm: 'Close NavAid?',
+  exitConfirmOk: 'Close NavAid',
+  copyTextClose: 'Close',
   plateLoading: 'Loading…',
   plateLoadError: 'Failed to load chart.',
   chartsBack: '← All airfields',

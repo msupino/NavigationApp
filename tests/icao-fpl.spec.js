@@ -1451,7 +1451,7 @@ test('clear form wipes only what was typed on the sheet', async ({ page }) => {
       localStorage.setItem('navaid.fpl.' + k, v);
     }
     showFplXcForm({ dateLocal: '2026-08-05', timeLocal: '09:20' });
-    window.confirm = () => true;
+    window.appConfirm = () => true;
   });
   await page.fill('#xc-company', 'Test Aviation');
   await page.fill('#xc-purpose', 'Training');

@@ -25,6 +25,28 @@ Use these as quick pre-commit reminders.
 - Look for clipped labels, overlapping controls, and bidi reorder.
 - Add/update `tests/bidi-regression.spec.js` for mixed-direction text.
 - Prefer existing row builders and modal patterns.
+- Check light and dark theme too (`navaid.theme`), not only LTR/RTL.
+- No `alert()` / `confirm()` / `prompt()`: in the APK they are native dialogs with English-only
+  buttons and no theme (and a browser may suppress them). Use
+  `appConfirm` / `askText` / `showCopyText` / `refuse` (see ui-patterns.md, Dialogs).
+- Map symbols: change the shared painter (`drawAirfieldSymbol`, `drawReportingPointSymbol`,
+  `drawVorSymbol`, `OWN_SHIP_PATH`); the legend swatches repaint from it.
+- In-flight map buttons: icons come from `MAP_ICONS` via `setMapIcon`, never emoji.
+
+## Mobile / APK Change
+
+- `versionName` "1.N" must match `versionCode` N (`validate-capacitor.mjs`).
+- Never change the Android `server.hostname` (`navaid.supino.org`): another origin hides every
+  saved route.
+- Web-only changes reach installed apps over the air on the next deploy; a new APK is needed
+  only for native changes or the built-in chart.
+
+## Docs
+
+- Update the GitHub wiki (EN and HE pages) for user-visible changes.
+- Screenshots: run the **Update wiki screenshots** workflow
+  (`gh workflow run wiki-screenshots.yml --ref main`) after the change reaches main; it also
+  runs nightly.
 
 ## Data Change
 

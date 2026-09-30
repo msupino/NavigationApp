@@ -3,7 +3,7 @@
 // with no history it closes the app outright. Back means "go back one step" while there is a
 // step, and asks before the press that leaves. APK only: in a browser, Back belongs to the
 // browser, and beforeunload can raise nothing but a dialog nobody worded.
-const { test, expect } = require('./_setup');
+const { test, expect, answerAppDialogs } = require('./_setup');
 
 // The APK's own shell, faked: the app decides by hostname + the Capacitor bridge.
 async function bootNative(page) {
@@ -29,12 +29,16 @@ async function bootNative(page) {
   });
 }
 
-const back = (page, confirmIt) => page.evaluate((yes) => {
-  window.confirm = () => yes;
-  // The listener is armed only in the native shell; call the step directly where it is not.
-  if (window.__backHandlers.length) window.__backHandlers.forEach(fn => fn());
-  else backButtonStep();
-}, confirmIt);
+// "Close NavAid?" is asked in the app's own dialog (bilingual, themed -- not the native
+// English-only confirm), and answered the way a pilot would: OK or Cancel.
+const back = async (page, confirmIt) => {
+  await answerAppDialogs(page, confirmIt);
+  await page.evaluate(async () => {
+    // The listener is armed only in the native shell; call the step directly where it is not.
+    if (window.__backHandlers.length) await Promise.all(window.__backHandlers.map(fn => fn()));
+    else backButtonStep();
+  });
+};
 
 test('back closes the inspector before anything else', async ({ page }) => {
   await bootNative(page);
@@ -139,6 +143,22 @@ test('...and exits when the answer is yes', async ({ page }) => {
   await bootNative(page);
   await back(page, true);
   expect(await page.evaluate(() => window.__exited)).toBe(1);
+});
+
+// The question is the app's own dialog, not window.confirm (in the APK a native dialog with
+// English OK / Cancel), and a second Back while it is up closes it: the answer is "stay".
+test('the exit question is the app\'s own dialog, and a second Back dismisses it', async ({ page }) => {
+  await bootNative(page);
+  const browserDialogs = [];
+  page.on('dialog', d => { browserDialogs.push(d.message()); d.dismiss(); });
+  await page.evaluate(() => { window.__backDone = Promise.all(window.__backHandlers.map(fn => fn())); });
+  await expect(page.locator('.follow-me-ask-modal')).toHaveCount(1);
+  await expect(page.locator('.follow-me-ask-modal')).toContainText('Close NavAid?');
+  await page.evaluate(() => backButtonStep());          // the second Back
+  await page.evaluate(() => window.__backDone);
+  await expect(page.locator('.follow-me-ask-modal')).toHaveCount(0);
+  expect(await page.evaluate(() => window.__exited)).toBe(0);
+  expect(browserDialogs).toEqual([]);
 });
 
 // In a browser there is no listener at all: Back is the browser's.

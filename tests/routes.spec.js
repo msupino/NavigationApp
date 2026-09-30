@@ -2,7 +2,7 @@
 // End-to-end coverage of the route editing surface: add / drag / delete
 // waypoints, reverse, clear, mode switching, inspector. Same 11-WP
 // LLHZ → LLHA fixture as tests/flight-plan.spec.js and tests/share-route.spec.js.
-const { test, expect } = require('./_setup');
+const { test, expect, answerAppDialogs } = require('./_setup');
 const { enableShowReturn } = require('./_show-return');
 const { LLHZ, LLHA } = require('./_airfieldArp');
 const { hideToolbarMenus } = require('./_toolbar');
@@ -172,7 +172,7 @@ test.describe('Edit / delete waypoint', () => {
       state.selected = { type: 'wp', index: 4 };       // HADRA
       showInspector(); draw();
     });
-    page.once('dialog', d => d.accept());              // safety: no confirm currently
+    await answerAppDialogs(page, true);              // safety: no confirm currently
     await page.locator('.insp-btn').filter({ hasText: /Delete waypoint/ }).click();
     const names = await page.evaluate(() => state.waypoints.map(w => w.name));
     expect(names).not.toContain('HADRA');
@@ -575,7 +575,7 @@ test.describe('Clear map', () => {
     await page.evaluate(() => {
       state.notes.push({ lat: 32.5, lng: 35.0, text: 'X', color: '#ff0', shape: 'rect' });
     });
-    page.once('dialog', d => d.accept());
+    await answerAppDialogs(page, true);
     await page.locator('#clear').click();
     const sizes = await page.evaluate(() => ({
       wps: state.waypoints.length, legs: state.legs.length, notes: state.notes.length,
@@ -584,7 +584,7 @@ test.describe('Clear map', () => {
   });
 
   test('Dismissing the confirm keeps the route intact', async ({ page }) => {
-    page.once('dialog', d => d.dismiss());
+    await answerAppDialogs(page, false);
     await page.locator('#clear').click();
     const wps = await page.evaluate(() => state.waypoints.length);
     expect(wps).toBe(11);
@@ -639,7 +639,7 @@ test.describe('Notes', () => {
       state.selected = { type: 'note', index: 0 };
       showInspector(); draw();
     });
-    page.once('dialog', d => d.accept());
+    await answerAppDialogs(page, true);
     await page.locator('.insp-btn').filter({ hasText: /Delete note/ }).click();
     const remaining = await page.evaluate(() => state.notes.map(n => n.text));
     expect(remaining).toEqual(['B']);

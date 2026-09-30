@@ -2,7 +2,7 @@
 // not be treated as empty: save / import / GPS-save would persist [] over it
 // and silently erase the raw data. Mirror the main route store's #73 guard —
 // preserve the raw blob, flag it, and block writes until export or discard.
-const { test, expect } = require('./_setup');
+const { test, expect, answerAppDialogs } = require('./_setup');
 
 async function bootCorrupt(page, blob = '{bad json') {
   await page.addInitScript((b) => {
@@ -20,7 +20,7 @@ async function bootCorrupt(page, blob = '{bad json') {
 test.describe('corrupt saved-route library', () => {
   test('detected, flagged, raw preserved, and writes blocked', async ({ page }) => {
     await bootCorrupt(page);
-    page.on('dialog', d => d.accept());
+    await answerAppDialogs(page, true);
     const r = await page.evaluate(() => {
       const parsed = loadRouteLibrary();
       const flag = NavAid.routeLibraryCorrupt;
@@ -45,7 +45,7 @@ test.describe('corrupt saved-route library', () => {
 
   test('save on a corrupt library refuses and does not erase it', async ({ page }) => {
     await bootCorrupt(page);
-    page.on('dialog', d => d.accept());
+    await answerAppDialogs(page, true);
     await page.evaluate(() => {
       state.waypoints = [{ lat: 32, lng: 34, name: 'A' }, { lat: 33, lng: 35, name: 'B' }];
       state.legs = []; syncLegs();

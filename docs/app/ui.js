@@ -2145,7 +2145,7 @@ async function buildRouteFromQuery(raw) {
     return false;
   }
   if ((state.waypoints.length || state.notes.length) &&
-      !confirm(S.searchReplaceConfirm)) return false;
+      !(await appConfirm(S.searchReplaceConfirm))) return false;
   // Always store the canonical airfield / nav-waypoint code so all tokens render
   // consistently. navName() in interact.js converts it to the locale at
   // display time. Without this, HE-locale autofill would store the
@@ -2400,9 +2400,9 @@ async function applyRouteTemplate(template, speed, closeModal) {
   const verr = typeof validateRoute === 'function' ? validateRoute(route) : null;
   if (verr) throw new Error(verr);
   if ((state.waypoints.length || state.notes.length) &&
-      !confirm(S.routeTemplateReplaceConfirm ||
+      !(await appConfirm(S.routeTemplateReplaceConfirm ||
         S.searchReplaceConfirm ||
-        'Replace the current route?')) return false;
+        'Replace the current route?'))) return false;
   routeAltPrefix = null;    // template replaces the route — repin to its layer
   currentRouteLibraryId = null;   // template is not a saved entry
   state.waypoints = route.waypoints;
@@ -3159,16 +3159,17 @@ function showRouteLibraryModal(focusSave) {
       save.type = 'button';
       save.className = 'route-library-save';
       save.textContent = S.routeLibrarySave || 'Save';
-      save.onclick = () => {
-        if (!confirm((S.routeLibrarySaveConfirm && S.routeLibrarySaveConfirm(entry.name)) ||
-            ('Overwrite "' + entry.name + '" with the current route?'))) return;
+      save.onclick = async () => {
+        if (!(await appConfirm((S.routeLibrarySaveConfirm && S.routeLibrarySaveConfirm(entry.name)) ||
+            ('Overwrite "' + entry.name + '" with the current route?')))) return;
         if (routeLibraryUpdate(entry.id)) render();
       };
       const rename = document.createElement('button');
       rename.type = 'button';
       rename.textContent = S.routeLibraryRename || 'Rename';
-      rename.onclick = () => {
-        const next = prompt(S.routeLibraryNamePlaceholder || 'Route name', entry.name);
+      rename.onclick = async () => {
+        const next = await askText(S.routeLibraryRename || 'Rename',
+          S.routeLibraryNamePlaceholder || 'Route name', entry.name, S.routeLibraryRename || 'Rename');
         if (next == null) return;
         const all = loadRouteLibrary();
         const t = all.find(x => x.id === entry.id);
@@ -3189,8 +3190,9 @@ function showRouteLibraryModal(focusSave) {
       del.type = 'button';
       del.className = 'route-library-del';
       del.textContent = S.routeLibraryDelete || 'Delete';
-      del.onclick = () => {
-        if (!confirm(S.routeLibraryDeleteConfirm || 'Delete this saved route?')) return;
+      del.onclick = async () => {
+        if (!(await appConfirm(S.routeLibraryDeleteConfirm || 'Delete this saved route?',
+          S.routeLibraryDelete || 'Delete'))) return;
         // Replace with a tombstone (deleted + fresh timestamp) so the delete
         // wins the Drive merge instead of being resurrected from the remote.
         const all = loadRouteLibrary().map(x => x.id === entry.id
@@ -3274,9 +3276,9 @@ function showRouteLibraryModal(focusSave) {
     disc.type = 'button';
     disc.className = 'route-library-del';
     disc.textContent = S.routeLibraryDiscardCorrupt || 'Discard corrupted library';
-    disc.onclick = () => {
-      if (!confirm(S.routeLibraryDiscardCorruptConfirm ||
-        'Discard the corrupted saved-route library and start empty? This cannot be undone.')) return;
+    disc.onclick = async () => {
+      if (!(await appConfirm(S.routeLibraryDiscardCorruptConfirm ||
+        'Discard the corrupted saved-route library and start empty? This cannot be undone.'))) return;
       persistRouteLibrary([], { force: true });
       render();
       warn.remove();
@@ -3326,7 +3328,7 @@ function showRouteLibraryModal(focusSave) {
             // First sync only, and only for keys set differently on BOTH sides:
             // there is no correct automatic answer, and picking one silently
             // discards real settings, so ask once.
-            resolveFirstConflict: keys => {
+            resolveFirstConflict: async keys => {
               const names = keys.map(k => k.replace(/^navaid\./, '')).join(', ');
               const msg = (S.routeLibraryGdriveFirstSyncConflict ||
                 'This device and Google Drive both have settings for: {keys}.\n\n' +
@@ -3335,12 +3337,11 @@ function showRouteLibraryModal(focusSave) {
               // Both sides are destructive to SOMEBODY: keeping local overwrites the
               // other device's values in the shared file, taking remote overwrites
               // this one's. So only an explicit OK acts, and anything else — Cancel,
-              // Escape, a WebView that never renders confirm() — aborts the settings
-              // sync entirely rather than silently picking a side.
-              if (window.confirm(msg)) return 'remote';
+              // Escape -- aborts the settings sync entirely rather than silently picking a side.
+              if (await appConfirm(msg)) return 'remote';
               const keep = S.routeLibraryGdriveKeepThisDevice ||
                 'Keep THIS device\'s settings and update Google Drive?';
-              return window.confirm(keep) ? 'local' : 'abort';
+              return (await appConfirm(keep)) ? 'local' : 'abort';
             },
           });
         })
@@ -4152,9 +4153,9 @@ document.getElementById('reverse').onclick = () => {
   }
 };
 document.getElementById('undo').onclick = () => { if (typeof undo === 'function') undo(); };
-document.getElementById('clear').onclick = () => {
+document.getElementById('clear').onclick = async () => {
   if ((state.waypoints.length || state.notes.length) &&
-      !confirm(S.clearConfirm)) return;
+      !(await appConfirm(S.clearConfirm))) return;
   state.waypoints = [];
   state.legs = [];
   state.notes = [];
@@ -4221,15 +4222,15 @@ document.getElementById('clear').onclick = () => {
   }
   showInspector(); draw();
 };
-document.getElementById('tool-reset-all-wp-names').onclick = () => {
+document.getElementById('tool-reset-all-wp-names').onclick = async () => {
   if (!state.waypoints.length) return;
-  if (!confirm(S.resetAllWpNamesConfirm ||
-      'Reset all waypoint names to their nearest reference codes, or clear when off-grid?')) return;
+  if (!(await appConfirm(S.resetAllWpNamesConfirm ||
+      'Reset all waypoint names to their nearest reference codes, or clear when off-grid?'))) return;
   if (typeof resetAllWpNames === 'function') resetAllWpNames();
 };
 // Export format picker: one dropdown for JSON / GPX / PLN. Resets to its
 // placeholder after firing so the same format can be re-picked.
-document.getElementById('export-select').onchange = e => {
+document.getElementById('export-select').onchange = async e => {
   const v = e.target.value;
   e.target.value = '';
   if (v === 'json') save();
@@ -4250,7 +4251,7 @@ document.getElementById('export-select').onchange = e => {
     if (shown.length > 1) {
       const name = entry.name || pick.name || '';
       const ask = S.trackExportConfirm ? S.trackExportConfirm(name) : ('Export the track "' + name + '"?');
-      if (!confirm(ask)) return;
+      if (!(await appConfirm(ask))) return;
     }
     downloadGpsTrackJson(entry);
   }
@@ -4294,8 +4295,7 @@ function saveRouteFromHeader(e) {
     }
     return;
   }
-  // Asked in the app. window.confirm() is silent in the APK's WebView -- it answered "no"
-  // without showing anything, so Save on a route opened from the library did nothing at all.
+  // Asked in the app, not with window.confirm(): the browser's dialog is English-only in the APK (Capacitor's native OK / Cancel), ignores the theme and RTL, and a browser may suppress it.
   askRouteOverwrite(existing).then((choice) => {
     if (choice === 'new') { showRouteLibraryModal(true); return; }
     if (choice !== 'over') return;
@@ -4753,8 +4753,8 @@ window.followMeNewLinkOffered = followMeNewLinkOffered;
     if (!f || typeof f.newLink !== 'function') return;
     // Confirmed, and the confirmation says what is actually lost: not "are you sure" but
     // who stops being able to watch.
-    // Asked in the app: confirm() is silent in the APK's WebView -- it answered "no" unseen, so
-    // New link never did anything there.
+    // Asked in the app, not with confirm(): the browser's dialog is English-only in the APK and
+    // ignores the theme.
     const ask = S.followMeNewLinkConfirm || 'Start a new follow-me link?';
     const yes = typeof window.askYesNo === 'function'
       ? await window.askYesNo(S.tbFollowMeNewLink || 'New link', ask, S.tbFollowMeNewLink || 'New link')
@@ -4988,10 +4988,10 @@ function askFollowMeCode(current) {
 }
 window.askFollowMeCode = askFollowMeCode;
 
-// A yes/no question the page owns. confirm() is a dialog the page does NOT own: a browser
-// may suppress it, and a WebView shows it only when the host app implements onJsConfirm --
-// which the APK does not, so a confirm() there is a question nobody is ever asked, silently
-// answered "no". Same reason refuse() exists for the one-way messages.
+// A yes/no question the page owns. confirm() is a dialog the page does NOT own: a browser may
+// suppress it, and in the APK it is Capacitor's native AlertDialog -- shown, but with English
+// "OK / Cancel" in the Hebrew UI and none of the app's theme or RTL. This one is bilingual and
+// themed. Same reason refuse() exists for the one-way messages.
 function askYesNo(title, text, okLabel) {
   return new Promise((resolve) => {
     if (typeof createDraggableModal !== 'function') {
@@ -5023,6 +5023,84 @@ function askYesNo(title, text, okLabel) {
   });
 }
 window.askYesNo = askYesNo;
+
+// The app's confirm(): the same question, asked in the app. A promise -- await it.
+function appConfirm(text, okLabel, title) {
+  return askYesNo(title || 'NavAid', text, okLabel);
+}
+window.appConfirm = appConfirm;
+
+// The app's prompt(): one line of text, or null when cancelled. Same reasons as askYesNo:
+// bilingual buttons, the app's theme and RTL, and a field that writes as typed.
+function askText(title, label, value, okLabel) {
+  return new Promise((resolve) => {
+    if (typeof createDraggableModal !== 'function') {
+      try { resolve(window.prompt(label, value || '')); } catch (e) { resolve(null); }
+      return;
+    }
+    let answered = false;
+    const done = (v) => { if (!answered) { answered = true; resolve(v); } };
+    const modal = createDraggableModal(title || 'NavAid', 'modal follow-me-ask-modal', () => done(null));
+    const text = document.createElement('p');
+    text.className = 'follow-me-ask-text';
+    text.textContent = label;
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.className = 'follow-me-ask-input app-ask-input';
+    input.dir = 'auto';
+    input.value = value || '';
+    input.setAttribute('aria-label', label);
+    const row = document.createElement('div');
+    row.className = 'follow-me-ask-actions';
+    const cancel = document.createElement('button');
+    cancel.type = 'button';
+    cancel.className = 'follow-me-ask-cancel';
+    cancel.textContent = S.cancel || 'Cancel';
+    cancel.addEventListener('click', () => { done(null); modal.close(); });
+    const ok = document.createElement('button');
+    ok.type = 'button';
+    ok.className = 'follow-me-ask-ok';
+    ok.textContent = okLabel || S.ok || 'OK';
+    const submit = () => { done(input.value); modal.close(); };
+    ok.addEventListener('click', submit);
+    input.addEventListener('keydown', (ev) => {
+      if (ev.key === 'Enter') { ev.preventDefault(); submit(); }
+    });
+    row.append(cancel, ok);
+    modal.box.append(text, input, row);
+    modal.show();
+    try { input.focus(); input.select(); } catch (e) { /* not focusable yet */ }
+  });
+}
+window.askText = askText;
+
+// When the clipboard refuses, show the text selected, to copy by hand. The old fallback,
+// window.prompt(label, text), put a long link in a one-line native field.
+function showCopyText(title, text) {
+  if (typeof createDraggableModal !== 'function') {
+    try { window.prompt(title, text); } catch (e) { /* nowhere to show it */ }
+    return;
+  }
+  const modal = createDraggableModal(title || 'NavAid', 'modal follow-me-ask-modal copy-text-modal', () => {});
+  const area = document.createElement('textarea');
+  area.className = 'copy-text-area';
+  area.readOnly = true;
+  area.dir = 'ltr';
+  area.rows = Math.min(10, Math.max(2, String(text).split('\n').length));
+  area.value = text;
+  const row = document.createElement('div');
+  row.className = 'follow-me-ask-actions';
+  const close = document.createElement('button');
+  close.type = 'button';
+  close.className = 'follow-me-ask-ok';
+  close.textContent = S.copyTextClose || 'Close';
+  close.addEventListener('click', () => modal.close());
+  row.append(close);
+  modal.box.append(area, row);
+  modal.show();
+  try { area.focus(); area.select(); } catch (e) { /* not focusable yet */ }
+}
+window.showCopyText = showCopyText;
 
 function showReturnFeatureOn() {
   return typeof tune !== 'function' || tune('featureShowReturn') !== false;
@@ -8052,8 +8130,8 @@ const overlayAlign = (function () {
       clearHandles(); sel = null; editLayer = null; state = null;
       reloadType(t); updatePanel();
     };
-    panel.querySelector('.ov-reset-all').onclick = () => {
-      if (!confirm(S.ovAlignResetAllConfirm || 'Clear all overlay alignments?')) return;
+    panel.querySelector('.ov-reset-all').onclick = async () => {
+      if (!(await appConfirm(S.ovAlignResetAllConfirm || 'Clear all overlay alignments?'))) return;
       localStorage.removeItem(OVERLAY_OVERRIDES_KEY);
       clearHandles(); sel = null; editLayer = null; state = null;
       GTYPES.forEach(reloadType); updatePanel();
@@ -9089,9 +9167,9 @@ if (THEME_TOGGLE_EL) {
 // settings) from local + session storage, then reload to a clean slate.
 const CLEAR_STORE_EL = document.getElementById('clear-store');
 if (CLEAR_STORE_EL) {
-  CLEAR_STORE_EL.onclick = () => {
-    if (!confirm(S.tbClearStoreConfirm ||
-      'Delete ALL saved routes and settings stored on this device? This cannot be undone.')) return;
+  CLEAR_STORE_EL.onclick = async () => {
+    if (!(await appConfirm(S.tbClearStoreConfirm ||
+      'Delete ALL saved routes and settings stored on this device? This cannot be undone.'))) return;
     // Suppress the beforeunload/visibilitychange autosave so reload() can't
     // re-persist the in-memory route right after we wipe storage.
     window.__clearingStore = true;
@@ -9593,11 +9671,11 @@ try {
 document.getElementById('print').onclick = showExportModal;
 createMagnifier();
 document.getElementById('tool-magnifier').onclick = toggleMagnifier;
-document.getElementById('tool-reset-all-markers').onclick = () => {
+document.getElementById('tool-reset-all-markers').onclick = async () => {
   // Confirm before wiping every manual leg-marker offset —
   // this button is in the always-visible Build section so an accidental
   // click on a hand-tuned route was costly.
-  if (!confirm(S.resetAllConfirm || 'Reset all marker positions?')) return;
+  if (!(await appConfirm(S.resetAllConfirm || 'Reset all marker positions?'))) return;
   for (let i = 0; i < state.legs.length; i++) {
     const d = _defaultLegLabels();
     state.legs[i].inLabel = d.inLabel;
@@ -11140,15 +11218,15 @@ function armAndroidBackButton(attempt) {
     if (n <= 20) setTimeout(() => armAndroidBackButton(n), 250);
     return;
   }
-  app.addListener('backButton', () => {
+  app.addListener('backButton', async () => {
     if (backButtonStep()) return;                       // something on screen to close first
     // Nothing left to close: this press leaves NavAid. Asked every time, because the press
-    // that ends a flight looks exactly like the press that closed a panel.
+    // that ends a flight looks exactly like the press that closed a panel. Asked in the app
+    // (bilingual, themed) rather than with the native English-only confirm. A second Back
+    // while the question is up closes it (backButtonStep), i.e. "stay".
     const msg = (S && S.exitConfirm) || 'Close NavAid?';
-    // A WebView that refuses confirm() must not trap the pilot in the app: if the question
-    // cannot be asked, Back does what Back has always done.
     let leave;
-    try { leave = window.confirm(msg); } catch (e) { leave = true; }
+    try { leave = await appConfirm(msg, S.exitConfirmOk || 'Close NavAid'); } catch (e) { leave = true; }
     if (!leave) return;
     if (typeof flushPersist === 'function') flushPersist();
     if (typeof app.exitApp === 'function') app.exitApp();

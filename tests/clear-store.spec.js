@@ -2,7 +2,7 @@
 // "Clear store" must wipe everything — including the route on the map. The
 // reload it triggers used to re-persist the in-memory route via beforeunload,
 // leaving the route behind.
-const { test, expect } = require('./_setup');
+const { test, expect, answerAppDialogs } = require('./_setup');
 
 test('clear store removes the route from the map (no re-persist on reload)', async ({ page }) => {
   // #clear-store now lives with the other data-management controls, not in Edit.
@@ -22,7 +22,7 @@ test('clear store removes the route from the map (no re-persist on reload)', asy
   expect(await page.evaluate(() => localStorage.getItem('navaid.route'))).toBeTruthy();
 
   // Accept the confirm, click Clear store → it reloads.
-  page.on('dialog', d => d.accept());
+  await answerAppDialogs(page, true);
   await Promise.all([
     page.waitForNavigation({ waitUntil: 'load' }),
     page.locator('#clear-store').click(),

@@ -3,7 +3,7 @@
 // recurred most (per-leg wind dropped on Reverse; route-wide wind not reset on a
 // full-route replacement) plus the GPX <ele> unit fix. State-level so they stay
 // fast and deterministic.
-const { test, expect } = require('./_setup');
+const { test, expect, answerAppDialogs } = require('./_setup');
 
 const ROUTE = {
   waypoints: [
@@ -48,7 +48,7 @@ test('Reverse preserves per-leg winds-aloft (leg.wind is absolute, not dropped)'
 
 test('Clear resets route-wide wind so a new route does not inherit it', async ({ page }) => {
   await bootRoute(page);
-  page.on('dialog', d => d.accept());
+  await answerAppDialogs(page, true);
   await page.evaluate(() => { state.wind = { dir: 90, speed: 20 }; });
   await page.evaluate(() => document.getElementById('clear').click());   // collapsed-toolbar button → fire directly
   await page.waitForTimeout(50);

@@ -1675,7 +1675,7 @@ function showParkingRequestModal(res, park, opts) {
     const text = preview.value;
     const write = (navigator.clipboard && navigator.clipboard.writeText)
       ? navigator.clipboard.writeText(text) : Promise.reject(new Error('no clipboard API'));
-    write.then(() => showToast(S.fplCopied)).catch(() => window.prompt(S.fplCopied, text));
+    write.then(() => showToast(S.fplCopied)).catch(() => showCopyText(S.fplCopy || 'Copy', text));
   };
   const cancel = document.createElement('button');
   cancel.type = 'button';
@@ -6445,9 +6445,9 @@ async function flyRoute() {
     saveFile(blob, 'navaid-flythrough-' + routeFileSlug() + '-' + fileStamp() + '.kml');
   }
 
-  function onPick(mode) {
+  async function onPick(mode) {
     if (mode === 'web') {
-      if (!confirm(S.geWebConfirm)) return;
+      if (!(await appConfirm(S.geWebConfirm))) return;
       // Validate the first waypoint's coords before string concatenation so a
       // malformed lat/lng (e.g. from a tampered import) can't leak into the
       // URL. heading()/altM() are already bounded numerics by construction.
@@ -6465,7 +6465,7 @@ async function flyRoute() {
       return;
     }
 
-    if (!confirm(S.flyConfirm)) return;
+    if (!(await appConfirm(S.flyConfirm))) return;
     downloadKml();
   }
 
@@ -8262,7 +8262,7 @@ function renderAltitudePairsTable(altSection, opts) {
       if (typeof showToast === 'function') showToast(S.altPairsCopied || 'Copied');
     } catch (err) {
       copy.textContent = S.altPairsCopyFailed || 'Copy failed';
-      window.prompt(S.altPairsCopyJson || 'Copy JSON', text);
+      showCopyText(S.altPairsCopyJson || 'Copy JSON', text);
     } finally {
       setTimeout(() => { copy.textContent = S.altPairsCopyJson || 'Copy JSON'; }, 1200);
     }
@@ -9947,8 +9947,8 @@ function shareRoute() {
   writePromise
     .then(() => showToast(S.shareCopied))
     .catch(() => {
-      // Fallback: show the URL in a prompt so the user can copy manually.
-      window.prompt(S.shareCopied, r.url);
+      // Fallback: show the URL, selected, so the user can copy it by hand.
+      showCopyText(S.tbShare || 'Share', r.url);
     });
 }
 
@@ -11024,7 +11024,7 @@ function showFplDialog() {
         ? navigator.clipboard.writeText(res.text)
         : Promise.reject(new Error('no clipboard API'));
       write.then(() => showToast(S.fplCopied))
-        .catch(() => window.prompt(S.fplCopied, res.text));
+        .catch(() => showCopyText(S.fplCopy || 'Copy', res.text));
     };
     const formOnly = (res.warns || []).includes('warnFplCrossForm');
     const mail = document.createElement('button');
@@ -11709,8 +11709,8 @@ function showFplXcForm(opts) {
   clearBtn.id = 'xc-clear';
   clearBtn.textContent = S.xcClearForm || 'Clear form';
   clearBtn.title = fplIsolate(S.xcClearFormTip || '');
-  clearBtn.onclick = () => {
-    if (!confirm(S.xcClearFormConfirm || 'Clear the fields you filled in on this form?')) return;
+  clearBtn.onclick = async () => {
+    if (!(await appConfirm(S.xcClearFormConfirm || 'Clear the fields you filled in on this form?'))) return;
     // Only what the pilot typed here: the form's own boxes, the free-text lines and the
     // signatures. The dialog's values and the generated route stay.
     for (const el of Object.values(fields)) {

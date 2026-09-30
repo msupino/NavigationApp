@@ -25,7 +25,7 @@
 //      changed from `{a, p, _m}` to `{a, _default, _m}`).
 //   5. round-trip at legArrowSize=2 — save / reload / import preserves a
 //      user-dragged offset's rendered position (within sub-pixel ε).
-const { test, expect } = require('./_setup');
+const { test, expect, answerAppDialogs } = require('./_setup');
 const { LLHZ, LLHA } = require('./_airfieldArp');
 
 const TWO_WP = [
@@ -227,8 +227,11 @@ test.describe('PR #393 — leg marker zoom-independent offsets', () => {
     });
 
     // Dismiss path — state must NOT change.
-    page.once('dialog', d => d.dismiss());
+    // The question is the app's own dialog; opening it puts the menu away, so the second
+    // press goes to the button directly rather than through a now-hidden menu.
+    await answerAppDialogs(page, false);
     await page.locator('#tool-reset-all-markers').click();
+    await expect(page.locator('.follow-me-ask-modal')).toHaveCount(0);
     const dismissed = await page.evaluate(() => ({
       inLabel:  state.legs[0].inLabel,
       outLabel: state.legs[0].outLabel,
@@ -237,8 +240,9 @@ test.describe('PR #393 — leg marker zoom-independent offsets', () => {
     expect(dismissed.outLabel).toEqual({ a: 7, p: -21, _m: 1 });
 
     // Accept path — state matches _defaultLegLabels().
-    page.once('dialog', d => d.accept());
-    await page.locator('#tool-reset-all-markers').click();
+    await answerAppDialogs(page, true);
+    await page.evaluate(() => document.getElementById('tool-reset-all-markers').click());
+    await page.waitForFunction(() => state.legs[0].inLabel && state.legs[0].inLabel._default === 1);
     const accepted = await page.evaluate(() => ({
       legArrowSize: window.legArrowSize,
       inLabel:  state.legs[0].inLabel,
@@ -445,7 +449,7 @@ test.describe('PR #393 — leg marker zoom-independent offsets', () => {
     // Click "Reset all marker positions" and accept the confirm. After
     // this the per-leg labels MUST be the `_default: 1` sentinel so the
     // renderer falls through to the drift-aware perpendicular formula.
-    page.once('dialog', d => d.accept());
+    await answerAppDialogs(page, true);
     await page.locator('#tool-reset-all-markers').click();
     await page.waitForFunction(
       () => state.legs.every(l => l.inLabel && l.inLabel._default === 1

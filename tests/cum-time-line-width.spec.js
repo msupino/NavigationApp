@@ -1,7 +1,7 @@
 // @ts-check
 // Coverage for PR #513: cumulative-time kite (drawCumTimeArrow / cumLabel +
 // the showCumTime toggle) and the leg line-width slider.
-const { test, expect } = require('./_setup');
+const { test, expect, answerAppDialogs } = require('./_setup');
 const { enableShowReturn } = require('./_show-return');
 const { LLHZ, LLHA } = require('./_airfieldArp');
 const { hideToolbarMenus } = require('./_toolbar');
@@ -222,7 +222,7 @@ test.describe('Cumulative-time kite', () => {
     await loadRoute(page);
     // Nudge a cum kite off its default, then reset all.
     await page.evaluate(() => { state.legs[0].cumLabel = { a: 30, p: 20, _m: 1 }; });
-    page.once('dialog', d => d.accept());
+    await answerAppDialogs(page, true);
     await page.locator('#tool-reset-all-markers').click();
     const dflt = await page.evaluate(() => state.legs[0].cumLabel._default === 1);
     expect(dflt).toBe(true);
@@ -476,7 +476,7 @@ test.describe('Cumulative-time kite', () => {
     await boot(page);
     await loadRoute(page);
     await page.evaluate(() => { state.legs[0].cumLabelRet = { a: 40, p: 25, _m: 1 }; });
-    page.once('dialog', d => d.accept());
+    await answerAppDialogs(page, true);
     await page.locator('#tool-reset-all-markers').click();
     expect(await page.evaluate(() => state.legs[0].cumLabelRet._default === 1)).toBe(true);
   });
