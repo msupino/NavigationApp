@@ -1202,6 +1202,7 @@ window.S = {
   tbShowCommChangeTitle: 'סמן ציוני דיווח שבהם נדרש מעבר תדר ATC',
   legendTitle: 'מקרא',
   legendAirfield: 'שדה תעופה',
+  legendAirfieldMilitary: 'שדה תעופה צבאי',
   legendWaypoint: 'נקודת דיווח (לפי דרישה)',
   legendReportCompulsory: 'נקודת דיווח חובה',
   legendVor: 'תחנת VOR',

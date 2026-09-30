@@ -3416,6 +3416,7 @@ async function loadAirfields() {
       clearance: a.clearance,
       plates: Array.isArray(a.plates) ? a.plates.slice() : [],
       runways: Array.isArray(a.runways) ? a.runways.slice() : null,
+      type: a.type === 'military' ? 'military' : 'civil',   // chart symbol: ◎ for a military field
       // Prior-parking coordination the AIP requires at this field (address/phone + rule),
       // read by the flight plan's parking-request button. Absent for fields that ask nothing.
       parking: (a.parking && typeof a.parking === 'object') ? a.parking : null,
@@ -3534,12 +3535,12 @@ function routeReturnsHome() {
 }
 window.routeReturnsHome = routeReturnsHome;
 
-// ICAO aerodrome symbol (Annex 4 VFR chart): a circle. Where airfields.json lists the
-// runways, their directions are drawn across it (a 12/30 bar lies along 120°/300°), so the
-// field reads the way it looks from the air; a field without that data gets a centre dot.
-// A triangle would say "reporting point" on a chart -- that is what drawNavWaypoints uses.
-// The ICAO and localised name appear next to the marker at zoom >= 10. Suppressed when
-// a route waypoint sits on the airfield (proximity-based, like nav-WPs).
+// Airfield symbols as the CAAI CVFR chart's own legend draws them (the מקרא on the chart's east
+// edge): a civil field is its runways, outlined in blue, with the aerodrome reference point
+// (ARP) as a ringed cross; a military field is a double circle. The chart draws the outline
+// to scale; the runway length is not in airfields.json, so here it is a fixed-size bar along
+// the designator (a 12/30 bar lies along 120°/300°). A field with no runway data gets the ARP
+// alone. Reporting points are the chart's triangles -- see drawReportingPointSymbol.
 function runwayBearingsDeg(af) {
   const out = [];
   for (const rw of (af && Array.isArray(af.runways) ? af.runways : [])) {
@@ -3548,42 +3549,71 @@ function runwayBearingsDeg(af) {
   }
   return out;
 }
-function drawAirfieldSymbol(ctx, s, r, af) {
-  const col = tune('airfieldFillColor');
-  const lw = tune('airfieldStrokeWidthPx');
-  ctx.beginPath();
-  ctx.arc(s.x, s.y, r, 0, Math.PI * 2);
-  ctx.fillStyle = tune('airfieldCenterColor');
-  ctx.fill();
-  ctx.lineWidth = lw;
-  ctx.strokeStyle = col;
-  ctx.stroke();
-  const rwys = runwayBearingsDeg(af);
-  if (!rwys.length) {
-    ctx.beginPath();
-    ctx.arc(s.x, s.y, Math.max(1.5, r * 0.35), 0, Math.PI * 2);
-    ctx.fillStyle = col;
-    ctx.fill();
-    return;
-  }
-  // Runway designators are magnetic; the screen direction comes from a projected offset, as
-  // for the aircraft symbol, so the bars stay right on a rotated (heading-up) chart.
+// Screen angle (radians) of each runway at this field. Runway designators are magnetic; the
+// direction comes from a projected offset, as for the aircraft symbol, so the bars stay right
+// on a rotated (heading-up) chart.
+function runwayScreenAngles(af, s) {
   const mag = typeof fromMagnetic === 'function' ? fromMagnetic : (d => d);
-  const len = r * 0.72;
-  ctx.save();
-  ctx.lineCap = 'round';
-  ctx.lineWidth = lw * 1.3;
-  ctx.strokeStyle = col;
-  for (const deg of rwys) {
+  return runwayBearingsDeg(af).map((deg) => {
     const to = mag(deg) * Math.PI / 180;
     const p2 = proj({ lat: af.lat + Math.cos(to) * 0.02,
                       lng: af.lng + Math.sin(to) * 0.02 / Math.cos(af.lat * Math.PI / 180) });
-    const a = Math.atan2(p2.y - s.y, p2.x - s.x);
-    ctx.beginPath();
-    ctx.moveTo(s.x - Math.cos(a) * len, s.y - Math.sin(a) * len);
-    ctx.lineTo(s.x + Math.cos(a) * len, s.y + Math.sin(a) * len);
-    ctx.stroke();
+    return Math.atan2(p2.y - s.y, p2.x - s.x);
+  });
+}
+// `angles` overrides the projected runway directions (the legend swatch has no map position).
+function drawAirfieldSymbol(ctx, s, r, af, angles) {
+  const blue = tune('airfieldFillColor');
+  const ink = tune('airfieldOutlineColor');
+  const halo = tune('airfieldCenterColor');
+  const lw = tune('airfieldStrokeWidthPx');
+  ctx.save();
+  if (af && af.type === 'military') {
+    // ש"ת צבאי: a double circle.
+    for (const [rr, w] of [[r, lw + 2], [r, lw], [r * 0.5, lw]]) {
+      ctx.beginPath();
+      ctx.arc(s.x, s.y, rr, 0, Math.PI * 2);
+      ctx.lineWidth = w;
+      ctx.strokeStyle = w > lw ? halo : ink;
+      ctx.stroke();
+    }
+    ctx.restore();
+    return;
   }
+  const rwys = Array.isArray(angles) ? angles : runwayScreenAngles(af, s);
+  if (rwys.length) {
+    // שדה תעופה: each runway a blue outline with a light inside.
+    const len = r * 1.8;                 // half-length
+    const wid = Math.max(2, r * 0.32);   // half-width
+    ctx.lineJoin = 'miter';
+    for (const a of rwys) {
+      ctx.save();
+      ctx.translate(s.x, s.y);
+      ctx.rotate(a);
+      ctx.beginPath();
+      ctx.rect(-len, -wid, len * 2, wid * 2);
+      ctx.fillStyle = halo;
+      ctx.fill();
+      ctx.lineWidth = lw;
+      ctx.strokeStyle = blue;
+      ctx.stroke();
+      ctx.restore();
+    }
+  }
+  // ARP: a ring with a cross through it, smaller when the runways carry the symbol.
+  const ar = rwys.length ? Math.max(2.5, r * 0.34) : r * 0.8;
+  const tick = rwys.length ? ar * 0.35 : ar * 0.45;
+  ctx.beginPath();
+  ctx.arc(s.x, s.y, ar, 0, Math.PI * 2);
+  ctx.moveTo(s.x, s.y - ar - tick); ctx.lineTo(s.x, s.y + ar + tick);
+  ctx.moveTo(s.x - ar - tick, s.y); ctx.lineTo(s.x + ar + tick, s.y);
+  ctx.lineCap = 'round';
+  ctx.lineWidth = lw + (rwys.length ? 1 : 2);
+  ctx.strokeStyle = halo;
+  ctx.stroke();
+  ctx.lineWidth = rwys.length ? Math.max(1, lw * 0.8) : lw;
+  ctx.strokeStyle = ink;
+  ctx.stroke();
   ctx.restore();
 }
 function drawAirfields() {
@@ -3603,9 +3633,11 @@ function drawAirfields() {
       const label = ltrIsolate(referenceOverlayLabel(af, 'airfield'));
       octx.lineWidth = tune('airfieldLabelHaloPx');
       octx.strokeStyle = colorWithAlpha(tune('overlayLabelHaloColor'), tune('overlayLabelHaloAlpha'));
-      octx.strokeText(label, s.x + r + labelOffset, s.y);
+      // Clear of the runway outlines, which reach past the ARP.
+      const lx = s.x + (af.type !== 'military' && runwayBearingsDeg(af).length ? r * 1.8 : r) + labelOffset;
+      octx.strokeText(label, lx, s.y);
       octx.fillStyle = tune('airfieldOutlineColor');
-      octx.fillText(label, s.x + r + labelOffset, s.y);
+      octx.fillText(label, lx, s.y);
     }
   }
   octx.lineWidth = 1;

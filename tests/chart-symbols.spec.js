@@ -1,7 +1,7 @@
 // @ts-check
-// ICAO chart symbols (Annex 4 VFR chart): an aerodrome is a circle -- runway bars across it
-// where the data lists runways -- and a reporting point is a triangle, filled when the report
-// is compulsory and open when it is on request. The own aircraft is a blue silhouette.
+// Chart symbols as the CAAI CVFR chart's legend draws them: a civil airfield is its runways
+// outlined in blue with the ARP as a ringed cross, a military one a double circle, and a
+// reporting point a triangle -- filled when compulsory, open when on request. The own aircraft is a blue silhouette.
 const { test, expect } = require('./_setup');
 
 async function boot(page) {
@@ -33,7 +33,7 @@ test('runway designators become bar directions', async ({ page }) => {
   expect(out).toEqual([[80, 120, 30], [90], [], []]);
 });
 
-test('an airfield is a circle: a centre dot without runway data, one bar per runway with it', async ({ page }) => {
+test('airfields follow the CVFR legend: runway outlines + ARP, double circle when military', async ({ page }) => {
   await boot(page);
   const out = await page.evaluate((src) => {
     const make = new Function('return (' + src + ')')();
@@ -41,35 +41,40 @@ test('an airfield is a circle: a centre dot without runway data, one bar per run
       const { ctx, calls } = make();
       drawAirfieldSymbol(ctx, { x: 50, y: 50 }, 7, af);
       return {
-        arcs: calls.filter(c => c[0] === 'arc').length,
-        bars: calls.filter(c => c[0] === 'lineTo').length,
-        triangles: calls.filter(c => c[0] === 'closePath').length,
+        rings: calls.filter(c => c[0] === 'arc').length,
+        runways: calls.filter(c => c[0] === 'rect').length,
       };
     };
     return {
       bare: count({ lat: 32, lng: 34.8 }),
       llbg: count({ lat: 32, lng: 34.88, runways: ['08/26', '12/30', '03/21'] }),
+      military: count({ lat: 31.2, lng: 35.0, type: 'military' }),
     };
   }, recorder.toString());
-  expect(out.bare).toEqual({ arcs: 2, bars: 0, triangles: 0 });     // ring + centre dot
-  expect(out.llbg).toEqual({ arcs: 1, bars: 3, triangles: 0 });     // ring + three runways
+  expect(out.bare).toEqual({ rings: 1, runways: 0 });       // the ARP alone
+  expect(out.llbg).toEqual({ rings: 1, runways: 3 });       // three runway outlines + the ARP
+  expect(out.military).toEqual({ rings: 3, runways: 0 });   // halo + the two circles of ◎
 });
 
-test('a runway bar lies along its designator on a north-up chart', async ({ page }) => {
+test('a runway outline lies along its designator on a north-up chart', async ({ page }) => {
   await boot(page);
-  const deg = await page.evaluate((src) => {
-    const make = new Function('return (' + src + ')')();
-    const { ctx, calls } = make();
+  const deg = await page.evaluate(() => {
     const af = { lat: 32.18, lng: 34.83, runways: ['09/27'] };
-    const s = proj(af);
-    drawAirfieldSymbol(ctx, s, 7, af);
-    const from = calls.find(c => c[0] === 'moveTo');
-    const to = calls.find(c => c[0] === 'lineTo');
-    // Screen bearing of the bar, folded to 0..180.
-    const b = (Math.atan2(to[1] - from[1], -(to[2] - from[2])) * 180 / Math.PI + 360) % 180;
+    const a = runwayScreenAngles(af, proj(af))[0];
+    // Screen angle (x right, y down) to a bearing, folded to 0..180.
+    const b = ((a * 180 / Math.PI + 90) % 180 + 180) % 180;
     return { b, mag: fromMagnetic(90) % 180 };
-  }, recorder.toString());
+  });
   expect(Math.abs(deg.b - deg.mag)).toBeLessThan(2);
+});
+
+test('the eight air force bases are typed military in the dataset and the loader', async ({ page }) => {
+  await boot(page);
+  const mil = await page.evaluate(async () => {
+    await loadAirfields();
+    return airfields.filter(a => a.type === 'military').map(a => a.name).sort();
+  });
+  expect(mil).toEqual(['LLEK', 'LLHB', 'LLHS', 'LLNV', 'LLOV', 'LLPL', 'LLRD', 'LLRM']);
 });
 
 test('reporting points: filled triangle when compulsory, open when on request', async ({ page }) => {
@@ -140,11 +145,13 @@ test('the legend swatches are painted by the map symbol functions', async ({ pag
     };
     return {
       airfield: px('canvas.legend-airfield'),
+      military: px('canvas.legend-airfield-military'),
       compulsory: px('canvas.legend-report-compulsory'),
       onRequest: px('canvas.legend-waypoint'),
     };
   });
   expect(out.airfield).toBeGreaterThan(20);
+  expect(out.military).toBeGreaterThan(20);
   expect(out.compulsory).toBeGreaterThan(20);
   expect(out.onRequest).toBeGreaterThan(20);
 });

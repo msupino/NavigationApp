@@ -586,6 +586,7 @@
   },
   {
    "name": "LLEK",
+   "type": "military",
    "he": "תל נוף",
    "en": "Tel Nof",
    "lat": 31.83667,
@@ -833,6 +834,7 @@
   },
   {
    "name": "LLHB",
+   "type": "military",
    "he": "חצרים",
    "en": "Hatzerim",
    "lat": 31.24333,
@@ -841,6 +843,7 @@
   },
   {
    "name": "LLHS",
+   "type": "military",
    "he": "חצור",
    "en": "Hatzor",
    "lat": 31.75778,
@@ -1288,6 +1291,7 @@
   },
   {
    "name": "LLNV",
+   "type": "military",
    "he": "נבטים",
    "en": "Nevatim",
    "lat": 31.21333,
@@ -1296,6 +1300,7 @@
   },
   {
    "name": "LLOV",
+   "type": "military",
    "he": "עובדה",
    "en": "Ovda",
    "lat": 29.935,
@@ -1304,6 +1309,7 @@
   },
   {
    "name": "LLPL",
+   "type": "military",
    "he": "פלמחים",
    "en": "Palmachim",
    "lat": 31.89833,
@@ -1313,6 +1319,7 @@
   },
   {
    "name": "LLRD",
+   "type": "military",
    "he": "רמת דוד",
    "en": "Ramat David",
    "lat": 32.66861,
@@ -1321,6 +1328,7 @@
   },
   {
    "name": "LLRM",
+   "type": "military",
    "he": "רמון",
    "en": "Ramon",
    "lat": 30.775,

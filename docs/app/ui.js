@@ -301,7 +301,7 @@ function paintLegendVor() {
 }
 paintLegendVor();
 // The airfield and reporting-point swatches, painted by the map's own symbol functions for
-// the same reason as the VOR one. The airfield is shown without runway data (circle + dot).
+// the same reason as the VOR one. The airfield swatch is one runway with its ARP.
 function paintLegendPoints() {
   const dpr = window.devicePixelRatio || 1;
   const box = 18;
@@ -316,7 +316,11 @@ function paintLegendPoints() {
     fn(ctx);
   };
   if (typeof drawAirfieldSymbol === 'function') {
-    paint('canvas.legend-airfield', ctx => drawAirfieldSymbol(ctx, { x: box / 2, y: box / 2 }, 7, null));
+    // One east-west runway; the swatch has no map position, so its angle is given.
+    paint('canvas.legend-airfield', ctx =>
+      drawAirfieldSymbol(ctx, { x: box / 2, y: box / 2 }, 6.5, { runways: ['09/27'] }, [0]));
+    paint('canvas.legend-airfield-military', ctx =>
+      drawAirfieldSymbol(ctx, { x: box / 2, y: box / 2 }, 7, { type: 'military' }));
   }
   if (typeof drawReportingPointSymbol === 'function') {
     for (const [sel, compulsory] of [['canvas.legend-report-compulsory', true], ['canvas.legend-waypoint', false]]) {
