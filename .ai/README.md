@@ -33,8 +33,10 @@ Important paths:
 - `docs/data/` - shipped JSON aviation datasets.
 - `docs/i18n/` - locale string bundles.
 - `docs/byop/` - stable public chart/plate PDF URL space.
-- `mobile/` - Capacitor remote development/Android shell (`webDir: shell`) and
-  embedded iOS release (`webDir: www`, generated from docs and pinned vendor assets).
+- `mobile/` - Capacitor. Committed config is the remote development shell (`webDir: shell`);
+  the released Android APK and the App Store build are embedded (`npm run embed`, `webDir: www`,
+  generated from docs and pinned vendor assets, plus CVFR z7-12 tiles on Android) and update
+  over the air from the deploy's `/ota/` bundle.
 - `tests/` - Playwright and dataset regression coverage.
 - `.github/workflows/` - CI, deploy, review, data refresh, and PR automation.
 

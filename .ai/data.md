@@ -88,10 +88,14 @@ When updating:
 
 Airfields power:
 
-- map triangles and labels
+- map symbols and labels (runway outlines + ARP ⊕ from `runways`; ◎ for `type: "military"`)
 - route waypoint snap/title resolution
 - inspector frequencies, ATIS, clearance, weather, runways, plates
 - BYOP chart modal
+
+`type` is optional and only `"military"` is read (LLEK, LLHB, LLHS, LLNV, LLOV, LLPL, LLRD,
+LLRM); anything else is drawn as civil. The file is hand-formatted: add fields as text lines,
+do not rewrite it with a JSON dumper.
 
 The radio-frequency PDF supplied by the maintainer is the source of truth for
 primary, clearance, and ATIS fields when present.
