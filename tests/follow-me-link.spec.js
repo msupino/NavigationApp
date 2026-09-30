@@ -2076,6 +2076,7 @@ test.describe('New link, in the interface', () => {
     await page.evaluate(() => {
       setTune('featureFollowMe', true);
       window.confirm = () => true;
+      window.askYesNo = async () => true;      // the question is the app's own now, not confirm()
       window.__toasts = [];
       window.showToast = (m) => window.__toasts.push(String(m));
       // Neither the share sheet nor the clipboard exists in a test browser tab; the link is
@@ -2123,6 +2124,7 @@ test.describe('New link, in the interface', () => {
     const first = await shareOnce(page, '4X-KEEPIT');
     await page.evaluate(async () => {
       window.confirm = () => false;
+      window.askYesNo = async () => false;
       refreshFollowMeControl();
       document.getElementById('follow-me-new').click();
       await new Promise(r => setTimeout(r, 30));

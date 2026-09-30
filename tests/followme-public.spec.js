@@ -270,3 +270,62 @@ test('the label reads in the dark theme too: light text on its dark backing', as
   });
   expect(c.text - c.bg).toBeGreaterThan(120);   // light on dark, well apart
 });
+
+test('an oversized packet is not even decoded', async ({ page }) => {
+  await boot(page);
+  const n = await page.evaluate(async () => {
+    const P = NavAid.publicPilots;
+    const big = new TextEncoder().encode(JSON.stringify({ v: 1, pad: 'x'.repeat(5000) }));
+    const realParse = JSON.parse; let parsed = 0;
+    JSON.parse = (...a) => { parsed++; return realParse(...a); };
+    await P._onMessage('navaid/public/v1/AbCdEfGhIjKlMnOpQrSt', big);
+    JSON.parse = realParse;
+    return parsed;
+  });
+  expect(n).toBe(0);
+});
+
+test('this device never draws its own aircraft -- not even under an older id from a previous link', async ({ page }) => {
+  await boot(page);
+  const out = await page.evaluate(async () => {
+    const F = NavAid.followMe, P = NavAid.publicPilots;
+    const mk = async () => {
+      const pair = await crypto.subtle.generateKey({ name: 'ECDSA', namedCurve: 'P-256' }, true, ['sign', 'verify']);
+      return { signKey: pair.privateKey, verifyB64: F._b64url.from(new Uint8Array(await crypto.subtle.exportKey('raw', pair.publicKey))) };
+    };
+    const old = await mk();
+    const oldId = await F._publicIdForKey(old.verifyB64);
+    localStorage.setItem('navaid.followMePublicId', JSON.stringify([oldId]));   // a previous link's id
+    await P._onMessage('navaid/public/v1/' + oldId, await F._publicPacket(old, { reg: 'ME-OLD', lat: 32, lng: 35, t: Date.now() }), true);
+    return P.list().length;
+  });
+  expect(out).toBe(0);
+});
+
+test('Public can be switched on and off during a share, from the menu', async ({ page }) => {
+  await boot(page);
+  const out = await page.evaluate(async () => {
+    const F = NavAid.followMe;
+    await F.start('4X-MID');
+    window.__sockets[0].connack();
+    await new Promise(r => setTimeout(r, 20));
+    refreshFollowMeControl();
+    const cb = document.getElementById('follow-me-public-cb');
+    const row = document.getElementById('follow-me-public-row');
+    const before = { hidden: row.hidden, checked: cb.checked };
+    window.__sent.length = 0;
+    cb.checked = true; cb.dispatchEvent(new Event('change'));
+    await F.publish({ lat: 32.2, lng: 34.85, trk: 45, kt: 95, af: 2500 });
+    await new Promise(r => setTimeout(r, 20));
+    const went = window.__pubs().some(p => p.topic.startsWith('navaid/public/v1/') && p.text);
+    window.__sent.length = 0;
+    cb.checked = false; cb.dispatchEvent(new Event('change'));
+    await new Promise(r => setTimeout(r, 20));
+    const cleared = window.__pubs().some(p => p.topic.startsWith('navaid/public/v1/') && !p.text);
+    return { before, went, cleared, on: F.publicOn() };
+  });
+  expect(out.before).toEqual({ hidden: false, checked: false });
+  expect(out.went).toBe(true);        // switched on mid-share: on the public channel from the next fix
+  expect(out.cleared).toBe(true);     // switched off: taken off it at once
+  expect(out.on).toBe(false);
+});
