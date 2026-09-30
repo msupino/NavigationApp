@@ -22,17 +22,18 @@ const fix = (page, hdg) => page.evaluate((h) => {
   window.__geoCb({ coords: { latitude: 32.1, longitude: 34.9, accuracy: 6, speed: 40, altitude: 300, heading: h }, timestamp: Date.now() });
 }, hdg);
 
-test('the follow button is the VOR symbol, red while it is holding', async ({ page }) => {
+test('the follow button is a target, lit while it is holding', async ({ page }) => {
   await boot(page);
   const on = await page.evaluate(() => document.getElementById('follow-lock').innerHTML);
   expect(on).toContain('<svg');
-  expect(on).toContain('#c8442e');                       // lit
+  expect(await page.evaluate(() => document.getElementById('follow-lock').dataset.icon)).toBe('followOn');
   expect(await page.evaluate(() =>
     document.getElementById('follow-lock').classList.contains('follow-on'))).toBe(true);
 
   await page.click('#follow-lock');
   const off = await page.evaluate(() => document.getElementById('follow-lock').innerHTML);
-  expect(off).toContain('#7a7a7a');                      // grey, and the square is not lit
+  expect(off).toContain('<svg');
+  expect(await page.evaluate(() => document.getElementById('follow-lock').dataset.icon)).toBe('followOff');
   expect(await page.evaluate(() =>
     document.getElementById('follow-lock').classList.contains('follow-on'))).toBe(false);
 });
@@ -101,4 +102,36 @@ test('a heading outside 0-359 is wrapped, not printed raw', async ({ page }) => 
   // Magnetic readout (5°E variation): -1 true is 354 magnetic, 725 (= 005) true is 000.
   expect(seen.find(s => s.in === -1).text).toBe('354°');
   expect(seen.find(s => s.in === 725).text).toBe('000°');
+});
+
+// One family: every in-flight button draws from the same line-icon set -- no emoji, whose
+// look depended on the phone -- and shows its state as a filled ground.
+test('the in-flight column draws one icon set, no emoji', async ({ page }) => {
+  await boot(page);
+  const out = await page.evaluate(() => {
+    const ids = ['voice-toggle', 'orient-toggle', 'follow-lock', 'follow-me-map', 'edit-lock'];
+    return ids.map((id) => {
+      const b = document.getElementById(id);
+      const cs = getComputedStyle(b);
+      return {
+        id,
+        svg: !!b.querySelector('svg'),
+        emoji: /\p{Extended_Pictographic}/u.test(b.textContent),
+        round: cs.borderTopLeftRadius === '50%' || parseFloat(cs.borderTopLeftRadius) >= 22,
+      };
+    });
+  });
+  for (const b of out) expect(b).toEqual({ id: b.id, svg: true, emoji: false, round: true });
+});
+
+test('voice and edit-lock icons follow their state', async ({ page }) => {
+  await boot(page);
+  const icon = (id) => page.evaluate((i) => document.getElementById(i).dataset.icon, id);
+  const before = await icon('voice-toggle');
+  await page.click('#voice-toggle');
+  const after = await icon('voice-toggle');
+  expect([before, after].sort()).toEqual(['voiceOff', 'voiceOn']);
+  expect(await page.evaluate(() => document.getElementById('voice-toggle').classList.contains('voice-on')))
+    .toBe(after === 'voiceOn');
+  expect(await icon('edit-lock')).toBe('lockShut');      // a live position locks the route
 });

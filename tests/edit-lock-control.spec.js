@@ -107,7 +107,7 @@ test('a live position still locks the route on its own', async ({ page }) => {
 test.describe('the button follows the automatic lock too', () => {
   const state_ = (page) => page.evaluate(() => {
     const b = document.getElementById('edit-lock');
-    return { icon: b.textContent, pressed: b.getAttribute('aria-pressed'),
+    return { icon: b.dataset.icon, pressed: b.getAttribute('aria-pressed'),
              label: b.getAttribute('aria-label'), locked: dragLockedNow('wp') };
   });
 
@@ -117,13 +117,13 @@ test.describe('the button follows the automatic lock too', () => {
     await page.evaluate(() => startLiveLocation());
     const live = await state_(page);
     expect(live.pressed).toBe('true');
-    expect(live.icon).toBe('\u{1F512}');
+    expect(live.icon).toBe('lockShut');
     expect(live.locked).toBe(true);
     expect(live.label).toMatch(/while a position/i);
     await page.evaluate(() => stopLiveLocation());
     const after = await state_(page);
     expect(after.pressed).toBe('false');       // back to the pilot's own choice
-    expect(after.icon).toBe('\u{1F513}');
+    expect(after.icon).toBe('lockOpen');
   });
 
   // The pilot's own choice is remembered underneath: a route locked on the ground is still
@@ -185,15 +185,16 @@ test('the two locks do not wear the same icon', async ({ page }) => {
   await boot(page);
   await page.evaluate(() => startLiveLocation());       // both controls visible
   const icons = await page.evaluate(() => ({
-    edit: document.getElementById('edit-lock').textContent.trim(),
+    edit: document.getElementById('edit-lock').innerHTML,
     follow: document.getElementById('follow-lock').innerHTML,
+    followIcon: document.getElementById('follow-lock').dataset.icon,
   }));
   expect(icons.edit).not.toBe(icons.follow);
-  // The VOR symbol the map draws for a station, in the colour that says it is holding.
-  expect(icons.follow).toContain('#c8442e');
+  // The target, lit (filled centre, blue ground) while it is holding the map.
+  expect(icons.followIcon).toBe('followOn');
   await page.click('#follow-lock');
-  expect(await page.evaluate(() => document.getElementById('follow-lock').innerHTML))
-    .toContain('#7a7a7a');                         // grey: the map is the pilot's to move
+  expect(await page.evaluate(() => document.getElementById('follow-lock').dataset.icon))
+    .toBe('followOff');                            // hollow: the map is the pilot's to move
 });
 
 // Reported: "i can still add new points when locked, it should exit edit mode when locked".
