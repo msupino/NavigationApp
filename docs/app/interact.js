@@ -437,7 +437,7 @@ function hitNavWpMarker(px, py) {
 function hitNavWpMarkerCandidates(px, py) {
   const hits = [];
   if (!showNavWP || !navWP || !navWP.length) return hits;
-  const r = tune('navWaypointRadiusPx') + tune('hitWaypointExtraPx');
+  const r = tune('reportingPointRadiusPx') + tune('hitWaypointExtraPx');
   for (let i = navWP.length - 1; i >= 0; i--) {
     if (typeof routePointOnlyInHiddenDirection === 'function' &&
         routePointOnlyInHiddenDirection(navWP[i])) continue;

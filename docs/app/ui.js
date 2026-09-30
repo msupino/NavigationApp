@@ -300,6 +300,38 @@ function paintLegendVor() {
     Math.max(1, tune('vorMarkerWidthPx') * k), 0, 'VOR/DME');
 }
 paintLegendVor();
+// The airfield and reporting-point swatches, painted by the map's own symbol functions for
+// the same reason as the VOR one. The airfield swatch is one runway with its ARP.
+function paintLegendPoints() {
+  const dpr = window.devicePixelRatio || 1;
+  const box = 18;
+  const paint = (sel, fn) => {
+    const cv = document.querySelector(sel);
+    if (!cv || typeof fn !== 'function') return;
+    cv.width = box * dpr;
+    cv.height = box * dpr;
+    const ctx = cv.getContext('2d');
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.clearRect(0, 0, box, box);
+    fn(ctx);
+  };
+  if (typeof drawAirfieldSymbol === 'function') {
+    // One east-west runway; the swatch has no map position, so its angle is given.
+    paint('canvas.legend-airfield', ctx =>
+      drawAirfieldSymbol(ctx, { x: box / 2, y: box / 2 }, 6.5, { runways: ['09/27'] }, [0]));
+    paint('canvas.legend-airfield-military', ctx =>
+      drawAirfieldSymbol(ctx, { x: box / 2, y: box / 2 }, 7, { type: 'military' }));
+  }
+  if (typeof drawReportingPointSymbol === 'function') {
+    for (const [sel, compulsory] of [['canvas.legend-report-compulsory', true], ['canvas.legend-waypoint', false]]) {
+      paint(sel, ctx => {
+        ctx.lineWidth = tune('navWaypointStrokeWidthPx');
+        drawReportingPointSymbol(ctx, box / 2, box / 2 + 1.5, 7, compulsory);
+      });
+    }
+  }
+}
+paintLegendPoints();
 
 // Nav-data source picker: "Follow chart" (default) or an explicit chart. The value
 // drives layerDataPrefix(), so one change swaps waypoints, comm changes and leg
@@ -1174,6 +1206,7 @@ function applyTuningCssVars() {
   // tune/gist recolour has to repaint it (see paintLegendVor).
   root.setProperty('--navaid-vor-marker-color', tune('vorMarkerColor'));
   if (typeof paintLegendVor === 'function') paintLegendVor();
+  if (typeof paintLegendPoints === 'function') paintLegendPoints();
   px('--navaid-zulu-clock-min-width', 'zuluClockMinWidthPx');
   px('--navaid-zulu-clock-pad-y', 'zuluClockPadYPx');
   px('--navaid-zulu-clock-pad-x', 'zuluClockPadXPx');

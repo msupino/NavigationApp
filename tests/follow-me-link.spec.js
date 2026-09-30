@@ -290,7 +290,7 @@ test('the follower reads the same heading the pilot does, in magnetic', async ({
     // ...and the drawn nose is unmoved: it points where the aeroplane is actually going.
     const svg = document.querySelector('.follow-me-plane');
     const m = svg.getScreenCTM();
-    const nose = new DOMPoint(12, 1.6).matrixTransform(m);
+    const nose = new DOMPoint(12, 1.85).matrixTransform(m);
     const centre = new DOMPoint(12, 12).matrixTransform(m);
     const noseBearing = Math.round(
       (Math.atan2(nose.x - centre.x, -(nose.y - centre.y)) * 180 / Math.PI + 360) % 360);
@@ -466,7 +466,7 @@ test('opening the link watches, names the aircraft and dates the position', asyn
     const renderedNoseBearing = () => {
       const svg = document.querySelector('.follow-me-plane');
       const matrix = svg.getScreenCTM();
-      const nose = new DOMPoint(12, 1.6).matrixTransform(matrix);
+      const nose = new DOMPoint(12, 1.85).matrixTransform(matrix);
       const centre = new DOMPoint(12, 12).matrixTransform(matrix);
       return Math.round((Math.atan2(nose.x - centre.x, -(nose.y - centre.y)) * 180 / Math.PI + 360) % 360);
     };
