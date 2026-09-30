@@ -296,6 +296,7 @@ test('this device never draws its own aircraft -- not even under an older id fro
     const old = await mk();
     const oldId = await F._publicIdForKey(old.verifyB64);
     localStorage.setItem('navaid.followMePublicId', JSON.stringify([oldId]));   // a previous link's id
+    window.dispatchEvent(new StorageEvent('storage', { key: 'navaid.followMePublicId' }));   // as another tab's write arrives
     await P._onMessage('navaid/public/v1/' + oldId, await F._publicPacket(old, { reg: 'ME-OLD', lat: 32, lng: 35, t: Date.now() }), true);
     return P.list().length;
   });
