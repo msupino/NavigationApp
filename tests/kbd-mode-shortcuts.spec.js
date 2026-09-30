@@ -6,7 +6,7 @@
 //   C — clear the map (reuses the Clear button's confirm + reset)
 // Guards: suppressed while typing in an input/textarea, and (for A/N/C)
 // while a modal backdrop is open.
-const { test, expect } = require('./_setup');
+const { test, expect, answerAppDialogs } = require('./_setup');
 const { enableShowReturn } = require('./_show-return');
 const { stubGraph } = require('./_layerData');
 
@@ -99,7 +99,7 @@ test.describe('A / N / C keyboard shortcuts', () => {
       state.notes = [{ lat: 32.1, lng: 34.95, text: 'X', color: '#fff6aa', shape: 'rect' }];
       syncLegs(); draw();
     });
-    page.once('dialog', d => d.accept());      // clearConfirm
+    await answerAppDialogs(page, true);      // clearConfirm
     await page.keyboard.press('c');
     const counts = await page.evaluate(() => ({
       wp: state.waypoints.length, legs: state.legs.length, notes: state.notes.length,
@@ -181,7 +181,7 @@ test.describe('A / N / C keyboard shortcuts', () => {
       state.notes = [{ lat: 32.1, lng: 34.95, text: 'X', color: '#fff6aa', shape: 'rect' }];
       syncLegs(); draw();
     });
-    page.once('dialog', d => d.accept());      // clearConfirm
+    await answerAppDialogs(page, true);      // clearConfirm
     await pressPhysical(page, 'KeyC', 'ב');
     const counts = await page.evaluate(() => ({
       wp: state.waypoints.length, legs: state.legs.length, notes: state.notes.length,

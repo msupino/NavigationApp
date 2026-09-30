@@ -2,7 +2,7 @@
 // Verify route JSON import rejects malformed exports without mutating state.
 // Every spec uploads a file to the hidden #file <input>, captures the resulting
 // alert, and asserts that state.waypoints is unchanged.
-const { test, expect } = require('./_setup');
+const { test, expect, answerAppDialogs } = require('./_setup');
 const { LLHZ, LLHA } = require('./_airfieldArp');
 
 const ROUTE = {
@@ -179,7 +179,7 @@ test.describe('Route import rejection', () => {
     // Clear the route, then re-import. Any rejection path here means save()
     // produces a blob its own validator refuses — that's the bug we want to catch.
     await page.evaluate(() => { state.waypoints = []; state.legs = []; state.notes = []; draw(); });
-    page.once('dialog', d => d.dismiss());     // shouldn't fire
+    await answerAppDialogs(page, false);     // shouldn't fire
     await page.setInputFiles('#file', {
       name: 'route.json', mimeType: 'application/json',
       buffer: Buffer.from(blob, 'utf8'),

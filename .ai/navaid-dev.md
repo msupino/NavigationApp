@@ -270,8 +270,7 @@ commit on `main`, `dev`, or an unrelated feature branch by mistake.
     `_default: 1`, else `a` + `p`).
   - **Reset buttons:** inspector `↻ Reset marker position` (per leg)
     and toolbar `#tool-reset-all-markers` `↻ Reset all marker positions`
-    (all legs, prompts `confirm()` -- which the APK WebView answers silently; should move to
-    the in-app `askYesNo`). Both call `_defaultLegLabels()`.
+    (all legs, asks in the app with `appConfirm`). Both call `_defaultLegLabels()`.
 - **Cumulative-time kites:** `cumLabel` (inbound, anchored at the leg's
   destination waypoint) and `cumLabelRet` (return, anchored at the leg's
   start waypoint) use the same `{a,p,_m:1}` storage as leg labels, but
@@ -1407,7 +1406,8 @@ builds the embedded Android app; `./gradlew assembleRelease` in `mobile/android`
 - **Releases.** The APK is published as a GitHub release (users install and update with
   Obtainium; see the root README). Keep only the latest release; keep the tags.
 - `window.__navaidEmbedded` is true; `confirm()`/`alert()`/`prompt()` are silent in this WebView
-  -- use `askYesNo` / `askRouteOverwrite` / toasts.
+  (Back could not close the app while its question used `confirm()`) -- use `appConfirm` /
+  `askText` / `showCopyText` / toasts (ui-patterns.md, Dialogs).
 - `MainActivity.applySystemFontScale` maps the system font size onto the WebView `textZoom`, so a
   larger phone font scales all text; layout uses `em` where text must grow with it.
 

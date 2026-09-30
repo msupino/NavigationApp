@@ -2,7 +2,7 @@
 // Verify the Google Earth KML download exactly mirrors the route geometry:
 // the <LineString>, the per-waypoint <Placemark><Point>s, and the gx:Tour
 // camera positions all carry the same lat/lng sequence as state.waypoints.
-const { test, expect } = require('./_setup');
+const { test, expect, answerAppDialogs } = require('./_setup');
 const { arp, LLHZ, LLHA } = require('./_airfieldArp');
 const AIRFIELDS = require('../docs/data/airfields.json').airfields;
 const NAV_WAYPOINTS = require('./_layerData').waypointRows('cvfr');
@@ -53,7 +53,7 @@ async function bootWithRoute(page) {
 
 async function captureKml(page) {
   // Accept the 'Fly the route' confirm dialog as soon as it fires.
-  page.once('dialog', d => d.accept());
+  await answerAppDialogs(page, true);
   const downloadPromise = page.waitForEvent('download');
   await page.locator('#fly').click();
   // Mode picker modal — pick the desktop KML option.
@@ -130,7 +130,7 @@ test.describe('Google Earth KML export', () => {
   test.beforeEach(async ({ page }) => bootWithRoute(page));
 
   test('downloaded filename starts with navaid-flythrough- and ends in .kml', async ({ page }) => {
-    page.once('dialog', d => d.accept());
+    await answerAppDialogs(page, true);
     const downloadPromise = page.waitForEvent('download');
     await page.locator('#fly').click();
     await page.getByRole('button', { name: 'Google Earth Pro (KML)' }).click();

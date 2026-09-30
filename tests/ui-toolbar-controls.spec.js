@@ -5,7 +5,7 @@
 // Coverage for toolbar UI controls whose state must persist across reload.
 // Targets gaps in the existing spec suite: section headers, display checkboxes,
 // sliders, base-map layer, and toolbar collapse state.
-const { test, expect } = require('./_setup');
+const { test, expect, answerAppDialogs } = require('./_setup');
 const { enableShowReturn } = require('./_show-return');
 
 async function boot(page) {
@@ -135,7 +135,7 @@ test.describe('Sliders persist to localStorage', () => {
       localStorage.setItem('navaid.layer', 'Satellite');
       localStorage.setItem('keepme', '1');           // non-navaid key survives
     });
-    page.once('dialog', d => d.accept());
+    await answerAppDialogs(page, true);
     await page.locator('#clear-store').click();
     await page.waitForFunction(() => typeof state !== 'undefined');  // reloaded
     // Note: the test harness re-seeds navaid.sec.* on every load, so assert the

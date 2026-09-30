@@ -22,18 +22,20 @@ const capture = (page, fn, alts) => page.evaluate(async ([fname, altList]) => {
   draw();
   let text = null;
   const realCreate = URL.createObjectURL, realClick = HTMLAnchorElement.prototype.click;
-  const realRevoke = URL.revokeObjectURL, realConfirm = window.confirm;
+  const realRevoke = URL.revokeObjectURL, realConfirm = window.appConfirm;
   URL.createObjectURL = b => { window.__blob = b; return 'blob:stub'; };
   HTMLAnchorElement.prototype.click = function () {};
   URL.revokeObjectURL = () => {};
-  window.confirm = () => true;
+  window.appConfirm = () => true;
   try {
+    window.__blob = null;
     await window[fname]();
     if (fname === 'flyRoute') document.querySelector('.modal-btns button:nth-child(2)').click();
+    for (let i = 0; i < 200 && !window.__blob; i++) await new Promise(r => setTimeout(r, 5));
     text = await window.__blob.text();
   } finally {
     URL.createObjectURL = realCreate; HTMLAnchorElement.prototype.click = realClick;
-    URL.revokeObjectURL = realRevoke; window.confirm = realConfirm;
+    URL.revokeObjectURL = realRevoke; window.appConfirm = realConfirm;
     document.querySelectorAll('.modal-back').forEach(e => e.remove());
   }
   return text;

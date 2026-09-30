@@ -2,7 +2,7 @@
 // Overlay align editor: pan / scale / rotate a shown chart overlay, persist the
 // result as a per-PNG localStorage override, and render it back (rotated when
 // rotation was applied). Toggled from the "Extra layers" toolbar section.
-const { test, expect } = require('./_setup');
+const { test, expect, answerAppDialogs } = require('./_setup');
 
 // Block the SW so overlay-img requests are stubbable and deterministic.
 test.use({ serviceWorkers: 'block' });
@@ -135,7 +135,7 @@ test('Reset all clears every stored override', async ({ page }) => {
       'LLHZ_training.png': { sw: [32.1, 34.7], ne: [32.5, 35.1] },
     }));
   });
-  page.on('dialog', d => d.accept());
+  await answerAppDialogs(page, true);
   await page.evaluate(() => window.overlayAlign.enter());
   await page.locator('.ov-align-panel .ov-reset-all').click();
   const remaining = await page.evaluate(

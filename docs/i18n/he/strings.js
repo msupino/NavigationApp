@@ -1361,6 +1361,8 @@ window.S = {
   updateDismiss: 'סגור',
   overlayLoading: 'טוען תרשימים…',
   exitConfirm: 'לסגור את NavAid?',
+  exitConfirmOk: 'סגור את NavAid',
+  copyTextClose: 'סגור',
   plateLoading: 'טוען…',
   plateLoadError: 'טעינת הדפית נכשלה.',
   chartsBack: '→ כל השדות',
