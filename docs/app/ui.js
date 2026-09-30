@@ -4644,8 +4644,25 @@ window.followMeNewLinkOffered = followMeNewLinkOffered;
   const btnLabel = btn.querySelector('.follow-me-button-label');
   const F = () => (window.NavAid && window.NavAid.followMe) || null;
   const newBtn = document.getElementById('follow-me-new');
+  const pubRow = document.getElementById('follow-me-public-row');
+  const pubCb = document.getElementById('follow-me-public-cb');
+  if (pubCb) pubCb.addEventListener('change', () => {
+    const f = F();
+    if (f && typeof f.setPublic === 'function') f.setPublic(pubCb.checked);
+    if (typeof showToast === 'function') {
+      const sharing = f && typeof f.sharing === 'function' && f.sharing();
+      showToast(pubCb.checked
+        ? (sharing ? (S.followMePublicOnToast || 'Public: every NavAid pilot can see you now') : (S.followMePublicNextToast || 'Public: from your next share'))
+        : (S.followMePublicOffToast || 'Not public: your link only'));
+    }
+  });
   function refresh() {
     btn.hidden = !followMeOffered();
+    if (pubRow) {
+      const f0 = F();
+      pubRow.hidden = !followMeOffered() || tune('featureFollowMePublic') === false || !(f0 && typeof f0.publicOn === 'function');
+      if (pubCb && f0 && typeof f0.publicOn === 'function') pubCb.checked = f0.publicOn();
+    }
     const f = F();
     const status = f && typeof f.status === 'function' ? f.status() : 'idle';
     // Offered whenever this device HAS a link to throw away -- sharing or not. The link
@@ -4682,8 +4699,13 @@ window.followMeNewLinkOffered = followMeNewLinkOffered;
     if (!f || typeof f.newLink !== 'function') return;
     // Confirmed, and the confirmation says what is actually lost: not "are you sure" but
     // who stops being able to watch.
+    // Asked in the app: confirm() is silent in the APK's WebView -- it answered "no" unseen, so
+    // New link never did anything there.
     const ask = S.followMeNewLinkConfirm || 'Start a new follow-me link?';
-    try { if (!confirm(ask)) return; } catch (e) { /* no confirm: go ahead */ }
+    const yes = typeof window.askYesNo === 'function'
+      ? await window.askYesNo(S.tbFollowMeNewLink || 'New link', ask, S.tbFollowMeNewLink || 'New link')
+      : true;
+    if (!yes) return;
     const link = await f.newLink();
     // Sharing right now: a fresh link comes back and is handed straight over. Idle: there is
     // nothing to connect, so the stored capability is simply thrown away and the next share

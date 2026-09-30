@@ -419,15 +419,27 @@
   // This device's public id for the share running now (null when not sharing). Remembered so
   // the layer can leave out this device's own aircraft.
   let ownPublicId = null;
+  // This device's public ids, newest first (a new link is a new key and so a new id). A share
+  // that ended without its Stop leaves its last packet on the relay under the OLD id, and this
+  // device's own layer must not draw it as someone else.
+  function ownPublicIds() {
+    try {
+      const raw = localStorage.getItem(PUBLIC_ID_KEY);
+      if (!raw) return [];
+      const list = raw[0] === '[' ? JSON.parse(raw) : [raw];
+      return Array.isArray(list) ? list.filter(x => typeof x === 'string') : [];
+    } catch (e) { return []; }
+  }
   function followMePublicId() {
-    try { return ownPublicId || localStorage.getItem(PUBLIC_ID_KEY) || null; } catch (e) { return ownPublicId; }
+    return ownPublicId || ownPublicIds()[0] || null;
   }
   async function publicIdFor(s) {
     if (!s) return null;
     if (!s.publicId) s.publicId = await publicIdForKey(s.verifyB64);
     if (s.publicId) {
       ownPublicId = s.publicId;
-      try { localStorage.setItem(PUBLIC_ID_KEY, s.publicId); } catch (e) { /* private mode */ }
+      const list = [s.publicId].concat(ownPublicIds().filter(x => x !== s.publicId)).slice(0, 8);
+      try { localStorage.setItem(PUBLIC_ID_KEY, JSON.stringify(list)); } catch (e) { /* private mode */ }
     }
     return s.publicId;
   }
@@ -1777,12 +1789,15 @@
       pilots.delete(id);
     }
     const MAX_PILOTS = 200;          // a flood of made-up ids must not bury the map
+    const MAX_BYTES = 2048;          // a real packet is ~350 bytes; the relay would pass ~1 MB
+    const verifyKeys = new Map();    // public key (b64) -> imported CryptoKey
     async function onMessage(topic, payload, retained) {
       const m = /^navaid\/public\/v1\/([A-Za-z0-9_-]{16,32})$/.exec(topic);
       if (!m) return;
       const id = m[1];
-      if (id === followMePublicId()) return;           // this device's own aircraft
+      if (id === ownPublicId || ownPublicIds().includes(id)) return;   // this device's own aircraft, now or before
       if (!payload || !payload.length) { remove(id); return; }
+      if (payload.length > MAX_BYTES) return;          // not decoded at all
       let msg;
       try { msg = JSON.parse(new TextDecoder().decode(payload)); } catch (e) { return; }
       if (!msg || msg.v !== 1 || typeof msg.pk !== 'string' || typeof msg.sig !== 'string') return;
@@ -1798,7 +1813,14 @@
           keys.set(id, msg.pk);
         }
         const { sig, ...rest } = msg;
-        const vk = await importVerifyKey(msg.pk);
+        let vk = verifyKeys.get(msg.pk);
+        if (!vk) {
+          vk = await importVerifyKey(msg.pk);
+          if (vk) {
+            if (verifyKeys.size >= MAX_PILOTS * 2) verifyKeys.clear();
+            verifyKeys.set(msg.pk, vk);
+          }
+        }
         if (!vk || !(await crypto.subtle.verify(SIGN_PARAMS, vk, b64url.to(sig), signedBytes(rest)))) return;
       } catch (e) { return; }
       const now = Date.now();
