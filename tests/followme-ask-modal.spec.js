@@ -1,10 +1,9 @@
 // @ts-check
 // Reported from the phone: the follow-me icon does not do anything.
 //
-// It did. It opened window.prompt -- the one dialog a page does not own. A browser may
-// suppress it after the pilot dismisses one, and an Android WebView shows it only if the host
-// app implements onJsPrompt, which is exactly where Follow me is used. A dialog nobody sees
-// is a share nobody makes.
+// It opened window.prompt -- a dialog the page does not own. A browser may suppress it after
+// the pilot dismisses one, and in the APK it is a plain native field with English buttons,
+// outside the app's theme and direction.
 //
 // The question is asked in the app now: the stored code already in the field, the Hebrew
 // reading right to left while the code stays left to right, Enter to share and Escape not to.

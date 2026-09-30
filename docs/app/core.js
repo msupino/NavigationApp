@@ -1342,10 +1342,10 @@ async function loadRemoteConfig() {
 // Something the pilot can see.
 //
 // alert() is one of the three dialogs a page does not own: a browser may suppress it after one
-// is dismissed, and a WebView shows it only if the host app implements onJsAlert -- which is
-// exactly where this app runs, inside the APK. A message nobody sees reads as a control that
-// does nothing, which is how three separate bugs arrived: the follow-me identifier through
-// prompt(), Stop through a wait nobody could end, and the flight plan refusing in silence.
+// is dismissed, and in the APK it is Capacitor's native dialog -- English "OK" in the Hebrew
+// UI, outside the app's theme. A message the pilot misses reads as a control that does
+// nothing, which is how three separate reports arrived: the follow-me identifier,
+// Stop through a wait nobody could end, and the flight plan refusing without a word.
 //
 // It also costs a press. A refusal has nothing to acknowledge: it should say what happened and
 // go. The toast does both, and carries the warning floor -- a refusal is never as brief as an

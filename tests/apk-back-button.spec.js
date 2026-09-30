@@ -29,8 +29,8 @@ async function bootNative(page) {
   });
 }
 
-// "Close NavAid?" is asked in the app (this WebView never shows window.confirm), and
-// answered the way a pilot would: OK or Cancel.
+// "Close NavAid?" is asked in the app's own dialog (bilingual, themed -- not the native
+// English-only confirm), and answered the way a pilot would: OK or Cancel.
 const back = async (page, confirmIt) => {
   await answerAppDialogs(page, confirmIt);
   await page.evaluate(async () => {
@@ -145,9 +145,8 @@ test('...and exits when the answer is yes', async ({ page }) => {
   expect(await page.evaluate(() => window.__exited)).toBe(1);
 });
 
-// Reported as a finding: the question went through window.confirm, which this WebView answers
-// "no" without showing it -- so Back could never leave the app. It is the app's own dialog,
-// and a second Back while it is up closes it: the answer is "stay".
+// The question is the app's own dialog, not window.confirm (in the APK a native dialog with
+// English OK / Cancel), and a second Back while it is up closes it: the answer is "stay".
 test('the exit question is the app\'s own dialog, and a second Back dismisses it', async ({ page }) => {
   await bootNative(page);
   const browserDialogs = [];

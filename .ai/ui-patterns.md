@@ -113,8 +113,10 @@ Inspector-local VOR selection:
 
 ## Dialogs
 
-Never `alert()`, `confirm()` or `prompt()`: the APK WebView answers them silently (a
-confirm returns false unseen, a prompt null). Ask in the app, and await it:
+Never `alert()`, `confirm()` or `prompt()`. They do work in the APK -- Capacitor's
+`BridgeWebChromeClient` shows them as native Android AlertDialogs -- but with hard-coded English
+"OK / Cancel" in the Hebrew UI, none of the app's theme or RTL, and a browser may suppress them.
+Ask in the app, and await it:
 
 - `appConfirm(text, okLabel?, title?)` / `askYesNo(title, text, okLabel)` → Promise<boolean>
 - `askText(title, label, value, okLabel?)` → Promise<string|null>

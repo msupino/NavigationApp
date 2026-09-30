@@ -97,7 +97,7 @@ test('two points named alike are refused at the rename prompt, not silently merg
   });
 
   // Second point: try to name it SFAIM too. The rename must be refused -- said in a toast,
-  // the APK never shows alert() -- not silently let the export collapse two records into one.
+  // the app's one-way channel -- not silently let the export collapse two records into one.
   await page.evaluate(() => { map.fire('click', { latlng: L.latLng(32.10, 34.90) }); });
   const out = await page.evaluate(async () => {
     let mk = null;

@@ -203,8 +203,8 @@ exports.test = base.test.extend({
 
 exports.expect = base.expect;
 
-// The app asks its questions in its own dialog (askYesNo / appConfirm / askText -- the APK's
-// WebView never shows confirm() or prompt()), so a test answers the way a user does: it fills
+// The app asks its questions in its own dialog (askYesNo / appConfirm / askText -- bilingual and
+// themed, unlike the browser's confirm() / prompt()), so a test answers the way a user does: it fills
 // the input and presses OK, or presses Cancel. `answers` is one answer for every question, or
 // a list used in order (the last one repeats): true = OK, false = Cancel, a string = type it,
 // then OK. Survives navigation. Returns nothing to await beyond the install.
@@ -245,7 +245,7 @@ exports.answerAppDialogs = async (page, answers) => {
 };
 
 // What the app said in toasts (refuse() and showToast), in order -- the editor's refusals and
-// other one-way messages used to be alert()s, which the APK never shows. Call after the page
+// other one-way messages used to be alert()s. Call after the page
 // has loaded; returns a function that reads the list.
 exports.captureToasts = async (page) => {
   await page.evaluate(() => {

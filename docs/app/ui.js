@@ -4295,8 +4295,7 @@ function saveRouteFromHeader(e) {
     }
     return;
   }
-  // Asked in the app. window.confirm() is silent in the APK's WebView -- it answered "no"
-  // without showing anything, so Save on a route opened from the library did nothing at all.
+  // Asked in the app, not with window.confirm(): the browser's dialog is English-only in the APK (Capacitor's native OK / Cancel), ignores the theme and RTL, and a browser may suppress it.
   askRouteOverwrite(existing).then((choice) => {
     if (choice === 'new') { showRouteLibraryModal(true); return; }
     if (choice !== 'over') return;
@@ -4754,8 +4753,8 @@ window.followMeNewLinkOffered = followMeNewLinkOffered;
     if (!f || typeof f.newLink !== 'function') return;
     // Confirmed, and the confirmation says what is actually lost: not "are you sure" but
     // who stops being able to watch.
-    // Asked in the app: confirm() is silent in the APK's WebView -- it answered "no" unseen, so
-    // New link never did anything there.
+    // Asked in the app, not with confirm(): the browser's dialog is English-only in the APK and
+    // ignores the theme.
     const ask = S.followMeNewLinkConfirm || 'Start a new follow-me link?';
     const yes = typeof window.askYesNo === 'function'
       ? await window.askYesNo(S.tbFollowMeNewLink || 'New link', ask, S.tbFollowMeNewLink || 'New link')
@@ -4989,10 +4988,10 @@ function askFollowMeCode(current) {
 }
 window.askFollowMeCode = askFollowMeCode;
 
-// A yes/no question the page owns. confirm() is a dialog the page does NOT own: a browser
-// may suppress it, and a WebView shows it only when the host app implements onJsConfirm --
-// which the APK does not, so a confirm() there is a question nobody is ever asked, silently
-// answered "no". Same reason refuse() exists for the one-way messages.
+// A yes/no question the page owns. confirm() is a dialog the page does NOT own: a browser may
+// suppress it, and in the APK it is Capacitor's native AlertDialog -- shown, but with English
+// "OK / Cancel" in the Hebrew UI and none of the app's theme or RTL. This one is bilingual and
+// themed. Same reason refuse() exists for the one-way messages.
 function askYesNo(title, text, okLabel) {
   return new Promise((resolve) => {
     if (typeof createDraggableModal !== 'function') {
@@ -5031,8 +5030,8 @@ function appConfirm(text, okLabel, title) {
 }
 window.appConfirm = appConfirm;
 
-// The app's prompt(): one line of text, or null when cancelled. Same reason as askYesNo --
-// the APK's WebView never shows window.prompt(), it just returns null.
+// The app's prompt(): one line of text, or null when cancelled. Same reasons as askYesNo:
+// bilingual buttons, the app's theme and RTL, and a field that writes as typed.
 function askText(title, label, value, okLabel) {
   return new Promise((resolve) => {
     if (typeof createDraggableModal !== 'function') {
@@ -5076,7 +5075,7 @@ function askText(title, label, value, okLabel) {
 window.askText = askText;
 
 // When the clipboard refuses, show the text selected, to copy by hand. The old fallback,
-// window.prompt(label, text), shows nothing at all in the APK.
+// window.prompt(label, text), put a long link in a one-line native field.
 function showCopyText(title, text) {
   if (typeof createDraggableModal !== 'function') {
     try { window.prompt(title, text); } catch (e) { /* nowhere to show it */ }
@@ -11222,9 +11221,9 @@ function armAndroidBackButton(attempt) {
   app.addListener('backButton', async () => {
     if (backButtonStep()) return;                       // something on screen to close first
     // Nothing left to close: this press leaves NavAid. Asked every time, because the press
-    // that ends a flight looks exactly like the press that closed a panel. Asked in the app:
-    // this WebView answers window.confirm() "no" without showing it, so Back never left.
-    // A second Back while the question is up closes it (backButtonStep), i.e. "stay".
+    // that ends a flight looks exactly like the press that closed a panel. Asked in the app
+    // (bilingual, themed) rather than with the native English-only confirm. A second Back
+    // while the question is up closes it (backButtonStep), i.e. "stay".
     const msg = (S && S.exitConfirm) || 'Close NavAid?';
     let leave;
     try { leave = await appConfirm(msg, S.exitConfirmOk || 'Close NavAid'); } catch (e) { leave = true; }

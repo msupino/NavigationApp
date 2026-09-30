@@ -62,7 +62,7 @@ async function boot(page) {
       await new Promise(r => setTimeout(r, 20));
       return window.__frames().filter(p => !p.topic.endsWith('/route')).pop().frame;
     };
-    // The question is the app's own dialog now, not confirm() -- which a WebView never shows.
+    // The question is the app's own dialog now, not the browser's confirm().
     window.__answer = (yes, sink) => {
       window.askYesNo = async (title, text) => { if (sink) sink(String(text)); return yes; };
       window.appConfirm = async (text) => { if (sink) sink(String(text)); return yes; };

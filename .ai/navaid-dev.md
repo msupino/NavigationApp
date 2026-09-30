@@ -1405,9 +1405,9 @@ builds the embedded Android app; `./gradlew assembleRelease` in `mobile/android`
   (1.21 / 21). Bump both for a new APK; a rebuild at the same version is allowed.
 - **Releases.** The APK is published as a GitHub release (users install and update with
   Obtainium; see the root README). Keep only the latest release; keep the tags.
-- `window.__navaidEmbedded` is true; `confirm()`/`alert()`/`prompt()` are silent in this WebView
-  (Back could not close the app while its question used `confirm()`) -- use `appConfirm` /
-  `askText` / `showCopyText` / toasts (ui-patterns.md, Dialogs).
+- `window.__navaidEmbedded` is true. `confirm()`/`alert()`/`prompt()` do show here (Capacitor's
+  native dialogs) but with English-only buttons and no theme -- use `appConfirm` / `askText` /
+  `showCopyText` / toasts (ui-patterns.md, Dialogs).
 - `MainActivity.applySystemFontScale` maps the system font size onto the WebView `textZoom`, so a
   larger phone font scales all text; layout uses `em` where text must grow with it.
 

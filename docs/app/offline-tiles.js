@@ -607,8 +607,8 @@
     b.onclick = onClick;
     return b;
   }
-  // Ask in the app, not with confirm(): a browser dialog is silent in the APK's WebView, so
-  // the question would never be asked there. No way to ask means nothing is deleted.
+  // Ask in the app, not with confirm(): the browser's dialog is English-only in the APK and
+  // ignores the theme. No way to ask means nothing is deleted.
   async function ask(text, ok) {
     try {
       return typeof window.askYesNo === 'function'

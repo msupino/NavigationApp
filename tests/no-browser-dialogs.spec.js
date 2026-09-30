@@ -1,9 +1,8 @@
 // @ts-check
-// alert(), confirm() and prompt() are dialogs the page does not own: the APK's WebView never
-// shows them -- confirm() answers "no", prompt() answers null, alert() says nothing -- so every
-// question asked that way was silently refused there (Back could never close the app, Reset
-// all marker positions did nothing, a saved route could not be renamed). The app asks in its
-// own dialogs (askYesNo / appConfirm / askText / showCopyText) and says things in toasts.
+// alert(), confirm() and prompt() are dialogs the page does not own: a browser may suppress them,
+// and in the APK they are Capacitor's native AlertDialogs -- shown, but with English "OK / Cancel"
+// in the Hebrew UI and none of the app's theme or RTL. The app asks in its own dialogs
+// (askYesNo / appConfirm / askText / showCopyText) and says things in toasts.
 //
 // What remains is fallback only, for a build or boot moment where the app's own dialog is not
 // there yet. This pins that list, so a new browser dialog cannot slip back in.
