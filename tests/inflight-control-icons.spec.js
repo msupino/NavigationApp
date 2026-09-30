@@ -37,8 +37,9 @@ test('the follow button is the VOR symbol, red while it is holding', async ({ pa
     document.getElementById('follow-lock').classList.contains('follow-on'))).toBe(false);
 });
 
-// A ring with four ticks and a filled centre -- the same three parts drawVorSymbol() paints
-// on the chart, so the button and the station read as the same idea.
+// A ring with four ticks and a filled centre: the "follow my position" target. (It once
+// matched the chart's station glyph; stations now use the chart convention -- see
+// drawVorSymbol -- and this stays the target it reads as.)
 test('the follow symbol is the one the chart draws for a station', async ({ page }) => {
   await boot(page);
   const parts = await page.evaluate(() => {

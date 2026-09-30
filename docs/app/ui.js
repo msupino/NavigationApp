@@ -293,10 +293,11 @@ function paintLegendVor() {
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   ctx.clearRect(0, 0, box, box);
   const mapR = tune('vorMarkerRadiusPx');            // 9 on the map
-  const r = 5.5;                                     // ring + ticks fit an 18px box
+  const r = 7;                                       // the square fits an 18px box
   const k = r / mapR;                                // keep every ratio the map uses
+  // The VOR/DME symbol: nearly every station here is one.
   drawVorSymbol(ctx, box / 2, box / 2, r, tune('vorMarkerColor'),
-    Math.max(1, tune('vorMarkerWidthPx') * k), 4 * k);
+    Math.max(1, tune('vorMarkerWidthPx') * k), 0, 'VOR/DME');
 }
 paintLegendVor();
 
