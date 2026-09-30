@@ -422,13 +422,20 @@
   // This device's public ids, newest first (a new link is a new key and so a new id). A share
   // that ended without its Stop leaves its last packet on the relay under the OLD id, and this
   // device's own layer must not draw it as someone else.
+  // Read once and kept: the layer asks on every packet from every aircraft. Written only here
+  // (publicIdFor), and another tab's write reaches this one through the storage event.
+  let ownIdsCache = null;
   function ownPublicIds() {
+    if (ownIdsCache) return ownIdsCache;
     try {
       const raw = localStorage.getItem(PUBLIC_ID_KEY);
-      if (!raw) return [];
-      const list = raw[0] === '[' ? JSON.parse(raw) : [raw];
-      return Array.isArray(list) ? list.filter(x => typeof x === 'string') : [];
-    } catch (e) { return []; }
+      const list = !raw ? [] : raw[0] === '[' ? JSON.parse(raw) : [raw];
+      ownIdsCache = Array.isArray(list) ? list.filter(x => typeof x === 'string') : [];
+    } catch (e) { ownIdsCache = []; }
+    return ownIdsCache;
+  }
+  if (typeof window !== 'undefined') {
+    window.addEventListener('storage', (e) => { if (!e || e.key === PUBLIC_ID_KEY || e.key === null) ownIdsCache = null; });
   }
   function followMePublicId() {
     return ownPublicId || ownPublicIds()[0] || null;
@@ -439,6 +446,7 @@
     if (s.publicId) {
       ownPublicId = s.publicId;
       const list = [s.publicId].concat(ownPublicIds().filter(x => x !== s.publicId)).slice(0, 8);
+      ownIdsCache = list;
       try { localStorage.setItem(PUBLIC_ID_KEY, JSON.stringify(list)); } catch (e) { /* private mode */ }
     }
     return s.publicId;
