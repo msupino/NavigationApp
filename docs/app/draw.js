@@ -369,14 +369,16 @@ function drawHeadingLine(pos, hdg, gsKt, opts) {
   const maxArcDeg = Math.max(1, finiteTuneNumber('livePredictorTurnMaxArcDeg', 60));
   const speedNmSec = haveSpeed ? gsKt / 3600 : 0;
   const turnRadSec = Number.isFinite(turnRate) ? turnRate * Math.PI / 180 : 0;
-  // The turn is drawn for at most maxArcSec of flying, then the line runs on straight. Capped
-  // by degrees alone, a slow or gentle turn bent the whole line: at 30 kt, or at 0.25 deg/s,
-  // the full 90 degrees fitted inside the line and it pointed off the wing. A turn is
-  // predicted as far as it can be believed -- a G1000's trend vector looks 30 s ahead.
-  const maxArcSec = Math.max(1, finiteTuneNumber('livePredictorTurnMaxArcSec', 30));
+  // In a turn the line becomes a G1000-style trend vector: only trendSec of flying ahead, the
+  // turn curving through it (at most maxArcDeg, then on straight to trendSec), and no 10 NM
+  // tail. The tail is what hid the curve: capped at 30 s and 60 deg, the arc was half a mile
+  // long -- smaller than the aircraft symbol at a normal zoom -- and the pilot saw a straight
+  // line pointing 60 deg off. Rolled out, the full straight line with its marks comes back.
+  const trendSec = Math.max(5, finiteTuneNumber('livePredictorTurnMaxArcSec', 60));
   const arcLimitNm = turnRadSec
-    ? speedNmSec * Math.min((maxArcDeg * Math.PI / 180) / Math.abs(turnRadSec), maxArcSec)
+    ? speedNmSec * Math.min((maxArcDeg * Math.PI / 180) / Math.abs(turnRadSec), trendSec)
     : Infinity;
+  const trendNm = turnRadSec ? speedNmSec * trendSec : Infinity;
   const geoAtNm = (nm) => {
     let northNm, eastNm, pathHeading = h;
     if (!turnRadSec || nm <= 0) {
@@ -424,10 +426,11 @@ function drawHeadingLine(pos, hdg, gsKt, opts) {
   const s = proj(pos);
   // Line reaches whichever mark set extends further -- the 10 NM mark, or the 5-minute
   // mark's own distance if that's farther out at the current speed (fast aircraft).
-  const farNm = haveSpeed
+  const straightFarNm = haveSpeed
     ? Math.max(HEADING_LINE_MARKS_NM[HEADING_LINE_MARKS_NM.length - 1],
                 nmAtMin(HEADING_LINE_MARKS_MIN[HEADING_LINE_MARKS_MIN.length - 1]))
     : HEADING_LINE_MARKS_NM[HEADING_LINE_MARKS_NM.length - 1];
+  const farNm = Math.min(straightFarNm, trendNm);
   const endFrame = frameAtNm(farNm);
   const end = endFrame.point.screen;
   const ux = endFrame.ux, uy = endFrame.uy;
@@ -497,11 +500,21 @@ function drawHeadingLine(pos, hdg, gsKt, opts) {
   // Fixed-distance marks: "N nm" ("2 nm"/"5 nm"/"10 nm"). No secondary derived row --
   // a time-to-reach subtext was tried and reported as unwanted clutter ("it shows
   // 1:20 as well"); just the marks themselves.
-  for (const nm of HEADING_LINE_MARKS_NM) drawMark(nm, ltrIsolate(nm + ' nm'), null, tune('liveHeadingNmTextColor'));
+  // Marks only on the line that is drawn: in a turn the trend vector is shorter than 2 NM /
+  // 2 min, so those go, and its own end is marked with its length in time instead.
+  for (const nm of HEADING_LINE_MARKS_NM) {
+    if (nm <= farNm + 1e-9) drawMark(nm, ltrIsolate(nm + ' nm'), null, tune('liveHeadingNmTextColor'));
+  }
   // Fixed-time marks: "N min". Needs a groundspeed to place at all (their distance is
   // derived from it); no secondary distance row either, same reasoning as above.
   if (haveSpeed) {
-    for (const min of HEADING_LINE_MARKS_MIN) drawMark(nmAtMin(min), ltrIsolate(min + ' min'), null, tune('liveHeadingMinTextColor'));
+    for (const min of HEADING_LINE_MARKS_MIN) {
+      if (nmAtMin(min) <= farNm + 1e-9) drawMark(nmAtMin(min), ltrIsolate(min + ' min'), null, tune('liveHeadingMinTextColor'));
+    }
+  }
+  if (turnRadSec && farNm < straightFarNm) {
+    const endLabel = trendSec % 60 === 0 ? (trendSec / 60) + ' min' : Math.round(trendSec) + ' s';
+    drawMark(farNm, ltrIsolate(endLabel), null, tune('liveHeadingMinTextColor'));
   }
   // Heading value at the far end of the line, past the last tick's own labels
   // rather than stacked on top of them. Magnetic + padded to 3 digits, same as
@@ -529,7 +542,7 @@ function drawHeadingLine(pos, hdg, gsKt, opts) {
   if (typeof window !== 'undefined')
     window.__headingLine = { heading: h, marks: HEADING_LINE_MARKS_NM.slice(),
       minMarks: haveSpeed ? HEADING_LINE_MARKS_MIN.slice() : [], headingLabel,
-      curved: !!turnRadSec, turnRate, maxArcDeg,
+      curved: !!turnRadSec, turnRate, maxArcDeg, trendSec: turnRadSec ? trendSec : null, lengthNm: farNm,
       endHeading: endFrame.point.heading,
       path: pathDistances.map(nm => {
         const p = pathAtNm(nm);
