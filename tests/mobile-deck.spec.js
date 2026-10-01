@@ -42,13 +42,16 @@ test('a phone gets the strip and the deck', async ({ page }) => {
   await boot(page);
   await expect(page.locator('#deck-bar')).toBeVisible();
   const labels = await page.locator('.deck-btn-label').allTextContents();
-  expect(labels).toEqual(['Map', 'Menu', 'Plan', 'Record', 'Location', 'Comm fail']);
+  // Five places on the bar; Comm fail, the emergency action, is the red button in the strip.
+  expect(labels).toEqual(['Map', 'Menu', 'Plan', 'Record', 'Location']);
+  await expect(page.locator('#deck-strip .deck-strip-commfail')).toBeVisible();
+  expect(await page.locator('#deck-bar .deck-btn svg').count()).toBe(5);       // drawn icons, no emoji
   // The deck replaces the closed menu card in its corner: everything it held is on the deck
   // or one tap inside it, and two menus for one app is how the corner got crowded.
   expect(await page.evaluate(() => getComputedStyle(document.getElementById('toolbar')).display)).toBe('none');
 });
 
-test('Comm fail on the deck opens the comm-failure card', async ({ page }) => {
+test('Comm fail in the strip opens the comm-failure card', async ({ page }) => {
   await boot(page);
   await page.evaluate(() => map.setView([32.25, 34.95], 10));
   await page.locator('.deck-btn-commfail').click();

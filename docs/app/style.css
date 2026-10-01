@@ -488,6 +488,48 @@ html[dir="rtl"] .tb-section.open .tb-section-head::after { transform: rotate(-90
 /* A standalone head IS the action (Flight plan) — no dropdown, so no caret and no
    hover-open behaviour; it just has to sit in the row looking like its neighbours. */
 .tb-standalone-head::after { content: none; }
+/* Section heads: a line icon beside the title (core.js NAV_ICONS), the hint only on a phone. */
+.tb-sec-row { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.tb-section-head > .tb-sec-icon, .tb-sec-row > .tb-sec-icon, .tb-standalone-head > .tb-sec-icon {
+  display: inline-grid; place-items: center; flex: none;
+}
+.tb-sec-icon svg { display: block; }
+.tb-sec-icon { line-height: 0; }
+.tb-section-head > .tb-sec-icon, .tb-standalone-head > .tb-sec-icon { margin-inline-end: 4px; }
+/* The desktop menubar has no width to spare (Save / My routes already drop their words below
+   1440px): the icons there are drawn at the size of the emoji they replace. */
+body:not(.deck-on) .tb-sec-icon svg { width: 15px; height: 15px; }
+body:not(.deck-on) .tb-sec-row { gap: 4px; }
+/* Title beside its icon, the caret alone at the far edge. */
+.tb-sec-text { margin-inline-end: auto; }
+/* The stacked phone menu without the deck: icons the size of its 11px titles, so the rows
+   keep their height. */
+@media (max-width: 680px), (pointer: coarse) {
+  body:not(.deck-on) .tb-sec-icon svg { width: 12px; height: 12px; }
+}
+.tb-sec-text { display: flex; flex-direction: column; min-width: 0; }
+.tb-sec-hint { display: none; }
+/* The phone's menu: each section a 52px row -- icon in a tile, title, a one-line hint, the
+   chevron at the far edge. The 20px rows they replace were under half a fingertip. */
+body.deck-on #deck-sheet .tb-section-head {
+  min-height: 52px; padding: 6px 4px; gap: 12px; justify-content: flex-start;
+  font-size: 16px; font-weight: 650; text-transform: none; letter-spacing: 0;
+  color: inherit; border-radius: 0; border-bottom: 1px solid rgba(127, 140, 153, .25);
+}
+body.deck-on #deck-sheet .tb-section-head::after { margin-inline-start: auto; font-size: 10px; opacity: .55; }
+body.deck-on #deck-sheet .tb-section-head > .tb-sec-icon,
+body.deck-on #deck-sheet .tb-sec-row > .tb-sec-icon,
+body.deck-on #deck-sheet .tb-standalone-head > .tb-sec-icon {
+  width: 36px; height: 36px; border-radius: 10px; margin: 0;
+  background: rgba(11, 98, 214, .12); color: #0b62d6;
+}
+body.theme-dark.deck-on #deck-sheet .tb-section-head > .tb-sec-icon,
+body.theme-dark.deck-on #deck-sheet .tb-sec-row > .tb-sec-icon,
+body.theme-dark.deck-on #deck-sheet .tb-standalone-head > .tb-sec-icon { background: #26303a; color: #cfe0ff; }
+body.deck-on #deck-sheet .tb-sec-row { gap: 12px; }
+body.deck-on #deck-sheet .tb-sec-hint { display: block; font-size: 12.5px; font-weight: 500; opacity: .65; }
+body.deck-on #deck-sheet .tb-head-left { flex: 1; }
+body.deck-on #deck-sheet #wp-search { min-height: 48px; font-size: 16px; }
 .tb-standalone-head {
   width: 100%;
   text-align: start;
@@ -5384,6 +5426,9 @@ html[dir="rtl"] .charts-airport-header.open::before { transform: rotate(-90deg);
   width: min(420px, 90vw);
 }
 #search-overlay.hidden { display: none; }
+/* On a phone the deck's strip owns the top edge (and is taller with the Comm fail button):
+   the search card opens below it, not under it. */
+body.deck-on #search-overlay { top: calc(var(--navaid-deck-strip-h, 46px) + 8px); }
 /* Only WHILE the dropdown is open does the panel outrank the toolbar. The toolbar reaches
    z 2330/2340 on narrow viewports, which silently covered the results whenever an open
    section grew tall enough to reach them; raising the panel permanently was worse -- its
@@ -7967,7 +8012,7 @@ body.theme-light .route-library-gdrive-pii { color: #6b7787; border-inline-start
   background: #f7f9fb;
   border-top: 1px solid var(--navaid-ctrl-border-color);
   display: grid;
-  grid-template-columns: repeat(6, 1fr);
+  grid-template-columns: repeat(5, 1fr);
 }
 .deck-btn {
   border: 0;
@@ -7982,8 +8027,28 @@ body.theme-light .route-library-gdrive-pii { color: #6b7787; border-inline-start
   padding: 0;
   touch-action: manipulation;
 }
-.deck-btn i { font-style: normal; font-size: 18px; line-height: 1; }
-.deck-btn-label { font-size: 10px; letter-spacing: .03em; }
+.deck-btn i { font-style: normal; font-size: 18px; line-height: 1; display: grid; place-items: center; }
+.deck-btn i svg { display: block; }
+.deck-btn-label { font-size: 11px; font-weight: 600; letter-spacing: .02em; }
+/* The strip's grid: the readout lines on one side, Comm fail on the other, spanning both. */
+body.deck-on .deck-strip { grid-template-columns: minmax(0, 1fr) auto; column-gap: 10px; align-items: center; }
+body.deck-on .deck-strip > .deck-strip-top,
+body.deck-on .deck-strip > .deck-strip-sub { grid-column: 1; }
+.deck-strip-commfail {
+  grid-column: 2; grid-row: 1 / span 2;
+  display: inline-flex; align-items: center; gap: 6px;
+  min-height: 36px; padding: 0 12px;
+  border: 0; border-radius: 18px;
+  background: #c62f2f; color: #fff;
+  font: 700 12px/1 system-ui, sans-serif;
+  white-space: nowrap; cursor: pointer;
+  touch-action: manipulation;
+}
+.deck-strip-commfail svg { display: block; flex: none; }
+.deck-strip-commfail[aria-pressed="true"] { background: #fff; color: #c62f2f; box-shadow: inset 0 0 0 2px #c62f2f; }
+.deck-strip-commfail:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+/* A narrow phone with a full readout: the icon alone, the label in the accessible name. */
+@media (max-width: 360px) { .deck-strip-commfail-label { display: none; } .deck-strip-commfail { padding: 0 9px; } }
 /* Engaged, not merely visited: Record and Here light while they are actually running. */
 /* Running, not merely chosen. A tinted label was all that said Location was on, and on a
    sunlit screen at arm's length that is not a state -- it is a shade. The whole cell lights:

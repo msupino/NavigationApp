@@ -355,9 +355,9 @@
          uses the in-header pair below). -->
     <div class="tb-quick route-file-row route-file-compact">
       <button id="tool-save-route-wide" type="button" class="route-file-btn route-file-save js-save-route"
-              data-i18n-title="tbSaveRouteTitle"><span class="rf-icon" aria-hidden="true">💾</span><span class="rf-text"><span class="rf-label"></span><bdi class="rf-sub" hidden></bdi></span><span class="rf-dot" hidden></span></button>
+              data-i18n-title="tbSaveRouteTitle"><span class="rf-icon" aria-hidden="true" data-nav-icon="save"></span><span class="rf-text"><span class="rf-label"></span><bdi class="rf-sub" hidden></bdi></span><span class="rf-dot" hidden></span></button>
       <button id="tool-load-route-wide" type="button" class="route-file-btn route-file-load js-load-route"
-              data-i18n-title="tbLoadRouteTitle"><span class="rf-icon" aria-hidden="true">📂</span><span class="rf-label"></span><span class="rf-count"></span></button>
+              data-i18n-title="tbLoadRouteTitle"><span class="rf-icon" aria-hidden="true" data-nav-icon="folder"></span><span class="rf-label"></span><span class="rf-count"></span></button>
     </div>
 
     <!-- Save / My routes, labeled, above the sections (stacked layout and the phone's menu
@@ -366,15 +366,15 @@
          refreshRouteFileRows() in ui.js; the flight plan carries the same row. -->
     <div class="route-file-row" id="route-file-row-menu">
       <button id="tool-save-route" type="button" class="route-file-btn route-file-save js-save-route"
-              data-i18n-title="tbSaveRouteTitle"><span class="rf-icon" aria-hidden="true">💾</span><span class="rf-text"><span class="rf-label"></span><bdi class="rf-sub" hidden></bdi></span><span class="rf-dot" hidden></span></button>
+              data-i18n-title="tbSaveRouteTitle"><span class="rf-icon" aria-hidden="true" data-nav-icon="save"></span><span class="rf-text"><span class="rf-label"></span><bdi class="rf-sub" hidden></bdi></span><span class="rf-dot" hidden></span></button>
       <button id="tool-load-route" type="button" class="route-file-btn route-file-load js-load-route"
-              data-i18n-title="tbLoadRouteTitle"><span class="rf-icon" aria-hidden="true">📂</span><span class="rf-label"></span><span class="rf-count"></span></button>
+              data-i18n-title="tbLoadRouteTitle"><span class="rf-icon" aria-hidden="true" data-nav-icon="folder"></span><span class="rf-label"></span><span class="rf-count"></span></button>
     </div>
 
     <div class="tb-section" data-sec="build">
       <div class="tb-section-head" tabindex="0" role="button" data-i18n-aria="tbSecBuild">
         <span class="tb-head-left">
-          <span class="tb-section-title" data-i18n="tbSecBuild"></span>
+          <span class="tb-sec-row"><span class="tb-sec-icon" aria-hidden="true" data-nav-icon="edit"></span><span class="tb-sec-text"><span class="tb-section-title" data-i18n="tbSecBuild"></span><span class="tb-sec-hint" aria-hidden="true" data-i18n="tbSecBuildHint"></span></span></span>
         </span>
       </div>
   <div class="tb-section-body">
@@ -395,7 +395,7 @@
 
     <!-- View: chart appearance + every overlay/toggle/slider. -->
     <div class="tb-section" data-sec="view">
-      <div class="tb-section-head" tabindex="0" role="button" data-i18n="tbSecView"></div>
+      <div class="tb-section-head" tabindex="0" role="button" data-i18n-aria="tbSecView"><span class="tb-sec-icon" aria-hidden="true" data-nav-icon="view"></span><span class="tb-sec-text"><span class="tb-section-title" data-i18n="tbSecView"></span><span class="tb-sec-hint" aria-hidden="true" data-i18n="tbSecViewHint"></span></span></div>
       <div class="tb-section-body">
         <label class="navtoggle" data-i18n-title="tbLayerTitle">
           <span data-i18n="tbLayerLabel"></span>
@@ -505,7 +505,7 @@
 
     <!-- Display: sliders. -->
     <div class="tb-section" data-sec="display">
-      <div class="tb-section-head" tabindex="0" role="button" data-i18n="tbSecDisplay"></div>
+      <div class="tb-section-head" tabindex="0" role="button" data-i18n-aria="tbSecDisplay"><span class="tb-sec-icon" aria-hidden="true" data-nav-icon="display"></span><span class="tb-sec-text"><span class="tb-section-title" data-i18n="tbSecDisplay"></span><span class="tb-sec-hint" aria-hidden="true" data-i18n="tbSecDisplayHint"></span></span></div>
       <div class="tb-section-body">
         <button id="theme-toggle" type="button" data-i18n-title="tbLightModeTitle"></button>
         <!-- Grouped coarse to fine, separated by rules: the base map, then the waypoint
@@ -566,12 +566,12 @@
          listed the same command twice in one menu bar. -->
     <div class="tb-section tb-standalone" data-sec="plan">
       <button id="plan" type="button" class="tb-section-head tb-standalone-head"
-              data-i18n="tbPlan" data-i18n-title="tbPlanTitle"></button>
+              data-i18n-title="tbPlanTitle"><span class="tb-sec-icon" aria-hidden="true" data-nav-icon="plan"></span><span class="tb-section-title" data-i18n="tbPlan"></span></button>
     </div>
 
     <!-- Charts: route references, planning tables, and airfield charts. -->
     <div class="tb-section" data-sec="charts">
-      <div class="tb-section-head" tabindex="0" role="button" data-i18n="tbSecCharts"></div>
+      <div class="tb-section-head" tabindex="0" role="button" data-i18n-aria="tbSecCharts"><span class="tb-sec-icon" aria-hidden="true" data-nav-icon="charts"></span><span class="tb-sec-text"><span class="tb-section-title" data-i18n="tbSecCharts"></span><span class="tb-sec-hint" aria-hidden="true" data-i18n="tbSecChartsHint"></span></span></div>
       <div class="tb-section-body">
         <button id="route-templates" type="button" data-i18n="tbRouteTemplates" data-i18n-title="tbRouteTemplatesTitle"></button>
         <button id="freq-table" data-i18n="tbFreqTable" data-i18n-title="tbFreqTableTitle"></button>
@@ -614,7 +614,7 @@
     <!-- Export / Import: route file operations. -->
     <!-- Weather: SIGMET, wind, and the IMS PWX wind/temperature chart overlay. -->
     <div class="tb-section" data-sec="weather">
-      <div class="tb-section-head" tabindex="0" role="button" data-i18n="tbSecWeather"></div>
+      <div class="tb-section-head" tabindex="0" role="button" data-i18n-aria="tbSecWeather"><span class="tb-sec-icon" aria-hidden="true" data-nav-icon="weather"></span><span class="tb-sec-text"><span class="tb-section-title" data-i18n="tbSecWeather"></span><span class="tb-sec-hint" aria-hidden="true" data-i18n="tbSecWeatherHint"></span></span></div>
       <!-- Each map layer is a uniform .tb-group-box: a toggle on top, its
            controls (sliders / selects) below, same spacing + widths for all. -->
       <div class="tb-section-body">
@@ -846,7 +846,7 @@
     </div>
 
     <div class="tb-section" data-sec="export">
-      <div class="tb-section-head" tabindex="0" role="button" data-i18n="tbSecExport"></div>
+      <div class="tb-section-head" tabindex="0" role="button" data-i18n-aria="tbSecExport"><span class="tb-sec-icon" aria-hidden="true" data-nav-icon="export"></span><span class="tb-sec-text"><span class="tb-section-title" data-i18n="tbSecExport"></span><span class="tb-sec-hint" aria-hidden="true" data-i18n="tbSecExportHint"></span></span></div>
       <div class="tb-section-body">
         <select id="export-select" data-i18n-title="tbExportTitle" data-i18n-aria="tbExportMenu">
           <option value="" data-i18n="tbExportMenu" selected></option>
@@ -891,7 +891,7 @@
     <!-- Simulator (SimConnect bridge) moved to a small footer icon → #sim-modal. -->
 
     <div class="tb-section" data-sec="print">
-      <div class="tb-section-head" tabindex="0" role="button" data-i18n="tbSecPrint"></div>
+      <div class="tb-section-head" tabindex="0" role="button" data-i18n-aria="tbSecPrint"><span class="tb-sec-icon" aria-hidden="true" data-nav-icon="print"></span><span class="tb-sec-text"><span class="tb-section-title" data-i18n="tbSecPrint"></span><span class="tb-sec-hint" aria-hidden="true" data-i18n="tbSecPrintHint"></span></span></div>
       <div class="tb-section-body">
         <div class="tb-print-submenu">
           <span class="tb-print-label" data-i18n="tbPrintPageSize"></span>

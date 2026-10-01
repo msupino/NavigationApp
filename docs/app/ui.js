@@ -131,6 +131,11 @@ function setMode(mode) {
   }
   if (typeof refreshEmptyRouteHint === 'function') refreshEmptyRouteHint();
 }
+// Menu section icons and the Save / My routes icons, from the shared line set (core.js
+// NAV_ICONS): one family with the map buttons, no emoji.
+document.querySelectorAll('[data-nav-icon]').forEach((el) => {
+  if (typeof navIconSvg === 'function') el.innerHTML = navIconSvg(el.dataset.navIcon, el.classList.contains('rf-icon') ? 18 : 20);
+});
 document.getElementById('tool-add').onclick = () => setMode('add');
 document.getElementById('tool-note').onclick = () => setMode('note');
 // Initial aria-pressed sync — both modes start off so each button is
@@ -4503,15 +4508,15 @@ function buildRouteFileRow(extraClass) {
     const b = document.createElement('button');
     b.type = 'button';
     b.className = 'route-file-btn ' + cls;
-    b.innerHTML = '<span class="rf-icon" aria-hidden="true">' + icon + '</span><span class="rf-label"></span>' + tail;
+    b.innerHTML = '<span class="rf-icon" aria-hidden="true">' + navIconSvg(icon, 18) + '</span><span class="rf-label"></span>' + tail;
     return b;
   };
-  const save = mk('route-file-save', '💾', '<span class="rf-dot" hidden></span>');
+  const save = mk('route-file-save', 'save', '<span class="rf-dot" hidden></span>');
   save.querySelector('.rf-label').insertAdjacentHTML('afterend', '<bdi class="rf-sub" hidden></bdi>');
   { const t = document.createElement('span'); t.className = 'rf-text';
     const l = save.querySelector('.rf-label'), sub = save.querySelector('.rf-sub');
     l.before(t); t.append(l, sub); }
-  const load = mk('route-file-load', '📂', '<span class="rf-count"></span>');
+  const load = mk('route-file-load', 'folder', '<span class="rf-count"></span>');
   save.onclick = saveRouteFromHeader;
   load.onclick = loadRouteFromHeader;
   row.append(save, load);

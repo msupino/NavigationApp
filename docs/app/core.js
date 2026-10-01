@@ -2523,7 +2523,7 @@ window.S = Object.assign({
   errShareTooLong: 'Route is too long for a share link (max 64 waypoints). Export as JSON and send the file instead.',
   tbFit: '⌖ Fit to screen (F)',
   tbFitTitle: 'Fit the selected page to view, or fit the route when no page is selected (F)',
-  tbPlan: '📋 Flight plan',
+  tbPlan: 'Flight plan',
   tbPlanTitle: 'Show flight plan table',
   tbFreqTable: '📡 Freq table',
   tbFreqTableTitle: 'Edit local communication frequency defaults',
@@ -2970,16 +2970,23 @@ window.S = Object.assign({
   tbResetAllMarkersTitle: 'Reset all leg marker offsets to default positions',
   inspCloseTitle: 'Close',
   inspCloseLabel: 'Close',
-  tbSecEdit: '✏️ Edit',
-  tbSecMap: '🗺 Map',
-  tbSecRoute: '📋 Route',
-  tbSecDisplay: '🎚️ Display',
-  tbSecPrint: '🖨 Print',
-  tbSecBuild: '✏️ Edit',
-  tbSecView: '👁 View/Set',
-  tbSecCharts: '📋 Charts',
-  tbSecExport: '📤 Export/import',
-  tbSecWeather: '🗂 Extra layers',
+  tbSecEdit: 'Edit',
+  tbSecMap: 'Map',
+  tbSecRoute: 'Route',
+  tbSecDisplay: 'Display',
+  tbSecPrint: 'Print',
+  tbSecBuild: 'Edit',
+  tbSecView: 'View/Set',
+  tbSecCharts: 'Charts',
+  tbSecExport: 'Export/import',
+  tbSecWeather: 'Extra layers',
+  tbSecBuildHint: 'Add · undo · clear',
+  tbSecViewHint: 'Chart, overlays, speed',
+  tbSecDisplayHint: 'Labels, kites, opacity',
+  tbSecChartsHint: 'Plates, frequencies, routes',
+  tbSecWeatherHint: 'Weather, NOTAM, airspace',
+  tbSecExportHint: 'Files, share link',
+  tbSecPrintHint: 'Page, PNG, plan card',
   // Automatic CVFR offline map (offline-tiles.js, Charts section)
   tbOfflineCharts: 'Offline CVFR: checking…',
   tbOfflineChartsTitle: 'Show automatic offline CVFR coverage and storage details',
@@ -3116,6 +3123,36 @@ window.S = Object.assign({
 
 // Fill data-i18n / data-i18n-title / data-i18n-placeholder / data-i18n-aria
 // attributes from S. Called once after S is resolved.
+// One line-icon set for the app's chrome (menu sections, the phone's bottom bar, Save / My
+// routes): 24-unit box, 2-unit round strokes in currentColor -- the same family as the map
+// buttons (ui.js MAP_ICONS). Emoji drew differently on every phone and ignored the theme.
+// Always rendered with an explicit width and height: a sizeless inline SVG collapsed to
+// nothing in the APK once (see the sim button in index.html).
+const NAV_ICONS = {
+  edit: '<path d="M4 20h4L19 9l-4-4L4 16z"/><path d="m13.5 6.5 4 4"/>',
+  view: '<path d="M12 4 3 9l9 5 9-5z"/><path d="m3 14 9 5 9-5"/>',
+  display: '<path d="M5 7h14M5 17h14"/><circle cx="9" cy="7" r="2.2"/><circle cx="15" cy="17" r="2.2"/>',
+  plan: '<rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4V3h6v1M8.5 10h7M8.5 14h7M8.5 18h4"/>',
+  charts: '<path d="M6 3h8.5L19 7.5V21H6z"/><path d="M14 3v5h5M9 13h7M9 17h5"/>',
+  weather: '<path d="M12 4 3 9l9 5 9-5z"/><path d="m3 14 9 5 4-2.2M18 15v6M15 18h6"/>',
+  export: '<path d="M12 15V3.5M7.5 8 12 3.5 16.5 8"/><path d="M5 13v7h14v-7"/>',
+  print: '<path d="M7 9V3.5h10V9"/><rect x="4" y="9" width="16" height="8" rx="2"/><path d="M7 14h10v6.5H7z"/>',
+  map: '<path d="M3 6.5 9 4l6 2.5L21 4v13.5L15 20l-6-2.5L3 20z"/><path d="M9 4v13.5M15 6.5V20"/>',
+  menu: '<path d="M4 7h16M4 12h16M4 17h16"/>',
+  record: '<circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="3.5" fill="currentColor" stroke="none"/>',
+  location: '<path d="M12 21s-6.5-5.9-6.5-11a6.5 6.5 0 0 1 13 0c0 5.1-6.5 11-6.5 11z"/><circle cx="12" cy="10" r="2.3"/>',
+  commfail: '<path d="M7 8.5a6.5 6.5 0 0 0 0 7M17 8.5a6.5 6.5 0 0 1 0 7"/><circle cx="12" cy="12" r="1.8" fill="currentColor"/><path d="M4 20 20 4"/>',
+  save: '<path d="M5 4h11l3 3v13H5z"/><path d="M8 4v5h7V4M8 20v-6h8v6"/>',
+  folder: '<path d="M3.5 6.5h6l2 2h9v10.5h-17z"/>',
+};
+function navIconSvg(name, size) {
+  const px = size || 20;
+  return '<svg class="nav-icon" viewBox="0 0 24 24" width="' + px + '" height="' + px + '" aria-hidden="true"'
+    + ' focusable="false" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"'
+    + ' stroke-linejoin="round">' + (NAV_ICONS[name] || '') + '</svg>';
+}
+if (typeof window !== 'undefined') { window.navIconSvg = navIconSvg; window.NAV_ICONS = NAV_ICONS; }
+
 function applyI18n() {
   document.querySelectorAll('[data-i18n]').forEach(el => {
     el.textContent = S[el.dataset.i18n] || '';

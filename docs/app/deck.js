@@ -58,6 +58,7 @@
   let stripVals = null;
   let stripSub = null;
   let deck = null;
+  let commBtn = null;
   const buttons = {};
   let observers = [];
 
@@ -75,6 +76,19 @@
     stripSub = document.createElement('div');
     stripSub.className = 'deck-strip-sub';
     strip.append(top, stripSub);
+    // Comm fail: the emergency action, in red at the top, always in reach and apart from the
+    // five places on the bottom bar. It presses the toolbar's own button (one behaviour).
+    commBtn = document.createElement('button');
+    commBtn.type = 'button';
+    commBtn.className = 'deck-strip-commfail deck-btn-commfail';
+    const commLabel = (typeof S === 'object' && S && S.deckCommFail) || 'Comm fail';
+    commBtn.innerHTML = (typeof navIconSvg === 'function' ? navIconSvg('commfail', 18) : '')
+      + '<span class="deck-strip-commfail-label"></span>';
+    commBtn.querySelector('.deck-strip-commfail-label').textContent = commLabel;
+    commBtn.setAttribute('aria-label', (typeof S === 'object' && S && S.commFailTitle) || commLabel);
+    commBtn.setAttribute('aria-pressed', 'false');
+    commBtn.addEventListener('click', () => { click('commfail-btn'); sync(); });
+    strip.appendChild(commBtn);
     document.body.appendChild(strip);
     // The menu opens under the strip, so it has to know how tall the strip is -- which
     // depends on the language, the font and whether the second line has anything to say.
@@ -89,15 +103,17 @@
   }
 
   // Each entry: the id of the button it drives, or a handler of its own. Nothing here
-  // implements a feature -- it is six shortcuts to controls that already work.
+  // implements a feature -- it is five shortcuts to controls that already work. Five, not six:
+  // a bottom bar holds the top-level places (at most five), and Comm fail is an emergency
+  // action, not a place -- it is the red button in the strip above, apart from the rest.
   const ITEMS = [
-    { key: 'map', icon: '🗺', string: 'deckMap', run: showMap },
-    { key: 'menu', icon: '▤', string: 'deckMenu', run: showMenu },
-    { key: 'plan', icon: '📋', string: 'deckPlan', run: showPlan },
-    { key: 'record', icon: '⏺', string: 'deckRecord', run: () => click('gps-record') },
-    { key: 'here', icon: '📍', string: 'deckLocation', run: () => click('gps-live') },
-    { key: 'commfail', icon: '📵', string: 'deckCommFail', run: () => click('commfail-btn') },
+    { key: 'map', icon: 'map', string: 'deckMap', run: showMap },
+    { key: 'menu', icon: 'menu', string: 'deckMenu', run: showMenu },
+    { key: 'plan', icon: 'plan', string: 'deckPlan', run: showPlan },
+    { key: 'record', icon: 'record', string: 'deckRecord', run: () => click('gps-record') },
+    { key: 'here', icon: 'location', string: 'deckLocation', run: () => click('gps-live') },
   ];
+  const deckIcon = (name) => (typeof navIconSvg === 'function' ? navIconSvg(name, 22) : '');
 
   // ---- the sheet -------------------------------------------------------------------
   // One surface for everything that is not the chart, dragged between three heights and
@@ -579,7 +595,7 @@
       btn.className = 'deck-btn deck-btn-' + item.key;
       btn.dataset.deck = item.key;
       const icon = document.createElement('i');
-      icon.textContent = item.icon;
+      icon.innerHTML = deckIcon(item.icon);
       icon.setAttribute('aria-hidden', 'true');
       const label = document.createElement('span');
       label.className = 'deck-btn-label';
@@ -669,6 +685,10 @@
     strip.classList.toggle('deck-strip-live', !!live);
     if (buttons.record) {
       buttons.record.setAttribute('aria-pressed', String(!!(typeof gpsRecording !== 'undefined' && gpsRecording)));
+    }
+    if (commBtn) {
+      const cf = document.getElementById('commfail-btn');
+      commBtn.setAttribute('aria-pressed', String(!!(cf && cf.getAttribute('aria-pressed') === 'true')));
     }
     if (buttons.here) {
       buttons.here.setAttribute('aria-pressed', String(!!(typeof gpsLiveOn !== 'undefined' && gpsLiveOn)));
