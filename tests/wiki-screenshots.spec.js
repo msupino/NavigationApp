@@ -43,7 +43,7 @@ async function boot(page, lang) {
     try {
       localStorage.clear(); sessionStorage.clear();
       // toolbar sections closed → clean map (each shot opens only what it needs)
-      for (const s of ['build', 'view', 'display', 'charts', 'export', 'print'])
+      for (const s of ['build', 'view', 'display', 'charts', 'export', 'print', 'settings'])
         localStorage.setItem('navaid.sec.' + s, '0');
       localStorage.setItem('navaid.layer', 'CVFR');
     } catch (e) {}

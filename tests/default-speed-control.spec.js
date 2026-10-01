@@ -8,7 +8,7 @@ const { test, expect } = require('./_setup');
 async function boot(page, q = '?lang=en&nogist') {
   await page.addInitScript(() => {
     try {
-      for (const sec of ['build', 'view', 'display', 'charts', 'export', 'print'])
+      for (const sec of ['build', 'view', 'display', 'charts', 'export', 'print', 'settings'])
         localStorage.setItem('navaid.sec.' + sec, '1');
     } catch (e) {}
   });
@@ -16,26 +16,26 @@ async function boot(page, q = '?lang=en&nogist') {
   await page.waitForFunction(() => typeof tune === 'function' && typeof syncLegs === 'function');
 }
 
-test('the control sits with the layer picker in View/Set and shows 90 by default', async ({ page }) => {
+test('the control sits in Settings, under the language, and shows 90 by default', async ({ page }) => {
   await boot(page);
   const el = page.locator('#default-speed');
   await expect(el).toHaveValue('90');
   const order = await page.evaluate(() => {
-    const body = document.querySelector('.tb-section[data-sec="view"] .tb-section-body');
-    const rows = [...body.children];
+    const body = document.querySelector('.tb-section[data-sec="settings"] .tb-section-body');
+    const rows = [...body.children].filter(r => r.tagName !== 'SCRIPT');
     return {
-      layerIdx: rows.findIndex(r => r.querySelector('#layer-select')),
-      opacityIdx: rows.findIndex(r => r.querySelector('#map-opacity')),
+      langIdx: rows.findIndex(r => r.querySelector('#lang-select')),
       speedIdx: rows.findIndex(r => r.querySelector('#default-speed')),
+      magvarIdx: rows.findIndex(r => r.querySelector('#magvar-mode')),
       sameSection: !!body.querySelector('#default-speed'),
     };
   });
   expect(order.sameSection).toBe(true);
   // Layer, then the slider that dims it, then this. The opacity slider moved here from
-  // Display when the map under the chart became a chart of its own: what it acts on is the
-  // layer picked above it, so it belongs between the two.
-  expect(order.opacityIdx).toBe(order.layerIdx + 1);
-  expect(order.speedIdx).toBe(order.opacityIdx + 1);
+  // Display when the map under the chart became a chart of its own. The speed itself is set
+  // once for the aircraft, so it lives in Settings with the variation and the language.
+  expect(order.speedIdx).toBe(order.langIdx + 1);
+  expect(order.magvarIdx).toBe(order.speedIdx + 1);
 });
 
 test('it is labelled in both languages', async ({ page }) => {

@@ -196,7 +196,7 @@ test('a recorded GPS track shows up as a row in the Saved routes library', async
     navigator.geolocation.watchPosition = (cb) => { window.__geoCb = cb; return 7; };
     navigator.geolocation.clearWatch = () => {};
     try { localStorage.removeItem('navaid.routes'); localStorage.removeItem('navaid.tracks.shown'); } catch (e) {}
-    for (const s of ['build', 'view', 'display', 'charts', 'export', 'print']) {
+    for (const s of ['build', 'view', 'display', 'charts', 'export', 'print', 'settings']) {
       try { localStorage.setItem('navaid.sec.' + s, '1'); } catch (e) {}
     }
   });

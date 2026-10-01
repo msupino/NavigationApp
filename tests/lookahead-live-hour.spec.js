@@ -27,7 +27,7 @@ async function freezeMutableClock(page) {
 
 async function boot(page) {
   await page.addInitScript(() => {
-    for (const s of ['build', 'view', 'display', 'charts', 'export', 'print'])
+    for (const s of ['build', 'view', 'display', 'charts', 'export', 'print', 'settings'])
       try { localStorage.setItem('navaid.sec.' + s, '1'); } catch (e) {}
   });
   await page.goto('?lang=en&nogist');

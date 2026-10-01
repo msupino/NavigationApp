@@ -73,7 +73,8 @@ test('the pinned head is one opaque band across the panel', async ({ page }) => 
   await boot(page);
   const look = await page.evaluate(() => {
     const tb = document.getElementById('toolbar');
-    const ids = ['toolbar-handle', 'toolbar-toggle', 'lang-toggle'];
+    // The language picker moved into Settings; the band is the handle and the ☰.
+    const ids = ['toolbar-handle', 'toolbar-toggle'];
     const cells = ids.map(id => {
       const el = document.getElementById(id);
       const cs = getComputedStyle(el);

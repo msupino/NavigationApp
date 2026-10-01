@@ -7,7 +7,7 @@ const { test, expect } = require('./_setup');
 const PANE = '.leaflet-basemapUnderlay-pane';
 
 test('OSM underlay is present under the CVFR chart, gone for full-coverage layers', async ({ page }) => {
-  await page.addInitScript(() => { try { localStorage.setItem('navaid.layer', 'CVFR'); localStorage.setItem('navaid.sec.view', '1'); } catch (e) {} });
+  await page.addInitScript(() => { try { localStorage.setItem('navaid.layer', 'CVFR'); localStorage.setItem('navaid.sec.view', '1'); localStorage.setItem('navaid.sec.settings', '1'); } catch (e) {} });
   await page.goto('?lang=en');
   await page.waitForFunction(() => typeof map !== 'undefined' && typeof updateBasemapUnderlay === 'function');
 

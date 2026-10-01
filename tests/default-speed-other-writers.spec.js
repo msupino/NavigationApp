@@ -9,7 +9,7 @@ const { test, expect } = require('./_setup');
 async function boot(page, q = '?lang=en&nogist') {
   await page.addInitScript(() => {
     try {
-      for (const sec of ['build', 'view', 'display', 'charts', 'export', 'print'])
+      for (const sec of ['build', 'view', 'display', 'charts', 'export', 'print', 'settings'])
         localStorage.setItem('navaid.sec.' + sec, '1');
     } catch (e) {}
   });
@@ -96,7 +96,9 @@ test('reset-all carries the route too', async ({ page }) => {
   await route(page);
   await setViaToolbar(page, 120);
   expect((await speeds(page)).every(l => l[0] === 120)).toBe(true);
-  await page.click('#tune-reset-all');      // icon button, no text to match on
+  // Every menu is held open in this file, and Settings (top right) now sits over the tuning
+  // panel's corner: press the button itself.
+  await page.evaluate(() => document.getElementById('tune-reset-all').click());
   expect(await page.evaluate(() => tune('defaultLegSpeedKt'))).toBe(90);
   expect((await speeds(page)).every(l => l[0] === 90)).toBe(true);
 });

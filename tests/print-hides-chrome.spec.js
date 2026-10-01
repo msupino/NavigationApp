@@ -15,7 +15,7 @@ const { test, expect } = require('./_setup');
 test('nothing but the chart survives print media', async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 800 });
   await page.addInitScript(() => {
-    for (const s of ['build', 'view', 'display', 'charts', 'export', 'print'])
+    for (const s of ['build', 'view', 'display', 'charts', 'export', 'print', 'settings'])
       try { localStorage.setItem('navaid.sec.' + s, '1'); } catch (e) {}
   });
   await page.goto('?lang=en&nogist');

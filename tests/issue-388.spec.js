@@ -38,7 +38,7 @@ test.describe('issue #388 — review cleanup', () => {
         sessionStorage.clear();
         // Keep every toolbar section open so #tool-magnifier and friends
         // are reachable without first expanding their accordion.
-        for (const s of ['build', 'view', 'display', 'charts', 'export', 'print']) {
+        for (const s of ['build', 'view', 'display', 'charts', 'export', 'print', 'settings']) {
           localStorage.setItem('navaid.sec.' + s, '1');
         }
       } catch (e) {}

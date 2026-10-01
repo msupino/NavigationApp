@@ -312,41 +312,6 @@
     <span id="toolbar-handle" class="drag-handle" data-i18n-title="tbHandleTitle">⋯</span>
     <span id="toolbar-toggle" role="button" tabindex="0"><span></span><span></span><span></span></span>
 
-    <label id="lang-toggle" class="navtoggle">🌐
-      <select id="lang-select">
-        <option value="he">עברית</option>
-        <option value="en">English</option>
-      </select>
-    </label>
-    <script>
-      (function () {
-        var sel = document.getElementById('lang-select');
-        sel.value = window.__navLang;
-        sel.addEventListener('change', function () {
-          if (typeof state !== 'undefined' && state.selected) {
-            try { sessionStorage.setItem('navaid.selected', JSON.stringify(state.selected)); } catch (e) {}
-          }
-          if (typeof fpOpen !== 'undefined' && fpOpen) {
-            try { sessionStorage.setItem('navaid.fpOpen', '1'); } catch (e) {}
-          }
-          var params = new URLSearchParams(location.search);
-          params.set('lang', sel.value);
-          location.href = '?' + params.toString() + location.hash;
-        });
-        // Browsers may restore a form control's live value from the back-forward cache after
-        // the document scripts set it. Reconcile the visible picker with the restored page.
-        window.addEventListener('pageshow', function () {
-          var p = new URLSearchParams(location.search).get('lang');
-          var lang = (p === 'en' || p === 'he') ? p : window.__navLang;
-          sel.value = lang;
-        });
-        // ui.js removes this as soon as setup completes. Keep a load-time fallback so a
-        // non-critical setup exception cannot leave the toolbar hidden indefinitely.
-        window.addEventListener('load', function () {
-          document.documentElement.classList.remove('app-booting');
-        });
-      }());
-    </script>
 
     <!-- Build: everything you do to construct or edit a route. -->
     <!-- Wide desktop-menubar layout: the section heads are compact dropdown
@@ -405,34 +370,6 @@
           <span data-i18n="tbLayerOpacity"></span>
           <input type="range" id="map-opacity" value="80">
           <span class="slider-val" id="map-opacity-val"></span>
-        </label>
-        <!-- Seed speed for a leg with nothing to inherit from. Drives the
-             defaultLegSpeedKt tune key, so the gist default still applies until
-             the pilot sets their own aircraft's cruise here. -->
-        <label class="navtoggle" data-i18n-title="tbDefaultSpeedTitle">
-          <span data-i18n="tbDefaultSpeedLabel"></span>
-          <input type="number" id="default-speed" min="20" max="400" step="5" inputmode="numeric">
-          <!-- Title set by ui.js: it names the speed it returns to. -->
-          <button id="default-speed-reset" class="slider-reset" type="button">↻</button>
-        </label>
-        <!-- Magnetic variation: from the World Magnetic Model where the headings are (wmm.js,
-             offline), or the pilot's own number. The fields always hold the value in force --
-             read-only in automatic, with where it was taken beside them. -->
-        <!-- One row, like the default speed above it: the mode, then the value in force. -->
-        <label class="navtoggle tb-magvar" data-i18n-title="tbMagVarTitle">
-          <span data-i18n="tbMagVarLabel"></span>
-          <select id="magvar-mode">
-            <option value="auto" data-i18n="tbMagVarAuto"></option>
-            <option value="manual" data-i18n="tbMagVarManual"></option>
-          </select>
-          <!-- The value reads as a chart writes it, "5 E", in either language. -->
-          <span class="magvar-value" dir="ltr">
-            <input type="number" id="magvar-deg" min="0" max="30" step="1" inputmode="numeric" data-i18n-aria="tbMagVarManual">
-            <select id="magvar-ew" data-i18n-aria="tbMagVarEw">
-              <option value="E">E</option>
-              <option value="W">W</option>
-            </select>
-          </span>
         </label>
         <div class="tb-group" data-i18n="tbGrpOverlays"></div>
         <label class="navtoggle" data-i18n-title="tbLegDirTitle">
@@ -864,7 +801,7 @@
         <!-- Follow me: a live position link, relayed by a public broker and encrypted before
              it gets there. Hidden until the gist offers it (featureFollowMe). -->
         <button id="follow-me" type="button" hidden data-i18n-title="tbFollowMeTitle">
-          <span class="follow-me-button-icon" aria-hidden="true">📡</span>
+          <span class="follow-me-button-icon" aria-hidden="true" data-nav-icon="broadcast"></span>
           <span class="follow-me-button-label" data-i18n="tbFollowMe"></span>
         </button>
         <!-- The link now outlives the flight, the stop and the aircraft's name: one link per
@@ -916,6 +853,77 @@
         <button id="print" data-i18n="tbPrint" data-i18n-title="tbPrintTitle"></button>
       </div>
     </div>
+    <!-- Settings: what is set once for the aircraft and the pilot (speed, magnetic variation,
+         language), apart from the Map menu's layers and overlays, which change in flight. -->
+    <div class="tb-section" data-sec="settings">
+      <div class="tb-section-head" tabindex="0" role="button" data-i18n-aria="tbSecSettings"><span class="tb-sec-icon" aria-hidden="true" data-nav-icon="settings"></span><span class="tb-sec-text"><span class="tb-section-title" data-i18n="tbSecSettings"></span><span class="tb-sec-hint" aria-hidden="true" data-i18n="tbSecSettingsHint"></span></span></div>
+      <div class="tb-section-body">
+        <label id="lang-toggle" class="navtoggle" data-i18n-title="tbLanguageTitle">
+          <span data-i18n="tbLanguage"></span>
+          <select id="lang-select">
+            <option value="he">עברית</option>
+            <option value="en">English</option>
+          </select>
+        </label>
+        <script>
+          (function () {
+            var sel = document.getElementById('lang-select');
+            sel.value = window.__navLang;
+            sel.addEventListener('change', function () {
+              if (typeof state !== 'undefined' && state.selected) {
+                try { sessionStorage.setItem('navaid.selected', JSON.stringify(state.selected)); } catch (e) {}
+              }
+              if (typeof fpOpen !== 'undefined' && fpOpen) {
+                try { sessionStorage.setItem('navaid.fpOpen', '1'); } catch (e) {}
+              }
+              var params = new URLSearchParams(location.search);
+              params.set('lang', sel.value);
+              location.href = '?' + params.toString() + location.hash;
+            });
+            // Browsers may restore a form control's live value from the back-forward cache after
+            // the document scripts set it. Reconcile the visible picker with the restored page.
+            window.addEventListener('pageshow', function () {
+              var p = new URLSearchParams(location.search).get('lang');
+              var lang = (p === 'en' || p === 'he') ? p : window.__navLang;
+              sel.value = lang;
+            });
+            // ui.js removes this as soon as setup completes. Keep a load-time fallback so a
+            // non-critical setup exception cannot leave the toolbar hidden indefinitely.
+            window.addEventListener('load', function () {
+              document.documentElement.classList.remove('app-booting');
+            });
+          }());
+        </script>
+        <!-- Seed speed for a leg with nothing to inherit from. Drives the
+             defaultLegSpeedKt tune key, so the gist default still applies until
+             the pilot sets their own aircraft's cruise here. -->
+        <label class="navtoggle" data-i18n-title="tbDefaultSpeedTitle">
+          <span data-i18n="tbDefaultSpeedLabel"></span>
+          <input type="number" id="default-speed" min="20" max="400" step="5" inputmode="numeric">
+          <!-- Title set by ui.js: it names the speed it returns to. -->
+          <button id="default-speed-reset" class="slider-reset" type="button">↻</button>
+        </label>
+        <!-- Magnetic variation: from the World Magnetic Model where the headings are (wmm.js,
+             offline), or the pilot's own number. The fields always hold the value in force --
+             read-only in automatic, with where it was taken beside them. -->
+        <!-- One row, like the default speed above it: the mode, then the value in force. -->
+        <label class="navtoggle tb-magvar" data-i18n-title="tbMagVarTitle">
+          <span data-i18n="tbMagVarLabel"></span>
+          <select id="magvar-mode">
+            <option value="auto" data-i18n="tbMagVarAuto"></option>
+            <option value="manual" data-i18n="tbMagVarManual"></option>
+          </select>
+          <!-- The value reads as a chart writes it, "5 E", in either language. -->
+          <span class="magvar-value" dir="ltr">
+            <input type="number" id="magvar-deg" min="0" max="30" step="1" inputmode="numeric" data-i18n-aria="tbMagVarManual">
+            <select id="magvar-ew" data-i18n-aria="tbMagVarEw">
+              <option value="E">E</option>
+              <option value="W">W</option>
+            </select>
+          </span>
+        </label>
+      </div>
+    </div>
 
     <span id="app-version"></span>
     <!-- The installed app only (ota.js): which build it runs, and an update to take now, on
@@ -928,14 +936,7 @@
     <div id="footer-links">
       <button id="help-trigger" type="button" class="footer-link footer-link-button"
               data-i18n-title="shortcutsHelpButtonTitle" data-i18n-aria="shortcutsHelpAriaLabel">
-        <svg class="footer-link-icon" viewBox="0 0 16 16" width="14" height="14"
-             aria-hidden="true" focusable="false">
-          <path fill="currentColor" fill-rule="evenodd"
-                d="M8 0a8 8 0 1 0 0 16A8 8 0 0 0 8 0Zm0 1.5a6.5 6.5 0 1 1 0 13 6.5 6.5 0 0 1 0-13Zm0
-                   2.75a2.75 2.75 0 0 0-2.75 2.75.75.75 0 0 0 1.5 0 1.25 1.25 0 1 1 1.926 1.054c-.413.265
-                   -.926.65-.926 1.321V10a.75.75 0 0 0 1.5 0v-.347c.057-.041.157-.103.236-.153A2.75 2.75
-                   0 0 0 8 4.25Zm0 7.5a1 1 0 1 0 0 2 1 1 0 0 0 0-2Z"/>
-        </svg>
+        <span class="footer-link-icon" aria-hidden="true" data-nav-icon="help"></span>
         <span class="footer-link-text" data-i18n="shortcutsHelpButton"></span>
       </button>
       <!-- Reference links (repo, wiki, issues, about, privacy, terms) are read once
@@ -944,7 +945,7 @@
       <div id="footer-more" class="footer-more">
         <button id="footer-more-btn" type="button" class="footer-link footer-link-button"
                 aria-expanded="false" aria-controls="footer-more-menu"
-                data-i18n-title="tbMoreLinks" data-i18n-aria="tbMoreLinks">⋯</button>
+                data-i18n-title="tbMoreLinks" data-i18n-aria="tbMoreLinks"><span class="footer-link-icon" aria-hidden="true" data-nav-icon="more"></span></button>
         <div id="footer-more-menu" class="footer-more-menu" hidden>
           <a id="repo-link" class="footer-link"
              href="https://github.com/msupino/NavigationApp"
@@ -1023,7 +1024,7 @@
       <span class="footer-gps-group">
       <button id="gps-record" type="button" class="footer-link footer-link-button gps-footer-btn"
               data-i18n-title="tbGpsRecordTitle" data-i18n-aria="tbGpsRecord">
-        <span class="footer-link-icon gps-footer-icon" aria-hidden="true">⏺</span>
+        <span class="footer-link-icon gps-footer-icon" aria-hidden="true" data-nav-icon="record"></span>
         <!-- The label changes with state ('Start recording' <-> 'Stop recording') and the two
              are different widths, so the button used to change size -- and the row to reflow --
              on every toggle. BOTH labels are stacked in one grid cell: the visible one, plus an
@@ -1038,7 +1039,7 @@
       </button>
       <button id="gps-live" type="button" class="footer-link footer-link-button gps-footer-btn" aria-pressed="false"
               data-i18n-title="tbGpsLiveTitle" data-i18n-aria="tbGpsLive">
-        <span class="footer-link-icon gps-footer-icon" aria-hidden="true">📍</span>
+        <span class="footer-link-icon gps-footer-icon" aria-hidden="true" data-nav-icon="location"></span>
         <span class="footer-link-labels">
           <span class="footer-link-text" data-i18n="tbGpsLive"></span>
           <span class="footer-link-sizer" aria-hidden="true" data-i18n="tbGpsLive"></span>
@@ -1049,7 +1050,7 @@
            puts its chart on the map. Next to the GPS buttons because it is used in the air. -->
       <button id="commfail-btn" type="button" class="footer-link footer-link-button gps-footer-btn" aria-pressed="false"
               data-i18n-title="commFailTitle" data-i18n-aria="commFail">
-        <span class="footer-link-icon gps-footer-icon" aria-hidden="true">📵</span>
+        <span class="footer-link-icon gps-footer-icon" aria-hidden="true" data-nav-icon="commfail"></span>
         <span class="footer-link-text" data-i18n="commFail"></span>
       </button>
       <!-- Grouped with the GPS buttons, not a sibling after them: that keeps it on
@@ -1068,7 +1069,7 @@
              #toolbar #sim-trigger .footer-link-text), so a glyph that does not paint
              leaves a ~16px blank at the edge of the row: nothing to see and nothing to
              hit. -->
-        <span class="footer-link-icon" aria-hidden="true">✈️</span>
+        <span class="footer-link-icon" aria-hidden="true" data-nav-icon="plane"></span>
         <span class="footer-link-text" data-i18n="tbSecSim"></span>
       </button>
       </span>

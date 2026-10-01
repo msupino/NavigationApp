@@ -24,7 +24,7 @@ async function boot(page) {
       if (localStorage.getItem('__cum_init') !== '1') {
         localStorage.clear();
         sessionStorage.clear();
-        for (const s of ['build', 'view', 'display', 'charts', 'export', 'print'])
+        for (const s of ['build', 'view', 'display', 'charts', 'export', 'print', 'settings'])
           localStorage.setItem('navaid.sec.' + s, '1');
         localStorage.setItem('__cum_init', '1');
       }

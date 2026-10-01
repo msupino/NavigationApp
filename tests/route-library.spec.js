@@ -6,7 +6,7 @@ const { clickToolbarControl, hideToolbarMenus } = require('./_toolbar');
 async function boot(page, lang = 'en') {
   await page.addInitScript(() => {
     try {
-      for (const s of ['build', 'view', 'display', 'charts', 'export', 'print']) {
+      for (const s of ['build', 'view', 'display', 'charts', 'export', 'print', 'settings']) {
         localStorage.setItem('navaid.sec.' + s, '1');
       }
     } catch (e) {}

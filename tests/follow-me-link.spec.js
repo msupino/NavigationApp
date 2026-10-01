@@ -719,7 +719,7 @@ test('the toolbar button keeps its decorative icon when sharing state changes', 
     for (const status of ['idle', 'connecting', 'connected', 'reconnecting', 'stopping']) {
       NavAid.followMe.status = () => status;
       refreshFollowMeControl();
-      states[status] = { icon: icon.textContent, label: label.textContent, sameIcon: icon.isConnected };
+      states[status] = { icon: icon.querySelector('svg') ? icon.dataset.icon : icon.textContent, label: label.textContent, sameIcon: icon.isConnected };
     }
     return {
       decorative: icon.getAttribute('aria-hidden'),
@@ -730,7 +730,7 @@ test('the toolbar button keeps its decorative icon when sharing state changes', 
   expect(seen.decorative).toBe('true');
   expect(seen.iconCount).toBe(1);
   for (const state of Object.values(seen.states)) {
-    expect(state.icon).toBe('📡');
+    expect(state.icon).toBe('broadcast');            // the line icon, the same in every state
     expect(state.label.length).toBeGreaterThan(0);
     expect(state.sameIcon).toBe(true);
   }
@@ -1300,6 +1300,7 @@ test('language selection preserves the follower encryption key on a clean phone'
     hash: location.hash,
   }))).toEqual({ lang: 'he', hash: '#k=' + key });
 
+  await page.locator('.tb-section[data-sec="settings"] .tb-section-head').click();   // the picker lives in Settings
   await page.locator('#lang-select').selectOption('en');
   await page.waitForFunction(() => !!(window.NavAid && NavAid.followMe && NavAid.followMe.viewing()));
   expect(await page.evaluate(() => ({

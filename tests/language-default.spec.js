@@ -64,6 +64,7 @@ test('a language left over from before does not resurrect itself', async ({ page
 test('the menu control switches by navigating, and the choice rides in the address', async ({ page }) => {
   await page.goto('?nogist');
   await page.waitForFunction(() => typeof draw === 'function');
+  await page.locator('.tb-section[data-sec="settings"] .tb-section-head').click();   // the picker lives in Settings
   await page.selectOption('#lang-select', 'en');
   // The whole page, not just the head script that stamps <html>: the picker is synced by a
   // script further down, and reading it earlier reads the markup's default.

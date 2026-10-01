@@ -494,6 +494,15 @@ html[dir="rtl"] .tb-section.open .tb-section-head::after { transform: rotate(-90
   display: inline-grid; place-items: center; flex: none;
 }
 .tb-sec-icon svg { display: block; }
+/* The toolbar's right-hand buttons (help, more, record, location, comm fail, simulator) draw
+   from the same set. Explicit size and block display: a sizeless inline SVG once collapsed to
+   nothing there in the APK (see the simulator button in index.html). */
+.footer-link-icon[data-nav-icon], .footer-link-icon[data-icon] { display: inline-grid; place-items: center; line-height: 0; }
+.footer-link-icon svg { display: block; width: 14px; height: 14px; flex: none; }
+/* Record's mark is a ring with a dot: at 12px it sits in the space the old dot glyph had, and
+   the deck-less phone menu keeps Record and Location on one row. */
+#gps-record .footer-link-icon svg { width: 11px; height: 11px; }
+#toolbar #gps-record.footer-link, #toolbar #gps-live.footer-link { gap: 4px; }
 .tb-sec-icon { line-height: 0; }
 .tb-section-head > .tb-sec-icon, .tb-standalone-head > .tb-sec-icon { margin-inline-end: 4px; }
 /* The desktop menubar has no width to spare (Save / My routes already drop their words below
@@ -6720,6 +6729,14 @@ html[data-theme="light"] #insp-body .insp-actions {
   #toolbar:not(.collapsed) > #toolbar-handle { grid-column: 1; grid-row: 1; }
   #toolbar:not(.collapsed) > #toolbar-toggle { grid-column: 2; grid-row: 1; }
   #toolbar:not(.collapsed) > #lang-toggle    { grid-column: 3; grid-row: 1; }
+  /* The language picker moved into Settings: the ☰ takes the rest of the pinned band, and
+     with it the far edge's bleed into the panel padding. */
+  #toolbar:not(.collapsed):not(:has(> #lang-toggle)) > #toolbar-toggle {
+    grid-column: 2 / -1; margin-right: -6px; padding-right: 6px;
+  }
+  html[dir="rtl"] #toolbar:not(.collapsed):not(:has(> #lang-toggle)) > #toolbar-toggle {
+    margin-right: 0; padding-right: 0; margin-left: -6px; padding-left: 6px;
+  }
   /* One pinned band, not three floating chips: opaque, and stretched into the panel's
      padding on every side, or the rows sliding past show through the seams. */
   #toolbar:not(.collapsed) > #toolbar-handle,
@@ -8812,3 +8829,38 @@ body.deck-on .modal-back.flight-plan > .modal.wide .fp-scroll {
 }
 body.theme-dark .public-pilot-label { background: rgba(24, 28, 36, 0.88); color: #eef2f6; }
 .public-pilot-label small { font-size: 0.85em; font-weight: 600; white-space: nowrap; }
+
+/* Menu entries: a line icon in front of each (ui.js dressMenuItem), in the text colour. */
+#toolbar .mi-icon { display: inline-grid; place-items: center; line-height: 0; vertical-align: -3px; margin-inline-end: 8px; opacity: .85; }
+#toolbar .mi-icon svg { display: block; }
+/* Export is a dropdown, but in the menu it reads as one more entry: the icon in front, no box,
+   a chevron at the far edge -- the same row as Import below it, in both themes and directions. */
+#toolbar .mi-select { position: relative; display: block; }
+#toolbar .mi-select > .mi-icon { position: absolute; inset-inline-start: 10px; top: 50%; transform: translateY(-50%); pointer-events: none; }
+#toolbar .mi-select::after {
+  content: ''; position: absolute; inset-inline-end: 12px; top: 50%; width: 6px; height: 6px;
+  border-inline-end: 2px solid currentColor; border-bottom: 2px solid currentColor;
+  transform: translateY(-70%) rotate(45deg); opacity: .6; pointer-events: none;
+}
+body #toolbar .tb-section-body .mi-select > #export-select {
+  -webkit-appearance: none; appearance: none;
+  width: 100%; border-color: transparent; background: transparent; background-image: none;
+  padding-inline-start: 34px; padding-inline-end: 28px;
+  text-align: start; text-align-last: start; font-weight: inherit;
+}
+body #toolbar .tb-section-body .mi-select > #export-select:hover { background: rgba(255, 255, 255, 0.10); }
+body.theme-light #toolbar .tb-section-body .mi-select > #export-select { background: transparent; border-color: transparent; }
+body.theme-light #toolbar .tb-section-body .mi-select > #export-select:hover { background: rgba(29, 111, 224, 0.08); }
+
+#toolbar .follow-me-button-icon[data-icon] { display: inline-grid; place-items: center; line-height: 0; vertical-align: -3px; }
+#toolbar .follow-me-button-icon svg { display: block; }
+
+/* The open phone menu without the deck stops above the collapsed legend chip in the bottom
+   corner (its 28px plus the map margin), and scrolls under its pinned head instead: the
+   Settings section made it tall enough to reach the chip on a short phone. */
+@media (max-width: 680px) {
+  body:not(.deck-on) #toolbar:not(.collapsed) {
+    max-height: calc(100vh - 92px);
+    max-height: calc(100dvh - 92px);
+  }
+}

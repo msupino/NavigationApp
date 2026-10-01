@@ -46,7 +46,7 @@ async function boot(page, layerCb) {
       constructor(...a) { super(...(a.length ? a : [fixed])); }
       static now() { return fixed; }
     };
-    for (const s of ['build', 'view', 'display', 'charts', 'export', 'print'])
+    for (const s of ['build', 'view', 'display', 'charts', 'export', 'print', 'settings'])
       try { localStorage.setItem('navaid.sec.' + s, '1'); } catch (e) {}
   });
   await page.route(/ims-data\/ims\/.*\.png/, r =>

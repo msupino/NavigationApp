@@ -8,7 +8,7 @@ const { enableAssistant } = require('./_assistant-on');
 async function boot(page) {
   await page.addInitScript(() => {
     try {
-      for (const sec of ['build', 'view', 'display', 'charts', 'export', 'print'])
+      for (const sec of ['build', 'view', 'display', 'charts', 'export', 'print', 'settings'])
         localStorage.setItem('navaid.sec.' + sec, '1');
     } catch (e) {}
   });  await page.goto('?lang=en&nogist');
@@ -175,7 +175,7 @@ test('a route file without the pins keeps the explicit speeds it names', async (
 test('a gist-shipped default carries the route too', async ({ page }) => {
   await page.addInitScript(() => {
     try {
-      for (const sec of ['build', 'view', 'display', 'charts', 'export', 'print'])
+      for (const sec of ['build', 'view', 'display', 'charts', 'export', 'print', 'settings'])
         localStorage.setItem('navaid.sec.' + sec, '1');
     } catch (e) {}
   });

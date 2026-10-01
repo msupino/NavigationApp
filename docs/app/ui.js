@@ -134,8 +134,86 @@ function setMode(mode) {
 // Menu section icons and the Save / My routes icons, from the shared line set (core.js
 // NAV_ICONS): one family with the map buttons, no emoji.
 document.querySelectorAll('[data-nav-icon]').forEach((el) => {
-  if (typeof navIconSvg === 'function') el.innerHTML = navIconSvg(el.dataset.navIcon, el.classList.contains('rf-icon') ? 18 : 20);
+  if (typeof navIconSvg !== 'function') return;
+  if (el.classList.contains('footer-link-icon') || el.classList.contains('follow-me-button-icon')) { setNavIcon(el, el.dataset.navIcon, 16); return; }
+  el.innerHTML = navIconSvg(el.dataset.navIcon, el.classList.contains('rf-icon') ? 18 : 20);
 });
+// Menu entries: a line icon in front, and the emoji that used to stand there taken off. The
+// strings keep their glyphs (other surfaces read them), so the menu strips what it shows; an
+// entry that rewrites its own text later (counts, Dark/Light mode) is re-dressed by the observer.
+const MENU_ICONS = {
+  'tool-add': 'addWp', 'tool-note': 'addNote', 'search-trigger': 'search', reverse: 'reverse',
+  undo: 'undo', clear: 'trash', fit: 'fit', 'tool-reset-all-markers': 'reset',
+  'tool-reset-all-wp-names': 'reset', 'tool-magnifier': 'magnifier',
+  'theme-toggle': (b) => (/☀|light|בהיר/i.test(b.textContent) ? 'sun' : 'moon'),
+  'route-templates': 'templates', 'freq-table': 'antenna', 'alt-pairs': 'altPairs',
+  'nav-log': 'form', charts: 'charts', 'sigwx-btn': 'globe', 'pwx-btn': 'wind',
+  'sigmet-btn': 'warn', 'airmet-btn': 'warn', 'route-check-btn': 'check', 'notam-list-btn': 'list',
+  'lsa-list-btn': 'list', 'mosaic-btn': 'mosaic', 'offline-tiles-btn': 'download',
+  load: 'upload', 'route-library': 'folder', share: 'link', fly: 'plane', 'follow-me-new': 'key',
+  'clear-store': 'trash', 'print-fit-screen': 'fit', 'print-fit': 'expand', print: 'print',
+};
+const LEADING_GLYPHS = /^[\s\u2190-\u2BFF\u2600-\u27BF\uFE0F\u200D\p{Extended_Pictographic}]+/u;
+let menuDressing = false;
+function dressMenuItem(btn) {
+  const spec = MENU_ICONS[btn.id];
+  if (!spec || typeof navIconSvg !== 'function') return;
+  const name = typeof spec === 'function' ? spec(btn) : spec;
+  menuDressing = true;
+  try {
+    // The first words of the entry, wherever they sit (a bare text node, or inside a label
+    // span next to a count badge): the glyph in front of them goes.
+    const walk = document.createTreeWalker(btn, NodeFilter.SHOW_TEXT, {
+      acceptNode: (n) => (n.parentElement && n.parentElement.closest('.mi-icon')
+        ? NodeFilter.FILTER_REJECT : NodeFilter.FILTER_ACCEPT),
+    });
+    for (let n = walk.nextNode(); n; n = walk.nextNode()) {
+      const v = n.nodeValue.replace(LEADING_GLYPHS, '');
+      if (v !== n.nodeValue) n.nodeValue = v;
+      if (v.trim()) break;
+    }
+    let ic = btn.querySelector(':scope > .mi-icon');
+    if (!ic) { ic = document.createElement('span'); ic.className = 'mi-icon'; ic.setAttribute('aria-hidden', 'true'); btn.prepend(ic); }
+    if (ic.dataset.icon !== name) { ic.innerHTML = navIconSvg(name, 16); ic.dataset.icon = name; }
+  } finally { menuDressing = false; }
+}
+function dressMenus() {
+  for (const id of Object.keys(MENU_ICONS)) {
+    const b = document.getElementById(id);
+    if (b && b.closest('#toolbar')) dressMenuItem(b);
+  }
+}
+window.dressMenus = dressMenus;
+dressMenus();
+if (typeof MutationObserver === 'function') {
+  const mo = new MutationObserver((list) => {
+    if (menuDressing) return;
+    const touched = new Set();
+    for (const m of list) {
+      const el = m.target.nodeType === 1 ? m.target : m.target.parentElement;
+      const b = el && el.closest && el.closest('button');
+      if (b && MENU_ICONS[b.id]) touched.add(b);
+    }
+    touched.forEach(dressMenuItem);
+  });
+  const tb = document.getElementById('toolbar');
+  if (tb) mo.observe(tb, { childList: true, characterData: true, subtree: true });
+}
+// The Export dropdown reads as one more entry: the same icon in front, no box around it.
+(function dressExportSelect() {
+  const sel = document.getElementById('export-select');
+  if (!sel || sel.parentElement.classList.contains('mi-select')) return;
+  const wrap = document.createElement('span');
+  wrap.className = 'mi-select';
+  sel.parentElement.insertBefore(wrap, sel);
+  const ic = document.createElement('span');
+  ic.className = 'mi-icon';
+  ic.setAttribute('aria-hidden', 'true');
+  if (typeof navIconSvg === 'function') ic.innerHTML = navIconSvg('download', 16);
+  wrap.append(ic, sel);
+  const first = sel.options[0];
+  if (first) first.textContent = first.textContent.replace(LEADING_GLYPHS, '');
+})();
 document.getElementById('tool-add').onclick = () => setMode('add');
 document.getElementById('tool-note').onclick = () => setMode('note');
 // Initial aria-pressed sync — both modes start off so each button is
@@ -4643,7 +4721,7 @@ function setFooterBtn(btn, label, icon) {
   const t = btn.querySelector('.footer-link-text');
   if (t) t.textContent = label; else btn.textContent = label;
   const ic = btn.querySelector('.footer-link-icon');
-  if (ic && icon) ic.textContent = icon;
+  if (ic && icon) setNavIcon(ic, icon);
 }
 const gpsBtn = document.getElementById('gps-record');
 if (gpsBtn) {
