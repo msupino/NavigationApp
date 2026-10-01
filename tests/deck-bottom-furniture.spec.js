@@ -76,16 +76,13 @@ test('the update notice and the overlay spinner clear it too', async ({ page }) 
   expect(bottoms.spinner).toBeLessThanOrEqual(top);
 });
 
-test('a toast sits in the middle, just above the aircraft, deck or no deck', async ({ page }) => {
-  for (const deck of ['0', '1']) {
-    await page.setViewportSize(PHONE);
-    await page.goto('?lang=en&nogist&deck=' + deck);
-    await page.waitForFunction(() => typeof showToast === 'function');
-    await page.evaluate(() => showToast('Airspace unavailable'));
-    const box = await page.locator('.toast.show').boundingBox();
-    // Centred across, and its bottom edge above the middle -- where a followed aircraft is.
-    expect(Math.abs(box.x + box.width / 2 - 390 / 2)).toBeLessThan(2);
-    expect(box.y + box.height).toBeLessThan(844 / 2);
-    expect(box.y).toBeGreaterThan(844 / 4);
-  }
+test('with the deck off, the toast keeps its place at the bottom', async ({ page }) => {
+  await page.setViewportSize(PHONE);
+  await page.goto('?lang=en&nogist&deck=0');
+  await page.waitForFunction(() => typeof showToast === 'function');
+  await page.evaluate(() => showToast('Airspace unavailable'));
+  const box = await page.locator('.toast.show').boundingBox();
+  // 24px off the bottom, as it was before the deck existed: the move is the deck's doing and
+  // must not follow the feature around when the gist withdraws it.
+  expect(Math.round(844 - (box.y + box.height))).toBe(24);
 });

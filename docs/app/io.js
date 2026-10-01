@@ -9064,11 +9064,10 @@ function toastReadMs(msg, warn) {
 }
 if (typeof window !== 'undefined') window.toastReadMs = toastReadMs;
 
-// Toasts share one stack in the middle of the screen, just above the aircraft (which sits at
-// the centre while following): each message has its own line, newest at the bottom. Reported:
-// two toasts at once were drawn on top of each other, and the bottom edge put them over the
-// coordinate readout. The same message again restarts its timer rather than adding a copy, and
-// at most TOAST_MAX lines show -- the oldest goes first.
+// Toasts share one stack at the bottom of the screen, growing upward: each message has its own
+// line, newest at the bottom. Reported: two toasts at once were drawn on top of each other.
+// The same message again restarts its timer rather than adding a copy, and at most TOAST_MAX
+// lines show -- the oldest goes first.
 const TOAST_MAX = 3;
 function toastStack() {
   let st = document.getElementById('toast-stack');
