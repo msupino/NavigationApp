@@ -121,6 +121,7 @@ function setMode(mode) {
   addBtn.setAttribute('aria-pressed', String(mode === 'add'));
   noteBtn.setAttribute('aria-pressed', String(mode === 'note'));
   document.getElementById('map').classList.toggle('add', mode === 'add' || mode === 'note');
+  if (typeof window.refreshEditColumn === 'function') window.refreshEditColumn();
   refreshModeChip();
   // A map tool needs the map. In mobile-column mode the menu stays open over it —
   // covering ~98% of the height, so points had to be placed through a narrow strip —
@@ -641,6 +642,14 @@ const MAP_ICONS = {
     + '<path d="M8.2 10.5V7.8a3.8 3.8 0 0 1 7.6 0v2.7"/>',
   lockOpen: '<rect x="5" y="10.5" width="14" height="10" rx="2.2" fill="currentColor" fill-opacity=".18"/>'
     + '<path d="M8.2 10.5V7.8a3.8 3.8 0 0 1 7.3-1.4"/>',
+  // The phone's edit column (top left), same family.
+  addWp: '<path d="M12 21.5s-6.5-5.9-6.5-11a6.5 6.5 0 0 1 13 0c0 5.1-6.5 11-6.5 11z"'
+    + ' fill="currentColor" fill-opacity=".18"/><path d="M12 7.3v6.4M8.8 10.5h6.4"/>',
+  addNote: '<path d="M5 4.5h14v10l-5 5H5z" fill="currentColor" fill-opacity=".18"/>'
+    + '<path d="M14 19.5v-5h5M8.5 8.5h7M8.5 12h4.5"/>',
+  undo: '<path d="M9 14.5 4 9.5l5-5"/><path d="M4 9.5h10a5.5 5.5 0 0 1 0 11h-3.5"/>',
+  clearMap: '<path d="M6.2 7.5 7.3 20h9.4l1.1-12.5" fill="currentColor" fill-opacity=".18"/>'
+    + '<path d="M4 7.5h16M9.5 7.5V4.5h5v3M10.3 11v5.5M13.7 11v5.5"/>',
 };
 function setMapIcon(btn, name) {
   if (!btn || btn.dataset.icon === name) return;
@@ -1002,9 +1011,64 @@ function refreshEditLockControl() {
           : (S.editLockOff || 'Points and labels can be dragged — tap to lock the route'));
   editLockBtn.title = label;
   editLockBtn.setAttribute('aria-label', label);
+  if (typeof window.refreshEditColumn === 'function') window.refreshEditColumn();
 }
 window.refreshEditLockControl = refreshEditLockControl;
 refreshEditLockControl();
+// --- edit column (phone, top left) -----------------------------------------------------
+// The Build menu's first four commands, one tap away while the map is up: on a phone the menu
+// covers the map, and adding a point meant opening it, choosing Add, and finding the map again.
+// Same order as the menu (Add waypoint, Add note, Undo, Clear map), same round buttons as the
+// in-flight column, on the other side of the screen from it. Each one presses the menu's own
+// control, so lock rules, the clear question and the undo stack stay in one place.
+const editColCtrl = L.control({ position: 'topleft' });
+editColCtrl.onAdd = function () {
+  const wrap = L.DomUtil.create('div', 'leaflet-control edit-col-ctrl');
+  const items = [
+    ['edit-col-add', 'addWp', 'tbAddWpTitle', 'tbAddWp'],
+    ['edit-col-note', 'addNote', 'tbAddNoteTitle', 'tbAddNote'],
+    ['edit-col-undo', 'undo', 'tbUndoTitle', 'tbUndo'],
+    ['edit-col-clear', 'clearMap', 'tbClearTitle', 'tbClear'],
+  ];
+  for (const [id, icon, titleKey, nameKey] of items) {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.id = id;
+    setMapIcon(b, icon);
+    const name = String(S[nameKey] || '').replace(/^[^\p{L}\p{N}]+/u, '').replace(/\s*\([^)]*\)\s*$/, '');
+    b.setAttribute('aria-label', name || S[titleKey] || id);
+    b.title = S[titleKey] || name;
+    wrap.appendChild(b);
+  }
+  L.DomEvent.disableClickPropagation(wrap);
+  L.DomEvent.disableScrollPropagation(wrap);
+  return wrap;
+};
+editColCtrl.addTo(map);
+document.getElementById('edit-col-add').onclick = () => setMode('add');
+document.getElementById('edit-col-note').onclick = () => setMode('note');
+document.getElementById('edit-col-undo').onclick = () => document.getElementById('undo').click();
+document.getElementById('edit-col-clear').onclick = () => document.getElementById('clear').click();
+// Mirrors of the menu's state: Add/Note lit while armed, Undo dim when there is nothing to
+// undo, Add/Note dim while the route is locked (they would only say so and refuse).
+function refreshEditColumn() {
+  const add = document.getElementById('edit-col-add');
+  if (!add) return;
+  const note = document.getElementById('edit-col-note');
+  const undoBtn = document.getElementById('edit-col-undo');
+  const menuUndo = document.getElementById('undo');
+  add.classList.toggle('edit-col-on', state.mode === 'add');
+  note.classList.toggle('edit-col-on', state.mode === 'note');
+  add.setAttribute('aria-pressed', String(state.mode === 'add'));
+  note.setAttribute('aria-pressed', String(state.mode === 'note'));
+  const locked = typeof routeEditLocked === 'function' && routeEditLocked();
+  add.classList.toggle('is-dim', locked);
+  note.classList.toggle('is-dim', locked);
+  undoBtn.disabled = !!(menuUndo && menuUndo.disabled);
+}
+window.refreshEditColumn = refreshEditColumn;
+refreshEditColumn();
+
 editLockBtn.onclick = () => {
   const wasLocked = routeEditLocked();
   if (editLockAutoNow()) {

@@ -1371,6 +1371,43 @@ body.theme-dark #map-crosshair::after {
 .leaflet-control.orient-ctrl button.orient-rotated,
 .leaflet-control.editlock-ctrl button.editlock-on { background: var(--navaid-mapbtn-warn); }
 
+/* The phone's edit column (ui.js, editColCtrl): Add waypoint, Add note, Undo, Clear map, top
+   left -- the other side from the in-flight column, in the same round dark-glass buttons.
+   Phone layout only; the desktop has the menu beside the map. Lit blue while a mode is armed,
+   dimmed (never hidden) when it cannot act. */
+.leaflet-control.edit-col-ctrl { display: none; }
+body.deck-on .leaflet-control.edit-col-ctrl {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  /* The map runs under the deck's top strip: start below it. */
+  margin-top: calc(var(--navaid-deck-strip-h, 46px) + 10px) !important;
+  margin-left: calc(10px + env(safe-area-inset-left, 0px)) !important;
+}
+.leaflet-control.edit-col-ctrl button {
+  width: 44px;
+  height: 44px;
+  display: flex; align-items: center; justify-content: center;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  color: var(--navaid-mapbtn-fg);
+  background: var(--navaid-mapbtn-bg);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.35);
+  cursor: pointer;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+.leaflet-control.edit-col-ctrl button svg { display: block; }
+.leaflet-control.edit-col-ctrl button.edit-col-on { background: var(--navaid-mapbtn-on); }
+.leaflet-control.edit-col-ctrl button:disabled,
+.leaflet-control.edit-col-ctrl button.is-dim { opacity: 0.45; }
+.leaflet-control.edit-col-ctrl button:focus-visible {
+  outline: 2px solid #ffffff;
+  outline-offset: 2px;
+  box-shadow: 0 0 0 4px var(--navaid-mapbtn-on);
+}
+
 /* rotate dial — Google-Maps-style compass needle by the zoom buttons */
 .rotate-ctrl {
   display: flex;
@@ -6113,12 +6150,26 @@ body.theme-light .overlay-loading {
   box-shadow: 0 6px 18px rgba(31, 37, 44, 0.18);
 }
 
-.toast {
+/* One stack for every toast, at the bottom where a toast has always been: it grows upward,
+   newest at the bottom, so messages never cover each other (see showToast). */
+#toast-stack {
   position: fixed;
-  bottom: 24px;
   left: 50%;
+  bottom: 24px;
   transform: translateX(-50%);
   z-index: 5000;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  width: max-content;
+  max-width: min(92vw, 520px);
+  pointer-events: none;
+}
+.toast {
+  max-width: 100%;
+  box-sizing: border-box;
+  text-align: center;
   padding: 8px 16px;
   background: rgba(20, 18, 18, 0.95);
   color: #e8e8e8;
@@ -8005,7 +8056,7 @@ body.deck-on .zulu-clock { display: none; }     /* the strip carries the Zulu ti
    deck instead: the deck's height (--navaid-deck-bar-h, 52px at the normal font size), plus
    the home-indicator inset, plus its own gap.
    Reported: in mobile mode a popup warning hides the bottom menu. */
-body.deck-on .toast { bottom: calc(var(--navaid-deck-bar-h, 52px) + 24px + env(safe-area-inset-bottom, 0px)); }
+body.deck-on #toast-stack { bottom: calc(var(--navaid-deck-bar-h, 52px) + 24px + env(safe-area-inset-bottom, 0px)); }
 body.deck-on .build-update-notice { bottom: calc(var(--navaid-deck-bar-h, 52px) + 18px + env(safe-area-inset-bottom, 0px)); }
 body.deck-on .overlay-loading { bottom: calc(var(--navaid-deck-bar-h, 52px) + 68px + env(safe-area-inset-bottom, 0px)); }
 /* The mode chip is the other way round -- it sits UNDER the deck (z 1600), so the deck hid
@@ -8219,6 +8270,9 @@ body:not(.deck-on) .leaflet-bottom { padding-bottom: env(safe-area-inset-bottom,
    downward and stays where it was put. */
 @media (max-width: 680px), (pointer: coarse) {
   .modal-back, .sim-overlay { align-items: flex-start; }
+  /* Except a question: a fixed-size yes/no or one-line answer does not grow, so it has no
+     reason to sit at the top -- it is asked in the middle, where the eye already is. */
+  .modal-back:has(> .follow-me-ask-modal) { align-items: center; }
 }
 
 /* The safety acknowledgement. Deliberately plain: it is read once, and the only thing on it

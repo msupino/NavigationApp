@@ -6659,6 +6659,8 @@ window.persistWithoutUndo = persistWithoutUndo;
 function refreshUndoButton() {
   const btn = document.getElementById('undo');
   if (btn) btn.disabled = undoStack.length === 0;
+  const col = document.getElementById('edit-col-undo');      // the phone's edit column
+  if (col) col.disabled = undoStack.length === 0;
 }
 
 function undo() {
@@ -9064,19 +9066,47 @@ function toastReadMs(msg, warn) {
 }
 if (typeof window !== 'undefined') window.toastReadMs = toastReadMs;
 
+// Toasts share one stack at the bottom of the screen, growing upward: each message has its own
+// line, newest at the bottom. Reported: two toasts at once were drawn on top of each other.
+// The same message again restarts its timer rather than adding a copy, and at most TOAST_MAX
+// lines show -- the oldest goes first.
+const TOAST_MAX = 3;
+function toastStack() {
+  let st = document.getElementById('toast-stack');
+  if (!st) {
+    st = document.createElement('div');
+    st.id = 'toast-stack';
+    st.setAttribute('role', 'status');
+    st.setAttribute('aria-live', 'polite');
+    document.body.appendChild(st);
+  }
+  return st;
+}
 function showToast(msg, opts) {
   const o = opts || {};
-  const el = document.createElement('div');
-  el.className = 'toast' + (o.blink ? ' toast-blink' : '');
-  el.textContent = msg;
-  document.body.appendChild(el);
-  void el.offsetWidth;                  // force reflow so the fade-in runs
-  el.classList.add('show');
+  const st = toastStack();
   const ms = Number.isFinite(o.ms) && o.ms > 0 ? o.ms : toastReadMs(msg, o.warn);
-  setTimeout(() => {
+  const text = String(msg);
+  const dismiss = (el) => {
+    clearTimeout(el._toastTimer);
     el.classList.remove('show');
     setTimeout(() => el.remove(), 250);
-  }, ms);
+  };
+  const same = [...st.children].find(t => t.textContent === text && t.classList.contains('show'));
+  if (same) {
+    clearTimeout(same._toastTimer);
+    same._toastTimer = setTimeout(() => dismiss(same), ms);
+    return;
+  }
+  const el = document.createElement('div');
+  el.className = 'toast' + (o.blink ? ' toast-blink' : '');
+  el.textContent = text;
+  st.appendChild(el);
+  const live = [...st.children].filter(t => t.classList.contains('show'));
+  while (live.length >= TOAST_MAX) dismiss(live.shift());
+  void el.offsetWidth;                  // force reflow so the fade-in runs
+  el.classList.add('show');
+  el._toastTimer = setTimeout(() => dismiss(el), ms);
 }
 
 // --- magnifying glass -------------------------------------------------
