@@ -1371,6 +1371,43 @@ body.theme-dark #map-crosshair::after {
 .leaflet-control.orient-ctrl button.orient-rotated,
 .leaflet-control.editlock-ctrl button.editlock-on { background: var(--navaid-mapbtn-warn); }
 
+/* The phone's edit column (ui.js, editColCtrl): Add waypoint, Add note, Undo, Clear map, top
+   left -- the other side from the in-flight column, in the same round dark-glass buttons.
+   Phone layout only; the desktop has the menu beside the map. Lit blue while a mode is armed,
+   dimmed (never hidden) when it cannot act. */
+.leaflet-control.edit-col-ctrl { display: none; }
+body.deck-on .leaflet-control.edit-col-ctrl {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  /* The map runs under the deck's top strip: start below it. */
+  margin-top: calc(var(--navaid-deck-strip-h, 46px) + 10px) !important;
+  margin-left: calc(10px + env(safe-area-inset-left, 0px)) !important;
+}
+.leaflet-control.edit-col-ctrl button {
+  width: 44px;
+  height: 44px;
+  display: flex; align-items: center; justify-content: center;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  color: var(--navaid-mapbtn-fg);
+  background: var(--navaid-mapbtn-bg);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.35);
+  cursor: pointer;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+.leaflet-control.edit-col-ctrl button svg { display: block; }
+.leaflet-control.edit-col-ctrl button.edit-col-on { background: var(--navaid-mapbtn-on); }
+.leaflet-control.edit-col-ctrl button:disabled,
+.leaflet-control.edit-col-ctrl button.is-dim { opacity: 0.45; }
+.leaflet-control.edit-col-ctrl button:focus-visible {
+  outline: 2px solid #ffffff;
+  outline-offset: 2px;
+  box-shadow: 0 0 0 4px var(--navaid-mapbtn-on);
+}
+
 /* rotate dial — Google-Maps-style compass needle by the zoom buttons */
 .rotate-ctrl {
   display: flex;
