@@ -185,6 +185,41 @@ function dressMenus() {
 }
 window.dressMenus = dressMenus;
 dressMenus();
+// The waypoint panel's actions and the dialogs' action rows: same idea, keyed by the glyph the
+// label starts with (these are built afresh each time, by many branches).
+const GLYPH_ICONS = { '🗑': 'trash', '↻': 'reset', '🔥': 'hotspot', '⏱': 'timer', '📡': 'antenna',
+  '✈': 'plane', '+': 'plus', '📍': 'location', '⇄': 'reverse', '🧭': 'compass', '🔑': 'key',
+  '📋': 'list', '🔗': 'link', '💾': 'save', '📂': 'folder', '⬇': 'download', '⬆': 'upload', '🖨': 'print' };
+function dressByGlyph(btn) {
+  if (!btn || btn.querySelector(':scope > .mi-icon') || typeof navIconSvg !== 'function') return;
+  const t = (btn.textContent || '').trim();
+  const g = Object.keys(GLYPH_ICONS).find(k => t.startsWith(k));
+  if (!g) return;
+  MENU_ICONS[btn.id || (btn.id = 'gi-' + Math.random().toString(36).slice(2, 8))] = GLYPH_ICONS[g];
+  dressMenuItem(btn);
+}
+window.dressByGlyph = dressByGlyph;
+if (typeof MutationObserver === 'function') {
+  // A row's visible label names its field for a screen reader too (the panel's rows were
+  // built as label + input side by side, unconnected).
+  let rowSeq = 0;
+  const linkRowLabels = (root) => root.querySelectorAll && root.querySelectorAll('.row > label:not([for])').forEach((lab) => {
+    const f = lab.nextElementSibling;
+    if (!f || !/^(INPUT|SELECT|TEXTAREA)$/.test(f.tagName) || f.getAttribute('aria-label')) return;
+    if (!f.id) f.id = 'row-field-' + (++rowSeq);
+    lab.htmlFor = f.id;
+  });
+  const scan = (root) => {
+    if (!root.querySelectorAll) return;
+    root.querySelectorAll('.insp-btn, .modal-btns button').forEach(dressByGlyph);
+    linkRowLabels(root);
+  };
+  const ins = document.getElementById('insp-body');
+  if (ins) new MutationObserver(() => scan(ins)).observe(ins, { childList: true, subtree: true });
+  new MutationObserver((list) => {
+    for (const m of list) m.addedNodes.forEach((n) => { if (n.nodeType === 1) scan(n); });
+  }).observe(document.body, { childList: true });
+}
 if (typeof MutationObserver === 'function') {
   const mo = new MutationObserver((list) => {
     if (menuDressing) return;
@@ -211,8 +246,8 @@ if (typeof MutationObserver === 'function') {
   ic.setAttribute('aria-hidden', 'true');
   if (typeof navIconSvg === 'function') ic.innerHTML = navIconSvg('download', 16);
   wrap.append(ic, sel);
-  const first = sel.options[0];
-  if (first) first.textContent = first.textContent.replace(LEADING_GLYPHS, '');
+  // The list too: each format reads by its name, without the glyph in front.
+  for (const o of sel.options) o.textContent = o.textContent.replace(LEADING_GLYPHS, '');
 })();
 document.getElementById('tool-add').onclick = () => setMode('add');
 document.getElementById('tool-note').onclick = () => setMode('note');

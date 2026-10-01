@@ -1642,7 +1642,8 @@ window.S = Object.assign({
     return 'Can\'t load "' + name + '" on the ' + current + ' layer. Switch to the ' +
       need + ' layer, load the route, then change layer after if required.';
   },
-  deleteWp: '🗑 Delete waypoint (D)',                  // inspector button
+  deleteWp: '🗑 Delete waypoint (D)',
+  wpDeletedToast: 'Waypoint deleted · Undo brings it back',                  // inspector button
   inspHotspotSet: '🔥 Mark as hotspot',
   inspHotspotClear: '🔥 Clear hotspot',
   inspHotspotTitle: 'Highlight this route waypoint as a hotspot on the map',
@@ -1934,6 +1935,7 @@ window.S = Object.assign({
   fpClose: 'Close',
   fpPrint: 'Print',
   fpCsv: 'CSV',
+  fpNameAria: 'Waypoint name',
   fpCsvTitle: 'Export this flight plan as CSV',
   tbNavLog: 'Nav log (PDF)',
   tbNavLogShort: 'PDF',
@@ -3180,6 +3182,9 @@ const NAV_ICONS = {
   key: '<circle cx="15" cy="9" r="4"/><path d="M12.2 11.8 4 20M7 17l2 2M9 15l2 2"/>',
   expand: '<path d="M14 4h6v6M10 20H4v-6M20 4l-7 7M4 20l7-7"/>',
   broadcast: '<circle cx="12" cy="12" r="2.3" fill="currentColor" stroke="none"/><path d="M8.3 8.3a5.2 5.2 0 0 0 0 7.4M15.7 8.3a5.2 5.2 0 0 1 0 7.4M5.3 5.3a9.5 9.5 0 0 0 0 13.4M18.7 5.3a9.5 9.5 0 0 1 0 13.4"/>',
+  hotspot: '<circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="3.5" fill="currentColor" fill-opacity=".35"/>',
+  timer: '<circle cx="12" cy="13.5" r="7.5"/><path d="M12 13.5V9.5M9.5 3h5M12 3v3M18.5 6.5l1.5-1.5"/>',
+  plus: '<path d="M12 5v14M5 12h14"/>',
   stop: '<rect x="6.5" y="6.5" width="11" height="11" rx="2" fill="currentColor" stroke="none"/>',
   language: '<circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.6 2.6 3.8 5.6 3.8 9s-1.2 6.4-3.8 9c-2.6-2.6-3.8-5.6-3.8-9S9.4 5.6 12 3z"/>',
 };

@@ -63,15 +63,16 @@ test('the plan opens inside the chart space, not under the deck', async ({ page 
 
 test('a remembered position is honoured in the frame it was stored in', async ({ page }) => {
   await boot(page);
-  // Stored from a drag: 40 px down from the top of the chart space.
+  // Stored from a drag: 24 px down from the top of the chart space. (Small enough that the
+  // filled plan still fits below it; the strip it must not be confused with is 56 px.)
   await page.evaluate(() => {
     const key = typeof navLangPosKey === 'function' ? navLangPosKey('navaid.fpPos') : 'navaid.fpPos';
-    localStorage.setItem(key, JSON.stringify({ x: 8, y: 40 }));
+    localStorage.setItem(key, JSON.stringify({ x: 8, y: 24 }));
   });
   await openPlan(page);
   const g = await geometry(page);
-  // 40 in the backdrop's coordinates, not 40 in the window's -- the difference is the strip.
-  expect(Math.abs(g.box.top - (g.frame.top + 40))).toBeLessThan(2);
+  // 24 in the backdrop's coordinates, not 24 in the window's -- the difference is the strip.
+  expect(Math.abs(g.box.top - (g.frame.top + 24))).toBeLessThan(2);
 });
 
 test('a panel comes back where it was dragged, not a strip lower', async ({ page }) => {

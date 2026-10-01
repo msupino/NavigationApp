@@ -271,6 +271,7 @@ window.S = {
       need + ', טען את המסלול, ושנה שכבה לאחר מכן במידת הצורך.';
   },
   deleteWp: '🗑 מחק ציון דרך (D)',                      // כפתור באינספקטור
+  wpDeletedToast: 'ציון הדרך נמחק · ביטול מחזיר אותו',
   inspHotspotSet: '🔥 סמן כנקודה חמה',
   inspHotspotClear: '🔥 בטל נקודה חמה',
   inspHotspotTitle: 'הדגש את ציון הדרך במסלול כנקודה חמה במפה',
@@ -565,6 +566,7 @@ window.S = {
   fpPrint: 'הדפס',
   fpCsv: 'CSV',
   fpCsvTitle: 'ייצוא תכנית הטיסה לקובץ CSV',
+  fpNameAria: 'שם הנקודה',
   tbNavLog: 'יומן ניווט (PDF)',
   tbNavLogShort: 'PDF',
   tbFplShort: '\u2708 הגשה',

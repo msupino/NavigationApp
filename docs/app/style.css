@@ -2320,6 +2320,14 @@ body.theme-light .row-reset:hover { color: #111; background: #e0e0e0; }
   margin-top: 4px;
 }
 .insp-btn:hover { background: #c44141; }
+/* Delete: last in the panel, a gap above it, and outlined rather than a solid alarm slab --
+   it still reads as danger (red), but it no longer outweighs every other action. */
+.insp-btn.insp-btn-danger {
+  margin-top: 14px; color: #ff8a8a; background: transparent; border: 1.5px solid #c44141;
+}
+.insp-btn.insp-btn-danger:hover { background: rgba(196, 65, 65, .14); }
+body.theme-light .insp-btn.insp-btn-danger { color: #b02a2a; border-color: #c44141; background: transparent; }
+body.theme-light .insp-btn.insp-btn-danger:hover { background: rgba(196, 65, 65, .08); }
 /* Only genuinely destructive actions get the alarm red. Everything else (add a
    frequency change, reset a name, use as reference) is a normal action and was
    reading as dangerous because all three shared one style. */
@@ -3349,6 +3357,12 @@ html[dir="rtl"] .modal-back.export-place > .modal.export-floating { left: auto; 
   cursor: pointer;
 }
 .modal-btns button:hover { background: #2f7fee; }
+/* A secondary action beside the one main action: outlined in the accent, so the row has one
+   filled button to find (ui-ux: one primary action per screen). */
+.modal-btns button.btn-secondary { background: transparent; color: #8ab8ff; box-shadow: inset 0 0 0 1.5px #3d7fe0; }
+.modal-btns button.btn-secondary:hover { background: rgba(61, 127, 224, .14); }
+body.theme-light .modal-btns button.btn-secondary { color: #1d5fc0; box-shadow: inset 0 0 0 1.5px #1d6fe0; background: transparent; }
+body.theme-light .modal-btns button.btn-secondary:hover { background: rgba(29, 111, 224, .08); }
 .modal-btns .modal-cancel { background: #443f3f; }
 .modal-btns .modal-cancel:hover { background: #555050; }
 
@@ -8863,4 +8877,124 @@ body.theme-light #toolbar .tb-section-body .mi-select > #export-select:hover { b
     max-height: calc(100vh - 92px);
     max-height: calc(100dvh - 92px);
   }
+}
+
+/* Phone: the right-hand column is one family. The heading box, the rotation dial and the zoom
+   buttons were white squares (in light mode) under the round dark-glass in-flight buttons;
+   they take the same ground, shape and shadow, in both themes. */
+body.deck-on #rotate-hdg {
+  color: var(--navaid-mapbtn-fg); background: var(--navaid-mapbtn-bg);
+  border: none; border-radius: 22px; box-shadow: 0 2px 6px rgba(0, 0, 0, .35);
+  font: 700 15px/1 ui-monospace, monospace; min-height: 36px; min-width: 56px;
+}
+body.deck-on #rotate-dial {
+  background: var(--navaid-mapbtn-bg); border: none; box-shadow: 0 2px 6px rgba(0, 0, 0, .35);
+}
+body.deck-on #rotate-needle::after { border-top-color: #cfd6de; }
+body.deck-on .leaflet-control-zoom {
+  border: none !important; border-radius: 22px; overflow: hidden; box-shadow: 0 2px 6px rgba(0, 0, 0, .35);
+}
+body.deck-on .leaflet-control-zoom a {
+  background: var(--navaid-mapbtn-bg); color: var(--navaid-mapbtn-fg); border-bottom-color: rgba(255, 255, 255, .14);
+}
+body.deck-on .leaflet-control-zoom a:hover { background: rgba(40, 50, 62, .9); }
+body.deck-on .zoom-readout {
+  color: var(--navaid-mapbtn-fg); background: var(--navaid-mapbtn-bg); border-color: transparent;
+}
+
+/* Desktop menubar: the sections fall into groups -- edit · map (Map, Display) · plan
+   (Flight plan, Charts, Extra layers) · share (Export/import, Print) · Settings -- and a hairline
+   between groups says so, instead of eleven equal labels in one run. */
+@media (min-width: 681px) and (hover: hover) and (pointer: fine) {
+  body:not(.deck-on) #toolbar .tb-section[data-sec="view"],
+  body:not(.deck-on) #toolbar .tb-section[data-sec="plan"],
+  body:not(.deck-on) #toolbar .tb-section[data-sec="export"],
+  body:not(.deck-on) #toolbar .tb-section[data-sec="settings"] {
+    position: relative; margin-inline-start: 7px;
+  }
+  body:not(.deck-on) #toolbar .tb-section[data-sec="view"]::before,
+  body:not(.deck-on) #toolbar .tb-section[data-sec="plan"]::before,
+  body:not(.deck-on) #toolbar .tb-section[data-sec="export"]::before,
+  body:not(.deck-on) #toolbar .tb-section[data-sec="settings"]::before {
+    content: ''; position: absolute; inset-inline-start: -4px; top: 8px; bottom: 8px;
+    width: 1px; background: currentColor; opacity: .18; pointer-events: none;
+  }
+}
+
+/* Icons in the waypoint panel's actions and the dialogs' action rows (ui.js dressByGlyph). */
+.insp-btn .mi-icon, .modal-btns .mi-icon { display: inline-grid; place-items: center; line-height: 0; vertical-align: -3px; margin-inline-end: 6px; }
+.insp-btn .mi-icon svg, .modal-btns .mi-icon svg { display: block; }
+
+/* Contrast: the light theme's plan headers and V/S label, and the dark theme's row ✕, fell
+   under 4.5:1. */
+body.theme-light .flight-table th { color: #36404b; }
+body.theme-light .fp-profile-label { color: #4a5562; }
+.fp-del button { color: #e07878; }
+
+/* Phone: touch targets of at least 44px on what the review measured under it. */
+body.deck-on #rotate-hdg { min-height: 44px; }
+body.deck-on .deck-strip-commfail { min-height: 44px; }
+body.deck-on .map-legend .map-legend-title { min-height: 44px; display: flex; align-items: center; }
+body.deck-on .deck-sheet-grip { min-height: 44px; }
+body.deck-on #insp-close,
+body.deck-on #insp-zoom-in,
+body.deck-on #insp-zoom-out { min-width: 44px; min-height: 44px; }
+body.deck-on #inspector input:not([type=checkbox]):not([type=range]),
+body.deck-on #inspector select { min-height: 44px; }
+body.deck-on .route-file-btn { min-height: 44px; }
+/* The plan's text fields: 36px, not 44. They are fields in a dense form (the web target size,
+   WCAG 2.2, is 24px); at 44 the plan outgrew the phone's chart space and could no longer sit
+   where it was put. Its buttons stay at 44. 16px text keeps iOS from zooming on focus. */
+body.deck-on .fp-aircraft input,
+body.deck-on .fp-aircraft select,
+body.deck-on #fp-vor-select,
+body.deck-on .fp-profile-vs-input { min-height: 36px; }
+
+/* Light theme: the panel's × and the plan's row ✕ under 4.5:1. */
+body.theme-light #insp-close { color: #4a5562; }
+body.theme-light .fp-del button { color: #b02a2a; }
+
+/* Phone: the rest of what measured under 44px. */
+body.deck-on .map-legend .map-legend-title { min-width: 44px; }
+body.deck-on .insp-btn { min-height: 44px; }
+body.deck-on .satellite-expand-hint { min-height: 44px; display: inline-flex; align-items: center; }
+body.deck-on #toolbar .route-file-btn,
+body.deck-on .route-file-row .route-file-btn,
+body.deck-on .fp-route-file-row .route-file-btn { min-height: 44px; }
+body.deck-on .fp-columns-all { min-height: 36px; }
+body.deck-on .fp-del button { min-width: 40px; min-height: 36px; }
+body.deck-on .modal-btns button { min-width: 44px; min-height: 44px; }
+
+/* Desktop: the web minimum of 24px (WCAG 2.2 target size). */
+@media (min-width: 681px) and (hover: hover) and (pointer: fine) {
+  .map-legend .map-legend-title { min-height: 24px; display: flex; align-items: center; }
+  #rotate-hdg { min-height: 24px; }
+  #map-time-now { min-height: 24px; }
+  #toolbar .slider-reset { min-width: 24px; min-height: 24px; }
+  #toolbar input[type="color"] { min-height: 24px; }
+  #insp-title { min-height: 24px; }
+  #insp-zoom-in, #insp-zoom-out { min-width: 24px; min-height: 24px; }
+  .satellite-expand-hint { min-height: 24px; display: inline-flex; align-items: center; }
+  .fp-aircraft input, .fp-aircraft select, #fp-vor-select, .fp-profile-vs-input,
+  .flight-table input { min-height: 24px; }
+}
+
+body.deck-on .modal-close-x { min-width: 44px; min-height: 44px; }
+body.deck-on .satellite-expand-hint { min-width: 44px; justify-content: center; }
+@media (min-width: 681px) and (hover: hover) and (pointer: fine) { .fp-del button { min-width: 24px; min-height: 24px; } }
+
+/* The panel's sticky action footer: a solid ground in the app's own theme (it keyed off the
+   system dark setting, so in the app's dark mode it had none and the rows showed through the
+   gaps between the buttons). A short fade above keeps the edge soft. */
+body.theme-dark #insp-body .insp-actions {
+  background: linear-gradient(to bottom, rgba(20, 18, 18, 0), rgb(20, 18, 18) 10px);
+}
+body.theme-light #insp-body .insp-actions {
+  background: linear-gradient(to bottom, rgba(250, 252, 255, 0), rgb(250, 252, 255) 10px);
+}
+
+/* The plan's action row on a narrow screen: the short names (FPL, PDF) already carry it, and
+   the File button's drawn icon was the few pixels that wrapped the row of four. */
+@media (max-width: 680px) {
+  .flight-plan .modal-btns .mi-icon { display: none; }
 }

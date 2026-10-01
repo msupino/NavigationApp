@@ -36,8 +36,9 @@ const style = (page, sel) => page.evaluate((s) => {
 test('every floating control speaks one chrome language', async ({ page }) => {
   await boot(page);
   // The in-flight buttons (voice, orientation, follow, follow me, edit lock) are round
-  // dark-glass buttons by design and are checked as their own family below.
-  const surfaces = ['.coord-readout', '.zoom-readout', '.leaflet-control-zoom',
+  // dark-glass buttons by design and are checked as their own family below; so is the zoom
+  // bar, which stands in the same right-hand column as them.
+  const surfaces = ['.coord-readout', '.zoom-readout',
     '.map-time-now', '.map-time-read'];
   const got = [];
   for (const sel of surfaces) got.push([sel, await style(page, sel)]);
@@ -58,6 +59,10 @@ test('the in-flight buttons are one family: round, same shadow', async ({ page }
   expect(new Set(got.map(([, s]) => s.radius)).size, JSON.stringify(got)).toBe(1);
   expect(got[0][1].radius).toBe('50%');
   expect(new Set(got.map(([, s]) => s.shadow)).size, JSON.stringify(got)).toBe(1);
+  // The zoom bar in the same column: a pill of the same glass, casting the same shadow.
+  const zoom = await style(page, '.leaflet-control-zoom');
+  expect(parseFloat(zoom.radius)).toBeGreaterThanOrEqual(20);
+  expect(zoom.shadow).toBe(got[0][1].shadow);
 });
 
 test('nothing on the chart is smaller than a thumb', async ({ page }) => {

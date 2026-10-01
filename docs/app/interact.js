@@ -3369,14 +3369,16 @@ function appendAirfieldWeather(body, af) {
 // destructive ones keep the alarm red.
 // The order a pilot reads them in, not the order the panel happens to build them in.
 // Anything not named here keeps its relative position after these.
+// Delete is not in this list: a destructive action comes last, apart from the rest (ui-ux:
+// separate the dangerous action; it used to be the first and loudest button in the panel).
 const INSPECTOR_ACTION_ORDER = [
-  'insp-del-wp-btn',        // delete the point
   'insp-reset-name-btn',    // put its name back
   'add-freq-change-btn',    // (class) add a frequency change here
   'insp-hotspot-btn',       // mark it as a hotspot
   'insp-turn-btn',          // mark the turn
 ];
 function inspectorActionRank(el) {
+  if (el.classList.contains('insp-btn-danger')) return INSPECTOR_ACTION_ORDER.length + 1;
   const i = INSPECTOR_ACTION_ORDER.findIndex(k => el.id === k || el.classList.contains(k));
   return i === -1 ? INSPECTOR_ACTION_ORDER.length : i;
 }
@@ -3805,7 +3807,7 @@ function showInspector() {
       }
     }
     const del = document.createElement('button');
-    del.className = 'insp-btn';
+    del.className = 'insp-btn insp-btn-danger';
     del.textContent = note.cc ? (S.deleteFreqChange || S.deleteNote) : S.deleteNote;
     del.onclick = () => {
       if (note.cc && typeof suppressCommChange === 'function') suppressCommChange(note.cc);
@@ -4143,13 +4145,15 @@ function showInspector() {
     };
     body.appendChild(hotspotBtn);
     const del = document.createElement('button');
-    del.className = 'insp-btn';
+    del.className = 'insp-btn insp-btn-danger';
     del.id = 'insp-del-wp-btn';
     del.textContent = S.deleteWp;
     del.onclick = () => {
       deleteWaypoint(state.selected.index);
       state.selected = null;
       draw(); showInspector();
+      // Gone at once, as asked -- and how to have it back, one press away.
+      if (typeof showToast === 'function') showToast(S.wpDeletedToast || 'Waypoint deleted · Undo brings it back');
     };
     body.appendChild(del);
     // Waypoint-name reset — snaps the stored name back to
@@ -4812,7 +4816,7 @@ function appendFreqEdit(body, note, editOptions) {
   }
   if (editOptions && editOptions.deleteButton) {
     const del = document.createElement('button');
-    del.className = 'insp-btn';
+    del.className = 'insp-btn insp-btn-danger';
     del.textContent = S.deleteFreqChange || S.deleteNote;
     del.onclick = () => {
       if (note.cc && isKnownCommChangeKey(waypointFreqChangeKey({ name: note.cc })) &&
@@ -6182,3 +6186,4 @@ function fitToScreen() {
   }
   fitView();
 }
+
