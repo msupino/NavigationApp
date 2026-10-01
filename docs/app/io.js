@@ -6659,6 +6659,8 @@ window.persistWithoutUndo = persistWithoutUndo;
 function refreshUndoButton() {
   const btn = document.getElementById('undo');
   if (btn) btn.disabled = undoStack.length === 0;
+  const col = document.getElementById('edit-col-undo');      // the phone's edit column
+  if (col) col.disabled = undoStack.length === 0;
 }
 
 function undo() {
