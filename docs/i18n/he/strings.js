@@ -1218,6 +1218,8 @@ window.S = {
   airfieldMinimalLighting: 'תאורה מינימלית',
   legendLsaDaily: 'בועה תמידית',
   legendLsaWeekend: 'בועת סופ״ש',
+  legendParachute: 'אזור הצנחה',
+  legendParaglider: 'המראת גלשני רחיפה',
   legendAtcChange: 'שינוי תדר',
   commChangeBadge: '📡 נקודת שינוי תדר',
   commChangeNoteText: 'שינוי תדר',

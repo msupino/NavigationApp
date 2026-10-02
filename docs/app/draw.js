@@ -1432,6 +1432,7 @@ function draw() {
   if (window.showMsa) { drawTerrainTint(); drawTerrainWarnings(); }
   drawAirspace();               // AIP airspace (P/R/TMA) under everything else
   drawAreas();                  // airspace bubbles under the waypoints
+  if (showLsaBubbles) drawActivitySites();   // drop zones and launch points, with the bubbles
   // Review overlay (?graphlegs=1): under the waypoints and the route, so it never hides
   // what a pilot is actually looking at even with every segment drawn.
   if (typeof drawGraphLegs === 'function') drawGraphLegs();
@@ -2566,7 +2567,7 @@ const _CVFR_DATA_URL = {
   // version carrier: _verOf() reads its ?v= to cache-bust data/<layer>-areas.json.
   // Bump ?v= whenever an *-areas.json changes. The cvfr fallback fetch never
   // runs (loadAreas skips the network on the cvfr prefix).
-  'areas': () => 'data/cvfr-areas.json?v=5',
+  'areas': () => 'data/cvfr-areas.json?v=6',
   // route-templates is a single shared file; templates self-tag with a `layer`.
 };
 function _verOf(url) { const m = /\?v=([^&]+)/.exec(url || ''); return m ? m[1] : '1'; }
@@ -2872,6 +2873,9 @@ window.drawAirspace = drawAirspace;
 // waypoints. Layer-aware via fetchLayerData('areas'): the Low Alt layer has
 // data/lsa-areas.json; layers without an areas file simply draw nothing.
 var areas = null;            // null = not loaded; [] or populated = loaded
+// The LSA chart's activity sites: parachute drop zones and hang-glider / paraglider launch
+// points (lsa-areas.json -> activity). Loaded with the bubbles, drawn with them.
+var activitySites = [];
 async function loadAreas() {
   if (areas !== null) return areas;
   const gen = _layerGen;
@@ -2900,6 +2904,9 @@ async function loadAreas() {
         aliases: Array.isArray(a.aliases) ? a.aliases : [],
         active: a.active === 'weekend' ? 'weekend' : 'always' }));
     if (gen !== _layerGen) return loadAreas();   // superseded — don't stomp; re-enter (joins via memo)
+    activitySites = (d && Array.isArray(d.activity) ? d.activity : [])
+      .filter(x => x && Number.isFinite(x.lat) && Number.isFinite(x.lng) &&
+        (x.kind === 'parachute' || x.kind === 'paraglider'));
     areas = mapped;
     _notamBubbleGen++;                         // invalidate per-NOTAM bubble-match cache
   } catch (e) {
@@ -2936,6 +2943,32 @@ function areaCentroid(coords) {
     return { lat: s[0] / coords.length, lng: s[1] / coords.length };
   }
   return { lat: cy / (3 * a2), lng: cx / (3 * a2) };
+}
+// The chart's own glyphs, simplified: a canopy with rigging lines; the drop zone also gets its
+// dotted ring. Sized with the other chart symbols (symbolZoomScale).
+function drawActivitySymbol(ctx, x, y, kind, r) {
+  ctx.save();
+  const col = kind === 'parachute' ? '#1f5f99' : '#3fb3e6';
+  if (kind === 'parachute') {
+    ctx.setLineDash([1.5, 2.5]);
+    ctx.strokeStyle = col; ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.arc(x, y, r * 2.1, 0, Math.PI * 2); ctx.stroke();
+    ctx.setLineDash([]);
+  }
+  ctx.fillStyle = col; ctx.strokeStyle = '#1b2430'; ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.arc(x, y - r * 0.15, r, Math.PI, 0); ctx.closePath(); ctx.fill();
+  ctx.beginPath();
+  for (const dx of [-1, -0.5, 0, 0.5, 1]) { ctx.moveTo(x + dx * r, y - r * 0.15); ctx.lineTo(x, y + r * 1.15); }
+  ctx.stroke();
+  ctx.restore();
+}
+function drawActivitySites() {
+  if (!activitySites.length || !layerShownAtZoom('activityMinZoom')) return;
+  const r = tune('activitySymbolPx') * symbolZoomScale();
+  for (const a of activitySites) {
+    const s = proj(a);
+    drawActivitySymbol(octx, s.x, s.y, a.kind, r);
+  }
 }
 function drawAreas() {
   if (!showLsaBubbles) return;                    // "Show LSA bubbles" toggle (Extra layers)
@@ -6111,6 +6144,9 @@ function drawInfo() {
     tune('commChangeDot') !== false && commChangeMap && Object.keys(commChangeMap).length) ? '' : 'none';
   const lsaOn = lsaSet && typeof showLsaBubbles !== 'undefined' && showLsaBubbles;
   for (const row of document.querySelectorAll('.legend-row-lsa')) row.style.display = lsaOn ? '' : 'none';
+  for (const row of document.querySelectorAll('.legend-row-activity')) {
+    row.style.display = (lsaOn && activitySites.some(x => x.kind === row.dataset.kind)) ? '' : 'none';
+  }
   // The stats block that used to live at the bottom of the mobile menu is gone: the
   // legend card now carries the same totals at every width, and on a phone the two
   // were on screen together saying the same thing twice.

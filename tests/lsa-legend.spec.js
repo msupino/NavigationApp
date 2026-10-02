@@ -98,3 +98,22 @@ test('the airfield panel says what kind of field the chart shows, and its runway
   expect(await rows('LLMG')).toContain('Airstrip');
   expect(await rows('GVULT')).toContain('Agricultural strip');
 });
+
+// Activity sites from the legend: parachute drop zones and hang-glider / paraglider launches.
+test('the LSA set draws its drop zones and launch points, and the legend names them', async ({ page }) => {
+  await lowAlt(page);
+  await page.evaluate(async () => { areas = null; await loadAreas(); map.setZoom(10, { animate: false }); draw(); });
+  const got = await page.evaluate(() => {
+    let n = 0;
+    const orig = window.drawActivitySymbol;
+    // eslint-disable-next-line no-global-assign
+    drawActivitySymbol = (...a) => { n++; return orig(...a); };
+    try { drawActivitySites(); } finally { drawActivitySymbol = orig; }
+    const kinds = activitySites.reduce((m, x) => (m[x.kind] = (m[x.kind] || 0) + 1, m), {});
+    const shown = [...document.querySelectorAll('.legend-row-activity')].map(r => getComputedStyle(r).display !== 'none');
+    return { n, kinds, shown };
+  });
+  expect(got.kinds).toEqual({ parachute: 6, paraglider: 24 });
+  expect(got.n).toBe(30);
+  expect(got.shown).toEqual([true, true]);
+});

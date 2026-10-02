@@ -504,6 +504,10 @@ function paintLegendPoints() {
   };
   paint('canvas.legend-lsa-daily', bubble(false));
   paint('canvas.legend-lsa-weekend', bubble(true));
+  if (typeof drawActivitySymbol === 'function') {
+    paint('canvas.legend-parachute', ctx => drawActivitySymbol(ctx, box / 2, box / 2 - 1, 'parachute', 3.6));
+    paint('canvas.legend-paraglider', ctx => drawActivitySymbol(ctx, box / 2, box / 2 - 2, 'paraglider', 6));
+  }
 }
 paintLegendPoints();
 
