@@ -58,3 +58,25 @@ test('the LSA legend rows -- frequency change, the two bubble classes -- show on
   await page.evaluate(async () => { commChangeMap = null; await loadCommChange(); draw(); });
   expect(await rows()).toEqual([false, false, false]);   // the card keeps its usual size elsewhere
 });
+
+// Route types, from the chart line colour: green weekday, brown weekend (Fri/Sat), magenta
+// special; the dashed variant is "by controller approval only" (onAtcApproval).
+test('a brown weekend route is closed to a weekday plan and open on a Saturday', async ({ page }) => {
+  await page.goto('?lang=en&nogist');
+  await page.waitForFunction(() => typeof fplEdgeOpen === 'function');
+  const got = await page.evaluate(async () => {
+    const g = await (await fetch('data/lsa-route-graph.json')).json();
+    const all = Object.values(g.edges).flat();
+    const wk = all.find(e => e.chartRouteType === 'weekend' && !e.closedHint && !e.weekdayClosedHint
+      && !Number.isFinite(e.openFromHourHint));
+    const tue = new Date(2026, 9, 6, 10), sat = new Date(2026, 9, 10, 10);
+    return { kinds: [...new Set(all.map(e => e.chartRouteType).filter(Boolean))].sort(),
+      approval: all.filter(e => e.onAtcApproval).length,
+      tue: fplEdgeOpen(wk, tue), sat: fplEdgeOpen(wk, sat), undated: fplEdgeOpen(wk, null) };
+  });
+  expect(got.kinds).toEqual(['special', 'weekday', 'weekend']);
+  expect(got.approval).toBeGreaterThan(0);
+  expect(got.tue).toBe(false);
+  expect(got.sat).toBe(true);
+  expect(got.undated).toBe(true);
+});

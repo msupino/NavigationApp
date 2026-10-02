@@ -2036,6 +2036,8 @@ function fplEdgeOpen(e, when) {
   const wd = when.getDay();                       // 0=Sun .. 6=Sat, local
   const weekend = (wd === 5 || wd === 6);
   if (weekend) return true;
+  // The LSA chart's brown "weekend route" (נתיב טיסה סוף שבוע): Fri/Sat only.
+  if (e.chartRouteType === 'weekend') return false;
   if (e.weekdayClosedHint) return false;
   if (Number.isFinite(e.openFromHourHint)) {
     const hour = when.getHours() + when.getMinutes() / 60;
