@@ -1668,12 +1668,22 @@ legendCtrl.addTo(map);
 
   function viewportRect() {
     const vv = window.visualViewport;
-    return {
+    const r = {
       left: vv ? vv.offsetLeft : 0,
       top: vv ? vv.offsetTop : 0,
       right: vv ? vv.offsetLeft + vv.width : window.innerWidth,
       bottom: vv ? vv.offsetTop + vv.height : window.innerHeight,
     };
+    // On the phone deck the chart is the space between the strip and the bottom bar: a card
+    // clamped to the window ran under the bar, and on the Low Alt chart -- whose legend has
+    // five more rows -- its lower half was hidden there.
+    if (document.body.classList.contains('deck-on')) {
+      const strip = document.getElementById('deck-strip');
+      const bar = document.getElementById('deck-bar');
+      if (strip && strip.getClientRects().length) r.top = Math.max(r.top, strip.getBoundingClientRect().bottom);
+      if (bar && bar.getClientRects().length) r.bottom = Math.min(r.bottom, bar.getBoundingClientRect().top);
+    }
+    return r;
   }
 
   // What the legend keeps clear of. The toolbar is NOT on this list: it opens over the map

@@ -1213,7 +1213,7 @@ window.S = {
   legendCommChange: 'מעבר קשר',
   airfieldClassLabel: 'סוג',
   airfieldClass: { airport: 'שדה תעופה', airstrip: 'מנחת', agricultural: 'מנחת חקלאי' },
-  airfieldLongestRunway: 'המסלול הארוך ביותר',
+  airfieldLongestRunway: 'מסלול',
   airfieldHardRunway: 'קשיח, לכל מזג אוויר',
   airfieldMinimalLighting: 'תאורה מינימלית',
   legendLsaDaily: 'בועה תמידית',

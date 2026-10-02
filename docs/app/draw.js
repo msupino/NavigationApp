@@ -6140,13 +6140,22 @@ function drawInfo() {
   // the size it always was on the other charts.
   const lsaSet = typeof layerDataPrefix === 'function' && layerDataPrefix() === 'lsa';
   const commRow = document.getElementById('legend-row-comm');
-  if (commRow) commRow.style.display = (lsaSet && typeof showCommChange !== 'undefined' && showCommChange &&
-    tune('commChangeDot') !== false && commChangeMap && Object.keys(commChangeMap).length) ? '' : 'none';
+  const commOn = !!(lsaSet && typeof showCommChange !== 'undefined' && showCommChange &&
+    tune('commChangeDot') !== false && commChangeMap && Object.keys(commChangeMap).length);
   const lsaOn = lsaSet && typeof showLsaBubbles !== 'undefined' && showLsaBubbles;
-  for (const row of document.querySelectorAll('.legend-row-lsa')) row.style.display = lsaOn ? '' : 'none';
+
+  let legendRowsChanged = false;
+  const showRow = (row, on) => {
+    const v = on ? '' : 'none';
+    if (row.style.display !== v) { row.style.display = v; legendRowsChanged = true; }
+  };
+  if (commRow) showRow(commRow, commOn);
+  for (const row of document.querySelectorAll('.legend-row-lsa')) showRow(row, lsaOn);
   for (const row of document.querySelectorAll('.legend-row-activity')) {
-    row.style.display = (lsaOn && activitySites.some(x => x.kind === row.dataset.kind)) ? '' : 'none';
+    showRow(row, lsaOn && activitySites.some(x => x.kind === row.dataset.kind));
   }
+  // The card changed height (a chart with more legend rows): keep it on screen.
+  if (legendRowsChanged && typeof window.reconcileLegendPosition === 'function') window.reconcileLegendPosition();
   // The stats block that used to live at the bottom of the mobile menu is gone: the
   // legend card now carries the same totals at every width, and on a phone the two
   // were on screen together saying the same thing twice.
