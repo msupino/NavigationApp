@@ -4052,13 +4052,18 @@ function showInspector() {
     // per-bubble opening hours were dropped from the dataset -- the tan class is carried as
     // active:'weekend', written from the legend.
     const wkndOnly = a.active === 'weekend';
-    body.appendChild(textRow(S.bubbleActive || 'Active',
-      wkndOnly ? (S.bubbleWeekendOnly || 'Weekends & holidays only')
-               : (S.bubbleOpenAll || 'Open all day')));
+    const bubbleNotams = typeof notams !== 'undefined' && Array.isArray(notams) &&
+      typeof notamBubbleAreas === 'function' ? notams.filter(n => notamBubbleAreas(n).includes(a)) : [];
+    // A NOTAM in force that closes the bubble overrides the legend's class: the row says so,
+    // instead of "open all day" above the card that closes it.
+    const closedBy = inspNotamsInForce(bubbleNotams).find(n => /\bCLSD\b|\bCLOSED\b/.test(String(n.text || '').toUpperCase()));
+    const activeRow = textRow(S.bubbleActive || 'Active', closedBy
+      ? (S.bubbleClosedByNotam ? S.bubbleClosedByNotam(closedBy.id) : 'Closed \u2014 NOTAM ' + closedBy.id)
+      : (wkndOnly ? (S.bubbleWeekendOnly || 'Weekends & holidays only') : (S.bubbleOpenAll || 'Open all day')));
+    if (closedBy) activeRow.classList.add('insp-row-closed');
+    body.appendChild(activeRow);
     // NOTAMs that name this bubble (closures, UAV activity): they override the legend's class.
-    appendInspNotams(body, typeof notams !== 'undefined' &&
-      Array.isArray(notams) && typeof notamBubbleAreas === 'function'
-      ? notams.filter(n => notamBubbleAreas(n).includes(a)) : []);
+    appendInspNotams(body, bubbleNotams);
   } else if (state.selected.type === 'traffic') {
     // An aircraft the receiver is hearing right now. Nothing here is editable and none of it
     // is ours: it is a read-out of one transponder, and it disappears when that aeroplane

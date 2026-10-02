@@ -55,7 +55,8 @@ test.describe('Altitude pair direction columns', () => {
   test('Hebrew table separates directions from altitude values', async ({ page }) => {
     await installAltitudeFixture(page);
     await boot(page, 'he');
-    await page.locator('.tb-section[data-sec="charts"] #alt-pairs').click();
+    await page.locator('.tb-section[data-sec="settings"] .tb-section-head').click();   // the tables live in Settings
+    await page.locator('.tb-section[data-sec="settings"] #alt-pairs').click();
 
     const heads = page.locator('.charts-alt-current-head th');
     await expect(heads.nth(0)).toHaveText('נתיב');
@@ -77,7 +78,8 @@ test.describe('Altitude pair direction columns', () => {
   test('English table uses the same explicit direction layout', async ({ page }) => {
     await installAltitudeFixture(page);
     await boot(page, 'en');
-    await page.locator('.tb-section[data-sec="charts"] #alt-pairs').click();
+    await page.locator('.tb-section[data-sec="settings"] .tb-section-head').click();   // the tables live in Settings
+    await page.locator('.tb-section[data-sec="settings"] #alt-pairs').click();
 
     const heads = page.locator('.charts-alt-current-head th');
     await expect(heads.nth(0)).toHaveText('Pair');
