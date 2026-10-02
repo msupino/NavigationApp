@@ -3,7 +3,8 @@
   "version": 1,
   "source": "Leg altitudes auto-extracted (EasyOCR) from the LSA-Low-Altitude raster chart yellow tags. status=ocr-candidate = UNVERIFIED; a single OCR value is mirrored to both directions. status=unknown = no value read. Verify against the chart before relying.",
   "schema": {
-    "segments": "Candidate direct green CVFR route segments. Endpoint coordinates are looked up by from/to in docs/data/cvfr-nav-waypoints.json or docs/data/airfields.json. inboundAltitude is from -> to; outboundAltitude is to -> from. Altitudes are feet MSL. A single null means that direction is not allowed and requires oneWay=true; two nulls require status=unknown and mean the row is an editable placeholder. Candidate values may come from chart-read yellow CVFR altitude arrows/markers or from source=cvfr-map airway adjacency sibling coverage. Double-ended same-route markers may apply the same altitude both directions. status=reviewed marks rows confirmed from maintainer-provided evidence."
+    "segments": "Candidate direct green CVFR route segments. Endpoint coordinates are looked up by from/to in docs/data/cvfr-nav-waypoints.json or docs/data/airfields.json. inboundAltitude is from -> to; outboundAltitude is to -> from. Altitudes are feet MSL. A single null means that direction is not allowed and requires oneWay=true; two nulls require status=unknown and mean the row is an editable placeholder. Candidate values may come from chart-read yellow CVFR altitude arrows/markers or from source=cvfr-map airway adjacency sibling coverage. Double-ended same-route markers may apply the same altitude both directions. status=reviewed marks rows confirmed from maintainer-provided evidence.",
+    "chartRouteType": "The LSA chart legend's route class, read by eye off the chart line colour (2026-10-02): weekday = green \"נתיב טיסה אמצע שבוע\", weekend = brown \"נתיב טיסה סוף שבוע\" (Fri/Sat), special = magenta \"נתיב טיסה מיוחד\". Absent = not legible on the raster. The dashed variant (\"באישור בקר/פקח בלבד\") is onAtcApproval."
   },
   "nodes": {
     "AAKKO": {
@@ -19,7 +20,13 @@
         "lsa"
       ],
       "name": "AAKKO",
-      "report": "onRequest"
+      "report": "mandatory",
+      "commChange": true,
+      "callSigns": [
+        "PLUTO_EAST",
+        "HAIFA"
+      ],
+      "commSource": "LSA chart symbol (black triangle with magenta dot) and its magenta call-sign labels, read 2026-10-02"
     },
     "AHIUD": {
       "code": "AHIUD",
@@ -94,7 +101,7 @@
         "lsa"
       ],
       "name": "ARAVA",
-      "report": "onRequest"
+      "report": "mandatory"
     },
     "ARGMN": {
       "code": "ARGMN",
@@ -182,7 +189,13 @@
         "lsa"
       ],
       "name": "BKAMA",
-      "report": "onRequest"
+      "report": "mandatory",
+      "commChange": true,
+      "callSigns": [
+        "HAGAV_NORTH",
+        "KEDEM"
+      ],
+      "commSource": "LSA chart symbol (black triangle with magenta dot) and its magenta call-sign labels, read 2026-10-02"
     },
     "BMNUH": {
       "code": "BMNUH",
@@ -241,7 +254,12 @@
         "lsa"
       ],
       "name": "BOVED",
-      "report": "onRequest"
+      "report": "mandatory",
+      "commChange": true,
+      "callSigns": [
+        "TEL_NOF"
+      ],
+      "commSource": "LSA chart symbol (black triangle with magenta dot) and its magenta call-sign labels, read 2026-10-02"
     },
     "BRORA": {
       "code": "BRORA",
@@ -301,7 +319,13 @@
         "lsa"
       ],
       "name": "DAROM",
-      "report": "onRequest"
+      "report": "mandatory",
+      "commChange": true,
+      "callSigns": [
+        "HAIFA",
+        "PLUTO_WEST"
+      ],
+      "commSource": "LSA chart symbol (black triangle with magenta dot) and its magenta call-sign labels, read 2026-10-02"
     },
     "DESHE": {
       "code": "DESHE",
@@ -459,7 +483,7 @@
         "lsa"
       ],
       "name": "אשתאול",
-      "report": "onRequest"
+      "report": "mandatory"
     },
     "ETZEM": {
       "code": "ETZEM",
@@ -488,7 +512,7 @@
         "lsa"
       ],
       "name": "FAZEL",
-      "report": "onRequest"
+      "report": "mandatory"
     },
     "FRDIS": {
       "code": "FRDIS",
@@ -532,7 +556,13 @@
         "lsa"
       ],
       "name": "GILAM",
-      "report": "onRequest"
+      "report": "mandatory",
+      "commChange": true,
+      "callSigns": [
+        "HAIFA",
+        "PLUTO_EAST"
+      ],
+      "commSource": "LSA chart symbol (black triangle with magenta dot) and its magenta call-sign labels, read 2026-10-02"
     },
     "GILAT": {
       "code": "GILAT",
@@ -606,7 +636,7 @@
         "lsa"
       ],
       "name": "HADRA",
-      "report": "onRequest"
+      "report": "mandatory"
     },
     "HAONN": {
       "code": "HAONN",
@@ -635,7 +665,13 @@
         "lsa"
       ],
       "name": "HASID",
-      "report": "onRequest"
+      "report": "mandatory",
+      "commChange": true,
+      "callSigns": [
+        "PLUTO_EAST",
+        "PLUTO_WEST"
+      ],
+      "commSource": "LSA chart symbol (black triangle with magenta dot) and its magenta call-sign labels, read 2026-10-02"
     },
     "HATRU": {
       "code": "HATRU",
@@ -650,7 +686,13 @@
         "lsa"
       ],
       "name": "HATRU",
-      "report": "onRequest"
+      "report": "mandatory",
+      "commChange": true,
+      "callSigns": [
+        "HAGAV_NORTH",
+        "HAGAV_SOUTH"
+      ],
+      "commSource": "LSA chart symbol (black triangle with magenta dot) and its magenta call-sign labels, read 2026-10-02"
     },
     "HAZVA": {
       "code": "HAZVA",
@@ -736,7 +778,13 @@
         "lsa"
       ],
       "name": "HOVAV",
-      "report": "onRequest"
+      "report": "mandatory",
+      "commChange": true,
+      "callSigns": [
+        "NEGEV",
+        "HAGAV_SOUTH"
+      ],
+      "commSource": "LSA chart symbol (black triangle with magenta dot) and its magenta call-sign labels, read 2026-10-02"
     },
     "HRGVS": {
       "code": "HRGVS",
@@ -849,7 +897,13 @@
         "lsa"
       ],
       "name": "KTORA",
-      "report": "onRequest"
+      "report": "mandatory",
+      "commChange": true,
+      "callSigns": [
+        "HAGAV_SOUTH",
+        "RAMON"
+      ],
+      "commSource": "LSA chart symbol (black triangle with magenta dot) and its magenta call-sign labels, read 2026-10-02"
     },
     "KUVSH": {
       "code": "KUVSH",
@@ -964,9 +1018,14 @@
         "lsa"
       ],
       "name": "מחלף אייל",
-      "report": "onRequest",
+      "report": "mandatory",
       "en": "Eyal Interchange",
-      "enSource": "cross-referenced"
+      "enSource": "cross-referenced",
+      "commChange": true,
+      "callSigns": [
+        "PLUTO_EAST"
+      ],
+      "commSource": "LSA chart symbol (black triangle with magenta dot) and its magenta call-sign labels, read 2026-10-02"
     },
     "MHOLA": {
       "code": "MHOLA",
@@ -1007,7 +1066,7 @@
         "lsa"
       ],
       "name": "MINGV",
-      "report": "onRequest"
+      "report": "mandatory"
     },
     "MKGAT": {
       "code": "MKGAT",
@@ -1021,7 +1080,13 @@
         "lsa"
       ],
       "name": "מחלף קרית גם",
-      "report": "onRequest"
+      "report": "mandatory",
+      "commChange": true,
+      "callSigns": [
+        "HAGAV_NORTH",
+        "TEL_NOF"
+      ],
+      "commSource": "LSA chart symbol (black triangle with magenta dot) and its magenta call-sign labels, read 2026-10-02"
     },
     "MOVIL": {
       "code": "MOVIL",
@@ -1036,7 +1101,7 @@
         "lsa"
       ],
       "name": "MOVIL",
-      "report": "onRequest"
+      "report": "mandatory"
     },
     "MRHVA": {
       "code": "MRHVA",
@@ -1094,7 +1159,7 @@
         "lsa"
       ],
       "name": "NAHEM",
-      "report": "onRequest"
+      "report": "mandatory"
     },
     "NASIH": {
       "code": "NASIH",
@@ -1122,7 +1187,13 @@
         "lsa"
       ],
       "name": "נחל בשור",
-      "report": "onRequest"
+      "report": "mandatory",
+      "commChange": true,
+      "callSigns": [
+        "HAGAV_SOUTH",
+        "KEDEM"
+      ],
+      "commSource": "LSA chart symbol (black triangle with magenta dot) and its magenta call-sign labels, read 2026-10-02"
     },
     "NCITY": {
       "code": "NCITY",
@@ -1167,7 +1238,7 @@
         "lsa"
       ],
       "name": "NEGEV",
-      "report": "onRequest"
+      "report": "mandatory"
     },
     "NIRYA": {
       "code": "NIRYA",
@@ -1196,7 +1267,7 @@
         "lsa"
       ],
       "name": "NITZA",
-      "report": "onRequest"
+      "report": "mandatory"
     },
     "NMASD": {
       "code": "NMASD",
@@ -1253,7 +1324,13 @@
         "lsa"
       ],
       "name": "NTAIM",
-      "report": "onRequest"
+      "report": "mandatory",
+      "commChange": true,
+      "callSigns": [
+        "PALMACHIM",
+        "TEL_NOF"
+      ],
+      "commSource": "LSA chart symbol (black triangle with magenta dot) and its magenta call-sign labels, read 2026-10-02"
     },
     "OFKIM": {
       "code": "OFKIM",
@@ -1282,7 +1359,7 @@
         "lsa"
       ],
       "name": "OHLIM",
-      "report": "onRequest"
+      "report": "mandatory"
     },
     "OLGAH": {
       "code": "OLGAH",
@@ -1297,7 +1374,7 @@
         "lsa"
       ],
       "name": "OLGAH",
-      "report": "onRequest"
+      "report": "mandatory"
     },
     "ORAKV": {
       "code": "ORAKV",
@@ -1366,7 +1443,13 @@
         "lsa"
       ],
       "name": "רעות",
-      "report": "onRequest"
+      "report": "mandatory",
+      "commChange": true,
+      "callSigns": [
+        "PLUTO_EAST",
+        "TEL_NOF"
+      ],
+      "commSource": "LSA chart symbol (black triangle with magenta dot) and its magenta call-sign labels, read 2026-10-02"
     },
     "RSNIM": {
       "code": "RSNIM",
@@ -1380,9 +1463,15 @@
         "lsa"
       ],
       "name": "ראשונים",
-      "report": "onRequest",
+      "report": "mandatory",
       "en": "Rishonim",
-      "enSource": "cross-referenced"
+      "enSource": "cross-referenced",
+      "commChange": true,
+      "callSigns": [
+        "RISHON_LEZION",
+        "PALMACHIM"
+      ],
+      "commSource": "LSA chart symbol (black triangle with magenta dot) and its magenta call-sign labels, read 2026-10-02"
     },
     "RUHOT": {
       "code": "RUHOT",
@@ -1439,7 +1528,13 @@
         "lsa"
       ],
       "name": "שדה אליעזר",
-      "report": "onRequest"
+      "report": "mandatory",
+      "commChange": true,
+      "callSigns": [
+        "PLUTO_EAST",
+        "ROSH_PINA"
+      ],
+      "commSource": "LSA chart symbol (black triangle with magenta dot) and its magenta call-sign labels, read 2026-10-02"
     },
     "SFAIM": {
       "code": "SFAIM",
@@ -1465,7 +1560,12 @@
         "lsa"
       ],
       "name": "SFAIM",
-      "report": "onRequest"
+      "report": "mandatory",
+      "commChange": true,
+      "callSigns": [
+        "PLUTO_WEST"
+      ],
+      "commSource": "LSA chart symbol (black triangle with magenta dot) and its magenta call-sign labels, read 2026-10-02"
     },
     "SHAHR": {
       "code": "SHAHR",
@@ -1625,7 +1725,12 @@
         "lsa"
       ],
       "name": "שורק",
-      "report": "onRequest"
+      "report": "mandatory",
+      "commChange": true,
+      "callSigns": [
+        "PALMACHIM"
+      ],
+      "commSource": "LSA chart symbol (black triangle with magenta dot) and its magenta call-sign labels, read 2026-10-02"
     },
     "SORES": {
       "code": "SORES",
@@ -1640,7 +1745,13 @@
         "lsa"
       ],
       "name": "שורש",
-      "report": "onRequest"
+      "report": "mandatory",
+      "commChange": true,
+      "callSigns": [
+        "TEL_NOF",
+        "PLUTO_EAST"
+      ],
+      "commSource": "LSA chart symbol (black triangle with magenta dot) and its magenta call-sign labels, read 2026-10-02"
     },
     "SSOMR": {
       "code": "SSOMR",
@@ -1744,7 +1855,12 @@
         "lsa"
       ],
       "name": "TYONA",
-      "report": "onRequest"
+      "report": "mandatory",
+      "commChange": true,
+      "callSigns": [
+        "RISHON_LEZION"
+      ],
+      "commSource": "LSA chart symbol (black triangle with magenta dot) and its magenta call-sign labels, read 2026-10-02"
     },
     "TZHOT": {
       "code": "TZHOT",
@@ -1758,7 +1874,7 @@
         "lsa"
       ],
       "name": "TZHOT",
-      "report": "onRequest"
+      "report": "mandatory"
     },
     "TZUBA": {
       "code": "TZUBA",
@@ -1886,9 +2002,15 @@
         "lsa"
       ],
       "name": "צומת עמיעד",
-      "report": "onRequest",
+      "report": "mandatory",
       "en": "Amiad junction",
-      "enSource": "cross-referenced"
+      "enSource": "cross-referenced",
+      "commChange": true,
+      "callSigns": [
+        "PLUTO_EAST",
+        "ROSH_PINA"
+      ],
+      "commSource": "LSA chart symbol (black triangle with magenta dot) and its magenta call-sign labels, read 2026-10-02"
     },
     "ZASHD": {
       "code": "ZASHD",
@@ -1903,7 +2025,14 @@
         "lsa"
       ],
       "name": "ZASHD",
-      "report": "onRequest"
+      "report": "mandatory",
+      "commChange": true,
+      "callSigns": [
+        "RISHON_LEZION",
+        "HAGAV_NORTH",
+        "PALMACHIM"
+      ],
+      "commSource": "LSA chart symbol (black triangle with magenta dot) and its magenta call-sign labels, read 2026-10-02"
     },
     "ZBRCH": {
       "code": "ZBRCH",
@@ -1917,7 +2046,7 @@
         "lsa"
       ],
       "name": "צומת ברכיה",
-      "report": "onRequest",
+      "report": "mandatory",
       "en": "Berekhya Junction",
       "enSource": "cross-referenced"
     },
@@ -1933,9 +2062,15 @@
         "lsa"
       ],
       "name": "צומת בית המכס",
-      "report": "onRequest",
+      "report": "mandatory",
       "en": "Bet HaMekhes Junction",
-      "enSource": "cross-referenced"
+      "enSource": "cross-referenced",
+      "commChange": true,
+      "callSigns": [
+        "PLUTO_EAST",
+        "ROSH_PINA"
+      ],
+      "commSource": "LSA chart symbol (black triangle with magenta dot) and its magenta call-sign labels, read 2026-10-02"
     },
     "ZBTZD": {
       "code": "ZBTZD",
@@ -1949,9 +2084,15 @@
         "lsa"
       ],
       "name": "צומת בית צידה",
-      "report": "onRequest",
+      "report": "mandatory",
       "en": "Bethsaida Junction",
-      "enSource": "cross-referenced"
+      "enSource": "cross-referenced",
+      "commChange": true,
+      "callSigns": [
+        "PLUTO_EAST",
+        "ROSH_PINA"
+      ],
+      "commSource": "LSA chart symbol (black triangle with magenta dot) and its magenta call-sign labels, read 2026-10-02"
     },
     "ZEMAH": {
       "code": "ZEMAH",
@@ -1997,7 +2138,7 @@
         "lsa"
       ],
       "name": "ZGOAL",
-      "report": "onRequest"
+      "report": "mandatory"
     },
     "ZHRYA": {
       "code": "ZHRYA",
@@ -2054,7 +2195,7 @@
         "lsa"
       ],
       "name": "ZLHAV",
-      "report": "onRequest"
+      "report": "mandatory"
     },
     "ZMGID": {
       "code": "ZMGID",
@@ -2069,7 +2210,14 @@
         "lsa"
       ],
       "name": "ZMGID",
-      "report": "onRequest"
+      "report": "mandatory",
+      "commChange": true,
+      "callSigns": [
+        "PLUTO_EAST",
+        "PLUTO_WEST",
+        "MEGIDDO"
+      ],
+      "commSource": "LSA chart symbol (black triangle with magenta dot) and its magenta call-sign labels, read 2026-10-02"
     },
     "ZNYMN": {
       "code": "ZNYMN",
@@ -2100,7 +2248,7 @@
         "lsa"
       ],
       "name": "ZOFAR",
-      "report": "onRequest"
+      "report": "mandatory"
     },
     "ZOHAR": {
       "code": "ZOHAR",
@@ -2115,7 +2263,7 @@
         "lsa"
       ],
       "name": "ZOHAR",
-      "report": "onRequest"
+      "report": "mandatory"
     },
     "ZPLGT": {
       "code": "ZPLGT",
@@ -2129,9 +2277,15 @@
         "lsa"
       ],
       "name": "צומת פלוגות",
-      "report": "onRequest",
+      "report": "mandatory",
       "en": "Plugot Junction",
-      "enSource": "cross-referenced"
+      "enSource": "cross-referenced",
+      "commChange": true,
+      "callSigns": [
+        "HAGAV_NORTH",
+        "TEL_NOF"
+      ],
+      "commSource": "LSA chart symbol (black triangle with magenta dot) and its magenta call-sign labels, read 2026-10-02"
     },
     "ZUKIM": {
       "code": "ZUKIM",
@@ -2146,7 +2300,13 @@
         "lsa"
       ],
       "name": "ZUKIM",
-      "report": "onRequest"
+      "report": "mandatory",
+      "commChange": true,
+      "callSigns": [
+        "PLUTO_EAST",
+        "HAGAV_SOUTH"
+      ],
+      "commSource": "LSA chart symbol (black triangle with magenta dot) and its magenta call-sign labels, read 2026-10-02"
     },
     "ZZHOR": {
       "code": "ZZHOR",
@@ -2161,7 +2321,7 @@
         "lsa"
       ],
       "name": "ZZHOR",
-      "report": "onRequest"
+      "report": "mandatory"
     },
     "he:אפעה#2": {
       "he": "אפעה",
@@ -2261,7 +2421,7 @@
         "lsa"
       ],
       "name": "מרסבא",
-      "report": "onRequest"
+      "report": "mandatory"
     },
     "he:נפח": {
       "he": "נפח",
@@ -2306,7 +2466,13 @@
         "lsa"
       ],
       "name": "צאלים",
-      "report": "onRequest"
+      "report": "mandatory",
+      "commChange": true,
+      "callSigns": [
+        "HAGAV_SOUTH",
+        "KEDEM"
+      ],
+      "commSource": "LSA chart symbol (black triangle with magenta dot) and its magenta call-sign labels, read 2026-10-02"
     },
     "he:צומת-אביטל": {
       "he": "צומת אביטל",
@@ -2445,7 +2611,8 @@
       "layers": [
         "lsa"
       ],
-      "codeSource": "cross-referenced"
+      "codeSource": "cross-referenced",
+      "chartClass": "agricultural"
     },
     "LLHF": {
       "code": "LLHF",
@@ -2456,7 +2623,8 @@
       "layers": [
         "lsa"
       ],
-      "codeSource": "cross-referenced"
+      "codeSource": "cross-referenced",
+      "chartClass": "agricultural"
     },
     "LLNN": {
       "code": "LLNN",
@@ -2467,7 +2635,8 @@
       "layers": [
         "lsa"
       ],
-      "codeSource": "cross-referenced"
+      "codeSource": "cross-referenced",
+      "chartClass": "agricultural"
     },
     "LLSS": {
       "code": "LLSS",
@@ -2478,7 +2647,8 @@
       "layers": [
         "lsa"
       ],
-      "codeSource": "cross-referenced"
+      "codeSource": "cross-referenced",
+      "chartClass": "agricultural"
     },
     "LLRU": {
       "code": "LLRU",
@@ -2489,7 +2659,8 @@
       "layers": [
         "lsa"
       ],
-      "codeSource": "cross-referenced"
+      "codeSource": "cross-referenced",
+      "chartClass": "agricultural"
     },
     "LLSO": {
       "code": "LLSO",
@@ -2500,7 +2671,8 @@
       "layers": [
         "lsa"
       ],
-      "codeSource": "cross-referenced"
+      "codeSource": "cross-referenced",
+      "chartClass": "agricultural"
     },
     "GORAL": {
       "code": "GORAL",
@@ -2522,7 +2694,9 @@
         "outboundAltitude": 1300,
         "distanceNm": 4.28,
         "chartDistanceNm": 4.3,
-        "status": "ocr-candidate"
+        "status": "ocr-candidate",
+        "chartRouteType": "weekday",
+        "onAtcApproval": true
       },
       {
         "to": "SMRAT",
@@ -2532,7 +2706,9 @@
         "chartDistanceNm": 2,
         "status": "reviewed",
         "source": "Direction split resolved by the maintainer (Aug 2026): 700 toward SMRAT, 400 toward AAKKO. A secondary source had 400 both ways against our OCR 700 both ways; both were half right.",
-        "closedHint": true
+        "closedHint": true,
+        "chartRouteType": "weekday",
+        "onAtcApproval": true
       },
       {
         "to": "LLSO",
@@ -2551,7 +2727,9 @@
         "outboundAltitude": 1300,
         "distanceNm": 4.28,
         "chartDistanceNm": 4.3,
-        "status": "ocr-candidate"
+        "status": "ocr-candidate",
+        "chartRouteType": "weekday",
+        "onAtcApproval": true
       }
     ],
     "ARAVA": [
@@ -2563,7 +2741,8 @@
         "chartDistanceNm": 13.5,
         "status": "candidate",
         "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read.",
-        "openFromHourHint": 5
+        "openFromHourHint": 5,
+        "chartRouteType": "special"
       },
       {
         "to": "ZOHAR",
@@ -2573,7 +2752,8 @@
         "chartDistanceNm": 10.2,
         "status": "candidate",
         "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read.",
-        "openFromHourHint": 5
+        "openFromHourHint": 5,
+        "chartRouteType": "special"
       }
     ],
     "HAZVA": [
@@ -2585,7 +2765,8 @@
         "chartDistanceNm": 13.5,
         "status": "candidate",
         "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read.",
-        "openFromHourHint": 5
+        "openFromHourHint": 5,
+        "chartRouteType": "special"
       }
     ],
     "ZOHAR": [
@@ -2597,7 +2778,8 @@
         "chartDistanceNm": 10.2,
         "status": "candidate",
         "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read.",
-        "openFromHourHint": 5
+        "openFromHourHint": 5,
+        "chartRouteType": "special"
       },
       {
         "to": "HATRU",
@@ -2605,7 +2787,8 @@
         "outboundAltitude": 2600,
         "distanceNm": 7.6,
         "chartDistanceNm": 7.6,
-        "status": "ocr-candidate"
+        "status": "ocr-candidate",
+        "chartRouteType": "special"
       }
     ],
     "ARRAD": [
@@ -2615,7 +2798,8 @@
         "outboundAltitude": 2300,
         "distanceNm": 2.88,
         "chartDistanceNm": 2.9,
-        "status": "ocr-candidate"
+        "status": "ocr-candidate",
+        "chartRouteType": "special"
       },
       {
         "to": "TARAD",
@@ -2625,7 +2809,8 @@
         "chartDistanceNm": 4.5,
         "status": "candidate",
         "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read.",
-        "openFromHourHint": 5
+        "openFromHourHint": 5,
+        "chartRouteType": "special"
       }
     ],
     "TARAD": [
@@ -2637,7 +2822,8 @@
         "chartDistanceNm": 4.5,
         "status": "candidate",
         "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read.",
-        "openFromHourHint": 5
+        "openFromHourHint": 5,
+        "chartRouteType": "special"
       },
       {
         "to": "MYTAR",
@@ -2647,7 +2833,8 @@
         "chartDistanceNm": 9.9,
         "status": "candidate",
         "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read.",
-        "openFromHourHint": 5
+        "openFromHourHint": 5,
+        "chartRouteType": "special"
       }
     ],
     "BMNUH": [
@@ -2659,7 +2846,8 @@
         "chartDistanceNm": 13.3,
         "status": "candidate",
         "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read.",
-        "openFromHourHint": 5
+        "openFromHourHint": 5,
+        "chartRouteType": "special"
       },
       {
         "to": "ZOFAR",
@@ -2680,7 +2868,8 @@
         "status": "ocr-candidate",
         "source": "Direction split altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read. The single OCR value matched one direction exactly.",
         "closedHint": true,
-        "openFromHourHint": 5
+        "openFromHourHint": 5,
+        "chartRouteType": "special"
       }
     ],
     "YAHEL": [
@@ -2692,7 +2881,8 @@
         "chartDistanceNm": 13.3,
         "status": "candidate",
         "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read.",
-        "openFromHourHint": 5
+        "openFromHourHint": 5,
+        "chartRouteType": "special"
       },
       {
         "to": "KTORA",
@@ -2702,7 +2892,8 @@
         "chartDistanceNm": 6.3,
         "status": "ocr-candidate",
         "source": "Direction split altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read. The single OCR value matched one direction exactly.",
-        "openFromHourHint": 5
+        "openFromHourHint": 5,
+        "chartRouteType": "special"
       },
       {
         "to": "SIZFN",
@@ -2723,7 +2914,8 @@
         "chartDistanceNm": 4.4,
         "status": "candidate",
         "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read.",
-        "openFromHourHint": 5
+        "openFromHourHint": 5,
+        "chartRouteType": "special"
       },
       {
         "to": "TLLIM",
@@ -2733,7 +2925,8 @@
         "chartDistanceNm": 7,
         "status": "candidate",
         "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read.",
-        "openFromHourHint": 5
+        "openFromHourHint": 5,
+        "chartRouteType": "special"
       },
       {
         "to": "YRUHM",
@@ -2753,7 +2946,8 @@
         "chartDistanceNm": 4.4,
         "status": "candidate",
         "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read.",
-        "openFromHourHint": 5
+        "openFromHourHint": 5,
+        "chartRouteType": "special"
       },
       {
         "to": "RUHOT",
@@ -2773,7 +2967,8 @@
         "chartDistanceNm": 9.2,
         "status": "ocr-candidate",
         "source": "Direction split altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read. The single OCR value matched one direction exactly.",
-        "openFromHourHint": 6
+        "openFromHourHint": 6,
+        "chartRouteType": "weekend"
       }
     ],
     "SHAHR": [
@@ -2785,7 +2980,8 @@
         "chartDistanceNm": 5.3,
         "status": "candidate",
         "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read.",
-        "openFromHourHint": 6
+        "openFromHourHint": 6,
+        "chartRouteType": "weekend"
       },
       {
         "to": "DUMIM",
@@ -2795,7 +2991,8 @@
         "chartDistanceNm": 9.2,
         "status": "ocr-candidate",
         "source": "Direction split altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read. The single OCR value matched one direction exactly.",
-        "openFromHourHint": 6
+        "openFromHourHint": 6,
+        "chartRouteType": "weekend"
       }
     ],
     "EIRON": [
@@ -2847,7 +3044,8 @@
         "outboundAltitude": null,
         "distanceNm": 7.87,
         "chartDistanceNm": 7.8,
-        "status": "unknown"
+        "status": "unknown",
+        "chartRouteType": "weekday"
       },
       {
         "to": "OLGAH",
@@ -2883,7 +3081,8 @@
         "chartDistanceNm": 4,
         "status": "candidate",
         "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read.",
-        "openFromHourHint": 6
+        "openFromHourHint": 6,
+        "chartRouteType": "weekend"
       }
     ],
     "ENGDI": [
@@ -2895,7 +3094,8 @@
         "chartDistanceNm": 5.7,
         "status": "candidate",
         "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read.",
-        "openFromHourHint": 6
+        "openFromHourHint": 6,
+        "chartRouteType": "weekend"
       }
     ],
     "SHALM": [
@@ -2907,7 +3107,8 @@
         "chartDistanceNm": 5.7,
         "status": "candidate",
         "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read.",
-        "openFromHourHint": 6
+        "openFromHourHint": 6,
+        "chartRouteType": "weekend"
       },
       {
         "to": "ZUKIM",
@@ -2917,7 +3118,8 @@
         "chartDistanceNm": 9.8,
         "status": "ocr-candidate",
         "source": "Direction split altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read. The single OCR value matched one direction exactly.",
-        "openFromHourHint": 6
+        "openFromHourHint": 6,
+        "chartRouteType": "weekend"
       }
     ],
     "FAZEL": [
@@ -2929,7 +3131,8 @@
         "chartDistanceNm": 4.9,
         "status": "candidate",
         "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read.",
-        "openFromHourHint": 6
+        "openFromHourHint": 6,
+        "chartRouteType": "weekend"
       },
       {
         "to": "ARGMN",
@@ -2937,7 +3140,8 @@
         "outboundAltitude": 500,
         "distanceNm": 8.28,
         "chartDistanceNm": 8.3,
-        "status": "ocr-candidate"
+        "status": "ocr-candidate",
+        "chartRouteType": "weekend"
       },
       {
         "to": "NAAMA",
@@ -2948,7 +3152,9 @@
         "status": "candidate",
         "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read. The source marks this corridor inactive.",
         "closedHint": true,
-        "openFromHourHint": 6
+        "openFromHourHint": 6,
+        "chartRouteType": "weekend",
+        "onAtcApproval": true
       }
     ],
     "NAAMA": [
@@ -2972,7 +3178,9 @@
         "status": "candidate",
         "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read. The source marks this corridor inactive.",
         "closedHint": true,
-        "openFromHourHint": 6
+        "openFromHourHint": 6,
+        "chartRouteType": "weekend",
+        "onAtcApproval": true
       }
     ],
     "FRDIS": [
@@ -2982,7 +3190,8 @@
         "outboundAltitude": null,
         "distanceNm": 7.46,
         "chartDistanceNm": 7.5,
-        "status": "unknown"
+        "status": "unknown",
+        "chartRouteType": "weekday"
       },
       {
         "to": "HADRA",
@@ -2990,7 +3199,8 @@
         "outboundAltitude": null,
         "distanceNm": 7.87,
         "chartDistanceNm": 7.8,
-        "status": "unknown"
+        "status": "unknown",
+        "chartRouteType": "weekday"
       },
       {
         "to": "HASID",
@@ -2999,7 +3209,9 @@
         "distanceNm": 11.45,
         "chartDistanceNm": 11.4,
         "status": "ocr-candidate",
-        "closedHint": true
+        "closedHint": true,
+        "chartRouteType": "weekend",
+        "onAtcApproval": true
       },
       {
         "to": "SDTYM",
@@ -3017,7 +3229,8 @@
         "outboundAltitude": 2300,
         "distanceNm": 2.88,
         "chartDistanceNm": 2.9,
-        "status": "ocr-candidate"
+        "status": "ocr-candidate",
+        "chartRouteType": "special"
       },
       {
         "to": "ZOHAR",
@@ -3025,7 +3238,8 @@
         "outboundAltitude": 2600,
         "distanceNm": 7.6,
         "chartDistanceNm": 7.6,
-        "status": "ocr-candidate"
+        "status": "ocr-candidate",
+        "chartRouteType": "special"
       }
     ],
     "KTORA": [
@@ -3037,7 +3251,8 @@
         "chartDistanceNm": 6.3,
         "status": "ocr-candidate",
         "source": "Direction split altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read. The single OCR value matched one direction exactly.",
-        "openFromHourHint": 5
+        "openFromHourHint": 5,
+        "chartRouteType": "special"
       },
       {
         "to": "YOTVT",
@@ -3047,7 +3262,8 @@
         "chartDistanceNm": 5.3,
         "status": "ocr-candidate",
         "source": "Direction split altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read. The single OCR value matched one direction exactly.",
-        "openFromHourHint": 5
+        "openFromHourHint": 5,
+        "chartRouteType": "special"
       }
     ],
     "KUVSH": [
@@ -3059,7 +3275,8 @@
         "chartDistanceNm": 2.2,
         "status": "candidate",
         "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read.",
-        "openFromHourHint": 5
+        "openFromHourHint": 5,
+        "chartRouteType": "special"
       }
     ],
     "NCITY": [
@@ -3071,7 +3288,8 @@
         "chartDistanceNm": 2.2,
         "status": "candidate",
         "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read.",
-        "openFromHourHint": 5
+        "openFromHourHint": 5,
+        "chartRouteType": "special"
       },
       {
         "to": "ZGOAL",
@@ -3087,7 +3305,8 @@
         "inboundAltitude": null,
         "outboundAltitude": null,
         "status": "unknown",
-        "source": "GORAL is printed on the Low Alt chart (it was dropped from the CVFR chart, where the 172-point set no longer lists it). Links cross-referenced from a secondary source (Aug 2026); altitudes not published there. Chart read owed."
+        "source": "GORAL is printed on the Low Alt chart (it was dropped from the CVFR chart, where the 172-point set no longer lists it). Links cross-referenced from a secondary source (Aug 2026); altitudes not published there. Chart read owed.",
+        "chartRouteType": "special"
       }
     ],
     "MEHOL": [
@@ -3124,7 +3343,8 @@
         "distanceNm": 2.7,
         "chartDistanceNm": 2.7,
         "status": "unknown",
-        "closedHint": true
+        "closedHint": true,
+        "chartRouteType": "weekday"
       },
       {
         "to": "SUPER",
@@ -3132,7 +3352,8 @@
         "outboundAltitude": null,
         "distanceNm": 2.76,
         "chartDistanceNm": 2.8,
-        "status": "unknown"
+        "status": "unknown",
+        "chartRouteType": "weekday"
       },
       {
         "to": "TYONA",
@@ -3153,7 +3374,8 @@
         "distanceNm": 2.36,
         "chartDistanceNm": 2.4,
         "status": "candidate",
-        "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read."
+        "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read.",
+        "chartRouteType": "weekday"
       }
     ],
     "NASIH": [
@@ -3164,7 +3386,8 @@
         "distanceNm": 2.36,
         "chartDistanceNm": 2.4,
         "status": "candidate",
-        "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read."
+        "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read.",
+        "chartRouteType": "weekday"
       }
     ],
     "MYTAR": [
@@ -3176,7 +3399,8 @@
         "chartDistanceNm": 1.9,
         "status": "candidate",
         "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read.",
-        "openFromHourHint": 5
+        "openFromHourHint": 5,
+        "chartRouteType": "special"
       },
       {
         "to": "TARAD",
@@ -3186,7 +3410,8 @@
         "chartDistanceNm": 9.9,
         "status": "candidate",
         "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read.",
-        "openFromHourHint": 5
+        "openFromHourHint": 5,
+        "chartRouteType": "special"
       }
     ],
     "SOKET": [
@@ -3206,7 +3431,8 @@
         "chartDistanceNm": 1.9,
         "status": "candidate",
         "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read.",
-        "openFromHourHint": 5
+        "openFromHourHint": 5,
+        "chartRouteType": "special"
       }
     ],
     "ZGOAL": [
@@ -3226,7 +3452,8 @@
         "chartDistanceNm": 3.6,
         "status": "candidate",
         "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read.",
-        "openFromHourHint": 5
+        "openFromHourHint": 5,
+        "chartRouteType": "special"
       }
     ],
     "ZLHAV": [
@@ -3238,7 +3465,8 @@
         "chartDistanceNm": 4.4,
         "status": "ocr-candidate",
         "source": "Direction split altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read. The single OCR value matched one direction exactly.",
-        "openFromHourHint": 5
+        "openFromHourHint": 5,
+        "chartRouteType": "special"
       },
       {
         "to": "ZGOAL",
@@ -3248,7 +3476,8 @@
         "chartDistanceNm": 3.6,
         "status": "candidate",
         "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read.",
-        "openFromHourHint": 5
+        "openFromHourHint": 5,
+        "chartRouteType": "special"
       },
       {
         "to": "GORAL",
@@ -3256,7 +3485,8 @@
         "inboundAltitude": null,
         "outboundAltitude": null,
         "status": "unknown",
-        "source": "GORAL is printed on the Low Alt chart (it was dropped from the CVFR chart, where the 172-point set no longer lists it). Links cross-referenced from a secondary source (Aug 2026); altitudes not published there. Chart read owed."
+        "source": "GORAL is printed on the Low Alt chart (it was dropped from the CVFR chart, where the 172-point set no longer lists it). Links cross-referenced from a secondary source (Aug 2026); altitudes not published there. Chart read owed.",
+        "chartRouteType": "special"
       }
     ],
     "SUPER": [
@@ -3266,7 +3496,8 @@
         "outboundAltitude": null,
         "distanceNm": 2.76,
         "chartDistanceNm": 2.8,
-        "status": "unknown"
+        "status": "unknown",
+        "chartRouteType": "weekday"
       },
       {
         "to": "TYONA",
@@ -3274,7 +3505,8 @@
         "outboundAltitude": null,
         "distanceNm": 1.94,
         "chartDistanceNm": 1.9,
-        "status": "unknown"
+        "status": "unknown",
+        "chartRouteType": "weekday"
       }
     ],
     "OLGAH": [
@@ -3294,7 +3526,8 @@
         "chartDistanceNm": 6.3,
         "status": "candidate",
         "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read.",
-        "openFromHourHint": 6
+        "openFromHourHint": 6,
+        "chartRouteType": "weekend"
       },
       {
         "to": "SDTYM",
@@ -3304,7 +3537,8 @@
         "chartDistanceNm": 4,
         "status": "candidate",
         "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read.",
-        "openFromHourHint": 6
+        "openFromHourHint": 6,
+        "chartRouteType": "weekend"
       }
     ],
     "PELEG": [
@@ -3316,7 +3550,8 @@
         "chartDistanceNm": 6.3,
         "status": "candidate",
         "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read.",
-        "openFromHourHint": 6
+        "openFromHourHint": 6,
+        "chartRouteType": "weekend"
       },
       {
         "to": "VINGT",
@@ -3326,7 +3561,8 @@
         "chartDistanceNm": 4.6,
         "status": "candidate",
         "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read.",
-        "openFromHourHint": 6
+        "openFromHourHint": 6,
+        "chartRouteType": "weekend"
       }
     ],
     "RUHOT": [
@@ -3339,7 +3575,8 @@
         "status": "candidate",
         "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read.",
         "closedHint": true,
-        "openFromHourHint": 5
+        "openFromHourHint": 5,
+        "chartRouteType": "special"
       },
       {
         "to": "OVDAT",
@@ -3359,7 +3596,8 @@
         "chartDistanceNm": 4.6,
         "status": "candidate",
         "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read.",
-        "openFromHourHint": 6
+        "openFromHourHint": 6,
+        "chartRouteType": "weekend"
       },
       {
         "to": "SFAIM",
@@ -3367,7 +3605,8 @@
         "outboundAltitude": null,
         "distanceNm": 2.66,
         "chartDistanceNm": 2.7,
-        "status": "unknown"
+        "status": "unknown",
+        "chartRouteType": "weekend"
       }
     ],
     "ZUKIM": [
@@ -3379,7 +3618,8 @@
         "chartDistanceNm": 4.4,
         "status": "ocr-candidate",
         "source": "Direction split altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read. The single OCR value matched one direction exactly.",
-        "openFromHourHint": 6
+        "openFromHourHint": 6,
+        "chartRouteType": "weekend"
       },
       {
         "to": "SHALM",
@@ -3389,7 +3629,8 @@
         "chartDistanceNm": 9.8,
         "status": "ocr-candidate",
         "source": "Direction split altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read. The single OCR value matched one direction exactly.",
-        "openFromHourHint": 6
+        "openFromHourHint": 6,
+        "chartRouteType": "weekend"
       }
     ],
     "BRORA": [
@@ -3401,7 +3642,9 @@
         "chartDistanceNm": 9.2,
         "status": "ocr-candidate",
         "closedHint": true,
-        "openFromHourHint": 5
+        "openFromHourHint": 5,
+        "chartRouteType": "special",
+        "onAtcApproval": true
       }
     ],
     "EILAT": [
@@ -3413,7 +3656,9 @@
         "chartDistanceNm": 9.2,
         "status": "ocr-candidate",
         "closedHint": true,
-        "openFromHourHint": 5
+        "openFromHourHint": 5,
+        "chartRouteType": "special",
+        "onAtcApproval": true
       }
     ],
     "SIZFN": [
@@ -3437,7 +3682,8 @@
         "status": "ocr-candidate",
         "source": "Direction split altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read. The single OCR value matched one direction exactly.",
         "closedHint": true,
-        "openFromHourHint": 5
+        "openFromHourHint": 5,
+        "chartRouteType": "special"
       },
       {
         "to": "MESAR",
@@ -3460,7 +3706,8 @@
         "chartDistanceNm": 5.3,
         "status": "ocr-candidate",
         "source": "Direction split altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read. The single OCR value matched one direction exactly.",
-        "openFromHourHint": 5
+        "openFromHourHint": 5,
+        "chartRouteType": "special"
       }
     ],
     "ZOFAR": [
@@ -3484,7 +3731,8 @@
         "chartDistanceNm": 4.5,
         "status": "candidate",
         "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read.",
-        "openFromHourHint": 5
+        "openFromHourHint": 5,
+        "chartRouteType": "special"
       },
       {
         "to": "OHLIM",
@@ -3494,7 +3742,8 @@
         "chartDistanceNm": 3.3,
         "status": "candidate",
         "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read.",
-        "openFromHourHint": 5
+        "openFromHourHint": 5,
+        "chartRouteType": "special"
       },
       {
         "to": "SOKET",
@@ -3514,7 +3763,8 @@
         "chartDistanceNm": 4.5,
         "status": "candidate",
         "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read.",
-        "openFromHourHint": 5
+        "openFromHourHint": 5,
+        "chartRouteType": "special"
       },
       {
         "to": "TLLIM",
@@ -3524,7 +3774,8 @@
         "chartDistanceNm": 6,
         "status": "candidate",
         "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read.",
-        "openFromHourHint": 5
+        "openFromHourHint": 5,
+        "chartRouteType": "special"
       }
     ],
     "TLLIM": [
@@ -3536,7 +3787,8 @@
         "chartDistanceNm": 7,
         "status": "candidate",
         "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read.",
-        "openFromHourHint": 5
+        "openFromHourHint": 5,
+        "chartRouteType": "special"
       },
       {
         "to": "NEGEV",
@@ -3546,7 +3798,8 @@
         "chartDistanceNm": 6,
         "status": "candidate",
         "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read.",
-        "openFromHourHint": 5
+        "openFromHourHint": 5,
+        "chartRouteType": "special"
       }
     ],
     "YRUHM": [
@@ -3566,7 +3819,8 @@
         "chartDistanceNm": 6.8,
         "status": "candidate",
         "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read.",
-        "openFromHourHint": 6
+        "openFromHourHint": 6,
+        "chartRouteType": "weekend"
       }
     ],
     "DIMON": [
@@ -3578,7 +3832,8 @@
         "chartDistanceNm": 6.8,
         "status": "candidate",
         "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read.",
-        "openFromHourHint": 6
+        "openFromHourHint": 6,
+        "chartRouteType": "weekend"
       }
     ],
     "MESAR": [
@@ -3591,7 +3846,8 @@
         "status": "candidate",
         "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read.",
         "closedHint": true,
-        "openFromHourHint": 5
+        "openFromHourHint": 5,
+        "chartRouteType": "special"
       },
       {
         "to": "ZZHOR",
@@ -3614,7 +3870,8 @@
         "chartDistanceNm": 3.3,
         "status": "candidate",
         "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read.",
-        "openFromHourHint": 5
+        "openFromHourHint": 5,
+        "chartRouteType": "special"
       }
     ],
     "BKAMA": [
@@ -3625,7 +3882,8 @@
         "distanceNm": 4.29,
         "chartDistanceNm": 4.4,
         "status": "ocr-candidate",
-        "source": "Direction split altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read. The single OCR value matched one direction exactly."
+        "source": "Direction split altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read. The single OCR value matched one direction exactly.",
+        "chartRouteType": "special"
       },
       {
         "to": "LLRU",
@@ -3656,7 +3914,8 @@
         "chartDistanceNm": 4.4,
         "status": "ocr-candidate",
         "source": "Direction split altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read. The single OCR value matched one direction exactly.",
-        "openFromHourHint": 6
+        "openFromHourHint": 6,
+        "chartRouteType": "weekend"
       }
     ],
     "ARGMN": [
@@ -3666,7 +3925,8 @@
         "outboundAltitude": 500,
         "distanceNm": 8.28,
         "chartDistanceNm": 8.3,
-        "status": "ocr-candidate"
+        "status": "ocr-candidate",
+        "chartRouteType": "weekend"
       },
       {
         "to": "TIRAT",
@@ -3686,7 +3946,8 @@
         "chartDistanceNm": 4.9,
         "status": "candidate",
         "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read.",
-        "openFromHourHint": 6
+        "openFromHourHint": 6,
+        "chartRouteType": "weekend"
       },
       {
         "to": "SHAHR",
@@ -3696,7 +3957,8 @@
         "chartDistanceNm": 5.3,
         "status": "candidate",
         "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read.",
-        "openFromHourHint": 6
+        "openFromHourHint": 6,
+        "chartRouteType": "weekend"
       }
     ],
     "TIRAT": [
@@ -3717,7 +3979,9 @@
         "distanceNm": 11.45,
         "chartDistanceNm": 11.4,
         "status": "ocr-candidate",
-        "closedHint": true
+        "closedHint": true,
+        "chartRouteType": "weekend",
+        "onAtcApproval": true
       },
       {
         "to": "MOVIL",
@@ -3752,7 +4016,9 @@
         "distanceNm": 2.06,
         "chartDistanceNm": 2,
         "status": "reviewed",
-        "source": "Direction split resolved by the maintainer (Aug 2026): 700 toward SMRAT, 400 toward AAKKO. A secondary source had 400 both ways against our OCR 700 both ways; both were half right."
+        "source": "Direction split resolved by the maintainer (Aug 2026): 700 toward SMRAT, 400 toward AAKKO. A secondary source had 400 both ways against our OCR 700 both ways; both were half right.",
+        "chartRouteType": "weekday",
+        "onAtcApproval": true
       },
       {
         "to": "LLSO",
@@ -3771,7 +4037,8 @@
         "distanceNm": 2.42,
         "chartDistanceNm": 2.6,
         "status": "ocr-candidate",
-        "source": "Direction split altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read. The single OCR value matched one direction exactly."
+        "source": "Direction split altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read. The single OCR value matched one direction exactly.",
+        "chartRouteType": "weekday"
       }
     ],
     "HOTRM": [
@@ -3782,7 +4049,8 @@
         "distanceNm": 3.03,
         "chartDistanceNm": 2.9,
         "status": "candidate",
-        "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read."
+        "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read.",
+        "chartRouteType": "weekday"
       },
       {
         "to": "DAROM",
@@ -3791,7 +4059,8 @@
         "distanceNm": 2.42,
         "chartDistanceNm": 2.6,
         "status": "ocr-candidate",
-        "source": "Direction split altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read. The single OCR value matched one direction exactly."
+        "source": "Direction split altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read. The single OCR value matched one direction exactly.",
+        "chartRouteType": "weekday"
       }
     ],
     "BOREN": [
@@ -3801,7 +4070,8 @@
         "outboundAltitude": null,
         "distanceNm": 7.46,
         "chartDistanceNm": 7.5,
-        "status": "unknown"
+        "status": "unknown",
+        "chartRouteType": "weekday"
       },
       {
         "to": "HOTRM",
@@ -3810,7 +4080,8 @@
         "distanceNm": 3.03,
         "chartDistanceNm": 2.9,
         "status": "candidate",
-        "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read."
+        "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read.",
+        "chartRouteType": "weekday"
       }
     ],
     "DALIA": [
@@ -3840,7 +4111,8 @@
         "outboundAltitude": null,
         "distanceNm": 2.66,
         "chartDistanceNm": 2.7,
-        "status": "unknown"
+        "status": "unknown",
+        "chartRouteType": "weekend"
       }
     ],
     "TYONA": [
@@ -3869,7 +4141,8 @@
         "outboundAltitude": null,
         "distanceNm": 1.94,
         "chartDistanceNm": 1.9,
-        "status": "unknown"
+        "status": "unknown",
+        "chartRouteType": "weekday"
       }
     ],
     "SIRNI": [
@@ -3880,7 +4153,8 @@
         "distanceNm": 3.39,
         "chartDistanceNm": 3.3,
         "status": "candidate",
-        "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read."
+        "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read.",
+        "chartRouteType": "weekday"
       },
       {
         "to": "NTAIM",
@@ -3888,7 +4162,8 @@
         "outboundAltitude": null,
         "distanceNm": 2.7,
         "chartDistanceNm": 2.7,
-        "status": "unknown"
+        "status": "unknown",
+        "chartRouteType": "weekday"
       }
     ],
     "NSHRM": [
@@ -3899,7 +4174,8 @@
         "distanceNm": 3.43,
         "chartDistanceNm": 3.5,
         "status": "reviewed",
-        "source": "Direction dispute resolved by the maintainer (Aug 2026): 1200 toward NSHRM, 800 toward AYLON. Our OCR had the mirror image; a secondary source agreed with this resolution."
+        "source": "Direction dispute resolved by the maintainer (Aug 2026): 1200 toward NSHRM, 800 toward AYLON. Our OCR had the mirror image; a secondary source agreed with this resolution.",
+        "chartRouteType": "weekday"
       },
       {
         "to": "NCSHN",
@@ -3911,7 +4187,8 @@
         "source": "Direction split altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read. The single OCR value matched one direction exactly.",
         "closedHint": true,
         "openFromHourHint": 6,
-        "weekdayClosedHint": true
+        "weekdayClosedHint": true,
+        "chartRouteType": "weekend"
       },
       {
         "to": "SIRNI",
@@ -3920,7 +4197,8 @@
         "distanceNm": 3.39,
         "chartDistanceNm": 3.3,
         "status": "candidate",
-        "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read."
+        "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read.",
+        "chartRouteType": "weekday"
       },
       {
         "to": "LLNN",
@@ -3939,7 +4217,8 @@
         "distanceNm": 3.02,
         "chartDistanceNm": 3,
         "status": "candidate",
-        "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read."
+        "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read.",
+        "chartRouteType": "weekday"
       },
       {
         "to": "NSHRM",
@@ -3948,7 +4227,8 @@
         "distanceNm": 3.43,
         "chartDistanceNm": 3.5,
         "status": "reviewed",
-        "source": "Direction dispute resolved by the maintainer (Aug 2026): 1200 toward NSHRM, 800 toward AYLON. Our OCR had the mirror image; a secondary source agreed with this resolution."
+        "source": "Direction dispute resolved by the maintainer (Aug 2026): 1200 toward NSHRM, 800 toward AYLON. Our OCR had the mirror image; a secondary source agreed with this resolution.",
+        "chartRouteType": "weekday"
       }
     ],
     "LTRUN": [
@@ -3959,7 +4239,8 @@
         "distanceNm": 3.02,
         "chartDistanceNm": 3,
         "status": "candidate",
-        "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read."
+        "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read.",
+        "chartRouteType": "weekday"
       },
       {
         "to": "BSEMS",
@@ -4009,7 +4290,8 @@
         "chartDistanceNm": 4.9,
         "status": "candidate",
         "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read.",
-        "closedHint": true
+        "closedHint": true,
+        "chartRouteType": "weekday"
       },
       {
         "to": "ZHRYA",
@@ -4018,7 +4300,8 @@
         "distanceNm": 3.78,
         "chartDistanceNm": 3.8,
         "status": "candidate",
-        "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read."
+        "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read.",
+        "chartRouteType": "weekday"
       }
     ],
     "NCSHN": [
@@ -4030,7 +4313,8 @@
         "chartDistanceNm": 4.9,
         "status": "candidate",
         "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read.",
-        "closedHint": true
+        "closedHint": true,
+        "chartRouteType": "weekday"
       },
       {
         "to": "NSHRM",
@@ -4042,7 +4326,8 @@
         "source": "Direction split altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read. The single OCR value matched one direction exactly.",
         "closedHint": true,
         "openFromHourHint": 6,
-        "weekdayClosedHint": true
+        "weekdayClosedHint": true,
+        "chartRouteType": "weekend"
       },
       {
         "to": "LLNN",
@@ -4061,7 +4346,8 @@
         "distanceNm": 3.78,
         "chartDistanceNm": 3.8,
         "status": "candidate",
-        "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read."
+        "source": "Distance computed from our own coordinates; altitudes cross-referenced from a secondary source (Aug 2026), pending a chart read.",
+        "chartRouteType": "weekday"
       }
     ],
     "BOVED": [
@@ -4081,7 +4367,8 @@
         "outboundAltitude": null,
         "distanceNm": 7.19,
         "chartDistanceNm": 7.1,
-        "status": "unknown"
+        "status": "unknown",
+        "chartRouteType": "weekend"
       },
       {
         "to": "TYONA",
@@ -4118,7 +4405,8 @@
         "outboundAltitude": null,
         "distanceNm": 7.19,
         "chartDistanceNm": 7.1,
-        "status": "unknown"
+        "status": "unknown",
+        "chartRouteType": "weekend"
       }
     ],
     "TAALL": [
@@ -4187,7 +4475,8 @@
         "inboundAltitude": null,
         "outboundAltitude": null,
         "status": "unknown",
-        "source": "airstrip join cross-referenced from a secondary source (Aug 2026): the source carries the link with no published altitude (its airfield-join convention). Chart read owed."
+        "source": "airstrip join cross-referenced from a secondary source (Aug 2026): the source carries the link with no published altitude (its airfield-join convention). Chart read owed.",
+        "chartRouteType": "weekend"
       }
     ],
     "ENHRD": [
@@ -4197,7 +4486,8 @@
         "inboundAltitude": null,
         "outboundAltitude": null,
         "status": "unknown",
-        "source": "airstrip join cross-referenced from a secondary source (Aug 2026): the source carries the link with no published altitude (its airfield-join convention). Chart read owed."
+        "source": "airstrip join cross-referenced from a secondary source (Aug 2026): the source carries the link with no published altitude (its airfield-join convention). Chart read owed.",
+        "chartRouteType": "weekend"
       }
     ],
     "LLNN": [
@@ -4271,7 +4561,8 @@
         "inboundAltitude": null,
         "outboundAltitude": null,
         "status": "unknown",
-        "source": "GORAL is printed on the Low Alt chart (it was dropped from the CVFR chart, where the 172-point set no longer lists it). Links cross-referenced from a secondary source (Aug 2026); altitudes not published there. Chart read owed."
+        "source": "GORAL is printed on the Low Alt chart (it was dropped from the CVFR chart, where the 172-point set no longer lists it). Links cross-referenced from a secondary source (Aug 2026); altitudes not published there. Chart read owed.",
+        "chartRouteType": "special"
       },
       {
         "to": "ZLHAV",
@@ -4279,13 +4570,397 @@
         "inboundAltitude": null,
         "outboundAltitude": null,
         "status": "unknown",
-        "source": "GORAL is printed on the Low Alt chart (it was dropped from the CVFR chart, where the 172-point set no longer lists it). Links cross-referenced from a secondary source (Aug 2026); altitudes not published there. Chart read owed."
+        "source": "GORAL is printed on the Low Alt chart (it was dropped from the CVFR chart, where the 172-point set no longer lists it). Links cross-referenced from a secondary source (Aug 2026); altitudes not published there. Chart read owed.",
+        "chartRouteType": "special"
       }
     ]
   },
   "commMeta": {
-    "version": 1,
-    "source": "LSA (Low-Altitude) frequency-change / comm-transfer points. Empty for now — to be populated from the LSA-Low-Altitude chart.",
-    "pointOrder": []
+    "version": 2,
+    "source": "LSA (Low-Altitude) frequency-change points, read off the LSA chart: each is the legend's \"נקודת מעבר קשר בין יחידות מבקרות בציון אות הקריאה שלהן (דיווח חובה)\" -- a black triangle with a magenta dot -- found by colour on the z12 tiles, every candidate confirmed by eye, call signs from the magenta labels at the point (z13). Compulsory reporting points (solid black triangles) re-read the same pass. 2026-10-02.",
+    "_definition": "Each entry marks a CVFR reporting point where pilots are expected to switch ATC frequencies because the point sits on (or at) a sector / CTR / TMA boundary. The chart annotation may be on the boundary line itself rather than directly at the point — the dataset records the *point of change*, not the chart-text position.",
+    "pointOrder": [
+      "SELZR",
+      "ZBTMS",
+      "AAKKO",
+      "ZAMID",
+      "ZBTZD",
+      "GILAM",
+      "DAROM",
+      "HASID",
+      "ZMGID",
+      "SFAIM#2",
+      "MEYAL",
+      "TYONA",
+      "RSNIM",
+      "NTAIM",
+      "SOREK",
+      "BOVED",
+      "REUTE",
+      "ZASHD",
+      "SORES",
+      "ZUKIM",
+      "ZPLGT",
+      "MKGAT",
+      "BKAMA",
+      "NBSOR",
+      "HATRU",
+      "he:צאלים",
+      "HOVAV",
+      "KTORA"
+    ]
+  },
+  "callSigns": {
+    "AZAM": {
+      "label": "Azam",
+      "he": "אז\"מ",
+      "primary": "123.70",
+      "secondary": "123.45",
+      "source": "legacy 02/2014 frequency table; not present in AirMapRadioFrequencies PDF"
+    },
+    "EILAT": {
+      "label": "Eilat / Ramon",
+      "he": "אילת-רמון",
+      "primary": "119.00",
+      "secondary": "122.00",
+      "ground": "121.70",
+      "atis": "132.55",
+      "phone": "08-9553666",
+      "source": "Israel AIP frequency table (read 2026-08-11): primary 119.00, secondary 122.00, taxi 121.70, ATIS 132.55. The AirMapRadioFrequencies PDF 2026-06-06 additions alternate 125.60 and secondaryAlternate 129.40 have no AIP column and are removed; 125.60 is the same temporary NOTAM frequency it had also placed on HERZLIYA primary."
+    },
+    "BEN_GURION": {
+      "label": "Ben Gurion",
+      "he": "בן גוריון",
+      "primary": "134.60",
+      "secondary": "132.10",
+      "atis": "132.50",
+      "atisDeparture": "132.80",
+      "groundWest": "121.75",
+      "groundEast": "121.95",
+      "clearance": "121.55",
+      "appPrimary": "120.50",
+      "appSecondary": "131.10",
+      "tmaPrimary": "119.50",
+      "tmaSecondary": "133.60",
+      "phone": "03-9758666",
+      "source": "AirMapRadioFrequencies PDF 2026-06-06"
+    },
+    "HERZLIYA": {
+      "label": "Herzliya",
+      "he": "הרצליה",
+      "primary": "122.20",
+      "secondary": "129.40",
+      "clearance": "121.70",
+      "phone": "09-9719554",
+      "source": "Israel AIP frequency table (read 2026-08-11): primary 122.20, secondary 129.40, ATIS 121.70 CPT. Supersedes AirMapRadioFrequencies PDF 2026-06-06, which carried the temporary NOTAM 125.60 as primary and an alternate duplicating it."
+    },
+    "HAGAV": {
+      "label": "Hagav",
+      "he": "חגב",
+      "primary": "132.70",
+      "secondary": "133.45",
+      "source": "legacy 02/2014 frequency table; not present in AirMapRadioFrequencies PDF"
+    },
+    "HAGAV_NORTH": {
+      "label": "Hagav North",
+      "he": "חגב צפוני",
+      "unit": "יב\"א 509",
+      "primary": "128.35",
+      "secondary": "129.25",
+      "phone": "076-8834330",
+      "source": "AirMapRadioFrequencies PDF 2026-06-06"
+    },
+    "HAGAV_SOUTH": {
+      "label": "Hagav South",
+      "he": "חגב דרומי",
+      "unit": "יב\"א 509",
+      "primary": "121.15",
+      "secondary": "122.90",
+      "phone": "076-8834330",
+      "source": "AirMapRadioFrequencies PDF 2026-06-06"
+    },
+    "SHANON": {
+      "label": "Shanon",
+      "he": "שנון",
+      "unit": "יב\"א 509",
+      "primary": "122.90",
+      "source": "maintainer military frequency table 2026-06-01"
+    },
+    "HAIFA": {
+      "label": "Haifa",
+      "he": "חיפה",
+      "primary": "133.00",
+      "secondary": "127.80",
+      "atis": "135.40",
+      "phone": "04-8476120",
+      "source": "AirMapRadioFrequencies PDF 2026-06-06"
+    },
+    "HATZOR": {
+      "label": "Hatzor",
+      "he": "חצור",
+      "unit": "חצור",
+      "primary": "133.20",
+      "phone": "073-3485024",
+      "source": "AirMapRadioFrequencies PDF 2026-06-06"
+    },
+    "MEGIDDO": {
+      "label": "Megiddo",
+      "he": "מגידו",
+      "primary": "124.40",
+      "secondary": "128.20",
+      "phone": "08-6104488",
+      "source": "AirMapRadioFrequencies PDF 2026-06-06"
+    },
+    "MASADA": {
+      "label": "Masada",
+      "he": "מצדה",
+      "primary": "122.55",
+      "phone": "08-6688811",
+      "source": "AirMapRadioFrequencies PDF 2026-06-06"
+    },
+    "NEVATIM": {
+      "label": "Nevatim",
+      "he": "נבטים",
+      "primary": "129.30",
+      "secondary": "127.80",
+      "phone": "08-6501402",
+      "source": "AirMapRadioFrequencies PDF 2026-06-06"
+    },
+    "NEGEV": {
+      "label": "Negev",
+      "he": "נגב",
+      "unit": "נבטים",
+      "primary": "132.40",
+      "atis": "119.20",
+      "phone": "08-6823080",
+      "source": "AirMapRadioFrequencies PDF 2026-06-06"
+    },
+    "OVDA": {
+      "label": "Ovda",
+      "he": "עובדה",
+      "unit": "עובדה",
+      "primary": "129.90",
+      "phone": "08-6359966",
+      "source": "AirMapRadioFrequencies PDF 2026-06-06"
+    },
+    "ARAD": {
+      "label": "Arad",
+      "he": "ערד",
+      "primary": "120.75",
+      "phone": "050-8877840",
+      "source": "AirMapRadioFrequencies PDF 2026-06-06"
+    },
+    "PIK": {
+      "label": "Pik",
+      "he": "פיק",
+      "primary": "122.55",
+      "phone": "04-6763353",
+      "source": "AirMapRadioFrequencies PDF 2026-06-06"
+    },
+    "PLUTO": {
+      "label": "Pluto",
+      "he": "פלוטו",
+      "primary": "118.40",
+      "secondary": "119.25",
+      "source": "legacy 02/2014 frequency table; split into Pluto West/East in AirMapRadioFrequencies PDF"
+    },
+    "PLUTO_WEST": {
+      "label": "Pluto West",
+      "he": "פלוטו מערב",
+      "unit": "יב\"א 506",
+      "primary": "118.40",
+      "secondary": "119.15",
+      "phone": "04-6926211",
+      "source": "AirMapRadioFrequencies PDF 2026-06-06"
+    },
+    "PLUTO_EAST": {
+      "label": "Pluto East",
+      "he": "פלוטו מזרח",
+      "unit": "יב\"א 506",
+      "primary": "123.85",
+      "secondary": "134.65",
+      "phone": "04-6926239",
+      "source": "AirMapRadioFrequencies PDF 2026-06-06"
+    },
+    "LIBA": {
+      "label": "Liba",
+      "he": "ליבה",
+      "unit": "יב\"א 506",
+      "primary": "132.85",
+      "source": "maintainer military frequency table 2026-06-01"
+    },
+    "TEL_NOF_CIRCUIT": {
+      "label": "Tel Nof Circuit",
+      "he": "הקפה תל נוף",
+      "unit": "תל נוף",
+      "primary": "128.15",
+      "source": "maintainer military frequency table 2026-06-01"
+    },
+    "HELICOPTER_AREAS": {
+      "label": "Helicopter Areas",
+      "he": "אזורי מסוקים",
+      "unit": "יב\"א 506",
+      "primary": "112.05",
+      "source": "maintainer military frequency table 2026-06-01"
+    },
+    "PALMACHIM": {
+      "label": "Palmachim",
+      "he": "פלמחים",
+      "unit": "פלמחים",
+      "primary": "135.55",
+      "secondary": "118.25",
+      "atis": "126.10",
+      "phone": "03-9432929",
+      "source": "AirMapRadioFrequencies PDF 2026-06-06"
+    },
+    "KEDEM": {
+      "label": "Kedem",
+      "he": "קדם",
+      "primary": "134.70",
+      "secondary": "118.35",
+      "phone": "08-9907913",
+      "source": "AirMapRadioFrequencies PDF 2026-06-06"
+    },
+    "KEDEM_GENERAL": {
+      "label": "Kedem General Aviation",
+      "he": "קדם - תעופה כללית",
+      "unit": "קדם",
+      "primary": "134.70",
+      "source": "AirMapRadioFrequencies PDF 2026-06-06"
+    },
+    "KEDEM_SPORT": {
+      "label": "Kedem Sport Aviation",
+      "he": "קדם - תעופה ספורטיבית",
+      "unit": "קדם",
+      "primary": "118.35",
+      "source": "AirMapRadioFrequencies PDF 2026-06-06"
+    },
+    "KIRYAT_SHMONA": {
+      "label": "Kiryat Shmona",
+      "he": "קריית שמונה",
+      "primary": "126.90",
+      "phone": "04-6943646",
+      "source": "AirMapRadioFrequencies PDF 2026-06-06"
+    },
+    "ROSH_PINA": {
+      "label": "Rosh Pina",
+      "he": "ראש פינה",
+      "primary": "118.45",
+      "secondary": "119.65",
+      "atis": "132.45",
+      "phone": "04-6136210",
+      "source": "AirMapRadioFrequencies PDF 2026-06-06"
+    },
+    "RISHON_LEZION": {
+      "label": "Rishon LeZion",
+      "he": "ראשון לציון",
+      "primary": "126.90",
+      "secondary": "120.00",
+      "phone": "052-5040014",
+      "source": "AirMapRadioFrequencies PDF 2026-06-06"
+    },
+    "RAMON": {
+      "label": "Ramon",
+      "he": "רמון",
+      "unit": "רמון",
+      "primary": "124.60",
+      "phone": "08-6505906",
+      "source": "AirMapRadioFrequencies PDF 2026-06-06"
+    },
+    "RAMAT_DAVID": {
+      "label": "Ramat David",
+      "he": "רמת דוד",
+      "unit": "רמת דוד",
+      "primary": "130.50",
+      "secondary": "119.80",
+      "phone": "04-6092960",
+      "source": "AirMapRadioFrequencies PDF 2026-06-06"
+    },
+    "HATZERIM_NORTH": {
+      "label": "Hatzerim North",
+      "he": "חצרים צפון",
+      "unit": "חצרים",
+      "primary": "125.35",
+      "phone": "08-9907900",
+      "source": "AirMapRadioFrequencies PDF 2026-06-06"
+    },
+    "HATZERIM_SOUTH": {
+      "label": "Hatzerim South",
+      "he": "חצרים דרום",
+      "unit": "חצרים",
+      "primary": "130.80",
+      "phone": "08-9907900",
+      "source": "AirMapRadioFrequencies PDF 2026-06-06"
+    },
+    "SDE_DOV": {
+      "label": "Sde Dov",
+      "he": "שדה דב",
+      "primary": "134.95",
+      "source": "legacy 02/2014 frequency table; not present in AirMapRadioFrequencies PDF"
+    },
+    "TEYMAN": {
+      "label": "Teyman",
+      "he": "תימן",
+      "primary": "122.50",
+      "phone": "08-6434810",
+      "source": "AirMapRadioFrequencies PDF 2026-06-06"
+    },
+    "TEL_NOF": {
+      "label": "Tel Nof",
+      "he": "תל-נוף",
+      "primary": "129.05",
+      "secondary": "134.30",
+      "phone": "073-3636954",
+      "source": "AirMapRadioFrequencies PDF 2026-06-06"
+    },
+    "HABONIM": {
+      "label": "Habonim",
+      "he": "הבונים",
+      "primary": "129.15",
+      "phone": "04-6391068",
+      "source": "AirMapRadioFrequencies PDF 2026-06-06"
+    },
+    "EIN_VERED": {
+      "label": "Ein Vered",
+      "he": "עין ורד",
+      "primary": "123.70",
+      "phone": "050-5365946",
+      "source": "AirMapRadioFrequencies PDF 2026-06-06"
+    },
+    "EIN_YAHAV": {
+      "label": "Ein Yahav",
+      "he": "עין יהב",
+      "primary": "122.10",
+      "phone": "03-5080005",
+      "source": "AirMapRadioFrequencies PDF 2026-06-06"
+    },
+    "TEL_AVIV_CONTROL": {
+      "label": "Tel Aviv Control",
+      "he": "פיקוח ת\"א",
+      "primary": "121.40",
+      "secondary": "122.15",
+      "source": "AirMapRadioFrequencies PDF 2026-06-06"
+    },
+    "SOUTH_CONTROL": {
+      "label": "South Control",
+      "he": "פיקוח דרום",
+      "primary": "120.90",
+      "secondary": "134.875",
+      "phone": "08-6833222",
+      "source": "AirMapRadioFrequencies PDF 2026-06-06"
+    },
+    "TLV_ID": {
+      "label": "TLV ID",
+      "he": "TLV ID",
+      "primary": "124.30",
+      "secondary": "135.025",
+      "source": "AirMapRadioFrequencies PDF 2026-06-06"
+    },
+    "TLV_DEP": {
+      "label": "TLV dep",
+      "he": "TLV dep",
+      "primary": "122.95",
+      "source": "AirMapRadioFrequencies PDF 2026-06-06"
+    }
   }
 }

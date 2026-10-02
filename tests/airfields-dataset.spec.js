@@ -294,10 +294,12 @@ test.describe('#412 — airfields.json (chart-sourced)', () => {
     const byCode = new Map(d.airfields.map(a => [a.name, a]));
     // LLBO (Habonim) now carries BYOP plates from the AIP rebuild, so it
     // is no longer a bare chart-only entry.
+    // GVULT also carries the LSA chart's strip class (agricultural) -- a chart label, not
+    // enrichment.
     const bare = ['KKDEM', 'GVULT'];
     for (const code of bare) {
       const a = byCode.get(code);
-      expect(Object.keys(a).sort()).toEqual(['en', 'he', 'lat', 'lng', 'name']);
+      expect(Object.keys(a).filter(k => k !== 'chartClass').sort()).toEqual(['en', 'he', 'lat', 'lng', 'name']);
     }
   });
 

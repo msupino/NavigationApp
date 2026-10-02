@@ -2347,7 +2347,9 @@
       "he": "בועת מגידו ב' מזרח",
       "en": "BMDEB",
       "icao": "BMDEB",
-      "aliases": ["BMGEB"],
+      "aliases": [
+        "BMGEB"
+      ],
       "coords": [
         [
           32.690352,
@@ -4949,5 +4951,158 @@
       ],
       "active": "weekend"
     }
-  ]
+  ],
+  "activity": [
+    {
+      "kind": "parachute",
+      "lat": 32.99686,
+      "lng": 35.57751
+    },
+    {
+      "kind": "parachute",
+      "lat": 32.93349,
+      "lng": 35.06987
+    },
+    {
+      "kind": "parachute",
+      "lat": 32.67753,
+      "lng": 35.30028
+    },
+    {
+      "kind": "parachute",
+      "lat": 32.64371,
+      "lng": 34.90768
+    },
+    {
+      "kind": "parachute",
+      "lat": 31.31827,
+      "lng": 35.39528
+    },
+    {
+      "kind": "parachute",
+      "lat": 31.31588,
+      "lng": 34.72718
+    },
+    {
+      "kind": "paraglider",
+      "lat": 32.91332,
+      "lng": 35.35572
+    },
+    {
+      "kind": "paraglider",
+      "lat": 32.8421,
+      "lng": 35.30954
+    },
+    {
+      "kind": "paraglider",
+      "lat": 32.80026,
+      "lng": 35.33169
+    },
+    {
+      "kind": "paraglider",
+      "lat": 32.77082,
+      "lng": 35.00192
+    },
+    {
+      "kind": "paraglider",
+      "lat": 32.74798,
+      "lng": 35.64768
+    },
+    {
+      "kind": "paraglider",
+      "lat": 32.73184,
+      "lng": 35.47709
+    },
+    {
+      "kind": "paraglider",
+      "lat": 32.72415,
+      "lng": 35.0724
+    },
+    {
+      "kind": "paraglider",
+      "lat": 32.70546,
+      "lng": 35.08228
+    },
+    {
+      "kind": "paraglider",
+      "lat": 32.70209,
+      "lng": 35.48721
+    },
+    {
+      "kind": "paraglider",
+      "lat": 32.69776,
+      "lng": 35.38593
+    },
+    {
+      "kind": "paraglider",
+      "lat": 32.58935,
+      "lng": 35.51949
+    },
+    {
+      "kind": "paraglider",
+      "lat": 32.58298,
+      "lng": 34.94064
+    },
+    {
+      "kind": "paraglider",
+      "lat": 32.53987,
+      "lng": 35.3746
+    },
+    {
+      "kind": "paraglider",
+      "lat": 32.52163,
+      "lng": 35.40276
+    },
+    {
+      "kind": "paraglider",
+      "lat": 32.46951,
+      "lng": 35.43674
+    },
+    {
+      "kind": "paraglider",
+      "lat": 32.38808,
+      "lng": 34.85413
+    },
+    {
+      "kind": "paraglider",
+      "lat": 32.32088,
+      "lng": 34.84348
+    },
+    {
+      "kind": "paraglider",
+      "lat": 32.24515,
+      "lng": 34.81648
+    },
+    {
+      "kind": "paraglider",
+      "lat": 32.21626,
+      "lng": 34.81943
+    },
+    {
+      "kind": "paraglider",
+      "lat": 31.88423,
+      "lng": 34.85513
+    },
+    {
+      "kind": "paraglider",
+      "lat": 31.781,
+      "lng": 34.96606
+    },
+    {
+      "kind": "paraglider",
+      "lat": 31.60875,
+      "lng": 35.38706
+    },
+    {
+      "kind": "paraglider",
+      "lat": 31.50685,
+      "lng": 34.57329
+    },
+    {
+      "kind": "paraglider",
+      "lat": 31.36273,
+      "lng": 34.48025
+    }
+  ],
+  "_activity": "Activity sites from the LSA chart legend, found by template-matching each icon on the z12 tiles and confirmed by eye, 2026-10-02: parachute = \"אזור הצנחה\" (drop zone, the icon inside its dotted ring), paraglider = \"נקודת המראה גלשני רחיפה/מצנחי רחיפה\" (hang-glider / paraglider launch point). Positions are the icon's, a few hundred metres at most from the site."
 }
