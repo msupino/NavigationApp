@@ -268,9 +268,22 @@ if (typeof MutationObserver === 'function') {
   ic.className = 'mi-icon';
   ic.setAttribute('aria-hidden', 'true');
   if (typeof navIconSvg === 'function') ic.innerHTML = navIconSvg('download', 16);
-  wrap.append(ic, sel);
+  // The face the phone shows: icon and the current entry's name centred, like the buttons
+  // beside it, with the real select laid over it (see .mi-face in the stylesheet).
+  const face = document.createElement('span');
+  face.className = 'mi-face';
+  face.setAttribute('aria-hidden', 'true');
+  wrap.append(ic, face, sel);
   // The list too: each format reads by its name, without the glyph in front.
   for (const o of sel.options) o.textContent = o.textContent.replace(LEADING_GLYPHS, '');
+  const syncFace = () => {
+    const o = sel.options[sel.selectedIndex] || sel.options[0];
+    face.textContent = o ? o.textContent.trim() : '';
+  };
+  syncFace();
+  sel.addEventListener('change', () => setTimeout(syncFace, 0));
+  if (typeof MutationObserver === 'function')
+    new MutationObserver(syncFace).observe(sel, { childList: true, subtree: true, characterData: true });
 })();
 document.getElementById('tool-add').onclick = () => setMode('add');
 document.getElementById('tool-note').onclick = () => setMode('note');

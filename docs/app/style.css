@@ -8853,7 +8853,8 @@ body.theme-dark .public-pilot-label { background: rgba(24, 28, 36, 0.88); color:
 #toolbar .mi-select > .mi-icon { position: absolute; inset-inline-start: 10px; top: 50%; transform: translateY(-50%); pointer-events: none; }
 #toolbar .mi-select::after {
   content: ''; position: absolute; inset-inline-end: 12px; top: 50%; width: 6px; height: 6px;
-  border-inline-end: 2px solid currentColor; border-bottom: 2px solid currentColor;
+  /* Physical sides: a down chevron points down in either direction (inline-end drew "<" in RTL). */
+  border-right: 2px solid currentColor; border-bottom: 2px solid currentColor;
   transform: translateY(-70%) rotate(45deg); opacity: .6; pointer-events: none;
 }
 body #toolbar .tb-section-body .mi-select > #export-select {
@@ -9118,3 +9119,36 @@ body.theme-light #search-overlay #wp-search { border-color: #858f9c; }
 /* The phone card without the deck (?deck=0): collapsed, it is one row and its links; the
    globe there took a row of its own. It shows again when the card is open. */
 #toolbar.collapsed #lang-quick { display: none; }
+
+/* Slider rows. Phone: label, value and its ↻ on the first line, the slider alone on the
+   second -- the slider sat between them in the markup, so the value and ↻ fell to a third
+   line of their own. Desktop: one line, the ↻ never parted from its value; the two rows whose
+   value reads "1.00 (standard)" give the slider a little width instead of wrapping. */
+#toolbar .navtoggle-slider > input[type="range"] { order: 10; }
+@media (min-width: 681px) and (hover: hover) and (pointer: fine) {
+  #toolbar .navtoggle-slider > input[type="range"] { order: 0; }
+  #toolbar .tb-section-body .navtoggle-wrap { flex-wrap: nowrap; }
+  #toolbar .tb-section-body .navtoggle-wrap input[type="range"] { flex: 1 1 72px; width: auto; min-width: 64px; }
+  /* ...and the sliders of a menu start on one line: their names share a column. */
+  #toolbar .tb-section-body > .navtoggle-slider > span:first-child { min-width: 8.8em; }
+}
+
+/* Export on a phone: its neighbours in the sheet are centred, bordered buttons, and Export sat
+   at the side as a bare list row. It wears the same face -- icon and name centred -- with the
+   real select stretched invisibly over it, so it still opens the system list. */
+#toolbar .mi-select > .mi-face { display: none; }
+body.deck-on #deck-sheet .mi-select {
+  display: flex; align-items: center; justify-content: center; gap: 6px;
+  min-height: 36px; box-sizing: border-box;
+  border: 1px solid #443f3f; border-radius: 5px; background: #2f2b2b; color: #e8e8e8;
+  font-size: 14px; font-weight: 700;
+}
+body.theme-light.deck-on #deck-sheet .mi-select { border-color: #b8c0cc; background: #fff; color: #1f252c; }
+body.deck-on #deck-sheet .mi-select > .mi-icon { position: static; transform: none; display: inline-flex; }
+body.deck-on #deck-sheet .mi-select > .mi-face { display: inline; }
+body.deck-on #deck-sheet .mi-select::after { position: static; transform: translateY(-2px) rotate(45deg); margin-inline-start: 2px; }
+body.deck-on #deck-sheet .tb-section-body .mi-select > #export-select {
+  position: absolute; inset: 0; width: 100%; height: 100%; min-height: 0; margin: 0;
+  opacity: 0; cursor: pointer;
+}
+body.deck-on #deck-sheet .mi-select:focus-within { outline: 2px solid #4c9bff; outline-offset: 1px; }
