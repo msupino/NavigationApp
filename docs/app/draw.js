@@ -3631,8 +3631,9 @@ function drawAirfieldSymbol(ctx, s, r, af, angles) {
 }
 function drawAirfields() {
   if (!showAirfields || !airfields || airfields.length === 0) return;
+  if (!layerShownAtZoom('airfieldMinZoom')) return;
   const showLabels = map.getZoom() >= tune('airfieldLabelMinZoom');
-  const r = tune('airfieldMarkerRadiusPx');
+  const r = tune('airfieldMarkerRadiusPx') * symbolZoomScale();
   const labelOffset = tune('airfieldLabelOffsetPx');
   for (const af of airfields) {
     if (routeOccupiesPoint(af)) continue;
@@ -3675,8 +3676,9 @@ function drawNavWaypoints() {
   if (!showNavWP || !navWP || navWP.length === 0) return;
   // Suppress nav-WP symbol when a route waypoint sits on it (by position),
   // regardless of whether the WP name was changed after snapping.
+  if (!layerShownAtZoom('navWpMinZoom')) return;
   const showLabels = map.getZoom() >= tune('navWpLabelMinZoom');
-  const r = tune('reportingPointRadiusPx');
+  const r = tune('reportingPointRadiusPx') * symbolZoomScale();
   const labelOffset = tune('navWaypointLabelOffsetPx');
   octx.font = `bold ${tune('navWaypointLabelFontPx')}px sans-serif`;
   octx.textAlign = 'left';
@@ -3757,7 +3759,8 @@ function drawVorSymbol(ctx, x, y, r, col, lineWidth, tickLen, type) {
 
 function drawVors(force) {
   if ((!showVorStations && !force) || !vors || !vors.length) return;
-  const r = tune('vorMarkerRadiusPx');
+  if (!force && !layerShownAtZoom('vorMinZoom')) return;
+  const r = tune('vorMarkerRadiusPx') * (force ? 1 : symbolZoomScale());
   const showLabels = !!force || map.getZoom() >= tune('vorLabelMinZoom');
   octx.save();
   octx.textAlign = 'left';
@@ -4000,7 +4003,7 @@ function drawCommChangeRings() {
   // change already says so in words, in its own callout with the frequency in it, which is
   // more than a ring ever said. Kept behind a tunable rather than deleted: the drawing is
   // three lines and someone may want it back on a chart with no callouts.
-  if (showCommChange && tune('commChangeRings') === true &&
+  if (showCommChange && tune('commChangeRings') === true && layerShownAtZoom('commChangeMinZoom') &&
       commChangeMap && navWP && navWP.length &&
       !(window.NavAid && NavAid.exporting)) {
     const ringWidth = tune('commChangeRingWidthPx');
@@ -4021,7 +4024,7 @@ function drawCommChangeRings() {
           routePointOnlyInHiddenDirection(wp)) continue;
       const s = proj(wp);                // no viewport cull: also drawn into
                                          // the larger PNG-export canvas
-      let radius = tune('commChangeRingRadiusPx');
+      let radius = tune('commChangeRingRadiusPx') * symbolZoomScale();
       const wi = routeWaypointAtPoint(wp);
       if (wi !== -1) {
         const selected = state.selected &&
@@ -5739,8 +5742,9 @@ function noteRect(i) {
 function commCalloutTextMetrics(lines) {
   const name = lines[0] || '';
   const freq = lines[1] || '';
-  const namePx = tune('commChangeNameFontPx');
-  const freqPx = tune('commChangeFreqFontPx');
+  const sc = symbolZoomScale();
+  const namePx = Math.max(6, Math.round(tune('commChangeNameFontPx') * sc));
+  const freqPx = Math.max(6, Math.round(tune('commChangeFreqFontPx') * sc));
   const oldFont = octx.font;
   octx.font = `bold ${namePx}px sans-serif`;
   const nameW = octx.measureText(name || ' ').width;
@@ -5781,8 +5785,9 @@ function commCalloutGeom(n) {
     canonicalNavWaypointName(w.name) === key);
   const targetRadius = routeIdx >= 0
     ? waypointGeom(routeIdx).r + tune('waypointStrokeWidthPx') / 2
-    : tune('commChangeRingRadiusPx') + tune('commChangeRingWidthPx') / 2;
+    : tune('commChangeRingRadiusPx') * symbolZoomScale() + tune('commChangeRingWidthPx') / 2;
   const startGap = Math.max(0, tune('commChangeArrowStartGapPx'));
+  const sc = symbolZoomScale();
   const startClear = Math.min(Math.max(0, len - 4), targetRadius + startGap);
   const tp = {
     x: targetCenter.x + ux * startClear,
@@ -5791,9 +5796,9 @@ function commCalloutGeom(n) {
   dx = fp.x - tp.x;
   dy = fp.y - tp.y;
   const pathLen = Math.hypot(dx, dy) || 1;
-  const width = tune('commChangeArrowWidthPx');
-  const halo = tune('commChangeArrowHaloPx');
-  const bolt = tune('commChangeArrowBoltPx');
+  const width = tune('commChangeArrowWidthPx') * sc;
+  const halo = tune('commChangeArrowHaloPx') * sc;
+  const bolt = tune('commChangeArrowBoltPx') * sc;
   const boltAngle = tune('commChangeArrowBoltAngleDeg') * Math.PI / 180;
   const boltX = ux * Math.cos(boltAngle) + nx * Math.sin(boltAngle);
   const boltY = uy * Math.cos(boltAngle) + ny * Math.sin(boltAngle);
@@ -5961,7 +5966,7 @@ function drawNotes() {
   for (let i = 0; i < state.notes.length; i++) {
     const n = state.notes[i];
     if (typeof routeNoteDirVisible === 'function' && !routeNoteDirVisible(n)) continue;
-    if (n && n.cc && !showCommChange) continue;
+    if (n && n.cc && (!showCommChange || !layerShownAtZoom('commChangeMinZoom'))) continue;
     if (n && n.rp) {
       // Keep the anchored oval on its leg: recompute lat/lng from the anchor
       // every frame (the leg may have moved). Skip if the leg is gone.
