@@ -2948,14 +2948,14 @@ function areaCentroid(coords) {
 // dotted ring. Sized with the other chart symbols (symbolZoomScale).
 function drawActivitySymbol(ctx, x, y, kind, r) {
   ctx.save();
-  const col = kind === 'parachute' ? '#1f5f99' : '#3fb3e6';
+  const col = tune(kind === 'parachute' ? 'activityParachuteColor' : 'activityParagliderColor');
   if (kind === 'parachute') {
     ctx.setLineDash([1.5, 2.5]);
     ctx.strokeStyle = col; ctx.lineWidth = 1.5;
     ctx.beginPath(); ctx.arc(x, y, r * 2.1, 0, Math.PI * 2); ctx.stroke();
     ctx.setLineDash([]);
   }
-  ctx.fillStyle = col; ctx.strokeStyle = '#1b2430'; ctx.lineWidth = 1;
+  ctx.fillStyle = col; ctx.strokeStyle = tune('inkColor'); ctx.lineWidth = 1;
   ctx.beginPath(); ctx.arc(x, y - r * 0.15, r, Math.PI, 0); ctx.closePath(); ctx.fill();
   ctx.beginPath();
   for (const dx of [-1, -0.5, 0, 0.5, 1]) { ctx.moveTo(x + dx * r, y - r * 0.15); ctx.lineTo(x, y + r * 1.15); }
