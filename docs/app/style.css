@@ -9196,3 +9196,10 @@ body.deck-on #deck-sheet #lang-quick { display: none; }
      so it is cut at its end, with an ellipsis. */
 .wp-search-item { unicode-bidi: plaintext; overflow: hidden; text-overflow: ellipsis; }
 html[dir="rtl"] .wp-search-item { text-align: right; }
+
+/* In flight the strip is the instruments: reported from a phone, the live readout ("402 ft ·
+   …29.35" · 322°") ran under the language switch. While the position is live the switch steps
+   aside -- nobody changes language mid-flight, and Settings still has it -- and the readout
+   line is held to its own column, so nothing can paint under the buttons beside it. */
+.deck-strip.deck-strip-live .deck-strip-lang { display: none; }
+body.deck-on .deck-strip > .deck-strip-top { overflow: hidden; }
