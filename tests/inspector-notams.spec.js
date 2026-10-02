@@ -5,7 +5,6 @@
 const { test, expect } = require('./_setup');
 
 const NOW = Date.now();
-const iso = (ms) => new Date(ms).toISOString();
 
 async function lowAlt(page) {
   await page.goto('?lang=en&nogist&deck=0');
