@@ -128,7 +128,8 @@ test('the decoded text inherits the theme colour instead of a hardcoded grey', a
     // The raw line sits behind its button; open it to measure it.
     modal.querySelector('.met-card-btn').click();
     const raw = modal.querySelector('.met-card-raw');
-    const hazard = modal.querySelector('.met-card-summary');
+    const hazard = modal.querySelector('.met-card-summary') ||
+      [...modal.querySelectorAll('.met-v')].find(v => /obscured/i.test(v.textContent));
     return { rawStyle: raw.getAttribute('style') || '', hazardStyle: hazard.getAttribute('style') || '',
       rawOpacity: +getComputedStyle(raw).opacity, rawColor: getComputedStyle(raw).color,
       textColor: getComputedStyle(modal).color, rawText: raw.textContent, hazardText: hazard.textContent };
@@ -141,7 +142,7 @@ test('the decoded text inherits the theme colour instead of a hardcoded grey', a
   expect(styles.rawText).toMatch(/VALID 310300/);
   // The hazard headline never sets a colour either -- it reads in whatever the theme uses.
   expect(styles.hazardStyle).not.toMatch(/color\s*:/);
-  expect(styles.hazardText).toMatch(/MT OBSC/);
+  expect(styles.hazardText).toMatch(/MT OBSC|Mountains obscured/);
 });
 
 test('an expired AIRMET is not drawn, listed, or exposed as a toggle', async ({ page }) => {

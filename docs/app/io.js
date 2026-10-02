@@ -5137,10 +5137,12 @@ function metWarningCard(w, color, onShow, summary) {
   }
   head.appendChild(tools);
   item.appendChild(head);
-  if (summary) {
+  // The feed's one-line summary only stands in when the raw text could not be decoded
+  // (a cut message); next to the decoded rows it would say the same thing twice.
+  if (summary && !d.rows.some(r => r.key === 'phenomenon')) {
     const sum = document.createElement('div');
     sum.className = 'met-card-summary';
-    sum.dir = 'ltr';
+    sum.dir = 'auto';
     sum.textContent = summary;
     item.appendChild(sum);
   }
@@ -5148,7 +5150,13 @@ function metWarningCard(w, color, onShow, summary) {
   grid.className = 'met-card-rows';
   for (const r of d.rows) {
     const k = document.createElement('span'); k.className = 'met-k'; k.textContent = r.label;
-    const v = document.createElement('bdi'); v.className = 'met-v'; v.textContent = r.value;
+    const v = document.createElement('span'); v.className = 'met-v';
+    // A Latin value ("02 16:26Z \u2192 02 19:00Z") is one left-to-right run inside the row's
+    // own direction; left bare, Hebrew's bidi reordered its date and time.
+    const run = document.createElement('bdi');
+    run.dir = /[\u0590-\u05FF]/.test(r.value) ? 'auto' : 'ltr';
+    run.textContent = r.value;
+    v.appendChild(run);
     grid.append(k, v);
   }
   if (d.rows.length) item.appendChild(grid);

@@ -9250,6 +9250,6 @@ body.deck-on .met-card-btn { min-height: 36px; }
 .met-card-summary { font-size: 13px; font-weight: 600; margin-bottom: 6px; text-align: left; }
 .met-card-rows { display: grid; grid-template-columns: max-content 1fr; gap: 3px 12px; font-size: 13px; margin-bottom: 6px; }
 .met-k { opacity: .75; }
-.met-v { font-weight: 600; }
+.met-v { font-weight: 600; unicode-bidi: isolate; text-align: start; }
 .met-card-raw { font: 11px/1.4 monospace; opacity: .8; white-space: pre-wrap; text-align: left; margin-top: 4px; }
 .met-card-raw[hidden] { display: none; }

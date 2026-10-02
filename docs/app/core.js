@@ -4324,7 +4324,9 @@ function decodeMetText(raw) {
     return out;
   }
   // The body after the FIR name: phenomenon, observed/forecast, area, levels, movement, change.
-  const body = fir ? text.slice(text.indexOf(fir[0]) + fir[0].length).trim() : text;
+  // Without a FIR line the body starts after the header (and the issuing office, "LLBD-").
+  const body = fir ? text.slice(text.indexOf(fir[0]) + fir[0].length).trim()
+    : text.slice(text.indexOf(head[0]) + head[0].length).replace(/^\s*[A-Z]{4}-\s*/, '').trim();
   const words = body.split(' ');
   // Phenomenon: leading qualifier(s) + hazard, up to OBS/FCST/WI/ENTIRE.
   const phen = [];
