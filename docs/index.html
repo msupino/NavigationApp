@@ -436,7 +436,7 @@
         <label class="navtoggle" data-i18n-title="tbForceSnapTitle">
           <input type="checkbox" id="force-snap-cb"> <span data-i18n="tbForceSnap"></span>
         </label>
-        <button id="tool-magnifier" type="button" data-i18n="tbMagnifier" data-i18n-title="tbMagnifierTitle" style="width:100%;margin-top:4px;padding:4px 8px;font-size:12px"></button>
+        <button id="tool-magnifier" type="button" data-i18n="tbMagnifier" data-i18n-title="tbMagnifierTitle" style="width:100%;margin-top:4px;padding:4px 8px"></button>
       </div>
     </div>
 
@@ -645,7 +645,7 @@
             <input type="checkbox" id="ims-pwx-cb"> <span data-i18n="tbImsPwx"></span>
           </label>
           <div id="ims-pwx-controls" hidden>
-            <select id="ims-pwx-level" data-i18n-aria="tbImsPwxLevel"></select>
+            <label class="navtoggle"><select id="ims-pwx-level" data-i18n-aria="tbImsPwxLevel"></select></label>
             <div id="ims-pwx-run" style="font-size:10px;opacity:0.75"></div>
           </div>
           <div id="ims-pwx-status" class="wind-fetch-status" style="display:none"></div>
@@ -880,6 +880,14 @@
               params.set('lang', sel.value);
               location.href = '?' + params.toString() + location.hash;
             });
+            // One switch everyone can find: the picker lives in Settings, whose name is in the
+            // current language -- so an English speaker on the Hebrew default could not read
+            // their way to it. The quick switch shows a globe and the OTHER language's own name.
+            window.navSwitchLanguage = function (lang) {
+              if (lang !== 'en' && lang !== 'he') return;
+              sel.value = lang;
+              sel.dispatchEvent(new Event('change'));
+            };
             // Browsers may restore a form control's live value from the back-forward cache after
             // the document scripts set it. Reconcile the visible picker with the restored page.
             window.addEventListener('pageshow', function () {
@@ -934,6 +942,11 @@
       <progress class="app-update-progress" max="100" value="0" hidden></progress>
     </div>
     <div id="footer-links">
+      <!-- Language: a globe and the other language's own name, never translated. -->
+      <button id="lang-quick" type="button" class="footer-link footer-link-button lang-quick">
+        <span class="footer-link-icon" aria-hidden="true" data-nav-icon="globe"></span>
+        <span class="lang-quick-label"></span>
+      </button>
       <button id="help-trigger" type="button" class="footer-link footer-link-button"
               data-i18n-title="shortcutsHelpButtonTitle" data-i18n-aria="shortcutsHelpAriaLabel">
         <span class="footer-link-icon" aria-hidden="true" data-nav-icon="help"></span>

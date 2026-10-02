@@ -8062,11 +8062,11 @@ body.theme-light .route-library-gdrive-pii { color: #6b7787; border-inline-start
 .deck-btn i svg { display: block; }
 .deck-btn-label { font-size: 11px; font-weight: 600; letter-spacing: .02em; }
 /* The strip's grid: the readout lines on one side, Comm fail on the other, spanning both. */
-body.deck-on .deck-strip { grid-template-columns: minmax(0, 1fr) auto; column-gap: 10px; align-items: center; }
+body.deck-on .deck-strip { grid-template-columns: minmax(0, 1fr) auto auto; column-gap: 8px; align-items: center; }
 body.deck-on .deck-strip > .deck-strip-top,
 body.deck-on .deck-strip > .deck-strip-sub { grid-column: 1; }
 .deck-strip-commfail {
-  grid-column: 2; grid-row: 1 / span 2;
+  grid-column: 3; grid-row: 1 / span 2;
   display: inline-flex; align-items: center; gap: 6px;
   min-height: 36px; padding: 0 12px;
   border: 0; border-radius: 18px;
@@ -8940,15 +8940,15 @@ body.deck-on #insp-close,
 body.deck-on #insp-zoom-in,
 body.deck-on #insp-zoom-out { min-width: 44px; min-height: 44px; }
 body.deck-on #inspector input:not([type=checkbox]):not([type=range]),
-body.deck-on #inspector select { min-height: 44px; }
+body.deck-on #inspector select { min-height: 30px; }
 body.deck-on .route-file-btn { min-height: 44px; }
-/* The plan's text fields: 36px, not 44. They are fields in a dense form (the web target size,
+/* The plan's text fields: 30px, not 44 (see the field family at the end of this file). They are fields in a dense form (the web target size,
    WCAG 2.2, is 24px); at 44 the plan outgrew the phone's chart space and could no longer sit
    where it was put. Its buttons stay at 44. 16px text keeps iOS from zooming on focus. */
 body.deck-on .fp-aircraft input,
 body.deck-on .fp-aircraft select,
 body.deck-on #fp-vor-select,
-body.deck-on .fp-profile-vs-input { min-height: 36px; }
+body.deck-on .fp-profile-vs-input { min-height: 30px; }
 
 /* Light theme: the panel's × and the plan's row ✕ under 4.5:1. */
 body.theme-light #insp-close { color: #4a5562; }
@@ -8998,3 +8998,123 @@ body.theme-light #insp-body .insp-actions {
 @media (max-width: 680px) {
   .flight-plan .modal-btns .mi-icon { display: none; }
 }
+
+/* Menu rows: a select or a field is set in its row's own text size. The selects were 11px
+   and the fields 13px beside a 13-14px label, so one row read in three sizes. */
+#toolbar .tb-section-body select,
+#toolbar .tb-section-body input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]) {
+  font-size: inherit;
+}
+
+/* Phone menu sheet: every select and field in a row is one height -- side by side they read as
+   three sizes (44 / 22 / 18px). 30px: at 36-44 the box dwarfed its 14px text. The row, not the
+   box, is the touch area here, and 30 stays above the 24px web target size (WCAG 2.2). */
+body.deck-on #deck-sheet .tb-section-body select,
+body.deck-on #deck-sheet .tb-section-body input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]):not([type="file"]) {
+  min-height: 30px;
+  height: 30px;
+  padding-top: 0;
+  padding-bottom: 0;
+  box-sizing: border-box;
+}
+body.deck-on #deck-sheet .tb-section-body .slider-reset,
+body.deck-on #deck-sheet #default-speed-reset { min-width: 30px; min-height: 30px; font-size: inherit; }
+body.deck-on #deck-sheet .tb-magvar,
+body.deck-on #deck-sheet #lang-toggle,
+body.deck-on #deck-sheet .tb-section[data-sec="settings"] .tb-section-body > label { gap: 8px; align-items: center; }
+/* Settings: the row names share one column, so the controls start on one line. */
+#toolbar .tb-section[data-sec="settings"] .tb-section-body > * > span:first-child { min-width: 9.5em; }
+html[lang="he"] #toolbar .tb-section[data-sec="settings"] .tb-section-body > * > span:first-child { min-width: 12.5em; }
+
+/* ---- Menu fields: one family ------------------------------------------------------------
+   UI/UX audit of every select, field, swatch and reset button in the menus, both themes:
+   - the field edges were 1.6-1.8:1 against the menu (non-text contrast, WCAG 1.4.11, wants 3:1);
+   - fields were 24px beside 28px buttons on a desktop, and the reset ↻ was a 12px 24px chip;
+   - a colour swatch was 18px tall, the magnifier button and one weather select off the
+     row's type size;
+   - the reset buttons had no keyboard focus ring. */
+#toolbar .tb-section-body .navtoggle select,
+#toolbar .tb-section-body .navtoggle input[type="number"],
+#toolbar .tb-section-body .navtoggle input[type="text"],
+#toolbar .tb-section-body .slider-reset { border-color: #7f7777; }
+body.theme-light #toolbar .tb-section-body .navtoggle select,
+body.theme-light #toolbar .tb-section-body .navtoggle input[type="number"],
+body.theme-light #toolbar .tb-section-body .navtoggle input[type="text"],
+body.theme-light #toolbar .tb-section-body .slider-reset { border-color: #858f9c; }
+#toolbar .tb-section-body .slider-reset { font-size: inherit; }
+#toolbar .tb-section-body #tool-magnifier { font-size: 13px; }
+
+#toolbar .tb-section-body .slider-reset { display: inline-flex; align-items: center; justify-content: center; padding: 0 6px; }
+#toolbar .tb-section-body select:focus-visible,
+#toolbar .tb-section-body input:focus-visible,
+#toolbar .tb-section-body button:focus-visible {
+  outline: 2px solid #4c9bff;
+  outline-offset: 1px;
+}
+@media (min-width: 681px) and (hover: hover) and (pointer: fine) {
+  #toolbar .tb-section-body .navtoggle select,
+  #toolbar .tb-section-body .navtoggle input[type="number"],
+  #toolbar .tb-section-body .navtoggle input[type="text"] { min-height: 28px; box-sizing: border-box; }
+  #toolbar .tb-section-body .slider-reset { min-width: 28px; min-height: 28px; }
+  #toolbar .tb-section-body input[type="color"] { min-height: 28px; min-width: 28px; box-sizing: border-box; }
+}
+body.deck-on #deck-sheet .tb-section-body input[type="color"] { min-height: 30px; min-width: 36px; box-sizing: border-box; }
+body.deck-on #deck-sheet #tool-magnifier { min-height: 36px; font-size: 14px; }
+#toolbar .tb-section-body .navtoggle input[type="color"] { border-color: #8a8282; }
+body.theme-light #toolbar .tb-section-body .navtoggle input[type="color"] { border-color: #858f9c; }
+/* The browser draws a field's own parts (the number spinner, the open list) in the page's
+   colour scheme: in the app's dark mode they came up white. */
+body.theme-dark #toolbar .tb-section-body select,
+body.theme-dark #toolbar .tb-section-body input { color-scheme: dark; }
+body.theme-light #toolbar .tb-section-body select,
+body.theme-light #toolbar .tb-section-body input { color-scheme: light; }
+
+/* ---- Fields, app-wide: one family -------------------------------------------------------
+   UI/UX audit of every text field, number field and select (menus, inspector, flight plan,
+   search), phone and desktop, both themes:
+   - a field's edge must reach 3:1 against what it sits on (WCAG 1.4.11); the inspector's and
+     the plan's were 1.0-1.8:1;
+   - the browser drew a field's own parts (spinner, open list) light in the app's dark mode;
+   - on a phone the box was up to 3.4x its text (44px around 13px): 30px holds 13-15px text
+     with room, and stays above the 24px web target size (WCAG 2.2);
+   - the plan's aircraft and descent fields were 11px. */
+body.theme-dark :is(input, select, textarea) { color-scheme: dark; }
+body.theme-light :is(input, select, textarea) { color-scheme: light; }
+@media screen {   /* the printed sheets keep their own rules */
+body.theme-dark #inspector :is(select, input:not([type=checkbox]):not([type=range]):not([type=color]):not(#insp-title)),
+body.theme-dark .modal :is(select, textarea, input:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=color]):not([type=file])) { border-color: #7f7777; }
+body.theme-light #inspector :is(select, input:not([type=checkbox]):not([type=range]):not([type=color]):not(#insp-title)),
+body.theme-light .modal :is(select, textarea, input:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=color]):not([type=file])) { border-color: #858f9c; }
+}
+.fp-aircraft input, .fp-aircraft select, #aircraft-custom input, .fp-profile-vs-input { font-size: 13px; }
+body.deck-on .flight-table input { min-height: 28px; }
+
+/* The quick language switch: in the phone's strip beside Comm fail, and on the desktop bar. */
+.deck-strip-lang {
+  grid-column: 2; grid-row: 1 / span 2;
+  display: inline-flex; align-items: center; gap: 5px;
+  min-height: 44px; padding: 0 10px;
+  border: 1px solid rgba(255, 255, 255, .45); border-radius: 18px;
+  background: transparent; color: inherit;
+  font: 600 12px/1 system-ui, sans-serif;
+  white-space: nowrap; cursor: pointer; touch-action: manipulation;
+}
+.deck-strip-lang svg { display: block; flex: none; }
+.deck-strip-lang:focus-visible { outline: 2px solid #4c9bff; outline-offset: 2px; }
+@media (max-width: 360px) { .deck-strip-lang .lang-quick-label { display: none; } .deck-strip-lang { padding: 0 11px; } }
+#lang-quick .lang-quick-label { font-weight: 600; }
+@media (min-width: 681px) and (hover: hover) and (pointer: fine) {
+  /* The menubar is one row with ~20px to spare, so the switch is the globe alone here -- the
+     sign for language everywhere -- with its tooltip in the language it switches to. */
+}
+/* In the toolbar (desktop bar, and the phone card without the deck) the switch is the globe
+   alone; the phone's strip, with room, adds the language's name. */
+#toolbar #lang-quick .lang-quick-label { display: none; }
+#lang-quick { display: inline-flex; align-items: center; gap: 5px; }
+body.theme-dark #aircraft-custom input { border-color: #7f7777; }
+body.theme-light #aircraft-custom input { border-color: #858f9c; }
+body.theme-light #wp-search,
+body.theme-light #search-overlay #wp-search { border-color: #858f9c; }
+/* The phone card without the deck (?deck=0): collapsed, it is one row and its links; the
+   globe there took a row of its own. It shows again when the card is open. */
+#toolbar.collapsed #lang-quick { display: none; }

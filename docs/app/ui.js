@@ -138,6 +138,29 @@ document.querySelectorAll('[data-nav-icon]').forEach((el) => {
   if (el.classList.contains('footer-link-icon') || el.classList.contains('follow-me-button-icon')) { setNavIcon(el, el.dataset.navIcon, 16); return; }
   el.innerHTML = navIconSvg(el.dataset.navIcon, el.classList.contains('rf-icon') ? 18 : 20);
 });
+// The quick language switch: a globe and the OTHER language's own name ("English" while the
+// app is in Hebrew, "עברית" while it is in English). The picker lives in Settings, a word in
+// the current language -- someone who cannot read it still recognises a globe and their own
+// language's name. Its title is in the target language too, for the same reader.
+function langQuickInfo() {
+  const other = window.__navLang === 'en' ? 'he' : 'en';
+  return { other, label: other === 'en' ? 'English' : 'עברית',
+    title: other === 'en' ? 'Switch to English' : 'מעבר לעברית' };
+}
+function dressLangQuick(btn) {
+  if (!btn || btn.dataset.langQuick) return;
+  btn.dataset.langQuick = '1';
+  const q = langQuickInfo();
+  const lab = btn.querySelector('.lang-quick-label');
+  if (lab) { lab.textContent = q.label; lab.lang = q.other; lab.dir = q.other === 'he' ? 'rtl' : 'ltr'; }
+  btn.title = q.title;
+  btn.setAttribute('aria-label', q.title);
+  btn.setAttribute('lang', q.other);
+  btn.addEventListener('click', () => {
+    if (typeof window.navSwitchLanguage === 'function') window.navSwitchLanguage(q.other);
+  });
+}
+dressLangQuick(document.getElementById('lang-quick'));
 // Menu entries: a line icon in front, and the emoji that used to stand there taken off. The
 // strings keep their glyphs (other surfaces read them), so the menu strips what it shows; an
 // entry that rewrites its own text later (counts, Dark/Light mode) is re-dressed by the observer.

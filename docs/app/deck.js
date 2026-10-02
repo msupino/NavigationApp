@@ -88,6 +88,14 @@
     commBtn.setAttribute('aria-label', (typeof S === 'object' && S && S.commFailTitle) || commLabel);
     commBtn.setAttribute('aria-pressed', 'false');
     commBtn.addEventListener('click', () => { click('commfail-btn'); sync(); });
+    // Language, findable without reading the current one: a globe and the other language's name.
+    const langBtn = document.createElement('button');
+    langBtn.type = 'button';
+    langBtn.className = 'deck-strip-lang';
+    langBtn.innerHTML = (typeof navIconSvg === 'function' ? navIconSvg('globe', 16) : '')
+      + '<span class="lang-quick-label"></span>';
+    if (typeof dressLangQuick === 'function') dressLangQuick(langBtn);
+    strip.appendChild(langBtn);
     strip.appendChild(commBtn);
     document.body.appendChild(strip);
     // The menu opens under the strip, so it has to know how tall the strip is -- which
