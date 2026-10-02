@@ -1218,6 +1218,7 @@ window.S = {
     showOnMap: 'הצג במפה' },
   inspNotamsTitle: 'נוטאמים בתוקף',
   inspNotamUntil: 'עד',
+  bubbleClosedByNotam: (id) => 'סגורה \u2014 נוטאם ' + id,
   airfieldClassLabel: 'סוג',
   airfieldClass: { airport: 'שדה תעופה', airstrip: 'מנחת', agricultural: 'מנחת חקלאי' },
   airfieldLongestRunway: 'מסלול',
