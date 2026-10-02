@@ -9024,8 +9024,17 @@ body.deck-on #deck-sheet .tb-magvar,
 body.deck-on #deck-sheet #lang-toggle,
 body.deck-on #deck-sheet .tb-section[data-sec="settings"] .tb-section-body > label { gap: 8px; align-items: center; }
 /* Settings: the row names share one column, so the controls start on one line. */
-#toolbar .tb-section[data-sec="settings"] .tb-section-body > * > span:first-child { min-width: 9.5em; }
-html[lang="he"] #toolbar .tb-section[data-sec="settings"] .tb-section-body > * > span:first-child { min-width: 12.5em; }
+/* Settings rows: one line each, at any text size. The name takes what the row has left and the
+   controls sit together at the row's end, so they line up whatever the name's length -- a
+   fixed name column (it was 9.5em / 12.5em) broke under a phone's larger font: the Hebrew
+   names outgrew it, the controls stepped out of line, and Magnetic variation wrapped. */
+#toolbar .tb-section[data-sec="settings"] .tb-section-body > .navtoggle {
+  display: flex; flex-wrap: nowrap; align-items: center; gap: 6px;
+}
+#toolbar .tb-section[data-sec="settings"] .tb-section-body > .navtoggle > span:first-child {
+  flex: 1 1 auto; min-width: 0;
+}
+#toolbar .tb-section[data-sec="settings"] .tb-section-body > .navtoggle > :not(span:first-child) { flex: 0 0 auto; }
 
 /* ---- Menu fields: one family ------------------------------------------------------------
    UI/UX audit of every select, field, swatch and reset button in the menus, both themes:
