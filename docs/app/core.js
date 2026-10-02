@@ -4358,7 +4358,8 @@ function decodeMetText(raw) {
     }
     row('phenomenon', v ? v.charAt(0).toUpperCase() + v.slice(1) : p);
   }
-  const obs = body.match(/\b(OBS|FCST)(?:\s+AT\s+(\d{4})Z)?/);
+  // Whole words: "MT OBSC FCST" is a forecast -- an unanchored OBS matched inside OBSC.
+  const obs = body.match(/\b(OBS|FCST)\b(?:\s+AT\s+(\d{4})Z)?/);
   if (obs) row('status', metWord(obs[1]) + (obs[2] ? ' ' + obs[2].slice(0, 2) + ':' + obs[2].slice(2) + 'Z' : ''));
   if (/\bENTIRE FIR\b/.test(body)) row('area', L('entireFir', 'the whole FIR'));
   else if (/\bWI\s+N\d{4}/.test(body)) row('area', L('withinArea', 'within the drawn area'));

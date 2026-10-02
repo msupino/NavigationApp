@@ -5508,9 +5508,11 @@ map.on('click', e => {
   // only, so it never competes with dropping a waypoint in add/note mode.
   if (!state.mode && window.showAirmet && typeof airmetsAtLatLng === 'function'
       && typeof showAirmetDecoded === 'function' && airmetsAtLatLng(e.latlng).length) {
-    const hit = airmetsAtLatLng(e.latlng);
+    // airmetsAtLatLng answers with indexes into the feed (smallest area first), not the
+    // AIRMETs: passing those through showed an empty card dated 1 January.
+    const hit = airmetsAtLatLng(e.latlng).map(i => window.airmets[i]).filter(Boolean);
     showAirmetDecoded(hit);
-    if (typeof flashMetArea === 'function') flashMetArea(hit[0], 'airmet');
+    if (hit.length && typeof flashMetArea === 'function') flashMetArea(hit[0], 'airmet');
     return;
   }
   // NOTAM clicks are handled in mousedown (as overlay choices); see there.

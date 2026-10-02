@@ -75,3 +75,28 @@ test('the button switches a card between its decoded rows and its original text'
   expect(got.label1).toBe('מפוענח');
   expect(got.back).toEqual([true, false]);
 });
+
+// Reported: tapping an AIRMET on the map opened a card reading "Valid 01-01 00:00Z": the tap
+// handed the list the feed's INDEXES instead of the AIRMETs. And "MT OBSC FCST" read as
+// observed -- OBS matched inside OBSC.
+test('tapping an AIRMET area opens that AIRMET, with its own validity, read as a forecast', async ({ page }) => {
+  await page.goto('?lang=en&nogist');
+  await page.waitForFunction(() => typeof airmetsAtLatLng === 'function' && typeof showAirmetDecoded === 'function');
+  const got = await page.evaluate(() => {
+    const now = Date.now();
+    const raw = 'LLLL AIRMET 23 VALID 021900/022300 LLBD- LLLL TEL AVIV FIR MT OBSC FCST WI N3241 E03514 - N3311 E03512 - N3321 E03548 - N3257 E03555 - N3243 E03541 - N3238 E03528 - N3241 E03514 STNR INTSF=';
+    window.airmets = airmets = [{ id: '43078', hazard: 'MT OBSC', raw, validFrom: new Date(now - 6e5).toISOString(), validTo: new Date(now + 6e5).toISOString(),
+      coords: [[32.6833, 35.2333], [33.1833, 35.2], [33.35, 35.8], [32.95, 35.9167], [32.7167, 35.6833], [32.6333, 35.4667], [32.6833, 35.2333]] }];
+    window.showAirmet = true;
+    map.setView([33.0, 35.5], 9, { animate: false });
+    const ll = L.latLng(33.0, 35.5);
+    map.fire('click', { latlng: ll, containerPoint: map.latLngToContainerPoint(ll), layerPoint: map.latLngToLayerPoint(ll), originalEvent: new MouseEvent('click') });
+    const card = document.querySelector('.met-card');
+    const rows = card ? Object.fromEntries([...card.querySelectorAll('.met-k')].map(k => [k.textContent, k.nextElementSibling.textContent])) : null;
+    return { head: card && card.querySelector('.met-card-head').textContent, rows };
+  });
+  expect(got.head).toContain('AIRMET #23');
+  expect(got.rows.Valid).toBe('02 19:00Z → 02 23:00Z');
+  expect(got.rows.Status).toBe('forecast');
+  expect(got.rows.Change).toBe('intensifying');
+});

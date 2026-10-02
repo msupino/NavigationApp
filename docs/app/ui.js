@@ -4809,6 +4809,8 @@ document.getElementById('alt-pairs').onclick = showAltitudePairsModal;
   if (!on) { btn.hidden = true; return; }
   btn.onclick = () => {
     if (typeof window.closeToolbarMenus === 'function') window.closeToolbarMenus();
+    // Like the flight plan: the form is the route's, and with no route there is nothing to plan.
+    if (!state.legs || state.legs.length === 0) { refuse(S.errNoLegs); return; }
     if (window.NavAid && NavAid.navLog) NavAid.navLog.show();
   };
 }());
