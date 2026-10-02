@@ -5090,6 +5090,105 @@ function routeFileSlug() {
 
 // Plain-language SIGMET list (clicking the corner readout). Each entry shows
 // the decoded sentence plus the raw text underneath.
+// One SIGMET / AIRMET as a card: the decoded fields as label/value rows (decodeMetText, in
+// the UI's language), then the original text. A warning with a usable area on the map is a
+// button: pressing it closes the list and frames that area, flashing it -- as a NOTAM does.
+function metWarningCard(w, color, onShow, summary) {
+  const item = document.createElement('div');
+  item.className = 'met-card';
+  item.style.borderInlineStartColor = color;
+  const d = (typeof decodeMetText === 'function') ? decodeMetText(w.raw) : { rows: [] };
+  const head = document.createElement('div');
+  head.className = 'met-card-head';
+  const name = document.createElement('span');
+  name.textContent = [d.kind || '', d.number ? '#' + d.number : ''].filter(Boolean).join(' ') ||
+    String(w.hazard || '');
+  head.appendChild(name);
+  const tools = document.createElement('span');
+  tools.className = 'met-card-tools';
+  const grid = document.createElement('div');
+  // The original text, one press away: the decoded rows are what a pilot reads, the raw
+  // line is what a briefer or a controller quotes.
+  let raw = null;
+  if (w.raw) {
+    raw = document.createElement('div');
+    raw.className = 'met-card-raw';
+    raw.dir = 'ltr';
+    raw.hidden = true;
+    raw.textContent = w.raw;
+    const rawBtn = document.createElement('button');
+    rawBtn.type = 'button';
+    rawBtn.className = 'met-card-btn';
+    rawBtn.textContent = (S.met && S.met.raw) || 'Original text';
+    rawBtn.setAttribute('aria-pressed', 'false');
+    // One view or the other: the original text REPLACES the decoded rows (showing both said
+    // everything twice), and the button names the view it switches to.
+    rawBtn.onclick = () => {
+      const showRaw = raw.hidden;
+      raw.hidden = !showRaw;
+      if (grid) grid.hidden = showRaw;
+      rawBtn.textContent = showRaw ? ((S.met && S.met.decoded) || 'Decoded')
+        : ((S.met && S.met.raw) || 'Original text');
+      rawBtn.setAttribute('aria-pressed', String(showRaw));
+    };
+    tools.appendChild(rawBtn);
+  }
+  // A warning with a usable area: framed on the map, as a NOTAM is.
+  if (onShow) {
+    const go = document.createElement('button');
+    go.type = 'button';
+    go.className = 'met-card-btn met-card-go';
+    go.textContent = (S.met && S.met.showOnMap) || 'Show on map';
+    go.onclick = onShow;
+    tools.appendChild(go);
+  }
+  head.appendChild(tools);
+  item.appendChild(head);
+  // The feed's one-line summary only stands in when the raw text could not be decoded
+  // (a cut message); next to the decoded rows it would say the same thing twice.
+  if (summary && !d.rows.some(r => r.key === 'phenomenon')) {
+    const sum = document.createElement('div');
+    sum.className = 'met-card-summary';
+    sum.dir = 'auto';
+    sum.textContent = summary;
+    item.appendChild(sum);
+  }
+  grid.className = 'met-card-rows';
+  for (const r of d.rows) {
+    const k = document.createElement('span'); k.className = 'met-k'; k.textContent = r.label;
+    const v = document.createElement('span'); v.className = 'met-v';
+    // A Latin value ("02 16:26Z \u2192 02 19:00Z") is one left-to-right run inside the row's
+    // own direction; left bare, Hebrew's bidi reordered its date and time.
+    const run = document.createElement('bdi');
+    run.dir = /[\u0590-\u05FF]/.test(r.value) ? 'auto' : 'ltr';
+    run.textContent = r.value;
+    v.appendChild(run);
+    grid.append(k, v);
+  }
+  if (d.rows.length) item.appendChild(grid);
+  if (raw) item.appendChild(raw);
+  return item;
+}
+// A drawable area: three or more points, all inside the region the chart covers. A feed typo
+// (E00356 for E03556) put one AIRMET's corner in the Atlantic; framing that would zoom the
+// map out to Africa, so such a warning is listed but not offered on the map.
+function metAreaLatLngs(w) {
+  const pts = (w && Array.isArray(w.coords) ? w.coords : [])
+    .filter(c => Array.isArray(c) && Number.isFinite(c[0]) && Number.isFinite(c[1]));
+  if (pts.length < 3) return null;
+  if (!pts.every(c => c[0] > 26 && c[0] < 38 && c[1] > 28 && c[1] < 40)) return null;
+  const lats = pts.map(c => c[0]), lngs = pts.map(c => c[1]);
+  if (Math.max(...lats) - Math.min(...lats) < 0.01 || Math.max(...lngs) - Math.min(...lngs) < 0.01) return null;
+  return pts;
+}
+function focusMetArea(w, kind) {
+  const pts = metAreaLatLngs(w);
+  if (!pts || typeof map === 'undefined' || !map) return;
+  map.fitBounds(L.latLngBounds(pts), fitOpts('fitNotamPaddingPx', 'fitNotamMaxZoom', { animate: true }));
+  if (typeof flashMetArea === 'function') flashMetArea(w, kind);
+}
+window.metAreaLatLngs = metAreaLatLngs;
+
 function showSigmetDecoded() {
   const list = typeof activeSigmets === 'function' ? activeSigmets()
     : (Array.isArray(sigmets) ? sigmets : []);
@@ -5119,21 +5218,9 @@ function showSigmetDecoded() {
   }
   addModalCloseX(box, close);
   for (const s of list) {
-    const item = document.createElement('div');
-    item.dir = 'ltr';                 // SIGMET text is LTR even in Hebrew mode
-    item.style.cssText = 'margin:10px 0;padding:8px;border-left:4px solid ' +
-      sigmetHazardColor(s.hazard) + ';direction:ltr;text-align:left';
-    const dec = document.createElement('div');
-    dec.style.cssText = 'font-size:13px;font-weight:600;margin-bottom:4px';
-    dec.textContent = decodeSigmet(s);
-    item.appendChild(dec);
-    if (s.raw) {
-      const raw = document.createElement('div');
-      raw.style.cssText = 'font:11px/1.4 monospace;opacity:0.7;white-space:pre-wrap';
-      raw.textContent = (S.sigmetRaw || 'Raw') + ': ' + s.raw;
-      item.appendChild(raw);
-    }
-    box.appendChild(item);
+    // The feed's own structured fields give a one-line summary even when its raw text is cut.
+    box.appendChild(metWarningCard(s, sigmetHazardColor(s.hazard),
+      metAreaLatLngs(s) ? () => { close(); focusMetArea(s, 'sigmet'); } : null, decodeSigmet(s)));
   }
   back.appendChild(box);
   document.body.appendChild(back);
@@ -5155,9 +5242,11 @@ function airmetValidityText(a) {
   if (!from && !to) return '';
   return (S.airmetValid || 'Valid') + ' ' + from + ' \u2192 ' + to;
 }
-function showAirmetDecoded() {
-  const list = typeof activeAirmets === 'function' ? activeAirmets()
-    : (Array.isArray(window.airmets) ? window.airmets : []);
+function showAirmetDecoded(only) {
+  // `only`: the AIRMETs under a tap on the map -- the list opens on just those.
+  const list = Array.isArray(only) && only.length ? only
+    : (typeof activeAirmets === 'function' ? activeAirmets()
+      : (Array.isArray(window.airmets) ? window.airmets : []));
   if (!list.length) return;
   const back = document.createElement('div');
   back.className = 'modal-back';
@@ -5179,23 +5268,9 @@ function showAirmetDecoded() {
   addModalCloseX(box, close);
   const col = (typeof tune === 'function' && tune('airmetColor')) || '#6b8e23';
   for (const a of list) {
-    const item = document.createElement('div');
-    item.dir = 'ltr';                 // AIRMET text is LTR even in Hebrew mode
-    // Inherit the modal's own (theme-aware) text colour; only the hazard bar is coloured.
-    // The earlier hard-coded grey-on-faint-white read as white-on-white in the light theme.
-    item.style.cssText = 'margin:10px 0;padding:8px;border-inline-start:4px solid ' + col +
-      ';direction:ltr;text-align:left';
-    const dec = document.createElement('div');
-    dec.style.cssText = 'font-size:13px;font-weight:600;margin-bottom:4px';
-    dec.textContent = [String(a.hazard || 'AIRMET'), airmetValidityText(a)].filter(Boolean).join('  \u00b7  ');
-    item.appendChild(dec);
-    if (a.raw) {
-      const raw = document.createElement('div');
-      raw.style.cssText = 'font:11px/1.4 monospace;opacity:0.7;white-space:pre-wrap';
-      raw.textContent = (S.airmetRaw || S.sigmetRaw || 'Raw') + ': ' + a.raw;
-      item.appendChild(raw);
-    }
-    box.appendChild(item);
+    box.appendChild(metWarningCard(a, col,
+      metAreaLatLngs(a) ? () => { close(); focusMetArea(a, 'airmet'); } : null,
+      [String(a.hazard || 'AIRMET'), airmetValidityText(a)].filter(Boolean).join('  ·  ')));
   }
   back.appendChild(box);
   document.body.appendChild(back);

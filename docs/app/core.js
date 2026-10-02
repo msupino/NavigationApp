@@ -2636,6 +2636,13 @@ window.S = Object.assign({
   legendAtcChange: 'Freq change',
   legendHotspot: 'Hotspot',
   legendCommChange: 'Frequency change',
+  met: { valid: 'Valid', fir: 'FIR', phenomenon: 'Hazard', status: 'Status', area: 'Area',
+    levels: 'Levels', movement: 'Movement', change: 'Change', cancels: 'Cancels', cancelsNo: 'Cancels no.',
+    entireFir: 'The whole FIR', withinArea: 'Within the drawn area', ofLine: 'of the line',
+    topsTo: 'Tops', above: 'Above', below: 'Below', movingTo: 'Moving', raw: 'Original text', decoded: 'Decoded',
+    showOnMap: 'Show on map' },
+  inspNotamsTitle: 'NOTAMs in force',
+  inspNotamUntil: 'until',
   airfieldClassLabel: 'Type',
   airfieldClass: { airport: 'Airport', airstrip: 'Airstrip', agricultural: 'Agricultural strip' },
   airfieldLongestRunway: 'Runway',
@@ -4241,6 +4248,139 @@ function decodeSigmet(s) {
   return (fir ? fir + ' — ' : '') + parts.join(', ');
 }
 const pad3 = n => String(n).padStart(3, '0');
+
+// --- SIGMET / AIRMET decoder -----------------------------------------
+// Reads the raw ICAO text (Annex 3 layout) into labelled plain-language rows, in the UI's
+// language. Every field it does not recognise is left out rather than guessed; the raw line
+// is always shown beside it. Returns { kind, number, rows: [{ key, label, value }] }.
+const MET_WORDS = {
+  // phenomena
+  TS: ['thunderstorms', 'סופות רעמים'], TSGR: ['thunderstorms with hail', 'סופות רעמים עם ברד'],
+  CB: ['cumulonimbus', 'ענני קומולונימבוס'], TCU: ['towering cumulus', 'קומולוס מתנשא'],
+  TURB: ['turbulence', 'מערבולות'], ICE: ['icing', 'היקרחות'], MTW: ['mountain waves', 'גלי הרים'],
+  VA: ['volcanic ash', 'אפר געשי'], DS: ['dust storm', 'סופת אבק'], SS: ['sand storm', 'סופת חול'],
+  TC: ['tropical cyclone', 'ציקלון טרופי'], RDOACT: ['radioactive cloud', 'ענן רדיואקטיבי'],
+  GR: ['hail', 'ברד'], FZRA: ['freezing rain', 'גשם קופא'], MT: ['mountains', 'הרים'],
+  OBSC: ['obscured', 'מוסתרים'], CLD: ['cloud', 'עננות'], VIS: ['surface visibility', 'ראות בפני הקרקע'],
+  WSPD: ['surface wind', 'רוח בפני הקרקע'], SFC: ['surface', 'פני הקרקע'],
+  BR: ['mist', 'אובך לח'], FG: ['fog', 'ערפל'], HZ: ['haze', 'אובך'], DU: ['dust', 'אבק'],
+  SA: ['sand', 'חול'], RA: ['rain', 'גשם'], SHRA: ['rain showers', 'ממטרים'], SN: ['snow', 'שלג'],
+  FU: ['smoke', 'עשן'],
+  // qualifiers
+  SEV: ['severe', 'חמורות'], MOD: ['moderate', 'בינוניות'], ISOL: ['isolated', 'מבודדות'],
+  OCNL: ['occasional', 'מזדמנות'], FRQ: ['frequent', 'תכופות'], EMBD: ['embedded', 'משובצות'],
+  SQL: ['squall line', 'קו סערה'], HVY: ['heavy', 'כבדות'], WDSPR: ['widespread', 'נרחבות'],
+  BKN: ['broken', 'שבורה'], OVC: ['overcast', 'מעוננות מלאה'],
+  // change
+  NC: ['no change', 'ללא שינוי'], INTSF: ['intensifying', 'מתחזק'], WKN: ['weakening', 'נחלש'],
+  STNR: ['stationary', 'נייח'],
+  OBS: ['observed', 'נצפה'], FCST: ['forecast', 'צפוי'],
+};
+const MET_DIRS = { N: ['north', 'צפון'], NE: ['north-east', 'צפון-מזרח'], E: ['east', 'מזרח'],
+  SE: ['south-east', 'דרום-מזרח'], S: ['south', 'דרום'], SW: ['south-west', 'דרום-מערב'],
+  W: ['west', 'מערב'], NW: ['north-west', 'צפון-מערב'] };
+function metIsHe() {
+  return typeof document !== 'undefined' && document.documentElement.lang === 'he';
+}
+function metWord(code) {
+  const w = MET_WORDS[code];
+  if (!w) return null;
+  return metIsHe() ? w[1] : w[0];
+}
+function metDir(code) {
+  const d = MET_DIRS[code];
+  if (!d) return code;
+  return metIsHe() ? d[1] : d[0];
+}
+function metLevel(tok) {
+  if (!tok) return '';
+  if (tok === 'SFC') return metWord('SFC');
+  if (/^FL\d{3}$/.test(tok)) return tok;
+  if (/^\d{3}$/.test(tok)) return 'FL' + tok;
+  const ft = tok.match(/^(\d{3,5})(FT|M)$/);
+  if (ft) return Number(ft[1]).toLocaleString('en-US') + ' ' + (ft[2] === 'FT' ? 'ft' : 'm');
+  return tok;
+}
+function decodeMetText(raw) {
+  const L = (k, en) => (typeof S !== 'undefined' && S.met && S.met[k]) || en;
+  const text = String(raw || '').replace(/\s+/g, ' ').replace(/=\s*$/, '').trim();
+  const out = { kind: '', number: '', rows: [] };
+  if (!text) return out;
+  const row = (key, value) => { if (value) out.rows.push({ key, label: L(key, key), value }); };
+  const head = text.match(/\b(SIGMET|AIRMET)\s+([A-Z]?\d+)\s+VALID\s+(\d{6})\/(\d{6})/);
+  if (head) {
+    out.kind = head[1]; out.number = head[2];
+    const t = s => s.slice(0, 2) + ' ' + s.slice(2, 4) + ':' + s.slice(4, 6) + 'Z';
+    row('valid', t(head[3]) + ' → ' + t(head[4]));
+  }
+  // Not a whole message (a feed that cut the text, or a stub): decode nothing rather than
+  // read the fragment as a hazard -- the summary and the raw line still show.
+  if (!head) return out;
+  const fir = text.match(/\b([A-Z]{4})\s+([A-Z][A-Z ]+?)\s+FIR\b/);
+  if (fir) row('fir', fir[2].trim() + ' FIR (' + fir[1] + ')');
+  if (/\bCNL\s+(SIGMET|AIRMET)\b/.test(text)) {
+    const c = text.match(/\bCNL\s+(?:SIGMET|AIRMET)\s+([A-Z]?\d+)/);
+    row('cancels', L('cancelsNo', 'Cancels no.') + ' ' + (c ? c[1] : ''));
+    return out;
+  }
+  // The body after the FIR name: phenomenon, observed/forecast, area, levels, movement, change.
+  // Without a FIR line the body starts after the header (and the issuing office, "LLBD-").
+  const body = fir ? text.slice(text.indexOf(fir[0]) + fir[0].length).trim()
+    : text.slice(text.indexOf(head[0]) + head[0].length).replace(/^\s*[A-Z]{4}-\s*/, '').trim();
+  const words = body.split(' ');
+  // Phenomenon: leading qualifier(s) + hazard, up to OBS/FCST/WI/ENTIRE.
+  const phenomenon = [];
+  for (const w of words) {
+    if (/^(OBS|FCST|WI|ENTIRE|N|S|E|W|NE|NW|SE|SW|TOP|ABV|BLW|MOV|STNR)$/.test(w) || /^(FL\d{3}|SFC)\//.test(w)) break;
+    phenomenon.push(w);
+  }
+  if (phenomenon.length) {
+    const p = phenomenon.join(' ');
+    let v = null;
+    let m;
+    if ((m = p.match(/^SFC WSPD (\d+)(KT|MPS)$/))) v = metWord('WSPD') + ' ' + m[1] + (m[2] === 'KT' ? ' kt' : ' m/s');
+    else if ((m = p.match(/^SFC VIS (\d+)M(?: \(([A-Z ]+)\))?$/))) {
+      v = metWord('VIS') + ' ' + Number(m[1]).toLocaleString('en-US') + ' m' +
+        (m[2] ? ' (' + m[2].split(' ').map(x => metWord(x) || x).join(', ') + ')' : '');
+    } else if ((m = p.match(/^(BKN|OVC) CLD (\d+|SFC)\/(\d+)(FT|M)$/))) {
+      const unit = m[4] === 'FT' ? 'ft' : 'm';
+      const n = x => Number(x).toLocaleString('en-US');
+      const band = (m[2] === 'SFC' ? metWord('SFC') : n(m[2])) + '–' + n(m[3]) + ' ' + unit;
+      v = (metIsHe() ? metWord('CLD') + ' ' + metWord(m[1]) : metWord(m[1]) + ' ' + metWord('CLD')) + ', ' + band;
+    } else {
+      const tr = phenomenon.map(w => metWord(w));
+      if (tr.every(Boolean)) {
+        // qualifier + hazard reads "moderate turbulence" in English; Hebrew puts the noun first.
+        // Hebrew puts the noun before its adjective; "MT OBSC" is already noun-first.
+        v = (metIsHe() && p !== 'MT OBSC') ? tr.slice().reverse().join(' ') : tr.join(' ');
+      }
+    }
+    row('phenomenon', v ? v.charAt(0).toUpperCase() + v.slice(1) : p);
+  }
+  const obs = body.match(/\b(OBS|FCST)(?:\s+AT\s+(\d{4})Z)?/);
+  if (obs) row('status', metWord(obs[1]) + (obs[2] ? ' ' + obs[2].slice(0, 2) + ':' + obs[2].slice(2) + 'Z' : ''));
+  if (/\bENTIRE FIR\b/.test(body)) row('area', L('entireFir', 'the whole FIR'));
+  else if (/\bWI\s+N\d{4}/.test(body)) row('area', L('withinArea', 'within the drawn area'));
+  else {
+    const side = body.match(/\b(N|S|E|W|NE|NW|SE|SW) OF (?:LINE\s+)?(N\d{2,4}|S\d{2,4}|E\d{3,5}|W\d{3,5})/);
+    if (side) {
+      const dir = metDir(side[1]);
+      row('area', (metIsHe() ? dir : dir.charAt(0).toUpperCase() + dir.slice(1)) + ' ' + L('ofLine', 'of the line'));
+    }
+  }
+  let m;
+  if ((m = body.match(/\b(SFC|FL\d{3}|\d{3,5}(?:FT|M))\/(FL\d{3}|\d{3}|\d{3,5}(?:FT|M))\b/))) row('levels', metLevel(m[1]) + '–' + metLevel(m[2]));
+  else if ((m = body.match(/\bTOP (?:ABV )?(FL\d{3})/))) row('levels', L('topsTo', 'tops') + ' ' + m[1]);
+  else if ((m = body.match(/\bABV (FL\d{3})/))) row('levels', L('above', 'above') + ' ' + m[1]);
+  else if ((m = body.match(/\bBLW (FL\d{3})/))) row('levels', L('below', 'below') + ' ' + m[1]);
+  if ((m = body.match(/\bMOV (N|NE|E|SE|S|SW|W|NW) (\d+)(KT|KMH)\b/))) {
+    row('movement', L('movingTo', 'moving') + ' ' + metDir(m[1]) + ' ' + m[2] + (m[3] === 'KT' ? ' kt' : ' km/h'));
+  } else if (/\bSTNR\b/.test(body)) row('movement', metWord('STNR'));
+  if ((m = body.match(/\b(NC|INTSF|WKN)\b/))) row('change', metWord(m[1]));
+  return out;
+}
+if (typeof window !== 'undefined') window.decodeMetText = decodeMetText;
+
 
 // Per-language localStorage key for draggable menu/panel POSITIONS. The RTL
 // (Hebrew) layout mirrors the LTR (English) one, so a spot dragged in one

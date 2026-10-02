@@ -237,3 +237,31 @@ test('late inspector content growth keeps its bottom controls reachable', async 
   });
   await expectInspectorInsideViewport(page);
 });
+
+// Reported with a screenshot: an LSA bubble (two rows) opened in the panel an airfield had
+// been stretched to -- mostly empty. Each kind of panel keeps its own size; a kind never
+// resized fits its content.
+test('each kind of panel keeps its own size; an unsized kind fits its content', async ({ page }) => {
+  await boot(page);
+  await page.evaluate(() => localStorage.setItem('navaid.inspSize',
+    JSON.stringify({ kinds: { airfield: { w: 420, h: 700 } }, w: 420 })));
+  await openAirfield(page);
+  await page.evaluate(() => applyInspSize());
+  const af = await page.locator('#inspector').boundingBox();
+  expect(Math.round(af.height)).toBe(700);
+  // A note: never resized, so it is as tall as its content, at the width last used.
+  const note = await page.evaluate(() => {
+    state.notes = [{ lat: 32.1, lng: 34.9, text: 'n' }];
+    state.selected = { type: 'note', index: 0 };
+    showInspector();
+    const insp = document.getElementById('inspector');
+    return { h: insp.getBoundingClientRect().height, w: insp.getBoundingClientRect().width,
+      content: document.getElementById('insp-header').offsetHeight + document.getElementById('insp-body').scrollHeight };
+  });
+  expect(Math.round(note.w)).toBe(420);
+  expect(note.h).toBeLessThan(700);
+  expect(Math.abs(note.h - note.content)).toBeLessThan(12);
+  // Back to the airfield: its own size returns.
+  await openAirfield(page);
+  expect(Math.round((await page.locator('#inspector').boundingBox()).height)).toBe(700);
+});

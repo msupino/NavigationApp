@@ -1715,7 +1715,7 @@ function drawSigmets() {
     octx.fillStyle = colorWithAlpha(col, tune('sigmetFillAlpha'));
     octx.fill();
     octx.setLineDash([tune('sigmetDashOnPx'), tune('sigmetDashOffPx')]);
-    octx.lineWidth = tune('sigmetLineWidthPx');
+    octx.lineWidth = tune('sigmetLineWidthPx') + metFlashWidth(s);
     octx.strokeStyle = col;
     octx.stroke();
     octx.setLineDash([]);
@@ -1841,6 +1841,26 @@ function airmetActive(a, now) {
 }
 window.airmetActive = airmetActive;
 // The active AIRMETs right now -- what the map, the hit-test, the count and the list all use.
+// A SIGMET / AIRMET picked from its list is framed and flashed, as a NOTAM is: its outline
+// pulses wider for a few seconds so the eye finds it among the rest.
+let metFlash = null, metFlashRAF = 0;
+const MET_FLASH_MS = 2600;
+function flashMetArea(w, kind) {
+  metFlash = { w, kind, start: performance.now() };
+  if (metFlashRAF) cancelAnimationFrame(metFlashRAF);
+  const step = () => {
+    draw();
+    if (metFlash && performance.now() - metFlash.start < MET_FLASH_MS) metFlashRAF = requestAnimationFrame(step);
+    else { metFlash = null; metFlashRAF = 0; draw(); }
+  };
+  metFlashRAF = requestAnimationFrame(step);
+}
+window.flashMetArea = flashMetArea;
+function metFlashWidth(w) {
+  if (!metFlash || metFlash.w !== w) return 0;
+  const t = (performance.now() - metFlash.start) / 400;
+  return 3 + 3 * Math.abs(Math.sin(t * Math.PI));
+}
 function activeAirmets() {
   // Same look-ahead time the NOTAM layer scrubs to: with the timeline slider forward, an
   // AIRMET past its validTo drops out, exactly as a NOTAM does. null = live "now".
@@ -1867,7 +1887,7 @@ function drawAirmets() {
     octx.fill();
     // Dotted, to read as distinct from the SIGMET dashes on the same map.
     octx.setLineDash([2, tune('sigmetDashOffPx')]);
-    octx.lineWidth = tune('sigmetLineWidthPx');
+    octx.lineWidth = tune('sigmetLineWidthPx') + metFlashWidth(a);
     octx.strokeStyle = col;
     octx.stroke();
     octx.setLineDash([]);
