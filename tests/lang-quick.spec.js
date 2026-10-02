@@ -56,3 +56,25 @@ test('phone: in flight the switch steps aside, and the readout fits its own line
   expect(got.fits).toBe(true);                   // nothing runs under Comm fail
   for (const kept of ['105 kt', '402 ft', '322\u00b0']) expect(got.vals).toContain(kept);   // never dropped
 });
+
+// Reported with a screenshot from a phone with the system text size up: the Hebrew names
+// outgrew a fixed name column, the controls stepped out of line, and Magnetic variation
+// wrapped. Each row is one line; the controls line up at the row's end.
+for (const lang of ['he', 'en']) test(`settings rows stay one line with the controls aligned, larger text (${lang})`, async ({ page }) => {
+  await page.setViewportSize({ width: 300, height: 700 });        // ~390px at 1.3x text
+  await page.goto('?lang=' + lang + '&nogist');
+  await page.evaluate(() => document.querySelector('.deck-btn-menu').click());
+  await page.locator('.tb-section[data-sec="settings"] .tb-section-head').click();
+  const rows = await page.evaluate(() => [...document.querySelectorAll('.tb-section[data-sec="settings"] .tb-section-body > .navtoggle')]
+    .filter(r => r.getClientRects().length).map(r => {
+      const kids = [...r.children].filter(k => k.getClientRects().length);
+      const mids = kids.map(k => { const b = k.getBoundingClientRect(); return b.top + b.height / 2; });
+      const ctrls = kids.slice(1).map(k => k.getBoundingClientRect());
+      const rtl = document.documentElement.dir === 'rtl';
+      return { spread: Math.max(...mids) - Math.min(...mids),
+        edge: rtl ? Math.min(...ctrls.map(b => b.left)) : Math.max(...ctrls.map(b => b.right)) };
+    }));
+  expect(rows.length).toBe(3);
+  for (const r of rows) expect(r.spread).toBeLessThan(8);         // one line
+  expect(Math.max(...rows.map(r => r.edge)) - Math.min(...rows.map(r => r.edge))).toBeLessThan(2);   // aligned
+});
