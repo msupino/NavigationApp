@@ -125,17 +125,24 @@ test('the decoded text inherits the theme colour instead of a hardcoded grey', a
     await loadAirmets(true);
     showAirmetDecoded();
     const modal = document.querySelector('.modal-back .modal');
-    // Deepest match: the item div also contains this text, so take the innermost (last).
-    const raw = [...modal.querySelectorAll('div')].filter(d => /VALID 310300/.test(d.textContent)).pop();
-    const hazard = [...modal.querySelectorAll('div')].find(d => /MT OBSC/.test(d.textContent) && !/VALID/.test(d.textContent));
-    return { rawStyle: raw.getAttribute('style') || '', hazardStyle: hazard.getAttribute('style') || '' };
+    // The raw line sits behind its button; open it to measure it.
+    modal.querySelector('.met-card-btn').click();
+    const raw = modal.querySelector('.met-card-raw');
+    const hazard = modal.querySelector('.met-card-summary') ||
+      [...modal.querySelectorAll('.met-v')].find(v => /obscured/i.test(v.textContent));
+    return { rawStyle: raw.getAttribute('style') || '', hazardStyle: hazard.getAttribute('style') || '',
+      rawOpacity: +getComputedStyle(raw).opacity, rawColor: getComputedStyle(raw).color,
+      textColor: getComputedStyle(modal).color, rawText: raw.textContent, hazardText: hazard.textContent };
   });
   // The white-on-white bug was a fixed light-theme grey. The muted line must instead carry
   // no colour of its own (so it inherits the theme's text colour) and be dimmed by opacity.
   expect(styles.rawStyle).not.toMatch(/color\s*:/);
-  expect(styles.rawStyle).toMatch(/opacity/);
+  expect(styles.rawColor).toBe(styles.textColor);
+  expect(styles.rawOpacity).toBeLessThan(1);
+  expect(styles.rawText).toMatch(/VALID 310300/);
   // The hazard headline never sets a colour either -- it reads in whatever the theme uses.
   expect(styles.hazardStyle).not.toMatch(/color\s*:/);
+  expect(styles.hazardText).toMatch(/MT OBSC|Mountains obscured/);
 });
 
 test('an expired AIRMET is not drawn, listed, or exposed as a toggle', async ({ page }) => {

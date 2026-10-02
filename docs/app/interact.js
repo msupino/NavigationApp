@@ -1724,6 +1724,72 @@ function airspaceNotams(a) {
   return list.filter(n => rx.test(String((n && (n.text || n.raw || n.body)) || '').toUpperCase()));
 }
 
+// NOTAMs in force for what the panel shows, written out in the panel itself -- a bubble that
+// reads "open all day" while a NOTAM has closed it, or a leg through an area a NOTAM activated,
+// must not need a second tap to say so. Each NOTAM is a card: its number, until when, and its
+// text; tapping one opens it in the NOTAM list (which can frame it on the map).
+function inspNotamsInForce(list) {
+  // At the time the look-ahead slider shows, as the NOTAM layer does: scrubbed to 15:00Z, the
+  // panel lists what will be in force then, not what is now.
+  const now = typeof notamViewNow === 'function' ? notamViewNow() : Date.now();
+  return (list || []).filter(n => n && (typeof notamActive !== 'function' || notamActive(n, now)));
+}
+function appendInspNotams(body, list) {
+  // Opened before the feed arrived: render again once it has, if the same thing is still open.
+  if (typeof notams !== 'undefined' && notams === null && typeof ensureNotams === 'function') {
+    const sel = JSON.stringify(state.selected);
+    Promise.resolve(ensureNotams()).then(() => {
+      if (JSON.stringify(state.selected) === sel) showInspector();
+    }).catch(() => {});
+    return;
+  }
+  const live = inspNotamsInForce(list);
+  if (!live.length) return;
+  const box = document.createElement('div');
+  box.className = 'insp-notams';
+  const head = document.createElement('div');
+  head.className = 'insp-notams-head';
+  head.textContent = (S.inspNotamsTitle || 'NOTAMs in force') + ' · ' + live.length;
+  box.appendChild(head);
+  for (const n of live) {
+    const card = document.createElement('button');
+    card.type = 'button';
+    card.className = 'insp-notam-card';
+    const id = document.createElement('span');
+    id.className = 'insp-notam-id';
+    id.textContent = n.id || 'NOTAM';
+    const until = document.createElement('span');
+    until.className = 'insp-notam-until';
+    const end = Date.parse(n.end || '');
+    if (Number.isFinite(end)) {
+      // The stamp is one left-to-right token; in Hebrew the bidi algorithm split it in two.
+      const stamp = document.createElement('bdi');
+      stamp.dir = 'ltr';
+      stamp.textContent = new Date(end).toISOString().slice(5, 16).replace('T', ' ') + 'Z';
+      until.append((S.inspNotamUntil || 'until') + ' ', stamp);
+    } else if (n.end && /PERM/i.test(n.end)) {
+      until.textContent = 'PERM';
+    }
+    const txt = document.createElement('span');
+    txt.className = 'insp-notam-text';
+    txt.dir = 'ltr';
+    txt.textContent = String(n.text || '').trim();
+    card.append(id, until, txt);
+    card.onclick = () => { if (typeof showNotamModal === 'function') showNotamModal([n]); };
+    box.appendChild(card);
+  }
+  body.appendChild(box);
+}
+// The NOTAMs that touch one leg: the same test the plan's NOTAM sort uses for the route
+// (its geometry, a route line it names, or a bubble it names, against the leg's segment).
+function legNotams(idx) {
+  const A = state.waypoints[idx], B = state.waypoints[idx + 1];
+  const list = (typeof notams !== 'undefined' && Array.isArray(notams)) ? notams : [];
+  if (!A || !B || !list.length || typeof notamAffectsPlannedRoute !== 'function') return [];
+  const seg = [[A.lat, A.lng], [B.lat, B.lng]];
+  return list.filter(n => notamAffectsPlannedRoute(n, seg));
+}
+
 // Density altitude, beside the elevation it corrects. On a hot afternoon at Haifa, Megiddo
 // or Masada the aeroplane behaves as though the field were thousands of feet higher, and
 // nothing in an elevation figure says so. The slider runs a day ahead on the hourly
@@ -3516,6 +3582,8 @@ function showInspector() {
   // a deployment that widened or narrowed the range would otherwise not reach the buttons
   // until the pilot pressed one.
   if (typeof applyInspZoom === 'function' && typeof inspZoomGet === 'function') applyInspZoom(inspZoomGet());
+  // Each kind of panel keeps its own size (see inspSizeKind in ui.js).
+  if (typeof window.applyInspSize === 'function') window.applyInspSize();
   const title = document.getElementById('insp-title');
   const body = document.getElementById('insp-body');
   // Not while the aircraft is being tracked: the panel covers the map, and in flight the
@@ -3762,6 +3830,7 @@ function showInspector() {
     addRp.textContent = S.addReportPoint || 'Add identification-point marker';
     addRp.onclick = () => { addReportPointToLeg(idx); showInspector(); };
     body.appendChild(addRp);
+    appendInspNotams(body, legNotams(idx));
   } else if (state.selected.type === 'note') {
     const note = state.notes[state.selected.index];
     if (note.cc) {
@@ -3986,6 +4055,10 @@ function showInspector() {
     body.appendChild(textRow(S.bubbleActive || 'Active',
       wkndOnly ? (S.bubbleWeekendOnly || 'Weekends & holidays only')
                : (S.bubbleOpenAll || 'Open all day')));
+    // NOTAMs that name this bubble (closures, UAV activity): they override the legend's class.
+    appendInspNotams(body, typeof notams !== 'undefined' &&
+      Array.isArray(notams) && typeof notamBubbleAreas === 'function'
+      ? notams.filter(n => notamBubbleAreas(n).includes(a)) : []);
   } else if (state.selected.type === 'traffic') {
     // An aircraft the receiver is hearing right now. Nothing here is editable and none of it
     // is ours: it is a read-out of one transponder, and it disappears when that aeroplane
@@ -5430,7 +5503,9 @@ map.on('click', e => {
   // only, so it never competes with dropping a waypoint in add/note mode.
   if (!state.mode && window.showAirmet && typeof airmetsAtLatLng === 'function'
       && typeof showAirmetDecoded === 'function' && airmetsAtLatLng(e.latlng).length) {
-    showAirmetDecoded();
+    const hit = airmetsAtLatLng(e.latlng);
+    showAirmetDecoded(hit);
+    if (typeof flashMetArea === 'function') flashMetArea(hit[0], 'airmet');
     return;
   }
   // NOTAM clicks are handled in mousedown (as overlay choices); see there.

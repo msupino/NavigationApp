@@ -6919,6 +6919,9 @@ function syncNotamTime() {
 if (notamTimeEl) {
   notamTimeEl.oninput = () => {
     syncNotamTime(); refreshNotamListBtn();
+    // A bubble or leg panel lists the NOTAMs in force at this time: rebuild it.
+    if (state.selected && (state.selected.type === 'lsaArea' || state.selected.type === 'leg') &&
+        typeof showInspector === 'function') showInspector();
     // AIRMET rides the same look-ahead: refresh its count/controls when the slider moves.
     if (typeof refreshAirmetGroup === 'function') refreshAirmetGroup();
     if (typeof refreshAirmetBtn === 'function') refreshAirmetBtn();
@@ -10026,19 +10029,36 @@ function applyInspZoom(next) {
 const INSP_SIZE_KEY = 'navaid.inspSize';   // device-local: geometry for THIS screen
 const INSP_MIN_W = 220, INSP_MIN_H = 120;
 
-function inspSizeGet() {
+// One size per KIND of panel. A single remembered size meant the panel an airfield had been
+// stretched to fit -- weather, frequencies, charts -- came back for an LSA bubble with two
+// rows in it, mostly empty (reported with a screenshot). Each kind keeps the size it was last
+// given; a kind never resized fits its content (capped by the viewport), at the width last used.
+//   stored: { kinds: { airfield: {w,h}, lsaArea: {w,h}, ... }, w }   (w = last width, any kind)
+function inspSizeKind() {
+  return (typeof state === 'object' && state && state.selected && state.selected.type) || 'none';
+}
+function inspSizeStore() {
   // Reading localStorage throws where site data is blocked, not just writing.
   try {
     const o = JSON.parse(localStorage.getItem(INSP_SIZE_KEY) || 'null');
-    if (o && Number.isFinite(o.w) && Number.isFinite(o.h)) return o;
+    if (o && o.kinds && typeof o.kinds === 'object') return o;
+    // The old single size: keep its width for every kind, drop its height.
+    if (o && Number.isFinite(o.w)) return { kinds: {}, w: o.w };
   } catch (e) { /* blocked or malformed */ }
-  return null;
+  return { kinds: {} };
+}
+function inspSizeGet() {
+  const store = inspSizeStore();
+  const own = store.kinds[inspSizeKind()];
+  if (own && Number.isFinite(own.w) && Number.isFinite(own.h)) return own;
+  return Number.isFinite(store.w) ? { w: store.w, h: null } : null;
 }
 
 function inspSizeSave(w, h) {
-  try {
-    localStorage.setItem(INSP_SIZE_KEY, JSON.stringify({ w: Math.round(w), h: Math.round(h) }));
-  } catch (e) { /* private mode */ }
+  const store = inspSizeStore();
+  store.kinds[inspSizeKind()] = { w: Math.round(w), h: Math.round(h) };
+  store.w = Math.round(w);
+  try { localStorage.setItem(INSP_SIZE_KEY, JSON.stringify(store)); } catch (e) { /* private mode */ }
 }
 
 // Same breakpoint as the header-drag guard. That one's isNarrow() is a const inside another
@@ -10068,12 +10088,12 @@ function applyInspSize() {
     return;
   }
   const sz = inspSizeGet();
-  if (sz) {
-    insp.style.width = Math.max(INSP_MIN_W, sz.w) + 'px';
-    insp.style.height = Math.max(INSP_MIN_H, sz.h) + 'px';
-  }
+  insp.style.width = sz ? Math.max(INSP_MIN_W, sz.w) + 'px' : '';
+  // No height of its own: fit the content (the CSS max-height still caps it).
+  insp.style.height = (sz && Number.isFinite(sz.h)) ? Math.max(INSP_MIN_H, sz.h) + 'px' : '';
   clampInspToViewport();
 }
+window.applyInspSize = applyInspSize;
 
 // A desktop window can also be made smaller than the panel that was sized in it. Keep the
 // panel inside the viewport whatever it was left at: a control the pilot cannot reach is
