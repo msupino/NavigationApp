@@ -13,7 +13,7 @@ const PNG = Buffer.from(
   'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+M8AAAMCAYAAAB7P3qAAAAAAElFTkSuQmCC',
   'base64'
 );
-const CBS = ['circuit-cb', 'training-cb', 'cvfr-cb', 'heli-cb', 'commfail-cb'];
+const CBS = ['circuit-cb', 'training-cb', 'cvfr-cb', 'heli-cb', 'commfail-cb', 'adc-cb'];
 
 async function boot(page) {
   await page.route(PNG_RE, r =>
@@ -39,7 +39,7 @@ test('plate overlays are mutually exclusive — enabling one disables the rest',
     CBS
   );
   // Only the last-enabled toggle (heli) stays on.
-  expect(state).toEqual([false, false, false, true, false]);
+  expect(state).toEqual([false, false, false, true, false, false]);
 
   const groupsOnMap = await page.evaluate(() => ({
     circuit:  window.circuitLayerGroup  ? map.hasLayer(window.circuitLayerGroup)  : false,

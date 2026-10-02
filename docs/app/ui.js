@@ -7690,6 +7690,7 @@ function buildOverlayLayer(base, ov, ver, type) {
 const OVERLAY_TYPE_CB = {
   circuit_overlay: 'circuit-cb', training_overlay: 'training-cb', cvfr_overlay: 'cvfr-cb',
   heli_overlay: 'heli-cb', commfail_overlay: 'commfail-cb', ifr_overlay: 'ifr-cb',
+  adc_overlay: 'adc-cb',
 };
 // A ✕ on the sheet's top-left corner, to put it away from the map itself. Switching a chart
 // off meant finding the menu it came from -- three taps on a phone, with the toolbar over
@@ -8020,6 +8021,24 @@ function loadCommfailOverlays() {
   }
 }
 
+// ── Aerodrome chart (נספח א' -- "תרשים השדה" / "תרשים המנחת") ────────────────
+// The field's own diagram: runways, taxiways, aprons, hotspots. Anchored on its runway
+// (scripts/georef-adc.py), drawn like the other airfield plates and one of them at a time.
+const ADC_SHOW_KEY = 'navaid.showAdc';
+window.showAdc = lsGet(ADC_SHOW_KEY) === '1';
+window.adcLayerGroup = null;
+function adcImgBase() { return navAssetBase('adc-img'); }
+function loadAdcOverlays() {
+  if (adcLayerGroup) return;
+  if (!airfields) return;
+  adcLayerGroup = L.layerGroup();
+  for (const af of airfields) {
+    const ov = af.adc_overlay;
+    if (!ov) continue;
+    if (!plateAirfieldAllowed(af.name)) continue;
+    buildOverlayLayer(adcImgBase(), ov, '1', 'adc_overlay').addTo(adcLayerGroup);
+  }
+}
 function applyCommfailOpacity(v) {
   commfailOpacity = v;
   const valEl = document.getElementById('commfail-opacity-val');
@@ -8035,7 +8054,7 @@ window.plateAirfield = (() => {
   try { return lsGet(PLATE_AIRFIELD_KEY) || ''; } catch (_) { return ''; }
 })();
 const PLATE_OTYPES = ['circuit_overlay', 'training_overlay', 'cvfr_overlay',
-                      'heli_overlay', 'commfail_overlay'];
+                      'heli_overlay', 'commfail_overlay', 'adc_overlay'];
 
 function plateFields() {
   return (window.airfields || [])
@@ -8102,6 +8121,7 @@ function rebuildPlateOverlays() {
     ['showCvfr', 'cvfrLayerGroup', loadCvfrOverlays],
     ['showHeli', 'heliLayerGroup', loadHeliOverlays],
     ['showCommfail', 'commfailLayerGroup', loadCommfailOverlays],
+    ['showAdc', 'adcLayerGroup', loadAdcOverlays],
   ];
   for (const [, gname] of defs) {
     const g = window[gname]; if (g) g.remove(); window[gname] = null;  // force rebuild
@@ -8157,16 +8177,18 @@ const overlayAlign = (function () {
   // metres out with residuals that look healthy, and no automatic anchor can see it -- but a
   // pilot can, against the field or a VOR rose the sheet draws.
   const GTYPES = ['circuit_overlay', 'training_overlay', 'cvfr_overlay',
-                  'heli_overlay', 'commfail_overlay', 'ifr_overlay'];
+                  'heli_overlay', 'commfail_overlay', 'ifr_overlay', 'adc_overlay'];
   const GVAR = {
     circuit_overlay: 'circuitLayerGroup', training_overlay: 'trainingLayerGroup',
     cvfr_overlay: 'cvfrLayerGroup', heli_overlay: 'heliLayerGroup',
     commfail_overlay: 'commfailLayerGroup', ifr_overlay: 'ifrLayerGroup',
+    adc_overlay: 'adcLayerGroup',
   };
   const GLOAD = {
     circuit_overlay: () => loadCircuitOverlays(), training_overlay: () => loadTrainingOverlays(),
     cvfr_overlay: () => loadCvfrOverlays(), heli_overlay: () => loadHeliOverlays(),
     commfail_overlay: () => loadCommfailOverlays(), ifr_overlay: () => loadIfrOverlays(),
+    adc_overlay: () => loadAdcOverlays(),
   };
   let active = false, sel = null, editLayer = null, state = null;
   let handles = {}, panel = null, mapClick = null;
@@ -8474,7 +8496,7 @@ function applyPlateOpacity(v) {
   plateOpacity = v;
   const valEl = document.getElementById('plate-opacity-val');
   if (valEl) valEl.textContent = Math.round(v * 100) + '%';
-  [circuitLayerGroup, trainingLayerGroup, cvfrLayerGroup, heliLayerGroup, commfailLayerGroup]
+  [circuitLayerGroup, trainingLayerGroup, cvfrLayerGroup, heliLayerGroup, commfailLayerGroup, adcLayerGroup]
     .forEach(g => { if (g) g.eachLayer(l => l.setOpacity(v)); });
 }
 
@@ -8991,6 +9013,27 @@ function chartsLoadingUntilReady(group, owner) {
     };
   }
 })();
+// Aerodrome chart toggle (a hidden state adapter behind the plate-type picker, like the rest).
+(function () {
+  const cb = document.getElementById('adc-cb');
+  if (!cb) return;
+  cb.checked = showAdc;
+  cb.onchange = async function (e) {
+    window.showAdc = e.target.checked;
+    try { localStorage.setItem(ADC_SHOW_KEY, showAdc ? '1' : '0'); } catch (_) {}
+    if (showAdc) {
+      const loadingOwner = chartsLoadingStart('adc');
+      if (!airfields) await loadAirfields();
+      if (!window.showAdc) { chartsLoading(false, loadingOwner); return; }
+      loadAdcOverlays();
+      if (adcLayerGroup) adcLayerGroup.addTo(map);
+      chartsLoadingUntilReady(adcLayerGroup, loadingOwner);
+    } else {
+      if (adcLayerGroup) adcLayerGroup.remove();
+      chartsLoadingCancelGroup('adc');
+    }
+  };
+})();
 // Which map layer, if any, draws a given plate -- the link the "Show on map" button in the
 // chart viewer follows. Instrument sheets say so themselves: the builder records the plate
 // each overlay was made from. The older families do not, so they are recognised by what the
@@ -9000,6 +9043,7 @@ const PLATE_LAYER_BY_TITLE = [
   // CVFR, so the comm-failure rule has to be asked first. The last rule is deliberately
   // broad -- entry/exit routes are what the CVFR overlay draws, whether the sheet calls them
   // CVFR, "נתיבי כניסה ויציאה" or "נתיבי התובלה הנמוכים".
+  [/תרשים השדה|תרשים המנחת|aerodrome chart/i,     'adc-cb'],
   [/הקפה|circuit/i,                              'circuit-cb'],
   [/אזורי ה?אימון|training area/i,               'training-cb'],
   [/תקלת קשר|אובדן קשר|comm-?failure|loss of comm/i, 'commfail-cb'],
@@ -9033,7 +9077,7 @@ function plateMapLayer(filename) {
   const cbId = hit[1];
   const overlayKey = { 'circuit-cb': 'circuit_overlay', 'training-cb': 'training_overlay',
                        'commfail-cb': 'commfail_overlay', 'heli-cb': 'heli_overlay',
-                       'cvfr-cb': 'cvfr_overlay' }[cbId];
+                       'cvfr-cb': 'cvfr_overlay', 'adc-cb': 'adc_overlay' }[cbId];
   if (!af[overlayKey]) return null;               // that field has no such overlay to show
   return { kind: cbId, show: () => {
     const filter = document.getElementById('plate-airfield');
@@ -9219,7 +9263,7 @@ window.plateMapLayer = plateMapLayer;
   // The instrument chart is in this group too, even though it lives in a section of its
   // own: an approach plate and a VFR entry sheet drawn over each other are two pictures of
   // the same few miles, and neither can be read through the other. One chart at a time.
-  const boxes = ['circuit-cb', 'training-cb', 'cvfr-cb', 'heli-cb', 'commfail-cb', 'ifr-cb']
+  const boxes = ['circuit-cb', 'training-cb', 'cvfr-cb', 'heli-cb', 'commfail-cb', 'adc-cb', 'ifr-cb']
     .map(id => document.getElementById(id))
     .filter(Boolean);
   for (const cb of boxes) {
@@ -11164,6 +11208,7 @@ loadAirfields().then(() => {
       ['showCvfr',     CVFR_SHOW_KEY,     'cvfr-cb',     loadCvfrOverlays,     () => cvfrLayerGroup],
       ['showHeli',     HELI_SHOW_KEY,     'heli-cb',     loadHeliOverlays,     () => heliLayerGroup],
       ['showCommfail', COMMFAIL_SHOW_KEY, 'commfail-cb', loadCommfailOverlays, () => commfailLayerGroup],
+      ['showAdc',      ADC_SHOW_KEY,      'adc-cb',      loadAdcOverlays,      () => adcLayerGroup],
       ['showIfr',      IFR_SHOW_KEY,      'ifr-cb',      loadIfrOverlays,      () => ifrLayerGroup],
     ];
     let shown = false;
@@ -13456,6 +13501,7 @@ NavAid.defaultVisibilityMap = [
   ['cvfr-cb', 'navaid.showCvfr', 'defaultShowCvfr'],
   ['heli-cb', 'navaid.showHeli', 'defaultShowHeli'],
   ['commfail-cb', 'navaid.showCommfail', 'defaultShowCommfail'],
+  ['adc-cb', 'navaid.showAdc', 'defaultShowAdc'],
   ['ifr-cb', 'navaid.showIfr', 'defaultShowIfr'],
   ['traffic-cb', 'navaid.showTraffic', 'defaultShowTraffic'],
   ['airspace-cb', 'navaid.showAirspace', 'defaultShowAirspace'],
