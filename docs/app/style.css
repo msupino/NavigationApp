@@ -9246,10 +9246,14 @@ body.theme-light .met-card-btn { border-color: #858f9c; }
 .met-card-btn:focus-visible { outline: 2px solid #4c9bff; outline-offset: 1px; }
 .met-card-go { color: #4c9bff; border-color: #4c9bff; }
 body.theme-light .met-card-go { color: #1f5f9e; border-color: #1f5f9e; }
-body.deck-on .met-card-btn { min-height: 36px; }
+body.deck-on .met-card-btn { min-height: 44px; padding: 0 12px; }
 .met-card-summary { font-size: 13px; font-weight: 600; margin-bottom: 6px; text-align: left; }
 .met-card-rows { display: grid; grid-template-columns: max-content 1fr; gap: 3px 12px; font-size: 13px; margin-bottom: 6px; }
 .met-k { opacity: .75; }
 .met-v { font-weight: 600; unicode-bidi: isolate; text-align: start; }
 .met-card-raw { font: 11px/1.4 monospace; opacity: .8; white-space: pre-wrap; text-align: left; margin-top: 4px; }
 .met-card-raw[hidden], .met-card-rows[hidden] { display: none; }
+
+/* A bubble a NOTAM has closed: its availability row says so, in the NOTAM's own amber. */
+.insp-row-closed .val { color: #ffb24d; font-weight: 700; }
+body.theme-light .insp-row-closed .val { color: #9a3d00; }

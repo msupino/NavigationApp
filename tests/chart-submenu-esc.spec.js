@@ -44,10 +44,10 @@ async function openCharts(page) {
   await expect(page.locator('[data-sec="charts"]')).toHaveClass(/open/);
 }
 
-// A couple of representative chart items across the section. freq-table opens a
-// local modal; sigmet-btn is one of the items that used to keep the submenu
-// open — both must now close it, proving uniformity.
-for (const id of ['freq-table', 'sigmet-btn']) {
+// A couple of representative chart items across the section. route-templates opens a
+// local modal (the frequency table, the old example, moved to Settings); sigmet-btn is one of
+// the items that used to keep the submenu open — both must now close it, proving uniformity.
+for (const id of ['route-templates', 'sigmet-btn']) {
   test(`opening #${id} closes the Charts submenu`, async ({ page }) => {
     await openCharts(page);
     await page.locator(`#${id}`).click();

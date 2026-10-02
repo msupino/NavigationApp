@@ -59,7 +59,7 @@ async function boot(page, lang = 'en') {
       if (localStorage.getItem('__test_comm_init_v1') !== '1') {
         for (const k of Object.keys(localStorage)) localStorage.removeItem(k);
         sessionStorage.clear();
-        for (const s of ['build', 'view', 'display', 'charts', 'export', 'print', 'settings'])
+        for (const s of ['build', 'view', 'display', 'charts', 'export', 'print'])
           localStorage.setItem('navaid.sec.' + s, '1');
         localStorage.setItem('__test_comm_init_v1', '1');
       }
@@ -1133,7 +1133,7 @@ test.describe('comm-change auto-note (#487)', () => {
       try {
         for (const k of Object.keys(localStorage)) localStorage.removeItem(k);
         sessionStorage.clear();
-        for (const s of ['build', 'view', 'display', 'charts', 'export', 'print', 'settings'])
+        for (const s of ['build', 'view', 'display', 'charts', 'export', 'print'])
           localStorage.setItem('navaid.sec.' + s, '1');
         localStorage.setItem('navaid.showFreqChanges', '1');
         localStorage.setItem('navaid.route', JSON.stringify({
@@ -1999,7 +1999,7 @@ async function bootFixture(page, waitName, center, lang = 'en') {
       if (localStorage.getItem('__test_comm_init_v1') !== '1') {
         for (const k of Object.keys(localStorage)) localStorage.removeItem(k);
         sessionStorage.clear();
-        for (const s of ['build', 'view', 'display', 'charts', 'export', 'print', 'settings'])
+        for (const s of ['build', 'view', 'display', 'charts', 'export', 'print'])
           localStorage.setItem('navaid.sec.' + s, '1');
         localStorage.setItem('__test_comm_init_v1', '1');
       }
