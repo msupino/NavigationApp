@@ -4,7 +4,7 @@
 const { test, expect } = require('./_setup');
 
 async function boot(page, lang = 'en') {
-  await page.addInitScript(() => { try { localStorage.setItem('navaid.sec.view', '1'); } catch (e) {} });
+  await page.addInitScript(() => { try { localStorage.setItem('navaid.sec.view', '1'); localStorage.setItem('navaid.sec.settings', '1'); } catch (e) {} });
   await page.goto('?lang=' + lang + '&nogist');
   await page.waitForFunction((l) => document.documentElement.lang === l && typeof syncDefaultSpeedInput === 'function', lang);
 }

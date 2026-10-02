@@ -277,6 +277,7 @@ test('the footer sim icon draws a glyph, like its GPS siblings', async ({ page }
     return {
       iconTag: icon ? icon.tagName : null,
       text: icon ? icon.textContent.trim() : '',
+      hasSvg: !!(icon && icon.querySelector('svg[width][height]')),
       btnW: Math.round(r.width),
       iconW: ir ? Math.round(ir.width) : 0,
       // Same element shape as the buttons that are known to render in the APK.
@@ -286,7 +287,9 @@ test('the footer sim icon draws a glyph, like its GPS siblings', async ({ page }
   });
   expect(out.iconTag).toBe('SPAN');
   expect(out.gpsIconTags).toEqual(['SPAN', 'SPAN']);
-  expect(out.text.length).toBeGreaterThan(0);
+  // A drawn line icon now (one set with its neighbours), with an explicit size -- the
+  // failure this guards against was an icon that painted nothing.
+  expect(out.text.length > 0 || out.hasSvg).toBe(true);
   // The label is hidden at this width, so the icon IS the button: it has to carry
   // real width, not collapse to padding.
   expect(out.iconW).toBeGreaterThan(8);

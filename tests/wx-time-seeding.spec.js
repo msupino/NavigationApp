@@ -38,7 +38,7 @@ async function serve(page, { pwx, sigwx, sigwxDelayMs = 0, pwxDelayMs = 0, lang 
     r.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(sigwx) });
   });
   await page.addInitScript(() => {
-    for (const s of ['build', 'view', 'display', 'charts', 'export', 'print'])
+    for (const s of ['build', 'view', 'display', 'charts', 'export', 'print', 'settings'])
       try { localStorage.setItem('navaid.sec.' + s, '1'); } catch (e) {}
   });
   await page.goto('?lang=' + lang + '&nogist');

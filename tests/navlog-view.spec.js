@@ -30,7 +30,7 @@ const openLog = async (page) => {
 test('the toolbar offers it, and it opens a sheet', async ({ page }) => {
   await boot(page);
   // The icon is part of the label, as it is on every other button in this section.
-  await expect(page.locator('#nav-log')).toHaveText('📐 Flight planning form');
+  await expect(page.locator('#nav-log')).toHaveText('Flight planning form');
   await page.evaluate(() => document.getElementById('nav-log').click());
   await expect(page.locator('.navlog-modal .navlog-table')).toBeVisible();
   // 23 columns, the exercise's own set.

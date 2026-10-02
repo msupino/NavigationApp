@@ -10,7 +10,7 @@ async function bootPhone(page, lang = 'en') {
   await page.setViewportSize({ width: 375, height: 812 });
   await page.addInitScript(() => {
     try {
-      for (const s of ['build', 'view', 'display', 'charts', 'export', 'print', 'weather'])
+      for (const s of ['build', 'view', 'display', 'charts', 'export', 'print', 'weather', 'settings'])
         localStorage.setItem('navaid.sec.' + s, '1');
     } catch (e) {}
   });
@@ -20,6 +20,8 @@ async function bootPhone(page, lang = 'en') {
 
 test('the map heading entry, language picker and search dismiss are tappable', async ({ page }) => {
   await bootPhone(page);
+  // The language picker is in Settings, inside the menu: open the menu card first.
+  if (await page.locator('#toolbar.collapsed').count()) await page.locator('#toolbar-toggle').click();
   const sizes = await page.evaluate(() => {
     // The search panel is summoned on a phone (docked only on desktop), so its
     // dismiss button has no box until it is up.

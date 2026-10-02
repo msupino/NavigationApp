@@ -56,7 +56,7 @@ test('a live position outranks the route, and the route outranks the map', async
 });
 
 test('the menu row sits under the default speed; manual E/W sets the variation and is kept', async ({ page }) => {
-  await page.addInitScript(() => { try { localStorage.setItem('navaid.sec.view', '1'); } catch (e) {} });
+  await page.addInitScript(() => { try { localStorage.setItem('navaid.sec.view', '1'); localStorage.setItem('navaid.sec.settings', '1'); } catch (e) {} });
   await boot(page);
   const order = await page.evaluate(() => {
     const speed = document.getElementById('default-speed').closest('label');

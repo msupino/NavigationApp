@@ -26,7 +26,7 @@ async function serveWx(page, { pwx, sigwx, sigwxDelayMs = 0 }) {
       : r.fulfill({ status: 404, body: '' });
   });
   await page.addInitScript(() => {
-    for (const s of ['build', 'view', 'display', 'charts', 'export', 'print'])
+    for (const s of ['build', 'view', 'display', 'charts', 'export', 'print', 'settings'])
       try { localStorage.setItem('navaid.sec.' + s, '1'); } catch (e) {}
     // PWX overlay already on when the page loads — the case that broke.
     try { localStorage.setItem('navaid.imsPwx', JSON.stringify({ on: true, level: '90' })); }

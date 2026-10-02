@@ -4319,6 +4319,7 @@ function showFlightPlan() {
     const inp = document.createElement('input');
     inp.type = 'text';
     inp.className = 'plan-name';
+    inp.setAttribute('aria-label', S.fpNameAria || 'Waypoint name');
     inp.maxLength = 10;
     // Show the locale-resolved label so the cell matches the map.
     normalizeWaypointSequenceName(state.waypoints[wpIdx]);
@@ -4876,6 +4877,8 @@ function showFlightPlan() {
   const printBtn = document.createElement('button');
   printBtn.type = 'button';
   printBtn.textContent = S.fpPrint;
+  // One main action (filing the flight plan); print, CSV and the nav log are secondary.
+  printBtn.className = 'btn-secondary';
   printBtn.onclick = () => {
     const pageStyle = document.createElement('style');
     pageStyle.textContent = '@page { size: A4 landscape; margin: 8mm; }';
@@ -4894,6 +4897,7 @@ function showFlightPlan() {
   const csvBtn = document.createElement('button');
   csvBtn.type = 'button';
   csvBtn.textContent = S.fpCsv || 'CSV';
+  csvBtn.className = 'btn-secondary';
   csvBtn.title = S.fpCsvTitle || 'Export this flight plan as CSV';
   csvBtn.onclick = exportFlightPlanCsv;
   btns.appendChild(csvBtn);
@@ -4908,6 +4912,7 @@ function showFlightPlan() {
   navLogBtn.textContent = narrowRow
     ? (S.tbNavLogShort || 'PDF') : (S.tbNavLog || 'Nav log (PDF)');
   navLogBtn.title = S.tbNavLogTitle || 'Open a printable kneeboard nav log (save as PDF)';
+  navLogBtn.className = 'btn-secondary';
   navLogBtn.onclick = () => exportNavLog(scrollArea);
   btns.appendChild(navLogBtn);
   // File the plan from the panel where the pilot has just read it back.

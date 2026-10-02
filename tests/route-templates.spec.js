@@ -33,7 +33,7 @@ async function boot(page, lang = 'en') {
     try {
       localStorage.clear();
       sessionStorage.clear();
-      for (const s of ['build', 'view', 'display', 'charts', 'export', 'print']) {
+      for (const s of ['build', 'view', 'display', 'charts', 'export', 'print', 'settings']) {
         localStorage.setItem('navaid.sec.' + s, '1');
       }
     } catch (e) {}

@@ -135,8 +135,8 @@ test('the button shows whether the point is marked', async ({ page }) => {
   expect(look.on.bg).toBe('rgb(176, 54, 54)');
 });
 
-// The action row reads in a fixed order — delete, reset, frequency change, hotspot, turn —
-// rather than in whatever order the panel happened to build things.
+// The action row reads in a fixed order — reset, frequency change, hotspot, turn, and delete
+// last, apart from the rest — rather than in whatever order the panel happened to build things.
 test('the actions are in the order a pilot reads them', async ({ page }) => {
   await boot(page);
   const order = await page.evaluate(() => {
@@ -146,8 +146,8 @@ test('the actions are in the order a pilot reads them', async ({ page }) => {
       .map(b => b.id || b.className.split(' ').find(c => c.endsWith('-btn')) || b.className);
   });
   const rank = (id) => order.indexOf(id);
-  expect(rank('insp-del-wp-btn')).toBe(0);
-  expect(rank('insp-reset-name-btn')).toBe(1);
+  expect(rank('insp-reset-name-btn')).toBe(0);
+  expect(rank('insp-del-wp-btn')).toBe(order.length - 1);
   expect(rank('add-freq-change-btn')).toBeLessThan(rank('insp-hotspot-btn'));
   expect(rank('insp-hotspot-btn')).toBeGreaterThan(-1);
 });

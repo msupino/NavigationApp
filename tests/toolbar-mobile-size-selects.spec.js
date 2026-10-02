@@ -16,7 +16,7 @@ test.use({ viewport: { width: 375, height: 812 } });
 async function boot(page) {
   await page.addInitScript(() => {
     try {
-      for (const s of ['build', 'view', 'display', 'charts', 'export', 'print'])
+      for (const s of ['build', 'view', 'display', 'charts', 'export', 'print', 'settings'])
         localStorage.setItem('navaid.sec.' + s, '1');
     } catch (e) {}
   });
@@ -38,15 +38,14 @@ test('the closed menu is one row of controls plus its links, not four stacked ro
     };
     return { h: r.height, w: r.width, pct: r.height / innerHeight * 100,
       handle: box('toolbar-handle'), toggle: box('toolbar-toggle'),
-      lang: box('lang-toggle'), links: box('footer-links'),
+      links: box('footer-links'),
       viewportH: innerHeight };
   });
   // Was 203px / 25% of an iPhone screen with nothing on it.
   expect(m.h).toBeLessThan(140);
   expect(m.pct).toBeLessThan(20);
-  // The drag handle, the ☰ and the language picker share a row: their vertical centres are
-  // within one row of each other rather than stacked one per row.
-  expect(Math.abs(m.toggle.mid - m.lang.mid)).toBeLessThan(30);
+  // The drag handle and the ☰ share a row (the language picker moved into Settings): their
+  // vertical centres are within one row of each other rather than stacked one per row.
   expect(Math.abs(m.handle.mid - m.toggle.mid)).toBeLessThan(30);
   // The links keep their own row, below all three.
   expect(m.links.top).toBeGreaterThanOrEqual(m.toggle.bottom - 8);
@@ -114,7 +113,7 @@ test('no select is cut off by the panel edge, in either language', async ({ page
   for (const lang of ['en', 'he']) {
     await page.addInitScript(() => {
       try {
-        for (const s of ['build', 'view', 'display', 'charts', 'export', 'print'])
+        for (const s of ['build', 'view', 'display', 'charts', 'export', 'print', 'settings'])
           localStorage.setItem('navaid.sec.' + s, '1');
       } catch (e) {}
     });
@@ -138,7 +137,10 @@ test('the chevron is drawn in the theme\'s ink, both ways', async ({ page }) => 
     const tb = document.getElementById('toolbar');
     if (tb.classList.contains('collapsed')) document.getElementById('toolbar-toggle').click();
     await new Promise(r => setTimeout(r, 120));
-    // #lang-select is outside the accordion, so it is laid out without opening a section.
+    // #lang-select lives in Settings now: open it so the picker is laid out.
+    const settingsHead = document.querySelector('.tb-section[data-sec="settings"] .tb-section-head');
+    if (settingsHead && !settingsHead.closest('.tb-section').classList.contains('open')) settingsHead.click();
+    await new Promise(r => setTimeout(r, 60));
     const sel = document.getElementById('lang-select');
     const read = () => {
       const bg = decodeURIComponent(getComputedStyle(sel).backgroundImage);
@@ -247,7 +249,7 @@ test('the closed menu keeps finger-sized targets', async ({ page }) => {
   const taps = await page.evaluate(() => {
     const tb = document.getElementById('toolbar');
     if (!tb.classList.contains('collapsed')) document.getElementById('toolbar-toggle').click();
-    return ['toolbar-toggle', 'lang-toggle'].map(id => {
+    return ['toolbar-toggle'].map(id => {
       const b = document.getElementById(id).getBoundingClientRect();
       return { id, h: Math.round(b.height) };
     });

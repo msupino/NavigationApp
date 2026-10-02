@@ -367,7 +367,7 @@ test('the findings come out in the order they matter', async ({ page }) => {
 async function app(page) {
   await page.addInitScript(() => {
     try {
-      for (const s of ['build', 'view', 'display', 'charts', 'export', 'print']) {
+      for (const s of ['build', 'view', 'display', 'charts', 'export', 'print', 'settings']) {
         localStorage.setItem('navaid.sec.' + s, '1');
       }
     } catch (e) {}
@@ -428,7 +428,7 @@ test.describe('the panel', () => {
 
   test('the toolbar offers it', async ({ page }) => {
     await app(page);
-    await expect(page.locator('#route-check-btn')).toHaveText('✓ Route check');
+    await expect(page.locator('#route-check-btn')).toHaveText('Route check');
   });
 
   // Nothing to check is not the same as nothing found, and the panel must not claim the

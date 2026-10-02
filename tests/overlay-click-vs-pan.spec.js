@@ -9,7 +9,7 @@ async function boot(page) {
   // the map centre where the real mouse gestures land.
   await page.addInitScript(() => {
     try {
-      for (const s of ['build', 'view', 'display', 'charts', 'export', 'print'])
+      for (const s of ['build', 'view', 'display', 'charts', 'export', 'print', 'settings'])
         localStorage.setItem('navaid.sec.' + s, '0');
     } catch (e) {}
   });

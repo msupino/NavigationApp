@@ -1642,7 +1642,8 @@ window.S = Object.assign({
     return 'Can\'t load "' + name + '" on the ' + current + ' layer. Switch to the ' +
       need + ' layer, load the route, then change layer after if required.';
   },
-  deleteWp: '🗑 Delete waypoint (D)',                  // inspector button
+  deleteWp: '🗑 Delete waypoint (D)',
+  wpDeletedToast: 'Waypoint deleted · Undo brings it back',                  // inspector button
   inspHotspotSet: '🔥 Mark as hotspot',
   inspHotspotClear: '🔥 Clear hotspot',
   inspHotspotTitle: 'Highlight this route waypoint as a hotspot on the map',
@@ -1934,6 +1935,7 @@ window.S = Object.assign({
   fpClose: 'Close',
   fpPrint: 'Print',
   fpCsv: 'CSV',
+  fpNameAria: 'Waypoint name',
   fpCsvTitle: 'Export this flight plan as CSV',
   tbNavLog: 'Nav log (PDF)',
   tbNavLogShort: 'PDF',
@@ -2523,7 +2525,7 @@ window.S = Object.assign({
   errShareTooLong: 'Route is too long for a share link (max 64 waypoints). Export as JSON and send the file instead.',
   tbFit: '⌖ Fit to screen (F)',
   tbFitTitle: 'Fit the selected page to view, or fit the route when no page is selected (F)',
-  tbPlan: '📋 Flight plan',
+  tbPlan: 'Flight plan',
   tbPlanTitle: 'Show flight plan table',
   tbFreqTable: '📡 Freq table',
   tbFreqTableTitle: 'Edit local communication frequency defaults',
@@ -2970,16 +2972,27 @@ window.S = Object.assign({
   tbResetAllMarkersTitle: 'Reset all leg marker offsets to default positions',
   inspCloseTitle: 'Close',
   inspCloseLabel: 'Close',
-  tbSecEdit: '✏️ Edit',
-  tbSecMap: '🗺 Map',
-  tbSecRoute: '📋 Route',
-  tbSecDisplay: '🎚️ Display',
-  tbSecPrint: '🖨 Print',
-  tbSecBuild: '✏️ Edit',
-  tbSecView: '👁 View/Set',
-  tbSecCharts: '📋 Charts',
-  tbSecExport: '📤 Export/import',
-  tbSecWeather: '🗂 Extra layers',
+  tbSecEdit: 'Edit',
+  tbSecMap: 'Map',
+  tbSecRoute: 'Route',
+  tbSecDisplay: 'Display',
+  tbSecPrint: 'Print',
+  tbSecBuild: 'Edit',
+  tbSecView: 'Map',
+  tbSecCharts: 'Charts',
+  tbSecExport: 'Export/import',
+  tbSecWeather: 'Extra layers',
+  tbSecBuildHint: 'Add · undo · clear',
+  tbSecViewHint: 'Chart, overlays, route info',
+  tbSecSettings: 'Settings',
+  tbSecSettingsHint: 'Speed, variation, language',
+  tbLanguage: 'Language',
+  tbLanguageTitle: 'Language of the app (reloads the page)',
+  tbSecDisplayHint: 'Labels, kites, opacity',
+  tbSecChartsHint: 'Plates, frequencies, routes',
+  tbSecWeatherHint: 'Weather, NOTAM, airspace',
+  tbSecExportHint: 'Files, share link',
+  tbSecPrintHint: 'Page, PNG, plan card',
   // Automatic CVFR offline map (offline-tiles.js, Charts section)
   tbOfflineCharts: 'Offline CVFR: checking…',
   tbOfflineChartsTitle: 'Show automatic offline CVFR coverage and storage details',
@@ -3016,7 +3029,7 @@ window.S = Object.assign({
   offlineDeleteConfirmKeep: function (a, b) { return 'Clear the downloaded CVFR tiles from this device? The built-in chart (zooms ' + a + '–' + b + ') stays.'; },
   offlineDeleteTitle: 'Remove the downloaded CVFR chart from this device; automatic maintenance resumes next time the app opens',
   offlineDeleteConfirm: 'Clear the offline CVFR chart from this device?',
-  tbLegDir: '🧭 Route direction',
+  tbLegDir: 'Route direction',
   tbLegDirTitle: 'Which route direction to display. The other half\u2019s route line, waypoints, kites, drift and time marks, wind arrows, route-bound notes, totals and plan rows are hidden.',
   tbLegDirBoth: 'Both directions',
   tbLegDirOut: 'Outbound only',
@@ -3116,6 +3129,86 @@ window.S = Object.assign({
 
 // Fill data-i18n / data-i18n-title / data-i18n-placeholder / data-i18n-aria
 // attributes from S. Called once after S is resolved.
+// One line-icon set for the app's chrome (menu sections, the phone's bottom bar, Save / My
+// routes): 24-unit box, 2-unit round strokes in currentColor -- the same family as the map
+// buttons (ui.js MAP_ICONS). Emoji drew differently on every phone and ignored the theme.
+// Always rendered with an explicit width and height: a sizeless inline SVG collapsed to
+// nothing in the APK once (see the sim button in index.html).
+const NAV_ICONS = {
+  edit: '<path d="M4 20h4L19 9l-4-4L4 16z"/><path d="m13.5 6.5 4 4"/>',
+  view: '<path d="M12 4 3 9l9 5 9-5z"/><path d="m3 14 9 5 9-5"/>',
+  display: '<path d="M5 7h14M5 17h14"/><circle cx="9" cy="7" r="2.2"/><circle cx="15" cy="17" r="2.2"/>',
+  plan: '<rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4V3h6v1M8.5 10h7M8.5 14h7M8.5 18h4"/>',
+  charts: '<path d="M6 3h8.5L19 7.5V21H6z"/><path d="M14 3v5h5M9 13h7M9 17h5"/>',
+  weather: '<path d="M12 4 3 9l9 5 9-5z"/><path d="m3 14 9 5 4-2.2M18 15v6M15 18h6"/>',
+  export: '<path d="M12 15V3.5M7.5 8 12 3.5 16.5 8"/><path d="M5 13v7h14v-7"/>',
+  print: '<path d="M7 9V3.5h10V9"/><rect x="4" y="9" width="16" height="8" rx="2"/><path d="M7 14h10v6.5H7z"/>',
+  map: '<path d="M3 6.5 9 4l6 2.5L21 4v13.5L15 20l-6-2.5L3 20z"/><path d="M9 4v13.5M15 6.5V20"/>',
+  menu: '<path d="M4 7h16M4 12h16M4 17h16"/>',
+  record: '<circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="3.5" fill="currentColor" stroke="none"/>',
+  location: '<path d="M12 21s-6.5-5.9-6.5-11a6.5 6.5 0 0 1 13 0c0 5.1-6.5 11-6.5 11z"/><circle cx="12" cy="10" r="2.3"/>',
+  commfail: '<path d="M7 8.5a6.5 6.5 0 0 0 0 7M17 8.5a6.5 6.5 0 0 1 0 7"/><circle cx="12" cy="12" r="1.8" fill="currentColor"/><path d="M4 20 20 4"/>',
+  save: '<path d="M5 4h11l3 3v13H5z"/><path d="M8 4v5h7V4M8 20v-6h8v6"/>',
+  folder: '<path d="M3.5 6.5h6l2 2h9v10.5h-17z"/>',
+  settings: '<circle cx="12" cy="12" r="3"/><path d="M12 3v2.5M12 18.5V21M3 12h2.5M18.5 12H21M5.6 5.6l1.8 1.8M16.6 16.6l1.8 1.8M5.6 18.4l1.8-1.8M16.6 7.4l1.8-1.8"/>',
+  help: '<circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 0 1 4.8.9c0 1.7-2.4 2.2-2.4 3.8"/><circle cx="12" cy="17" r=".6" fill="currentColor"/>',
+  more: '<circle cx="5.5" cy="12" r="1.4" fill="currentColor"/><circle cx="12" cy="12" r="1.4" fill="currentColor"/><circle cx="18.5" cy="12" r="1.4" fill="currentColor"/>',
+  plane: '<path d="M12 2.5c.9 0 1.4.9 1.4 2v4.6l7.1 4.2v2l-7.1-2.1v4.4l2.2 1.6v1.6L12 20l-3.6.8v-1.6l2.2-1.6v-4.4l-7.1 2.1v-2l7.1-4.2V4.5c0-1.1.5-2 1.4-2z"/>',
+  addWp: '<path d="M12 21.5s-6.5-5.9-6.5-11a6.5 6.5 0 0 1 13 0c0 5.1-6.5 11-6.5 11z"/><path d="M12 7.3v6.4M8.8 10.5h6.4"/>',
+  addNote: '<path d="M5 4.5h14v10l-5 5H5z"/><path d="M14 19.5v-5h5M8.5 8.5h7M8.5 12h4.5"/>',
+  search: '<circle cx="11" cy="11" r="6.5"/><path d="m20 20-4.3-4.3"/>',
+  magnifier: '<circle cx="11" cy="11" r="6.5"/><path d="m20 20-4.3-4.3M11 8v6M8 11h6"/>',
+  reverse: '<path d="M7 4 3 8l4 4M3 8h14M17 20l4-4-4-4M21 16H7"/>',
+  undo: '<path d="M9 14.5 4 9.5l5-5"/><path d="M4 9.5h10a5.5 5.5 0 0 1 0 11h-3.5"/>',
+  trash: '<path d="M6.2 7.5 7.3 20h9.4l1.1-12.5"/><path d="M4 7.5h16M9.5 7.5V4.5h5v3M10.3 11v5.5M13.7 11v5.5"/>',
+  fit: '<path d="M4 9V4h5M15 4h5v5M20 15v5h-5M9 20H4v-5"/><circle cx="12" cy="12" r="2"/>',
+  reset: '<path d="M4.5 12a7.5 7.5 0 1 0 2.2-5.3"/><path d="M4.5 4v4.5H9"/>',
+  compass: '<circle cx="12" cy="12" r="9"/><path d="m15.5 8.5-2.2 4.8-4.8 2.2 2.2-4.8z"/>',
+  moon: '<path d="M19.5 14.5A8 8 0 1 1 9.5 4.5a6.5 6.5 0 0 0 10 10z"/>',
+  sun: '<circle cx="12" cy="12" r="4"/><path d="M12 2.5v2M12 19.5v2M2.5 12h2M19.5 12h2M5.3 5.3l1.4 1.4M17.3 17.3l1.4 1.4M5.3 18.7l1.4-1.4M17.3 6.7l1.4-1.4"/>',
+  templates: '<rect x="4" y="4" width="7" height="7" rx="1.5"/><rect x="13" y="4" width="7" height="7" rx="1.5"/><rect x="4" y="13" width="7" height="7" rx="1.5"/><rect x="13" y="13" width="7" height="7" rx="1.5"/>',
+  antenna: '<path d="M12 11v10M8.6 7.6a4.8 4.8 0 0 1 6.8 0M6 5a8.5 8.5 0 0 1 12 0"/><circle cx="12" cy="10" r="1.3" fill="currentColor"/>',
+  altPairs: '<path d="M7 20V5M4 8l3-3 3 3M17 4v15M14 16l3 3 3-3"/>',
+  form: '<path d="M4 20 20 4v16z"/><path d="M9 20v-5h5"/>',
+  globe: '<circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.6 2.6 3.8 5.6 3.8 9s-1.2 6.4-3.8 9c-2.6-2.6-3.8-5.6-3.8-9S9.4 5.6 12 3z"/>',
+  wind: '<path d="M3 8.5h11a3 3 0 1 0-3-3M3 12.5h15a3 3 0 1 1-3 3M3 16.5h7"/>',
+  warn: '<path d="M12 4 2.8 19.5h18.4z"/><path d="M12 10v4.5"/><circle cx="12" cy="17" r=".6" fill="currentColor"/>',
+  check: '<path d="M5 12.5 10 17l9-10"/>',
+  list: '<path d="M9 6.5h11M9 12h11M9 17.5h11"/><circle cx="4.8" cy="6.5" r=".9" fill="currentColor"/><circle cx="4.8" cy="12" r=".9" fill="currentColor"/><circle cx="4.8" cy="17.5" r=".9" fill="currentColor"/>',
+  mosaic: '<rect x="4" y="4" width="16" height="16" rx="2"/><path d="M4 12h16M12 4v16"/>',
+  download: '<path d="M12 3.5V15M7.5 10.5 12 15l4.5-4.5M5 19.5h14"/>',
+  upload: '<path d="M12 15.5V4M7.5 8.5 12 4l4.5 4.5M5 19.5h14"/>',
+  link: '<path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1"/><path d="M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/>',
+  key: '<circle cx="15" cy="9" r="4"/><path d="M12.2 11.8 4 20M7 17l2 2M9 15l2 2"/>',
+  expand: '<path d="M14 4h6v6M10 20H4v-6M20 4l-7 7M4 20l7-7"/>',
+  broadcast: '<circle cx="12" cy="12" r="2.3" fill="currentColor" stroke="none"/><path d="M8.3 8.3a5.2 5.2 0 0 0 0 7.4M15.7 8.3a5.2 5.2 0 0 1 0 7.4M5.3 5.3a9.5 9.5 0 0 0 0 13.4M18.7 5.3a9.5 9.5 0 0 1 0 13.4"/>',
+  hotspot: '<circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="3.5" fill="currentColor" fill-opacity=".35"/>',
+  timer: '<circle cx="12" cy="13.5" r="7.5"/><path d="M12 13.5V9.5M9.5 3h5M12 3v3M18.5 6.5l1.5-1.5"/>',
+  plus: '<path d="M12 5v14M5 12h14"/>',
+  stop: '<rect x="6.5" y="6.5" width="11" height="11" rx="2" fill="currentColor" stroke="none"/>',
+  language: '<circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.6 2.6 3.8 5.6 3.8 9s-1.2 6.4-3.8 9c-2.6-2.6-3.8-5.6-3.8-9S9.4 5.6 12 3z"/>',
+};
+function navIconSvg(name, size) {
+  const px = size || 20;
+  return '<svg class="nav-icon" viewBox="0 0 24 24" width="' + px + '" height="' + px + '" aria-hidden="true"'
+    + ' focusable="false" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"'
+    + ' stroke-linejoin="round">' + (NAV_ICONS[name] || '') + '</svg>';
+}
+// The footer's state icons were glyphs swapped by textContent (record / stop, the pin):
+// the same calls now draw from the set. Accepts the old glyph or an icon name.
+const NAV_GLYPH = { '⏺': 'record', '⏹': 'stop', '📍': 'location', '📵': 'commfail', '✈️': 'plane', '✈': 'plane' };
+function setNavIcon(el, glyphOrName, size) {
+  if (!el) return;
+  const name = NAV_GLYPH[glyphOrName] || glyphOrName;
+  if (!NAV_ICONS[name]) { el.textContent = glyphOrName; return; }
+  if (el.dataset.icon === name) return;
+  el.innerHTML = navIconSvg(name, size || 16);
+  el.dataset.icon = name;
+}
+if (typeof window !== 'undefined') {
+  window.navIconSvg = navIconSvg; window.NAV_ICONS = NAV_ICONS; window.setNavIcon = setNavIcon;
+}
+
 function applyI18n() {
   document.querySelectorAll('[data-i18n]').forEach(el => {
     el.textContent = S[el.dataset.i18n] || '';

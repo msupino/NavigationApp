@@ -30,7 +30,7 @@ async function bootWx(page) {
   await page.route(/ims-data\/ims\/sigwx\.json/, r =>
     r.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(SIGWX) }));
   await page.addInitScript(() => {
-    for (const s of ['build', 'view', 'display', 'charts', 'export', 'print']) {
+    for (const s of ['build', 'view', 'display', 'charts', 'export', 'print', 'settings']) {
       try { localStorage.setItem('navaid.sec.' + s, '1'); } catch (e) {}
     }
   });  await page.goto('?lang=en&nogist');

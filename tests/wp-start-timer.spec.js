@@ -111,12 +111,13 @@ test('the inspector offers it, says when it is set, and takes it back', async ({
   await boot(page);
   await page.evaluate(() => { state.selected = { type: 'wp', index: 2 }; showInspector(); });
   const btn = page.locator('#insp-timer-btn');
-  await expect(btn).toHaveText('⏱ Start the clock here');
+  await expect(btn).toHaveText('Start the clock here');
+  await expect(btn.locator('.mi-icon svg')).toHaveCount(1);
   await expect(page.locator('#insp-timer-status')).toHaveCount(0);
   await btn.click();
   expect(await page.evaluate(() => routeTimerIndex())).toBe(2);
   await expect(page.locator('#insp-timer-status')).toBeVisible();
-  await expect(btn).toHaveText('⏱ Count from departure again');
+  await expect(btn).toHaveText('Count from departure again');
   await btn.click();
   expect(await page.evaluate(() => routeTimerIndex())).toBe(-1);
   await expect(page.locator('#insp-timer-status')).toHaveCount(0);
