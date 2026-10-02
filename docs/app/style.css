@@ -8911,13 +8911,13 @@ body.deck-on .zoom-readout {
   body:not(.deck-on) #toolbar .tb-section[data-sec="plan"],
   body:not(.deck-on) #toolbar .tb-section[data-sec="export"],
   body:not(.deck-on) #toolbar .tb-section[data-sec="settings"] {
-    position: relative; margin-inline-start: 7px;
+    position: relative; margin-inline-start: 1px;   /* the heads' own 12px padding is the gap */
   }
   body:not(.deck-on) #toolbar .tb-section[data-sec="view"]::before,
   body:not(.deck-on) #toolbar .tb-section[data-sec="plan"]::before,
   body:not(.deck-on) #toolbar .tb-section[data-sec="export"]::before,
   body:not(.deck-on) #toolbar .tb-section[data-sec="settings"]::before {
-    content: ''; position: absolute; inset-inline-start: -4px; top: 8px; bottom: 8px;
+    content: ''; position: absolute; inset-inline-start: -1px; top: 8px; bottom: 8px;
     width: 1px; background: currentColor; opacity: .18; pointer-events: none;
   }
 }
