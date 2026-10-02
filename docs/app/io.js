@@ -5090,24 +5090,6 @@ function routeFileSlug() {
 
 // Plain-language SIGMET list (clicking the corner readout). Each entry shows
 // the decoded sentence plus the raw text underneath.
-// One SIGMET / AIRMET in the NOTAM list's look: its number, then its text -- decoded into
-// label/value rows (decodeMetText, in the UI's language) or, in raw mode, the original.
-function metRowsElement(d) {
-  const grid = document.createElement('div');
-  grid.className = 'met-card-rows';
-  for (const r of d.rows) {
-    const k = document.createElement('span'); k.className = 'met-k'; k.textContent = r.label;
-    const v = document.createElement('span'); v.className = 'met-v';
-    // A Latin value ("02 16:26Z → 02 19:00Z") is one left-to-right run inside the row's
-    // own direction; left bare, Hebrew's bidi reordered its date and time.
-    const run = document.createElement('bdi');
-    run.dir = /[֐-׿]/.test(r.value) ? 'auto' : 'ltr';
-    run.textContent = r.value;
-    v.appendChild(run);
-    grid.append(k, v);
-  }
-  return grid;
-}
 // A drawable area: three or more points, all inside the region the SIGMET feed covers (this FIR
 // and its neighbours: Cairo, Amman, Damascus, Nicosia, Ankara). A feed typo (E00356 for E03556)
 // put one AIRMET's corner in the Atlantic; framing that would zoom the map out to Africa, so
@@ -5164,45 +5146,55 @@ function showMetList(kind, list) {
   const rawBtn = document.createElement('button');
   rawBtn.type = 'button';
   rawBtn.className = 'notam-raw-toggle';
-  rawBtn.textContent = (S.met && S.met.raw) || S.notamRaw || 'Raw';
+  rawBtn.textContent = S.notamRaw || 'Raw';   // the NOTAM list's own words
   box.appendChild(rawBtn);
+  // When the feed was fetched -- the NOTAM list's "Updated" line.
+  const meta = kind === 'sigmet' ? window.sigmetMeta : window.airmetMeta;
+  const gen = meta && meta.generatedAt ? new Date(meta.generatedAt) : null;
+  if (gen && !isNaN(gen) && typeof S.notamUpdated === 'function') {
+    const u = document.createElement('div');
+    u.className = 'notam-updated';
+    u.textContent = S.notamUpdated(gen.toISOString().slice(0, 16).replace('T', ' ') + 'Z');
+    box.appendChild(u);
+  }
   const listEl = document.createElement('div');
   listEl.className = 'notam-list';
   const texts = [];
+  const val = (d, key) => { const r = d.rows.find(x => x.key === key); return r ? r.value : ''; };
   for (const w of list) {
     const d = (typeof decodeMetText === 'function') ? decodeMetText(w.raw) : { rows: [] };
     const it = document.createElement('div');
     it.className = 'notam-item met-item';
-    const color = kind === 'sigmet' ? sigmetHazardColor(w.hazard) : ((typeof tune === 'function' && tune('airmetColor')) || '#6b8e23');
-    it.style.borderInlineStartColor = color;
+    // Header, as a NOTAM's: "AIRMET 23 · LLLL · 02 19:00Z → 02 23:00Z".
+    const firCode = (String(w.raw || '').match(/^\s*(?:\S+\s+\S+\s+\d{6}\s+)?([A-Z]{4})\s+(?:SIGMET|AIRMET)\b/m) || [])[1] || w.firId || '';
     const id = document.createElement('div');
     id.className = 'notam-id';
     id.dir = 'ltr';
-    id.textContent = [d.kind || kind.toUpperCase(), d.number ? '#' + d.number : ''].filter(Boolean).join(' ');
+    id.textContent = [[d.kind || kind.toUpperCase(), d.number].filter(Boolean).join(' '), firCode, val(d, 'valid')]
+      .filter(Boolean).join(' · ');
     it.appendChild(id);
-    // Decoded view: the rows, or -- for a message the decoder could not read -- the feed's own
-    // one-line summary. Raw view: the original text.
-    const decoded = document.createElement('div');
-    decoded.className = 'met-decoded';
-    if (d.rows.length) decoded.appendChild(metRowsElement(d));
-    else {
-      const sum = document.createElement('div');
-      sum.className = 'met-card-summary';
-      sum.dir = 'auto';
-      sum.textContent = kind === 'sigmet' ? decodeSigmet(w)
+    // Decoded, as a NOTAM's: a headline (what, observed/forecast) and one line of the rest.
+    // A message the decoder could not read falls back to the feed's own one-line summary.
+    let decodedText;
+    if (d.rows.length) {
+      const head = [val(d, 'phenomenon'), val(d, 'status')].filter(Boolean).join(' — ');
+      const rest = ['levels', 'area', 'movement', 'change', 'fir', 'cancels'].map(k => val(d, k)).filter(Boolean).join(' · ');
+      decodedText = [head, rest].filter(Boolean).join('\n');
+    } else {
+      decodedText = kind === 'sigmet' ? decodeSigmet(w)
         : [String(w.hazard || 'AIRMET'), airmetValidityText(w)].filter(Boolean).join('  ·  ');
-      decoded.appendChild(sum);
     }
-    const raw = document.createElement('pre');
-    raw.className = 'notam-text met-raw';
-    raw.dir = 'ltr';
-    raw.hidden = true;
-    raw.textContent = w.raw || '';
-    it.append(decoded, raw);
-    texts.push({ decoded, raw });
+    const tx = document.createElement('pre');
+    tx.className = 'notam-text';
+    tx.dir = 'auto';
+    tx._raw = w.raw || '';
+    tx._decoded = decodedText;
+    tx.textContent = decodedText;
+    it.appendChild(tx);
+    texts.push(tx);
     if (metAreaLatLngs(w)) {
       it.classList.add('notam-item-clickable');
-      it.title = (S.met && S.met.showOnMap) || S.notamShowOnMap || 'Show on map';
+      it.title = S.notamShowOnMap || 'Show on map';
       it.tabIndex = 0;
       it.setAttribute('role', 'button');
       const go = () => { close(); focusMetArea(w, kind); };
@@ -5213,9 +5205,8 @@ function showMetList(kind, list) {
   }
   rawBtn.onclick = () => {
     rawMode = !rawMode;
-    rawBtn.textContent = rawMode ? ((S.met && S.met.decoded) || S.notamDecoded || 'Decoded')
-      : ((S.met && S.met.raw) || S.notamRaw || 'Raw');
-    for (const t of texts) { t.decoded.hidden = rawMode; t.raw.hidden = !rawMode; }
+    rawBtn.textContent = rawMode ? (S.notamDecoded || 'Decoded') : (S.notamRaw || 'Raw');
+    for (const t of texts) { t.textContent = rawMode ? t._raw : t._decoded; t.dir = rawMode ? 'ltr' : 'auto'; }
   };
   box.appendChild(listEl);
   back.appendChild(box);
@@ -5223,9 +5214,11 @@ function showMetList(kind, list) {
   back.addEventListener('mousedown', e => { if (e.target === back) close(); });
   window.addEventListener('keydown', onEsc, true);
 }
-function showSigmetDecoded() {
-  const list = typeof activeSigmets === 'function' ? activeSigmets()
-    : (Array.isArray(sigmets) ? sigmets : []);
+function showSigmetDecoded(only) {
+  // `only`: the SIGMETs under a tap on the map -- the list opens on just those.
+  const list = Array.isArray(only) && only.length ? only
+    : (typeof activeSigmets === 'function' ? activeSigmets()
+      : (Array.isArray(sigmets) ? sigmets : []));
   showMetList('sigmet', list);
 }
 // The AIRMET areas are drawn on the map, but a polygon does not carry its own hazard,
@@ -5248,6 +5241,7 @@ function showAirmetDecoded(only) {
   showMetList('airmet', list);
 }
 window.showAirmetDecoded = showAirmetDecoded;
+window.showSigmetDecoded = showSigmetDecoded;
 
 // Show a pre-export modal so the user can decide which overlays and base
 // layer appear in the PNG, independently of the current screen settings.

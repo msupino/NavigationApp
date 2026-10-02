@@ -65,16 +65,16 @@ test('the list switches between decoded and original text, all at once, like the
     showAirmetDecoded([{ id: 'x', hazard: 'TURB', raw, validFrom: new Date(now - 6e5).toISOString(),
       validTo: new Date(now + 6e5).toISOString(), coords: [] }]);
     const btn = document.querySelector('.met-modal .notam-raw-toggle');
-    const item = document.querySelector('.met-item');
-    const view = () => [item.querySelector('.met-raw').hidden, item.querySelector('.met-decoded').hidden];
-    const label0 = btn.textContent, before = view();
+    const tx = () => document.querySelector('.met-item .notam-text').textContent;
+    const label0 = btn.textContent, before = tx();
     btn.click();
-    const label1 = btn.textContent, after = view();
+    const label1 = btn.textContent, after = tx();
     return { label0, label1, before, after };
   }, AIRMET);
-  expect(got.label0).toBe('הטקסט המקורי');
-  expect(got.before).toEqual([true, false]);
-  expect(got.after).toEqual([false, true]);
+  // The NOTAM list's own words for the same switch.
+  expect(got.label0).toBe('גולמי');
+  expect(got.before).toMatch(/מערבולות בינוניות/);
+  expect(got.after).toMatch(/^LLLL AIRMET 20 VALID/);
   expect(got.label1).toBe('מפוענח');
 });
 
@@ -83,10 +83,10 @@ test('a SIGMET with a drawable area is drawn when its layer is on; the Ankara on
   await page.waitForFunction(() => typeof drawSigmets === 'function' && typeof setMetLayer === 'function');
   const got = await page.evaluate(() => {
     const now = Date.now() / 1000;
-    window.sigmets = sigmets = [
+    new Function('v', 'sigmets = v')([
       { id: '8', firId: 'LTAA', hazard: 'TS', qualifier: 'EMBD', validFrom: now - 600, validTo: now + 3600,
         coords: [[39, 34], [39, 38], [39, 41], [35.819, 41], [35.819, 34], [39, 34]], raw: 'LTAA SIGMET 8' },
-      { id: 'L', firId: 'LLLL', hazard: 'TURB', validFrom: now - 600, validTo: now + 3600, coords: [], raw: 'LLLL SIGMET 1' }];
+      { id: 'L', firId: 'LLLL', hazard: 'TURB', validFrom: now - 600, validTo: now + 3600, coords: [], raw: 'LLLL SIGMET 1' }]);
     let drawn = 0;
     const orig = octx.stroke.bind(octx);
     const count = () => { drawn = 0; octx.stroke = (...a) => { drawn++; return orig(...a); }; draw(); octx.stroke = orig; return drawn; };
@@ -106,18 +106,35 @@ test('tapping an AIRMET area opens that AIRMET, with its own validity, read as a
   const got = await page.evaluate(() => {
     const now = Date.now();
     const raw = 'LLLL AIRMET 23 VALID 021900/022300 LLBD- LLLL TEL AVIV FIR MT OBSC FCST WI N3241 E03514 - N3311 E03512 - N3321 E03548 - N3257 E03555 - N3243 E03541 - N3238 E03528 - N3241 E03514 STNR INTSF=';
-    window.airmets = airmets = [{ id: '43078', hazard: 'MT OBSC', raw, validFrom: new Date(now - 6e5).toISOString(), validTo: new Date(now + 6e5).toISOString(),
-      coords: [[32.6833, 35.2333], [33.1833, 35.2], [33.35, 35.8], [32.95, 35.9167], [32.7167, 35.6833], [32.6333, 35.4667], [32.6833, 35.2333]] }];
+    new Function('v', 'airmets = v; window.airmets = v')([{ id: '43078', hazard: 'MT OBSC', raw, validFrom: new Date(now - 6e5).toISOString(), validTo: new Date(now + 6e5).toISOString(),
+      coords: [[32.6833, 35.2333], [33.1833, 35.2], [33.35, 35.8], [32.95, 35.9167], [32.7167, 35.6833], [32.6333, 35.4667], [32.6833, 35.2333]] }]);
     window.showAirmet = true;
     map.setView([33.0, 35.5], 9, { animate: false });
     const ll = L.latLng(33.0, 35.5);
     map.fire('click', { latlng: ll, containerPoint: map.latLngToContainerPoint(ll), layerPoint: map.latLngToLayerPoint(ll), originalEvent: new MouseEvent('click') });
     const card = document.querySelector('.met-item');
-    const rows = card ? Object.fromEntries([...card.querySelectorAll('.met-k')].map(k => [k.textContent, k.nextElementSibling.textContent])) : null;
-    return { head: card && card.querySelector('.notam-id').textContent, rows };
+    return { head: card && card.querySelector('.notam-id').textContent, text: card && card.querySelector('.notam-text').textContent };
   });
-  expect(got.head).toContain('AIRMET #23');
-  expect(got.rows.Valid).toBe('02 19:00Z → 02 23:00Z');
-  expect(got.rows.Status).toBe('forecast');
-  expect(got.rows.Change).toBe('intensifying');
+  // Header like a NOTAM's: number, FIR, its own validity -- not "01-01 00:00Z".
+  expect(got.head).toBe('AIRMET 23 \u00b7 LLLL \u00b7 02 19:00Z \u2192 02 23:00Z');
+  expect(got.text).toMatch(/^Mountains obscured \u2014 forecast\n/);
+  expect(got.text).toContain('intensifying');
+});
+
+test('tapping a SIGMET area opens that SIGMET, as tapping an AIRMET does', async ({ page }) => {
+  await page.goto('?lang=en&nogist');
+  await page.waitForFunction(() => typeof sigmetsAtLatLng === 'function' && typeof setMetLayer === 'function');
+  const head = await page.evaluate(() => {
+    const now = Date.now() / 1000;
+    new Function('v', 'sigmets = v')([{ id: '3', firId: 'OLBA', hazard: 'TS', qualifier: 'OBSC', validFrom: now - 600, validTo: now + 3600,
+      coords: [[33.2, 35.2], [34.6, 35.6], [34.6, 36.5], [33.2, 36.2], [33.2, 35.2]],
+      raw: 'OLBA SIGMET 3 VALID 021700/022100 OLBA- OLBA BEIRUT FIR OBSC TS OBS WI N3312 E03512 - N3436 E03536 - N3436 E03630 - N3312 E03612 - N3312 E03512 TOP FL350 STNR NC=' }]);
+    setMetLayer('sigmet', true);
+    map.setView([33.9, 35.9], 8, { animate: false });
+    const ll = L.latLng(33.9, 35.9);
+    map.fire('click', { latlng: ll, containerPoint: map.latLngToContainerPoint(ll), layerPoint: map.latLngToLayerPoint(ll), originalEvent: new MouseEvent('click') });
+    const card = document.querySelector('.met-item');
+    return card && card.querySelector('.notam-id').textContent;
+  });
+  expect(head).toBe('SIGMET 3 \u00b7 OLBA \u00b7 02 17:00Z \u2192 02 21:00Z');
 });

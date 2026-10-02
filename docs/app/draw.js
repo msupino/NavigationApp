@@ -1660,6 +1660,7 @@ async function loadSigmets(force) {
   const parse = d => {
     const list = Array.isArray(d && d.sigmets) ? d.sigmets : [];
     sigmetMeta = { generatedAt: (d && d.generatedAt) || null };
+    window.sigmetMeta = sigmetMeta;
     return list.filter(s => s && Array.isArray(s.coords));
   };
   try {
@@ -1748,6 +1749,7 @@ async function loadAirmets(force) {
   const parse = d => {
     const list = Array.isArray(d && d.airmets) ? d.airmets : [];
     airmetMeta = { generatedAt: (d && d.generatedAt) || null };
+    window.airmetMeta = airmetMeta;
     // The IMS feed carries the per-aerodrome AD/WS warnings in the same file.
     window.airfieldWarnings = (d && d.airfieldWarnings && typeof d.airfieldWarnings === 'object')
       ? d.airfieldWarnings : {};
@@ -1803,6 +1805,28 @@ window.notamViewNow = notamViewNow;
 
 // Which AIRMET areas contain a tapped point, smallest first -- so a tap opens the tightest
 // hazard when they overlap. Mirrors airspaceAtLatLng.
+// Which drawn SIGMET areas contain a tapped point, smallest first -- the SIGMET twin of
+// airmetsAtLatLng (only the ones the layer draws: active, with a usable polygon).
+function sigmetsAtLatLng(latlng) {
+  if (!window.showSigmet || !latlng || typeof activeSigmets !== 'function') return [];
+  const pt = proj(latlng);
+  const out = [];
+  for (const s of activeSigmets()) {
+    const area = typeof metAreaLatLngs === 'function' ? metAreaLatLngs(s) : null;
+    if (!area) continue;
+    const poly = area.map(c => proj({ lat: c[0], lng: c[1] }));
+    if (!notamPointInPoly(pt, poly)) continue;
+    let a2 = 0;
+    for (let j = 0; j < poly.length; j++) {
+      const q = poly[(j + 1) % poly.length];
+      a2 += poly[j].x * q.y - q.x * poly[j].y;
+    }
+    out.push({ s, size: Math.abs(a2) });
+  }
+  out.sort((x, y) => x.size - y.size);
+  return out.map(h => h.s);
+}
+window.sigmetsAtLatLng = sigmetsAtLatLng;
 function airmetsAtLatLng(latlng) {
   if (!window.showAirmet || !Array.isArray(airmets) || !airmets.length || !latlng) return [];
   const pt = proj(latlng);

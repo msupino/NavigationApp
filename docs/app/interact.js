@@ -5515,6 +5515,16 @@ map.on('click', e => {
     if (hit.length && typeof flashMetArea === 'function') flashMetArea(hit[0], 'airmet');
     return;
   }
+  // A SIGMET area, the same way: its own card from the list, the area flashing.
+  if (!state.mode && window.showSigmet && typeof sigmetsAtLatLng === 'function'
+      && typeof showSigmetDecoded === 'function') {
+    const sHit = sigmetsAtLatLng(e.latlng);
+    if (sHit.length) {
+      showSigmetDecoded(sHit);
+      if (typeof flashMetArea === 'function') flashMetArea(sHit[0], 'sigmet');
+      return;
+    }
+  }
   // NOTAM clicks are handled in mousedown (as overlay choices); see there.
   // First click on an empty route ARMS add mode -- but only while the one-time hint is
   // actually on screen telling the user to do it. Keying this off "route is empty" alone

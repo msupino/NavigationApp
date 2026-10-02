@@ -9233,15 +9233,10 @@ body.deck-on .deck-strip > .deck-strip-top { overflow: hidden; }
 body.theme-light .insp-notams-head { color: #8a5a00; }
 body.theme-light .insp-notam-card { background: #fff6e5; border-color: #d99a2b; color: #1f252c; }
 
-/* SIGMET / AIRMET lists: the NOTAM list's cards (.notam-item), with a hazard-coloured edge, the
-   decoded fields as label/value rows, or the original text in raw mode. A card with an area on
-   the map is clickable, as a NOTAM's is. */
-.met-item { border-inline-start-width: 4px; }
-.met-card-summary { font-size: 13px; font-weight: 600; margin: 2px 0; }
-.met-card-rows { display: grid; grid-template-columns: max-content 1fr; gap: 3px 12px; font-size: 13px; margin-top: 2px; }
-.met-k { opacity: .75; }
-.met-v { font-weight: 600; unicode-bidi: isolate; text-align: start; }
-.met-raw[hidden], .met-decoded[hidden] { display: none; }
+/* SIGMET / AIRMET lists: the NOTAM list itself (same cards, same Raw / Decoded switch, same
+   "Updated" line). They hold a handful of warnings, not fifty NOTAMs, so the box fits its
+   content instead of the NOTAM list's tall default. */
+.modal.wide.notam-modal.met-modal { height: auto; min-height: 0; max-height: min(78vh, 860px); }
 .met-item.notam-item-clickable:focus-visible { outline: 2px solid #4c9bff; outline-offset: 1px; }
 
 /* A bubble a NOTAM has closed: its availability row says so, in the NOTAM's own amber. */
