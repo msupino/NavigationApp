@@ -30,9 +30,14 @@ test('a bubble named in a NOTAM in force shows it; one that has ended does not',
     _notamBubbleGen++;
     state.selected = { type: 'lsaArea', index: areas.findIndex(a => a.icao === 'BKRML') };
     showInspector();
-    return [...document.querySelectorAll('#insp-body .insp-notam-card .insp-notam-id')].map(e => e.textContent);
+    const active = [...document.querySelectorAll('#insp-body .row')].find(r => /Active/.test(r.textContent));
+    return { ids: [...document.querySelectorAll('#insp-body .insp-notam-card .insp-notam-id')].map(e => e.textContent),
+      active: active && active.querySelector('.val').textContent, closed: active && active.classList.contains('insp-row-closed') };
   }, [NOW]);
-  expect(got).toEqual(['C1833/26']);
+  expect(got.ids).toEqual(['C1833/26']);
+  // The availability row no longer says "open all day" above the NOTAM that closed it.
+  expect(got.active).toBe('Closed \u2014 NOTAM C1833/26');
+  expect(got.closed).toBe(true);
 });
 
 test('a leg through a NOTAM area shows it; a leg clear of it shows none', async ({ page }) => {

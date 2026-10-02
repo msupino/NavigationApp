@@ -2643,6 +2643,7 @@ window.S = Object.assign({
     showOnMap: 'Show on map' },
   inspNotamsTitle: 'NOTAMs in force',
   inspNotamUntil: 'until',
+  bubbleClosedByNotam: (id) => 'Closed \u2014 NOTAM ' + id,
   airfieldClassLabel: 'Type',
   airfieldClass: { airport: 'Airport', airstrip: 'Airstrip', agricultural: 'Agricultural strip' },
   airfieldLongestRunway: 'Runway',
