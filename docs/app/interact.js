@@ -3087,7 +3087,7 @@ function appendAirfieldDetailRows(body, af, label) {
     const bits = [af.runwayLengthM + ' m'];
     if (af.hardRunway) bits.push(S.airfieldHardRunway || 'hard, all weather');
     if (af.lighting === 'minimal') bits.push(S.airfieldMinimalLighting || 'minimal lighting');
-    body.appendChild(textRow(S.airfieldLongestRunway || 'Longest runway', bits.join(' · ')));
+    body.appendChild(textRow(S.airfieldLongestRunway || 'Runway', bits.join(' · ')));
   }
   // Frequencies in a frame of their own: on a field with a tower, a clearance delivery and
   // an ATIS this is four or five rows of numbers, and unlabelled they read as a list of

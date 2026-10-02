@@ -2948,17 +2948,33 @@ function areaCentroid(coords) {
 // dotted ring. Sized with the other chart symbols (symbolZoomScale).
 function drawActivitySymbol(ctx, x, y, kind, r) {
   ctx.save();
-  const col = tune(kind === 'parachute' ? 'activityParachuteColor' : 'activityParagliderColor');
-  if (kind === 'parachute') {
+  const isDropZone = kind === 'parachute';
+  const col = tune(isDropZone ? 'activityParachuteColor' : 'activityParagliderColor');
+  const canopyY = y - r * 0.15;
+  if (isDropZone) {
+    // The drop zone's dotted ring.
     ctx.setLineDash([1.5, 2.5]);
-    ctx.strokeStyle = col; ctx.lineWidth = 1.5;
-    ctx.beginPath(); ctx.arc(x, y, r * 2.1, 0, Math.PI * 2); ctx.stroke();
+    ctx.strokeStyle = col;
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.arc(x, y, r * 2.1, 0, Math.PI * 2);
+    ctx.stroke();
     ctx.setLineDash([]);
   }
-  ctx.fillStyle = col; ctx.strokeStyle = tune('inkColor'); ctx.lineWidth = 1;
-  ctx.beginPath(); ctx.arc(x, y - r * 0.15, r, Math.PI, 0); ctx.closePath(); ctx.fill();
+  // Canopy.
+  ctx.fillStyle = col;
   ctx.beginPath();
-  for (const dx of [-1, -0.5, 0, 0.5, 1]) { ctx.moveTo(x + dx * r, y - r * 0.15); ctx.lineTo(x, y + r * 1.15); }
+  ctx.arc(x, canopyY, r, Math.PI, 0);
+  ctx.closePath();
+  ctx.fill();
+  // Rigging lines, from the canopy's edge to the harness point below.
+  ctx.strokeStyle = tune('inkColor');
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  for (const dx of [-1, -0.5, 0, 0.5, 1]) {
+    ctx.moveTo(x + dx * r, canopyY);
+    ctx.lineTo(x, y + r * 1.15);
+  }
   ctx.stroke();
   ctx.restore();
 }
@@ -3720,11 +3736,16 @@ function drawCommChangeDot(ctx, x, y, r) {
   ctx.fillStyle = tune('commChangeDotColor');
   ctx.fill();
 }
+function commChangeDotsOn() {
+  return !!(typeof showCommChange !== 'undefined' && showCommChange &&
+    tune('commChangeDot') !== false && commChangeMap);
+}
 function isCommChangePointShown(wp) {
-  return !!(wp && showCommChange && tune('commChangeDot') !== false && commChangeMap &&
-    commChangeMap[wp.name] && commChangeMap[wp.name].commChange &&
-    !(typeof isCommChangeSuppressed === 'function' && isCommChangeSuppressed(wp.name)) &&
-    layerShownAtZoom('commChangeMinZoom'));
+  if (!wp || !commChangeDotsOn()) return false;
+  const point = commChangeMap[wp.name];
+  if (!point || !point.commChange) return false;
+  if (typeof isCommChangeSuppressed === 'function' && isCommChangeSuppressed(wp.name)) return false;
+  return layerShownAtZoom('commChangeMinZoom');
 }
 function drawNavWaypoints() {
   if (!showNavWP || !navWP || navWP.length === 0) return;
@@ -6134,14 +6155,11 @@ function drawInfo() {
   // The VOR legend row only makes sense while the stations are on the map.
   const vorRow = document.getElementById('legend-row-vor');
   if (vorRow) vorRow.style.display = (typeof showVorStations !== 'undefined' && showVorStations) ? '' : 'none';
-  // Frequency changes: while they are on the map. LSA bubbles: while the LSA set is active
-  // and the bubbles are shown -- the rows of the chart actually being read.
-  // Both are the LSA chart's legend rows, shown while that set is active -- the card stays
-  // the size it always was on the other charts.
+  // The LSA chart's own legend rows -- frequency change, the two bubble classes, the activity
+  // sites -- show while that set is active, so the card keeps its size on the other charts.
   const lsaSet = typeof layerDataPrefix === 'function' && layerDataPrefix() === 'lsa';
   const commRow = document.getElementById('legend-row-comm');
-  const commOn = !!(lsaSet && typeof showCommChange !== 'undefined' && showCommChange &&
-    tune('commChangeDot') !== false && commChangeMap && Object.keys(commChangeMap).length);
+  const commOn = lsaSet && commChangeDotsOn() && Object.keys(commChangeMap).length > 0;
   const lsaOn = lsaSet && typeof showLsaBubbles !== 'undefined' && showLsaBubbles;
 
   let legendRowsChanged = false;
