@@ -101,7 +101,7 @@ test.describe('Charts modal — frequency catalog table', () => {
   test('Charts toolbar section exposes the frequency table entry point', async ({ page }) => {
     await installCommChangeFixture(page);
     await boot(page);
-    const button = page.locator('.tb-section[data-sec="charts"] #freq-table');
+    const button = page.locator('.tb-section[data-sec="settings"] #freq-table');
     await expect(button).toBeVisible();
     await expect(button).toHaveText('Freq table');
 
@@ -132,7 +132,7 @@ test.describe('Charts modal — frequency catalog table', () => {
     await installCommChangeFixture(page);
     await installAltitudeFixture(page);
     await boot(page);
-    const button = page.locator('.tb-section[data-sec="charts"] #alt-pairs');
+    const button = page.locator('.tb-section[data-sec="settings"] #alt-pairs');
     await expect(button).toBeVisible();
     await expect(button).toHaveText('Alt pairs');
 
@@ -457,7 +457,7 @@ test.describe('Charts modal — frequency catalog table', () => {
     await installCommChangeFixture(page);
     await installAltitudeFixture(page);
     await boot(page, 'he');
-    const button = page.locator('.tb-section[data-sec="charts"] #alt-pairs');
+    const button = page.locator('.tb-section[data-sec="settings"] #alt-pairs');
     await expect(button).toHaveText('נתיבים');
     await expect(button).toHaveAttribute('title', 'הצג והעתק נתיבי CVFR שנלמדו');
 
