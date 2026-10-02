@@ -341,6 +341,16 @@ NavAid.tuningDefaults = {
   waypointHotspotRingGapPx: { value: 3, min: 0, max: 12, step: 0.5, label: 'Hotspot ring gap (px)' },
 
   airfieldMarkerRadiusPx: { value: 7, min: 2, max: 40, step: 1, label: 'Airfield symbol size (px)' },
+  // Chart symbols by zoom. A zoomed-out chart was a carpet of fixed-size triangles and squares.
+  // Symbols shrink toward symbolScaleSmallest at or below symbolScaleMinZoom and are full size from
+  // symbolScaleFullZoom; each layer can also hide below a zoom. Defaults change nothing.
+  symbolScaleSmallest: { value: 1, min: 0.3, max: 1, step: 0.05, label: 'Chart symbols: size when zoomed out (1 = always full size)' },
+  symbolScaleMinZoom: { value: 8, min: 4, max: 14, step: 1, label: 'Chart symbols: zoom at or below which they are smallest' },
+  symbolScaleFullZoom: { value: 11, min: 5, max: 16, step: 1, label: 'Chart symbols: zoom from which they are full size' },
+  airfieldMinZoom: { value: 0, min: 0, max: 16, step: 1, label: 'Airfields: hide below this zoom (0 = never)' },
+  navWpMinZoom: { value: 0, min: 0, max: 16, step: 1, label: 'Reporting points: hide below this zoom (0 = never)' },
+  vorMinZoom: { value: 0, min: 0, max: 16, step: 1, label: 'VOR stations: hide below this zoom (0 = never)' },
+  commChangeMinZoom: { value: 0, min: 0, max: 16, step: 1, label: 'Frequency changes: hide below this zoom (0 = never)' },
   airfieldStrokeWidthPx: { value: 1.5, min: 0.25, max: 8, step: 0.25, label: 'Airfield runway and ARP line width (px)' },
   airfieldLabelFontPx: { value: 11, min: 4, max: 30, step: 1, label: 'Airfield label text size (px)' },
   airfieldLabelOffsetPx: { value: 3, min: 0, max: 40, step: 1, label: 'Airfield label offset (px)' },
@@ -1064,6 +1074,7 @@ NavAid.tuningGroups = [
   { name: 'Minute markers', keys: ['minuteMarkerFontPx', 'minuteTickEvenPx', 'minuteTickOddPx', 'minuteTickEvenWidthPx', 'minuteTickOddWidthPx', 'minuteLabelOffsetPx'] },
   { name: 'Distance badges', keys: ['distanceBadgeRadiusPx', 'distanceBadgeBorderPx', 'distanceBadgeFontPx', 'distanceBadgeFillColor'] },
   { name: 'Route waypoints', keys: ['waypointBaseRadiusPx', 'waypointPrintDiaMm', 'waypointFontPx', 'waypointTextFitFactor', 'waypointMinZoomScale', 'waypointSelectedRadiusAddPx', 'waypointStrokeWidthPx', 'waypointFillColor', 'waypointHotspotFillColor', 'waypointHotspotRingColor', 'waypointHotspotRingWidthPx', 'waypointHotspotRingGapPx'] },
+  { name: 'Chart symbols by zoom', keys: ['symbolScaleSmallest', 'symbolScaleMinZoom', 'symbolScaleFullZoom', 'airfieldMinZoom', 'navWpMinZoom', 'vorMinZoom', 'commChangeMinZoom'] },
   { name: 'Airfields', keys: ['airfieldMarkerRadiusPx', 'airfieldStrokeWidthPx', 'airfieldLabelFontPx', 'airfieldLabelOffsetPx', 'airfieldLabelHaloPx', 'airfieldFillColor', 'airfieldCenterColor', 'airfieldOutlineColor'] },
   { name: 'Nav waypoints', keys: ['reportingPointRadiusPx', 'navWaypointStrokeWidthPx', 'navWaypointLabelFontPx', 'navWaypointLabelOffsetPx', 'navWaypointLabelHaloPx', 'navWaypointDotColor'] },
   { name: 'Overlay labels', keys: ['overlayLabelHaloColor', 'overlayLabelHaloAlpha'] },
@@ -3635,6 +3646,26 @@ function geo(a, b) {                   // a,b = {lat,lng} -> {dist NM, brg deg}
             Math.sin(phi1) * Math.cos(phi2) * Math.cos(dlam);
   return { dist, brg: ((Math.atan2(y, x) * 180) / Math.PI + 360) % 360 };
 }
+// --- chart symbols by zoom -----------------------------------------
+// How big a chart symbol is drawn at the current zoom: 1 from symbolScaleFullZoom up,
+// symbolScaleSmallest at or below symbolScaleMinZoom, a straight line between. Hit areas use the
+// same factor, so what is drawn is what can be tapped.
+function symbolZoomScale() {
+  if (typeof tune !== 'function' || typeof map !== 'object' || !map || !map.getZoom) return 1;
+  const min = Math.max(0.3, Math.min(1, Number(tune('symbolScaleSmallest')) || 1));
+  if (min >= 1) return 1;
+  const z = map.getZoom(), lo = tune('symbolScaleMinZoom'), hi = tune('symbolScaleFullZoom');
+  if (!(hi > lo)) return z >= hi ? 1 : min;
+  const t = Math.max(0, Math.min(1, (z - lo) / (hi - lo)));
+  return min + (1 - min) * t;
+}
+// Whether a chart layer is drawn at the current zoom (its own "hide below" setting).
+function layerShownAtZoom(key) {
+  if (typeof tune !== 'function' || typeof map !== 'object' || !map || !map.getZoom) return true;
+  const z0 = Number(tune(key)) || 0;
+  return !(z0 > 0 && map.getZoom() < z0);
+}
+if (typeof window !== 'undefined') { window.symbolZoomScale = symbolZoomScale; window.layerShownAtZoom = layerShownAtZoom; }
 // --- magnetic variation ---------------------------------------------
 // Signed the way the app always has: magnetic = true + variation, so 5°E is -5.
 //
