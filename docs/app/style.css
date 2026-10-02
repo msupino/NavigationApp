@@ -9233,27 +9233,22 @@ body.deck-on .deck-strip > .deck-strip-top { overflow: hidden; }
 body.theme-light .insp-notams-head { color: #8a5a00; }
 body.theme-light .insp-notam-card { background: #fff6e5; border-color: #d99a2b; color: #1f252c; }
 
-/* SIGMET / AIRMET cards: a summary, the decoded fields as label/value rows, the original
-   text behind a button; a card with an area on the map has a button that frames it. */
-.met-card { margin: 10px 0; padding: 8px 10px; border-inline-start: 4px solid; border-radius: 6px; }
-.met-card-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; font-weight: 700; font-size: 13px; margin-bottom: 4px; }
-.met-card-tools { display: inline-flex; gap: 6px; }
-.met-card-btn {
-  font: 600 12px/1 system-ui, sans-serif; padding: 5px 8px; min-height: 28px; border-radius: 5px; cursor: pointer;
-  background: transparent; color: inherit; border: 1px solid #7f7777;
-}
-body.theme-light .met-card-btn { border-color: #858f9c; }
-.met-card-btn:focus-visible { outline: 2px solid #4c9bff; outline-offset: 1px; }
-.met-card-go { color: #4c9bff; border-color: #4c9bff; }
-body.theme-light .met-card-go { color: #1f5f9e; border-color: #1f5f9e; }
-body.deck-on .met-card-btn { min-height: 44px; padding: 0 12px; }
-.met-card-summary { font-size: 13px; font-weight: 600; margin-bottom: 6px; text-align: left; }
-.met-card-rows { display: grid; grid-template-columns: max-content 1fr; gap: 3px 12px; font-size: 13px; margin-bottom: 6px; }
-.met-k { opacity: .75; }
-.met-v { font-weight: 600; unicode-bidi: isolate; text-align: start; }
-.met-card-raw { font: 11px/1.4 monospace; opacity: .8; white-space: pre-wrap; text-align: left; margin-top: 4px; }
-.met-card-raw[hidden], .met-card-rows[hidden] { display: none; }
+/* SIGMET / AIRMET lists: the NOTAM list itself (same cards, same Raw / Decoded switch, same
+   "Updated" line). They hold a handful of warnings, not fifty NOTAMs, so the box fits its
+   content instead of the NOTAM list's tall default. */
+.modal.wide.notam-modal.met-modal { height: auto; min-height: 0; max-height: min(78vh, 860px); }
+.met-item.notam-item-clickable:focus-visible { outline: 2px solid #4c9bff; outline-offset: 1px; }
 
 /* A bubble a NOTAM has closed: its availability row says so, in the NOTAM's own amber. */
 .insp-row-closed .val { color: #ffb24d; font-weight: 700; }
 body.theme-light .insp-row-closed .val { color: #9a3d00; }
+
+/* An empty status line reserved 14px under its toggle ("Show per-leg wind effect", "Show
+   airfield wind"), so the layers below it sat a line apart for nothing. It takes room only
+   when it has something to say. */
+.wind-fetch-status:empty { display: none; }
+/* Desktop slider rows: the 28px reset button made the row taller than its label and value,
+   which sat at the top; centre the row's items on one line. */
+@media (min-width: 681px) and (hover: hover) and (pointer: fine) {
+  #toolbar .tb-section-body .navtoggle-slider { align-items: center; }
+}

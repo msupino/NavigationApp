@@ -4809,6 +4809,8 @@ document.getElementById('alt-pairs').onclick = showAltitudePairsModal;
   if (!on) { btn.hidden = true; return; }
   btn.onclick = () => {
     if (typeof window.closeToolbarMenus === 'function') window.closeToolbarMenus();
+    // Like the flight plan: the form is the route's, and with no route there is nothing to plan.
+    if (!state.legs || state.legs.length === 0) { refuse(S.errNoLegs); return; }
     if (window.NavAid && NavAid.navLog) NavAid.navLog.show();
   };
 }());
@@ -6707,7 +6709,7 @@ if (sigmetBtn) {
 }
 // Eager load on boot so the button appears if SIGMETs are active.
 if (typeof loadSigmets === 'function') {
-  loadSigmets().then(refreshSigmetBtn);
+  loadSigmets().then(() => { refreshSigmetBtn(); if (typeof refreshSigmetLayerCount === 'function') refreshSigmetLayerCount(); if (window.showSigmet) draw(); });
 }
 
 // --- Live hazard re-poll (NOTAM + SIGMET + AIRMET) --------------------------
@@ -8524,6 +8526,51 @@ if (airspaceCb) {
   };
 }
 
+// --- SIGMET overlay toggle (Extra layers) -------------------------------
+// The SIGMET areas the feed gives as polygons, drawn dashed in their hazard colour. Off by
+// default (the feed covers the neighbouring FIRs too); the list's "show on map" turns it on.
+const SIGMET_KEY = 'navaid.showSigmet';
+try {
+  const stored = lsGet(SIGMET_KEY);
+  if (stored !== null) window.showSigmet = stored === '1';
+  else if (typeof tune === 'function') window.showSigmet = tune('defaultShowSigmet') === true;
+} catch (e) { /* storage unavailable */ }
+const sigmetCb = document.getElementById('sigmet-cb');
+// Feed freshness under each toggle, as the NOTAM layer shows it: while the layer is on.
+function refreshMetUpdated(kind) {
+  const el = document.getElementById(kind + '-updated');
+  if (!el) return;
+  const on = kind === 'sigmet' ? window.showSigmet : window.showAirmet;
+  const meta = kind === 'sigmet' ? window.sigmetMeta : window.airmetMeta;
+  const t = meta && meta.generatedAt ? new Date(meta.generatedAt) : null;
+  const txt = (t && !isNaN(t) && typeof S.notamUpdated === 'function')
+    ? S.notamUpdated(t.toISOString().slice(0, 16).replace('T', ' ') + 'Z') : '';
+  el.textContent = txt;
+  el.hidden = !(on && txt);
+}
+window.refreshMetUpdated = refreshMetUpdated;
+function setMetLayer(kind, on) {
+  const key = kind === 'sigmet' ? SIGMET_KEY : AIRMET_KEY;
+  const cb = kind === 'sigmet' ? sigmetCb : document.getElementById('airmet-cb');
+  if (kind === 'sigmet') window.showSigmet = !!on; else window.showAirmet = !!on;
+  try { localStorage.setItem(key, on ? '1' : '0'); } catch (err) { /* storage unavailable */ }
+  if (cb) cb.checked = !!on;
+  refreshMetUpdated(kind);
+  draw();
+}
+window.setMetLayer = setMetLayer;
+if (sigmetCb) {
+  sigmetCb.checked = !!window.showSigmet;
+  sigmetCb.onchange = e => setMetLayer('sigmet', e.target.checked);
+}
+function refreshSigmetLayerCount() {
+  const n = (typeof activeSigmets === 'function' && typeof metAreaLatLngs === 'function')
+    ? activeSigmets().filter(metAreaLatLngs).length : 0;
+  setLayerCount('sigmet-layer-count', n);
+  refreshMetUpdated('sigmet');
+}
+window.refreshSigmetLayerCount = refreshSigmetLayerCount;
+
 // --- AIRMET overlay toggle (Extra layers) -------------------------------
 // IMS Tel Aviv FIR AIRMETs, drawn as dotted hazard polygons. The group box is hidden until
 // the feed reports at least one active AIRMET, the same way the SIGMET list button appears
@@ -8541,6 +8588,7 @@ function refreshAirmetGroup() {
   // vanish when its data is momentarily absent. The layer just draws nothing while none is in force.
   if (group) group.hidden = false;
   setLayerCount('airmet-count', (typeof activeAirmets === 'function') ? activeAirmets().length : 0);
+  if (typeof refreshMetUpdated === 'function') refreshMetUpdated('airmet');
 }
 if (airmetCb) {
   airmetCb.checked = showAirmet;
@@ -8548,6 +8596,7 @@ if (airmetCb) {
     window.showAirmet = e.target.checked;
     try { localStorage.setItem(AIRMET_KEY, showAirmet ? '1' : '0'); }
     catch (err) { /* storage unavailable */ }
+    if (typeof refreshMetUpdated === 'function') refreshMetUpdated('airmet');
     draw();
   };
 }

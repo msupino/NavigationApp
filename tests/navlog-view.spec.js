@@ -1638,3 +1638,24 @@ test.describe('the header stays put', () => {
     await expect(page.locator('.navlog-modal')).toHaveCount(0);
   });
 });
+
+// Like the flight plan: with no route on the map the form has nothing to plan, so its button
+// says so instead of opening an empty sheet.
+test('the flight planning form opens only with a route, like the flight plan', async ({ page }) => {
+  await page.goto('?lang=en&nogist');
+  await page.waitForFunction(() => typeof showFlightPlan === 'function' && window.NavAid && NavAid.navLog);
+  const got = await page.evaluate(() => {
+    state.waypoints = []; syncLegs();
+    const toasts = [];
+    const orig = window.showToast;
+    window.showToast = (t, o) => { toasts.push(t); return orig && orig(t, o); };
+    document.getElementById('nav-log').click();
+    const openEmpty = !!document.querySelector('.modal-back.nav-log, .navlog-modal, .modal-back[data-chart-modal="nav-log"]');
+    state.waypoints = [{ lat: 32.18, lng: 34.83, name: 'LLHZ' }, { lat: 32.78, lng: 35.02, name: 'LLHA' }]; syncLegs();
+    document.getElementById('nav-log').click();
+    return { openEmpty, toasts, openWithRoute: document.querySelectorAll('.modal-back').length > 0 };
+  });
+  expect(got.openEmpty).toBe(false);
+  expect(got.toasts.join(' ')).toMatch(/No legs yet/);
+  expect(got.openWithRoute).toBe(true);
+});
