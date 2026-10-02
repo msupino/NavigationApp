@@ -131,13 +131,18 @@ test('points shared by several layers are one node, not several', () => {
 });
 
 test('comm change lives on the node, with its call signs', () => {
-  const g = graph();
-  const withComm = Object.values(g.nodes).filter(n => n.commChange);
-  expect(withComm.length).toBe(52);            // every CVFR comm-change point found a node
-  for (const n of withComm) {
+  // Per layer: CVFR's 52 published points, and the LSA chart's 28 (black triangle with a
+  // magenta dot, read off the LSA chart 2026-10-02). The merged view would double-count the
+  // 13 nodes both charts mark.
+  const cvfr = Object.values(layerGraph('cvfr').nodes).filter(n => n.commChange);
+  const lsa = Object.values(layerGraph('lsa').nodes).filter(n => n.commChange);
+  expect(cvfr.length).toBe(52);
+  expect(lsa.length).toBe(28);
+  for (const n of [...cvfr, ...lsa]) {
     expect(Array.isArray(n.callSigns)).toBe(true);
     expect(n.callSigns.length).toBeGreaterThan(0);
   }
+  const g = graph();
   expect(g.nodes.BASAN.commChange).toBe(true);
   expect(g.nodes.BASAN.callSigns).toContain('PLUTO_EAST');
 });
@@ -254,7 +259,8 @@ test('the data census matches what the maintainer last signed off', () => {
     heli: { layerNodes: 209, activeNodes: 209, segments: 85, commChange: 0, unknown: 38 },
     // +9 nodes / +12 segments / +12 unknowns: GORAL, TAALL, MACHR and the six airstrips
     // from the second capture (#1485) -- the first census update under the new mechanism.
-    lsa: { layerNodes: 176, activeNodes: 176, segments: 87, commChange: 0, unknown: 27 },
+    // commChange 0 -> 28: the LSA chart's frequency-change points, read off the chart (#LSA legend).
+    lsa: { layerNodes: 176, activeNodes: 176, segments: 87, commChange: 28, unknown: 27 },
   };
   const got = {};
   for (const lay of LAYERS) {

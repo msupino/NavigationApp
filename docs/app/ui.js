@@ -484,7 +484,26 @@ function paintLegendPoints() {
         drawReportingPointSymbol(ctx, box / 2, box / 2 + 1.5, 7, compulsory);
       });
     }
+    if (typeof drawCommChangeDot === 'function') {
+      paint('canvas.legend-comm', ctx => {
+        ctx.lineWidth = tune('navWaypointStrokeWidthPx');
+        drawReportingPointSymbol(ctx, box / 2, box / 2 + 1.5, 7, true);
+        drawCommChangeDot(ctx, box / 2, box / 2 + 1.5, 7);
+      });
+    }
   }
+  // LSA bubbles: the map's own fill and outline, as a small parallelogram like the chart's legend.
+  const bubble = (weekend) => ctx => {
+    ctx.beginPath();
+    ctx.moveTo(5, 3); ctx.lineTo(16, 3); ctx.lineTo(13, 15); ctx.lineTo(2, 15); ctx.closePath();
+    ctx.fillStyle = weekend ? 'rgba(201,178,138,0.55)' : 'rgba(60,160,60,0.25)';
+    ctx.fill();
+    ctx.lineWidth = 1.6;
+    ctx.strokeStyle = tune(weekend ? 'lsaWeekendColor' : 'lsaAlwaysColor');
+    ctx.stroke();
+  };
+  paint('canvas.legend-lsa-daily', bubble(false));
+  paint('canvas.legend-lsa-weekend', bubble(true));
 }
 paintLegendPoints();
 

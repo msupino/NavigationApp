@@ -1201,6 +1201,21 @@
     </div>
     <!-- VOR stations are drawn with ident + frequency but were missing from the
          legend; the row follows the View/Set toggle (see drawInfo). -->
+    <!-- Frequency change: the reporting-point triangle with the chart's magenta dot. -->
+    <div class="map-legend-row" id="legend-row-comm">
+      <canvas class="legend-symbol legend-comm" width="18" height="18" aria-hidden="true"></canvas>
+      <span data-i18n="legendCommChange"></span>
+    </div>
+    <!-- The LSA chart's own legend: its bubbles come in two classes. Shown while the LSA
+         data is the active set (see drawInfo). -->
+    <div class="map-legend-row legend-row-lsa" id="legend-row-lsa-daily">
+      <canvas class="legend-symbol legend-lsa-daily" width="18" height="18" aria-hidden="true"></canvas>
+      <span data-i18n="legendLsaDaily"></span>
+    </div>
+    <div class="map-legend-row legend-row-lsa" id="legend-row-lsa-weekend">
+      <canvas class="legend-symbol legend-lsa-weekend" width="18" height="18" aria-hidden="true"></canvas>
+      <span data-i18n="legendLsaWeekend"></span>
+    </div>
     <div class="map-legend-row" id="legend-row-vor">
       <canvas class="legend-symbol legend-vor" width="18" height="18" aria-hidden="true"></canvas>
       <span data-i18n="legendVor"></span>

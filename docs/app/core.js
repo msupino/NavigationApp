@@ -368,6 +368,8 @@ NavAid.tuningDefaults = {
   commChangeRings: { value: false, type: 'bool', label: 'Draw a ring at frequency-change points' },
   commChangeRingWidthPx: { value: 1.8, min: 0.25, max: 10, step: 0.1, label: 'Comm-change ring width (px)' },
   commChangeRingColor: { value: '#e74c3c', type: 'color', label: 'Comm-change ring color' },
+  commChangeDot: { value: true, type: 'bool', label: 'Mark frequency-change points with the chart\'s magenta dot' },
+  commChangeDotColor: { value: '#b9308c', type: 'color', label: 'Frequency-change dot color' },
   commChangeNoteLatOffset: { value: 0, min: -0.15, max: 0.15, step: 0.001, label: 'Comm-change arrow tail lat offset' },
   commChangeNoteLngOffset: { value: 0.09, min: -0.25, max: 0.25, step: 0.001, label: 'Comm-change arrow tail lng offset' },
   commChangeArrowStartGapPx: { value: 3, min: 0, max: 50, step: 0.5, label: 'Comm-change arrow start gap (px)' },
@@ -1078,7 +1080,7 @@ NavAid.tuningGroups = [
   { name: 'Airfields', keys: ['airfieldMarkerRadiusPx', 'airfieldStrokeWidthPx', 'airfieldLabelFontPx', 'airfieldLabelOffsetPx', 'airfieldLabelHaloPx', 'airfieldFillColor', 'airfieldCenterColor', 'airfieldOutlineColor'] },
   { name: 'Nav waypoints', keys: ['reportingPointRadiusPx', 'navWaypointStrokeWidthPx', 'navWaypointLabelFontPx', 'navWaypointLabelOffsetPx', 'navWaypointLabelHaloPx', 'navWaypointDotColor'] },
   { name: 'Overlay labels', keys: ['overlayLabelHaloColor', 'overlayLabelHaloAlpha'] },
-  { name: 'Frequency changes', keys: ['commCalloutAngleDeg', 'commChangeRings', 'commChangeRingRadiusPx', 'commChangeRingWidthPx', 'commChangeRingColor', 'commChangeNoteLatOffset', 'commChangeNoteLngOffset', 'commChangeArrowStartGapPx', 'commChangeArrowWidthPx', 'commChangeArrowColor', 'commChangeArrowLineCap', 'commChangeArrowLineJoin', 'commChangeArrowMiterLimit', 'commChangeArrowHaloPx', 'commChangeArrowHaloColor', 'commChangeArrowHaloAlpha', 'commChangeSelectedColor', 'commChangeSelectedAlpha', 'commChangeSelectedWidthAddPx', 'commChangeArrowBoltPx', 'commChangeArrowBoltAngleDeg', 'commChangeArrowBend1Along', 'commChangeArrowBend2Along', 'commChangeNameFontPx', 'commChangeFreqFontPx', 'commChangeTextColor', 'commChangeTextHaloColor', 'commChangeTextHaloAlpha', 'commChangeTextAlong', 'commChangeTextGapPx', 'commChangeNameHaloWidthPx', 'commChangeFreqHaloWidthPx'] },
+  { name: 'Frequency changes', keys: ['commCalloutAngleDeg', 'commChangeRings', 'commChangeRingRadiusPx', 'commChangeRingWidthPx', 'commChangeRingColor', 'commChangeDot', 'commChangeDotColor', 'commChangeNoteLatOffset', 'commChangeNoteLngOffset', 'commChangeArrowStartGapPx', 'commChangeArrowWidthPx', 'commChangeArrowColor', 'commChangeArrowLineCap', 'commChangeArrowLineJoin', 'commChangeArrowMiterLimit', 'commChangeArrowHaloPx', 'commChangeArrowHaloColor', 'commChangeArrowHaloAlpha', 'commChangeSelectedColor', 'commChangeSelectedAlpha', 'commChangeSelectedWidthAddPx', 'commChangeArrowBoltPx', 'commChangeArrowBoltAngleDeg', 'commChangeArrowBend1Along', 'commChangeArrowBend2Along', 'commChangeNameFontPx', 'commChangeFreqFontPx', 'commChangeTextColor', 'commChangeTextHaloColor', 'commChangeTextHaloAlpha', 'commChangeTextAlong', 'commChangeTextGapPx', 'commChangeNameHaloWidthPx', 'commChangeFreqHaloWidthPx'] },
   { name: 'Notes', keys: ['noteFontPx', 'notePadXPx', 'notePadYPx', 'noteLineHeightPx', 'noteMinWidthPx', 'notePrintWidthMm', 'notePrintHeightMm', 'noteStrokeWidthPx', 'noteSelectedStrokeWidthPx', 'noteDefaultFillColor'] },
   { name: 'Page frame', keys: ['pageFrameLineWidthPx', 'pageFrameDashOnPx', 'pageFrameDashOffPx', 'pageFrameScrimColor', 'pageFrameScrimAlpha', 'pageFrameLocked', 'pageFrameHitPx', 'a4x2CutLineWidthPx', 'a4x2CutDashOnPx', 'a4x2CutDashOffPx', 'a4x2CutLineColor', 'a4x2CutLineAlpha', 'a4x2MarkLabelMm', 'a4x2MarkGuideMm', 'a4x2MarkLabelBgColor', 'a4x2MarkLabelInkColor'] },
   { name: 'Route defaults', keys: ['defaultLegSpeedKt', 'unknownProfileAltFt', 'legLabelMaxScale'] },
@@ -1390,7 +1392,7 @@ var magVar = -5;                       // signed offset added to true heading
 window.S = Object.assign({
   // One graph per layer replaces the nav-waypoints / comm-change / leg-altitude files;
   // the ?v= cache-busts all three kinds, which now come from the same file.
-  routeGraphUrl: 'data/cvfr-route-graph.json?v=2',  // resolved relative to index.html (docs/)
+  routeGraphUrl: 'data/cvfr-route-graph.json?v=3',  // resolved relative to index.html (docs/)
   commfailUrl: 'data/commfail.json?v=2',
   worldCountriesUrl: 'data/world-countries.json?v=2',  // country outlines + names, always offline  // published comm-failure entry points per field
   navWpSearchField: 'en',              // which locale label to show/search in results
@@ -2629,6 +2631,9 @@ window.S = Object.assign({
   tbMoreLinks: 'More links (repo, wiki, issues, about, privacy, terms)',
   legendAtcChange: 'Freq change',
   legendHotspot: 'Hotspot',
+  legendCommChange: 'Frequency change',
+  legendLsaDaily: 'LSA bubble, every day',
+  legendLsaWeekend: 'LSA bubble, weekends only',
   commChangeBadge: '📡 Freq change point',
   commChangeNoteText: 'Freq change',
   commChangeCallSign: 'Waypoint',
@@ -4259,7 +4264,7 @@ async function loadCtrBoundaries() {
 async function _loadCtrBoundariesNow() {
   try {
     // Cache-bust with the same marker the datasets use; deploy rewrites it in core.js.
-    const ver = (typeof _verOf === 'function') ? _verOf(S.routeGraphUrl) : '2';
+    const ver = (typeof _verOf === 'function') ? _verOf(S.routeGraphUrl) : '3';
     const r = await fetch('data/ctr-boundaries.json?v=' + ver);
     const d = r.ok ? await r.json() : null;
     const map = (d && d.airfields && typeof d.airfields === 'object') ? d.airfields : {};

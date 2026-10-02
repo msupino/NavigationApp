@@ -3672,6 +3672,22 @@ function drawReportingPointSymbol(ctx, x, y, r, compulsory, fill) {
   ctx.stroke();
   ctx.lineJoin = 'miter';
 }
+// The chart's frequency-change symbol: the reporting-point triangle with a magenta dot in it
+// ("נקודת מעבר קשר בין יחידות מבקרות", the CVFR and LSA legends alike). Drawn on the point
+// itself, so a pilot sees where to change frequency before a route goes through it -- the
+// callout arrow only appears on a route. commChangeDot turns it off.
+function drawCommChangeDot(ctx, x, y, r) {
+  ctx.beginPath();
+  ctx.arc(x, y + r * 0.12, Math.max(1.5, r * 0.38), 0, Math.PI * 2);
+  ctx.fillStyle = tune('commChangeDotColor');
+  ctx.fill();
+}
+function isCommChangePointShown(wp) {
+  return !!(wp && showCommChange && tune('commChangeDot') !== false && commChangeMap &&
+    commChangeMap[wp.name] && commChangeMap[wp.name].commChange &&
+    !(typeof isCommChangeSuppressed === 'function' && isCommChangeSuppressed(wp.name)) &&
+    layerShownAtZoom('commChangeMinZoom'));
+}
 function drawNavWaypoints() {
   if (!showNavWP || !navWP || navWP.length === 0) return;
   // Suppress nav-WP symbol when a route waypoint sits on it (by position),
@@ -3689,6 +3705,7 @@ function drawNavWaypoints() {
                                          // the larger PNG-export canvas
     octx.lineWidth = tune('navWaypointStrokeWidthPx');
     drawReportingPointSymbol(octx, s.x, s.y, r, wp.report === 'mandatory');
+    if (isCommChangePointShown(wp)) drawCommChangeDot(octx, s.x, s.y, r);
     if (showLabels) {
       const label = ltrIsolate(referenceOverlayLabel(wp, 'navwp'));
       octx.lineWidth = tune('navWaypointLabelHaloPx');
@@ -6079,6 +6096,16 @@ function drawInfo() {
   // The VOR legend row only makes sense while the stations are on the map.
   const vorRow = document.getElementById('legend-row-vor');
   if (vorRow) vorRow.style.display = (typeof showVorStations !== 'undefined' && showVorStations) ? '' : 'none';
+  // Frequency changes: while they are on the map. LSA bubbles: while the LSA set is active
+  // and the bubbles are shown -- the rows of the chart actually being read.
+  // Both are the LSA chart's legend rows, shown while that set is active -- the card stays
+  // the size it always was on the other charts.
+  const lsaSet = typeof layerDataPrefix === 'function' && layerDataPrefix() === 'lsa';
+  const commRow = document.getElementById('legend-row-comm');
+  if (commRow) commRow.style.display = (lsaSet && typeof showCommChange !== 'undefined' && showCommChange &&
+    tune('commChangeDot') !== false && commChangeMap && Object.keys(commChangeMap).length) ? '' : 'none';
+  const lsaOn = lsaSet && typeof showLsaBubbles !== 'undefined' && showLsaBubbles;
+  for (const row of document.querySelectorAll('.legend-row-lsa')) row.style.display = lsaOn ? '' : 'none';
   // The stats block that used to live at the bottom of the mobile menu is gone: the
   // legend card now carries the same totals at every width, and on a phone the two
   // were on screen together saying the same thing twice.
