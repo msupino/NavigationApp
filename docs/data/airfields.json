@@ -5,7 +5,8 @@
    "he": "גבולות",
    "en": "Gvulot",
    "lat": 31.2275,
-   "lng": 34.46028
+   "lng": 34.46028,
+   "chartClass": "agricultural"
   },
   {
    "name": "KKDEM",
@@ -477,6 +478,7 @@
    "en": "Habonim",
    "lat": 32.65,
    "lng": 34.93278,
+   "chartClass": "airstrip",
 "parking": {
     "phone": "04-6391068",
     "rule": "always"
@@ -520,6 +522,10 @@
    "en": "Beer Sheva / Teyman",
    "lat": 31.28694,
    "lng": 34.72278,
+   "runwayLengthM": 1403,
+   "lighting": "minimal",
+   "hardRunway": true,
+   "chartClass": "airstrip",
    "elev_ft": 656,
 "parking": {
     "email": "Office@ayit.co.il",
@@ -658,6 +664,7 @@
    "en": "Ein Yahav",
    "lat": 30.62167,
    "lng": 35.20306,
+   "chartClass": "airstrip",
    "elev_ft": -164,
 "parking": {
     "email": "yonatan@arava.co.il",
@@ -698,6 +705,7 @@
    "en": "Fiq (Golan)",
    "lat": 32.78528,
    "lng": 35.71722,
+   "chartClass": "airstrip",
    "elev_ft": 1218,
 "parking": {
     "email": "HCL-PIK@MEGOLAN.ORG.IL",
@@ -856,6 +864,7 @@
    "en": "Herzliya",
    "lat": 32.17944,
    "lng": 34.83444,
+   "chartClass": "airport",
    "elev_ft": 121,
    "clearance": "121.70 MHz",
 "parking": {
@@ -1003,6 +1012,9 @@
    "en": "Rosh Pina / Mahanayim",
    "lat": 32.98056,
    "lng": 35.57083,
+   "runwayLengthM": 1106,
+   "lighting": "minimal",
+   "hardRunway": true,
    "elev_ft": 884,
    "atis": "132.45 MHz",
    "plates": [
@@ -1161,6 +1173,7 @@
    "en": "Kiryat Shmona",
    "lat": 33.21417,
    "lng": 35.59417,
+   "chartClass": "airstrip",
    "elev_ft": 376,
 "parking": {
     "phone": "04-6943646",
@@ -1203,6 +1216,7 @@
    "en": "Ktziot",
    "lat": 30.85889,
    "lng": 34.44361,
+   "chartClass": "airstrip",
    "elev_ft": 900,
 "parking": {
     "phone": "08-943-3600",
@@ -1235,6 +1249,7 @@
    "en": "Megiddo",
    "lat": 32.59722,
    "lng": 35.23472,
+   "chartClass": "airstrip",
    "elev_ft": 200,
 "parking": {
     "phone": "04-6528847",
@@ -1444,6 +1459,7 @@
    "en": "Arad",
    "lat": 31.22972,
    "lng": 35.18972,
+   "chartClass": "airstrip",
    "plates": [
     "LLAR_airport_CVFR.pdf",
     "LLAR_airport_Chart.pdf",

@@ -899,6 +899,13 @@ function validateAirfields(d) {
     if (Object.prototype.hasOwnProperty.call(a, 'elev_ft')) {
       _v(a, 'elev_ft', 'number', p, errs);
     }
+    if (Object.prototype.hasOwnProperty.call(a, 'chartClass') &&
+        ['airport', 'airstrip', 'agricultural'].indexOf(a.chartClass) === -1) {
+      errs.push(p + '.chartClass: expected airport|airstrip|agricultural');
+    }
+    if (Object.prototype.hasOwnProperty.call(a, 'runwayLengthM')) {
+      _v(a, 'runwayLengthM', 'number', p, errs);
+    }
     if (Object.prototype.hasOwnProperty.call(a, 'atis')) {
       _v(a, 'atis', 'string', p, errs);
     }

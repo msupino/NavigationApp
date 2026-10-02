@@ -3075,8 +3075,19 @@ function airfieldInspectorTitle(af) {
 }
 
 function appendAirfieldDetailRows(body, af, label) {
+  // What kind of field the chart says it is (its legend's rectangle colour), and the chart's
+  // field block: longest runway, lighting, hard surface.
+  if (af.chartClass && S.airfieldClass && S.airfieldClass[af.chartClass]) {
+    body.appendChild(textRow(S.airfieldClassLabel || 'Type', S.airfieldClass[af.chartClass]));
+  }
   if (Number.isFinite(af.elev_ft)) {
     body.appendChild(textRow(S.elevation || 'Elevation', af.elev_ft + ' ft'));
+  }
+  if (Number.isFinite(af.runwayLengthM)) {
+    const bits = [af.runwayLengthM + ' m'];
+    if (af.hardRunway) bits.push(S.airfieldHardRunway || 'hard, all weather');
+    if (af.lighting === 'minimal') bits.push(S.airfieldMinimalLighting || 'minimal lighting');
+    body.appendChild(textRow(S.airfieldLongestRunway || 'Longest runway', bits.join(' · ')));
   }
   // Frequencies in a frame of their own: on a field with a tower, a clearance delivery and
   // an ATIS this is four or five rows of numbers, and unlabelled they read as a list of

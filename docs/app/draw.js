@@ -3430,6 +3430,11 @@ async function loadAirfields() {
       plates: Array.isArray(a.plates) ? a.plates.slice() : [],
       runways: Array.isArray(a.runways) ? a.runways.slice() : null,
       type: a.type === 'military' ? 'military' : 'civil',   // chart symbol: ◎ for a military field
+      // The LSA chart legend's strip class and field block (see airfields.json _chartClass).
+      chartClass: a.chartClass || null,
+      runwayLengthM: Number.isFinite(a.runwayLengthM) ? a.runwayLengthM : null,
+      lighting: a.lighting || null,
+      hardRunway: a.hardRunway === true,
       // Prior-parking coordination the AIP requires at this field (address/phone + rule),
       // read by the flight plan's parking-request button. Absent for fields that ask nothing.
       parking: (a.parking && typeof a.parking === 'object') ? a.parking : null,

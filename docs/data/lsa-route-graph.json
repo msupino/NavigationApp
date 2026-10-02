@@ -2611,7 +2611,8 @@
       "layers": [
         "lsa"
       ],
-      "codeSource": "cross-referenced"
+      "codeSource": "cross-referenced",
+      "chartClass": "agricultural"
     },
     "LLHF": {
       "code": "LLHF",
@@ -2622,7 +2623,8 @@
       "layers": [
         "lsa"
       ],
-      "codeSource": "cross-referenced"
+      "codeSource": "cross-referenced",
+      "chartClass": "agricultural"
     },
     "LLNN": {
       "code": "LLNN",
@@ -2633,7 +2635,8 @@
       "layers": [
         "lsa"
       ],
-      "codeSource": "cross-referenced"
+      "codeSource": "cross-referenced",
+      "chartClass": "agricultural"
     },
     "LLSS": {
       "code": "LLSS",
@@ -2644,7 +2647,8 @@
       "layers": [
         "lsa"
       ],
-      "codeSource": "cross-referenced"
+      "codeSource": "cross-referenced",
+      "chartClass": "agricultural"
     },
     "LLRU": {
       "code": "LLRU",
@@ -2655,7 +2659,8 @@
       "layers": [
         "lsa"
       ],
-      "codeSource": "cross-referenced"
+      "codeSource": "cross-referenced",
+      "chartClass": "agricultural"
     },
     "LLSO": {
       "code": "LLSO",
@@ -2666,7 +2671,8 @@
       "layers": [
         "lsa"
       ],
-      "codeSource": "cross-referenced"
+      "codeSource": "cross-referenced",
+      "chartClass": "agricultural"
     },
     "GORAL": {
       "code": "GORAL",

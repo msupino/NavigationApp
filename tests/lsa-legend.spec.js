@@ -80,3 +80,21 @@ test('a brown weekend route is closed to a weekday plan and open on a Saturday',
   expect(got.sat).toBe(true);
   expect(got.undated).toBe(true);
 });
+
+// Field types from the legend's strip rectangles (airport blue, airstrip magenta, agricultural
+// green) and the chart's field block: longest runway, lighting, hard surface.
+test('the airfield panel says what kind of field the chart shows, and its runway block', async ({ page }) => {
+  await page.goto('?lang=en&nogist');
+  await page.waitForFunction(() => typeof loadAirfields === 'function' && typeof showInspector === 'function');
+  const rows = async (icao) => page.evaluate(async (icao) => {
+    await loadAirfields();
+    state.selected = { type: 'airfield', index: airfields.findIndex(a => a.name === icao) };
+    showInspector();
+    return document.getElementById('insp-body').textContent;
+  }, icao);
+  const ros = await rows('LLIB');
+  expect(ros).toContain('1106 m');
+  expect(ros).toContain('minimal lighting');
+  expect(await rows('LLMG')).toContain('Airstrip');
+  expect(await rows('GVULT')).toContain('Agricultural strip');
+});
