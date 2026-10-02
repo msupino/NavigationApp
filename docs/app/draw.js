@@ -1449,6 +1449,7 @@ function draw() {
   drawVors();
   if (window.showNotam && Array.isArray(notams) && notams.length) drawNotams();
   if (window.showAirmet && typeof activeAirmets === 'function' && activeAirmets().length) drawAirmets();
+  if (window.showSigmet && typeof activeSigmets === 'function' && activeSigmets().length) drawSigmets();
   drawLegs();
   drawWaypoints();
   // After the route and its discs, not before: drawn underneath, the line ran straight through
@@ -1701,7 +1702,10 @@ window.activeSigmets = activeSigmets;
 
 function drawSigmets() {
   octx.save();
-  for (const s of sigmets) {
+  // Active ones whose polygon is usable (metAreaLatLngs); a SIGMET given only as a line or a
+  // whole FIR has no area to draw and is read from the list.
+  for (const s of activeSigmets()) {
+    if (typeof metAreaLatLngs === 'function' && !metAreaLatLngs(s)) continue;
     const pts = (s.coords || [])
       .filter(c => Array.isArray(c) && c.length === 2 &&
                    Number.isFinite(c[0]) && Number.isFinite(c[1]))

@@ -970,6 +970,7 @@ NavAid.tuningDefaults = {
   defaultForceSnap: { value: false, type: 'bool', label: 'Default: force snap' },
   defaultShowNotam: { value: false, type: 'bool', label: 'Default: show NOTAMs' },
   defaultShowAirmet: { value: false, type: 'bool', label: 'Default: show AIRMETs' },
+  defaultShowSigmet: { value: false, type: 'bool', label: 'Default: show SIGMETs' },
   defaultShowWind: { value: false, type: 'bool', label: 'Default: show wind' },
   defaultWindField: { value: false, type: 'bool', label: 'Default: show wind field' },
   defaultAirfieldWind: { value: false, type: 'bool', label: 'Default: show airfield wind' },
@@ -1128,7 +1129,7 @@ NavAid.tuningGroups = [
     'defaultViewZoom', 'defaultViewLat', 'defaultViewLng'] },
   { name: 'Export', keys: ['exportBgColor'] },
   { name: 'Global palette', keys: ['inkColor', 'selectedColor', 'labelFillColor', 'kiteTextColor', 'legKiteHaloColor', 'kiteNoteAlpha'] },
-  { name: 'Default layer visibility', keys: ['defaultShowNavWP', 'defaultShowAirfields', 'defaultShowVor', 'defaultShowHotspots', 'defaultShowWpNames', 'defaultShowCumTime', 'defaultShowDrift', 'defaultShowCommChange', 'defaultVoiceAlerts', 'defaultShowMidLeg', 'defaultHighlightDiff', 'defaultLimitLegKites', 'defaultShowMsa', 'defaultShowReporting', 'defaultForceSnap', 'defaultShowReturn', 'featureShowReturn', 'featureFplReturnJoin', 'offlineAutoCvfr', 'offlineCvfrUnmeteredOnly', 'offlineCvfrMinZoom', 'offlineCvfrMaxZoom', 'featureRouteIntro', 'featureSatZoomButtons', 'featureInspectorResize', 'featureInspectorWhileTracking', 'featureAssistant', 'featureMobileDeck', 'featureDisclaimer', 'featureOtaUpdates', 'featureNavLog', 'reverseWarnMs', 'notamSeenDays', 'toastReadWpm', 'toastNoticeMs', 'toastMinMs', 'toastWarnMinMs', 'toastMaxMs', 'reverseWarnBlink', 'reverseRotatesMap', 'addToRouteOpensInspector', 'defaultShowNotam', 'defaultShowAirmet', 'defaultShowWind', 'defaultWindField', 'defaultAirfieldWind', 'defaultImsPwx', 'defaultSigwxOv', 'defaultShowLsaBubbles', 'defaultAutoRoute', 'defaultShowCircuit', 'defaultShowTraining', 'defaultShowCvfr', 'defaultShowHeli', 'defaultShowCommfail', 'defaultShowIfr', 'plateFieldZoom'] },
+  { name: 'Default layer visibility', keys: ['defaultShowNavWP', 'defaultShowAirfields', 'defaultShowVor', 'defaultShowHotspots', 'defaultShowWpNames', 'defaultShowCumTime', 'defaultShowDrift', 'defaultShowCommChange', 'defaultVoiceAlerts', 'defaultShowMidLeg', 'defaultHighlightDiff', 'defaultLimitLegKites', 'defaultShowMsa', 'defaultShowReporting', 'defaultForceSnap', 'defaultShowReturn', 'featureShowReturn', 'featureFplReturnJoin', 'offlineAutoCvfr', 'offlineCvfrUnmeteredOnly', 'offlineCvfrMinZoom', 'offlineCvfrMaxZoom', 'featureRouteIntro', 'featureSatZoomButtons', 'featureInspectorResize', 'featureInspectorWhileTracking', 'featureAssistant', 'featureMobileDeck', 'featureDisclaimer', 'featureOtaUpdates', 'featureNavLog', 'reverseWarnMs', 'notamSeenDays', 'toastReadWpm', 'toastNoticeMs', 'toastMinMs', 'toastWarnMinMs', 'toastMaxMs', 'reverseWarnBlink', 'reverseRotatesMap', 'addToRouteOpensInspector', 'defaultShowNotam', 'defaultShowAirmet', 'defaultShowSigmet', 'defaultShowWind', 'defaultWindField', 'defaultAirfieldWind', 'defaultImsPwx', 'defaultSigwxOv', 'defaultShowLsaBubbles', 'defaultAutoRoute', 'defaultShowCircuit', 'defaultShowTraining', 'defaultShowCvfr', 'defaultShowHeli', 'defaultShowCommfail', 'defaultShowIfr', 'plateFieldZoom'] },
 ];
 // Padding pair + maxZoom for a fitBounds call, from the tuning registry. Every "frame the
 // map on X" call goes through this instead of carrying its own literals.
@@ -1712,6 +1713,8 @@ window.S = Object.assign({
   tbShowNotam: 'Show NOTAMs',
   tbShowNotamTitle: 'Overlay active NOTAM areas for the Israel FIR (LLLL). Click “NOTAM list” for the full texts. Planning aid only.',
   tbShowAirmet: 'Show AIRMETs',
+  tbShowSigmet: 'Show SIGMETs',
+  tbShowSigmetTitle: 'Overlay the areas of active SIGMETs (this FIR and its neighbours) that the feed gives as polygons. Planning aid only.',
   tbShowAirmetTitle: 'Overlay active IMS AIRMET hazard areas for the Tel Aviv FIR (mountain obscuration, IFR, surface wind). Source: ims.gov.il. Planning aid only.',
   tbNotamList: '📋 NOTAM list',
   tbNotamListTitle: 'Show all active NOTAMs for the Israel FIR as text',
@@ -2639,7 +2642,7 @@ window.S = Object.assign({
   met: { valid: 'Valid', fir: 'FIR', phenomenon: 'Hazard', status: 'Status', area: 'Area',
     levels: 'Levels', movement: 'Movement', change: 'Change', cancels: 'Cancels', cancelsNo: 'Cancels no.',
     entireFir: 'The whole FIR', withinArea: 'Within the drawn area', ofLine: 'of the line',
-    topsTo: 'Tops', above: 'Above', below: 'Below', movingTo: 'Moving', raw: 'Original text', decoded: 'Decoded',
+    topsTo: 'Tops', above: 'Above', below: 'Below', movingTo: 'Moving', raw: 'Original text', decoded: 'Decoded', listTitleAirmet: 'Active AIRMETs', listTitleSigmet: 'Active SIGMETs',
     showOnMap: 'Show on map' },
   inspNotamsTitle: 'NOTAMs in force',
   inspNotamUntil: 'until',

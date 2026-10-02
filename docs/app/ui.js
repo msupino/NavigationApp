@@ -6709,7 +6709,7 @@ if (sigmetBtn) {
 }
 // Eager load on boot so the button appears if SIGMETs are active.
 if (typeof loadSigmets === 'function') {
-  loadSigmets().then(refreshSigmetBtn);
+  loadSigmets().then(() => { refreshSigmetBtn(); if (typeof refreshSigmetLayerCount === 'function') refreshSigmetLayerCount(); if (window.showSigmet) draw(); });
 }
 
 // --- Live hazard re-poll (NOTAM + SIGMET + AIRMET) --------------------------
@@ -8525,6 +8525,36 @@ if (airspaceCb) {
     draw();          // drawAirspace() lazy-loads the dataset on the first draw that needs it
   };
 }
+
+// --- SIGMET overlay toggle (Extra layers) -------------------------------
+// The SIGMET areas the feed gives as polygons, drawn dashed in their hazard colour. Off by
+// default (the feed covers the neighbouring FIRs too); the list's "show on map" turns it on.
+const SIGMET_KEY = 'navaid.showSigmet';
+try {
+  const stored = lsGet(SIGMET_KEY);
+  if (stored !== null) window.showSigmet = stored === '1';
+  else if (typeof tune === 'function') window.showSigmet = tune('defaultShowSigmet') === true;
+} catch (e) { /* storage unavailable */ }
+const sigmetCb = document.getElementById('sigmet-cb');
+function setMetLayer(kind, on) {
+  const key = kind === 'sigmet' ? SIGMET_KEY : AIRMET_KEY;
+  const cb = kind === 'sigmet' ? sigmetCb : document.getElementById('airmet-cb');
+  if (kind === 'sigmet') window.showSigmet = !!on; else window.showAirmet = !!on;
+  try { localStorage.setItem(key, on ? '1' : '0'); } catch (err) { /* storage unavailable */ }
+  if (cb) cb.checked = !!on;
+  draw();
+}
+window.setMetLayer = setMetLayer;
+if (sigmetCb) {
+  sigmetCb.checked = !!window.showSigmet;
+  sigmetCb.onchange = e => setMetLayer('sigmet', e.target.checked);
+}
+function refreshSigmetLayerCount() {
+  const n = (typeof activeSigmets === 'function' && typeof metAreaLatLngs === 'function')
+    ? activeSigmets().filter(metAreaLatLngs).length : 0;
+  setLayerCount('sigmet-layer-count', n);
+}
+window.refreshSigmetLayerCount = refreshSigmetLayerCount;
 
 // --- AIRMET overlay toggle (Extra layers) -------------------------------
 // IMS Tel Aviv FIR AIRMETs, drawn as dotted hazard polygons. The group box is hidden until
