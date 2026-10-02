@@ -108,9 +108,9 @@ test('the AIRMET text is readable — button and a tap on the area both open the
     return { byBtn, closed, byTap, btnShown };
   });
   expect(out.btnShown).toBe(true);            // hidden until an AIRMET is active
-  expect(out.byBtn).toContain('MT OBSC');
-  expect(out.byBtn).toMatch(/Valid.*Z/);                // validity in Zulu
-  expect(out.byBtn).toContain('AIRMET 1 VALID');        // the raw ICAO line
+  expect(out.byBtn).toContain('Mountains obscured');    // MT OBSC, decoded
+  expect(out.byBtn).toMatch(/\d{2} \d{2}:\d{2}Z \u2192 \d{2} \d{2}:\d{2}Z/);   // validity in Zulu
+  expect(out.byBtn).toContain('AIRMET 1');              // its number, as a NOTAM's
   expect(out.closed).toBe(true);
   expect(out.byTap).toBe(true);                         // tapping the area reopened it
 });
@@ -125,20 +125,18 @@ test('the decoded text inherits the theme colour instead of a hardcoded grey', a
     await loadAirmets(true);
     showAirmetDecoded();
     const modal = document.querySelector('.modal-back .modal');
-    // The raw line sits behind its button; open it to measure it.
-    modal.querySelector('.met-card-btn').click();
-    const raw = modal.querySelector('.met-card-raw');
-    const hazard = modal.querySelector('.met-card-summary') ||
-      [...modal.querySelectorAll('.met-v')].find(v => /obscured/i.test(v.textContent));
-    return { rawStyle: raw.getAttribute('style') || '', hazardStyle: hazard.getAttribute('style') || '',
-      rawOpacity: +getComputedStyle(raw).opacity, rawColor: getComputedStyle(raw).color,
-      textColor: getComputedStyle(modal).color, rawText: raw.textContent, hazardText: hazard.textContent };
+    // The raw text sits behind the list's Raw switch; turn it on to measure it.
+    const hazard = modal.querySelector('.notam-text');
+    const hazardText = hazard.textContent, hazardStyle = hazard.getAttribute('style') || '';
+    modal.querySelector('.notam-raw-toggle').click();
+    const raw = modal.querySelector('.notam-text');
+    return { rawStyle: raw.getAttribute('style') || '', hazardStyle,
+      rawColor: getComputedStyle(raw).color, textColor: getComputedStyle(modal).color, rawText: raw.textContent, hazardText };
   });
-  // The white-on-white bug was a fixed light-theme grey. The muted line must instead carry
-  // no colour of its own (so it inherits the theme's text colour) and be dimmed by opacity.
+  // The white-on-white bug was a fixed light-theme grey. The raw text must carry no colour of
+  // its own: it reads in the theme's text colour, as a NOTAM's raw text does.
   expect(styles.rawStyle).not.toMatch(/color\s*:/);
   expect(styles.rawColor).toBe(styles.textColor);
-  expect(styles.rawOpacity).toBeLessThan(1);
   expect(styles.rawText).toMatch(/VALID 310300/);
   // The hazard headline never sets a colour either -- it reads in whatever the theme uses.
   expect(styles.hazardStyle).not.toMatch(/color\s*:/);

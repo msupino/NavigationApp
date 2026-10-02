@@ -58,5 +58,5 @@ test('clicking the SIGMET chart button opens the decoded list', async ({ page })
   await expect(modal).toBeVisible();
   const body = page.locator('.modal-back .modal');
   await expect(body).toContainText('Severe Turbulence');
-  await expect(body).toContainText('Original text');  // the raw text, one press away
+  await expect(body.locator('.notam-raw-toggle')).toHaveText('Raw');  // the NOTAM list's own switch
 });
