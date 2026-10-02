@@ -5138,8 +5138,7 @@ map.on('mousedown', e => {
   const cum = state.mode !== 'add' ? hitCumLabel(p.x, p.y) : null;
   if (cum) {
     downHit = true;
-    _materialiseDefaultCumLabel(cum.i);
-    drag = { kind: 'cumlabel', i: cum.i };
+    drag = { kind: 'cumlabel', i: cum.i, take: () => _materialiseDefaultCumLabel(cum.i) };
     state.selected = { type: 'leg', index: cum.i };
     drag.heldMap = holdMapForDrag('cumlabel');
     draw();                       // panel waits for the release: see KITE_DRAG_KINDS
@@ -5148,8 +5147,7 @@ map.on('mousedown', e => {
   const cumRet = state.mode !== 'add' ? hitCumLabelRet(p.x, p.y) : null;
   if (cumRet) {
     downHit = true;
-    _materialiseDefaultCumLabelRet(cumRet.i);
-    drag = { kind: 'cumlabelret', i: cumRet.i };
+    drag = { kind: 'cumlabelret', i: cumRet.i, take: () => _materialiseDefaultCumLabelRet(cumRet.i) };
     state.selected = { type: 'leg', index: cumRet.i };
     drag.heldMap = holdMapForDrag('cumlabelret');
     draw();                       // panel waits for the release: see KITE_DRAG_KINDS
@@ -5158,9 +5156,10 @@ map.on('mousedown', e => {
   const lab = state.mode !== 'add' ? hitLegLabel(p.x, p.y) : null;
   if (lab) {
     downHit = true;
-    _materialiseDefaultLegLabel(lab.i, lab.which);
+    // Pinned on the first real movement, not the press -- see the touch path.
     drag = { kind: 'label', i: lab.i, which: lab.which,
-             ...legLabelDragGrab(lab.i, lab.which, p.x, p.y) };
+             take: () => { _materialiseDefaultLegLabel(lab.i, lab.which);
+                           Object.assign(drag, legLabelDragGrab(lab.i, lab.which, p.x, p.y)); } };
     state.selected = { type: 'leg', index: lab.i };
     drag.heldMap = holdMapForDrag('label');
     draw();                       // panel waits for the release: see KITE_DRAG_KINDS
@@ -5256,6 +5255,7 @@ map.on('mousemove', e => {
   // reads as a plain click, not a drag -- the inspector still opens normally (endMouseDrag's
   // own !drag.moved path), only the layout edit is skipped.
   if (dragLockedNow(drag.kind)) return;
+  if (typeof drag.take === 'function') { const take = drag.take; drag.take = null; take(); }
   if (drag.kind === 'wp') {
     drag.moved = true;
     const wp = state.waypoints[drag.i];
@@ -5793,17 +5793,18 @@ mapEl.addEventListener('touchstart', e => {
                   origName: state.waypoints[wp].name, originSnapArmed: false };
     state.selected = { type: 'wp', index: wp };
   } else if (lab) {
-    _materialiseDefaultLegLabel(lab.i, lab.which);
+    // Pinned (materialised) only once the hold takes it -- a pan that started on the kite
+    // must leave it exactly as it was, default placement included: pinned on its first real
+    // movement (touchmove), never by the press.
     touchDrag = { kind: 'label', i: lab.i, which: lab.which,
-                  ...legLabelDragGrab(lab.i, lab.which, p.x, p.y) };
+                  take: () => { _materialiseDefaultLegLabel(lab.i, lab.which);
+                                Object.assign(touchDrag, legLabelDragGrab(lab.i, lab.which, p.x, p.y)); } };
     state.selected = { type: 'leg', index: lab.i };
   } else if (cum) {
-    _materialiseDefaultCumLabel(cum.i);
-    touchDrag = { kind: 'cumlabel', i: cum.i };
+    touchDrag = { kind: 'cumlabel', i: cum.i, take: () => _materialiseDefaultCumLabel(cum.i) };
     state.selected = { type: 'leg', index: cum.i };
   } else if (cumRet) {
-    _materialiseDefaultCumLabelRet(cumRet.i);
-    touchDrag = { kind: 'cumlabelret', i: cumRet.i };
+    touchDrag = { kind: 'cumlabelret', i: cumRet.i, take: () => _materialiseDefaultCumLabelRet(cumRet.i) };
     state.selected = { type: 'leg', index: cumRet.i };
   } else if (leg >= 0) {
     touchDrag = { kind: 'legtap', prevSelected: state.selected };
@@ -5854,6 +5855,10 @@ mapEl.addEventListener('touchstart', e => {
     // handler above SPLITS THE LEG. A pilot double-tapping the chart to zoom in got their
     // route cut in two and a waypoint inserted. Leaflet pans from its own touch listeners,
     // not from the browser default, so suppressing it costs no panning.
+    // A kite (a leg's arrow label, with the frequency on it) behaves like a waypoint: locked,
+    // the finger pans the map and the kite is left exactly as it was; unlocked, it drags. Either
+    // way it is pinned (its default placement made explicit) only once it actually moves --
+    // pinning on the press changed a locked route's kites under a finger that was panning.
     touchDrag.heldMap = holdMapForDrag(touchDrag.kind);
     e.preventDefault();              // suppress the synthetic mouse chain, and with it dblclick
     // Nothing opens here -- endTouch decides, once tap and drag can be told apart.
@@ -5905,6 +5910,7 @@ mapEl.addEventListener('touchmove', e => {
   // tap, though: the pilot is dragging across a locked chart, and the release must not open
   // the panel just because the lock stopped the drag from doing anything.
   if (dragLockedNow(touchDrag.kind)) { touchDrag.moved = true; return; }
+  if (typeof touchDrag.take === 'function') { const take = touchDrag.take; touchDrag.take = null; take(); }
   if (touchDrag.kind === 'wp') {
     if (!touchDrag.moved) setInspectorDragHidden(true);   // first real movement, not a tap
     touchDrag.moved = true;
