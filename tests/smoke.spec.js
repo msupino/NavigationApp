@@ -1,5 +1,5 @@
 // @ts-check
-const { test, expect, answerAppDialogs } = require('./_setup');
+const { test, expect, answerAppDialogs, openLanguagePicker } = require('./_setup');
 
 test.describe('NavAid smoke', () => {
   test.beforeEach(async ({ page }) => {
@@ -27,14 +27,14 @@ test.describe('NavAid smoke', () => {
     await page.addInitScript(() => { try { localStorage.setItem('navaid.lang', 'en'); } catch (e) {} });
     await page.goto('.');
     await expect(page.locator('html')).toHaveAttribute('lang', 'he');
-    await page.locator('#lang-select').selectOption('en');
+    await (await openLanguagePicker(page)).selectOption('en');
     await page.waitForURL(/lang=en/);
     await expect(page.locator('html')).toHaveAttribute('lang', 'en');
   });
 
   test('#87: language switch preserves query params', async ({ page }) => {
     await page.goto('?lang=he&utm_source=test&deep=42');
-    await page.locator('#lang-select').selectOption('en');
+    await (await openLanguagePicker(page)).selectOption('en');
     await page.waitForURL(/lang=en/);
     const url = new URL(page.url());
     expect(url.searchParams.get('lang')).toBe('en');

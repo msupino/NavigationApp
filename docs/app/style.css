@@ -8962,7 +8962,7 @@ body.deck-on #toolbar .route-file-btn,
 body.deck-on .route-file-row .route-file-btn,
 body.deck-on .fp-route-file-row .route-file-btn { min-height: 44px; }
 body.deck-on .fp-columns-all { min-height: 36px; }
-body.deck-on .fp-del button { min-width: 40px; min-height: 36px; }
+body.deck-on .fp-del button { min-height: 36px; }
 body.deck-on .modal-btns button { min-width: 44px; min-height: 44px; }
 
 /* Desktop: the web minimum of 24px (WCAG 2.2 target size). */

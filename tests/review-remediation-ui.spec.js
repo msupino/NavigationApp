@@ -1,9 +1,9 @@
 // @ts-check
-const { test, expect } = require('./_setup');
+const { test, expect, openLanguagePicker } = require('./_setup');
 
 test('history restoration keeps the language selector aligned with the page', async ({ page }) => {
   await page.goto('?lang=he&nogist');
-  await page.locator('#lang-select').selectOption('en');
+  await (await openLanguagePicker(page)).selectOption('en');
   await page.waitForURL(/lang=en/);
   await page.goBack();
   await expect(page).toHaveURL(/lang=he/);

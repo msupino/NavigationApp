@@ -8,7 +8,7 @@
 //   - Toolbar drag (#toolbar-handle writes navaid.toolbarPos)
 //   - Rotate dial (map rotation writes navaid.bearing)
 //   - Page frame A3/A4 (show/hide via toolbar buttons)
-const { test, expect } = require('./_setup');
+const { test, expect, openLanguagePicker } = require('./_setup');
 const { LLHZ } = require('./_airfieldArp');
 
 const MAP_TILE_PNG = Buffer.from(
@@ -550,9 +550,10 @@ test.describe('Charts modal navigation', () => {
       await clickToolbarControl(page, c.button);
       await expect(page.locator(c.marker).first()).toBeVisible();
       await expect(page.locator('.modal-back.flight-plan')).toHaveCount(1);
+      const picker = await openLanguagePicker(page);
       await Promise.all([
         page.waitForURL(/lang=he/),
-        page.locator('#lang-select').selectOption('he'),
+        picker.selectOption('he'),
       ]);
       await expect(page.locator('html')).toHaveAttribute('lang', 'he');
       await expect(page.locator(c.marker).first()).toBeVisible();
