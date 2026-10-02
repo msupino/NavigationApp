@@ -31,3 +31,28 @@ test('desktop: the menubar keeps a globe switch in sight, and stays one row', as
   await Promise.all([page.waitForURL(/lang=en/), btn.click()]);
   await expect(page.locator('html')).toHaveAttribute('lang', 'en');
 });
+
+test('phone: in flight the switch steps aside, and the readout fits its own line', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('?lang=he&nogist');
+  await page.waitForSelector('#deck-strip .deck-strip-lang');
+  const got = await page.evaluate(() => {
+    // A live position and the readout a pilot saw in flight: speed, altitude, subscale,
+    // heading, point count and the elapsed clock.
+    window.gpsPositionLive = () => true;
+    const ro = document.getElementById('gps-readout');
+    ro.hidden = false;
+    ro.textContent = '105 kt \u00b7 402 ft \u00b7 29.35\u2033 \u00b7 322\u00b0 \u00b7 12 pts \u00b7 00:14';
+    NavAid.refreshMobileDeck();
+    const strip = document.getElementById('deck-strip');
+    const line = strip.querySelector('.deck-strip-top');
+    const vals = strip.querySelector('.deck-strip-vals').textContent;
+    return { live: strip.classList.contains('deck-strip-live'),
+      lang: getComputedStyle(strip.querySelector('.deck-strip-lang')).display,
+      fits: line.scrollWidth <= line.clientWidth + 1, vals };
+  });
+  expect(got.live).toBe(true);
+  expect(got.lang).toBe('none');                 // the instruments get the room
+  expect(got.fits).toBe(true);                   // nothing runs under Comm fail
+  for (const kept of ['105 kt', '402 ft', '322\u00b0']) expect(got.vals).toContain(kept);   // never dropped
+});
