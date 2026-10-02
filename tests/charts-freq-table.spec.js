@@ -80,7 +80,7 @@ async function boot(page, lang = 'en') {
     try {
       for (const k of Object.keys(localStorage)) localStorage.removeItem(k);
       sessionStorage.clear();
-      for (const s of ['build', 'view', 'display', 'charts', 'export', 'print'])
+      for (const s of ['build', 'view', 'display', 'charts', 'export', 'print', 'settings'])
         localStorage.setItem('navaid.sec.' + s, '1');
     } catch (e) {}
   });
@@ -103,7 +103,7 @@ test.describe('Charts modal — frequency catalog table', () => {
     await boot(page);
     const button = page.locator('.tb-section[data-sec="charts"] #freq-table');
     await expect(button).toBeVisible();
-    await expect(button).toHaveText('📡 Freq table');
+    await expect(button).toHaveText('Freq table');
 
     await button.click();
     await expect(page.locator('.charts-freq-title h3')).toHaveText('Frequency defaults');
@@ -134,7 +134,7 @@ test.describe('Charts modal — frequency catalog table', () => {
     await boot(page);
     const button = page.locator('.tb-section[data-sec="charts"] #alt-pairs');
     await expect(button).toBeVisible();
-    await expect(button).toHaveText('🧭 Alt pairs');
+    await expect(button).toHaveText('Alt pairs');
 
     await button.click();
     await expect(page.locator('.charts-alt-title h3')).toHaveText('CVFR altitude pairs');
@@ -458,7 +458,7 @@ test.describe('Charts modal — frequency catalog table', () => {
     await installAltitudeFixture(page);
     await boot(page, 'he');
     const button = page.locator('.tb-section[data-sec="charts"] #alt-pairs');
-    await expect(button).toHaveText('🧭 נתיבים');
+    await expect(button).toHaveText('נתיבים');
     await expect(button).toHaveAttribute('title', 'הצג והעתק נתיבי CVFR שנלמדו');
 
     await button.click();

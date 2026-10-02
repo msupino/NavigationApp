@@ -9,7 +9,7 @@ async function boot(page) {
     try {
       for (const k of Object.keys(localStorage)) localStorage.removeItem(k);
       sessionStorage.clear();
-      for (const s of ['build', 'view', 'display', 'charts', 'export', 'print']) {
+      for (const s of ['build', 'view', 'display', 'charts', 'export', 'print', 'settings']) {
         localStorage.setItem('navaid.sec.' + s, '1');
       }
     } catch (e) {}

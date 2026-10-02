@@ -22,7 +22,7 @@ const OPENERS = ['route-templates', 'freq-table', 'alt-pairs', 'nav-log', 'chart
 async function boot(page) {
   await page.setViewportSize({ width: 1280, height: 900 });
   await page.addInitScript(() => {
-    for (const s of ['build', 'view', 'display', 'charts', 'export', 'print'])
+    for (const s of ['build', 'view', 'display', 'charts', 'export', 'print', 'settings'])
       try { localStorage.setItem('navaid.sec.' + s, '1'); } catch (e) {}
   });
   await page.goto('?lang=en&nogist');

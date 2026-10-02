@@ -30,7 +30,7 @@ async function boot(page, notams) {
     status: 200, contentType: 'application/json', body: JSON.stringify(feed(notams)) }));
   await page.addInitScript(() => {
     try {
-      for (const sec of ['build', 'view', 'display', 'charts', 'export', 'print'])
+      for (const sec of ['build', 'view', 'display', 'charts', 'export', 'print', 'settings'])
         localStorage.setItem('navaid.sec.' + sec, '1');
     } catch (e) {}
   });

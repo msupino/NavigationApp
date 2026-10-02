@@ -258,3 +258,16 @@ exports.captureToasts = async (page) => {
   });
   return () => page.evaluate(() => (window.__toasts || []).slice());
 };
+
+// The language picker lives in the Settings section. Opens it (and, on a phone, the menu
+// sheet it sits in) unless the picker is already on screen.
+exports.openLanguagePicker = async (page) => {
+  const pick = page.locator('#lang-select');
+  if (await pick.isVisible()) return pick;
+  const menu = page.locator('.deck-btn-menu');
+  if (await menu.isVisible() && !(await page.locator('#deck-sheet .tb-section[data-sec="settings"]').isVisible()))
+    await menu.click();
+  await page.locator('.tb-section[data-sec="settings"] .tb-section-head').click();
+  await pick.waitFor({ state: 'visible' });
+  return pick;
+};

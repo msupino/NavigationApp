@@ -51,7 +51,7 @@ async function boot(page, { sigwx = SIGWX, pwxManifest = PWX } = {}, lang = 'en'
   await page.route(/ims-data\/ims\/pwx\.json/, r => r.fulfill({
     status: 200, contentType: 'application/json', body: JSON.stringify(pwxManifest) }));
   await page.addInitScript(() => {
-    for (const s of ['build', 'view', 'display', 'charts', 'export', 'print'])
+    for (const s of ['build', 'view', 'display', 'charts', 'export', 'print', 'settings'])
       try { localStorage.setItem('navaid.sec.' + s, '1'); } catch (e) {}
   });
   await page.goto('?lang=' + lang + '&nogist');
@@ -111,7 +111,7 @@ for (const [layer, key, expected] of [
     await page.route(/ims-data\/ims\/pwx\.json/, r => r.fulfill({
       status: 200, contentType: 'application/json', body: JSON.stringify(PWX) }));
     await page.addInitScript((k) => {
-      for (const s of ['build', 'view', 'display', 'charts', 'export', 'print'])
+      for (const s of ['build', 'view', 'display', 'charts', 'export', 'print', 'settings'])
         try { localStorage.setItem('navaid.sec.' + s, '1'); } catch (e) {}
       // What the previous session left behind: the layer was on. No wxTime is stored, so
       // nothing is pinned and the dropdown is free to be moved.

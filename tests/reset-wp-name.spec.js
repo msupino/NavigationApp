@@ -26,7 +26,7 @@ async function boot(page, lang = 'en') {
       if (localStorage.getItem('__test_reset_wp_name_init') !== '1') {
         for (const k of Object.keys(localStorage)) localStorage.removeItem(k);
         sessionStorage.clear();
-        for (const s of ['build', 'view', 'display', 'charts', 'export', 'print']) {
+        for (const s of ['build', 'view', 'display', 'charts', 'export', 'print', 'settings']) {
           localStorage.setItem('navaid.sec.' + s, '1');
         }
         localStorage.setItem('__test_reset_wp_name_init', '1');
@@ -133,7 +133,7 @@ test.describe('#418 — waypoint-name reset button', () => {
     }, { timeout: bootDataTimeout });
   });
 
-  test('Hebrew locale: reset button label keeps text with the ↻ glyph', async ({ page }) => {
+  test('Hebrew locale: reset button keeps its text, with a drawn icon for the ↻', async ({ page }) => {
     await boot(page, 'he');
     await page.evaluate(() => {
       state.waypoints = [{ lat: 32.0, lng: 34.9, name: 'הבדיקה' }];
@@ -141,10 +141,11 @@ test.describe('#418 — waypoint-name reset button', () => {
       syncLegs(); draw(); showInspector();
     });
     const btn = page.locator('#insp-body .insp-btn[title*="נקודת הייחוס"]');
-    await expect(btn).toHaveText('↻ אפס שם נקודה');
+    await expect(btn).toHaveText('אפס שם נקודה');
+    await expect(btn.locator('.mi-icon svg')).toHaveCount(1);
   });
 
-  test('button is positioned directly below Delete waypoint', async ({ page }) => {
+  test('the reset is the first action, and Delete waypoint the last', async ({ page }) => {
     await boot(page);
     await page.evaluate(() => {
       state.waypoints = [{ lat: 32.0, lng: 34.9, name: 'x' }];
@@ -155,21 +156,23 @@ test.describe('#418 — waypoint-name reset button', () => {
     const labels = await buttons.evaluateAll(btns => btns.map(b => b.textContent || ''));
     const deleteIndex = labels.findIndex(t => /Delete waypoint/i.test(t));
     const resetIndex = labels.findIndex(t => /Reset waypoint name/i.test(t));
-    expect(deleteIndex).toBeGreaterThanOrEqual(0);
-    expect(resetIndex).toBe(deleteIndex + 1);
-    await expect(buttons.nth(resetIndex)).toHaveText(/↻ Reset waypoint name/i);
+    expect(deleteIndex).toBe(labels.length - 1);    // destructive, so last and apart
+    expect(resetIndex).toBe(0);
+    await expect(buttons.nth(resetIndex)).toHaveText(/^Reset waypoint name/i);
+    await expect(buttons.nth(resetIndex).locator('.mi-icon svg')).toHaveCount(1);
     await expect(buttons.nth(resetIndex)).toHaveAttribute('title', /nearest reference/i);
   });
 
-  test('inspector Delete waypoint label includes trash icon', async ({ page }) => {
+  test('inspector Delete waypoint carries the drawn trash icon, not the 🗑 glyph', async ({ page }) => {
     await boot(page);
     await page.evaluate(() => {
       state.waypoints = [{ lat: 32.0, lng: 34.9, name: 'x' }];
       state.selected = { type: 'wp', index: 0 };
       syncLegs(); draw(); showInspector();
     });
-    const del = await page.locator('#insp-body .insp-btn').filter({ hasText: /Delete waypoint/ }).textContent();
-    expect(del).toMatch(/🗑/);
+    const del = page.locator('#insp-body .insp-btn').filter({ hasText: /Delete waypoint/ });
+    expect(await del.textContent()).not.toMatch(/🗑/);
+    await expect(del.locator('.mi-icon svg')).toHaveCount(1);
   });
 
   test('toolbar: reset all waypoint names (confirm)', async ({ page }) => {
@@ -319,8 +322,10 @@ test.describe('#418 — waypoint-name reset button', () => {
 
   test('Hebrew toolbar reset-all label and delete-note pattern', async ({ page }) => {
     await boot(page, 'he');
+    // The menu draws its own icon in front, in place of the string's ↻.
     const tb = await page.locator('#tool-reset-all-wp-names').textContent();
-    expect(tb).toMatch(/↻ אפס את כל שמות ציוני הדרך/);
+    expect(tb).toMatch(/אפס את כל שמות ציוני הדרך/);
+    expect(await page.locator('#tool-reset-all-wp-names .mi-icon svg').count()).toBe(1);
     const delNoteStr = await page.evaluate(() => S.deleteNote);
     expect(delNoteStr).toMatch(/🗑/);
     await page.evaluate(() => {
@@ -328,7 +333,7 @@ test.describe('#418 — waypoint-name reset button', () => {
       state.selected = { type: 'note', index: 0 };
       syncLegs(); draw(); showInspector();
     });
-    const delNote = await page.locator('#insp-body .insp-btn').filter({ hasText: /מחק הערה/ }).textContent();
-    expect(delNote).toMatch(/🗑/);
+    const delNote = page.locator('#insp-body .insp-btn').filter({ hasText: /מחק הערה/ });
+    await expect(delNote.locator('.mi-icon svg')).toHaveCount(1);
   });
 });

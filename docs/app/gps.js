@@ -1065,7 +1065,7 @@ function resetGpsFooterBtn(id, label, icon) {
   const t = b.querySelector('.footer-link-text');
   if (t) t.textContent = label; else b.textContent = label;
   const ic = b.querySelector('.footer-link-icon');
-  if (ic) ic.textContent = icon;
+  if (ic) setNavIcon(ic, icon);
   b.setAttribute('aria-pressed', 'false');
 }
 function gpsErrMsg(err) {
@@ -1133,7 +1133,7 @@ function updateGpsRecIndicator() {
                                : (S.tbGpsRecord || 'Start recording');
     if (t) t.textContent = label; else btn.textContent = label;
     const ic = btn.querySelector('.footer-link-icon');
-    if (ic) ic.textContent = gpsRecording ? '⏹' : '⏺';
+    if (ic) setNavIcon(ic, gpsRecording ? 'stop' : 'record');
     btn.setAttribute('aria-pressed', gpsRecording ? 'true' : 'false');
   }
 }

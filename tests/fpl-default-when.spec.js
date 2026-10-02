@@ -82,7 +82,7 @@ test('the filing dialog opens on that proposal', async ({ page }) => {
       static now() { return fixed; }
     };
     try {
-      for (const sec of ['build', 'view', 'display', 'charts', 'export', 'print'])
+      for (const sec of ['build', 'view', 'display', 'charts', 'export', 'print', 'settings'])
         localStorage.setItem('navaid.sec.' + sec, '1');
     } catch (e) {}
   });

@@ -144,7 +144,7 @@ test('"Show plates for" is only offered while airfield charts are on', async ({ 
   // Choosing which airfields' plates to show means nothing while none are shown; the row
   // stood there regardless, next to an unticked box.
   await page.addInitScript(() => {
-    for (const s of ['build', 'view', 'display', 'charts', 'export', 'print'])
+    for (const s of ['build', 'view', 'display', 'charts', 'export', 'print', 'settings'])
       try { localStorage.setItem('navaid.sec.' + s, '1'); } catch (e) {}
   });
   await page.goto('?lang=en&nogist');

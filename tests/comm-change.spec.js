@@ -98,7 +98,7 @@ async function boot(page) {
         sessionStorage.clear();
         // Open every accordion section so the comm-change checkbox is in
         // the DOM as a styled control, not just a hidden node.
-        for (const s of ['build', 'view', 'display', 'charts', 'export', 'print']) {
+        for (const s of ['build', 'view', 'display', 'charts', 'export', 'print', 'settings']) {
           localStorage.setItem('navaid.sec.' + s, '1');
         }
         localStorage.setItem('__test_commchange_init', '1');
@@ -462,7 +462,7 @@ test.describe('comm-change schema + UI plumbing (shipped populated dataset)', ()
       try {
         for (const k of Object.keys(localStorage)) localStorage.removeItem(k);
         sessionStorage.clear();
-        for (const s of ['build', 'view', 'display', 'charts', 'export', 'print'])
+        for (const s of ['build', 'view', 'display', 'charts', 'export', 'print', 'settings'])
           localStorage.setItem('navaid.sec.' + s, '1');
         localStorage.setItem('navaid.showCommChange', '0');
       } catch (e) {}

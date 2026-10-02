@@ -131,6 +131,160 @@ function setMode(mode) {
   }
   if (typeof refreshEmptyRouteHint === 'function') refreshEmptyRouteHint();
 }
+// Menu section icons and the Save / My routes icons, from the shared line set (core.js
+// NAV_ICONS): one family with the map buttons, no emoji.
+document.querySelectorAll('[data-nav-icon]').forEach((el) => {
+  if (typeof navIconSvg !== 'function') return;
+  if (el.classList.contains('footer-link-icon') || el.classList.contains('follow-me-button-icon')) { setNavIcon(el, el.dataset.navIcon, 16); return; }
+  el.innerHTML = navIconSvg(el.dataset.navIcon, el.classList.contains('rf-icon') ? 18 : 20);
+});
+// The quick language switch: a globe and the OTHER language's own name ("English" while the
+// app is in Hebrew, "עברית" while it is in English). The picker lives in Settings, a word in
+// the current language -- someone who cannot read it still recognises a globe and their own
+// language's name. Its title is in the target language too, for the same reader.
+function langQuickInfo() {
+  const other = window.__navLang === 'en' ? 'he' : 'en';
+  return { other, label: other === 'en' ? 'English' : 'עברית',
+    title: other === 'en' ? 'Switch to English' : 'מעבר לעברית' };
+}
+function dressLangQuick(btn) {
+  if (!btn || btn.dataset.langQuick) return;
+  btn.dataset.langQuick = '1';
+  const q = langQuickInfo();
+  const lab = btn.querySelector('.lang-quick-label');
+  if (lab) { lab.textContent = q.label; lab.lang = q.other; lab.dir = q.other === 'he' ? 'rtl' : 'ltr'; }
+  btn.title = q.title;
+  btn.setAttribute('aria-label', q.title);
+  btn.setAttribute('lang', q.other);
+  btn.addEventListener('click', () => {
+    if (typeof window.navSwitchLanguage === 'function') window.navSwitchLanguage(q.other);
+  });
+}
+dressLangQuick(document.getElementById('lang-quick'));
+// Menu entries: a line icon in front, and the emoji that used to stand there taken off. The
+// strings keep their glyphs (other surfaces read them), so the menu strips what it shows; an
+// entry that rewrites its own text later (counts, Dark/Light mode) is re-dressed by the observer.
+const MENU_ICONS = {
+  'tool-add': 'addWp', 'tool-note': 'addNote', 'search-trigger': 'search', reverse: 'reverse',
+  undo: 'undo', clear: 'trash', fit: 'fit', 'tool-reset-all-markers': 'reset',
+  'tool-reset-all-wp-names': 'reset', 'tool-magnifier': 'magnifier',
+  'theme-toggle': (b) => (/☀|light|בהיר/i.test(b.textContent) ? 'sun' : 'moon'),
+  'route-templates': 'templates', 'freq-table': 'antenna', 'alt-pairs': 'altPairs',
+  'nav-log': 'form', charts: 'charts', 'sigwx-btn': 'globe', 'pwx-btn': 'wind',
+  'sigmet-btn': 'warn', 'airmet-btn': 'warn', 'route-check-btn': 'check', 'notam-list-btn': 'list',
+  'lsa-list-btn': 'list', 'mosaic-btn': 'mosaic', 'offline-tiles-btn': 'download',
+  load: 'upload', 'route-library': 'folder', share: 'link', fly: 'plane', 'follow-me-new': 'key',
+  'clear-store': 'trash', 'print-fit-screen': 'fit', 'print-fit': 'expand', print: 'print',
+};
+const LEADING_GLYPHS = /^[\s\u2190-\u2BFF\u2600-\u27BF\uFE0F\u200D\p{Extended_Pictographic}]+/u;
+let menuDressing = false;
+function dressMenuItem(btn) {
+  const spec = MENU_ICONS[btn.id];
+  if (!spec || typeof navIconSvg !== 'function') return;
+  const name = typeof spec === 'function' ? spec(btn) : spec;
+  menuDressing = true;
+  try {
+    // The first words of the entry, wherever they sit (a bare text node, or inside a label
+    // span next to a count badge): the glyph in front of them goes.
+    const walk = document.createTreeWalker(btn, NodeFilter.SHOW_TEXT, {
+      acceptNode: (n) => (n.parentElement && n.parentElement.closest('.mi-icon')
+        ? NodeFilter.FILTER_REJECT : NodeFilter.FILTER_ACCEPT),
+    });
+    for (let n = walk.nextNode(); n; n = walk.nextNode()) {
+      const v = n.nodeValue.replace(LEADING_GLYPHS, '');
+      if (v !== n.nodeValue) n.nodeValue = v;
+      if (v.trim()) break;
+    }
+    let ic = btn.querySelector(':scope > .mi-icon');
+    if (!ic) { ic = document.createElement('span'); ic.className = 'mi-icon'; ic.setAttribute('aria-hidden', 'true'); btn.prepend(ic); }
+    if (ic.dataset.icon !== name) { ic.innerHTML = navIconSvg(name, 16); ic.dataset.icon = name; }
+  } finally { menuDressing = false; }
+}
+function dressMenus() {
+  for (const id of Object.keys(MENU_ICONS)) {
+    const b = document.getElementById(id);
+    if (b && b.closest('#toolbar')) dressMenuItem(b);
+  }
+}
+window.dressMenus = dressMenus;
+dressMenus();
+// The waypoint panel's actions and the dialogs' action rows: same idea, keyed by the glyph the
+// label starts with (these are built afresh each time, by many branches).
+const GLYPH_ICONS = { '🗑': 'trash', '↻': 'reset', '🔥': 'hotspot', '⏱': 'timer', '📡': 'antenna',
+  '✈': 'plane', '+': 'plus', '📍': 'location', '⇄': 'reverse', '🧭': 'compass', '🔑': 'key',
+  '📋': 'list', '🔗': 'link', '💾': 'save', '📂': 'folder', '⬇': 'download', '⬆': 'upload', '🖨': 'print' };
+function dressByGlyph(btn) {
+  if (!btn || btn.querySelector(':scope > .mi-icon') || typeof navIconSvg !== 'function') return;
+  const t = (btn.textContent || '').trim();
+  const g = Object.keys(GLYPH_ICONS).find(k => t.startsWith(k));
+  if (!g) return;
+  MENU_ICONS[btn.id || (btn.id = 'gi-' + Math.random().toString(36).slice(2, 8))] = GLYPH_ICONS[g];
+  dressMenuItem(btn);
+}
+window.dressByGlyph = dressByGlyph;
+if (typeof MutationObserver === 'function') {
+  // A row's visible label names its field for a screen reader too (the panel's rows were
+  // built as label + input side by side, unconnected).
+  let rowSeq = 0;
+  const linkRowLabels = (root) => root.querySelectorAll && root.querySelectorAll('.row > label:not([for])').forEach((lab) => {
+    const f = lab.nextElementSibling;
+    if (!f || !/^(INPUT|SELECT|TEXTAREA)$/.test(f.tagName) || f.getAttribute('aria-label')) return;
+    if (!f.id) f.id = 'row-field-' + (++rowSeq);
+    lab.htmlFor = f.id;
+  });
+  const scan = (root) => {
+    if (!root.querySelectorAll) return;
+    root.querySelectorAll('.insp-btn, .modal-btns button').forEach(dressByGlyph);
+    linkRowLabels(root);
+  };
+  const ins = document.getElementById('insp-body');
+  if (ins) new MutationObserver(() => scan(ins)).observe(ins, { childList: true, subtree: true });
+  new MutationObserver((list) => {
+    for (const m of list) m.addedNodes.forEach((n) => { if (n.nodeType === 1) scan(n); });
+  }).observe(document.body, { childList: true });
+}
+if (typeof MutationObserver === 'function') {
+  const mo = new MutationObserver((list) => {
+    if (menuDressing) return;
+    const touched = new Set();
+    for (const m of list) {
+      const el = m.target.nodeType === 1 ? m.target : m.target.parentElement;
+      const b = el && el.closest && el.closest('button');
+      if (b && MENU_ICONS[b.id]) touched.add(b);
+    }
+    touched.forEach(dressMenuItem);
+  });
+  const tb = document.getElementById('toolbar');
+  if (tb) mo.observe(tb, { childList: true, characterData: true, subtree: true });
+}
+// The Export dropdown reads as one more entry: the same icon in front, no box around it.
+(function dressExportSelect() {
+  const sel = document.getElementById('export-select');
+  if (!sel || sel.parentElement.classList.contains('mi-select')) return;
+  const wrap = document.createElement('span');
+  wrap.className = 'mi-select';
+  sel.parentElement.insertBefore(wrap, sel);
+  const ic = document.createElement('span');
+  ic.className = 'mi-icon';
+  ic.setAttribute('aria-hidden', 'true');
+  if (typeof navIconSvg === 'function') ic.innerHTML = navIconSvg('download', 16);
+  // The face the phone shows: icon and the current entry's name centred, like the buttons
+  // beside it, with the real select laid over it (see .mi-face in the stylesheet).
+  const face = document.createElement('span');
+  face.className = 'mi-face';
+  face.setAttribute('aria-hidden', 'true');
+  wrap.append(ic, face, sel);
+  // The list too: each format reads by its name, without the glyph in front.
+  for (const o of sel.options) o.textContent = o.textContent.replace(LEADING_GLYPHS, '');
+  const syncFace = () => {
+    const o = sel.options[sel.selectedIndex] || sel.options[0];
+    face.textContent = o ? o.textContent.trim() : '';
+  };
+  syncFace();
+  sel.addEventListener('change', () => setTimeout(syncFace, 0));
+  if (typeof MutationObserver === 'function')
+    new MutationObserver(syncFace).observe(sel, { childList: true, subtree: true, characterData: true });
+})();
 document.getElementById('tool-add').onclick = () => setMode('add');
 document.getElementById('tool-note').onclick = () => setMode('note');
 // Initial aria-pressed sync — both modes start off so each button is
@@ -4503,15 +4657,15 @@ function buildRouteFileRow(extraClass) {
     const b = document.createElement('button');
     b.type = 'button';
     b.className = 'route-file-btn ' + cls;
-    b.innerHTML = '<span class="rf-icon" aria-hidden="true">' + icon + '</span><span class="rf-label"></span>' + tail;
+    b.innerHTML = '<span class="rf-icon" aria-hidden="true">' + navIconSvg(icon, 18) + '</span><span class="rf-label"></span>' + tail;
     return b;
   };
-  const save = mk('route-file-save', '💾', '<span class="rf-dot" hidden></span>');
+  const save = mk('route-file-save', 'save', '<span class="rf-dot" hidden></span>');
   save.querySelector('.rf-label').insertAdjacentHTML('afterend', '<bdi class="rf-sub" hidden></bdi>');
   { const t = document.createElement('span'); t.className = 'rf-text';
     const l = save.querySelector('.rf-label'), sub = save.querySelector('.rf-sub');
     l.before(t); t.append(l, sub); }
-  const load = mk('route-file-load', '📂', '<span class="rf-count"></span>');
+  const load = mk('route-file-load', 'folder', '<span class="rf-count"></span>');
   save.onclick = saveRouteFromHeader;
   load.onclick = loadRouteFromHeader;
   row.append(save, load);
@@ -4638,7 +4792,7 @@ function setFooterBtn(btn, label, icon) {
   const t = btn.querySelector('.footer-link-text');
   if (t) t.textContent = label; else btn.textContent = label;
   const ic = btn.querySelector('.footer-link-icon');
-  if (ic && icon) ic.textContent = icon;
+  if (ic && icon) setNavIcon(ic, icon);
 }
 const gpsBtn = document.getElementById('gps-record');
 if (gpsBtn) {
