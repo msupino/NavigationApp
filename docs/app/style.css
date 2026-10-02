@@ -9165,3 +9165,14 @@ body.theme-light .deck-strip-sub { color: #4a5562; }
 body.theme-light .deck-strip:not(.deck-strip-live) .deck-strip-vals { opacity: 1; color: #5b6672; }
 body.theme-light .deck-strip-lang { border-color: #858f9c; color: #1f252c; }
 body.theme-light .deck-strip-commfail:focus-visible { outline-color: #1d6fe0; }
+
+/* Theme-parity pass (ui-ux-pro-max pre-delivery checklist): what stayed in one theme, and text
+   under 4.5:1. The map's floating chrome (buttons, readouts, time card) is one look on every
+   chart by design and is not part of this. */
+body.theme-dark #insp-zoom button { background: #2f2b2b; color: #e8e8e8; border: 1px solid #7f7777; color-scheme: dark; }
+body.theme-light #insp-zoom button { background: #fff; color: #1f252c; border: 1px solid #858f9c; }
+body.theme-light .fp-profile-dir { color: #4a5562; }
+body.theme-light .fp-profile-dir .fp-dir-arrow { color: #1f5f9e; }
+body.theme-light #toolbar .tb-group { color: #5b6672; }
+.map-legend-version { color: #a39d9d; }
+body.theme-light .map-legend-version { color: #5b6672; }

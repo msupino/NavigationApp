@@ -92,7 +92,7 @@
     const langBtn = document.createElement('button');
     langBtn.type = 'button';
     langBtn.className = 'deck-strip-lang';
-    langBtn.innerHTML = (typeof navIconSvg === 'function' ? navIconSvg('globe', 16) : '')
+    langBtn.innerHTML = (typeof navIconSvg === 'function' ? navIconSvg('globe', 18) : '')
       + '<span class="lang-quick-label"></span>';
     if (typeof dressLangQuick === 'function') dressLangQuick(langBtn);
     strip.appendChild(langBtn);
