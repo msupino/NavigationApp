@@ -6919,6 +6919,9 @@ function syncNotamTime() {
 if (notamTimeEl) {
   notamTimeEl.oninput = () => {
     syncNotamTime(); refreshNotamListBtn();
+    // A bubble or leg panel lists the NOTAMs in force at this time: rebuild it.
+    if (state.selected && (state.selected.type === 'lsaArea' || state.selected.type === 'leg') &&
+        typeof showInspector === 'function') showInspector();
     // AIRMET rides the same look-ahead: refresh its count/controls when the slider moves.
     if (typeof refreshAirmetGroup === 'function') refreshAirmetGroup();
     if (typeof refreshAirmetBtn === 'function') refreshAirmetBtn();

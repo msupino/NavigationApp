@@ -51,7 +51,7 @@ test('pressing an AIRMET with an area frames it; one with a broken area is liste
   expect(got.inView).toBe(true);
 });
 
-test('the original text is one press away on every card', async ({ page }) => {
+test('the button switches a card between its decoded rows and its original text', async ({ page }) => {
   await page.goto('?lang=he&nogist');
   await page.waitForFunction(() => typeof showAirmetDecoded === 'function');
   const got = await page.evaluate((raw) => {
@@ -61,12 +61,17 @@ test('the original text is one press away on every card', async ({ page }) => {
     const card = document.querySelector('.met-card');
     const btn = card.querySelector('.met-card-btn');
     const rawEl = card.querySelector('.met-card-raw');
-    const before = rawEl.hidden;
+    const rows = card.querySelector('.met-card-rows');
+    const label0 = btn.textContent, before = [rawEl.hidden, rows.hidden];
     btn.click();
-    return { label: btn.textContent, before, after: rawEl.hidden, expanded: btn.getAttribute('aria-expanded') };
+    const after = [rawEl.hidden, rows.hidden], label1 = btn.textContent;
+    btn.click();
+    return { label0, label1, before, after, back: [rawEl.hidden, rows.hidden] };
   }, AIRMET);
-  expect(got.label).toBe('הטקסט המקורי');
-  expect(got.before).toBe(true);
-  expect(got.after).toBe(false);
-  expect(got.expanded).toBe('true');
+  // One view or the other, never both; the button names the view it switches to.
+  expect(got.label0).toBe('הטקסט המקורי');
+  expect(got.before).toEqual([true, false]);
+  expect(got.after).toEqual([false, true]);
+  expect(got.label1).toBe('מפוענח');
+  expect(got.back).toEqual([true, false]);
 });

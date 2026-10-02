@@ -5106,6 +5106,7 @@ function metWarningCard(w, color, onShow, summary) {
   head.appendChild(name);
   const tools = document.createElement('span');
   tools.className = 'met-card-tools';
+  const grid = document.createElement('div');
   // The original text, one press away: the decoded rows are what a pilot reads, the raw
   // line is what a briefer or a controller quotes.
   let raw = null;
@@ -5119,10 +5120,16 @@ function metWarningCard(w, color, onShow, summary) {
     rawBtn.type = 'button';
     rawBtn.className = 'met-card-btn';
     rawBtn.textContent = (S.met && S.met.raw) || 'Original text';
-    rawBtn.setAttribute('aria-expanded', 'false');
+    rawBtn.setAttribute('aria-pressed', 'false');
+    // One view or the other: the original text REPLACES the decoded rows (showing both said
+    // everything twice), and the button names the view it switches to.
     rawBtn.onclick = () => {
-      raw.hidden = !raw.hidden;
-      rawBtn.setAttribute('aria-expanded', String(!raw.hidden));
+      const showRaw = raw.hidden;
+      raw.hidden = !showRaw;
+      if (grid) grid.hidden = showRaw;
+      rawBtn.textContent = showRaw ? ((S.met && S.met.decoded) || 'Decoded')
+        : ((S.met && S.met.raw) || 'Original text');
+      rawBtn.setAttribute('aria-pressed', String(showRaw));
     };
     tools.appendChild(rawBtn);
   }
@@ -5146,7 +5153,6 @@ function metWarningCard(w, color, onShow, summary) {
     sum.textContent = summary;
     item.appendChild(sum);
   }
-  const grid = document.createElement('div');
   grid.className = 'met-card-rows';
   for (const r of d.rows) {
     const k = document.createElement('span'); k.className = 'met-k'; k.textContent = r.label;

@@ -2639,7 +2639,7 @@ window.S = Object.assign({
   met: { valid: 'Valid', fir: 'FIR', phenomenon: 'Hazard', status: 'Status', area: 'Area',
     levels: 'Levels', movement: 'Movement', change: 'Change', cancels: 'Cancels', cancelsNo: 'Cancels no.',
     entireFir: 'The whole FIR', withinArea: 'Within the drawn area', ofLine: 'of the line',
-    topsTo: 'Tops', above: 'Above', below: 'Below', movingTo: 'Moving', raw: 'Original text',
+    topsTo: 'Tops', above: 'Above', below: 'Below', movingTo: 'Moving', raw: 'Original text', decoded: 'Decoded',
     showOnMap: 'Show on map' },
   inspNotamsTitle: 'NOTAMs in force',
   inspNotamUntil: 'until',

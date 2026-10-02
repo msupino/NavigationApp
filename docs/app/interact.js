@@ -1729,7 +1729,9 @@ function airspaceNotams(a) {
 // must not need a second tap to say so. Each NOTAM is a card: its number, until when, and its
 // text; tapping one opens it in the NOTAM list (which can frame it on the map).
 function inspNotamsInForce(list) {
-  const now = Date.now();
+  // At the time the look-ahead slider shows, as the NOTAM layer does: scrubbed to 15:00Z, the
+  // panel lists what will be in force then, not what is now.
+  const now = typeof notamViewNow === 'function' ? notamViewNow() : Date.now();
   return (list || []).filter(n => n && (typeof notamActive !== 'function' || notamActive(n, now)));
 }
 function appendInspNotams(body, list) {

@@ -1214,7 +1214,7 @@ window.S = {
   met: { valid: 'בתוקף', fir: 'FIR', phenomenon: 'תופעה', status: 'מצב', area: 'אזור',
     levels: 'גבהים', movement: 'תנועה', change: 'שינוי', cancels: 'ביטול', cancelsNo: 'מבטל את מס׳',
     entireFir: 'כל ה-FIR', withinArea: 'בתוך האזור המסומן', ofLine: 'לקו',
-    topsTo: 'עד', above: 'מעל', below: 'מתחת ל', movingTo: 'נע ל', raw: 'הטקסט המקורי',
+    topsTo: 'עד', above: 'מעל', below: 'מתחת ל', movingTo: 'נע ל', raw: 'הטקסט המקורי', decoded: 'מפוענח',
     showOnMap: 'הצג במפה' },
   inspNotamsTitle: 'נוטאמים בתוקף',
   inspNotamUntil: 'עד',

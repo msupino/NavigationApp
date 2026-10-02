@@ -9252,4 +9252,4 @@ body.deck-on .met-card-btn { min-height: 36px; }
 .met-k { opacity: .75; }
 .met-v { font-weight: 600; unicode-bidi: isolate; text-align: start; }
 .met-card-raw { font: 11px/1.4 monospace; opacity: .8; white-space: pre-wrap; text-align: left; margin-top: 4px; }
-.met-card-raw[hidden] { display: none; }
+.met-card-raw[hidden], .met-card-rows[hidden] { display: none; }

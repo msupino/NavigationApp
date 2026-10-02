@@ -50,3 +50,27 @@ test('a leg through a NOTAM area shows it; a leg clear of it shows none', async 
   expect(got.crossing).toEqual(['B0001/26']);
   expect(got.clear).toEqual([]);
 });
+
+test('the panel lists the NOTAMs in force at the look-ahead time, and follows the slider', async ({ page }) => {
+  await lowAlt(page);
+  const got = await page.evaluate(([now]) => {
+    // In force from +3h to +6h: not now, but at the slider's +4h.
+    notams = [{ id: 'C2000/26', text: 'ULTRALIGHT BUBBLE KARMIEL (BKRML) CLSD.',
+      start: new Date(now + 3 * 3600e3).toISOString(), end: new Date(now + 6 * 3600e3).toISOString(), geom: null }];
+    _notamBubbleGen++;
+    state.selected = { type: 'lsaArea', index: areas.findIndex(a => a.icao === 'BKRML') };
+    showInspector();
+    const ids = () => [...document.querySelectorAll('#insp-body .insp-notam-id')].map(e => e.textContent);
+    const atNow = ids();
+    const el = document.getElementById('lookahead-time');
+    el.value = '4';
+    el.dispatchEvent(new Event('input', { bubbles: true }));
+    const atPlus4 = ids();
+    el.value = '0';
+    el.dispatchEvent(new Event('input', { bubbles: true }));
+    return { atNow, atPlus4, back: ids() };
+  }, [NOW]);
+  expect(got.atNow).toEqual([]);
+  expect(got.atPlus4).toEqual(['C2000/26']);
+  expect(got.back).toEqual([]);
+});
