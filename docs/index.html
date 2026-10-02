@@ -511,8 +511,6 @@
       <div class="tb-section-head" tabindex="0" role="button" data-i18n-aria="tbSecCharts"><span class="tb-sec-icon" aria-hidden="true" data-nav-icon="charts"></span><span class="tb-sec-text"><span class="tb-section-title" data-i18n="tbSecCharts"></span><span class="tb-sec-hint" aria-hidden="true" data-i18n="tbSecChartsHint"></span></span></div>
       <div class="tb-section-body">
         <button id="route-templates" type="button" data-i18n="tbRouteTemplates" data-i18n-title="tbRouteTemplatesTitle"></button>
-        <button id="freq-table" data-i18n="tbFreqTable" data-i18n-title="tbFreqTableTitle"></button>
-        <button id="alt-pairs" data-i18n="tbAltPairs" data-i18n-title="tbAltPairsTitle"></button>
         <button id="nav-log" type="button" data-i18n="tbNavTable" data-i18n-title="tbNavTableTitle"></button>
         <button id="charts" data-i18n="tbCharts" data-i18n-title="tbChartsTitle"></button>
         <!-- SIGWX significant-weather chart viewer (image modal). Hidden until
@@ -930,6 +928,11 @@
             </select>
           </span>
         </label>
+        <!-- Reference tables a pilot sets up once and consults: the frequency table and the
+             altitude pairs, moved here from Charts. -->
+        <div class="tb-group-separator" aria-hidden="true"></div>
+        <button id="freq-table" data-i18n="tbFreqTable" data-i18n-title="tbFreqTableTitle"></button>
+        <button id="alt-pairs" data-i18n="tbAltPairs" data-i18n-title="tbAltPairsTitle"></button>
       </div>
     </div>
 
