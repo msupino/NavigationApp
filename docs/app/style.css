@@ -9212,3 +9212,23 @@ html[dir="rtl"] .wp-search-item { text-align: right; }
    line is held to its own column, so nothing can paint under the buttons beside it. */
 .deck-strip.deck-strip-live .deck-strip-lang { display: none; }
 body.deck-on .deck-strip > .deck-strip-top { overflow: hidden; }
+
+/* NOTAMs in force, inside a bubble / leg panel. Amber like the NOTAM layer: this is the part
+   of the panel that overrides the rest. */
+.insp-notams { margin: 8px 0 4px; display: grid; gap: 6px; }
+.insp-notams-head { font-size: 12px; font-weight: 700; color: #ffcc66; }
+.insp-notam-card {
+  display: grid; grid-template-columns: auto 1fr; gap: 2px 8px; text-align: start;
+  width: 100%; padding: 6px 8px; border-radius: 6px; cursor: pointer;
+  font: inherit; color: inherit;
+  background: rgba(255, 170, 40, 0.12); border: 1px solid rgba(255, 170, 40, 0.55);
+}
+.insp-notam-card:focus-visible { outline: 2px solid #4c9bff; outline-offset: 1px; }
+.insp-notam-id { font-weight: 700; font-size: 12px; }
+.insp-notam-until { font-size: 11px; opacity: .85; justify-self: end; font-variant-numeric: tabular-nums; }
+.insp-notam-text {
+  grid-column: 1 / -1; font-size: 12px; line-height: 1.35; text-align: left;
+  display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden;
+}
+body.theme-light .insp-notams-head { color: #8a5a00; }
+body.theme-light .insp-notam-card { background: #fff6e5; border-color: #d99a2b; color: #1f252c; }

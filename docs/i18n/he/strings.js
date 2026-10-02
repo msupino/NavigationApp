@@ -1211,6 +1211,8 @@ window.S = {
   tbMoreLinks: 'קישורים נוספים (מאגר, ויקי, תקלות, אודות, פרטיות, תנאים)',
   legendHotspot: 'נקודה חמה',
   legendCommChange: 'מעבר קשר',
+  inspNotamsTitle: 'נוטאמים בתוקף',
+  inspNotamUntil: 'עד',
   airfieldClassLabel: 'סוג',
   airfieldClass: { airport: 'שדה תעופה', airstrip: 'מנחת', agricultural: 'מנחת חקלאי' },
   airfieldLongestRunway: 'מסלול',

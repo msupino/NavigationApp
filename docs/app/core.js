@@ -2636,6 +2636,8 @@ window.S = Object.assign({
   legendAtcChange: 'Freq change',
   legendHotspot: 'Hotspot',
   legendCommChange: 'Frequency change',
+  inspNotamsTitle: 'NOTAMs in force',
+  inspNotamUntil: 'until',
   airfieldClassLabel: 'Type',
   airfieldClass: { airport: 'Airport', airstrip: 'Airstrip', agricultural: 'Agricultural strip' },
   airfieldLongestRunway: 'Runway',
