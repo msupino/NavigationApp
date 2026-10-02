@@ -138,3 +138,18 @@ test('tapping a SIGMET area opens that SIGMET, as tapping an AIRMET does', async
   });
   expect(head).toBe('SIGMET 3 \u00b7 OLBA \u00b7 02 17:00Z \u2192 02 21:00Z');
 });
+
+test('the AIRMET and SIGMET toggles say when their feed was updated, as the NOTAM one does', async ({ page }) => {
+  await page.goto('?lang=en&nogist');
+  await page.waitForFunction(() => typeof refreshMetUpdated === 'function');
+  const got = await page.evaluate(() => {
+    window.airmetMeta = { generatedAt: '2026-10-02T21:25:00.000Z' };
+    window.sigmetMeta = { generatedAt: '2026-10-02T21:20:00.000Z' };
+    setMetLayer('airmet', false); setMetLayer('sigmet', false);
+    const off = ['airmet', 'sigmet'].map(k => document.getElementById(k + '-updated').hidden);
+    setMetLayer('airmet', true); setMetLayer('sigmet', true);
+    return { off, on: ['airmet', 'sigmet'].map(k => { const e = document.getElementById(k + '-updated'); return e.hidden ? null : e.textContent; }) };
+  });
+  expect(got.off).toEqual([true, true]);
+  expect(got.on).toEqual(['Updated 2026-10-02 21:25Z', 'Updated 2026-10-02 21:20Z']);
+});
