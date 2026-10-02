@@ -4596,9 +4596,6 @@ function commInferRouteContextCallSignId(points, allowedIds, excludedNames) {
   if (Number.isFinite(second) && second - best.dist < 0.75) return '';
   return best.id;
 }
-function commInferWaypointCallSignId(wp, allowedIds) {
-  return commInferRouteContextCallSignId([wp], allowedIds, []);
-}
 function commRouteChangeEntries() {
   if (!commChangeMap || typeof state === 'undefined' ||
       !Array.isArray(state.waypoints)) return [];

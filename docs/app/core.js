@@ -1981,7 +1981,6 @@ window.S = Object.assign({
   tbTaxiGal: 'Taxi and takeoff (gal)',
   tbTaxiGalTitle: 'Startup + taxi + takeoff fuel allowance in gallons',
   fpTaxiTip: function(g) { return '+ ' + g.toFixed(1) + ' gal taxi / takeoff included in total'; },
-  pageOrientation: ' page — orientation',
   landscape: 'Landscape',
   portrait: 'Portrait',
   cancel: 'Cancel',
@@ -6643,7 +6642,6 @@ const ROUTE_CHECK_SAMPLE_NM = 10;
 // is a layer, but there is also a way through.
 const ROUTE_CHECK_CEILING_COVER_PCT = 62;
 const ROUTE_CHECK_FT_PER_DEG_SPREAD = 400;
-const ROUTE_CHECK_FT_PER_M = 3.28084;
 
 // Points along the whole route, one every `everyNm`, each carrying the leg it belongs to and
 // how far along that leg it is -- which is what lets a time be put on it later.

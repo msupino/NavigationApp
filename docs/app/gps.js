@@ -1598,7 +1598,6 @@ function gpsSnapLegAlertsToPosition() {
 // A single cone anchored at A was rejected: it widens without bound, so near B a position a
 // whole leg-length off to the side still reads as "on the leg", and the unknown state would
 // almost never trigger on a long leg -- defeating the point.
-var GPS_CONE_UNKNOWN_MS = 15000;      // continuously outside every cone before we say so
 var GPS_CONE_SECTOR_DEG = 45;         // recovery target preferred within this of the nose
 var GPS_CONE_REPEAT_DEG = 15;         // re-speak once the recovery heading moves this far
 var GPS_CONE_REPEAT_MS = 60000;       // ...and never more often than this
@@ -2390,11 +2389,10 @@ function gpsSendWatchAlert(title, body, speech) {
 }
 
 // --- watch alert: drifted off the leg's course line -----------------------
-// Checked on its own 2-minute timer, not per-fix like the leg/altitude alerts above --
+// Checked on its own timer (driftCheckSec, 2 minutes by default), not per-fix like the leg/altitude alerts above --
 // this is a "how are we doing" periodic check, not a one-shot event, and re-fires every
 // interval as long as the drift persists (no one-shot suppression here; 2 minutes is
 // already the pacing).
-var GPS_DRIFT_CHECK_MS = 120000;
 var GPS_DRIFT_TRACK_ERROR_DEG = 10;   // fire once track-angle error reaches this
 // Overhead a waypoint the aircraft is turning onto the next leg, so its track is honestly
 // nothing like that leg's course -- track-angle error is huge and shrinking, and calling

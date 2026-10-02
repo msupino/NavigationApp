@@ -594,7 +594,6 @@ window.S = {
   tbTaxiGal: 'הסעה והמראה (גאל)',
   tbTaxiGalTitle: 'דלק הפעלה / נסיעה / המראה בגלונים',
   fpTaxiTip: function(g) { return '+ ' + g.toFixed(1) + ' גאל הפעלה / המראה כלולים בסה״כ'; },
-  pageOrientation: ' עמוד — כיוון',
   landscape: 'לרוחב',
   portrait: 'לאורך',
   cancel: 'ביטול',

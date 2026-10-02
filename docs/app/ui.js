@@ -1965,10 +1965,6 @@ let gotoEditing = false;
 function coordReadoutText(lat, lng) {
   return fmtLatLng(lat, 'N', 'S') + '  ' + fmtLatLng(lng, 'E', 'W');
 }
-function centerCoordText() {
-  const c = map.getCenter();
-  return coordReadoutText(c.lat, c.lng);
-}
 // When a reference VOR is selected, show its magnetic radial + DME for the
 // point in a separate readout box below the live coordinates.
 function vorReadoutText(lat, lng) {
@@ -5930,7 +5926,6 @@ if (msaCb) {
 // loaded route, and per-leg wind (leg.wind) only from the realtime winds-aloft
 // fetch. The inspector shows it read-only. refreshWindInputs is kept (and
 // exported) purely as the post-load hook io.js calls — it refreshes the readout.
-function windDefault() { return { dir: tune('windDir'), speed: tune('windSpeed') }; }
 function refreshWindInputs() { refreshWindReadout(); }
 window.refreshWindInputs = refreshWindInputs;
 // "Show wind effect" toggles the wind inputs, the per-leg map

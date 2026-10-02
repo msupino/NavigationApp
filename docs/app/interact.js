@@ -400,10 +400,6 @@ function hitWaypointCandidates(px, py) {
 // Overlay-marker hit testing for read-only selection (outside edit mode):
 // VOR / airfield / nav-waypoint markers that are not route waypoints. Each
 // is gated by its own visibility toggle and only when the dataset is loaded.
-function hitVorMarker(px, py) {
-  const hits = hitVorMarkerCandidates(px, py);
-  return hits.length ? hits[0].index : -1;
-}
 function hitVorMarkerCandidates(px, py) {
   const hits = [];
   if (!showVorStations || !vors || !vors.length || !layerShownAtZoom('vorMinZoom')) return hits;
@@ -413,10 +409,6 @@ function hitVorMarkerCandidates(px, py) {
     if (Math.hypot(s.x - px, s.y - py) <= r) hits.push({ type: 'vor', index: i });
   }
   return hits;
-}
-function hitAirfieldMarker(px, py) {
-  const hits = hitAirfieldMarkerCandidates(px, py);
-  return hits.length ? hits[0].index : -1;
 }
 function hitAirfieldMarkerCandidates(px, py) {
   const hits = [];

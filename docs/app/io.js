@@ -5013,42 +5013,6 @@ function planCell(text) {
   return td;
 }
 
-// Modal: pick Landscape or Portrait (named buttons, not OK/Cancel).
-function chooseOrientation(size, onPick) {
-  const back = document.createElement('div');
-  back.className = 'modal-back';
-  const box = document.createElement('div');
-  box.className = 'modal';
-  const title = document.createElement('div');
-  title.className = 'modal-title';
-  title.textContent = size + S.pageOrientation;
-  addModalCloseX(box, () => { document.removeEventListener('keydown', onEsc); back.remove(); });
-  const btns = document.createElement('div');
-  btns.className = 'modal-btns';
-  // Escape closes the picker (counts as cancel).
-  function onEsc(e) { if (e.key === 'Escape') close(); }
-  function close() {
-    document.removeEventListener('keydown', onEsc);
-    back.remove();
-  }
-  back._navaidClose = close;
-  for (const [label, val] of [[S.landscape, 'landscape'], [S.portrait, 'portrait']]) {
-    const b = document.createElement('button');
-    b.textContent = label;
-    b.onclick = () => { close(); onPick(val); };
-    btns.appendChild(b);
-  }
-  const cancel = document.createElement('button');
-  cancel.textContent = S.cancel;
-  cancel.className = 'modal-cancel';
-  cancel.onclick = close;
-  btns.appendChild(cancel);
-  box.append(title, btns);
-  back.appendChild(box);
-  back.onclick = e => { if (e.target === back) close(); };
-  document.body.appendChild(back);
-  document.addEventListener('keydown', onEsc);
-}
 
 // Timestamp for unique download names — avoids browser " (1)" suffixes.
 function fileStamp() {
@@ -11224,15 +11188,6 @@ const FPL_XC_KEYS = ['company', 'purpose', 'altField'];
 // persons, endurance) need no list of their own: the dialog is the single place they are
 // entered, and every one of them is drawn here locked (`fromDialog`), so there is nothing
 // on this sheet to write back.
-function fplXcRow(label, el) {
-  const wrap = document.createElement('label');
-  wrap.className = 'xc-field';
-  const span = document.createElement('span');
-  span.className = 'xc-label';
-  span.textContent = label;
-  wrap.append(span, el);
-  return wrap;
-}
 function fplXcInput(value, opts) {
   const el = document.createElement('input');
   el.type = (opts && opts.type) || 'text';
