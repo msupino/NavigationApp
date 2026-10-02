@@ -406,8 +406,8 @@ function hitVorMarker(px, py) {
 }
 function hitVorMarkerCandidates(px, py) {
   const hits = [];
-  if (!showVorStations || !vors || !vors.length) return hits;
-  const r = tune('vorMarkerRadiusPx') + tune('hitWaypointExtraPx');
+  if (!showVorStations || !vors || !vors.length || !layerShownAtZoom('vorMinZoom')) return hits;
+  const r = tune('vorMarkerRadiusPx') * symbolZoomScale() + tune('hitWaypointExtraPx');
   for (let i = vors.length - 1; i >= 0; i--) {
     const s = proj(vors[i]);
     if (Math.hypot(s.x - px, s.y - py) <= r) hits.push({ type: 'vor', index: i });
@@ -420,8 +420,8 @@ function hitAirfieldMarker(px, py) {
 }
 function hitAirfieldMarkerCandidates(px, py) {
   const hits = [];
-  if (!showAirfields || !airfields || !airfields.length) return hits;
-  const r = tune('airfieldMarkerRadiusPx') + tune('hitWaypointExtraPx');
+  if (!showAirfields || !airfields || !airfields.length || !layerShownAtZoom('airfieldMinZoom')) return hits;
+  const r = tune('airfieldMarkerRadiusPx') * symbolZoomScale() + tune('hitWaypointExtraPx');
   for (let i = airfields.length - 1; i >= 0; i--) {
     if (typeof routePointOnlyInHiddenDirection === 'function' &&
         routePointOnlyInHiddenDirection(airfields[i])) continue;
@@ -436,8 +436,8 @@ function hitNavWpMarker(px, py) {
 }
 function hitNavWpMarkerCandidates(px, py) {
   const hits = [];
-  if (!showNavWP || !navWP || !navWP.length) return hits;
-  const r = tune('reportingPointRadiusPx') + tune('hitWaypointExtraPx');
+  if (!showNavWP || !navWP || !navWP.length || !layerShownAtZoom('navWpMinZoom')) return hits;
+  const r = tune('reportingPointRadiusPx') * symbolZoomScale() + tune('hitWaypointExtraPx');
   for (let i = navWP.length - 1; i >= 0; i--) {
     if (typeof routePointOnlyInHiddenDirection === 'function' &&
         routePointOnlyInHiddenDirection(navWP[i])) continue;
@@ -451,8 +451,8 @@ function hitNavWpMarkerCandidates(px, py) {
 }
 function hitCommChangeMarkerCandidates(px, py) {
   const hits = [];
-  if (!showCommChange || !commChangeMap || !navWP || !navWP.length) return hits;
-  const r = tune('commChangeRingRadiusPx') +
+  if (!showCommChange || !commChangeMap || !navWP || !navWP.length || !layerShownAtZoom('commChangeMinZoom')) return hits;
+  const r = tune('commChangeRingRadiusPx') * symbolZoomScale() +
     tune('commChangeRingWidthPx') / 2 +
     tune('commChangeArrowStartGapPx') + tune('hitWaypointExtraPx');
   for (let i = navWP.length - 1; i >= 0; i--) {
