@@ -899,6 +899,13 @@ function validateAirfields(d) {
     if (Object.prototype.hasOwnProperty.call(a, 'elev_ft')) {
       _v(a, 'elev_ft', 'number', p, errs);
     }
+    if (Object.prototype.hasOwnProperty.call(a, 'chartClass') &&
+        ['airport', 'airstrip', 'agricultural'].indexOf(a.chartClass) === -1) {
+      errs.push(p + '.chartClass: expected airport|airstrip|agricultural');
+    }
+    if (Object.prototype.hasOwnProperty.call(a, 'runwayLengthM')) {
+      _v(a, 'runwayLengthM', 'number', p, errs);
+    }
     if (Object.prototype.hasOwnProperty.call(a, 'atis')) {
       _v(a, 'atis', 'string', p, errs);
     }
@@ -2036,6 +2043,8 @@ function fplEdgeOpen(e, when) {
   const wd = when.getDay();                       // 0=Sun .. 6=Sat, local
   const weekend = (wd === 5 || wd === 6);
   if (weekend) return true;
+  // The LSA chart's brown "weekend route" (נתיב טיסה סוף שבוע): Fri/Sat only.
+  if (e.chartRouteType === 'weekend') return false;
   if (e.weekdayClosedHint) return false;
   if (Number.isFinite(e.openFromHourHint)) {
     const hour = when.getHours() + when.getMinutes() / 60;

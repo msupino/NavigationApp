@@ -484,6 +484,29 @@ function paintLegendPoints() {
         drawReportingPointSymbol(ctx, box / 2, box / 2 + 1.5, 7, compulsory);
       });
     }
+    if (typeof drawCommChangeDot === 'function') {
+      paint('canvas.legend-comm', ctx => {
+        ctx.lineWidth = tune('navWaypointStrokeWidthPx');
+        drawReportingPointSymbol(ctx, box / 2, box / 2 + 1.5, 7, true);
+        drawCommChangeDot(ctx, box / 2, box / 2 + 1.5, 7);
+      });
+    }
+  }
+  // LSA bubbles: the map's own fill and outline, as a small parallelogram like the chart's legend.
+  const bubble = (weekend) => ctx => {
+    ctx.beginPath();
+    ctx.moveTo(5, 3); ctx.lineTo(16, 3); ctx.lineTo(13, 15); ctx.lineTo(2, 15); ctx.closePath();
+    ctx.fillStyle = weekend ? 'rgba(201,178,138,0.55)' : 'rgba(60,160,60,0.25)';
+    ctx.fill();
+    ctx.lineWidth = 1.6;
+    ctx.strokeStyle = tune(weekend ? 'lsaWeekendColor' : 'lsaAlwaysColor');
+    ctx.stroke();
+  };
+  paint('canvas.legend-lsa-daily', bubble(false));
+  paint('canvas.legend-lsa-weekend', bubble(true));
+  if (typeof drawActivitySymbol === 'function') {
+    paint('canvas.legend-parachute', ctx => drawActivitySymbol(ctx, box / 2, box / 2 - 1, 'parachute', 3.6));
+    paint('canvas.legend-paraglider', ctx => drawActivitySymbol(ctx, box / 2, box / 2 - 2, 'paraglider', 6));
   }
 }
 paintLegendPoints();
@@ -1645,12 +1668,22 @@ legendCtrl.addTo(map);
 
   function viewportRect() {
     const vv = window.visualViewport;
-    return {
+    const r = {
       left: vv ? vv.offsetLeft : 0,
       top: vv ? vv.offsetTop : 0,
       right: vv ? vv.offsetLeft + vv.width : window.innerWidth,
       bottom: vv ? vv.offsetTop + vv.height : window.innerHeight,
     };
+    // On the phone deck the chart is the space between the strip and the bottom bar: a card
+    // clamped to the window ran under the bar, and on the Low Alt chart -- whose legend has
+    // five more rows -- its lower half was hidden there.
+    if (document.body.classList.contains('deck-on')) {
+      const strip = document.getElementById('deck-strip');
+      const bar = document.getElementById('deck-bar');
+      if (strip && strip.getClientRects().length) r.top = Math.max(r.top, strip.getBoundingClientRect().bottom);
+      if (bar && bar.getClientRects().length) r.bottom = Math.min(r.bottom, bar.getBoundingClientRect().top);
+    }
+    return r;
   }
 
   // What the legend keeps clear of. The toolbar is NOT on this list: it opens over the map

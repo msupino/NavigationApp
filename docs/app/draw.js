@@ -1432,6 +1432,7 @@ function draw() {
   if (window.showMsa) { drawTerrainTint(); drawTerrainWarnings(); }
   drawAirspace();               // AIP airspace (P/R/TMA) under everything else
   drawAreas();                  // airspace bubbles under the waypoints
+  if (showLsaBubbles) drawActivitySites();   // drop zones and launch points, with the bubbles
   // Review overlay (?graphlegs=1): under the waypoints and the route, so it never hides
   // what a pilot is actually looking at even with every segment drawn.
   if (typeof drawGraphLegs === 'function') drawGraphLegs();
@@ -2566,7 +2567,7 @@ const _CVFR_DATA_URL = {
   // version carrier: _verOf() reads its ?v= to cache-bust data/<layer>-areas.json.
   // Bump ?v= whenever an *-areas.json changes. The cvfr fallback fetch never
   // runs (loadAreas skips the network on the cvfr prefix).
-  'areas': () => 'data/cvfr-areas.json?v=5',
+  'areas': () => 'data/cvfr-areas.json?v=6',
   // route-templates is a single shared file; templates self-tag with a `layer`.
 };
 function _verOf(url) { const m = /\?v=([^&]+)/.exec(url || ''); return m ? m[1] : '1'; }
@@ -2872,6 +2873,9 @@ window.drawAirspace = drawAirspace;
 // waypoints. Layer-aware via fetchLayerData('areas'): the Low Alt layer has
 // data/lsa-areas.json; layers without an areas file simply draw nothing.
 var areas = null;            // null = not loaded; [] or populated = loaded
+// The LSA chart's activity sites: parachute drop zones and hang-glider / paraglider launch
+// points (lsa-areas.json -> activity). Loaded with the bubbles, drawn with them.
+var activitySites = [];
 async function loadAreas() {
   if (areas !== null) return areas;
   const gen = _layerGen;
@@ -2900,6 +2904,9 @@ async function loadAreas() {
         aliases: Array.isArray(a.aliases) ? a.aliases : [],
         active: a.active === 'weekend' ? 'weekend' : 'always' }));
     if (gen !== _layerGen) return loadAreas();   // superseded — don't stomp; re-enter (joins via memo)
+    activitySites = (d && Array.isArray(d.activity) ? d.activity : [])
+      .filter(x => x && Number.isFinite(x.lat) && Number.isFinite(x.lng) &&
+        (x.kind === 'parachute' || x.kind === 'paraglider'));
     areas = mapped;
     _notamBubbleGen++;                         // invalidate per-NOTAM bubble-match cache
   } catch (e) {
@@ -2936,6 +2943,48 @@ function areaCentroid(coords) {
     return { lat: s[0] / coords.length, lng: s[1] / coords.length };
   }
   return { lat: cy / (3 * a2), lng: cx / (3 * a2) };
+}
+// The chart's own glyphs, simplified: a canopy with rigging lines; the drop zone also gets its
+// dotted ring. Sized with the other chart symbols (symbolZoomScale).
+function drawActivitySymbol(ctx, x, y, kind, r) {
+  ctx.save();
+  const isDropZone = kind === 'parachute';
+  const col = tune(isDropZone ? 'activityParachuteColor' : 'activityParagliderColor');
+  const canopyY = y - r * 0.15;
+  if (isDropZone) {
+    // The drop zone's dotted ring.
+    ctx.setLineDash([1.5, 2.5]);
+    ctx.strokeStyle = col;
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.arc(x, y, r * 2.1, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.setLineDash([]);
+  }
+  // Canopy.
+  ctx.fillStyle = col;
+  ctx.beginPath();
+  ctx.arc(x, canopyY, r, Math.PI, 0);
+  ctx.closePath();
+  ctx.fill();
+  // Rigging lines, from the canopy's edge to the harness point below.
+  ctx.strokeStyle = tune('inkColor');
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  for (const dx of [-1, -0.5, 0, 0.5, 1]) {
+    ctx.moveTo(x + dx * r, canopyY);
+    ctx.lineTo(x, y + r * 1.15);
+  }
+  ctx.stroke();
+  ctx.restore();
+}
+function drawActivitySites() {
+  if (!activitySites.length || !layerShownAtZoom('activityMinZoom')) return;
+  const r = tune('activitySymbolPx') * symbolZoomScale();
+  for (const a of activitySites) {
+    const s = proj(a);
+    drawActivitySymbol(octx, s.x, s.y, a.kind, r);
+  }
 }
 function drawAreas() {
   if (!showLsaBubbles) return;                    // "Show LSA bubbles" toggle (Extra layers)
@@ -3430,6 +3479,11 @@ async function loadAirfields() {
       plates: Array.isArray(a.plates) ? a.plates.slice() : [],
       runways: Array.isArray(a.runways) ? a.runways.slice() : null,
       type: a.type === 'military' ? 'military' : 'civil',   // chart symbol: ◎ for a military field
+      // The LSA chart legend's strip class and field block (see airfields.json _chartClass).
+      chartClass: a.chartClass || null,
+      runwayLengthM: Number.isFinite(a.runwayLengthM) ? a.runwayLengthM : null,
+      lighting: a.lighting || null,
+      hardRunway: a.hardRunway === true,
       // Prior-parking coordination the AIP requires at this field (address/phone + rule),
       // read by the flight plan's parking-request button. Absent for fields that ask nothing.
       parking: (a.parking && typeof a.parking === 'object') ? a.parking : null,
@@ -3672,6 +3726,27 @@ function drawReportingPointSymbol(ctx, x, y, r, compulsory, fill) {
   ctx.stroke();
   ctx.lineJoin = 'miter';
 }
+// The chart's frequency-change symbol: the reporting-point triangle with a magenta dot in it
+// ("נקודת מעבר קשר בין יחידות מבקרות", the CVFR and LSA legends alike). Drawn on the point
+// itself, so a pilot sees where to change frequency before a route goes through it -- the
+// callout arrow only appears on a route. commChangeDot turns it off.
+function drawCommChangeDot(ctx, x, y, r) {
+  ctx.beginPath();
+  ctx.arc(x, y + r * 0.12, Math.max(1.5, r * 0.38), 0, Math.PI * 2);
+  ctx.fillStyle = tune('commChangeDotColor');
+  ctx.fill();
+}
+function commChangeDotsOn() {
+  return !!(typeof showCommChange !== 'undefined' && showCommChange &&
+    tune('commChangeDot') !== false && commChangeMap);
+}
+function isCommChangePointShown(wp) {
+  if (!wp || !commChangeDotsOn()) return false;
+  const point = commChangeMap[wp.name];
+  if (!point || !point.commChange) return false;
+  if (typeof isCommChangeSuppressed === 'function' && isCommChangeSuppressed(wp.name)) return false;
+  return layerShownAtZoom('commChangeMinZoom');
+}
 function drawNavWaypoints() {
   if (!showNavWP || !navWP || navWP.length === 0) return;
   // Suppress nav-WP symbol when a route waypoint sits on it (by position),
@@ -3689,6 +3764,7 @@ function drawNavWaypoints() {
                                          // the larger PNG-export canvas
     octx.lineWidth = tune('navWaypointStrokeWidthPx');
     drawReportingPointSymbol(octx, s.x, s.y, r, wp.report === 'mandatory');
+    if (isCommChangePointShown(wp)) drawCommChangeDot(octx, s.x, s.y, r);
     if (showLabels) {
       const label = ltrIsolate(referenceOverlayLabel(wp, 'navwp'));
       octx.lineWidth = tune('navWaypointLabelHaloPx');
@@ -6079,6 +6155,25 @@ function drawInfo() {
   // The VOR legend row only makes sense while the stations are on the map.
   const vorRow = document.getElementById('legend-row-vor');
   if (vorRow) vorRow.style.display = (typeof showVorStations !== 'undefined' && showVorStations) ? '' : 'none';
+  // The LSA chart's own legend rows -- frequency change, the two bubble classes, the activity
+  // sites -- show while that set is active, so the card keeps its size on the other charts.
+  const lsaSet = typeof layerDataPrefix === 'function' && layerDataPrefix() === 'lsa';
+  const commRow = document.getElementById('legend-row-comm');
+  const commOn = lsaSet && commChangeDotsOn() && Object.keys(commChangeMap).length > 0;
+  const lsaOn = lsaSet && typeof showLsaBubbles !== 'undefined' && showLsaBubbles;
+
+  let legendRowsChanged = false;
+  const showRow = (row, on) => {
+    const v = on ? '' : 'none';
+    if (row.style.display !== v) { row.style.display = v; legendRowsChanged = true; }
+  };
+  if (commRow) showRow(commRow, commOn);
+  for (const row of document.querySelectorAll('.legend-row-lsa')) showRow(row, lsaOn);
+  for (const row of document.querySelectorAll('.legend-row-activity')) {
+    showRow(row, lsaOn && activitySites.some(x => x.kind === row.dataset.kind));
+  }
+  // The card changed height (a chart with more legend rows): keep it on screen.
+  if (legendRowsChanged && typeof window.reconcileLegendPosition === 'function') window.reconcileLegendPosition();
   // The stats block that used to live at the bottom of the mobile menu is gone: the
   // legend card now carries the same totals at every width, and on a phone the two
   // were on screen together saying the same thing twice.
