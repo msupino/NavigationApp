@@ -4329,13 +4329,13 @@ function decodeMetText(raw) {
     : text.slice(text.indexOf(head[0]) + head[0].length).replace(/^\s*[A-Z]{4}-\s*/, '').trim();
   const words = body.split(' ');
   // Phenomenon: leading qualifier(s) + hazard, up to OBS/FCST/WI/ENTIRE.
-  const phen = [];
+  const phenomenon = [];
   for (const w of words) {
     if (/^(OBS|FCST|WI|ENTIRE|N|S|E|W|NE|NW|SE|SW|TOP|ABV|BLW|MOV|STNR)$/.test(w) || /^(FL\d{3}|SFC)\//.test(w)) break;
-    phen.push(w);
+    phenomenon.push(w);
   }
-  if (phen.length) {
-    const p = phen.join(' ');
+  if (phenomenon.length) {
+    const p = phenomenon.join(' ');
     let v = null;
     let m;
     if ((m = p.match(/^SFC WSPD (\d+)(KT|MPS)$/))) v = metWord('WSPD') + ' ' + m[1] + (m[2] === 'KT' ? ' kt' : ' m/s');
@@ -4348,7 +4348,7 @@ function decodeMetText(raw) {
       const band = (m[2] === 'SFC' ? metWord('SFC') : n(m[2])) + '–' + n(m[3]) + ' ' + unit;
       v = (metIsHe() ? metWord('CLD') + ' ' + metWord(m[1]) : metWord(m[1]) + ' ' + metWord('CLD')) + ', ' + band;
     } else {
-      const tr = phen.map(w => metWord(w));
+      const tr = phenomenon.map(w => metWord(w));
       if (tr.every(Boolean)) {
         // qualifier + hazard reads "moderate turbulence" in English; Hebrew puts the noun first.
         // Hebrew puts the noun before its adjective; "MT OBSC" is already noun-first.
