@@ -78,7 +78,7 @@ test('legWindFor: per-leg override beats route wind; speed 0 marks calm', async 
 
 test('Show-wind toggle: no manual wind inputs, no fetch button; shared look-ahead slider present', async ({ page }) => {
   await page.addInitScript(() => {
-    try { localStorage.setItem('navaid.sec.view', '1'); localStorage.setItem('navaid.sec.settings', '1'); localStorage.setItem('navaid.sec.weather', '1'); } catch (e) {}
+    try { localStorage.setItem('navaid.sec.view', '1'); localStorage.setItem('navaid.sec.weather', '1'); } catch (e) {}
   });
   await boot(page);
   // The manual wind dir/speed inputs are gone — wind only comes from the fetch.
@@ -105,7 +105,7 @@ test('Show-wind toggle: no manual wind inputs, no fetch button; shared look-ahea
 
 test('Show-wind toggle persists across reload', async ({ page }) => {
   await page.addInitScript(() => {
-    try { localStorage.setItem('navaid.sec.view', '1'); localStorage.setItem('navaid.sec.settings', '1'); localStorage.setItem('navaid.sec.weather', '1'); } catch (e) {}
+    try { localStorage.setItem('navaid.sec.view', '1'); localStorage.setItem('navaid.sec.weather', '1'); } catch (e) {}
   });
   await boot(page);
   await page.locator('#show-wind-cb').check();
@@ -212,7 +212,7 @@ test('nearestPressureLevelHpa maps CVFR altitudes to winds-aloft levels', async 
 
 test('Fetch wind sets a per-leg wind for every leg (own midpoint + level)', async ({ page }) => {
   await page.addInitScript(() => {
-    try { localStorage.setItem('navaid.sec.view', '1'); localStorage.setItem('navaid.sec.settings', '1'); localStorage.setItem('navaid.sec.weather', '1'); } catch (e) {}
+    try { localStorage.setItem('navaid.sec.view', '1'); localStorage.setItem('navaid.sec.weather', '1'); } catch (e) {}
   });
   // Two legs at different altitudes → 850 hPa (5000 ft) and 700 hPa (10000 ft).
   // Multi-location request → Open-Meteo returns an array (one per midpoint).
@@ -254,7 +254,7 @@ test('Fetch wind sets a per-leg wind for every leg (own midpoint + level)', asyn
 
 test('Fetch wind surfaces an error when the request fails', async ({ page }) => {
   await page.addInitScript(() => {
-    try { localStorage.setItem('navaid.sec.view', '1'); localStorage.setItem('navaid.sec.settings', '1'); localStorage.setItem('navaid.sec.weather', '1'); } catch (e) {}
+    try { localStorage.setItem('navaid.sec.view', '1'); localStorage.setItem('navaid.sec.weather', '1'); } catch (e) {}
   });
   await page.route('**api.open-meteo.com/**', route => route.fulfill({ status: 500, body: 'err' }));
   await boot(page);
@@ -279,7 +279,7 @@ test('calm wind is omitted from saved blobs (no schema churn)', async ({ page })
 
 test('Fetch wind samples each leg at its forecast ETA, not "now" (#leg-wind-forecast)', async ({ page }) => {
   await page.addInitScript(() => {
-    try { localStorage.setItem('navaid.sec.view', '1'); localStorage.setItem('navaid.sec.settings', '1'); localStorage.setItem('navaid.sec.weather', '1'); } catch (e) {}
+    try { localStorage.setItem('navaid.sec.view', '1'); localStorage.setItem('navaid.sec.weather', '1'); } catch (e) {}
   });
   // 8 hourly samples from the current hour; wind speed encodes the hour index
   // (10 + idx) so the chosen forecast hour is readable from the leg wind.
@@ -322,7 +322,7 @@ test('Fetch wind samples each leg at its forecast ETA, not "now" (#leg-wind-fore
 
 test('departure slider shifts every leg\'s sampled forecast hour', async ({ page }) => {
   await page.addInitScript(() => {
-    try { localStorage.setItem('navaid.sec.view', '1'); localStorage.setItem('navaid.sec.settings', '1'); localStorage.setItem('navaid.sec.weather', '1'); } catch (e) {}
+    try { localStorage.setItem('navaid.sec.view', '1'); localStorage.setItem('navaid.sec.weather', '1'); } catch (e) {}
   });
   // 30 hourly samples, hour index encoded in the wind speed (10 + idx).
   let fetchCount = 0;
@@ -366,7 +366,7 @@ test('departure slider shifts every leg\'s sampled forecast hour', async ({ page
 
 test('checking "show wind" pulls the forecast automatically when a route exists', async ({ page }) => {
   await page.addInitScript(() => {
-    try { localStorage.setItem('navaid.sec.view', '1'); localStorage.setItem('navaid.sec.settings', '1'); localStorage.setItem('navaid.sec.weather', '1'); } catch (e) {}
+    try { localStorage.setItem('navaid.sec.view', '1'); localStorage.setItem('navaid.sec.weather', '1'); } catch (e) {}
   });
   let fetched = 0;
   await page.route('**api.open-meteo.com/**', route => {
@@ -391,7 +391,7 @@ test('checking "show wind" pulls the forecast automatically when a route exists'
 
 test('adding a leg while "show wind" is on fetches wind for the new leg', async ({ page }) => {
   await page.addInitScript(() => {
-    try { localStorage.setItem('navaid.sec.view', '1'); localStorage.setItem('navaid.sec.settings', '1'); localStorage.setItem('navaid.sec.weather', '1'); } catch (e) {}
+    try { localStorage.setItem('navaid.sec.view', '1'); localStorage.setItem('navaid.sec.weather', '1'); } catch (e) {}
   });
   let fetched = 0;
   await page.route('**api.open-meteo.com/**', route => {
@@ -422,7 +422,7 @@ test('adding a leg while "show wind" is on fetches wind for the new leg', async 
 
 test('checking "show wind" with no route does not fetch and does not alert', async ({ page }) => {
   await page.addInitScript(() => {
-    try { localStorage.setItem('navaid.sec.view', '1'); localStorage.setItem('navaid.sec.settings', '1'); localStorage.setItem('navaid.sec.weather', '1'); } catch (e) {}
+    try { localStorage.setItem('navaid.sec.view', '1'); localStorage.setItem('navaid.sec.weather', '1'); } catch (e) {}
   });
   let fetched = false;
   await page.route('**api.open-meteo.com/**', route => { fetched = true; route.abort(); });
