@@ -9176,3 +9176,23 @@ body.theme-light .fp-profile-dir .fp-dir-arrow { color: #1f5f9e; }
 body.theme-light #toolbar .tb-group { color: #5b6672; }
 .map-legend-version { color: #a39d9d; }
 body.theme-light .map-legend-version { color: #5b6672; }
+
+/* Final screenshot review (ui-ux-pro-max):
+   - the phone sheet's head was two rows -- a 44px grip row with nothing beside the bar, then
+     the title row -- ~90px of chrome over the menu, and the light sheet let the chart show
+     through it. One row now: the whole head is the grip (its bar drawn along the top), the
+     title sits in it, ✕ stays on top. The light sheet is opaque. */
+.deck-sheet-head { position: relative; padding-top: 10px; }
+.deck-sheet-grip { grid-column: 1 / -1; grid-row: 1; width: 100%; justify-self: stretch; min-height: 44px; }
+.deck-sheet-grip::before { position: absolute; top: 4px; left: 50%; transform: translateX(-50%); }
+.deck-sheet-title { grid-row: 1; pointer-events: none; }
+.deck-sheet-close { grid-row: 1; position: relative; z-index: 1; }
+body.theme-light .deck-sheet { background: #fff; }
+/* - the strip already carries the language switch; in the sheet the globe sat alone on an
+     otherwise empty footer row. */
+body.deck-on #deck-sheet #lang-quick { display: none; }
+/* - search results: a NOTAM line is Latin text; in the Hebrew list it took the list's RTL
+     direction and lost its START ("/26 / LLHZ · TWR..."). Each line takes its own direction,
+     so it is cut at its end, with an ellipsis. */
+.wp-search-item { unicode-bidi: plaintext; overflow: hidden; text-overflow: ellipsis; }
+html[dir="rtl"] .wp-search-item { text-align: right; }
