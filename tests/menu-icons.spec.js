@@ -95,3 +95,17 @@ for (const width of [390, 1280]) {
     }
   });
 }
+
+test('phone: the top strip follows the theme -- light in light mode, dark in dark', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  for (const theme of ['light', 'dark']) {
+    await page.addInitScript((t) => { try { localStorage.setItem('navaid.theme', t); } catch (e) {} }, theme);
+    await page.goto('?lang=en&nogist');
+    await page.waitForSelector('#deck-strip');
+    const bg = await page.evaluate(() => {
+      const m = getComputedStyle(document.getElementById('deck-strip')).backgroundColor.match(/\d+/g).map(Number);
+      return (m[0] + m[1] + m[2]) / 3;
+    });
+    if (theme === 'light') expect(bg).toBeGreaterThan(200); else expect(bg).toBeLessThan(60);
+  }
+});

@@ -9152,3 +9152,16 @@ body.deck-on #deck-sheet .tb-section-body .mi-select > #export-select {
   opacity: 0; cursor: pointer;
 }
 body.deck-on #deck-sheet .mi-select:focus-within { outline: 2px solid #4c9bff; outline-offset: 1px; }
+
+/* The phone's top strip in the light theme: it was dark in both, a black band over a light
+   chart and a light bottom bar. Same ground as the bottom bar; the idle readout is greyed by
+   colour, not opacity, so it still reads at 4.5:1. Comm fail keeps its red. */
+body.theme-light .deck-strip {
+  background: #f7f9fb;
+  color: #1f252c;
+  box-shadow: 0 1px 0 #cfd5df, 0 2px 8px rgba(0, 0, 0, .12);
+}
+body.theme-light .deck-strip-sub { color: #4a5562; }
+body.theme-light .deck-strip:not(.deck-strip-live) .deck-strip-vals { opacity: 1; color: #5b6672; }
+body.theme-light .deck-strip-lang { border-color: #858f9c; color: #1f252c; }
+body.theme-light .deck-strip-commfail:focus-visible { outline-color: #1d6fe0; }
