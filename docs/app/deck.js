@@ -655,9 +655,14 @@
       .filter(x => x.rank < 99)
       .sort((a, b) => a.rank - b.rank)
       .map(x => x.i);
+    // Measured on the readout's own line, not the whole strip: Comm fail and the language
+    // switch have columns of their own, so a readout too long for its line ran UNDER them
+    // while the strip itself never overflowed -- and nothing was dropped.
+    const line = stripVals.parentElement;
+    const fits = () => line.scrollWidth <= line.clientWidth + 1 && strip.scrollWidth <= strip.clientWidth + 1;
     const gone = new Set();
     for (const idx of order) {
-      if (strip.scrollWidth <= strip.clientWidth + 1) return;
+      if (fits()) return;
       gone.add(idx);
       stripVals.textContent = chunks.filter((c, i) => !gone.has(i)).join(' \u00b7 ');
     }
