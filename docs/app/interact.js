@@ -3516,6 +3516,8 @@ function showInspector() {
   // a deployment that widened or narrowed the range would otherwise not reach the buttons
   // until the pilot pressed one.
   if (typeof applyInspZoom === 'function' && typeof inspZoomGet === 'function') applyInspZoom(inspZoomGet());
+  // Each kind of panel keeps its own size (see inspSizeKind in ui.js).
+  if (typeof window.applyInspSize === 'function') window.applyInspSize();
   const title = document.getElementById('insp-title');
   const body = document.getElementById('insp-body');
   // Not while the aircraft is being tracked: the panel covers the map, and in flight the
