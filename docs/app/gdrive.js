@@ -364,7 +364,7 @@ const GDRIVE_SETTINGS_KEYS = [
   'navaid.showNotam.last',
   'navaid.sigwxOv', 'navaid.showLsaBubbles', 'navaid.showCircuit',
   'navaid.showTraining', 'navaid.showCvfr', 'navaid.showHeli',
-  'navaid.showCommfail', 'navaid.plateType',
+  'navaid.showCommfail', 'navaid.showAdc', 'navaid.plateType',
   'navaid.showIfr',
   // Whether a tap may open the panel while a position is showing. A preference about how the
   // pilot reads a chart in flight, not a fact about this handset, so it travels with them.

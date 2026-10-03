@@ -3540,6 +3540,7 @@ async function loadAirfields() {
       cvfr_overlay: a.cvfr_overlay || null,
       heli_overlay: a.heli_overlay || null,
       commfail_overlay: a.commfail_overlay || null,
+      adc_overlay: a.adc_overlay || null,
       ifr_overlays: Array.isArray(a.ifr_overlays) ? a.ifr_overlays.slice() : null,
     }));
     if (typeof populatePlateAirfieldSelect === 'function') populatePlateAirfieldSelect();
