@@ -1,0 +1,210 @@
+{
+ "generatedAt": "2026-10-03T16:40:56.188Z",
+ "source": "NOAA AWC isigmet",
+ "sigmets": [
+  {
+   "id": "4",
+   "firId": "OLBA",
+   "firName": "OLBA BEIRUT",
+   "hazard": "TS",
+   "qualifier": "EMBD",
+   "base": null,
+   "top": null,
+   "dir": null,
+   "spd": null,
+   "validFrom": 1791036000,
+   "validTo": 1791050400,
+   "coords": [
+    [
+     34.511,
+     36.364
+    ],
+    [
+     34.653,
+     36.383
+    ],
+    [
+     34.677,
+     35.657
+    ],
+    [
+     34.574,
+     35.637
+    ],
+    [
+     34.571,
+     35.282
+    ],
+    [
+     34.377,
+     34.853
+    ],
+    [
+     34.042,
+     34.597
+    ],
+    [
+     33.702,
+     34.592
+    ],
+    [
+     33.418,
+     34.716
+    ],
+    [
+     33.238,
+     34.981
+    ],
+    [
+     33.097,
+     34.913
+    ],
+    [
+     33.041,
+     35.456
+    ],
+    [
+     33.291,
+     35.573
+    ],
+    [
+     33.241,
+     35.665
+    ],
+    [
+     33.574,
+     36.088
+    ],
+    [
+     33.705,
+     36.001
+    ],
+    [
+     33.859,
+     36.29
+    ],
+    [
+     34.234,
+     36.598
+    ],
+    [
+     34.511,
+     36.364
+    ]
+   ],
+   "raw": "WSLB31 OLBA 031410\nOLBA SIGMET 4 VALID 031400/031800 OLBA-\nOLBA BEIRUT FIR EMBD TS OBS AND FCST N OF OLBA  FIR TOP ABV FL280\n    MOV NE NC="
+  },
+  {
+   "id": "8",
+   "firId": "LTAA",
+   "firName": "LTAA ANKARA",
+   "hazard": "TS",
+   "qualifier": "EMBD",
+   "base": null,
+   "top": 30000,
+   "dir": "NE",
+   "spd": "12",
+   "validFrom": 1791037500,
+   "validTo": 1791051900,
+   "coords": [
+    [
+     40.2,
+     43.683
+    ],
+    [
+     38.617,
+     39.733
+    ],
+    [
+     37.317,
+     40.85
+    ],
+    [
+     38.683,
+     44.283
+    ],
+    [
+     40.2,
+     43.683
+    ]
+   ],
+   "raw": "WSTU31 LTAC 031425\nLTAA SIGMET 8 VALID 031425/031825 LTAC-\nLTAA ANKARA FIR EMBD TS OBS WI N4012 E04341 - N3837 E03944 -\n N3719 E04051 - N3841 E04417 - N4012 E04341 TOP FL300 MOV NE 12KT WKN\n="
+  },
+  {
+   "id": "T04",
+   "firId": "LCCC",
+   "firName": "LCCC NICOSIA",
+   "hazard": "TS",
+   "qualifier": "EMBD",
+   "base": null,
+   "top": 34000,
+   "dir": "E",
+   "spd": "20",
+   "validFrom": 1791039600,
+   "validTo": 1791054000,
+   "coords": [
+    [
+     36.065,
+     29.986
+    ],
+    [
+     34.763,
+     30.004
+    ],
+    [
+     34.5,
+     30.008
+    ],
+    [
+     34.5,
+     32.5
+    ],
+    [
+     35.966,
+     32.5
+    ],
+    [
+     36.065,
+     29.986
+    ]
+   ],
+   "raw": "WSCY31 LCLK 031432\nLCCC SIGMET T04 VALID 031500/031900 LCLK-\nLCCC NICOSIA FIR\nEMBD TS FCST N OF N3430 AND W OF E03230 TOP FL340 MOV E 20KT NC="
+  },
+  {
+   "id": "9",
+   "firId": "LTAA",
+   "firName": "LTAA ANKARA",
+   "hazard": "TS",
+   "qualifier": "EMBD",
+   "base": null,
+   "top": 32000,
+   "dir": "NE",
+   "spd": "12",
+   "validFrom": 1791042000,
+   "validTo": 1791056400,
+   "coords": [
+    [
+     37.566,
+     30.002
+    ],
+    [
+     36.063,
+     30.006
+    ],
+    [
+     35.939,
+     33.266
+    ],
+    [
+     37.233,
+     33.217
+    ],
+    [
+     37.566,
+     30.002
+    ]
+   ],
+   "raw": "WSTU31 LTAC 031540\nLTAA SIGMET 9 VALID 031540/031940 LTAC-\nLTAA ANKARA FIR EMBD TS OBS SW OF LINE N3734 E03000 -\n N3714 E03313 - N3556 E03316 TOP FL320 MOV NE 12KT INTSF="
+  }
+ ]
+}
