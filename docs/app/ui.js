@@ -7452,55 +7452,16 @@ function showNotamModal(only, opts) {
       }));
     } catch (e) { /* storage unavailable */ }
   };
-  // Corner grip. The native CSS resizer was here, but the modal is flex-centred: widening it
-  // pushed BOTH edges out, so the corner moved at half the cursor's speed, and the handle
-  // itself sits bottom-LEFT in Hebrew, where centring makes it just as unhelpful. Pinning
-  // the top-left first makes right and bottom the free edges in either direction, so one
-  // physical bottom-right grip tracks the cursor 1:1.
-  const grip = document.createElement('div');
-  grip.className = 'notam-grip resize-grip';
-  grip.title = S.inspResize || 'Resize';
-  grip.setAttribute('aria-hidden', 'true');
-  box.appendChild(grip);
-  let gx = 0, gy = 0, gw = 0, gh = 0;
-  const onGripMove = (e) => {
-    // Clamped to the viewport: a window made smaller than the box it was sized in must not
-    // leave the modal reaching past the screen with its controls out of reach.
-    const maxW = Math.max(240, window.innerWidth - 16);
-    const maxH = Math.max(180, window.innerHeight - 16);
-    const left = parseFloat(box.style.left) || 0;
-    const top = parseFloat(box.style.top) || 0;
-    box.style.width = Math.min(Math.max(240, gw + (e.clientX - gx)), maxW - left) + 'px';
-    box.style.height = Math.min(Math.max(180, gh + (e.clientY - gy)), maxH - top) + 'px';
-  };
-  const onGripUp = (e) => {
-    grip.releasePointerCapture?.(e.pointerId);
-    window.removeEventListener('pointermove', onGripMove);
-    window.removeEventListener('pointerup', onGripUp);
-    saveSize();
-  };
-  grip.addEventListener('pointerdown', (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    const r = box.getBoundingClientRect();
-    // Take the box out of the backdrop's flex centring and pin where it already is, so the
-    // gripped edges are the ones that move.
-    box.style.position = 'absolute';
-    box.style.margin = '0';
-    box.style.left = Math.round(r.left) + 'px';
-    box.style.top = Math.round(r.top) + 'px';
-    gx = e.clientX; gy = e.clientY; gw = r.width; gh = r.height;
-    grip.setPointerCapture?.(e.pointerId);
-    window.addEventListener('pointermove', onGripMove);
-    window.addEventListener('pointerup', onGripUp);
-  });
+  // Corner grip (attachResizeGrip, io.js): pins the top-left, then right and bottom follow.
+  attachResizeGrip(box, { className: 'notam-grip', onEnd: saveSize });
 
   // Once the grip has pinned the box it is absolutely positioned, so a window made smaller
   // afterwards leaves it reaching past the screen with its close button out of reach --
   // exactly the way a resized inspector became unreachable. Clamp on window resize, not only
   // while dragging.
   const clampToViewport = () => {
-    if (!box.isConnected || box.style.position !== 'absolute') return;
+    // Pinned by the grip (absolute) or by a title drag (fixed); an unpinned box is centred.
+    if (!box.isConnected || (box.style.position !== 'absolute' && box.style.position !== 'fixed')) return;
     const maxW = Math.max(240, window.innerWidth - 16);
     const maxH = Math.max(180, window.innerHeight - 16);
     const w = Math.min(box.offsetWidth, maxW);
@@ -7512,6 +7473,8 @@ function showNotamModal(only, opts) {
     box.style.top = Math.round(Math.max(8, Math.min(parseFloat(box.style.top) || 0, window.innerHeight - 40))) + 'px';
   };
   window.addEventListener('resize', clampToViewport);
+  // Movable by its title, like the flight plan; where it was left is remembered per language.
+  const stopDrag = makeModalDraggable(box, h, 'navaid.notamListPos');
 
   let sizeSaveTimer = null;
   const sizeObserver = typeof ResizeObserver === 'function' ? new ResizeObserver(() => {
@@ -7531,6 +7494,7 @@ function showNotamModal(only, opts) {
     // The clamp is bound to window, so it outlives the modal unless it comes off here --
     // every open would leave another listener holding a detached box.
     window.removeEventListener('resize', clampToViewport);
+    stopDrag();
     back.remove();
     document.removeEventListener('keydown', onKey);
   };
@@ -10215,47 +10179,15 @@ function clampInspToViewport() {
 (function wireInspectorResize() {
   const insp = document.getElementById('inspector');
   if (!insp) return;
-  const grip = document.createElement('div');
-  grip.className = 'insp-grip resize-grip';
-  grip.title = S.inspResize || 'Resize';
-  grip.setAttribute('aria-hidden', 'true');   // pointer affordance; the panel is not a widget
-  insp.appendChild(grip);
-
-  let sx = 0, sy = 0, sw = 0, sh = 0;
-  const onMove = e => {
-    if (!inspResizeEnabled()) return;
-    const r = insp.getBoundingClientRect();
-    const maxW = Math.max(INSP_MIN_W, window.innerWidth - r.left - 8);
-    const maxH = Math.max(INSP_MIN_H, window.innerHeight - r.top - 8);
-    const w = Math.min(maxW, Math.max(INSP_MIN_W, sw + (e.clientX - sx)));
-    const h = Math.min(maxH, Math.max(INSP_MIN_H, sh + (e.clientY - sy)));
-    insp.style.width = w + 'px';
-    insp.style.height = h + 'px';
-  };
-  const onUp = e => {
-    grip.releasePointerCapture?.(e.pointerId);
-    window.removeEventListener('pointermove', onMove);
-    window.removeEventListener('pointerup', onUp);
-    window.removeEventListener('pointercancel', onUp);
-    if (!inspResizeEnabled()) return;
-    clampInspToViewport();
-    const r = insp.getBoundingClientRect();
-    inspSizeSave(r.width, r.height);
-  };
-  grip.addEventListener('pointerdown', e => {
-    if (!inspResizeEnabled()) return;
-    e.preventDefault();
-    e.stopPropagation();          // the header drag and the map must not see this
-    clampInspToViewport();
-    const r = insp.getBoundingClientRect();
-    insp.style.left = Math.round(r.left) + 'px';
-    insp.style.top = Math.round(r.top) + 'px';
-    insp.style.right = 'auto';
-    sx = e.clientX; sy = e.clientY; sw = r.width; sh = r.height;
-    grip.setPointerCapture?.(e.pointerId);
-    window.addEventListener('pointermove', onMove);
-    window.addEventListener('pointerup', onUp);
-    window.addEventListener('pointercancel', onUp);
+  attachResizeGrip(insp, {
+    className: 'insp-grip', minW: INSP_MIN_W, minH: INSP_MIN_H,
+    enabled: inspResizeEnabled,
+    onStart: clampInspToViewport,
+    onEnd: () => {
+      clampInspToViewport();
+      const r = insp.getBoundingClientRect();
+      inspSizeSave(r.width, r.height);
+    },
   });
 
   applyInspSize();

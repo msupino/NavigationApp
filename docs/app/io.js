@@ -39,7 +39,15 @@ function makeModalDraggable(el, handle, key) {
   if (key) {
     try {
       const raw = navLangPosRead(key);
-      if (raw) { const p = JSON.parse(raw); setPos(p.x, p.y); }
+      if (raw) {
+        const p = JSON.parse(raw);
+        // Pin first: on a flex-centred, position:relative modal (the NOTAM and MET lists)
+        // left/top would OFFSET the centred spot, not replace it. Absolute, not fixed, keeps
+        // the backdrop as the frame the position was stored in.
+        const pos = getComputedStyle(el).position;
+        if (pos !== 'fixed' && pos !== 'absolute') el.style.position = 'absolute';
+        setPos(p.x, p.y);
+      }
     } catch (e) { /* no stored position */ }
   }
   // A panel is placed before it is filled: the flight plan is positioned on its title bar
@@ -121,6 +129,60 @@ function makeModalDraggable(el, handle, key) {
     window.removeEventListener('touchcancel', end);
     if (sizeWatch) { sizeWatch.disconnect(); sizeWatch = null; }
   };
+}
+
+// Bottom-right corner grip that resizes `el` 1:1 with the pointer, shared by the inspector and
+// the NOTAM / SIGMET / AIRMET lists. CSS `resize` is not used: its handle sits where the writing
+// direction puts it, and on a flex-centred modal widening moved both edges, so the corner
+// tracked at half the cursor's speed. The grip pins the top-left first, which makes right and
+// bottom the free edges in either direction. A modal laid out by the flexbox is taken out of it
+// (absolute, inside its backdrop) at that moment.
+// opts: className (extra grip class), minW / minH, enabled() (false = the grip does nothing),
+// onStart() before pinning, onEnd() after a resize (save the size there).
+function attachResizeGrip(el, opts) {
+  const o = opts || {};
+  const minW = o.minW || 240, minH = o.minH || 180;
+  const enabled = typeof o.enabled === 'function' ? o.enabled : () => true;
+  const grip = document.createElement('div');
+  grip.className = (o.className ? o.className + ' ' : '') + 'resize-grip';
+  grip.title = S.inspResize || 'Resize';
+  grip.setAttribute('aria-hidden', 'true');   // pointer affordance; the panel is not a widget
+  el.appendChild(grip);
+  let sx = 0, sy = 0, sw = 0, sh = 0;
+  const onMove = e => {
+    if (!enabled()) return;
+    // Clamped to the viewport: a box grown past the screen leaves its controls out of reach.
+    const r = el.getBoundingClientRect();
+    const maxW = Math.max(minW, window.innerWidth - r.left - 8);
+    const maxH = Math.max(minH, window.innerHeight - r.top - 8);
+    el.style.width = Math.min(maxW, Math.max(minW, sw + (e.clientX - sx))) + 'px';
+    el.style.height = Math.min(maxH, Math.max(minH, sh + (e.clientY - sy))) + 'px';
+  };
+  const onUp = e => {
+    grip.releasePointerCapture?.(e.pointerId);
+    window.removeEventListener('pointermove', onMove);
+    window.removeEventListener('pointerup', onUp);
+    window.removeEventListener('pointercancel', onUp);
+    if (enabled() && o.onEnd) o.onEnd();
+  };
+  grip.addEventListener('pointerdown', e => {
+    if (!enabled()) return;
+    e.preventDefault();
+    e.stopPropagation();          // a title-bar drag and the map must not see this
+    if (o.onStart) o.onStart();
+    const r = el.getBoundingClientRect();
+    const pos = getComputedStyle(el).position;
+    if (pos !== 'fixed' && pos !== 'absolute') { el.style.position = 'absolute'; el.style.margin = '0'; }
+    el.style.left = Math.round(r.left) + 'px';
+    el.style.top = Math.round(r.top) + 'px';
+    el.style.right = 'auto';
+    sx = e.clientX; sy = e.clientY; sw = r.width; sh = r.height;
+    grip.setPointerCapture?.(e.pointerId);
+    window.addEventListener('pointermove', onMove);
+    window.addEventListener('pointerup', onUp);
+    window.addEventListener('pointercancel', onUp);
+  });
+  return grip;
 }
 
 function addModalCloseX(box, onClose, options = {}) {
@@ -5125,7 +5187,8 @@ function showMetList(kind, list) {
   back.dataset.chartModal = kind + '-list';
   const box = document.createElement('div');
   box.className = 'modal wide notam-modal met-modal';
-  function close() { window.removeEventListener('keydown', onEsc, true); back.remove(); }
+  let stopDrag = null;
+  function close() { window.removeEventListener('keydown', onEsc, true); if (stopDrag) stopDrag(); back.remove(); }
   back._navaidClose = close;
   // Capture phase + stopImmediatePropagation: opened from the flight-plan panel, whose own
   // document-level Escape listener would otherwise close the plan underneath.
@@ -5211,6 +5274,29 @@ function showMetList(kind, list) {
   box.appendChild(listEl);
   back.appendChild(box);
   document.body.appendChild(back);
+  // Movable by its title, as the NOTAM list; each list remembers its own spot per language.
+  stopDrag = makeModalDraggable(box, h, kind === 'sigmet' ? 'navaid.sigmetListPos' : 'navaid.airmetListPos');
+  // Resizable like the NOTAM list. It opens fitted to its few warnings unless the pilot has
+  // sized it; a size of their own lifts the fitted cap so the box can be taller than 78vh.
+  const sizeKey = kind === 'sigmet' ? 'navaid.sigmetListSize' : 'navaid.airmetListSize';
+  try {
+    const sz = JSON.parse(localStorage.getItem(sizeKey) || 'null');
+    if (sz && sz.w > 0 && sz.h > 0) {
+      box.style.maxHeight = 'none';
+      box.style.width = Math.min(Math.max(240, sz.w), window.innerWidth - 16) + 'px';
+      box.style.height = Math.min(Math.max(100, sz.h), window.innerHeight - 16) + 'px';
+    }
+  } catch (e) { /* no stored size */ }
+  attachResizeGrip(box, {
+    className: 'notam-grip', minH: 100,   // a one-warning list is shorter than the NOTAM floor
+    onStart: () => { box.style.maxHeight = 'none'; },
+    onEnd: () => {
+      try {
+        localStorage.setItem(sizeKey, JSON.stringify({
+          w: Math.round(box.offsetWidth), h: Math.round(box.offsetHeight) }));
+      } catch (e) { /* storage unavailable */ }
+    },
+  });
   back.addEventListener('mousedown', e => { if (e.target === back) close(); });
   window.addEventListener('keydown', onEsc, true);
 }
