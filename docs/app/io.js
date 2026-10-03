@@ -39,7 +39,15 @@ function makeModalDraggable(el, handle, key) {
   if (key) {
     try {
       const raw = navLangPosRead(key);
-      if (raw) { const p = JSON.parse(raw); setPos(p.x, p.y); }
+      if (raw) {
+        const p = JSON.parse(raw);
+        // Pin first: on a flex-centred, position:relative modal (the NOTAM and MET lists)
+        // left/top would OFFSET the centred spot, not replace it. Absolute, not fixed, keeps
+        // the backdrop as the frame the position was stored in.
+        const pos = getComputedStyle(el).position;
+        if (pos !== 'fixed' && pos !== 'absolute') el.style.position = 'absolute';
+        setPos(p.x, p.y);
+      }
     } catch (e) { /* no stored position */ }
   }
   // A panel is placed before it is filled: the flight plan is positioned on its title bar
@@ -5125,7 +5133,8 @@ function showMetList(kind, list) {
   back.dataset.chartModal = kind + '-list';
   const box = document.createElement('div');
   box.className = 'modal wide notam-modal met-modal';
-  function close() { window.removeEventListener('keydown', onEsc, true); back.remove(); }
+  let stopDrag = null;
+  function close() { window.removeEventListener('keydown', onEsc, true); if (stopDrag) stopDrag(); back.remove(); }
   back._navaidClose = close;
   // Capture phase + stopImmediatePropagation: opened from the flight-plan panel, whose own
   // document-level Escape listener would otherwise close the plan underneath.
@@ -5211,6 +5220,8 @@ function showMetList(kind, list) {
   box.appendChild(listEl);
   back.appendChild(box);
   document.body.appendChild(back);
+  // Movable by its title, as the NOTAM list; each list remembers its own spot per language.
+  stopDrag = makeModalDraggable(box, h, kind === 'sigmet' ? 'navaid.sigmetListPos' : 'navaid.airmetListPos');
   back.addEventListener('mousedown', e => { if (e.target === back) close(); });
   window.addEventListener('keydown', onEsc, true);
 }

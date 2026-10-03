@@ -7512,6 +7512,8 @@ function showNotamModal(only, opts) {
     box.style.top = Math.round(Math.max(8, Math.min(parseFloat(box.style.top) || 0, window.innerHeight - 40))) + 'px';
   };
   window.addEventListener('resize', clampToViewport);
+  // Movable by its title, like the flight plan; where it was left is remembered per language.
+  const stopDrag = makeModalDraggable(box, h, 'navaid.notamListPos');
 
   let sizeSaveTimer = null;
   const sizeObserver = typeof ResizeObserver === 'function' ? new ResizeObserver(() => {
@@ -7531,6 +7533,7 @@ function showNotamModal(only, opts) {
     // The clamp is bound to window, so it outlives the modal unless it comes off here --
     // every open would leave another listener holding a detached box.
     window.removeEventListener('resize', clampToViewport);
+    stopDrag();
     back.remove();
     document.removeEventListener('keydown', onKey);
   };
