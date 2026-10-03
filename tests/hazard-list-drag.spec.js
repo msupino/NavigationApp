@@ -48,3 +48,34 @@ for (const kind of ['notam', 'sigmet', 'airmet']) {
     expect(again.y).toBeCloseTo(after.y, 0);
   });
 }
+
+for (const kind of ['notam', 'sigmet', 'airmet']) {
+  test(`the ${kind} list resizes from its corner grip and reopens at that size`, async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 800 });
+    await page.goto('?lang=en&nogist');
+    await page.waitForFunction(() => typeof showNotamModal === 'function' && typeof attachResizeGrip === 'function');
+    const open = () => page.evaluate(openList, [kind, AIRMET, SIGMET]);
+    await open();
+    const box = page.locator('.modal-back .notam-modal');
+    const before = await box.boundingBox();
+    const g = await box.locator('.resize-grip').boundingBox();
+    await page.mouse.move(g.x + g.width / 2, g.y + g.height / 2);
+    await page.mouse.down();
+    // The NOTAM list opens at its tallest; the short SIGMET / AIRMET lists have room to grow.
+    const dy = kind === 'notam' ? -40 : 70;
+    await page.mouse.move(g.x + g.width / 2 + 90, g.y + g.height / 2 + dy, { steps: 5 });
+    await page.mouse.up();
+    const after = await box.boundingBox();
+    // The top-left stays put; right and bottom follow the pointer 1:1.
+    expect(after.x).toBeCloseTo(before.x, -0.5);
+    expect(after.y).toBeCloseTo(before.y, -0.5);
+    expect(after.width).toBeCloseTo(before.width + 90, -0.5);
+    expect(after.height).toBeCloseTo(before.height + dy, -0.5);
+    await page.keyboard.press('Escape');
+    await expect(box).toHaveCount(0);
+    await open();
+    const again = await box.boundingBox();
+    expect(again.width).toBeCloseTo(after.width, -0.5);
+    expect(again.height).toBeCloseTo(after.height, -0.5);
+  });
+}
