@@ -89,7 +89,7 @@ Prereqs: Android SDK at `~/Library/Android/sdk`, **JDK 21** (Capacitor 8
 fails on older with `invalid source release: 21`; Homebrew:
 `/opt/homebrew/opt/openjdk@21`).
 
-The current package version is **1.8** (`versionCode 8`). Release tags use the
+The current package version is **1.22** (`versionCode 22`). Release tags use the
 matching `android-vX.Y.Z` form. Publish a draft only after that version reaches `main`.
 
 ```sh
