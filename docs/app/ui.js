@@ -31,6 +31,14 @@ function routeIntroOn() {
 // A small "(n)" badge beside a layer control, so a pilot sees how many items are in force
 // without opening it. Always shown, including (0) -- the count is information, and hiding it
 // at zero would be a control that comes and goes, which the layer buttons deliberately do not.
+// Dim a hazard layer's Extra-layers row when nothing is in force across the look-ahead. Only a
+// look: the box stays clickable, so a pilot's saved on/off choice is never changed by the data.
+function setLayerIdle(cbId, idle) {
+  const cb = document.getElementById(cbId);
+  const row = cb && cb.closest('.navtoggle');
+  if (row) row.classList.toggle('navtoggle-idle', !!idle);
+}
+window.setLayerIdle = setLayerIdle;
 function setLayerCount(id, n) {
   const el = document.getElementById(id);
   if (el) el.textContent = Number.isFinite(n) ? ' (' + n + ')' : '';
@@ -6696,15 +6704,18 @@ if (windDepartSlider) {
 // --- SIGMET chart button (modal list, no map overlay) ---------------
 const sigmetBtn = document.getElementById('sigmet-btn');
 function refreshSigmetBtn() {
-  // Dim, never hide: the SIGMET button stays in Charts and greys out when none is active.
-  if (sigmetBtn) { sigmetBtn.hidden = false; sigmetBtn.disabled = !(typeof activeSigmets === 'function' && activeSigmets().length > 0); }
+  // Dim, never hide: the SIGMET button stays in Charts and greys out when none is in force at
+  // any time in the look-ahead.
+  if (sigmetBtn) { sigmetBtn.hidden = false; sigmetBtn.disabled = !(typeof sigmetsInLookahead === 'function' && sigmetsInLookahead().length > 0); }
   setLayerCount('sigmet-count', (typeof activeSigmets === 'function') ? activeSigmets().length : 0);
 }
 if (sigmetBtn) {
   sigmetBtn.onclick = async () => {
     if (typeof loadSigmets === 'function') await loadSigmets();
     refreshSigmetBtn();
-    if (typeof showSigmetDecoded === 'function') showSigmetDecoded();
+    // None in force now but some later in the look-ahead: list those rather than nothing.
+    const now = (typeof activeSigmets === 'function') ? activeSigmets() : [];
+    if (typeof showSigmetDecoded === 'function') showSigmetDecoded(now.length ? undefined : sigmetsInLookahead());
   };
 }
 // Eager load on boot so the button appears if SIGMETs are active.
@@ -6838,7 +6849,11 @@ function refreshNotamListBtn() {
   // count would let the timeline slider disable (and uncheck) the overlay.
   const shownHere = (typeof activeNotams === 'function') ? activeNotams() : [];
   // Dim, never hide -- the NOTAM list button stays put and greys when there is nothing to list.
-  if (notamListBtn) { notamListBtn.hidden = false; notamListBtn.disabled = !(have && shownHere.length); }
+  // ...and only when nothing is in force at any time in the look-ahead: a NOTAM starting in
+  // three hours is worth the list (its All view shows it) even with the slider at now.
+  const ahead = (typeof notamsInLookahead === 'function') ? notamsInLookahead() : shownHere;
+  if (notamListBtn) { notamListBtn.hidden = false; notamListBtn.disabled = !(have && (shownHere.length || ahead.length)); }
+  if (notams !== null) setLayerIdle('notam-cb', !ahead.length);
   setLayerCount('notam-count', shownHere.length);
   setLayerCount('notam-list-count', shownHere.length);
   // Gray out the NOTAM toggle when the feed has no data (source currently
@@ -8553,6 +8568,7 @@ function refreshSigmetLayerCount() {
   const n = (typeof activeSigmets === 'function' && typeof metAreaLatLngs === 'function')
     ? activeSigmets().filter(metAreaLatLngs).length : 0;
   setLayerCount('sigmet-layer-count', n);
+  setLayerIdle('sigmet-cb', !(typeof sigmetsInLookahead === 'function' && sigmetsInLookahead().length));
   refreshMetUpdated('sigmet');
 }
 window.refreshSigmetLayerCount = refreshSigmetLayerCount;
@@ -8574,6 +8590,7 @@ function refreshAirmetGroup() {
   // vanish when its data is momentarily absent. The layer just draws nothing while none is in force.
   if (group) group.hidden = false;
   setLayerCount('airmet-count', (typeof activeAirmets === 'function') ? activeAirmets().length : 0);
+  setLayerIdle('airmet-cb', !(typeof airmetsInLookahead === 'function' && airmetsInLookahead().length));
   if (typeof refreshMetUpdated === 'function') refreshMetUpdated('airmet');
 }
 if (airmetCb) {
@@ -8602,11 +8619,15 @@ window.refreshAirmetGroup = refreshAirmetGroup;
 const airmetBtn = document.getElementById('airmet-btn');
 function refreshAirmetBtn() {
   // The list button never disappears either -- it dims when there is nothing to list.
-  if (airmetBtn) { airmetBtn.hidden = false; airmetBtn.disabled = !(typeof activeAirmets === 'function' && activeAirmets().length > 0); }
+  if (airmetBtn) { airmetBtn.hidden = false; airmetBtn.disabled = !(typeof airmetsInLookahead === 'function' && airmetsInLookahead().length > 0); }
   setLayerCount('airmet-btn-count', (typeof activeAirmets === 'function') ? activeAirmets().length : 0);
 }
 if (airmetBtn) {
-  airmetBtn.onclick = () => { if (typeof showAirmetDecoded === 'function') showAirmetDecoded(); };
+  airmetBtn.onclick = () => {
+    if (typeof showAirmetDecoded !== 'function') return;
+    const now = (typeof activeAirmets === 'function') ? activeAirmets() : [];
+    showAirmetDecoded(now.length ? undefined : airmetsInLookahead());
+  };
 }
 window.refreshAirmetBtn = refreshAirmetBtn;
 

@@ -2227,6 +2227,9 @@ body.theme-light .resize-grip {
 body.theme-light .wind-fetch-status.windfield-loading { color: #1f252c; }
 /* A toggle whose data source is currently unavailable (e.g. NOTAM feed down). */
 .navtoggle-disabled { opacity: 0.45; cursor: not-allowed; }
+/* Nothing in force across the look-ahead (SIGMET / AIRMET / NOTAM): dimmed like a disabled row,
+   but still clickable -- the pilot's on/off choice is theirs, not the feed's. */
+.navtoggle-idle { opacity: 0.45; }
 /* The "(n)" count beside a layer control: quieter than the label, tabular so the width does
    not jump between 9 and 10 items. unicode-bidi:isolate keeps "(53)" a self-contained unit at
    the logical end of the line -- without it, in a Hebrew label that ends in a Latin word

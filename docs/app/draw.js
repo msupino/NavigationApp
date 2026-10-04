@@ -1701,6 +1701,26 @@ function activeSigmets() {
 }
 window.activeSigmets = activeSigmets;
 
+// "Anything in the look-ahead?" -- whether a hazard feed has something in force at any time from
+// now to the end of the look-ahead slider's range (24 h). The SIGMET / AIRMET / NOTAM controls dim
+// when it has nothing: an empty list is not worth opening, and a layer that would draw nothing at
+// every slider position is not worth looking at. Measured from live now, not the scrubbed time.
+function hazardLookaheadEnd() {
+  const el = document.getElementById('lookahead-time');
+  const hr = el ? Number(el.max) : NaN;
+  return Date.now() + (Number.isFinite(hr) && hr > 0 ? hr : 24) * 3600e3;
+}
+// from / to in ms; NaN = an open bound.
+function inLookahead(from, to) {
+  const now = Date.now(), end = hazardLookaheadEnd();
+  return !(Number.isFinite(from) && from > end) && !(Number.isFinite(to) && to < now);
+}
+function sigmetsInLookahead() {
+  return Array.isArray(sigmets) ? sigmets.filter(s => inLookahead(
+    s && s.validFrom > 0 ? s.validFrom * 1000 : NaN, s && s.validTo > 0 ? s.validTo * 1000 : NaN)) : [];
+}
+window.sigmetsInLookahead = sigmetsInLookahead;
+
 function drawSigmets() {
   octx.save();
   // Active ones whose polygon is usable (metAreaLatLngs); a SIGMET given only as a line or a
@@ -1896,6 +1916,11 @@ function activeAirmets() {
   return Array.isArray(window.airmets) ? window.airmets.filter(a => airmetActive(a, now)) : [];
 }
 window.activeAirmets = activeAirmets;
+function airmetsInLookahead() {
+  return Array.isArray(window.airmets) ? window.airmets.filter(a => inLookahead(
+    a && a.validFrom ? Date.parse(a.validFrom) : NaN, a && a.validTo ? Date.parse(a.validTo) : NaN)) : [];
+}
+window.airmetsInLookahead = airmetsInLookahead;
 
 function drawAirmets() {
   const active = activeAirmets();
@@ -1992,6 +2017,15 @@ function activeNotams(opts) {
   const prefix = (typeof layerDataPrefix === 'function') ? layerDataPrefix() : 'cvfr';
   return notams.filter(n => notamActive(n, now) && (everyChart || notamOnChart(n, prefix)));
 }
+// The NOTAMs this chart shows at any time in the look-ahead (see inLookahead above).
+function notamsInLookahead() {
+  if (!Array.isArray(notams)) return [];
+  const prefix = (typeof layerDataPrefix === 'function') ? layerDataPrefix() : 'cvfr';
+  const ms = v => { const d = Date.parse(v); return Number.isFinite(d) ? d : NaN; };
+  return notams.filter(n => notamOnChart(n, prefix) &&
+    inLookahead(n.start ? ms(n.start) : NaN, n.end && !/PERM/i.test(n.end) ? ms(n.end) : NaN));
+}
+window.notamsInLookahead = notamsInLookahead;
 // Resolve a NOTAM fix name (CVFR reporting point / airfield / VOR) → coords.
 // Route-closure NOTAMs name fixes ("BTN NEGEV-HOVAV") instead of giving
 // coordinates, so we look each one up in our own databases to draw a line.
