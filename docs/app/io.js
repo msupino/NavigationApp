@@ -149,12 +149,25 @@ function attachResizeGrip(el, opts) {
   grip.setAttribute('aria-hidden', 'true');   // pointer affordance; the panel is not a widget
   el.appendChild(grip);
   let sx = 0, sy = 0, sw = 0, sh = 0;
+  // left/top resolve against the offset parent, which is not always the window: on a phone the
+  // list's backdrop is inset between the strip and the deck, and a viewport position written as
+  // left/top dropped the box a strip's height the moment the corner was grabbed. Same frame
+  // rule as makeModalDraggable.
+  const frame = () => {
+    const p = el.offsetParent;
+    if (getComputedStyle(el).position !== 'fixed' && p && p !== document.body && p !== document.documentElement) {
+      const r = p.getBoundingClientRect();
+      return { left: r.left, top: r.top, right: r.left + p.clientWidth, bottom: r.top + p.clientHeight };
+    }
+    return { left: 0, top: 0, right: window.innerWidth, bottom: window.innerHeight };
+  };
   const onMove = e => {
     if (!enabled()) return;
-    // Clamped to the viewport: a box grown past the screen leaves its controls out of reach.
+    // Clamped to the frame: a box grown past the screen leaves its controls out of reach.
     const r = el.getBoundingClientRect();
-    const maxW = Math.max(minW, window.innerWidth - r.left - 8);
-    const maxH = Math.max(minH, window.innerHeight - r.top - 8);
+    const f = frame();
+    const maxW = Math.max(minW, f.right - r.left - 8);
+    const maxH = Math.max(minH, f.bottom - r.top - 8);
     el.style.width = Math.min(maxW, Math.max(minW, sw + (e.clientX - sx))) + 'px';
     el.style.height = Math.min(maxH, Math.max(minH, sh + (e.clientY - sy))) + 'px';
   };
@@ -173,8 +186,9 @@ function attachResizeGrip(el, opts) {
     const r = el.getBoundingClientRect();
     const pos = getComputedStyle(el).position;
     if (pos !== 'fixed' && pos !== 'absolute') { el.style.position = 'absolute'; el.style.margin = '0'; }
-    el.style.left = Math.round(r.left) + 'px';
-    el.style.top = Math.round(r.top) + 'px';
+    const f = frame();
+    el.style.left = Math.round(r.left - f.left) + 'px';
+    el.style.top = Math.round(r.top - f.top) + 'px';
     el.style.right = 'auto';
     sx = e.clientX; sy = e.clientY; sw = r.width; sh = r.height;
     grip.setPointerCapture?.(e.pointerId);
@@ -6798,7 +6812,7 @@ window.persistWithoutUndo = persistWithoutUndo;
 function refreshUndoButton() {
   const btn = document.getElementById('undo');
   if (btn) btn.disabled = undoStack.length === 0;
-  const col = document.getElementById('edit-col-undo');      // the phone's edit column
+  const col = document.getElementById('edit-col-undo');      // the edit column's Undo
   if (col) col.disabled = undoStack.length === 0;
 }
 
