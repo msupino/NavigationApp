@@ -1430,10 +1430,14 @@ body.theme-dark #map-crosshair::after {
   display: flex;
   flex-direction: column;
   gap: 8px;
-  /* Desktop: under the menubar and the docked search card, clear of the legend below. */
-  margin-top: 150px !important;
+  /* Desktop: under the menubar and the docked search card (placeEditColumn sets the exact top
+     from the card), on the card's side -- top right in Hebrew, opposite the inspector. */
+  margin-top: 150px;
   margin-left: 12px !important;
 }
+.leaflet-right .leaflet-control.edit-col-ctrl { margin-left: 0 !important; margin-right: 12px !important; }
+/* A short window: the four side by side, so they clear the map buttons stacked below. */
+.leaflet-control.edit-col-ctrl.edit-col-row { flex-direction: row; }
 body.deck-on .leaflet-control.edit-col-ctrl {
   /* The map runs under the deck's top strip: start below it. */
   margin-top: calc(var(--navaid-deck-strip-h, 46px) + 10px) !important;
