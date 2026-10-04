@@ -1526,6 +1526,16 @@ window.S = Object.assign({
   appUpdateCurrent: 'Up to date',
   appUpdateAvailable: function (size) { return 'Update available' + (size ? ' · ' + size : ''); },
   appUpdatePending: 'Update ready: installs the next time NavAid starts',
+  appUpdateRestart: 'Restart now',
+  appUpdateLater: 'Later',
+  appUpdateReadyTitle: 'Update ready',
+  appUpdateReadyText: function (v) {
+    return 'A new version of NavAid has been downloaded' + (v ? ' (' + v + ')' : '') +
+      '. Restart now to use it? It takes a couple of seconds, and your route and settings stay.';
+  },
+  apkUpdateTitle: function (v) { return 'NavAid ' + v + ' is available'; },
+  apkUpdateText: 'A new version of the app is out. Download it and install it over this one: your routes and settings stay. Do not uninstall first.',
+  apkUpdateDownload: 'Download',
   appUpdateUnknown: 'Could not check for updates (no connection?)',
   appUpdateChecking: 'Checking…',
   appUpdateDownloading: 'Downloading…',

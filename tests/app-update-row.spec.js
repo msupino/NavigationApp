@@ -96,7 +96,13 @@ test('on Wi-Fi it downloads without asking', async ({ page }) => {
   await page.waitForFunction(() => typeof window.__ota.finish === 'function');
   await page.evaluate(() => window.__ota.finish());
   await expect(row).toContainText('installs the next time');
-  await expect(page.locator('.follow-me-ask-modal')).toHaveCount(0);
+  // No mobile-data question -- the only one is the offer to restart onto it now.
+  const ask = page.locator('.follow-me-ask-modal');
+  await expect(ask).toHaveCount(1);
+  await expect(ask).not.toContainText('mobile data');
+  await expect(ask.locator('.follow-me-ask-ok')).toHaveText('Restart now');
+  await ask.locator('.follow-me-ask-cancel').click();
+  await expect(row.locator('.app-update-btn')).toHaveText('Restart now');
 });
 
 test('the web app has no such row', async ({ page }) => {

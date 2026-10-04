@@ -205,7 +205,7 @@
     try {
       const next = typeof p.getNextBundle === 'function' ? await p.getNextBundle() : null;
       if (next && next.id && next.status !== 'error' && next.version === manifest.version) {
-        return { checked: true, updated: false, pending: true, reason: 'already downloaded' };
+        return { checked: true, updated: false, pending: true, version: manifest.version, reason: 'already downloaded' };
       }
     } catch (e) { /* nothing pending */ }
     try {
@@ -325,10 +325,110 @@
     return checkForUpdate({ ...o, force: true });
   }
 
+  // --- Asking -----------------------------------------------------------------------------
+  // A downloaded update installs at the next cold start on its own. Asking lets the pilot take
+  // it now -- a reload of about two seconds that keeps the route and settings (they are stored
+  // on the device, not in the bundle). Never while a position is live: recording, showing the
+  // location or a connected simulator. Then the question waits until that stops, and a reload
+  // can never happen in the air.
+  const ASKED_KEY = 'navaid.otaAskedVersion';
+  const APK_ASKED_KEY = 'navaid.apkAskedVersion';
+  const GROUND_POLL_MS = 30000;
+  const lsGetSafe = (k) => { try { return localStorage.getItem(k); } catch (e) { return null; } };
+  const lsSetSafe = (k, v) => { try { localStorage.setItem(k, v); } catch (e) { /* private mode */ } };
+  const inFlight = () => typeof gpsPositionLive === 'function' && !!gpsPositionLive();
+  function onTheGround(pollMs) {
+    if (!inFlight()) return Promise.resolve();
+    return new Promise((resolve) => {
+      const t = setInterval(() => { if (!inFlight()) { clearInterval(t); resolve(); } }, pollMs || GROUND_POLL_MS);
+    });
+  }
+  const ask = (title, text, ok, no) => (typeof window.askYesNo === 'function'
+    ? window.askYesNo(title, text, ok, no) : Promise.resolve(false));
+
+  // Apply the downloaded bundle now. The same pending-aware reload the startup install uses.
+  async function restartNow(opts) {
+    const r = await installPendingAtStartup(opts);
+    if (!r.installed && typeof showToast === 'function' && r.reason !== 'no pending bundle') {
+      showToast(typeof S.appUpdateFailed === 'function' ? S.appUpdateFailed(r.reason) : r.reason, { warn: true });
+    }
+    return r;
+  }
+
+  // Once per version, unless the pilot just asked for the download (`always`).
+  async function offerRestart(version, opts) {
+    const o = opts || {};
+    const v = String(version || '');
+    if (!o.always && v && lsGetSafe(ASKED_KEY) === v) return false;
+    await onTheGround(o.pollMs);
+    lsSetSafe(ASKED_KEY, v);
+    const yes = await ask(S.appUpdateReadyTitle || 'Update ready',
+      typeof S.appUpdateReadyText === 'function' ? S.appUpdateReadyText(v)
+        : 'A new version of NavAid has been downloaded. Restart now to use it? Your route and settings stay.',
+      S.appUpdateRestart || 'Restart now', S.appUpdateLater || 'Later');
+    if (yes) await restartNow(o);
+    return yes;
+  }
+
+  // --- A new APK ----------------------------------------------------------------------------
+  // Native changes (a plugin, a permission) cannot come over the air: they need the next APK.
+  // The releases are on GitHub (android-vX.Y.Z); the installed one says its own version. When a
+  // newer one is out, say so once and open its release page -- the browser downloads the APK
+  // and Android's installer puts it over this one, keeping the data.
+  const RELEASES = 'https://api.github.com/repos/msupino/NavigationApp/releases/latest';
+  const verParts = (v) => (String(v || '').match(/\d+/g) || []).map(Number);
+  function newerVersion(a, b) {
+    const x = verParts(a), y = verParts(b);
+    for (let i = 0; i < Math.max(x.length, y.length); i++) {
+      const d = (x[i] || 0) - (y[i] || 0);
+      if (d) return d > 0;
+    }
+    return false;
+  }
+  async function latestApk() {
+    try {
+      const rel = await getJson(RELEASES);
+      const tag = rel && typeof rel.tag_name === 'string' ? rel.tag_name : '';
+      const m = /^android-v(\d+(?:\.\d+)*)$/.exec(tag);
+      if (!m || rel.draft || rel.prerelease) return null;
+      return { version: m[1], url: String(rel.html_url || '') };
+    } catch (e) { return null; }
+  }
+  async function installedApkVersion() {
+    const cap = window.Capacitor;
+    const app = cap && cap.Plugins && cap.Plugins.App;
+    if (!app || typeof app.getInfo !== 'function') return '';
+    try { const i = await app.getInfo(); return (i && i.version) || ''; } catch (e) { return ''; }
+  }
+  function openOutside(url) {
+    // Capacitor hands a navigation to another host to the system (ACTION_VIEW): the browser
+    // opens the release page and downloads the APK from there.
+    window.location.href = url;
+  }
+  async function checkForNewApk(opts) {
+    const o = opts || {};
+    const cap = window.Capacitor;
+    const android = cap && typeof cap.getPlatform === 'function' && cap.getPlatform() === 'android';
+    if (!o.force && !(android && cap.isNativePlatform && cap.isNativePlatform())) return { offered: false, reason: 'not the Android app' };
+    const installed = o.installed || await installedApkVersion();
+    const latest = o.latest || await latestApk();
+    if (!installed || !latest || !/^https:\/\/github\.com\//.test(latest.url)) return { offered: false, reason: 'unknown' };
+    if (!newerVersion(latest.version, installed)) return { offered: false, reason: 'up to date' };
+    if (lsGetSafe(APK_ASKED_KEY) === latest.version) return { offered: false, reason: 'asked already' };
+    await onTheGround(o.pollMs);
+    lsSetSafe(APK_ASKED_KEY, latest.version);
+    const yes = await ask(typeof S.apkUpdateTitle === 'function' ? S.apkUpdateTitle(latest.version) : 'NavAid ' + latest.version + ' is available',
+      S.apkUpdateText || 'A new version of the app is out. Download it and install it over this one: your routes and settings stay. Do not uninstall first.',
+      S.apkUpdateDownload || 'Download', S.appUpdateLater || 'Later');
+    if (yes) (o.open || openOutside)(latest.url);
+    return { offered: true, accepted: yes, version: latest.version };
+  }
+
   window.NavAid = window.NavAid || {};
   NavAid.ota = {
     notifyReady, checkForUpdate, readManifest, appIsUp, installPendingAtStartup, MANIFEST,
     status, downloadNow, onUnmeteredConnection, sameBuild,
+    restartNow, offerRestart, checkForNewApk, newerVersion,
   };
 
   async function boot() {
@@ -344,7 +444,14 @@
     const ok = await notifyReady({ plugin: p });
     if (ok) clearAttempt();          // this bundle works: let a later one be tried once too
     // Only then look for a newer one, and not while the chart is still being drawn.
-    setTimeout(() => { checkForUpdate({ plugin: p }).catch(() => {}); }, 15000);
+    setTimeout(() => {
+      checkForUpdate({ plugin: p }).then((r) => {
+        // Downloaded now, or earlier and still waiting: offer it (once per version).
+        if (r && (r.updated || r.pending)) return offerRestart(r.version || '', { plugin: p });
+        // Nothing for the web app: is there a new APK? One question at a time, never both.
+        return checkForNewApk();
+      }).catch(() => {});
+    }, 15000);
   }
 
   if (typeof document !== 'undefined') {
