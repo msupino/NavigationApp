@@ -7188,7 +7188,9 @@ function showNotamModal(only, opts) {
   // worth reading (reported: an aerodrome closure starting in 11 minutes "doesn't exist").
   // A single-NOTAM view (a map click) is neither: it shows what was clicked.
   const clicked = (Array.isArray(only) && only.length) ? only : null;
-  let timeFrame = 'active';
+  // A list opened while nothing is in force yet (the button is lit for NOTAMs later in the
+  // look-ahead) opens on All, or it would show nothing at all.
+  let timeFrame = (!clicked && opts && opts.timeFrame === 'all') ? 'all' : 'active';
   let sortMode = 'relevance';
   const feedFor = (frame) => {
     let feed;
@@ -7401,7 +7403,7 @@ function showNotamModal(only, opts) {
       cb.type = 'checkbox';
       cb.className = 'notam-timeframe-cb';
       cb.id = 'notam-show-all';
-      cb.checked = false;
+      cb.checked = timeFrame === 'all';
       const txt = document.createElement('span');
       txt.textContent = S.notamShowAll || 'Include not yet active';
       frame.title = S.notamShowAllTitle || '';
@@ -7547,7 +7549,12 @@ if (notamCb) {
   // the toggle if the feed came back empty (source unavailable).
   ensureNotams().then(() => { refreshNotamListBtn(); if (window.showNotam) draw(); });
 }
-if (notamListBtn) notamListBtn.onclick = () => { ensureNotams().then(showNotamModal); };
+if (notamListBtn) notamListBtn.onclick = () => {
+  ensureNotams().then(() => {
+    const now = (typeof activeNotams === 'function') ? activeNotams() : [];
+    showNotamModal(undefined, now.length ? undefined : { timeFrame: 'all' });
+  });
+};
 
 // ── Overlay alignment: local bound overrides + rect/rotated rendering ─────────
 // Extra-layer chart overlays are placed by lat/long in airfields.json. The

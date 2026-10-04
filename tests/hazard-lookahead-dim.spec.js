@@ -55,3 +55,11 @@ test('in force now: lit, as before', async ({ page }) => {
   expect(r.btn).toEqual([false, false, false]);
   expect(r.row).toEqual([false, false, false]);
 });
+
+test('the NOTAM list opened for later NOTAMs starts on All, so it is not empty', async ({ page }) => {
+  await boot(page);
+  await feed(page, 3, 6);
+  await page.locator('#notam-list-btn').evaluate(b => b.click());
+  await expect(page.locator('#notam-show-all')).toBeChecked();
+  await expect(page.locator('.notam-modal .notam-item')).toHaveCount(1);
+});

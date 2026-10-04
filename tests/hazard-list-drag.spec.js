@@ -79,3 +79,20 @@ for (const kind of ['notam', 'sigmet', 'airmet']) {
     expect(again.height).toBeCloseTo(after.height, -0.5);
   });
 }
+
+test('on a phone, grabbing the corner does not drop the list a strip lower', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('?lang=en&nogist');
+  await page.waitForFunction(() => document.body.classList.contains('deck-on') && typeof showAirmetDecoded === 'function');
+  await page.evaluate(openList, ['airmet', AIRMET, SIGMET]);
+  const box = page.locator('.modal-back .notam-modal');
+  const before = await box.boundingBox();
+  const g = await box.locator('.resize-grip').boundingBox();
+  await page.mouse.move(g.x + g.width / 2, g.y + g.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(g.x + g.width / 2 + 1, g.y + g.height / 2 + 40, { steps: 4 });
+  await page.mouse.up();
+  const after = await box.boundingBox();
+  expect(after.y).toBeCloseTo(before.y, -0.5);   // the top edge stays where it was
+  expect(after.x).toBeCloseTo(before.x, -0.5);
+});
