@@ -1613,10 +1613,6 @@ window.S = Object.assign({
   alreadyOnRoute: '✓ Already on the route',
   trackFlownTwiceToast: 'This leg is already flown out and back — a track can be flown twice, once each way',
   emptyRouteHint: 'Click a point on the map to start a route',
-  modeChipAdd: 'Adding waypoints',
-  modeChipNote: 'Adding notes',
-  modeChipStop: 'tap to stop',
-  modeChipTitle: 'Click to leave this mode',
   // Phone-width display labels. Full titles ("Time (mm:ss)", "Fuel (gal)") pushed the
   // table 111px past a 375px screen on their own. CSV/export headers are unaffected --
   // those come from fpHeaders, which is the export contract.

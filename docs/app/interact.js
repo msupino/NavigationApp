@@ -6166,8 +6166,12 @@ function endTouch(evOrCancelled) {
   const held = !!touchDrag && Number.isFinite(touchDrag.pressedAt) &&
     (Date.now() - touchDrag.pressedAt) > TAP_MAX_MS &&
     KITE_DRAG_KINDS.concat(['wp', 'note']).indexOf(touchDrag.kind) !== -1;
+  // In add mode a tap on a route waypoint is not a request to inspect it: it adds the point
+  // again (closing a loop) further down, through addModeExtendThroughWaypoint. Deciding "tap"
+  // here first opened the panel on the tapped point, which then showed the new one.
+  const addModeWpTap = !!touchDrag && touchDrag.kind === 'wp' && state.mode === 'add';
   const isTap = !!touchDrag && !touchDrag.moved && !touchDrag.wasDoubleTap && !cancelled &&
-    !held && TAP_OPENS_INSPECTOR_KINDS.indexOf(touchDrag.kind) !== -1;
+    !held && !addModeWpTap && TAP_OPENS_INSPECTOR_KINDS.indexOf(touchDrag.kind) !== -1;
   if (touchDrag && (touchDrag.wasDoubleTap || held || (cancelled && !touchDrag.moved))) {
     // Put back what was showing before the finger landed: a cancelled press selected the
     // waypoint under it on the way down, and a highlighted point with no panel explains

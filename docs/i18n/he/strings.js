@@ -216,10 +216,6 @@ window.S = {
   alreadyOnRoute: '✓ כבר במסלול',
   trackFlownTwiceToast: 'הקטע הזה כבר טס הלוך ושוב — אפשר לטוס מסלול פעמיים, פעם בכל כיוון',
   emptyRouteHint: 'לחץ על נקודה במפה כדי להתחיל מסלול',
-  modeChipAdd: 'הוספת נקודות דרך',
-  modeChipNote: 'הוספת הערות',
-  modeChipStop: 'לחץ לסיום',
-  modeChipTitle: 'לחץ ליציאה מהמצב',
   fpHeadersNarrow: { dist: 'NM', speed: 'kt', alt: 'גובה', time: 'זמן', fuel: 'דלק',
     cumTime: 'מצטבר', cumFuel: 'דלק מצטבר' },
   fpMobileSummary: function (legs, nm, time, gal) {

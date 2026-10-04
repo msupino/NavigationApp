@@ -89,22 +89,6 @@ function dismissRoutePriming() {
 }
 window.dismissRoutePriming = dismissRoutePriming;
 
-function refreshModeChip() {
-  let chip = document.getElementById('mode-chip');
-  const label = state.mode === 'add' ? (S.modeChipAdd || 'Adding waypoints')
-    : state.mode === 'note' ? (S.modeChipNote || 'Adding notes') : '';
-  if (!label) { if (chip) chip.remove(); return; }
-  if (!chip) {
-    chip = document.createElement('button');
-    chip.id = 'mode-chip';
-    chip.type = 'button';
-    chip.onclick = () => setMode(null);
-    document.body.appendChild(chip);
-  }
-  chip.textContent = label + ' — ' + (S.modeChipStop || 'tap to stop');
-  chip.title = S.modeChipTitle || 'Click to leave this mode';
-}
-
 function setMode(mode) {
   // Clicking the currently-active mode button toggles back to inspect (null).
   if (state.mode === mode) mode = null;
@@ -130,7 +114,6 @@ function setMode(mode) {
   noteBtn.setAttribute('aria-pressed', String(mode === 'note'));
   document.getElementById('map').classList.toggle('add', mode === 'add' || mode === 'note');
   if (typeof window.refreshEditColumn === 'function') window.refreshEditColumn();
-  refreshModeChip();
   // A map tool needs the map. In mobile-column mode the menu stays open over it —
   // covering ~98% of the height, so points had to be placed through a narrow strip —
   // so collapse it here. Desktop already closes the dropdown after a command.
@@ -1200,9 +1183,11 @@ function refreshEditLockControl() {
 }
 window.refreshEditLockControl = refreshEditLockControl;
 refreshEditLockControl();
-// --- edit column (phone, top left) -----------------------------------------------------
+// --- edit column (top left) -------------------------------------------------------------
 // The Build menu's first four commands, one tap away while the map is up: on a phone the menu
-// covers the map, and adding a point meant opening it, choosing Add, and finding the map again.
+// covers the map, and adding a point meant opening it, choosing Add, and finding the map again;
+// on the desktop it saves the trip to the menubar. Their lit Add / Add note button is also the
+// mode cue and the way out (the blue "Adding waypoints" chip it replaced is gone).
 // Same order as the menu (Add waypoint, Add note, Undo, Clear map), same round buttons as the
 // in-flight column, on the other side of the screen from it. Each one presses the menu's own
 // control, so lock rules, the clear question and the undo stack stay in one place.
@@ -1712,6 +1697,10 @@ legendCtrl.addTo(map);
     const search = document.getElementById('search-overlay');
     const rects = [];
     if (search && !search.classList.contains('hidden')) rects.push(search.getBoundingClientRect());
+    // The edit column is fixed chrome as well (top left, every layout). On a short phone the
+    // expanded card reached up over its Clear button.
+    const editCol = document.querySelector('.edit-col-ctrl');
+    if (editCol && editCol.getClientRects().length) rects.push(editCol.getBoundingClientRect());
     const clock = document.getElementById('map-time');
     // `hidden` is an attribute here, not a class, and the strip is also withdrawn by the
     // gist and while a live position is showing.
