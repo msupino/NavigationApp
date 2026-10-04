@@ -52,10 +52,10 @@ test('a returning user can still start a route deliberately', async ({ page }) =
   await clickMap(page, 32.18, 34.83);
   await page.waitForTimeout(80);
   const r = await page.evaluate(() => ({ wps: state.waypoints.length, mode: state.mode,
-    chip: !!document.getElementById('mode-chip') }));
+    lit: document.getElementById('edit-col-add').classList.contains('edit-col-on') }));
   expect(r.wps).toBe(1);
   expect(r.mode).toBe('add');
-  expect(r.chip).toBe(true);             // and the chip says how to stop
+  expect(r.lit).toBe(true);              // and the lit Add button says how to stop
 });
 
 test('clearing the map later does not re-arm clicking', async ({ page }) => {

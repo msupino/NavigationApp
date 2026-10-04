@@ -1424,13 +1424,17 @@ body.theme-dark #map-crosshair::after {
 
 /* The phone's edit column (ui.js, editColCtrl): Add waypoint, Add note, Undo, Clear map, top
    left -- the other side from the in-flight column, in the same round dark-glass buttons.
-   Phone layout only; the desktop has the menu beside the map. Lit blue while a mode is armed,
+   On the desktop too, under the search card. Lit blue while a mode is armed,
    dimmed (never hidden) when it cannot act. */
-.leaflet-control.edit-col-ctrl { display: none; }
-body.deck-on .leaflet-control.edit-col-ctrl {
+.leaflet-control.edit-col-ctrl {
   display: flex;
   flex-direction: column;
   gap: 8px;
+  /* Desktop: under the menubar and the docked search card, clear of the legend below. */
+  margin-top: 150px !important;
+  margin-left: 12px !important;
+}
+body.deck-on .leaflet-control.edit-col-ctrl {
   /* The map runs under the deck's top strip: start below it. */
   margin-top: calc(var(--navaid-deck-strip-h, 46px) + 10px) !important;
   margin-left: calc(10px + env(safe-area-inset-left, 0px)) !important;
@@ -2227,6 +2231,9 @@ body.theme-light .resize-grip {
 body.theme-light .wind-fetch-status.windfield-loading { color: #1f252c; }
 /* A toggle whose data source is currently unavailable (e.g. NOTAM feed down). */
 .navtoggle-disabled { opacity: 0.45; cursor: not-allowed; }
+/* Nothing in force across the look-ahead (SIGMET / AIRMET / NOTAM): dimmed like a disabled row,
+   but still clickable -- the pilot's on/off choice is theirs, not the feed's. */
+.navtoggle-idle { opacity: 0.45; }
 /* The "(n)" count beside a layer control: quieter than the label, tabular so the width does
    not jump between 9 and 10 items. unicode-bidi:isolate keeps "(53)" a self-contained unit at
    the logical end of the line -- without it, in a Hebrew label that ends in a Latin word
@@ -6574,27 +6581,6 @@ html[dir="rtl"] .vor-aip-line { flex-direction: row; }
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.25);
 }
 
-/* "You are in a mode" chip. The mode buttons live in a dropdown that closes on
-   click, hiding their own highlight, so this is the only persistent cue. */
-#mode-chip {
-  position: fixed;
-  left: 50%;
-  bottom: 46px;
-  transform: translateX(-50%);
-  z-index: 1600;
-  padding: 8px 14px;
-  min-height: 44px;
-  border: none;
-  border-radius: 999px;
-  background: #1d6fe0;
-  color: #fff;
-  font: inherit;
-  font-size: 13px;
-  font-weight: 700;
-  cursor: pointer;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.28);
-}
-#mode-chip:hover { background: #1a63c8; }
 
 /* Keep the inspector's actions reachable. On a phone the panel is ~45% of the
    screen and Delete / Reset sat BELOW the fold, so the two most-used waypoint
@@ -6857,34 +6843,15 @@ html[data-theme="light"] #insp-body .insp-actions {
   margin: 8px 0 4px;
 }
 
-/* Phone bottom band was a three-way pile-up: the legend ran under Leaflet's
-   attribution (which wraps to two lines at this width), and the mode chip covered
-   both the legend and the coordinate readout. Lift each clear of the one below it.
-   This block lives at the end of the file on purpose: the base #mode-chip /
-   #empty-route-hint rules are declared later than the other phone overrides, and
-   with equal id specificity source order decides. */
+/* Phone bottom band: the legend ran under Leaflet's attribution (which wraps to two lines at
+   this width). Lift each clear of the one below it. This block lives at the end of the file on
+   purpose: the base #empty-route-hint rules are declared later than the other phone overrides,
+   and with equal id specificity source order decides. */
 @media (max-width: 680px) {
   .leaflet-bottom.leaflet-left { bottom: 36px; }
   .leaflet-control-attribution { font-size: 10px; line-height: 1.25; }
-  /* A centred chip crosses the bottom-left legend on any phone-width screen, so
-     here it takes the free slot on the right, above the coordinate readout. */
-  #mode-chip {
-    left: auto;
-    right: 8px;
-    transform: none;
-    bottom: 80px;
-    font-size: 12px;
-    padding: 8px 10px;
-    /* Narrow enough to clear the legend beside it; the label wraps rather than
-       widening back over it. */
-    max-width: 44vw;
-    white-space: normal;
-    line-height: 1.2;
-    text-align: center;
-  }
-  html[dir="rtl"] #mode-chip { right: auto; left: 8px; }
-  /* The hint is pointer-transparent, so it may sit over the legend — but keep it
-     above the chip so the two never stack. */
+  /* The hint is pointer-transparent, so it may sit over the legend; keep it above the
+     coordinate readout. */
   #empty-route-hint { bottom: 136px; }
 }
 
@@ -8155,10 +8122,6 @@ body.deck-on .zulu-clock { display: none; }     /* the strip carries the Zulu ti
 body.deck-on #toast-stack { bottom: calc(var(--navaid-deck-bar-h, 52px) + 24px + env(safe-area-inset-bottom, 0px)); }
 body.deck-on .build-update-notice { bottom: calc(var(--navaid-deck-bar-h, 52px) + 18px + env(safe-area-inset-bottom, 0px)); }
 body.deck-on .overlay-loading { bottom: calc(var(--navaid-deck-bar-h, 52px) + 68px + env(safe-area-inset-bottom, 0px)); }
-/* The mode chip is the other way round -- it sits UNDER the deck (z 1600), so the deck hid
-   the chip rather than the chip hiding the deck. Same cause, same move. The class+id
-   selector beats the phone media block that placed it at 80px, whatever the source order. */
-body.deck-on #mode-chip { bottom: calc(var(--navaid-deck-bar-h, 52px) + 80px + env(safe-area-inset-bottom, 0px)); }
 /* The sheet: one surface for everything that is not the chart, at one of three heights.
    It sits above the deck and below the strip, and the chart behind it stays live -- that is
    the point of the peek height. */
