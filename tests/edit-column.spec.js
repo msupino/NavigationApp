@@ -120,3 +120,22 @@ test('while the route is locked, Add waypoint and Add note are dimmed, not hidde
   await expect(page.locator('#edit-col-note')).toHaveClass(/is-dim/);
   await expect(page.locator('#edit-col-add')).toBeVisible();
 });
+
+test('Hebrew desktop: on the search card\'s side, clear of the inspector; a short window lays it out in a row', async ({ page }) => {
+  for (const [w, h] of [[1280, 800], [1024, 600]]) {
+    await page.setViewportSize({ width: w, height: h });
+    await page.goto('?lang=he&nogist');
+    await page.waitForFunction(() => typeof showInspector === 'function' && !!document.getElementById('edit-col-add'));
+    const out = await page.evaluate(() => {
+      state.waypoints = [{ lat: 32.18, lng: 34.83, name: 'A' }, { lat: 32.05, lng: 34.81, name: 'B' }]; syncLegs();
+      state.selected = { type: 'wp', index: 1 }; showInspector(); draw();
+      const r = sel => { const e = document.querySelector(sel); return e && e.getClientRects().length ? e.getBoundingClientRect() : null; };
+      const hit = (a, b) => !!(a && b && a.left < b.right && a.right > b.left && a.top < b.bottom && a.bottom > b.top);
+      const col = r('.edit-col-ctrl');
+      const stack = [...document.querySelectorAll('.leaflet-bottom.leaflet-right .leaflet-control')].map(e => e.getBoundingClientRect());
+      return { right: col.right > innerWidth / 2, onInspector: hit(col, r('#inspector')), onSearch: hit(col, r('#search-overlay')),
+               onStack: stack.some(s => hit(col, s)) };
+    });
+    expect(out).toEqual({ right: true, onInspector: false, onSearch: false, onStack: false });
+  }
+});

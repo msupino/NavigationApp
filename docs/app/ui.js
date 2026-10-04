@@ -1250,6 +1250,42 @@ function refreshEditColumn() {
 }
 window.refreshEditColumn = refreshEditColumn;
 refreshEditColumn();
+// Desktop placement. The inspector opens on the reading side's far edge and the search card
+// on the near one, mirrored in Hebrew -- so a column fixed at the top left sat under the
+// Hebrew inspector. It goes on the search card's side, just below the card's actual bottom
+// (the card wraps taller on a narrow window). The phone keeps it top left under the strip.
+function placeEditColumn() {
+  const wrap = document.querySelector('.edit-col-ctrl');
+  if (!wrap) return;
+  const phone = document.body.classList.contains('deck-on');
+  const want = (!phone && document.documentElement.dir === 'rtl') ? 'topright' : 'topleft';
+  if (editColCtrl.getPosition() !== want) editColCtrl.setPosition(want);
+  if (phone) { wrap.style.marginTop = ''; wrap.classList.remove('edit-col-row'); return; }
+  const search = document.getElementById('search-overlay');
+  const mapTop = map.getContainer().getBoundingClientRect().top;
+  const s = search && !search.classList.contains('hidden') && search.getClientRects().length
+    ? search.getBoundingClientRect() : null;
+  wrap.style.marginTop = Math.max(150, s ? Math.ceil(s.bottom - mapTop + 12) : 0) + 'px';
+  // On the right it shares the edge with the map buttons stacked at the bottom (lock, dial,
+  // zoom). A window too short for both as columns gets the four in a row instead.
+  wrap.classList.remove('edit-col-row');
+  if (want === 'topright') {
+    const stack = [...document.querySelectorAll('.leaflet-bottom.leaflet-right .leaflet-control')]
+      .filter(e => e.getClientRects().length).map(e => e.getBoundingClientRect().top);
+    if (stack.length && wrap.getBoundingClientRect().bottom > Math.min(...stack) - 8) wrap.classList.add('edit-col-row');
+  }
+}
+window.placeEditColumn = placeEditColumn;
+placeEditColumn();
+window.addEventListener('resize', placeEditColumn);
+(function watchSearchCard() {
+  const search = document.getElementById('search-overlay');
+  if (!search) return;
+  if (typeof ResizeObserver === 'function') new ResizeObserver(placeEditColumn).observe(search);
+  new MutationObserver(placeEditColumn).observe(search, { attributes: true, attributeFilter: ['class', 'hidden', 'style'] });
+})();
+// The phone layout (body.deck-on) can switch on after this file runs, or on a rotation.
+new MutationObserver(placeEditColumn).observe(document.body, { attributes: true, attributeFilter: ['class'] });
 
 editLockBtn.onclick = () => {
   const wasLocked = routeEditLocked();
