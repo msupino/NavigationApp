@@ -138,7 +138,7 @@ window.S = {
   },
   apkUpdateTitle: function (v) { return 'NavAid \u2066' + v + '\u2069 זמינה'; },
   apkUpdateText: 'יצאה גרסה חדשה של האפליקציה. הורידו אותה והתקינו מעל הקיימת: המסלולים וההגדרות נשמרים. אין להסיר את ההתקנה קודם.',
-  apkUpdateDownload: 'הורדה',
+  apkUpdateDownload: 'הורד',
   appUpdateUnknown: 'לא ניתן לבדוק עדכונים (אין חיבור?)',
   appUpdateChecking: 'בודק…',
   appUpdateDownloading: 'מוריד…',
