@@ -7684,10 +7684,30 @@ function addOverlayHideButton(layer, g, type) {
   });
   // It belongs to the sheet: on the map exactly as long as the sheet is, and never left
   // behind when the layer group is swapped out from under it.
-  layer.on('add', () => { if (map && !map.hasLayer(btn)) btn.addTo(map); });
+  layer.on('add', () => {
+    if (map && !map.hasLayer(btn)) btn.addTo(map);
+    clearOvHideFromEditCol();
+  });
   layer.on('remove', () => { if (map && map.hasLayer(btn)) map.removeLayer(btn); });
   layer._ovHideBtn = btn;
 }
+// A chart's north-west corner often lands at the top left of the view -- under the edit column,
+// which then takes the press meant for the ✕. Step any ✕ that falls under the column out to its
+// right, on the same row; it goes back to the corner as soon as the corner is clear again.
+function clearOvHideFromEditCol() {
+  const col = document.querySelector('.edit-col-ctrl');
+  const c = col && col.getClientRects().length ? col.getBoundingClientRect() : null;
+  for (const el of document.querySelectorAll('.ov-hide-btn')) {
+    el.style.marginLeft = '0px';
+    if (!c) continue;
+    const r = el.getBoundingClientRect();
+    if (r.left < c.right && r.right > c.left && r.top < c.bottom && r.bottom > c.top) {
+      el.style.marginLeft = Math.ceil(c.right + 6 - r.left) + 'px';
+    }
+  }
+}
+window.clearOvHideFromEditCol = clearOvHideFromEditCol;
+if (typeof map !== 'undefined' && map) map.on('move zoomend viewreset resize', clearOvHideFromEditCol);
 
 // ── Circuit overlay ──────────────────────────────────────────────────────────
 const CIRCUIT_SHOW_KEY    = 'navaid.showCircuit';
