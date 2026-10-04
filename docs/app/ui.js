@@ -339,7 +339,10 @@ const appUpdate = (function () {
     else if (st.state === 'available') {
       line = typeof S.appUpdateAvailable === 'function' ? S.appUpdateAvailable(mb(st.bytes) ? ltr(mb(st.bytes) + ' MB') : '') : 'Update available';
       action = 'download';
-    } else if (st.state === 'pending') line = S.appUpdatePending || 'Update ready: installs the next time NavAid starts';
+    } else if (st.state === 'pending') {
+      line = S.appUpdatePending || 'Update ready: installs the next time NavAid starts';
+      action = 'restart';
+    }
     else { line = S.appUpdateUnknown || 'Could not check for updates'; action = 'check'; }
     text.textContent = line;
     const sub = document.createElement('small');
@@ -351,7 +354,8 @@ const appUpdate = (function () {
     }
     row.classList.toggle('has-update', action === 'download');
     btn.hidden = !action || !!busy;
-    btn.textContent = action === 'download' ? (S.appUpdateDownload || 'Download now') : (S.appUpdateCheck || 'Check again');
+    btn.textContent = action === 'download' ? (S.appUpdateDownload || 'Download now')
+      : action === 'restart' ? (S.appUpdateRestart || 'Restart now') : (S.appUpdateCheck || 'Check again');
     btn.dataset.action = action || '';
   }
   let refreshing = null;
@@ -384,6 +388,9 @@ const appUpdate = (function () {
     const o = ota();
     if (!o) return;
     if (btn.dataset.action === 'check') { paint(last || {}, 'checking'); last = await o.status(); paint(last); return; }
+    // Pressed in Settings, so it is asked for: no second question, and not refused in flight --
+    // the pilot can see what they are doing. ota.js only refuses to ASK while a position is live.
+    if (btn.dataset.action === 'restart') { if (typeof o.restartNow === 'function') await o.restartNow(); return; }
     if (btn.dataset.action !== 'download') return;
     if (!(await o.onUnmeteredConnection())) {
       const size = mb(last && last.bytes) || 26;
@@ -411,7 +418,12 @@ const appUpdate = (function () {
     let r;
     try { r = await o.downloadNow({ manifest: last && last.manifest }); }
     finally { try { if (handle && handle.remove) await handle.remove(); } catch (e) { /* gone */ } pct = null; }
-    if (r && (r.updated || r.pending)) { last = { state: 'pending', version: r.version || '' }; paint(last); return; }
+    if (r && (r.updated || r.pending)) {
+      last = { state: 'pending', version: r.version || '' }; paint(last);
+      // Downloaded on request: offer the restart straight away rather than at the next start.
+      if (typeof o.offerRestart === 'function') o.offerRestart(r.version || '', { always: true });
+      return;
+    }
     last = await o.status();
     paint(last);
     if (r && r.reason && r.reason !== 'already running it' && typeof showToast === 'function') {
@@ -5242,7 +5254,7 @@ window.askFollowMeCode = askFollowMeCode;
 // suppress it, and in the APK it is Capacitor's native AlertDialog -- shown, but with English
 // "OK / Cancel" in the Hebrew UI and none of the app's theme or RTL. This one is bilingual and
 // themed. Same reason refuse() exists for the one-way messages.
-function askYesNo(title, text, okLabel) {
+function askYesNo(title, text, okLabel, noLabel) {
   return new Promise((resolve) => {
     if (typeof createDraggableModal !== 'function') {
       try { resolve(!!window.confirm(text)); } catch (e) { resolve(false); }
@@ -5259,7 +5271,7 @@ function askYesNo(title, text, okLabel) {
     const no = document.createElement('button');
     no.type = 'button';
     no.className = 'follow-me-ask-cancel';
-    no.textContent = S.cancel || 'Cancel';
+    no.textContent = noLabel || S.cancel || 'Cancel';
     no.addEventListener('click', () => { done(false); modal.close(); });
     const yes = document.createElement('button');
     yes.type = 'button';

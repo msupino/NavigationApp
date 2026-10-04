@@ -129,6 +129,16 @@ window.S = {
   appUpdateCurrent: 'מעודכנת',
   appUpdateAvailable: function (size) { return 'יש עדכון' + (size ? ' · ' + size : ''); },
   appUpdatePending: 'העדכון מוכן: יותקן בהפעלה הבאה של NavAid',
+  appUpdateRestart: 'הפעל מחדש עכשיו',
+  appUpdateLater: 'אחר כך',
+  appUpdateReadyTitle: 'עדכון מוכן',
+  appUpdateReadyText: function (v) {
+    return 'גרסה חדשה של NavAid הורדה' + (v ? ' (\u2066' + v + '\u2069)' : '') +
+      '. להפעיל מחדש עכשיו כדי להשתמש בה? זה לוקח שתיים-שלוש שניות, והמסלול וההגדרות נשמרים.';
+  },
+  apkUpdateTitle: function (v) { return 'NavAid \u2066' + v + '\u2069 זמינה'; },
+  apkUpdateText: 'יצאה גרסה חדשה של האפליקציה. הורידו אותה והתקינו מעל הקיימת: המסלולים וההגדרות נשמרים. אין להסיר את ההתקנה קודם.',
+  apkUpdateDownload: 'הורדה',
   appUpdateUnknown: 'לא ניתן לבדוק עדכונים (אין חיבור?)',
   appUpdateChecking: 'בודק…',
   appUpdateDownloading: 'מוריד…',
