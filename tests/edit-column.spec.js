@@ -1,5 +1,5 @@
 // @ts-check
-// The phone's edit column: the Build menu's first four commands -- Add waypoint, Add note,
+// The edit column (phone and desktop): the Build menu's first four commands -- Add waypoint, Add note,
 // Undo, Clear map, in that order -- as round buttons at the top left, the other side from the
 // in-flight column. Requested: "on mobile, I want some edit buttons ... opposite side of the
 // live buttons", "in the same order like the edit menu", "each button is activate/deactivate".
@@ -33,10 +33,42 @@ test('on a phone: four buttons, top left, in the menu\'s order, drawn icons', as
   expect(out.top).toBeGreaterThanOrEqual(out.stripBottom);   // below the top strip, not under it
 });
 
-test('on a desktop the column is not there (the menu is beside the map)', async ({ page }) => {
+test('on a desktop too: below the menubar and the search card, clear of the legend', async ({ page }) => {
   await boot(page, { width: 1280, height: 800 });
-  expect(await page.evaluate(() =>
-    getComputedStyle(document.querySelector('.edit-col-ctrl')).display)).toBe('none');
+  const out = await page.evaluate(() => {
+    const box = sel => { const e = document.querySelector(sel); return e && e.getClientRects().length ? e.getBoundingClientRect() : null; };
+    const col = box('.edit-col-ctrl'), search = box('#search-overlay'), legend = box('#map-legend');
+    const hit = (a, b) => !!(a && b && a.left < b.right && a.right > b.left && a.top < b.bottom && a.bottom > b.top);
+    return { shown: !!col, left: col && col.left, onSearch: hit(col, search), onLegend: hit(col, legend) };
+  });
+  expect(out.shown).toBe(true);
+  expect(out.left).toBeLessThan(40);
+  expect(out.onSearch).toBe(false);
+  expect(out.onLegend).toBe(false);
+});
+
+test('a short phone: the open legend steps clear of the column', async ({ page }) => {
+  await page.addInitScript(() => { try { localStorage.setItem('navaid.legendCollapsed', '0'); } catch (e) {} });
+  await boot(page, { width: 360, height: 640 });
+  await page.waitForTimeout(300);
+  const hit = await page.evaluate(() => {
+    const a = document.querySelector('.edit-col-ctrl').getBoundingClientRect();
+    const b = document.getElementById('map-legend').getBoundingClientRect();
+    return a.left < b.right && a.right > b.left && a.top < b.bottom && a.bottom > b.top;
+  });
+  expect(hit).toBe(false);
+});
+
+test('add mode has no chip over the chart: the lit Add button is the cue and the way out', async ({ page }) => {
+  for (const size of [PHONE, { width: 1280, height: 800 }]) {
+    await boot(page, size);
+    await page.locator('#edit-col-add').click();
+    expect(await page.evaluate(() => state.mode)).toBe('add');
+    await expect(page.locator('#mode-chip')).toHaveCount(0);
+    await expect(page.locator('#edit-col-add')).toHaveClass(/edit-col-on/);
+    await page.locator('#edit-col-add').click();
+    expect(await page.evaluate(() => state.mode)).toBeNull();
+  }
 });
 
 test('Add waypoint and Add note each switch on and off, and only one at a time', async ({ page }) => {

@@ -31,7 +31,7 @@ test('the first click starts the route AND arms add mode, so clicks keep adding'
   expect(r.first.n).toBe(1);
   expect(r.first.mode).toBe('add');       // armed, not a one-shot
   expect(r.second.n).toBe(2);             // keeps adding
-  await expect(page.locator('#mode-chip')).toBeVisible();
+  await expect(page.locator('#edit-col-add')).toHaveClass(/edit-col-on/);   // the lit Add button says so
   await expect(page.locator('#empty-route-hint')).toHaveCount(0);
 });
 
@@ -120,17 +120,17 @@ test('a plain click does NOT add a waypoint once the route exists', async ({ pag
   expect(r.after).toBe(r.before);
 });
 
-test('add-mode shows a persistent chip that can stop it', async ({ page }) => {
+test('add-mode shows a lasting cue on the map that can stop it', async ({ page }) => {
   await boot(page);
   await page.evaluate(() => document.getElementById('tool-add').click());
-  const chip = page.locator('#mode-chip');
-  await expect(chip).toBeVisible();
-  await expect(chip).toContainText(/adding waypoints/i);
-  // The mode buttons live in a dropdown that closes on click, hiding their own
-  // highlight — this chip is the only lasting cue, so it must also clear the mode.
-  await chip.click();
+  // The mode buttons live in a dropdown that closes on click, hiding their own highlight --
+  // the edit column's Add button stays lit on the map, and pressing it clears the mode.
+  const add = page.locator('#edit-col-add');
+  await expect(add).toBeVisible();
+  await expect(add).toHaveClass(/edit-col-on/);
+  await add.click();
   expect(await page.evaluate(() => state.mode)).toBeNull();
-  await expect(chip).toHaveCount(0);
+  await expect(add).not.toHaveClass(/edit-col-on/);
 });
 
 test('mobile: arming a map tool gets the menu off the map', async ({ page }) => {

@@ -82,3 +82,26 @@ test('the marks leave with the layer, however it is switched off', async ({ page
   expect(before).toBeGreaterThan(0);
   expect(after.marks).toBe(after.sheets);
 });
+
+test('a corner under the edit column moves the ✕ out beside it, still pressable', async ({ page }) => {
+  await boot(page);
+  await page.click('#ifr-cb');
+  await expect(marks(page)).toHaveCount(1);
+  // Pan so the sheet's north-west corner sits in the middle of the edit column.
+  await page.evaluate(() => {
+    let layer = null;
+    map.eachLayer(l => { if (l && l._ovType === 'ifr_overlay') layer = l; });
+    const col = document.querySelector('.edit-col-ctrl').getBoundingClientRect();
+    const m = map.getContainer().getBoundingClientRect();
+    const nw = map.latLngToContainerPoint(layer.getBounds().getNorthWest());
+    map.panBy([nw.x - (col.left + col.width / 2 - m.left), nw.y - (col.top + col.height / 2 - m.top)], { animate: false });
+  });
+  const free = await page.evaluate(() => {
+    const b = document.querySelector('.ov-hide-btn').getBoundingClientRect();
+    const top = document.elementFromPoint(b.left + b.width / 2, b.top + b.height / 2);
+    return !!(top && top.closest('.ov-hide-btn'));
+  });
+  expect(free).toBe(true);
+  await marks(page).first().click();
+  await expect(marks(page)).toHaveCount(0);
+});

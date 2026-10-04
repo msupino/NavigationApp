@@ -31,6 +31,14 @@ function routeIntroOn() {
 // A small "(n)" badge beside a layer control, so a pilot sees how many items are in force
 // without opening it. Always shown, including (0) -- the count is information, and hiding it
 // at zero would be a control that comes and goes, which the layer buttons deliberately do not.
+// Dim a hazard layer's Extra-layers row when nothing is in force across the look-ahead. Only a
+// look: the box stays clickable, so a pilot's saved on/off choice is never changed by the data.
+function setLayerIdle(cbId, idle) {
+  const cb = document.getElementById(cbId);
+  const row = cb && cb.closest('.navtoggle');
+  if (row) row.classList.toggle('navtoggle-idle', !!idle);
+}
+window.setLayerIdle = setLayerIdle;
 function setLayerCount(id, n) {
   const el = document.getElementById(id);
   if (el) el.textContent = Number.isFinite(n) ? ' (' + n + ')' : '';
@@ -81,22 +89,6 @@ function dismissRoutePriming() {
 }
 window.dismissRoutePriming = dismissRoutePriming;
 
-function refreshModeChip() {
-  let chip = document.getElementById('mode-chip');
-  const label = state.mode === 'add' ? (S.modeChipAdd || 'Adding waypoints')
-    : state.mode === 'note' ? (S.modeChipNote || 'Adding notes') : '';
-  if (!label) { if (chip) chip.remove(); return; }
-  if (!chip) {
-    chip = document.createElement('button');
-    chip.id = 'mode-chip';
-    chip.type = 'button';
-    chip.onclick = () => setMode(null);
-    document.body.appendChild(chip);
-  }
-  chip.textContent = label + ' — ' + (S.modeChipStop || 'tap to stop');
-  chip.title = S.modeChipTitle || 'Click to leave this mode';
-}
-
 function setMode(mode) {
   // Clicking the currently-active mode button toggles back to inspect (null).
   if (state.mode === mode) mode = null;
@@ -122,7 +114,6 @@ function setMode(mode) {
   noteBtn.setAttribute('aria-pressed', String(mode === 'note'));
   document.getElementById('map').classList.toggle('add', mode === 'add' || mode === 'note');
   if (typeof window.refreshEditColumn === 'function') window.refreshEditColumn();
-  refreshModeChip();
   // A map tool needs the map. In mobile-column mode the menu stays open over it —
   // covering ~98% of the height, so points had to be placed through a narrow strip —
   // so collapse it here. Desktop already closes the dropdown after a command.
@@ -1192,9 +1183,11 @@ function refreshEditLockControl() {
 }
 window.refreshEditLockControl = refreshEditLockControl;
 refreshEditLockControl();
-// --- edit column (phone, top left) -----------------------------------------------------
+// --- edit column (top left) -------------------------------------------------------------
 // The Build menu's first four commands, one tap away while the map is up: on a phone the menu
-// covers the map, and adding a point meant opening it, choosing Add, and finding the map again.
+// covers the map, and adding a point meant opening it, choosing Add, and finding the map again;
+// on the desktop it saves the trip to the menubar. Their lit Add / Add note button is also the
+// mode cue and the way out (the blue "Adding waypoints" chip it replaced is gone).
 // Same order as the menu (Add waypoint, Add note, Undo, Clear map), same round buttons as the
 // in-flight column, on the other side of the screen from it. Each one presses the menu's own
 // control, so lock rules, the clear question and the undo stack stay in one place.
@@ -1704,6 +1697,10 @@ legendCtrl.addTo(map);
     const search = document.getElementById('search-overlay');
     const rects = [];
     if (search && !search.classList.contains('hidden')) rects.push(search.getBoundingClientRect());
+    // The edit column is fixed chrome as well (top left, every layout). On a short phone the
+    // expanded card reached up over its Clear button.
+    const editCol = document.querySelector('.edit-col-ctrl');
+    if (editCol && editCol.getClientRects().length) rects.push(editCol.getBoundingClientRect());
     const clock = document.getElementById('map-time');
     // `hidden` is an attribute here, not a class, and the strip is also withdrawn by the
     // gist and while a live position is showing.
@@ -6696,15 +6693,18 @@ if (windDepartSlider) {
 // --- SIGMET chart button (modal list, no map overlay) ---------------
 const sigmetBtn = document.getElementById('sigmet-btn');
 function refreshSigmetBtn() {
-  // Dim, never hide: the SIGMET button stays in Charts and greys out when none is active.
-  if (sigmetBtn) { sigmetBtn.hidden = false; sigmetBtn.disabled = !(typeof activeSigmets === 'function' && activeSigmets().length > 0); }
+  // Dim, never hide: the SIGMET button stays in Charts and greys out when none is in force at
+  // any time in the look-ahead.
+  if (sigmetBtn) { sigmetBtn.hidden = false; sigmetBtn.disabled = !(typeof sigmetsInLookahead === 'function' && sigmetsInLookahead().length > 0); }
   setLayerCount('sigmet-count', (typeof activeSigmets === 'function') ? activeSigmets().length : 0);
 }
 if (sigmetBtn) {
   sigmetBtn.onclick = async () => {
     if (typeof loadSigmets === 'function') await loadSigmets();
     refreshSigmetBtn();
-    if (typeof showSigmetDecoded === 'function') showSigmetDecoded();
+    // None in force now but some later in the look-ahead: list those rather than nothing.
+    const now = (typeof activeSigmets === 'function') ? activeSigmets() : [];
+    if (typeof showSigmetDecoded === 'function') showSigmetDecoded(now.length ? undefined : sigmetsInLookahead());
   };
 }
 // Eager load on boot so the button appears if SIGMETs are active.
@@ -6838,7 +6838,11 @@ function refreshNotamListBtn() {
   // count would let the timeline slider disable (and uncheck) the overlay.
   const shownHere = (typeof activeNotams === 'function') ? activeNotams() : [];
   // Dim, never hide -- the NOTAM list button stays put and greys when there is nothing to list.
-  if (notamListBtn) { notamListBtn.hidden = false; notamListBtn.disabled = !(have && shownHere.length); }
+  // ...and only when nothing is in force at any time in the look-ahead: a NOTAM starting in
+  // three hours is worth the list (its All view shows it) even with the slider at now.
+  const ahead = (typeof notamsInLookahead === 'function') ? notamsInLookahead() : shownHere;
+  if (notamListBtn) { notamListBtn.hidden = false; notamListBtn.disabled = !(have && (shownHere.length || ahead.length)); }
+  if (notams !== null) setLayerIdle('notam-cb', !ahead.length);
   setLayerCount('notam-count', shownHere.length);
   setLayerCount('notam-list-count', shownHere.length);
   // Gray out the NOTAM toggle when the feed has no data (source currently
@@ -7680,10 +7684,30 @@ function addOverlayHideButton(layer, g, type) {
   });
   // It belongs to the sheet: on the map exactly as long as the sheet is, and never left
   // behind when the layer group is swapped out from under it.
-  layer.on('add', () => { if (map && !map.hasLayer(btn)) btn.addTo(map); });
+  layer.on('add', () => {
+    if (map && !map.hasLayer(btn)) btn.addTo(map);
+    clearOvHideFromEditCol();
+  });
   layer.on('remove', () => { if (map && map.hasLayer(btn)) map.removeLayer(btn); });
   layer._ovHideBtn = btn;
 }
+// A chart's north-west corner often lands at the top left of the view -- under the edit column,
+// which then takes the press meant for the ✕. Step any ✕ that falls under the column out to its
+// right, on the same row; it goes back to the corner as soon as the corner is clear again.
+function clearOvHideFromEditCol() {
+  const col = document.querySelector('.edit-col-ctrl');
+  const c = col && col.getClientRects().length ? col.getBoundingClientRect() : null;
+  for (const el of document.querySelectorAll('.ov-hide-btn')) {
+    el.style.marginLeft = '0px';
+    if (!c) continue;
+    const r = el.getBoundingClientRect();
+    if (r.left < c.right && r.right > c.left && r.top < c.bottom && r.bottom > c.top) {
+      el.style.marginLeft = Math.ceil(c.right + 6 - r.left) + 'px';
+    }
+  }
+}
+window.clearOvHideFromEditCol = clearOvHideFromEditCol;
+if (typeof map !== 'undefined' && map) map.on('move zoomend viewreset resize', clearOvHideFromEditCol);
 
 // ── Circuit overlay ──────────────────────────────────────────────────────────
 const CIRCUIT_SHOW_KEY    = 'navaid.showCircuit';
@@ -8553,6 +8577,7 @@ function refreshSigmetLayerCount() {
   const n = (typeof activeSigmets === 'function' && typeof metAreaLatLngs === 'function')
     ? activeSigmets().filter(metAreaLatLngs).length : 0;
   setLayerCount('sigmet-layer-count', n);
+  setLayerIdle('sigmet-cb', !(typeof sigmetsInLookahead === 'function' && sigmetsInLookahead().length));
   refreshMetUpdated('sigmet');
 }
 window.refreshSigmetLayerCount = refreshSigmetLayerCount;
@@ -8574,6 +8599,7 @@ function refreshAirmetGroup() {
   // vanish when its data is momentarily absent. The layer just draws nothing while none is in force.
   if (group) group.hidden = false;
   setLayerCount('airmet-count', (typeof activeAirmets === 'function') ? activeAirmets().length : 0);
+  setLayerIdle('airmet-cb', !(typeof airmetsInLookahead === 'function' && airmetsInLookahead().length));
   if (typeof refreshMetUpdated === 'function') refreshMetUpdated('airmet');
 }
 if (airmetCb) {
@@ -8602,11 +8628,15 @@ window.refreshAirmetGroup = refreshAirmetGroup;
 const airmetBtn = document.getElementById('airmet-btn');
 function refreshAirmetBtn() {
   // The list button never disappears either -- it dims when there is nothing to list.
-  if (airmetBtn) { airmetBtn.hidden = false; airmetBtn.disabled = !(typeof activeAirmets === 'function' && activeAirmets().length > 0); }
+  if (airmetBtn) { airmetBtn.hidden = false; airmetBtn.disabled = !(typeof airmetsInLookahead === 'function' && airmetsInLookahead().length > 0); }
   setLayerCount('airmet-btn-count', (typeof activeAirmets === 'function') ? activeAirmets().length : 0);
 }
 if (airmetBtn) {
-  airmetBtn.onclick = () => { if (typeof showAirmetDecoded === 'function') showAirmetDecoded(); };
+  airmetBtn.onclick = () => {
+    if (typeof showAirmetDecoded !== 'function') return;
+    const now = (typeof activeAirmets === 'function') ? activeAirmets() : [];
+    showAirmetDecoded(now.length ? undefined : airmetsInLookahead());
+  };
 }
 window.refreshAirmetBtn = refreshAirmetBtn;
 

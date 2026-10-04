@@ -228,17 +228,16 @@ test('the Hebrew unset-altitude placeholder also fits on a phone', async ({ page
   expect(out.textW).toBeLessThanOrEqual(out.usable);   // no "לא יד"
 });
 
-test('the phone bottom band does not pile up legend, chip, coords and attribution', async ({ page }) => {
+test('the phone bottom band does not pile up legend, coords and attribution', async ({ page }) => {
   await page.setViewportSize({ width: 375, height: 812 });
   await page.goto('?lang=en&nogist&deck=0');
   await page.waitForFunction(() => typeof syncLegs === 'function');
   const boxes = await page.evaluate(() => {
     state.waypoints = [{ lat: 32.0, lng: 34.9, name: 'A' }, { lat: 32.4, lng: 35.1, name: 'B' }];
-    state.legs = []; syncLegs(); state.mode = 'add'; draw();
-    if (typeof refreshModeChip === 'function') refreshModeChip();
+    state.legs = []; syncLegs(); draw();
     const get = sel => { const e = document.querySelector(sel); if (!e) return null;
       const r = e.getBoundingClientRect(); return r.height ? { top: r.top, bottom: r.bottom, left: r.left, right: r.right } : null; };
-    return { legend: get('#map-legend'), chip: get('#mode-chip'),
+    return { legend: get('#map-legend'),
              coord: get('#coord-readout'), attrib: get('.leaflet-control-attribution') };
   });
   const hits = (a, b) => a && b && a.left < b.right && a.right > b.left && a.top < b.bottom && a.bottom > b.top;
@@ -246,10 +245,7 @@ test('the phone bottom band does not pile up legend, chip, coords and attributio
   expect(boxes.attrib).not.toBeNull();
   // The legend must sit clear of the attribution, which wraps to two lines here.
   expect(boxes.legend.bottom).toBeLessThanOrEqual(boxes.attrib.top + 1);
-  if (boxes.chip) {
-    expect(hits(boxes.chip, boxes.legend)).toBe(false);
-    expect(hits(boxes.chip, boxes.coord)).toBe(false);
-  }
+  expect(hits(boxes.legend, boxes.coord)).toBe(false);
 });
 
 test('the collapsed phone toolbar is no taller than its four visible rows', async ({ page }) => {
