@@ -38,6 +38,9 @@
   // 5,461 files: index.json says which pack holds a zoom and where each tile starts. A pack is
   // fetched once, from the app itself, and each tile is a slice of it.
   let reliefIndex = null;
+  // Its own reference, taken now: a tile is not an export, and a page that wraps
+  // URL.createObjectURL later (to catch the file a Save makes) must not see map tiles.
+  const tileBlobUrl = URL.createObjectURL.bind(URL);
   const packs = {};
   const tileUrls = new Map();
   function reliefIndexLoad() {
@@ -60,7 +63,7 @@
     }
     const buf = await packs[pack.file];
     if (!buf || i + 1 >= pack.offsets.length) return null;
-    const url = URL.createObjectURL(new Blob([buf.slice(pack.offsets[i], pack.offsets[i + 1])], { type: 'image/webp' }));
+    const url = tileBlobUrl(new Blob([buf.slice(pack.offsets[i], pack.offsets[i + 1])], { type: 'image/webp' }));
     tileUrls.set(key, url);
     return url;
   }

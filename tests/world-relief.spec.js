@@ -12,8 +12,8 @@ test('relief tiles load under the world outlines, from the app itself', async ({
   await page.evaluate(() => map.setView([32, 30], 3, { animate: false }));
   await expect.poll(() => asked.length).toBeGreaterThan(0);
   // A pack, not 5,461 files: the index and the packs for the zooms in view, nothing else.
-  expect(asked.some(u => /index\.json/.test(u))).toBe(true);
-  expect(asked.some(u => /z0-4\.pack/.test(u))).toBe(true);
+  await expect.poll(() => asked.some(u => /index\.json/.test(u))).toBe(true);
+  await expect.poll(() => asked.some(u => /z0-4\.pack/.test(u))).toBe(true);
   await expect.poll(() => page.evaluate(() => [...map.getPane('worldRelief').querySelectorAll('img')]
     .filter(i => i.complete && i.naturalWidth === 256).length)).toBeGreaterThan(0);
   const z = await page.evaluate(() => ({

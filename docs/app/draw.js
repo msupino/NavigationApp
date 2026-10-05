@@ -1431,8 +1431,8 @@ function drawMeasure() {
   const to = m.to;
   const dot = (p, r) => { const s = proj(p); octx.beginPath(); octx.arc(s.x, s.y, r, 0, Math.PI * 2); octx.fill(); octx.stroke(); };
   octx.save();
-  octx.fillStyle = '#ffffff';
-  octx.strokeStyle = '#d0115e';
+  octx.fillStyle = tune('measureDotFill');
+  octx.strokeStyle = tune('measureLineColor');
   octx.lineWidth = 2.5;
   if (from && !live) dot(from, 5);
   if (!from || !to) { octx.restore(); return; }
@@ -1467,11 +1467,11 @@ function drawMeasure() {
     .map(([rt, dn]) => [rt ? b.x + 12 : b.x - 12 - w, dn ? b.y + 10 : b.y - 10 - h]);
   const pick = tries.find(([tx, ty]) => fits(tx, ty)) || tries[0];
   const x = Math.max(4, Math.min(cr.width - w - 4, pick[0])), y = Math.max(4, Math.min(cr.height - h - 4, pick[1]));
-  octx.fillStyle = 'rgba(22, 30, 40, 0.86)';
+  octx.fillStyle = tune('measureLabelBg');
   octx.beginPath();
   if (octx.roundRect) octx.roundRect(x, y, w, h, 8); else octx.rect(x, y, w, h);
   octx.fill();
-  octx.fillStyle = '#ffffff';
+  octx.fillStyle = tune('measureLabelText');
   octx.textBaseline = 'top';
   // Each line in its own direction: the canvas takes the page's (rtl in Hebrew), which turned
   // "16 NM · 131°" into "NM · 131° 16". Numbers read left to right; a Hebrew line from the right.
