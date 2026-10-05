@@ -280,7 +280,8 @@ test.describe('Bidi / mixed-direction UI regressions', () => {
     await page.evaluate(() => { map.setZoom(13); showZoom(); });
     await page.waitForFunction(() => map.getZoom() === 13);
     const main = page.locator('#zoom-readout');
-    await expect(main).toHaveText('z13 · 2×');
+    // Two lines in one box: the zoom, then the scale.
+    await expect(main.locator('span')).toHaveText(['z13', '2×']);
     const mainBidi = await cssSnapshot(main);
     expect(mainBidi.direction).toBe('ltr');
     expect(mainBidi.unicodeBidi).toContain('isolate');

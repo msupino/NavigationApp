@@ -925,7 +925,9 @@ html[dir="rtl"] #toolbar {
      only — on mobile the inspector is a full-width bottom sheet. */
   html[dir="rtl"] #inspector {
     right: auto;
-    left: 12px;
+    /* Beside the edit column (top left in both languages), not over it: 12 px margin, the
+       44 px buttons, a gap. */
+    left: 68px;
   }
 
   /* Drag grip at the leading edge of the bar (left in LTR, right in RTL —
@@ -1385,11 +1387,15 @@ body.theme-dark #map-crosshair::after {
   --navaid-mapbtn-live: #1f8a4c;
   --navaid-mapbtn-warn: #b07a12;
 }
+.measure-ctrl { display: flex; justify-content: center; margin-bottom: 3px !important; }
+.leaflet-control.measure-ctrl button { min-width: 44px; min-height: 44px; cursor: pointer; touch-action: manipulation; }
+.leaflet-control.measure-ctrl button.measure-on { background: var(--navaid-mapbtn-on); }
 .leaflet-control.voice-ctrl button,
 .leaflet-control.orient-ctrl button,
 .leaflet-control.follow-ctrl button,
 .leaflet-control.follow-me-ctrl button,
-.leaflet-control.editlock-ctrl button {
+.leaflet-control.editlock-ctrl button,
+.leaflet-control.measure-ctrl button {
   display: flex; align-items: center; justify-content: center;
   padding: 0;
   border: none;
@@ -1401,7 +1407,8 @@ body.theme-dark #map-crosshair::after {
 }
 .leaflet-control.voice-ctrl button svg,
 .leaflet-control.follow-me-ctrl button svg,
-.leaflet-control.editlock-ctrl button svg { display: block; }
+.leaflet-control.editlock-ctrl button svg,
+.leaflet-control.measure-ctrl button svg { display: block; }
 .leaflet-control.voice-ctrl button:focus-visible,
 .leaflet-control.orient-ctrl button:focus-visible,
 .leaflet-control.follow-ctrl button:focus-visible,
@@ -1431,14 +1438,11 @@ body.theme-dark #map-crosshair::after {
   display: flex;
   flex-direction: column;
   gap: 8px;
-  /* Desktop: under the menubar and the docked search card (placeEditColumn sets the exact top
-     from the card), on the card's side -- top right in Hebrew, opposite the inspector. */
+  /* Desktop: top left in both languages, under the menubar and the docked search card
+     (placeEditColumn sets the exact top from the card). */
   margin-top: 150px;
   margin-left: 12px !important;
 }
-.leaflet-right .leaflet-control.edit-col-ctrl { margin-left: 0 !important; margin-right: 12px !important; }
-/* A short window: the four side by side, so they clear the map buttons stacked below. */
-.leaflet-control.edit-col-ctrl.edit-col-row { flex-direction: row; }
 body.deck-on .leaflet-control.edit-col-ctrl {
   /* The map runs under the deck's top strip: start below it. */
   margin-top: calc(var(--navaid-deck-strip-h, 46px) + 10px) !important;
@@ -1581,11 +1585,17 @@ html[dir="rtl"] .leaflet-control.zulu-clock {
   unicode-bidi: isolate;
 }
 .zoom-readout {
-  display: block;
-  padding: 2px 4px;
+  /* Zoom over scale, in a box the round buttons' width (44 px) -- one edge, one centre line. */
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  box-sizing: border-box;
+  min-width: 44px;
+  padding: 4px 3px;
   margin-bottom: 2px;
   text-align: center;
-  min-width: 34px;
+  line-height: 1.1;
   /* Always LTR so the `z… · …×` readout reads the same in Hebrew as in
      English (otherwise RTL reorders the × / middle dot). Matches
      .satellite-zoom-readout. */
@@ -6262,6 +6272,13 @@ body.theme-light .overlay-loading {
   pointer-events: none;
 }
 .toast.show { opacity: 1; }
+/* A message is read now; the bottom chips that only describe the map wait behind it. They
+   share its band at the bottom of a phone, and two dark pills one on the other read as one
+   broken one. They come back the moment the message goes. */
+body:has(#toast-stack .toast.show) #empty-route-hint,
+body:has(#toast-stack .toast.show) .coord-readout { visibility: hidden; }
+/* Measuring is not starting a route: its hint would tell the pilot the wrong thing. */
+body.measuring #empty-route-hint { display: none; }
 /* A warning that must be acted on, not just noticed. Pulses the background rather than the
    opacity so the text stays readable at every point in the cycle -- a message that fades
    out and back is harder to read than one that simply sits there. */

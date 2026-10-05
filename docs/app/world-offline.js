@@ -23,6 +23,73 @@
   map.getPane(LABEL_PANE).style.zIndex = 110;
   map.getPane(LABEL_PANE).style.pointerEvents = 'none';
 
+  // Under the outlines: Natural Earth's shaded relief (land colour, relief shading, sea), cut
+  // into tiles by scripts/build-relief-tiles.py and shipped with the app -- so the world outside
+  // the charts shows mountains, deserts and sea, offline, instead of two flat colours. Public
+  // domain. Zooms 0-6 (11 MB in three packs); closer in, Leaflet enlarges zoom 6. `worldRelief` turns it off,
+  // and then the flat land and sea come back.
+  const RELIEF_PANE = 'worldRelief';
+  map.createPane(RELIEF_PANE, map._rotatePane || undefined);
+  map.getPane(RELIEF_PANE).style.zIndex = 95;               // under the outlines (100)
+  map.getPane(RELIEF_PANE).style.pointerEvents = 'none';
+  const reliefOn = () => typeof tune !== 'function' || tune('worldRelief') !== false;
+  const reliefBase = () => (typeof navAssetBase === 'function' ? navAssetBase('relief') : 'relief/');
+  // The tiles come in three packs (zooms 0-4, 5, 6; scripts/build-relief-tiles.py), not as
+  // 5,461 files: index.json says which pack holds a zoom and where each tile starts. A pack is
+  // fetched once, from the app itself, and each tile is a slice of it.
+  let reliefIndex = null;
+  // Its own reference, taken now: a tile is not an export, and a page that wraps
+  // URL.createObjectURL later (to catch the file a Save makes) must not see map tiles.
+  const tileBlobUrl = URL.createObjectURL.bind(URL);
+  const packs = {};
+  const tileUrls = new Map();
+  function reliefIndexLoad() {
+    if (!reliefIndex) {
+      reliefIndex = fetch(reliefBase() + 'index.json').then(r => (r.ok ? r.json() : null)).catch(() => null);
+    }
+    return reliefIndex;
+  }
+  async function reliefTileUrl(z, x, y) {
+    const key = z + '/' + x + '/' + y;
+    if (tileUrls.has(key)) return tileUrls.get(key);
+    const idx = await reliefIndexLoad();
+    const pack = idx && idx.packs.find(p => p.zooms.includes(z));
+    if (!pack) return null;
+    let i = 0;                                        // tiles of the pack's earlier zooms, then x-major
+    for (const zz of pack.zooms) { if (zz === z) break; i += Math.pow(4, zz); }
+    i += x * Math.pow(2, z) + y;
+    if (!packs[pack.file]) {
+      packs[pack.file] = fetch(reliefBase() + pack.file).then(r => (r.ok ? r.arrayBuffer() : null)).catch(() => null);
+    }
+    const buf = await packs[pack.file];
+    if (!buf || i + 1 >= pack.offsets.length) return null;
+    const url = tileBlobUrl(new Blob([buf.slice(pack.offsets[i], pack.offsets[i + 1])], { type: 'image/webp' }));
+    tileUrls.set(key, url);
+    return url;
+  }
+  const ReliefLayer = L.TileLayer.extend({
+    createTile(coords, done) {
+      const img = document.createElement('img');
+      img.alt = '';
+      img.setAttribute('role', 'presentation');
+      L.DomEvent.on(img, 'load', L.Util.bind(this._tileOnLoad, this, done, img));
+      L.DomEvent.on(img, 'error', L.Util.bind(this._tileOnError, this, done, img));
+      reliefTileUrl(coords.z, coords.x, coords.y).then((url) => {
+        if (url) img.src = url; else done(new Error('no relief tile'), img);
+      });
+      return img;
+    },
+  });
+  const relief = new ReliefLayer('', {
+    pane: RELIEF_PANE, minZoom: 0, maxZoom: 22, maxNativeZoom: 6, noWrap: true,
+    bounds: [[-85.0511, -180], [85.0511, 180]], keepBuffer: 2,
+    attribution: 'Relief: Natural Earth',
+  });
+  function syncRelief() {
+    const on = reliefOn();
+    if (on && !map.hasLayer(relief)) relief.addTo(map);
+    else if (!on && map.hasLayer(relief)) map.removeLayer(relief);
+  }
   const SEA = '#cddbe6';
   const LAND = '#f1ede3';
   const BORDER = '#9a948a';
@@ -48,8 +115,11 @@
     const ctx = renderer._ctx;
     const b = renderer._bounds;
     if (!ctx || !b) return;
-    ctx.fillStyle = SEA;
-    ctx.fillRect(b.min.x, b.min.y, b.max.x - b.min.x, b.max.y - b.min.y);
+    const flat = !reliefOn();          // the relief has its own land and sea
+    if (flat) {
+      ctx.fillStyle = SEA;
+      ctx.fillRect(b.min.x, b.min.y, b.max.x - b.min.x, b.max.y - b.min.y);
+    }
     if (!rings) return;
     const scale = 256 * Math.pow(2, map.getZoom());
     const o = map.getPixelOrigin();
@@ -66,8 +136,10 @@
       for (let i = 2; i < r.length; i += 2) ctx.lineTo(r[i] * scale - o.x, r[i + 1] * scale - o.y);
       ctx.closePath();
     }
-    ctx.fillStyle = LAND;
-    ctx.fill('evenodd');
+    if (flat) {
+      ctx.fillStyle = LAND;
+      ctx.fill('evenodd');
+    }
     ctx.lineWidth = 0.8;
     ctx.strokeStyle = BORDER;
     ctx.stroke();
@@ -79,6 +151,9 @@
     paint();
   };
   map.addLayer(renderer);
+  syncRelief();
+  // The gist (or the tuning panel) can switch it while the app runs.
+  map.on('zoomend moveend', syncRelief);
 
   // Country names thin out as the map zooms out: Natural Earth's own label rank says which
   // matter at a continent's scale (1-2) and which only close in (6+). Cities the same by their

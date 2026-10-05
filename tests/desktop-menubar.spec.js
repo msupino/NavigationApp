@@ -262,6 +262,9 @@ test.describe('Desktop menubar layout', () => {
     await page.evaluate(showWp);
     box = await page.locator('#inspector').boundingBox();
     if (!box) throw new Error('no box');
-    expect(box.x).toBeLessThan(40);
+    // Left-anchored, just beside the edit column (top left in both languages), not over it.
+    const col = await page.locator('.edit-col-ctrl').boundingBox();
+    expect(box.x).toBeLessThan(100);
+    if (col) expect(box.x).toBeGreaterThanOrEqual(col.x + col.width);
   });
 });

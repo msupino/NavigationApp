@@ -121,7 +121,7 @@ test('while the route is locked, Add waypoint and Add note are dimmed, not hidde
   await expect(page.locator('#edit-col-add')).toBeVisible();
 });
 
-test('Hebrew desktop: on the search card\'s side, clear of the inspector; a short window lays it out in a row', async ({ page }) => {
+test('Hebrew desktop: top left like English, and the inspector opens beside it, not over it', async ({ page }) => {
   for (const [w, h] of [[1280, 800], [1024, 600]]) {
     await page.setViewportSize({ width: w, height: h });
     await page.goto('?lang=he&nogist');
@@ -132,10 +132,8 @@ test('Hebrew desktop: on the search card\'s side, clear of the inspector; a shor
       const r = sel => { const e = document.querySelector(sel); return e && e.getClientRects().length ? e.getBoundingClientRect() : null; };
       const hit = (a, b) => !!(a && b && a.left < b.right && a.right > b.left && a.top < b.bottom && a.bottom > b.top);
       const col = r('.edit-col-ctrl');
-      const stack = [...document.querySelectorAll('.leaflet-bottom.leaflet-right .leaflet-control')].map(e => e.getBoundingClientRect());
-      return { right: col.right > innerWidth / 2, onInspector: hit(col, r('#inspector')), onSearch: hit(col, r('#search-overlay')),
-               onStack: stack.some(s => hit(col, s)) };
+      return { left: col.left < 40, column: col.height > col.width, onInspector: hit(col, r('#inspector')), onSearch: hit(col, r('#search-overlay')) };
     });
-    expect(out).toEqual({ right: true, onInspector: false, onSearch: false, onStack: false });
+    expect(out).toEqual({ left: true, column: true, onInspector: false, onSearch: false });
   }
 });
