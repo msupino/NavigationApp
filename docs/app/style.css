@@ -925,7 +925,9 @@ html[dir="rtl"] #toolbar {
      only — on mobile the inspector is a full-width bottom sheet. */
   html[dir="rtl"] #inspector {
     right: auto;
-    left: 12px;
+    /* Beside the edit column (top left in both languages), not over it: 12 px margin, the
+       44 px buttons, a gap. */
+    left: 68px;
   }
 
   /* Drag grip at the leading edge of the bar (left in LTR, right in RTL —
@@ -1436,14 +1438,11 @@ body.theme-dark #map-crosshair::after {
   display: flex;
   flex-direction: column;
   gap: 8px;
-  /* Desktop: under the menubar and the docked search card (placeEditColumn sets the exact top
-     from the card), on the card's side -- top right in Hebrew, opposite the inspector. */
+  /* Desktop: top left in both languages, under the menubar and the docked search card
+     (placeEditColumn sets the exact top from the card). */
   margin-top: 150px;
   margin-left: 12px !important;
 }
-.leaflet-right .leaflet-control.edit-col-ctrl { margin-left: 0 !important; margin-right: 12px !important; }
-/* A short window: the four side by side, so they clear the map buttons stacked below. */
-.leaflet-control.edit-col-ctrl.edit-col-row { flex-direction: row; }
 body.deck-on .leaflet-control.edit-col-ctrl {
   /* The map runs under the deck's top strip: start below it. */
   margin-top: calc(var(--navaid-deck-strip-h, 46px) + 10px) !important;

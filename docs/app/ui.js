@@ -1343,33 +1343,21 @@ function refreshEditColumn() {
 }
 window.refreshEditColumn = refreshEditColumn;
 refreshEditColumn();
-// Desktop placement. The inspector opens on the reading side's far edge and the search card
-// on the near one, mirrored in Hebrew -- so a column fixed at the top left sat under the
-// Hebrew inspector. It goes on the search card's side, just below the card's actual bottom
-// (the card wraps taller on a narrow window). The phone keeps it top left under the strip.
+// Desktop placement: top left in both languages -- the same place as on the phone and in
+// English, so a pilot switching language finds them where they were (the Hebrew inspector
+// opens beside them, style.css). Just below the docked search card's actual bottom when the
+// card is on that side (it wraps taller on a narrow window). The phone keeps it under the strip.
 function placeEditColumn() {
   const wrap = document.querySelector('.edit-col-ctrl');
   if (!wrap) return;
-  const phone = document.body.classList.contains('deck-on');
-  const want = (!phone && document.documentElement.dir === 'rtl') ? 'topright' : 'topleft';
-  if (editColCtrl.getPosition() !== want) {
-    editColCtrl.setPosition(want);
-    refreshEditColumn();           // a rebuilt column starts unlit: give it the current state
-  }
-  if (phone) { wrap.style.marginTop = ''; wrap.classList.remove('edit-col-row'); return; }
+  if (document.body.classList.contains('deck-on')) { wrap.style.marginTop = ''; return; }
   const search = document.getElementById('search-overlay');
-  const mapTop = map.getContainer().getBoundingClientRect().top;
+  const mapBox = map.getContainer().getBoundingClientRect();
   const s = search && !search.classList.contains('hidden') && search.getClientRects().length
     ? search.getBoundingClientRect() : null;
-  wrap.style.marginTop = Math.max(150, s ? Math.ceil(s.bottom - mapTop + 12) : 0) + 'px';
-  // On the right it shares the edge with the map buttons stacked at the bottom (lock, dial,
-  // zoom). A window too short for both as columns gets the four in a row instead.
-  wrap.classList.remove('edit-col-row');
-  if (want === 'topright') {
-    const stack = [...document.querySelectorAll('.leaflet-bottom.leaflet-right .leaflet-control')]
-      .filter(e => e.getClientRects().length).map(e => e.getBoundingClientRect().top);
-    if (stack.length && wrap.getBoundingClientRect().bottom > Math.min(...stack) - 8) wrap.classList.add('edit-col-row');
-  }
+  // Only a card that reaches over the left edge's first 70 px is in the column's way.
+  const inWay = s && s.left < mapBox.left + 70;
+  wrap.style.marginTop = Math.max(150, inWay ? Math.ceil(s.bottom - mapBox.top + 12) : 0) + 'px';
 }
 window.placeEditColumn = placeEditColumn;
 placeEditColumn();
