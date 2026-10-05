@@ -145,6 +145,8 @@ exports.test = base.test.extend({
     if (acknowledgeDisclaimer) await context.addInitScript(() => {
       window.__navaidNoDisclaimer = true;
     });
+    // The first-launch map tour would cover every spec's screen; tests/map-tour.spec.js opts in.
+    await context.addInitScript(() => { window.__navaidNoTour = true; });
     // The suite runs on the built-in defaults, as it did before the gist was bundled
     // (data/gist-snapshot.js): the snapshot changes whenever the gist does, and a test must
     // not. tests/gist-snapshot.spec.js opts back in.

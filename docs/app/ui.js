@@ -72,6 +72,8 @@ function refreshEmptyRouteHint() {
     // The flag is written when the hint is CREATED, and an element already on screen
     // is left alone, so marking it seen cannot make it vanish mid-read.
     if (emptyRouteHintSeen()) { refreshPrimingCursor(); return; }
+    // Not under the safety notice: it would be hidden there, and marked seen all the same.
+    if (!(window.NavAid && NavAid.disclaimerDone)) { refreshPrimingCursor(); return; }
     el = document.createElement('div');
     el.id = 'empty-route-hint';
     document.body.appendChild(el);
@@ -107,6 +109,7 @@ function dismissRoutePriming() {
   return true;
 }
 window.dismissRoutePriming = dismissRoutePriming;
+window.addEventListener('navaid-disclaimer-done', () => refreshEmptyRouteHint());
 
 function setMode(mode) {
   // Clicking the currently-active mode button toggles back to inspect (null).
