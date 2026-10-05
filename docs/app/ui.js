@@ -1210,6 +1210,7 @@ function measureToggle(on) {
   const m = window.measure;
   m.on = typeof on === 'boolean' ? on : !m.on;
   m.from = null; m.to = null;
+  document.body.classList.toggle('measuring', m.on);
   const b = document.getElementById('measure-btn');
   if (b) { b.classList.toggle('measure-on', m.on); b.setAttribute('aria-pressed', String(m.on)); }
   if (m.on && typeof showToast === 'function') {
