@@ -6279,6 +6279,15 @@ body:has(#toast-stack .toast.show) #empty-route-hint,
 body:has(#toast-stack .toast.show) .coord-readout { visibility: hidden; }
 /* Measuring is not starting a route: its hint would tell the pilot the wrong thing. */
 body.measuring #empty-route-hint { display: none; }
+/* The measure readout: over the chart's symbols (markers 600, tooltips 650), under the map
+   buttons (800). Colours come from the measureLabel* tunables, set inline by drawMeasure. */
+#measure-label {
+  position: absolute; z-index: 750; pointer-events: none;
+  padding: 5px 8px; border-radius: 8px; box-sizing: border-box;
+  font: bold 13px/17px system-ui, sans-serif; white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+#measure-label[hidden] { display: none; }
 /* A warning that must be acted on, not just noticed. Pulses the background rather than the
    opacity so the text stays readable at every point in the cycle -- a message that fades
    out and back is harder to read than one that simply sits there. */
