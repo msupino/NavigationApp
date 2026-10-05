@@ -48,7 +48,7 @@ test('dragging the dial moves the needle with the finger', async ({ page }) => {
   expect(await page.locator('#rotate-needle').evaluate(el => el.style.transform)).toBe('rotate(90deg)');
 });
 
-test('while planning the dial\'s number is the map\'s true rotation; in flight the heading, magnetic', async ({ page }) => {
+test('the dial\'s number is the map\'s true rotation; with heading-up in flight, the heading, magnetic', async ({ page }) => {
   await page.goto('?lang=en&nogist');
   await page.waitForFunction(() => typeof refreshDial === 'function' && typeof map.setBearing === 'function');
   const r = await page.evaluate(() => {
@@ -59,14 +59,17 @@ test('while planning the dial\'s number is the map\'s true rotation; in flight t
     map.setBearing(6); refreshDial();
     const turned = field();
     window.gpsLiveOn = true; gpsOwn = { lat: 32.1, lng: 34.9, hdg: 354, t: Date.now() };
-    refreshOrientControl();
+    refreshOrientControl(); refreshDial();
+    const flyingTurned = field();               // in flight, chart turned by hand: still true
+    headingUpOn = true; refreshDial();
     const flying = field();
-    window.gpsLiveOn = false; refreshOrientControl();
-    return { northUp, turned, flying, after: field() };
+    headingUpOn = false; window.gpsLiveOn = false; refreshOrientControl(); refreshDial();
+    return { northUp, turned, flyingTurned, flying, after: field() };
   });
   expect(r.northUp).toBe('0');                 // planning: north up is 0, not 355
   expect(r.turned).toBe('354');                // planning: the true rotation
-  expect(r.flying).toBe('349');                // in flight: magnetic (5E)
+  expect(r.flyingTurned).toBe('354');          // in flight, turned by hand: true
+  expect(r.flying).toBe('349');                // heading-up in flight: magnetic (5E)
   expect(r.after).toBe('354');                 // back to true when the position stops
 });
 
