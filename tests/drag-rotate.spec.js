@@ -300,22 +300,22 @@ test.describe('Rotate dial tap-step (C6)', () => {
     expect(seq).toEqual([270, 180, 90, 0]);
   });
 
-  test('in flight the taps step the MAGNETIC heading: the number reads 0, 90, 180, 270', async ({ page }) => {
+  test('in flight a tap squares the chart to TRUE north, not magnetic', async ({ page }) => {
     await boot(page);
     const seq = await page.evaluate(() => {
       new Function('gpsLiveOn = true; gpsFollow = true')();
       onLivePosition({ timestamp: Date.now(), coords: { latitude: 32.18, longitude: 34.83, accuracy: 5, speed: 30, heading: 90, altitude: 300 } });
       const out = [];
-      map.setBearing(0);                      // true north up: the field reads 355 (5 E variation)
+      map.setBearing(7);                      // off-axis: the first tap goes to true north
       for (let i = 0; i < 4; i++) {
         rotDragging = true; rotMoved = false;
         rotEnd(true);
         refreshDialReady();
-        out.push(Number(document.getElementById('rotate-hdg').value));
+        out.push([Math.round(mapBearing()), Number(document.getElementById('rotate-hdg').value)]);
       }
       return out;
     });
-    expect(seq).toEqual([0, 90, 180, 270]);
+    expect(seq).toEqual([[0, 0], [270, 90], [180, 180], [90, 270]]);
   });
 
   test('an aborted gesture (pointercancel) does not rotate', async ({ page }) => {
