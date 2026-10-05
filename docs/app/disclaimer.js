@@ -197,9 +197,16 @@
     return build(onAccept);
   }
 
+  // Done = accepted, or not shown this launch. The first-route hint and the map tour wait for
+  // it: started under the notice they were hidden behind it, and the hint was marked seen there,
+  // so a new user never saw either.
+  function markDone() {
+    NavAid.disclaimerDone = true;
+    window.dispatchEvent(new Event('navaid-disclaimer-done'));
+  }
   function maybeShowDisclaimer() {
-    if (!featureOn() || suppressed()) return null;
-    return showDisclaimer();
+    if (!featureOn() || suppressed()) { markDone(); return null; }
+    return showDisclaimer(markDone);
   }
 
   window.NavAid = window.NavAid || {};
@@ -233,6 +240,8 @@
   NavAid.whenBootScreenGone = whenBootScreenGone;
 
   if (typeof document !== 'undefined') {
+    // Switched off for the test suite: done at once, so the first-route hint is as it always was.
+    if (suppressed()) markDone();
     const start = () => whenBootScreenGone(maybeShowDisclaimer);
     if (document.readyState === 'complete') setTimeout(start, 0);
     else window.addEventListener('load', () => setTimeout(start, 0));

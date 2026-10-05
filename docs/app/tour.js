@@ -193,6 +193,8 @@
     const t = setInterval(() => {
       if (++tries > 240) { clearInterval(t); return; }
       if (document.getElementById('boot-loading') || document.querySelector('.modal-back')) return;
+      // After the safety notice (disclaimer.js), never under it.
+      if (!(window.NavAid && NavAid.disclaimerDone) || document.querySelector('.disclaimer-back')) return;
       if (typeof map === 'undefined' || !map) return;
       clearInterval(t);
       setTimeout(start, 600);
