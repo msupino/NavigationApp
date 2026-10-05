@@ -31,6 +31,25 @@ function routeIntroOn() {
 // A small "(n)" badge beside a layer control, so a pilot sees how many items are in force
 // without opening it. Always shown, including (0) -- the count is information, and hiding it
 // at zero would be a control that comes and goes, which the layer buttons deliberately do not.
+// A button that cannot act right now stays tappable and says why, instead of swallowing the
+// tap: a `disabled` button gives no feedback at all, and on a phone that reads as broken.
+// `why` is the toast; empty/null means the button is live again.
+function setButtonWhy(btn, why) {
+  if (!btn) return;
+  btn.disabled = false;
+  btn.classList.toggle('is-dim', !!why);
+  if (why) { btn.setAttribute('aria-disabled', 'true'); btn.dataset.why = why; }
+  else { btn.removeAttribute('aria-disabled'); delete btn.dataset.why; }
+}
+window.setButtonWhy = setButtonWhy;
+// One listener for all of them, in the capture phase so it runs before the button's own handler.
+window.addEventListener('click', (e) => {
+  const b = e.target && e.target.closest && e.target.closest('[aria-disabled="true"][data-why]');
+  if (!b) return;
+  e.preventDefault();
+  e.stopImmediatePropagation();
+  if (typeof showToast === 'function') showToast(b.dataset.why);
+}, true);
 // Dim a hazard layer's Extra-layers row when nothing is in force across the look-ahead. Only a
 // look: the box stays clickable, so a pilot's saved on/off choice is never changed by the data.
 function setLayerIdle(cbId, idle) {
@@ -1212,10 +1231,20 @@ editColCtrl.onAdd = function () {
     ['edit-col-undo', 'undo', 'tbUndoTitle', 'tbUndo'],
     ['edit-col-clear', 'clearMap', 'tbClearTitle', 'tbClear'],
   ];
+  // Handlers are attached HERE, on every build: Leaflet rebuilds a control when it moves corner
+  // (placeEditColumn: top right on a Hebrew desktop), and buttons wired once by id after the
+  // first build were replaced by bare ones -- the column looked right and did nothing.
+  const actions = {
+    'edit-col-add': () => setMode('add'),
+    'edit-col-note': () => setMode('note'),
+    'edit-col-undo': () => document.getElementById('undo').click(),
+    'edit-col-clear': () => document.getElementById('clear').click(),
+  };
   for (const [id, icon, titleKey, nameKey] of items) {
     const b = document.createElement('button');
     b.type = 'button';
     b.id = id;
+    b.addEventListener('click', actions[id]);
     setMapIcon(b, icon);
     const name = String(S[nameKey] || '').replace(/^[^\p{L}\p{N}]+/u, '').replace(/\s*\([^)]*\)\s*$/, '');
     b.setAttribute('aria-label', name || S[titleKey] || id);
@@ -1227,10 +1256,6 @@ editColCtrl.onAdd = function () {
   return wrap;
 };
 editColCtrl.addTo(map);
-document.getElementById('edit-col-add').onclick = () => setMode('add');
-document.getElementById('edit-col-note').onclick = () => setMode('note');
-document.getElementById('edit-col-undo').onclick = () => document.getElementById('undo').click();
-document.getElementById('edit-col-clear').onclick = () => document.getElementById('clear').click();
 // Mirrors of the menu's state: Add/Note lit while armed, Undo dim when there is nothing to
 // undo, Add/Note dim while the route is locked (they would only say so and refuse).
 function refreshEditColumn() {
@@ -1244,9 +1269,14 @@ function refreshEditColumn() {
   add.setAttribute('aria-pressed', String(state.mode === 'add'));
   note.setAttribute('aria-pressed', String(state.mode === 'note'));
   const locked = typeof routeEditLocked === 'function' && routeEditLocked();
-  add.classList.toggle('is-dim', locked);
-  note.classList.toggle('is-dim', locked);
-  undoBtn.disabled = !!(menuUndo && menuUndo.disabled);
+  // A locked route (the padlock, or a live position) locks all four, with the one message the
+  // lock already uses; otherwise Undo / Clear say when there is nothing for them to do.
+  const lockWhy = locked ? (S.editLockBlockedToast || 'Route is locked — unlock it to edit') : null;
+  const empty = !(state.waypoints && state.waypoints.length) && !(state.notes && state.notes.length);
+  setButtonWhy(add, lockWhy);
+  setButtonWhy(note, lockWhy);
+  setButtonWhy(undoBtn, lockWhy || ((menuUndo && menuUndo.disabled) ? (S.whyNothingToUndo || 'Nothing to undo') : null));
+  setButtonWhy(document.getElementById('edit-col-clear'), lockWhy || (empty ? (S.whyNothingToClear || 'The map is already empty') : null));
 }
 window.refreshEditColumn = refreshEditColumn;
 refreshEditColumn();
@@ -1259,7 +1289,10 @@ function placeEditColumn() {
   if (!wrap) return;
   const phone = document.body.classList.contains('deck-on');
   const want = (!phone && document.documentElement.dir === 'rtl') ? 'topright' : 'topleft';
-  if (editColCtrl.getPosition() !== want) editColCtrl.setPosition(want);
+  if (editColCtrl.getPosition() !== want) {
+    editColCtrl.setPosition(want);
+    refreshEditColumn();           // a rebuilt column starts unlit: give it the current state
+  }
   if (phone) { wrap.style.marginTop = ''; wrap.classList.remove('edit-col-row'); return; }
   const search = document.getElementById('search-overlay');
   const mapTop = map.getContainer().getBoundingClientRect().top;
@@ -6743,7 +6776,11 @@ const sigmetBtn = document.getElementById('sigmet-btn');
 function refreshSigmetBtn() {
   // Dim, never hide: the SIGMET button stays in Charts and greys out when none is in force at
   // any time in the look-ahead.
-  if (sigmetBtn) { sigmetBtn.hidden = false; sigmetBtn.disabled = !(typeof sigmetsInLookahead === 'function' && sigmetsInLookahead().length > 0); }
+  if (sigmetBtn) {
+    sigmetBtn.hidden = false;
+    setButtonWhy(sigmetBtn, (typeof sigmetsInLookahead === 'function' && sigmetsInLookahead().length > 0)
+      ? null : (S.whyNoSigmet || 'No SIGMET in force in the next 24 hours'));
+  }
   setLayerCount('sigmet-count', (typeof activeSigmets === 'function') ? activeSigmets().length : 0);
 }
 if (sigmetBtn) {
@@ -6889,7 +6926,11 @@ function refreshNotamListBtn() {
   // ...and only when nothing is in force at any time in the look-ahead: a NOTAM starting in
   // three hours is worth the list (its All view shows it) even with the slider at now.
   const ahead = (typeof notamsInLookahead === 'function') ? notamsInLookahead() : shownHere;
-  if (notamListBtn) { notamListBtn.hidden = false; notamListBtn.disabled = !(have && (shownHere.length || ahead.length)); }
+  if (notamListBtn) {
+    notamListBtn.hidden = false;
+    setButtonWhy(notamListBtn, (have && (shownHere.length || ahead.length)) ? null
+      : (S.whyNoNotam || 'No NOTAM in force in the next 24 hours'));
+  }
   if (notams !== null) setLayerIdle('notam-cb', !ahead.length);
   setLayerCount('notam-count', shownHere.length);
   setLayerCount('notam-list-count', shownHere.length);
@@ -8683,7 +8724,11 @@ window.refreshAirmetGroup = refreshAirmetGroup;
 const airmetBtn = document.getElementById('airmet-btn');
 function refreshAirmetBtn() {
   // The list button never disappears either -- it dims when there is nothing to list.
-  if (airmetBtn) { airmetBtn.hidden = false; airmetBtn.disabled = !(typeof airmetsInLookahead === 'function' && airmetsInLookahead().length > 0); }
+  if (airmetBtn) {
+    airmetBtn.hidden = false;
+    setButtonWhy(airmetBtn, (typeof airmetsInLookahead === 'function' && airmetsInLookahead().length > 0)
+      ? null : (S.whyNoAirmet || 'No AIRMET in force in the next 24 hours'));
+  }
   setLayerCount('airmet-btn-count', (typeof activeAirmets === 'function') ? activeAirmets().length : 0);
 }
 if (airmetBtn) {
@@ -11606,10 +11651,20 @@ function armAndroidBackButton(attempt) {
     // that ends a flight looks exactly like the press that closed a panel. Asked in the app
     // (bilingual, themed) rather than with the native English-only confirm. A second Back
     // while the question is up closes it (backButtonStep), i.e. "stay".
+    // The question is the title (a bare "NavAid" said nothing); the line under it says what
+    // closing does not cost, which is the thing a pilot hesitating over Back wants to know.
     const msg = (S && S.exitConfirm) || 'Close NavAid?';
     let leave;
-    try { leave = await appConfirm(msg, S.exitConfirmOk || 'Close NavAid'); } catch (e) { leave = true; }
+    try {
+      leave = await appConfirm(S.exitConfirmBody || 'Your route, recordings and settings are kept.',
+        S.exitConfirmOk || 'Close NavAid', msg);
+    } catch (e) { leave = true; }
     if (!leave) return;
+    // "Recordings are kept" has to be true of the one in progress too: a track is stored only
+    // when Stop is pressed, and closing the app ended it with nothing saved. Stop and save it.
+    if (typeof gpsRecording !== 'undefined' && gpsRecording && typeof stopGpsRecordingAndSave === 'function') {
+      try { stopGpsRecordingAndSave(); } catch (e) { /* closing still beats hanging on the question */ }
+    }
     if (typeof flushPersist === 'function') flushPersist();
     if (typeof app.exitApp === 'function') app.exitApp();
   });

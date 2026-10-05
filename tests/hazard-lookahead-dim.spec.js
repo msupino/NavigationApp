@@ -22,7 +22,7 @@ function feed(page, from, to) {
       start: new Date(now + from * H).toISOString(), end: new Date(now + to * H).toISOString(), geom: null }]);
     refreshSigmetBtn(); refreshSigmetLayerCount(); refreshAirmetGroup(); refreshAirmetBtn(); refreshNotamListBtn();
     const idle = id => document.getElementById(id).closest('.navtoggle').classList.contains('navtoggle-idle');
-    const off = id => document.getElementById(id).disabled;
+    const off = id => document.getElementById(id).getAttribute('aria-disabled') === 'true';
     return { btn: [off('sigmet-btn'), off('airmet-btn'), off('notam-list-btn')],
              row: [idle('sigmet-cb'), idle('airmet-cb'), idle('notam-cb')],
              rowClickable: !document.getElementById('sigmet-cb').disabled };
