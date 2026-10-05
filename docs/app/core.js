@@ -109,6 +109,11 @@ NavAid.tuningDefaults = {
   // the difference between a usable track and none at all.
   gpsMaxAccuracyM: { value: 100, min: 10, max: 500, step: 5, label: 'Reject fixes worse than (m)' },
   gpsMinMoveM: { value: 10, min: 0, max: 100, step: 1, label: 'Ignore movement under (m)' },
+  // Between ~1 Hz fixes the aircraft (and the followed map) glides along its track at the
+  // measured ground speed, redrawn often enough for a ~2 px step -- see gpsShownOwn (gps.js).
+  gpsGlide: { value: true, type: 'bool', label: 'Glide the aircraft between GPS fixes' },
+  gpsGlideMinKt: { value: 30, min: 0, max: 200, step: 5, label: 'Glide: from this ground speed (kt)' },
+  gpsGlideMaxHz: { value: 10, min: 1, max: 30, step: 1, label: 'Glide: most redraws a second' },
   gpsStaleSec: { value: 20, min: 5, max: 300, step: 5, label: 'Fix goes stale after (s)' },
   // How often the pressure/temperature behind the altimetry correction is refetched. The model
   // itself publishes every 15 minutes, so asking more often buys nothing but requests; the
@@ -1037,7 +1042,7 @@ NavAid.tuningDefaults = {
 // interaction (hit testing), tools (alt pairs, export), and finally the
 // global colour palette.
 NavAid.tuningGroups = [
-  { name: 'Navigation', keys: ['magVarAuto', 'magneticVariationDeg', 'msaBufferFt', 'altimetryCorrection', 'geoidUndulationFt', 'followResumeMs', 'followZoomFloor', 'followZoomCeiling', 'followZoomCtrFloor', 'followZoomCtrCeiling', 'gpsReadoutFontPx', 'gpsReadoutRefitPx', 'alertNotifyTtlSec', 'altToleranceFt', 'altMaxAlertsPerLeg', 'legEtaLeadSec', 'atisLeadSec', 'atisMarkerColor', 'atisMarkerRadiusPx', 'atisMarkerFontPx', 'liveHeadingEndLabel', 'legCaptureNm', 'driftTrackErrorDeg', 'driftCheckSec', 'coneUnknownSec', 'gpsMaxAccuracyM', 'gpsMinMoveM', 'gpsStaleSec', 'qnhMaxAgeMin', 'qnhMoveNm', 'compassMaxKt', 'compassFallback', 'headingUpMinDeltaDeg', 'crosshairSizePx', 'crosshairWidthPx', 'crosshairColor', 'crosshairHaloColor', 'crosshairAlpha'] },
+  { name: 'Navigation', keys: ['magVarAuto', 'magneticVariationDeg', 'msaBufferFt', 'altimetryCorrection', 'geoidUndulationFt', 'followResumeMs', 'followZoomFloor', 'followZoomCeiling', 'followZoomCtrFloor', 'followZoomCtrCeiling', 'gpsReadoutFontPx', 'gpsReadoutRefitPx', 'alertNotifyTtlSec', 'altToleranceFt', 'altMaxAlertsPerLeg', 'legEtaLeadSec', 'atisLeadSec', 'atisMarkerColor', 'atisMarkerRadiusPx', 'atisMarkerFontPx', 'liveHeadingEndLabel', 'legCaptureNm', 'driftTrackErrorDeg', 'driftCheckSec', 'coneUnknownSec', 'gpsMaxAccuracyM', 'gpsMinMoveM', 'gpsGlide', 'gpsGlideMinKt', 'gpsGlideMaxHz', 'gpsStaleSec', 'qnhMaxAgeMin', 'qnhMoveNm', 'compassMaxKt', 'compassFallback', 'headingUpMinDeltaDeg', 'crosshairSizePx', 'crosshairWidthPx', 'crosshairColor', 'crosshairHaloColor', 'crosshairAlpha'] },
   { name: 'Performance defaults', keys: ['profileClimbFpm', 'profileClimbKt', 'defaultGph', 'defaultTaxiGal'] },
   { name: 'Altitude inference', keys: ['legAltInferMaxHops', 'legAltInferMaxDistRatio', 'legAltInferMaxExtraNm'] },
   { name: 'Plan card', keys: ['planCardBaseRowPx', 'planCardGripPx', 'planCardBgColor', 'planCardHeaderBgColor', 'planCardTotalBgColor', 'planCardStripeBgColor', 'planCardGridColor', 'planCardTextColor', 'planCardGripColor', 'planCardGripLineColor'] },

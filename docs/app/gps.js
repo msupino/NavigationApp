@@ -376,6 +376,8 @@ var _gpsStaleTimer = null;
 var _gpsWasStale = false;
 function gpsNoteFixArrived() {
   if (_gpsWasStale) { _gpsWasStale = false; }
+  _gpsGlideFixAt = Date.now();
+  gpsGlideKick();
   if (_gpsStaleTimer) return;
   _gpsStaleTimer = setInterval(() => {
     if (!gpsLiveOn && !gpsRecording) { gpsStopStaleWatchdog(); return; }
@@ -1407,6 +1409,65 @@ function downloadGpsTrackJson(entry) {
   saveFile(blob, (entry.name || 'track').replace(/[^\w\-]+/g, '_') + '.json');
 }
 
+// --- glide: the aircraft moves between fixes -------------------------------------
+// The phone gives about one fix a second. At 500 km/h that is ~140 m a fix, and the symbol --
+// and, while following, the whole map -- jumped by it. Between fixes the symbol is now drawn
+// where the aircraft is by now: the last fix carried along its true track at the measured
+// ground speed for the time since it arrived. The next fix corrects it; in steady flight that
+// correction is a pixel or two. The redraw rate follows the ground speed and the zoom, aiming
+// at a step of a couple of pixels: up to gpsGlideMaxHz when fast and close, once per fix (the
+// glide simply stops) when slow or zoomed out -- no battery spent where nothing would move.
+var _gpsGlideFixAt = 0;
+var _gpsGlideTimer = null;
+const GPS_GLIDE_HOLD_MS = 2500;     // a late fix: hold the symbol rather than fly on into nothing
+function gpsGlideOn() {
+  if (typeof tune === 'function' && tune('gpsGlide') === false) return false;
+  if (!(gpsRecording || gpsLiveOn) || !gpsOwn || gpsOwn.hdgCompass) return false;
+  if (!Number.isFinite(gpsOwn.hdg) || !Number.isFinite(gpsLastGS)) return false;
+  const minKt = (typeof tune === 'function') ? Number(tune('gpsGlideMinKt')) : 30;
+  return gpsLastGS >= (Number.isFinite(minKt) ? minKt : 30) && !gpsFixStale();
+}
+// Where the aircraft is now, by dead reckoning from the last fix; the fix itself when the
+// glide is off. Carries the fix's own time and heading, so the predictor and the stale test
+// read the same fix they always did.
+function gpsShownOwn() {
+  if (!gpsOwn || !gpsGlideOn() || !_gpsGlideFixAt) return gpsOwn;
+  const dt = Math.min(Date.now() - _gpsGlideFixAt, GPS_GLIDE_HOLD_MS) / 1000;
+  if (!(dt > 0)) return gpsOwn;
+  const dist = gpsLastGS * 0.514444 * dt;                     // metres flown since the fix
+  const brg = gpsOwn.hdg * Math.PI / 180, R = 6371008.8;
+  const lat1 = gpsOwn.lat * Math.PI / 180, lng1 = gpsOwn.lng * Math.PI / 180, d = dist / R;
+  const lat2 = Math.asin(Math.sin(lat1) * Math.cos(d) + Math.cos(lat1) * Math.sin(d) * Math.cos(brg));
+  const lng2 = lng1 + Math.atan2(Math.sin(brg) * Math.sin(d) * Math.cos(lat1), Math.cos(d) - Math.sin(lat1) * Math.sin(lat2));
+  return Object.assign({}, gpsOwn, { lat: lat2 * 180 / Math.PI, lng: lng2 * 180 / Math.PI });
+}
+// How often to redraw: a step of ~2 px at this zoom, between gpsGlideMaxHz and once a second.
+function gpsGlideIntervalMs() {
+  if (typeof map === 'undefined' || !map || !gpsOwn) return 1000;
+  const mpp = 40075016.686 * Math.cos(gpsOwn.lat * Math.PI / 180) / Math.pow(2, map.getZoom() + 8);
+  const pxPerSec = (gpsLastGS * 0.514444) / mpp;
+  const maxHz = (typeof tune === 'function') ? Number(tune('gpsGlideMaxHz')) : 10;
+  const floor = 1000 / (Number.isFinite(maxHz) && maxHz > 0 ? maxHz : 10);
+  return pxPerSec > 0 ? Math.max(floor, Math.min(1000, 2000 / pxPerSec)) : 1000;
+}
+function gpsGlideTick() {
+  _gpsGlideTimer = null;
+  if (!gpsGlideOn()) return;
+  const wait = gpsGlideIntervalMs();
+  if (wait >= 1000) return;                                   // nothing visible to gain: once per fix
+  if (Date.now() - _gpsGlideFixAt <= GPS_GLIDE_HOLD_MS) {
+    const p = gpsShownOwn();
+    if (gpsFollow && typeof gpsFollowRecenter === 'function') gpsFollowRecenter(p.lat, p.lng);
+    scheduleDraw();
+  }
+  _gpsGlideTimer = setTimeout(gpsGlideTick, wait);
+}
+function gpsGlideKick() {
+  if (_gpsGlideTimer || !gpsGlideOn()) return;
+  _gpsGlideTimer = setTimeout(gpsGlideTick, gpsGlideIntervalMs());
+}
+window.gpsShownOwn = gpsShownOwn;
+
 // Breadcrumb of the in-progress recording, drawn on the overlay.
 function drawGpsTrack() {
   if (!gpsRecording && !gpsLiveOn) return;
@@ -1417,7 +1478,7 @@ function drawGpsTrack() {
     octx.lineCap = 'round'; octx.lineJoin = 'round'; octx.stroke(); octx.restore();
     if (typeof window !== 'undefined') window.__gpsBreadcrumbDrawn = (window.__gpsBreadcrumbDrawn || 0) + 1;
   }
-  if (gpsOwn && (gpsRecording || gpsLiveOn)) drawOwnShip(gpsOwn, gpsOwn.hdg, gpsLastGS);
+  if (gpsOwn && (gpsRecording || gpsLiveOn)) drawOwnShip(gpsShownOwn(), gpsOwn.hdg, gpsLastGS);
 }
 
 // Stop watching without saving. (Save handled in a later task.)
