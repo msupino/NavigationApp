@@ -4616,7 +4616,7 @@
       "he": "אז\"מ",
       "primary": "123.70",
       "secondary": "123.45",
-      "source": "legacy 02/2014 frequency table; not present in AirMapRadioFrequencies PDF"
+      "source": "legacy 02/2014 frequency table; not present in radio-frequencies PDF"
     },
     "EILAT": {
       "label": "Eilat / Ramon",
@@ -4626,7 +4626,7 @@
       "ground": "121.70",
       "atis": "132.55",
       "phone": "08-9553666",
-      "source": "Israel AIP frequency table (read 2026-08-11): primary 119.00, secondary 122.00, taxi 121.70, ATIS 132.55. The AirMapRadioFrequencies PDF 2026-06-06 additions alternate 125.60 and secondaryAlternate 129.40 have no AIP column and are removed; 125.60 is the same temporary NOTAM frequency it had also placed on HERZLIYA primary."
+      "source": "Israel AIP frequency table (read 2026-08-11): primary 119.00, secondary 122.00, taxi 121.70, ATIS 132.55. The radio-frequencies PDF 2026-06-06 additions alternate 125.60 and secondaryAlternate 129.40 have no AIP column and are removed; 125.60 is the same temporary NOTAM frequency it had also placed on HERZLIYA primary."
     },
     "BEN_GURION": {
       "label": "Ben Gurion",
@@ -4643,7 +4643,7 @@
       "tmaPrimary": "119.50",
       "tmaSecondary": "133.60",
       "phone": "03-9758666",
-      "source": "AirMapRadioFrequencies PDF 2026-06-06"
+      "source": "radio-frequencies PDF 2026-06-06"
     },
     "HERZLIYA": {
       "label": "Herzliya",
@@ -4652,14 +4652,14 @@
       "secondary": "129.40",
       "clearance": "121.70",
       "phone": "09-9719554",
-      "source": "Israel AIP frequency table (read 2026-08-11): primary 122.20, secondary 129.40, ATIS 121.70 CPT. Supersedes AirMapRadioFrequencies PDF 2026-06-06, which carried the temporary NOTAM 125.60 as primary and an alternate duplicating it."
+      "source": "Israel AIP frequency table (read 2026-08-11): primary 122.20, secondary 129.40, ATIS 121.70 CPT. Supersedes radio-frequencies PDF 2026-06-06, which carried the temporary NOTAM 125.60 as primary and an alternate duplicating it."
     },
     "HAGAV": {
       "label": "Hagav",
       "he": "חגב",
       "primary": "132.70",
       "secondary": "133.45",
-      "source": "legacy 02/2014 frequency table; not present in AirMapRadioFrequencies PDF"
+      "source": "legacy 02/2014 frequency table; not present in radio-frequencies PDF"
     },
     "HAGAV_NORTH": {
       "label": "Hagav North",
@@ -4668,7 +4668,7 @@
       "primary": "128.35",
       "secondary": "129.25",
       "phone": "076-8834330",
-      "source": "AirMapRadioFrequencies PDF 2026-06-06"
+      "source": "radio-frequencies PDF 2026-06-06"
     },
     "HAGAV_SOUTH": {
       "label": "Hagav South",
@@ -4677,7 +4677,7 @@
       "primary": "121.15",
       "secondary": "122.90",
       "phone": "076-8834330",
-      "source": "AirMapRadioFrequencies PDF 2026-06-06"
+      "source": "radio-frequencies PDF 2026-06-06"
     },
     "SHANON": {
       "label": "Shanon",
@@ -4693,7 +4693,7 @@
       "secondary": "127.80",
       "atis": "135.40",
       "phone": "04-8476120",
-      "source": "AirMapRadioFrequencies PDF 2026-06-06"
+      "source": "radio-frequencies PDF 2026-06-06"
     },
     "HATZOR": {
       "label": "Hatzor",
@@ -4701,7 +4701,7 @@
       "unit": "חצור",
       "primary": "133.20",
       "phone": "073-3485024",
-      "source": "AirMapRadioFrequencies PDF 2026-06-06"
+      "source": "radio-frequencies PDF 2026-06-06"
     },
     "MEGIDDO": {
       "label": "Megiddo",
@@ -4709,14 +4709,14 @@
       "primary": "124.40",
       "secondary": "128.20",
       "phone": "08-6104488",
-      "source": "AirMapRadioFrequencies PDF 2026-06-06"
+      "source": "radio-frequencies PDF 2026-06-06"
     },
     "MASADA": {
       "label": "Masada",
       "he": "מצדה",
       "primary": "122.55",
       "phone": "08-6688811",
-      "source": "AirMapRadioFrequencies PDF 2026-06-06"
+      "source": "radio-frequencies PDF 2026-06-06"
     },
     "NEVATIM": {
       "label": "Nevatim",
@@ -4724,7 +4724,7 @@
       "primary": "129.30",
       "secondary": "127.80",
       "phone": "08-6501402",
-      "source": "AirMapRadioFrequencies PDF 2026-06-06"
+      "source": "radio-frequencies PDF 2026-06-06"
     },
     "NEGEV": {
       "label": "Negev",
@@ -4733,7 +4733,7 @@
       "primary": "132.40",
       "atis": "119.20",
       "phone": "08-6823080",
-      "source": "AirMapRadioFrequencies PDF 2026-06-06"
+      "source": "radio-frequencies PDF 2026-06-06"
     },
     "OVDA": {
       "label": "Ovda",
@@ -4741,28 +4741,28 @@
       "unit": "עובדה",
       "primary": "129.90",
       "phone": "08-6359966",
-      "source": "AirMapRadioFrequencies PDF 2026-06-06"
+      "source": "radio-frequencies PDF 2026-06-06"
     },
     "ARAD": {
       "label": "Arad",
       "he": "ערד",
       "primary": "120.75",
       "phone": "050-8877840",
-      "source": "AirMapRadioFrequencies PDF 2026-06-06"
+      "source": "radio-frequencies PDF 2026-06-06"
     },
     "PIK": {
       "label": "Pik",
       "he": "פיק",
       "primary": "122.55",
       "phone": "04-6763353",
-      "source": "AirMapRadioFrequencies PDF 2026-06-06"
+      "source": "radio-frequencies PDF 2026-06-06"
     },
     "PLUTO": {
       "label": "Pluto",
       "he": "פלוטו",
       "primary": "118.40",
       "secondary": "119.25",
-      "source": "legacy 02/2014 frequency table; split into Pluto West/East in AirMapRadioFrequencies PDF"
+      "source": "legacy 02/2014 frequency table; split into Pluto West/East in radio-frequencies PDF"
     },
     "PLUTO_WEST": {
       "label": "Pluto West",
@@ -4771,7 +4771,7 @@
       "primary": "118.40",
       "secondary": "119.15",
       "phone": "04-6926211",
-      "source": "AirMapRadioFrequencies PDF 2026-06-06"
+      "source": "radio-frequencies PDF 2026-06-06"
     },
     "PLUTO_EAST": {
       "label": "Pluto East",
@@ -4780,7 +4780,7 @@
       "primary": "123.85",
       "secondary": "134.65",
       "phone": "04-6926239",
-      "source": "AirMapRadioFrequencies PDF 2026-06-06"
+      "source": "radio-frequencies PDF 2026-06-06"
     },
     "LIBA": {
       "label": "Liba",
@@ -4811,7 +4811,7 @@
       "secondary": "118.25",
       "atis": "126.10",
       "phone": "03-9432929",
-      "source": "AirMapRadioFrequencies PDF 2026-06-06"
+      "source": "radio-frequencies PDF 2026-06-06"
     },
     "KEDEM": {
       "label": "Kedem",
@@ -4819,28 +4819,28 @@
       "primary": "134.70",
       "secondary": "118.35",
       "phone": "08-9907913",
-      "source": "AirMapRadioFrequencies PDF 2026-06-06"
+      "source": "radio-frequencies PDF 2026-06-06"
     },
     "KEDEM_GENERAL": {
       "label": "Kedem General Aviation",
       "he": "קדם - תעופה כללית",
       "unit": "קדם",
       "primary": "134.70",
-      "source": "AirMapRadioFrequencies PDF 2026-06-06"
+      "source": "radio-frequencies PDF 2026-06-06"
     },
     "KEDEM_SPORT": {
       "label": "Kedem Sport Aviation",
       "he": "קדם - תעופה ספורטיבית",
       "unit": "קדם",
       "primary": "118.35",
-      "source": "AirMapRadioFrequencies PDF 2026-06-06"
+      "source": "radio-frequencies PDF 2026-06-06"
     },
     "KIRYAT_SHMONA": {
       "label": "Kiryat Shmona",
       "he": "קריית שמונה",
       "primary": "126.90",
       "phone": "04-6943646",
-      "source": "AirMapRadioFrequencies PDF 2026-06-06"
+      "source": "radio-frequencies PDF 2026-06-06"
     },
     "ROSH_PINA": {
       "label": "Rosh Pina",
@@ -4849,7 +4849,7 @@
       "secondary": "119.65",
       "atis": "132.45",
       "phone": "04-6136210",
-      "source": "AirMapRadioFrequencies PDF 2026-06-06"
+      "source": "radio-frequencies PDF 2026-06-06"
     },
     "RISHON_LEZION": {
       "label": "Rishon LeZion",
@@ -4857,7 +4857,7 @@
       "primary": "126.90",
       "secondary": "120.00",
       "phone": "052-5040014",
-      "source": "AirMapRadioFrequencies PDF 2026-06-06"
+      "source": "radio-frequencies PDF 2026-06-06"
     },
     "RAMON": {
       "label": "Ramon",
@@ -4865,7 +4865,7 @@
       "unit": "רמון",
       "primary": "124.60",
       "phone": "08-6505906",
-      "source": "AirMapRadioFrequencies PDF 2026-06-06"
+      "source": "radio-frequencies PDF 2026-06-06"
     },
     "RAMAT_DAVID": {
       "label": "Ramat David",
@@ -4874,7 +4874,7 @@
       "primary": "130.50",
       "secondary": "119.80",
       "phone": "04-6092960",
-      "source": "AirMapRadioFrequencies PDF 2026-06-06"
+      "source": "radio-frequencies PDF 2026-06-06"
     },
     "HATZERIM_NORTH": {
       "label": "Hatzerim North",
@@ -4882,7 +4882,7 @@
       "unit": "חצרים",
       "primary": "125.35",
       "phone": "08-9907900",
-      "source": "AirMapRadioFrequencies PDF 2026-06-06"
+      "source": "radio-frequencies PDF 2026-06-06"
     },
     "HATZERIM_SOUTH": {
       "label": "Hatzerim South",
@@ -4890,20 +4890,20 @@
       "unit": "חצרים",
       "primary": "130.80",
       "phone": "08-9907900",
-      "source": "AirMapRadioFrequencies PDF 2026-06-06"
+      "source": "radio-frequencies PDF 2026-06-06"
     },
     "SDE_DOV": {
       "label": "Sde Dov",
       "he": "שדה דב",
       "primary": "134.95",
-      "source": "legacy 02/2014 frequency table; not present in AirMapRadioFrequencies PDF"
+      "source": "legacy 02/2014 frequency table; not present in radio-frequencies PDF"
     },
     "TEYMAN": {
       "label": "Teyman",
       "he": "תימן",
       "primary": "122.50",
       "phone": "08-6434810",
-      "source": "AirMapRadioFrequencies PDF 2026-06-06"
+      "source": "radio-frequencies PDF 2026-06-06"
     },
     "TEL_NOF": {
       "label": "Tel Nof",
@@ -4911,35 +4911,35 @@
       "primary": "129.05",
       "secondary": "134.30",
       "phone": "073-3636954",
-      "source": "AirMapRadioFrequencies PDF 2026-06-06"
+      "source": "radio-frequencies PDF 2026-06-06"
     },
     "HABONIM": {
       "label": "Habonim",
       "he": "הבונים",
       "primary": "129.15",
       "phone": "04-6391068",
-      "source": "AirMapRadioFrequencies PDF 2026-06-06"
+      "source": "radio-frequencies PDF 2026-06-06"
     },
     "EIN_VERED": {
       "label": "Ein Vered",
       "he": "עין ורד",
       "primary": "123.70",
       "phone": "050-5365946",
-      "source": "AirMapRadioFrequencies PDF 2026-06-06"
+      "source": "radio-frequencies PDF 2026-06-06"
     },
     "EIN_YAHAV": {
       "label": "Ein Yahav",
       "he": "עין יהב",
       "primary": "122.10",
       "phone": "03-5080005",
-      "source": "AirMapRadioFrequencies PDF 2026-06-06"
+      "source": "radio-frequencies PDF 2026-06-06"
     },
     "TEL_AVIV_CONTROL": {
       "label": "Tel Aviv Control",
       "he": "פיקוח ת\"א",
       "primary": "121.40",
       "secondary": "122.15",
-      "source": "AirMapRadioFrequencies PDF 2026-06-06"
+      "source": "radio-frequencies PDF 2026-06-06"
     },
     "SOUTH_CONTROL": {
       "label": "South Control",
@@ -4947,20 +4947,20 @@
       "primary": "120.90",
       "secondary": "134.875",
       "phone": "08-6833222",
-      "source": "AirMapRadioFrequencies PDF 2026-06-06"
+      "source": "radio-frequencies PDF 2026-06-06"
     },
     "TLV_ID": {
       "label": "TLV ID",
       "he": "TLV ID",
       "primary": "124.30",
       "secondary": "135.025",
-      "source": "AirMapRadioFrequencies PDF 2026-06-06"
+      "source": "radio-frequencies PDF 2026-06-06"
     },
     "TLV_DEP": {
       "label": "TLV dep",
       "he": "TLV dep",
       "primary": "122.95",
-      "source": "AirMapRadioFrequencies PDF 2026-06-06"
+      "source": "radio-frequencies PDF 2026-06-06"
     }
   }
 }
