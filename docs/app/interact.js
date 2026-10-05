@@ -5492,10 +5492,21 @@ window.addEventListener('mouseup', endMouseDrag);
 window.addEventListener('pointerup', endMouseDrag);
 window.addEventListener('pointercancel', endMouseDrag);
 
+// A press that starts on a map button is not a tap on the map. A button that redraws its icon
+// as it is pressed (the route lock does) leaves the click with no target, and the browser hands
+// it to the map instead: with Measure on, the lock dropped a measure point where it sits.
+// Set by every press, so a tap on the map right after a button is still a tap on the map.
+let pressOnControl = false;
+document.addEventListener('pointerdown', e => {
+  const t = e.target;
+  pressOnControl = !!(t && t.closest && t.closest('.leaflet-control, .leaflet-control-container button'));
+}, true);
+
 map.on('click', e => {
   // Tail end of a pinch — see the multi-touch guard above. Also drops any action the
   // gesture's first touch parked, so a zoom can't add a waypoint either.
   if (touchGestureInProgress()) { pendingOverlayAction = null; downHit = false; return; }
+  if (pressOnControl) { pressOnControl = false; downHit = false; return; }
   // Commit a parked overlay action — reached only when the mousedown did not
   // turn into a pan (Leaflet suppresses 'click' after a drag).
   if (pendingOverlayAction) {
