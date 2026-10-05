@@ -1483,12 +1483,15 @@ rotDial.addEventListener('pointermove', e => {
 });
 function rotEnd(cycle) {
   if (cycle && rotDragging && !rotMoved) {
-    // Tap steps the bearing through 0° / 90° / 180° / 270°.
-    // From an off-axis angle the first tap snaps back to north.
-    const shown = (((360 - Math.round(mapBearing())) % 360) + 360) % 360;
+    // Tap steps the bearing through 0° / 90° / 180° / 270° -- in the units the number beside
+    // the dial is read in. In flight that is magnetic, so the steps are magnetic too: true
+    // steps read 355 / 085 / 175 / 265 there. From an off-axis angle the first tap goes to 0.
+    const shownTrue = (((360 - Math.round(mapBearing())) % 360) + 360) % 360;
+    const mag = dialReadsMagnetic();
+    const shown = mag ? toMagnetic(shownTrue) : shownTrue;
     const next = shown % 90 === 0 ? (shown + 90) % 360 : 0;
     orientNoteManualRotation();
-    map.setBearing((360 - next) % 360);
+    map.setBearing((360 - (mag ? fromMagnetic(next) : next)) % 360);
   }
   rotDragging = false;
   rotDial.classList.remove('dragging');

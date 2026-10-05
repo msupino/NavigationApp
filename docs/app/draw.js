@@ -470,9 +470,14 @@ function drawHeadingLine(pos, hdg, gsKt, opts) {
   octx.font = 'bold ' + labelPx + 'px sans-serif';
   octx.textAlign = 'center';
   octx.textBaseline = 'middle';
+  // A mark that falls on the aircraft symbol is not drawn: on the ground "2 min" is a few
+  // metres ahead, and its label sat on the aeroplane in the mark's orange.
+  const ownScreen = proj(pos);
+  const clearOfAircraft = (m) => Math.hypot(m.x - ownScreen.x, m.y - ownScreen.y) > tune('liveAircraftRadiusPx') * 2.2;
   function drawMark(nm, primaryLabel, secondaryLabel, textColor) {
     const frame = frameAtNm(nm);
     const m = frame.point.screen;
+    if (!clearOfAircraft(m)) return;
     const px = frame.px, py = frame.py;
     octx.beginPath();
     octx.moveTo(m.x - px * tick, m.y - py * tick);

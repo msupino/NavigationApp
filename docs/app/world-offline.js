@@ -33,6 +33,16 @@
   map.getPane(RELIEF_PANE).style.zIndex = 95;               // under the outlines (100)
   map.getPane(RELIEF_PANE).style.pointerEvents = 'none';
   const reliefOn = () => typeof tune !== 'function' || tune('worldRelief') !== false;
+  // Natural Earth is a world-scale picture (~2.5 km a pixel): sharp to zoom 6, still good at 8,
+  // a smear beyond. So it shows fully to zoom 8 and fades into the plain land colour by 9;
+  // closer in the flat map (with its borders and names) is cleaner than an enlarged blur, and
+  // over Israel the offline CVFR chart covers it anyway.
+  const RELIEF_FULL_TO = 8, RELIEF_GONE_AT = 9;
+  const reliefAlpha = () => {
+    if (!reliefOn()) return 0;
+    const z = map.getZoom();
+    return Math.max(0, Math.min(1, (RELIEF_GONE_AT - z) / (RELIEF_GONE_AT - RELIEF_FULL_TO)));
+  };
   const reliefBase = () => (typeof navAssetBase === 'function' ? navAssetBase('relief') : 'relief/');
   // The tiles come in three packs (zooms 0-4, 5, 6; scripts/build-relief-tiles.py), not as
   // 5,461 files: index.json says which pack holds a zoom and where each tile starts. A pack is
@@ -81,12 +91,13 @@
     },
   });
   const relief = new ReliefLayer('', {
-    pane: RELIEF_PANE, minZoom: 0, maxZoom: 22, maxNativeZoom: 6, noWrap: true,
+    pane: RELIEF_PANE, minZoom: 0, maxZoom: RELIEF_GONE_AT, maxNativeZoom: 6, noWrap: true,
     bounds: [[-85.0511, -180], [85.0511, 180]], keepBuffer: 2,
     attribution: 'Relief: Natural Earth',
   });
   function syncRelief() {
     const on = reliefOn();
+    map.getPane(RELIEF_PANE).style.opacity = String(reliefAlpha());
     if (on && !map.hasLayer(relief)) relief.addTo(map);
     else if (!on && map.hasLayer(relief)) map.removeLayer(relief);
   }
@@ -115,10 +126,14 @@
     const ctx = renderer._ctx;
     const b = renderer._bounds;
     if (!ctx || !b) return;
-    const flat = !reliefOn();          // the relief has its own land and sea
+    // The relief has its own land and sea; as it fades out (zoom 8 -> 9) the flat fills fade in.
+    const flatAlpha = 1 - reliefAlpha();
+    const flat = flatAlpha > 0;
     if (flat) {
+      ctx.globalAlpha = flatAlpha;
       ctx.fillStyle = SEA;
       ctx.fillRect(b.min.x, b.min.y, b.max.x - b.min.x, b.max.y - b.min.y);
+      ctx.globalAlpha = 1;
     }
     if (!rings) return;
     const scale = 256 * Math.pow(2, map.getZoom());
@@ -137,8 +152,10 @@
       ctx.closePath();
     }
     if (flat) {
+      ctx.globalAlpha = flatAlpha;
       ctx.fillStyle = LAND;
       ctx.fill('evenodd');
+      ctx.globalAlpha = 1;
     }
     ctx.lineWidth = 0.8;
     ctx.strokeStyle = BORDER;

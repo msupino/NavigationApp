@@ -36,3 +36,17 @@ test('worldRelief off takes the relief away', async ({ page }) => {
   });
   expect(off).toBe(0);
 });
+
+test('the relief shows fully to zoom 8, fades by 9, and gives way to the flat map beyond', async ({ page }) => {
+  await page.goto('?lang=en&nogist');
+  await page.waitForFunction(() => typeof map !== 'undefined' && !!map.getPane('worldRelief'));
+  const at = (z) => page.evaluate(async (z) => {
+    map.setView([45.63, 8.72], z, { animate: false });
+    await new Promise(r => setTimeout(r, 300));
+    return Number(getComputedStyle(map.getPane('worldRelief')).opacity);
+  }, z);
+  expect(await at(7)).toBe(1);
+  expect(await at(8)).toBe(1);
+  expect(await at(8.5)).toBeCloseTo(0.5, 2);
+  expect(await at(10.5)).toBe(0);
+});
