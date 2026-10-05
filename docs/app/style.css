@@ -1385,11 +1385,15 @@ body.theme-dark #map-crosshair::after {
   --navaid-mapbtn-live: #1f8a4c;
   --navaid-mapbtn-warn: #b07a12;
 }
+.measure-ctrl { display: flex; justify-content: center; margin-bottom: 3px !important; }
+.leaflet-control.measure-ctrl button { min-width: 44px; min-height: 44px; cursor: pointer; touch-action: manipulation; }
+.leaflet-control.measure-ctrl button.measure-on { background: var(--navaid-mapbtn-on); }
 .leaflet-control.voice-ctrl button,
 .leaflet-control.orient-ctrl button,
 .leaflet-control.follow-ctrl button,
 .leaflet-control.follow-me-ctrl button,
-.leaflet-control.editlock-ctrl button {
+.leaflet-control.editlock-ctrl button,
+.leaflet-control.measure-ctrl button {
   display: flex; align-items: center; justify-content: center;
   padding: 0;
   border: none;
@@ -1401,7 +1405,8 @@ body.theme-dark #map-crosshair::after {
 }
 .leaflet-control.voice-ctrl button svg,
 .leaflet-control.follow-me-ctrl button svg,
-.leaflet-control.editlock-ctrl button svg { display: block; }
+.leaflet-control.editlock-ctrl button svg,
+.leaflet-control.measure-ctrl button svg { display: block; }
 .leaflet-control.voice-ctrl button:focus-visible,
 .leaflet-control.orient-ctrl button:focus-visible,
 .leaflet-control.follow-ctrl button:focus-visible,
@@ -1581,11 +1586,17 @@ html[dir="rtl"] .leaflet-control.zulu-clock {
   unicode-bidi: isolate;
 }
 .zoom-readout {
-  display: block;
-  padding: 2px 4px;
+  /* Zoom over scale, in a box the round buttons' width (44 px) -- one edge, one centre line. */
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  box-sizing: border-box;
+  min-width: 44px;
+  padding: 4px 3px;
   margin-bottom: 2px;
   text-align: center;
-  min-width: 34px;
+  line-height: 1.1;
   /* Always LTR so the `z… · …×` readout reads the same in Hebrew as in
      English (otherwise RTL reorders the × / middle dot). Matches
      .satellite-zoom-readout. */

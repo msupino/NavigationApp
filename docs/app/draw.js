@@ -1412,6 +1412,77 @@ function drawVerticalProfile(ctx, x, y, w, h, opts) {
   ctx.restore();
 }
 
+// The measure line (ui.js, measureToggle): from the aircraft -- or the first tapped point -- to
+// the tapped one, with distance, magnetic bearing and, while moving, the time at the current
+// ground speed. Redrawn with every fix (and every glide step), so it follows the aircraft.
+function measureEteText(nm, kt) {
+  if (!(kt >= 20)) return '';                       // standing still: no time to speak of
+  const min = Math.round(nm / kt * 60);
+  if (typeof S.measureEte === 'function') return S.measureEte(min, Math.round(kt));
+  return (min < 60 ? min + ' min' : Math.floor(min / 60) + ' h ' + String(min % 60).padStart(2, '0'))
+    + ' at ' + Math.round(kt) + ' kt';
+}
+window.measureEteText = measureEteText;
+function drawMeasure() {
+  const m = window.measure;
+  if (!m || !m.on) return;
+  const live = typeof measureLiveFrom === 'function' ? measureLiveFrom() : null;
+  const from = live || m.from;
+  const to = m.to;
+  const dot = (p, r) => { const s = proj(p); octx.beginPath(); octx.arc(s.x, s.y, r, 0, Math.PI * 2); octx.fill(); octx.stroke(); };
+  octx.save();
+  octx.fillStyle = '#ffffff';
+  octx.strokeStyle = '#d0115e';
+  octx.lineWidth = 2.5;
+  if (from && !live) dot(from, 5);
+  if (!from || !to) { octx.restore(); return; }
+  const a = proj(from), b = proj(to);
+  octx.setLineDash([10, 6]);
+  octx.lineWidth = 3;
+  octx.beginPath(); octx.moveTo(a.x, a.y); octx.lineTo(b.x, b.y); octx.stroke();
+  octx.setLineDash([]);
+  octx.lineWidth = 2.5;
+  dot(to, 6);
+  const g = geo(from, to);
+  const brg = typeof toMagnetic === 'function' ? toMagnetic(g.brg) : Math.round(g.brg);
+  const kt = live && typeof gpsLastGS === 'number' ? gpsLastGS : NaN;
+  const lines = [(g.dist < 10 ? g.dist.toFixed(1) : Math.round(g.dist)) + ' NM \u00b7 ' + String(brg).padStart(3, '0') + '\u00b0'];
+  const ete = live ? measureEteText(g.dist, kt) : '';
+  if (ete) lines.push(ete);
+  if (to.name) lines.unshift(to.name);
+  window.__measureLabel = lines.join(' | ');
+  // The label beside the point, on the side away from the line, in the map buttons' dark glass.
+  octx.font = 'bold 13px system-ui, sans-serif';
+  const w = Math.max(...lines.map(t => octx.measureText(t).width)) + 16, h = lines.length * 17 + 10;
+  // Of the four corners around the point, the first that is on screen and clear of the map
+  // buttons (the right-hand column, the edit column) -- preferring the side away from the line.
+  const cr = octx.canvas.getBoundingClientRect();
+  const blocks = [...document.querySelectorAll('.leaflet-control-container .leaflet-control')]
+    .filter(e => e.getClientRects().length).map(e => e.getBoundingClientRect())
+    .map(r => ({ l: r.left - cr.left - 6, t: r.top - cr.top - 6, r: r.right - cr.left + 6, b: r.bottom - cr.top + 6 }));
+  const fits = (x, y) => x >= 4 && y >= 4 && x + w <= cr.width - 4 && y + h <= cr.height - 4
+    && !blocks.some(k => x < k.r && x + w > k.l && y < k.b && y + h > k.t);
+  const right = b.x >= a.x, down = b.y >= a.y;
+  const tries = [[right, down], [right, !down], [!right, down], [!right, !down]]
+    .map(([rt, dn]) => [rt ? b.x + 12 : b.x - 12 - w, dn ? b.y + 10 : b.y - 10 - h]);
+  const pick = tries.find(([tx, ty]) => fits(tx, ty)) || tries[0];
+  const x = Math.max(4, Math.min(cr.width - w - 4, pick[0])), y = Math.max(4, Math.min(cr.height - h - 4, pick[1]));
+  octx.fillStyle = 'rgba(22, 30, 40, 0.86)';
+  octx.beginPath();
+  if (octx.roundRect) octx.roundRect(x, y, w, h, 8); else octx.rect(x, y, w, h);
+  octx.fill();
+  octx.fillStyle = '#ffffff';
+  octx.textBaseline = 'top';
+  // Each line in its own direction: the canvas takes the page's (rtl in Hebrew), which turned
+  // "16 NM · 131°" into "NM · 131° 16". Numbers read left to right; a Hebrew line from the right.
+  lines.forEach((t, i) => {
+    const he = /[\u0590-\u05FF]/.test(t);
+    octx.direction = he ? 'rtl' : 'ltr';
+    octx.textAlign = he ? 'right' : 'left';
+    octx.fillText(t, he ? x + w - 8 : x + 8, y + 6 + i * 17);
+  });
+  octx.restore();
+}
 function draw() {
   // Import and startup both render only after their complete route state is installed.
   pruneTurnCommChangeNotes();
@@ -1465,6 +1536,7 @@ function draw() {
   if (typeof drawTracks === 'function') drawTracks();       // saved-track overlays (flown lines)
   if (typeof drawGpsTrack === 'function') drawGpsTrack();   // GPS breadcrumb + own-ship (recording or live location)
   if (!gpsRecording && !gpsLiveOn && simOn && simAircraft) drawOwnShip(simAircraft, simAircraft.hdg, simAircraft.ias);  // sim own-ship
+  drawMeasure();
   // A follower gets the same dashed 2/5/10 NM predictor as an own-ship. Do not reuse the
   // own-ship's remembered heading when a remote fix omits track: silence is safer than a
   // confident line pointing in a different aircraft's direction.

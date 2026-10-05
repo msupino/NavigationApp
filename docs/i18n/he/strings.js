@@ -990,6 +990,13 @@ window.S = {
   editLockOff: 'ניתן להזיז נקודות ותוויות — הקש כדי לנעול את המסלול',
   editLockAuto: 'המסלול נעול כל עוד מוצג מיקום — הקש כדי לאפשר הזזה',
   editLockBlockedToast: 'המסלול נעול — בטלו את הנעילה כדי לערוך',
+  measureTitle: 'מדידה: הקישו על נקודה למרחק, לכיוון ולזמן',
+  measureHintLive: 'הקישו על נקודה: מרחק וזמן מהמטוס',
+  measureHint: 'הקישו על נקודת ההתחלה ואז על הסוף',
+  measureEte: function (min, kt) {
+    const t = min < 60 ? min + ' דק׳' : Math.floor(min / 60) + ' ש׳ ' + String(min % 60).padStart(2, '0') + ' דק׳';
+    return t + ' ב-' + kt + ' קשר';
+  },
   whyNothingToUndo: 'אין מה לבטל',
   whyNothingToClear: 'המפה כבר ריקה',
   whyNoSigmet: 'אין SIGMET בתוקף ב-24 השעות הקרובות',

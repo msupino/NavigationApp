@@ -2405,6 +2405,13 @@ window.S = Object.assign({
   editLockOff: 'Points and labels can be dragged — tap to lock the route',
   editLockAuto: 'Route is locked while a position is showing — tap to allow moving it',
   editLockBlockedToast: 'Route is locked — unlock it to edit',
+  measureTitle: 'Measure: tap a point for its distance, bearing and time',
+  measureHintLive: 'Tap a point: distance and time from the aircraft',
+  measureHint: 'Tap the start, then the end',
+  measureEte: function (min, kt) {
+    const t = min < 60 ? min + ' min' : Math.floor(min / 60) + ' h ' + String(min % 60).padStart(2, '0');
+    return t + ' at ' + kt + ' kt';
+  },
   whyNothingToUndo: 'Nothing to undo',
   whyNothingToClear: 'The map is already empty',
   whyNoSigmet: 'No SIGMET in force in the next 24 hours',
