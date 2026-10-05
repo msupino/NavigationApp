@@ -59,3 +59,27 @@ test('the time line reads in Hebrew', async ({ page }) => {
   expect(await page.evaluate(() => [measureEteText(16, 110), measureEteText(150, 100), measureEteText(5, 3)]))
     .toEqual(['9 דק׳ ב-110 קשר', '1 ש׳ 30 דק׳ ב-100 קשר', '']);
 });
+
+// Zoomed out, the airfield and waypoint symbols piled on the label and hid it: it was painted
+// on the overlay canvas, under the markers. On screen it is now a box above them.
+test('zoomed out, the measure label sits above the chart symbols', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('?lang=en&nogist');
+  await page.waitForFunction(() => typeof measureToggle === 'function' && NavAid.disclaimerDone);
+  const r = await page.evaluate(() => {
+    map.setView([32.0, 34.9], 6, { animate: false });
+    measureToggle(true);
+    window.measure.from = L.latLng(31.5, 34.8); window.measure.to = L.latLng(32.6, 35.1);
+    draw();
+    const el = document.getElementById('measure-label');
+    const b = el.getBoundingClientRect();
+    return { text: el.textContent, visible: !el.hidden && b.width > 0 };
+  });
+  expect(r.text).toMatch(/68 NM/);
+  expect(r.visible).toBe(true);
+  // Above the markers (600) and their tooltips (650).
+  const z = await page.evaluate(() => Number(getComputedStyle(document.getElementById('measure-label')).zIndex));
+  expect(z).toBeGreaterThan(650);
+  await page.evaluate(() => measureToggle(false));
+  await expect(page.locator('#measure-label')).toBeHidden();
+});
