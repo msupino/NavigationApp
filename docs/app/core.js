@@ -2423,6 +2423,7 @@ window.S = Object.assign({
   followOffToast: 'Not following — pan freely',
   orientHeadingToast: 'Heading up',
   orientNorthToast: 'North up',
+  backOnline: 'Back online: map, NOTAMs and weather updated',
   voiceOnToast: 'Audio alerts on',
   voiceOffToast: 'Audio alerts off',
   voiceOnTitle: 'Alerts are spoken — tap to silence them',

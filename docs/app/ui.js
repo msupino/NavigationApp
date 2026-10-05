@@ -1421,9 +1421,11 @@ const rotDial = document.getElementById('rotate-dial');
 const rotNeedle = document.getElementById('rotate-needle');
 const rotHdg = document.getElementById('rotate-hdg');
 function mapBearing() { return map.getBearing ? map.getBearing() : 0; }
-// A position driving the map (location, recording, simulator) makes the dial's number a heading.
+// While heading-up turns the chart with a live position, the dial's number is the heading up
+// the screen and reads magnetic like the strip. Any other time it is the chart's rotation,
+// true: north up is 0, and a tap squares the chart to true north, not to magnetic.
 function dialReadsMagnetic() {
-  return typeof gpsPositionLive === 'function' && gpsPositionLive();
+  return headingUpOn && typeof gpsPositionLive === 'function' && gpsPositionLive();
 }
 function refreshDial() {
   const b = (((360 - Math.round(mapBearing())) % 360) + 360) % 360;
@@ -1448,9 +1450,10 @@ rotHdg.addEventListener('change', () => {
   if (!Number.isFinite(raw)) { refreshDial(); return; }
   const v = ((raw % 360) + 360) % 360;
   rotHdg.value = v;
+  // Read the way the number it replaces was shown (taking control below ends heading-up).
+  const mag = dialReadsMagnetic();
   orientNoteManualRotation();
-  // Read the way the number it replaces was shown: magnetic in flight, true while planning.
-  map.setBearing((360 - (dialReadsMagnetic() ? fromMagnetic(v) : v)) % 360);
+  map.setBearing((360 - (mag ? fromMagnetic(v) : v)) % 360);
 });
 rotHdg.addEventListener('keydown', e => {
   if (e.key === 'Enter') rotHdg.blur();
@@ -1486,15 +1489,13 @@ rotDial.addEventListener('pointermove', e => {
 });
 function rotEnd(cycle) {
   if (cycle && rotDragging && !rotMoved) {
-    // Tap steps the bearing through 0° / 90° / 180° / 270° -- in the units the number beside
-    // the dial is read in. In flight that is magnetic, so the steps are magnetic too: true
-    // steps read 355 / 085 / 175 / 265 there. From an off-axis angle the first tap goes to 0.
-    const shownTrue = (((360 - Math.round(mapBearing())) % 360) + 360) % 360;
-    const mag = dialReadsMagnetic();
-    const shown = mag ? toMagnetic(shownTrue) : shownTrue;
+    // Tap steps the chart through TRUE 0° / 90° / 180° / 270°: 0 is the chart square with
+    // real north up, in flight too (magnetic steps left it a few degrees askew). The tap ends
+    // heading-up, so the number then reads the same true rotation. Off-axis, the first tap goes to 0.
+    const shown = (((360 - Math.round(mapBearing())) % 360) + 360) % 360;
     const next = shown % 90 === 0 ? (shown + 90) % 360 : 0;
     orientNoteManualRotation();
-    map.setBearing((360 - (mag ? fromMagnetic(next) : next)) % 360);
+    map.setBearing((360 - next) % 360);
   }
   rotDragging = false;
   rotDial.classList.remove('dragging');
@@ -6918,6 +6919,29 @@ document.addEventListener('visibilitychange', () => {
   refreshHazardFeeds();
 });
 
+// Back online. What failed while the connection was down stays failed until something asks
+// again: chart tiles stay blank squares, and NOTAM / SIGMET / AIRMET wait for the 10-minute
+// poll. When the phone says the connection is back, the tiles that failed are reloaded and the
+// feeds re-polled at once, and one line says so.
+function noteTileErrors(layer) {
+  if (!(layer instanceof L.GridLayer) || layer._navaidErrWatch) return;
+  layer._navaidErrWatch = true;
+  layer.on('tileerror', () => { layer._navaidTileErr = true; });
+}
+map.eachLayer(noteTileErrors);
+map.on('layeradd', e => noteTileErrors(e.layer));
+function refreshAfterReconnect() {
+  let tiles = 0;
+  map.eachLayer(l => {
+    if (l._navaidTileErr && typeof l.redraw === 'function') { l._navaidTileErr = false; l.redraw(); tiles++; }
+  });
+  refreshHazardFeeds();
+  if (typeof showToast === 'function') showToast(S.backOnline || 'Back online: map, NOTAMs and weather updated');
+  return tiles;
+}
+window.refreshAfterReconnect = refreshAfterReconnect;   // tests
+window.addEventListener('online', refreshAfterReconnect);
+
 // --- NOTAM overlay + list (FAA NOTAM API, Israel FIR LLLL) ----------
 // Whether the overlay is on is remembered PER CHART: the NOTAM feed is FIR-wide
 // (one LLLL source, no per-chart split available in it), but what you want on
@@ -12108,6 +12132,7 @@ const NavWxTime = (function () {
     notify(true);                         // overlays redraw against the refreshed manifests
   }
   if (sel) setInterval(poll, 10 * 60 * 1000);
+  if (sel) window.addEventListener('online', poll);    // weather that failed offline comes back with the link
   const api = {
     value: () => (sel ? sel.value : ''),
     // Does this manifest entry belong to the selected option? Both sides may lack a day

@@ -1001,6 +1001,7 @@ window.S = {
   followOffToast: 'לא עוקב — המפה בשליטתכם',
   orientHeadingToast: 'כיוון התקדמות',
   orientNorthToast: 'צפון למעלה',
+  backOnline: 'החיבור חזר: המפה, הנוטאמים ומזג האוויר עודכנו',
   voiceOnToast: 'התראות קוליות פעילות',
   voiceOffToast: 'התראות קוליות כבויות',
   voiceOnTitle: 'ההתראות מוקראות — הקישו כדי להשתיק',
