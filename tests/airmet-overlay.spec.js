@@ -60,11 +60,11 @@ test('the AIRMET toggle stays put; the list button dims when none is active', as
     refreshAirmetGroup(); refreshAirmetBtn();
     const emptyGroupHidden = document.getElementById('airmet-group').hidden;
     const emptyBtnHidden = document.getElementById('airmet-btn').hidden;
-    const emptyBtnDisabled = document.getElementById('airmet-btn').disabled;
+    const emptyBtnDisabled = document.getElementById('airmet-btn').getAttribute('aria-disabled') === 'true';
     window.airmets = [{ hazard: 'MT OBSC', validFrom: '2020-01-01T00:00:00Z', validTo: '2099-01-01T00:00:00Z',
       coords: [[32, 35], [33, 35], [32, 34]] }];
     refreshAirmetGroup(); refreshAirmetBtn();
-    const activeBtnDisabled = document.getElementById('airmet-btn').disabled;
+    const activeBtnDisabled = document.getElementById('airmet-btn').getAttribute('aria-disabled') === 'true';
     return { emptyGroupHidden, emptyBtnHidden, emptyBtnDisabled, activeBtnDisabled,
              groupHiddenActive: document.getElementById('airmet-group').hidden };
   });
@@ -166,7 +166,7 @@ test('an expired AIRMET is not drawn, listed, or exposed as a toggle', async ({ 
       active: activeHazards, dotted,
       groupHidden: document.getElementById('airmet-group').hidden,
       btnHidden: document.getElementById('airmet-btn').hidden,
-      btnDisabled: document.getElementById('airmet-btn').disabled,
+      btnDisabled: document.getElementById('airmet-btn').getAttribute('aria-disabled') === 'true',
       listsExpired: /expired-marker/.test(modalText),
       listsOpen: /open-marker|IFR/.test(modalText),
     };
@@ -194,7 +194,7 @@ test('when every AIRMET has expired nothing draws but the controls stay', async 
     octx.setLineDash = os;
     return { dotted, groupHidden: document.getElementById('airmet-group').hidden,
              btnHidden: document.getElementById('airmet-btn').hidden,
-             btnDisabled: document.getElementById('airmet-btn').disabled, active: activeAirmets().length };
+             btnDisabled: document.getElementById('airmet-btn').getAttribute('aria-disabled') === 'true', active: activeAirmets().length };
   });
   expect(out.active).toBe(0);
   expect(out.dotted).toBe(0);            // nothing drawn

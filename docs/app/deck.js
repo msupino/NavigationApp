@@ -643,11 +643,12 @@
   function stripDropRank(chunk) {
     if (/[\u2033"]/.test(chunk)) return 0;              // 29.85″
     if (/\bpts\b/.test(chunk)) return 1;
-    if (/^\d{2}:\d{2}$/.test(chunk)) return 2;
+    if (/^\d{1,4}:\d{2}$/.test(chunk)) return 2;           // elapsed mm:ss -- 125:30 on a long flight
     return 99;                                          // kt, ft, heading: the instrument
   }
   function fitStripVals(full) {
     stripVals.textContent = full;
+    stripVals.style.fontSize = '';
     if (!strip.clientWidth) return;
     const chunks = full.split(' \u00b7 ');
     const order = chunks
@@ -665,6 +666,14 @@
       if (fits()) return;
       gone.add(idx);
       stripVals.textContent = chunks.filter((c, i) => !gone.has(i)).join(' \u00b7 ');
+    }
+    // Speed, altitude and heading never go -- but at airliner height the altitude has five
+    // digits, and a large phone font made the three of them wider than the line. The overflow
+    // was clipped at the line's START, which in Hebrew is where the speed is: "451 kt" read
+    // "1 kt". Shrink the text until they fit instead (not below 70 %).
+    const base = parseFloat(getComputedStyle(stripVals).fontSize) || 12;
+    for (let scale = 0.95; !fits() && scale >= 0.7; scale -= 0.05) {
+      stripVals.style.fontSize = (base * scale).toFixed(1) + 'px';
     }
   }
 

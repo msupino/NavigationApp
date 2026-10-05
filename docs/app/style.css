@@ -117,7 +117,8 @@ html.app-booting .leaflet-control-container { visibility: hidden; }
   display: inline-block;
   margin-inline-end: 0.35em;
 }
-#toolbar button:disabled {
+#toolbar button:disabled,
+#toolbar button[aria-disabled="true"] {
   opacity: 0.42;
   cursor: default;
 }
@@ -8261,7 +8262,7 @@ body.deck-on .sim-overlay > .modal {
 /* Follow me: asking for the identifier. Small, centred, and its own dialog rather than the
    browser's -- see askFollowMeCode in ui.js for why. */
 .modal.follow-me-ask-modal { max-width: min(420px, 92vw); }
-.follow-me-ask-text { margin: 6px 0 10px; font-size: 13px; line-height: 1.45; }
+.follow-me-ask-text { margin: 6px 0 10px; font-size: 13px; line-height: 1.45; text-align: center; }   /* under the centred title, as a phone alert reads */
 .follow-me-ask-input {
   width: 100%;
   box-sizing: border-box;
