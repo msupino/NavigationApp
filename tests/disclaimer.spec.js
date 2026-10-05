@@ -5,7 +5,7 @@
 // in a footer is not an acknowledgement. An app that draws routes on aeronautical charts has
 // to say in front of the pilot, before they start, that it is not certified for navigation.
 //
-// Every launch, the way airmap-israel opens: a pilot starting the app is about to fly, and
+// Every launch: a pilot starting the app is about to fly, and
 // "you agreed to this in March" is not what a notice about not navigating by it is for -- it
 // is read at the top of the session, like a briefing, or it is decoration. So nothing is
 // remembered, and a reload IS a launch: a refresh, a language switch (lang-select navigates),
