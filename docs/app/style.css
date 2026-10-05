@@ -6837,6 +6837,11 @@ html[data-theme="light"] #insp-body .insp-actions {
     display: inline-flex;
     align-items: center;
   }
+  /* ...so the readouts stacked above it start above its 44 px, not 20 px up and behind it:
+     the VOR radial/DME line was hidden under the coordinates. */
+  .leaflet-bottom.leaflet-right .vor-readout { bottom: 74px; }
+  .leaflet-bottom.leaflet-right .wind-readout { bottom: 100px; }
+  .leaflet-bottom.leaflet-right .sigmet-readout { bottom: 126px; }
   /* ...and while editing, the six DMS fields were a 22px-tall row. Grow the fields
      vertically only: the row is already 196px wide on a 375px screen, so widening
      them would push it off the edge. */
@@ -8127,7 +8132,9 @@ body.deck-on #toolbar {
 body.deck-on #inspector { bottom: calc(var(--navaid-deck-bar-h, 52px) + env(safe-area-inset-bottom, 0px)); }
 /* The bottom of a phone screen, in order upward: the deck, the route hint, the clock. Each
    was placed for a screen whose bottom edge was the map's; the deck moved that edge. */
-body.deck-on #empty-route-hint { bottom: calc(64px + env(safe-area-inset-bottom, 0px)); }
+/* Above the bottom-right readout stack (coordinates 44 px, then the VOR, wind and SIGMET lines),
+   not on it: the first-run hint lay across the coordinates. */
+body.deck-on #empty-route-hint { bottom: calc(var(--navaid-deck-bar-h, 52px) + 170px + env(safe-area-inset-bottom, 0px)); }
 body.deck-on .map-time {
   bottom: calc(124px + env(safe-area-inset-bottom, 0px));
   /* Clear of the zoom column and its z-level readout, which the deck did not move. */

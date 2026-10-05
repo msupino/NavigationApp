@@ -2103,12 +2103,23 @@ function centerCoordText() {
 }
 // When a reference VOR is selected, show its magnetic radial + DME for the
 // point in a separate readout box below the live coordinates.
+// The CURRENT VOR: the chosen reference while it is within a usable range of the point, else the
+// nearest VOR that is, else nothing -- a radial from Ben Gurion over Milan ("BGN R-309° /
+// 1283.4 NM") is a number no one can fly. The ident in the readout says which one it is.
 function vorReadoutText(lat, lng) {
   if (typeof activeVor !== 'function') return '';
-  const v = activeVor();
-  if (!v) return '';
-  const rd = vorRadialDme(v, lat, lng);
-  if (!rd) return '';
+  const chosen = activeVor();
+  if (!chosen) return '';
+  const maxNm = Number(tune('vorReadoutMaxNm')) || 200;
+  let v = chosen, rd = vorRadialDme(chosen, lat, lng);
+  if (!rd || rd.dme > maxNm) {
+    v = null; rd = null;
+    for (const c of (Array.isArray(vors) ? vors : [])) {
+      const r = vorRadialDme(c, lat, lng);
+      if (r && r.dme <= maxNm && (!rd || r.dme < rd.dme)) { v = c; rd = r; }
+    }
+  }
+  if (!v || !rd) return '';
   return v.ident + ' ' + S.vorRadialDme(rd.radial, rd.dme);
 }
 function setVorReadout(text) {
