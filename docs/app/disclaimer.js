@@ -9,7 +9,7 @@
 // Apple's reviewers look for exactly this on an aviation app, and it is the right thing on
 // the web too, so it lives in the app rather than in the native shell.
 //
-// EVERY launch, not once: the same way airmap-israel opens. A pilot starting the app is
+// EVERY launch, not once. A pilot starting the app is
 // about to fly, and "you agreed to this in March" is not what a notice about not navigating
 // by it is for -- it is read at the top of the session, like a briefing, or it is decoration.
 // So nothing is remembered: no stored acknowledgement, no wording version, no per-language
