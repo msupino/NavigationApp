@@ -5111,6 +5111,9 @@ function routePrimingArmed() {
 map.on('mousedown', e => {
   if (touchGestureInProgress()) return;
   pendingOverlayAction = null;
+  // Measuring: a press is either a pan or the point to measure to (the click below), never a
+  // grab of something on the route.
+  if (typeof measureOn === 'function' && measureOn()) { downHit = false; return; }
   const p = e.containerPoint;
   // Hit-test priority matches paint order so the topmost element wins:
   // notes are drawn above waypoints (draw.js), so test notes first.
@@ -5502,6 +5505,7 @@ map.on('click', e => {
     act();
     return;
   }
+  if (typeof measureOn === 'function' && measureOn()) { downHit = false; measureTap(e.latlng); return; }
   if (downHit) { downHit = false; return; }
   // Tap an AIRMET area (in inspect mode, nothing higher-priority hit) to read its text --
   // a polygon labelled only "MT OBSC" does not carry the validity or movement. Inspect mode
@@ -5793,6 +5797,7 @@ function touchXY(t) {
 mapEl.addEventListener('touchstart', e => {
   touchLog('touchstart', 'fingers=' + e.touches.length);
   if (e.touches.length !== 1) return;
+  if (typeof measureOn === 'function' && measureOn()) return;     // the tap is the point (map click)
   const p = touchXY(e.touches[0]);
   // Second tap of a double tap: the first tap's panel goes back where it was, and this touch
   // is marked so its own release opens nothing either -- a double tap is not a request to

@@ -311,7 +311,7 @@ test.describe('Inspector panel', () => {
     await page.evaluate(() => map.setZoom(13));
     await page.waitForFunction(() => map.getZoom() === 13);
     await page.evaluate(() => showZoom());
-    await expect(page.locator('#zoom-readout')).toHaveText('z13 · 2×');
+    await expect(page.locator('#zoom-readout span')).toHaveText(['z13', '2×']);   // two lines
   });
 
   test('Hebrew satellite preview title keeps name before coordinates', async ({ page }) => {

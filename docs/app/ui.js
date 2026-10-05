@@ -801,7 +801,7 @@ try { headingUpOn = lsGet(HEADING_UP_KEY) === '1'; } catch (e) { /* storage unav
 // cockpit: the follow-me id pushes up the map dial. It belongs with the in-flight group it
 // was built for, next to the follow lock.
 const MAP_CONTROL_ORDER = ['voice-ctrl', 'orient-ctrl', 'follow-ctrl', 'follow-me-ctrl',
-  'editlock-ctrl', 'assistant-fab-control', 'rotate-ctrl'];
+  'editlock-ctrl', 'measure-ctrl', 'assistant-fab-control', 'rotate-ctrl'];
 function orderMapControls(corner) {
   if (!corner) return;
   const rank = (el) => {
@@ -828,6 +828,8 @@ const MAP_ICON_OPEN = '<svg viewBox="0 0 24 24" width="26" height="26" aria-hidd
   + ' stroke-linecap="round" stroke-linejoin="round">';
 const SPEAKER = '<path d="M3.5 9.5h3.5L11.5 5.5v13L7 14.5H3.5z" fill="currentColor" fill-opacity=".18"/>';
 const MAP_ICONS = {
+  // A ruler on the slant, with its marks.
+  measure: '<path d="M3.5 16.5 16.5 3.5l4 4-13 13z"/><path d="M7 13l2 2M10 10l1.6 1.6M13 7l2 2"/>',
   voiceOn: SPEAKER + '<path d="M15 9a4.2 4.2 0 0 1 0 6M17.8 6.3a8 8 0 0 1 0 11.4"/>',
   voiceOff: SPEAKER + '<path d="M15.5 9.5l5 5M20.5 9.5l-5 5"/>',
   followOn: '<circle cx="12" cy="12" r="6.8"/><path d="M12 2.2v3M12 18.8v3M2.2 12h3M18.8 12h3"/>'
@@ -1167,6 +1169,67 @@ editLockCtrl.onAdd = function () {
   return wrap;
 };
 editLockCtrl.addTo(map);
+
+// --- measure: distance, bearing and time from the aircraft to a point ----------------------
+// The legs carry their own distances; this is the other question -- "how far to that, from
+// here?" -- without putting anything on the route. Press the ruler, tap a point: with a live
+// position (GPS or the simulator) the line runs from the aircraft, follows it, and says the
+// distance, the magnetic bearing and the time at the current ground speed. Without one, the
+// first tap is the start and the second the end. A tap snaps to a published point the way
+// adding a waypoint does. Measuring changes nothing, so the route lock does not stop it.
+// Pressing the ruler again puts it away.
+window.measure = { on: false, from: null, to: null };
+function measureOn() { return !!window.measure.on; }
+window.measureOn = measureOn;
+const measureCtrl = L.control({ position: 'bottomright' });
+measureCtrl.onAdd = function () {
+  const wrap = L.DomUtil.create('div', 'leaflet-control measure-ctrl');
+  const b = document.createElement('button');
+  b.type = 'button';
+  b.id = 'measure-btn';
+  b.setAttribute('aria-pressed', 'false');
+  setMapIcon(b, 'measure');
+  b.title = S.measureTitle || 'Measure: tap a point for its distance, bearing and time';
+  b.setAttribute('aria-label', b.title);
+  b.addEventListener('click', () => measureToggle());
+  wrap.appendChild(b);
+  L.DomEvent.disableClickPropagation(wrap);
+  L.DomEvent.disableScrollPropagation(wrap);
+  return wrap;
+};
+measureCtrl.addTo(map);
+function measureLiveFrom() {
+  if (typeof gpsOwn !== 'undefined' && gpsOwn && (gpsRecording || gpsLiveOn)) {
+    return typeof gpsShownOwn === 'function' ? gpsShownOwn() : gpsOwn;
+  }
+  if (typeof simOn !== 'undefined' && simOn && window.simAircraft) return window.simAircraft;
+  return null;
+}
+window.measureLiveFrom = measureLiveFrom;
+function measureToggle(on) {
+  const m = window.measure;
+  m.on = typeof on === 'boolean' ? on : !m.on;
+  m.from = null; m.to = null;
+  document.body.classList.toggle('measuring', m.on);
+  const b = document.getElementById('measure-btn');
+  if (b) { b.classList.toggle('measure-on', m.on); b.setAttribute('aria-pressed', String(m.on)); }
+  if (m.on && typeof showToast === 'function') {
+    showToast(measureLiveFrom() ? (S.measureHintLive || 'Tap a point: distance and time from the aircraft')
+      : (S.measureHint || 'Tap the start, then the end'));
+  }
+  if (typeof draw === 'function') draw();
+}
+window.measureToggle = measureToggle;
+function measureTap(latlng) {
+  const m = window.measure;
+  const r = typeof applyNavSnap === 'function' ? applyNavSnap(latlng, '') : latlng;
+  const p = { lat: r.lat, lng: r.lng, name: r.name || '' };
+  if (measureLiveFrom()) { m.from = null; m.to = p; }
+  else if (!m.from || m.to) { m.from = p; m.to = null; }
+  else m.to = p;
+  if (typeof draw === 'function') draw();
+}
+window.measureTap = measureTap;
 const editLockBtn = document.getElementById('edit-lock');
 // The button shows whether the route CAN be moved, not merely whether the pilot pressed it.
 // Starting a recording or Location locks the route on its own, and a button still showing an
@@ -1280,33 +1343,21 @@ function refreshEditColumn() {
 }
 window.refreshEditColumn = refreshEditColumn;
 refreshEditColumn();
-// Desktop placement. The inspector opens on the reading side's far edge and the search card
-// on the near one, mirrored in Hebrew -- so a column fixed at the top left sat under the
-// Hebrew inspector. It goes on the search card's side, just below the card's actual bottom
-// (the card wraps taller on a narrow window). The phone keeps it top left under the strip.
+// Desktop placement: top left in both languages -- the same place as on the phone and in
+// English, so a pilot switching language finds them where they were (the Hebrew inspector
+// opens beside them, style.css). Just below the docked search card's actual bottom when the
+// card is on that side (it wraps taller on a narrow window). The phone keeps it under the strip.
 function placeEditColumn() {
   const wrap = document.querySelector('.edit-col-ctrl');
   if (!wrap) return;
-  const phone = document.body.classList.contains('deck-on');
-  const want = (!phone && document.documentElement.dir === 'rtl') ? 'topright' : 'topleft';
-  if (editColCtrl.getPosition() !== want) {
-    editColCtrl.setPosition(want);
-    refreshEditColumn();           // a rebuilt column starts unlit: give it the current state
-  }
-  if (phone) { wrap.style.marginTop = ''; wrap.classList.remove('edit-col-row'); return; }
+  if (document.body.classList.contains('deck-on')) { wrap.style.marginTop = ''; return; }
   const search = document.getElementById('search-overlay');
-  const mapTop = map.getContainer().getBoundingClientRect().top;
+  const mapBox = map.getContainer().getBoundingClientRect();
   const s = search && !search.classList.contains('hidden') && search.getClientRects().length
     ? search.getBoundingClientRect() : null;
-  wrap.style.marginTop = Math.max(150, s ? Math.ceil(s.bottom - mapTop + 12) : 0) + 'px';
-  // On the right it shares the edge with the map buttons stacked at the bottom (lock, dial,
-  // zoom). A window too short for both as columns gets the four in a row instead.
-  wrap.classList.remove('edit-col-row');
-  if (want === 'topright') {
-    const stack = [...document.querySelectorAll('.leaflet-bottom.leaflet-right .leaflet-control')]
-      .filter(e => e.getClientRects().length).map(e => e.getBoundingClientRect().top);
-    if (stack.length && wrap.getBoundingClientRect().bottom > Math.min(...stack) - 8) wrap.classList.add('edit-col-row');
-  }
+  // Only a card that reaches over the left edge's first 70 px is in the column's way.
+  const inWay = s && s.left < mapBox.left + 70;
+  wrap.style.marginTop = Math.max(150, inWay ? Math.ceil(s.bottom - mapBox.top + 12) : 0) + 'px';
 }
 window.placeEditColumn = placeEditColumn;
 placeEditColumn();
@@ -2067,7 +2118,12 @@ function showVorReadout(lat, lng) {
   setVorReadout(vorReadoutText(lat, lng));
 }
 function showZoom() {
-  zoomBox.textContent = zoomReadoutText(map.getZoom());
+  // Two lines -- the zoom, then the scale -- in a box no wider than the round buttons it
+  // stands among, so the column keeps one edge and one centre line.
+  const [zPart, scalePart] = zoomReadoutText(map.getZoom()).split(' \u00b7 ');
+  const a = document.createElement('span'), b = document.createElement('span');
+  a.textContent = zPart || ''; b.textContent = scalePart || '';
+  zoomBox.replaceChildren(a, b);
 }
 function showCoord(latlng) {
   if (gotoEditing) return;
