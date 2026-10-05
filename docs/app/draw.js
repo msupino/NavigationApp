@@ -1428,8 +1428,25 @@ function measureEteText(nm, kt) {
     + ' at ' + Math.round(kt) + ' kt';
 }
 window.measureEteText = measureEteText;
+// On screen the label is a DOM box over the map's symbols: painted on the overlay canvas, the
+// airfield and waypoint markers sit above it, and zoomed out they piled on and hid it. The PNG
+// export draws it on its own canvas, as before.
+function measureLabelBox(show) {
+  let el = document.getElementById('measure-label');
+  if (!show) { if (el) el.hidden = true; return null; }
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'measure-label';
+    el.setAttribute('aria-live', 'polite');
+    map.getContainer().appendChild(el);
+  }
+  el.hidden = false;
+  return el;
+}
 function drawMeasure() {
   const m = window.measure;
+  const onScreen = octx.canvas === overlay;
+  if (onScreen) measureLabelBox(false);
   if (!m || !m.on) return;
   const live = typeof measureLiveFrom === 'function' ? measureLiveFrom() : null;
   const from = live || m.from;
@@ -1472,6 +1489,14 @@ function drawMeasure() {
     .map(([rt, dn]) => [rt ? b.x + 12 : b.x - 12 - w, dn ? b.y + 10 : b.y - 10 - h]);
   const pick = tries.find(([tx, ty]) => fits(tx, ty)) || tries[0];
   const x = Math.max(4, Math.min(cr.width - w - 4, pick[0])), y = Math.max(4, Math.min(cr.height - h - 4, pick[1]));
+  if (onScreen) {
+    const el = measureLabelBox(true), mr = map.getContainer().getBoundingClientRect();
+    el.replaceChildren(...lines.map(t => { const d = document.createElement('div'); d.dir = 'auto'; d.textContent = t; return d; }));
+    Object.assign(el.style, { left: Math.round(x + cr.left - mr.left) + 'px', top: Math.round(y + cr.top - mr.top) + 'px',
+      minWidth: Math.round(w) + 'px', background: tune('measureLabelBg'), color: tune('measureLabelText') });
+    octx.restore();
+    return;
+  }
   octx.fillStyle = tune('measureLabelBg');
   octx.beginPath();
   if (octx.roundRect) octx.roundRect(x, y, w, h, 8); else octx.rect(x, y, w, h);
