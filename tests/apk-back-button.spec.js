@@ -193,3 +193,20 @@ test('it waits for the bridge rather than giving up on the first look', async ({
   await expect.poll(() => page.evaluate(() => window.__backHandlers.length), { timeout: 8000 })
     .toBeGreaterThan(0);
 });
+
+// The question is its title; the line under it says closing keeps the route, recordings and
+// settings -- and a recording in progress is saved before the app closes, so that is true.
+test('the exit question is titled by the question, and a running recording is saved before closing', async ({ page }) => {
+  await bootNative(page);
+  await page.evaluate(() => { new Function('gpsRecording = true; gpsTrack = [{lat:32,lng:34.8,t:1},{lat:32.1,lng:34.9,t:2}]')(); });
+  const before = await page.evaluate(() => (typeof routeLibrary !== 'undefined' && Array.isArray(routeLibrary)) ? routeLibrary.length : -1);
+  await page.evaluate(() => { window.__backDone = Promise.all(window.__backHandlers.map(fn => fn())); });
+  const ask = page.locator('.follow-me-ask-modal');
+  await expect(ask.locator('.modal-title, h3').first()).toHaveText('Close NavAid?');
+  await expect(ask).toContainText('route, recordings and settings are kept');
+  await ask.locator('.follow-me-ask-ok').click();
+  await page.evaluate(() => window.__backDone);
+  expect(await page.evaluate(() => window.__exited)).toBe(1);
+  expect(await page.evaluate(() => gpsRecording)).toBe(false);
+  if (before >= 0) expect(await page.evaluate(() => routeLibrary.length)).toBe(before + 1);
+});

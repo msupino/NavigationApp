@@ -52,7 +52,7 @@ test('the NOTAM list button dims (never hides) when this chart has nothing to li
       sel.value = n; sel.onchange();
       await new Promise(r => setTimeout(r, 300));
       if (typeof refreshNotamListBtn === 'function') refreshNotamListBtn();
-      return { shown: activeNotams().length, hidden: btn.hidden, disabled: btn.disabled, cbDisabled: document.getElementById('notam-cb').disabled };
+      return { shown: activeNotams().length, hidden: btn.hidden, disabled: btn.getAttribute('aria-disabled') === 'true', cbDisabled: document.getElementById('notam-cb').disabled };
     };
     return { cvfr: await go('CVFR'), lsa: await go('Low Alt') };
   });

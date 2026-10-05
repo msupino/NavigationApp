@@ -6812,8 +6812,8 @@ window.persistWithoutUndo = persistWithoutUndo;
 function refreshUndoButton() {
   const btn = document.getElementById('undo');
   if (btn) btn.disabled = undoStack.length === 0;
-  const col = document.getElementById('edit-col-undo');      // the edit column's Undo
-  if (col) col.disabled = undoStack.length === 0;
+  // The edit column's Undo stays tappable and says why (setButtonWhy, ui.js).
+  if (typeof window.refreshEditColumn === 'function') window.refreshEditColumn();
 }
 
 function undo() {

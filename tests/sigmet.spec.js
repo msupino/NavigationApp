@@ -106,7 +106,7 @@ test('an expired SIGMET dims the button and is not listed', async ({ page }) => 
   // The datum is present but out of force: no active SIGMET, so no button.
   expect(await page.evaluate(() => activeSigmets().length)).toBe(0);
   expect(await page.evaluate(() => document.getElementById('sigmet-btn').hidden)).toBe(false);   // never hidden
-  expect(await page.evaluate(() => document.getElementById('sigmet-btn').disabled)).toBe(true);  // dimmed
+  expect(await page.evaluate(() => document.getElementById('sigmet-btn').getAttribute('aria-disabled') === 'true')).toBe(true);  // dimmed
   // Even opened directly, the decoded list skips the expired one.
   await page.evaluate(() => { if (typeof showSigmetDecoded === 'function') showSigmetDecoded(); });
   expect(await page.evaluate(() => !!document.querySelector('.modal-back .modal'))).toBe(false);
