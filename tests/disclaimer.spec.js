@@ -336,3 +336,18 @@ test('the Terms and Privacy links are the app\'s blue, visited or not', async ({
     expect(c).not.toBe('rgb(85, 26, 139)');      // :visited purple
   }
 });
+
+// A new user's intro comes AFTER the notice: the first-route hint and the map tour started under
+// it, hidden, and the hint was marked seen there, so neither was ever shown.
+test('the first-route hint and the map tour wait for Accept', async ({ page }) => {
+  await page.addInitScript(() => { window.__navaidNoTour = false; window.__navaidTune = Object.assign(window.__navaidTune || {}, { featureRouteIntro: true }); try { localStorage.removeItem('navaid.tourSeen'); } catch (e) {} });
+  const back = await openApp(page);
+  await expect(back).toBeVisible();
+  await page.waitForTimeout(1800);
+  await expect(page.locator('#empty-route-hint')).toHaveCount(0);
+  await expect(page.locator('#map-tour')).toHaveCount(0);
+  expect(await page.evaluate(() => localStorage.getItem('navaid.hintEmptyRoute'))).toBeNull();
+  await page.locator('.disclaimer-accept').click();
+  await expect(page.locator('#empty-route-hint')).toBeAttached();
+  await expect(page.locator('#map-tour')).toBeVisible({ timeout: 5000 });
+});

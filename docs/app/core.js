@@ -904,6 +904,8 @@ NavAid.tuningDefaults = {
   // inspecting). Both are the same onboarding gesture, so one switch governs them: off, and
   // the map behaves for everyone the way it does for a pilot who has already seen the hint.
   featureRouteIntro: { value: false, type: 'bool', label: 'Feature: new-user route intro' },
+  // The first-launch map tour (tour.js): one control at a time, with Settings → Show the tour.
+  featureTour: { value: true, type: 'bool', label: 'Feature: first-launch map tour' },
   // The inspector stays shut while a real fix is driving the map (recording or showing
   // location). Set true to have a tap open it in flight, the way it used to.
   featureInspectorWhileTracking: { value: false, type: 'bool', label: 'Feature: inspector while tracking' },
@@ -1142,7 +1144,7 @@ NavAid.tuningGroups = [
     'defaultViewZoom', 'defaultViewLat', 'defaultViewLng'] },
   { name: 'Export', keys: ['exportBgColor'] },
   { name: 'Global palette', keys: ['inkColor', 'selectedColor', 'labelFillColor', 'kiteTextColor', 'legKiteHaloColor', 'kiteNoteAlpha'] },
-  { name: 'Default layer visibility', keys: ['defaultShowNavWP', 'defaultShowAirfields', 'defaultShowVor', 'defaultShowHotspots', 'defaultShowWpNames', 'defaultShowCumTime', 'defaultShowDrift', 'defaultShowCommChange', 'defaultVoiceAlerts', 'defaultShowMidLeg', 'defaultHighlightDiff', 'defaultLimitLegKites', 'defaultShowMsa', 'defaultShowReporting', 'defaultForceSnap', 'defaultShowReturn', 'featureShowReturn', 'featureFplReturnJoin', 'offlineAutoCvfr', 'offlineCvfrUnmeteredOnly', 'offlineCvfrMinZoom', 'offlineCvfrMaxZoom', 'featureRouteIntro', 'featureSatZoomButtons', 'featureInspectorResize', 'featureInspectorWhileTracking', 'featureAssistant', 'featureMobileDeck', 'featureDisclaimer', 'featureOtaUpdates', 'featureNavLog', 'reverseWarnMs', 'notamSeenDays', 'toastReadWpm', 'toastNoticeMs', 'toastMinMs', 'toastWarnMinMs', 'toastMaxMs', 'reverseWarnBlink', 'reverseRotatesMap', 'addToRouteOpensInspector', 'defaultShowNotam', 'defaultShowAirmet', 'defaultShowSigmet', 'defaultShowWind', 'defaultWindField', 'defaultAirfieldWind', 'defaultImsPwx', 'defaultSigwxOv', 'defaultShowLsaBubbles', 'defaultAutoRoute', 'defaultShowCircuit', 'defaultShowTraining', 'defaultShowCvfr', 'defaultShowHeli', 'defaultShowCommfail', 'defaultShowAdc', 'defaultShowIfr', 'plateFieldZoom'] },
+  { name: 'Default layer visibility', keys: ['defaultShowNavWP', 'defaultShowAirfields', 'defaultShowVor', 'defaultShowHotspots', 'defaultShowWpNames', 'defaultShowCumTime', 'defaultShowDrift', 'defaultShowCommChange', 'defaultVoiceAlerts', 'defaultShowMidLeg', 'defaultHighlightDiff', 'defaultLimitLegKites', 'defaultShowMsa', 'defaultShowReporting', 'defaultForceSnap', 'defaultShowReturn', 'featureShowReturn', 'featureFplReturnJoin', 'offlineAutoCvfr', 'offlineCvfrUnmeteredOnly', 'offlineCvfrMinZoom', 'offlineCvfrMaxZoom', 'featureRouteIntro', 'featureTour', 'featureSatZoomButtons', 'featureInspectorResize', 'featureInspectorWhileTracking', 'featureAssistant', 'featureMobileDeck', 'featureDisclaimer', 'featureOtaUpdates', 'featureNavLog', 'reverseWarnMs', 'notamSeenDays', 'toastReadWpm', 'toastNoticeMs', 'toastMinMs', 'toastWarnMinMs', 'toastMaxMs', 'reverseWarnBlink', 'reverseRotatesMap', 'addToRouteOpensInspector', 'defaultShowNotam', 'defaultShowAirmet', 'defaultShowSigmet', 'defaultShowWind', 'defaultWindField', 'defaultAirfieldWind', 'defaultImsPwx', 'defaultSigwxOv', 'defaultShowLsaBubbles', 'defaultAutoRoute', 'defaultShowCircuit', 'defaultShowTraining', 'defaultShowCvfr', 'defaultShowHeli', 'defaultShowCommfail', 'defaultShowAdc', 'defaultShowIfr', 'plateFieldZoom'] },
 ];
 // Padding pair + maxZoom for a fitBounds call, from the tuning registry. Every "frame the
 // map on X" call goes through this instead of carrying its own literals.
@@ -1545,6 +1547,28 @@ window.S = Object.assign({
   appUpdatePending: 'Update ready: installs the next time NavAid starts',
   appUpdateRestart: 'Restart now',
   appUpdateLater: 'Later',
+  tbTourReplay: 'Show the tour',
+  tourNext: 'Next', tourBack: 'Back', tourSkip: 'Skip', tourDone: 'Done',
+  tourEditTitle: 'Edit the route',
+  tourEditText: 'Add a waypoint, add a note, undo, clear the map. The lit button shows what is armed; tap it again to stop.',
+  tourMeasureTitle: 'Measure',
+  tourMeasureText: 'Tap the ruler, then a point: distance, bearing and time from the aircraft. Nothing is added to the route.',
+  tourLockTitle: 'Edit lock',
+  tourLockText: 'Shut, nothing on the route can move. It locks by itself while your position is showing.',
+  tourDialTitle: 'Turn the chart',
+  tourDialText: 'Drag to turn the chart, tap to step 0 / 90 / 180 / 270. The red needle points north.',
+  tourLocationTitle: 'Your position',
+  tourLocationText: 'Shows the aircraft on the map, with speed, altitude and track at the top.',
+  tourRecordTitle: 'Record',
+  tourRecordText: 'Records the flight as a track you can show again and export.',
+  tourCommfailTitle: 'Comm fail',
+  tourCommfailText: 'Lost the radio? Routes you to the nearest field with a published procedure, with squawk 7600 and the tower phone.',
+  tourMenuTitle: 'Menu',
+  tourMenuText: 'Charts, extra layers (NOTAM, weather, airspace), the flight plan, and settings.',
+  tourSearchTitle: 'Find',
+  tourSearchText: 'Type a waypoint or airfield, or several codes (LLHZ BAZRA DEROR) to build a route.',
+  tourHoldTitle: 'Press and hold the map',
+  tourHoldText: 'Hold a finger on any point: what is there, add it as a waypoint, or fly Direct to it.',
   appUpdateReadyTitle: 'Update ready',
   appUpdateReadyText: function (v) {
     return 'A new version of NavAid has been downloaded' + (v ? ' (' + v + ')' : '') +

@@ -9244,3 +9244,59 @@ body.theme-light .insp-row-closed .val { color: #9a3d00; }
 @media (min-width: 681px) and (hover: hover) and (pointer: fine) {
   #toolbar .tb-section-body .navtoggle-slider { align-items: center; }
 }
+
+/* --- Map tour (tour.js) -------------------------------------------------------------------
+   One control at a time: the rest of the screen dimmed by the spotlight's own shadow, a bubble
+   saying what it does, and a blue arrow from the bubble to it that nudges towards the control
+   (still, under reduced motion). Above every other layer, toasts included. */
+#map-tour { position: fixed; inset: 0; z-index: 6000; pointer-events: auto; }
+#map-tour.tour-plain { background: rgba(8, 12, 18, 0.62); }
+#map-tour .tour-spot {
+  position: fixed;
+  border-radius: 14px;
+  box-shadow: 0 0 0 9999px rgba(8, 12, 18, 0.62);
+  outline: 3px solid #3d8bfd;
+  outline-offset: 0;
+  transition: left .25s ease, top .25s ease, width .25s ease, height .25s ease;
+  pointer-events: none;
+}
+#map-tour .tour-arrow {
+  position: fixed; inset: 0; width: 100%; height: 100%;
+  overflow: visible; pointer-events: none;
+  color: #3d8bfd;
+  animation: tour-nudge 1.1s ease-in-out infinite alternate;
+}
+#map-tour .tour-arrow line { stroke: #3d8bfd; stroke-width: 4; stroke-linecap: round; }
+@keyframes tour-nudge { from { transform: translate(0, 0); } to { transform: translate(var(--tour-dx, 0), var(--tour-dy, 0)); } }
+@media (prefers-reduced-motion: reduce) {
+  #map-tour .tour-arrow { animation: none; }
+  #map-tour .tour-spot { transition: none; }
+}
+#map-tour .tour-bubble {
+  position: fixed;
+  box-sizing: border-box;
+  width: min(320px, calc(100vw - 24px));
+  padding: 14px 16px 12px;
+  border-radius: 12px;
+  border: 2px solid #3d8bfd;
+  background: #ffffff;
+  color: #1b222b;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+  font-size: 15px;
+  line-height: 1.45;
+}
+body.theme-dark #map-tour .tour-bubble { background: #1c2430; color: #e8eef3; }
+#map-tour .tour-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+#map-tour .tour-count { font-size: 13px; opacity: 0.75; font-variant-numeric: tabular-nums; direction: ltr; unicode-bidi: isolate; }
+#map-tour .tour-title { margin: 4px 0 4px; font-size: 17px; }
+#map-tour .tour-text { margin: 0 0 12px; }
+#map-tour .tour-btns { display: flex; justify-content: flex-end; gap: 8px; }
+#map-tour button {
+  min-height: 44px; min-width: 44px; padding: 0 16px;
+  border-radius: 10px; border: 1px solid #b9c3cf;
+  background: transparent; color: inherit; font: inherit; font-weight: 600; cursor: pointer;
+}
+#map-tour .tour-next { background: #0b62d6; border-color: #0b62d6; color: #ffffff; }
+#map-tour .tour-skip { border-color: transparent; text-decoration: underline; font-weight: 500; }
+#map-tour .tour-back:disabled { opacity: 0.4; cursor: default; }
+#map-tour button:focus-visible { outline: 3px solid #3d8bfd; outline-offset: 2px; }
