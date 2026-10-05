@@ -65,3 +65,24 @@ test('can be switched off', async ({ page }) => {
   await page.waitForTimeout(400);
   expect(await eastOfFix(page)).toBe(0);
 });
+
+test('on the ground the heading line puts no mark on the aircraft itself', async ({ page }) => {
+  await boot(page);
+  await page.evaluate(() => map.setView([32, 34.8], 11, { animate: false }));
+  await liveFix(page, 32, 34.8, 0.5, 90);          // ~1 kt: "2 min" is a few metres ahead
+  const near = await page.evaluate(() => {
+    const own = proj(gpsOwn), r = tune('liveAircraftRadiusPx') * 2.2;
+    const texts = [];
+    const orig = octx.fillText.bind(octx);
+    octx.fillText = function (t, x, y) {
+      const m = octx.getTransform();
+      texts.push({ t: String(t), x: m.a * x + m.e, y: m.d * y + m.f });
+      return orig(t, x, y);
+    };
+    draw();
+    octx.fillText = orig;
+    const dpr = window.devicePixelRatio || 1;
+    return texts.filter(o => /min|nm/.test(o.t) && Math.hypot(o.x / dpr - own.x, o.y / dpr - own.y) < r).map(o => o.t);
+  });
+  expect(near).toEqual([]);
+});
