@@ -1552,7 +1552,7 @@ window.S = Object.assign({
   tourEditTitle: 'Edit the route',
   tourEditText: 'Add a waypoint, add a note, undo, clear the map. The lit button shows what is armed; tap it again to stop.',
   tourMeasureTitle: 'Measure',
-  tourMeasureText: 'Tap the ruler, then a point: distance, bearing and time from the aircraft. Nothing is added to the route.',
+  tourMeasureText: 'With your position showing, tap the ruler, then a point: distance, bearing and time from the aircraft. Nothing is added to the route.',
   tourLockTitle: 'Edit lock',
   tourLockText: 'Shut, nothing on the route can move. It locks by itself while your position is showing.',
   tourDialTitle: 'Turn the chart',
@@ -2442,9 +2442,9 @@ window.S = Object.assign({
   editLockOff: 'Points and labels can be dragged — tap to lock the route',
   editLockAuto: 'Route is locked while a position is showing — tap to allow moving it',
   editLockBlockedToast: 'Route is locked — unlock it to edit',
-  measureTitle: 'Measure: tap a point for its distance, bearing and time',
+  measureTitle: 'Measure from the aircraft: tap a point for its distance, bearing and time',
   measureHintLive: 'Tap a point: distance and time from the aircraft',
-  measureHint: 'Tap the start, then the end',
+  whyMeasureNoPosition: 'Measure works from your position: turn on Location',
   measureEte: function (min, kt) {
     const t = min < 60 ? min + ' min' : Math.floor(min / 60) + ' h ' + String(min % 60).padStart(2, '0');
     return t + ' at ' + kt + ' kt';
