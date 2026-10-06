@@ -153,8 +153,14 @@
     // The phone's pressure sensor (device-extras.js): static pressure in the cabin, so close to
     // the outside in an unpressurised aeroplane, and nothing like it in a pressurised one.
     const baro = window.NavAid && NavAid.device && NavAid.device.baro;
+    if (typeof gpsAltSource === 'function') {
+      const from = (typeof gpsAltFrom !== 'undefined' && gpsAltFrom === 'baro')
+        ? str('tbAltSourceBaro', 'Barometer + QNH') + (typeof gpsQnh !== 'undefined' && gpsQnh && typeof fmtPressure === 'function' ? ' ' + fmtPressure(gpsQnh.hPa) : '')
+        : str('tbAltSourceGps', 'GPS');
+      row(tb, str('gpsStatusAltFrom', 'Altitude from'), from);
+    }
     if (baro && Number.isFinite(baro.hPa)) {
-      row(tb, str('gpsStatusPressure', 'Pressure (cabin)'), baro.hPa.toFixed(1) + ' hPa');
+      row(tb, str('gpsStatusPressure', 'Pressure (cabin)'), (typeof fmtPressure === 'function' ? fmtPressure(baro.hPa, true) : baro.hPa.toFixed(1) + ' hPa'));
       row(tb, str('gpsStatusPressAlt', 'Pressure altitude'), Math.round(baro.pAltFt).toLocaleString('en-US') + ' ft');
       if (Number.isFinite(baro.vsFpm)) row(tb, str('gpsStatusVs', 'Vertical speed'), (baro.vsFpm >= 0 ? '+' : '\u2212') + Math.abs(Math.round(baro.vsFpm / 10) * 10) + ' fpm');
     }

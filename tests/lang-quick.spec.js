@@ -74,7 +74,7 @@ for (const lang of ['he', 'en']) test(`settings rows stay one line with the cont
       return { spread: Math.max(...mids) - Math.min(...mids),
         edge: rtl ? Math.min(...ctrls.map(b => b.left)) : Math.max(...ctrls.map(b => b.right)) };
     }));
-  expect(rows.length).toBe(4);                   // the three settings rows, and screen brightness
+  expect(rows.length).toBe(6);                   // the settings rows: pressure unit, altitude from, brightness among them
   for (const r of rows) expect(r.spread).toBeLessThan(8);         // one line
   expect(Math.max(...rows.map(r => r.edge)) - Math.min(...rows.map(r => r.edge))).toBeLessThan(2);   // aligned
 });

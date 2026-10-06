@@ -9876,6 +9876,23 @@ function reapplyStoredTuneOverrides() {
 // belongs beside the layer picker rather than in the hidden tuning panel — it is
 // the one performance number every pilot needs to set once for their aircraft.
 // Registered as a tune override so it outranks the gist and survives its reload.
+// Settings -> Pressure unit and Altitude from: two pilot choices read where they are used
+// (core.js pressureUnit, gps.js gpsAltSource); here they are shown, saved and applied at once.
+(function pressureSettings() {
+  const pairs = [['pressure-unit', 'navaid.pressureUnit', () => pressureUnit()],
+                 ['alt-source', 'navaid.altSource', () => (typeof gpsAltSource === 'function' ? gpsAltSource() : 'gps')]];
+  for (const [id, key, current] of pairs) {
+    const el = document.getElementById(id);
+    if (!el) continue;
+    el.value = current();
+    el.addEventListener('change', () => {
+      try { localStorage.setItem(key, el.value); } catch (e) { /* storage off: this session only */ }
+      if (typeof gpsUpdateReadout === 'function') gpsUpdateReadout();
+      if (window.NavAid && NavAid.gpsStatus) NavAid.gpsStatus.tick();
+      if (typeof draw === 'function') draw();
+    });
+  }
+}());
 const DEFAULTSPEED_KEY = 'navaid.defaultSpeed';
 const DEFAULTSPEED_EL = document.getElementById('default-speed');
 const defaultSpeedOk = n => Number.isFinite(n) && n >= 20 && n <= 400;
