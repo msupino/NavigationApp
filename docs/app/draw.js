@@ -1614,6 +1614,8 @@ const AIRMET_URL =
   'https://raw.githubusercontent.com/msupino/NavigationApp/airmet-data/airmet.json';
 let airmets = null;
 let airmetMeta = null;
+// Declared here, beside the loader that writes it; read elsewhere as window.sigmetMeta.
+let sigmetMeta = null;
 window.airmets = airmets;
 // NOTAMs: a scheduled Action queries the FAA NOTAM API for the Israel FIR
 // (LLLL), normalises geometry, and publishes notam.json to the `notam-data`
@@ -1779,6 +1781,7 @@ async function loadSigmets(force) {
       console.warn('Failed to load SIGMETs:', e, e2);
       sigmets = [];
       sigmetMeta = { generatedAt: null };
+      window.sigmetMeta = sigmetMeta;
     }
     return sigmets;
   }
