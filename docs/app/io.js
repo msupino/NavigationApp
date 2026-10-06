@@ -23,11 +23,18 @@ function makeModalDraggable(el, handle, key) {
     }
     return { left: 0, top: 0, w: window.innerWidth, h: window.innerHeight };
   }
+  // Where the panel may go: the visible frame -- its backdrop, which on a phone is the space
+  // between the strip and the deck -- even when the panel is positioned against the window
+  // (position: fixed, which a drag sets). Clamped to the window alone, a dragged panel could go
+  // up under the strip, or over it, and take its title bar and close button with it.
   function clamp(x, y) {
     const f = frame();
+    const back = el.closest && el.closest('.modal-back');
+    const b = back ? back.getBoundingClientRect() : { left: f.left, top: f.top, right: f.left + f.w, bottom: f.top + f.h };
+    const minX = b.left - f.left, minY = b.top - f.top;
     return {
-      x: Math.max(0, Math.min(f.w - el.offsetWidth, x)),
-      y: Math.max(0, Math.min(f.h - el.offsetHeight, y)),
+      x: Math.max(minX, Math.min(b.right - f.left - el.offsetWidth, x)),
+      y: Math.max(minY, Math.min(b.bottom - f.top - el.offsetHeight, y)),
     };
   }
   function setPos(x, y) {
@@ -7396,10 +7403,11 @@ function createDraggableModal(titleText, className, onClose, options = {}) {
     box.style.margin = '0';
     const onMove = function (e) {
       if (!drag) return;
-      // Clamp to the viewport so the title bar + ✕ stay reachable. Same
-      // pattern the flight-plan modal already uses.
-      const x = Math.max(0, Math.min(window.innerWidth - box.offsetWidth, e.clientX - drag.ox));
-      const y = Math.max(0, Math.min(window.innerHeight - box.offsetHeight, e.clientY - drag.oy));
+      // Clamp to the visible frame (the backdrop: under the strip, above the deck on a phone)
+      // so the title bar + ✕ stay reachable.
+      const v = back.getBoundingClientRect();
+      const x = Math.max(v.left, Math.min(v.right - box.offsetWidth, e.clientX - drag.ox));
+      const y = Math.max(v.top, Math.min(v.bottom - box.offsetHeight, e.clientY - drag.oy));
       box.style.left = x + 'px';
       box.style.top = y + 'px';
     };

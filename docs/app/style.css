@@ -8301,7 +8301,7 @@ body.theme-dark .deck-here-btn { background: #1e2831; }
    and a tall sheet scrolls between them rather than under them. */
 body.deck-on .modal-back,
 body.deck-on .sim-overlay {
-  top: var(--navaid-deck-strip-h, 46px);
+  top: var(--navaid-deck-strip-bottom, var(--navaid-deck-strip-h, 46px));
   bottom: calc(var(--navaid-deck-bar-h, 52px) + env(safe-area-inset-bottom, 0px));
 }
 body.deck-on .modal-back > .modal,
@@ -9365,7 +9365,7 @@ body.theme-dark #map-tour .tour-bubble { background: #1c2430; color: #e8eef3; }
 #gps-status[data-q="fair"] { border-inline-start-color: #e0a526; }
 #gps-status[data-q="poor"] { border-inline-start-color: #e5484d; }
 #gps-status:focus-visible { outline: 3px solid #3d8bfd; outline-offset: 2px; }
-body.deck-on #gps-status { top: calc(var(--navaid-deck-strip-h, 46px) + 8px + env(safe-area-inset-top, 0px)); }
+body.deck-on #gps-status { top: calc(var(--navaid-deck-strip-bottom, var(--navaid-deck-strip-h, 46px)) + 8px); }
 .gps-status-modal { max-width: min(380px, 94vw); }
 .gps-status-table { width: 100%; border-collapse: collapse; font-size: 14px; }
 .gps-status-table th { text-align: start; font-weight: 500; padding: 5px 8px 5px 0; opacity: 0.8; }

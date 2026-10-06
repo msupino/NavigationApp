@@ -100,14 +100,24 @@
     document.body.appendChild(strip);
     // The menu opens under the strip, so it has to know how tall the strip is -- which
     // depends on the language, the font and whether the second line has anything to say.
-    const measure = () => document.documentElement.style.setProperty(
-      '--navaid-deck-strip-h', Math.round(strip.getBoundingClientRect().height) + 'px');
+    // Its bottom EDGE is a second number: the panels and the GPS line hang from where the strip
+    // ends on screen, which is its height only when it starts at the very top. In the app the
+    // status bar can push it down, and a panel placed a height's worth from the top went under it.
+    const measure = () => {
+      const r = strip.getBoundingClientRect();
+      document.documentElement.style.setProperty('--navaid-deck-strip-h', Math.round(r.height) + 'px');
+      document.documentElement.style.setProperty('--navaid-deck-strip-bottom', Math.round(r.bottom) + 'px');
+    };
     if (typeof ResizeObserver === 'function') {
       const ro = new ResizeObserver(measure);
       ro.observe(strip);
       observers.push(ro);
     }
     measure();
+    // A strip MOVED rather than resized (the app's status-bar inset arriving after start, a
+    // rotation) changes its bottom edge without a resize the observer would see.
+    window.addEventListener('resize', measure);
+    [300, 1500, 4000].forEach((ms) => setTimeout(measure, ms));
   }
 
   // Each entry: the id of the button it drives, or a handler of its own. Nothing here
@@ -743,6 +753,7 @@
     if (strip) strip.remove();
     if (deck) deck.remove();
     document.documentElement.style.removeProperty('--navaid-deck-strip-h');
+    document.documentElement.style.removeProperty('--navaid-deck-strip-bottom');
     document.documentElement.style.removeProperty('--navaid-deck-bar-h');
     strip = deck = stripLeg = stripVals = stripSub = null;
     for (const key of Object.keys(buttons)) delete buttons[key];
