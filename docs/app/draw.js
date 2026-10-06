@@ -1461,17 +1461,19 @@ function drawMeasure() {
   const m = window.measure;
   const onScreen = octx.canvas === overlay;
   if (onScreen) measureLabelBox(false);
+  if (onScreen && typeof refreshMeasureControl === 'function') refreshMeasureControl();
   if (!m || !m.on) return;
+  // Always from the aircraft (ui.js): no position, nothing drawn -- it returns with the position.
   const live = typeof measureLiveFrom === 'function' ? measureLiveFrom() : null;
-  const from = live || m.from;
+  if (!live) return;
+  const from = live;
   const to = m.to;
   const dot = (p, r) => { const s = proj(p); octx.beginPath(); octx.arc(s.x, s.y, r, 0, Math.PI * 2); octx.fill(); octx.stroke(); };
   octx.save();
   octx.fillStyle = tune('measureDotFill');
   octx.strokeStyle = tune('measureLineColor');
   octx.lineWidth = 2.5;
-  if (from && !live) dot(from, 5);
-  if (!from || !to) { octx.restore(); return; }
+  if (!to) { octx.restore(); return; }
   const a = proj(from), b = proj(to);
   octx.setLineDash([10, 6]);
   octx.lineWidth = 3;

@@ -123,6 +123,9 @@ function setMode(mode) {
     }
     mode = null;
   }
+  // One map tool at a time: arming Add or Note puts the ruler away (a tap cannot be both a
+  // waypoint and a measure point), and turning the ruler on leaves Add / Note (measureToggle).
+  if (mode && window.measure && window.measure.on) measureToggle(false);
   state.mode = mode;
   const addBtn = document.getElementById('tool-add');
   const noteBtn = document.getElementById('tool-note');
@@ -1181,8 +1184,12 @@ editLockCtrl.addTo(map);
 // first tap is the start and the second the end. A tap snaps to a published point the way
 // adding a waypoint does. Measuring changes nothing, so the route lock does not stop it.
 // Pressing the ruler again puts it away.
+// Only from the aircraft: the ruler works while a position is showing (Location, recording or
+// the simulator) and is dimmed otherwise, saying why -- while planning, two waypoints already
+// give a distance. A measurement left on when the position stops is kept, not drawn, and comes
+// back with the position (a reload, a GPS gap).
 window.measure = { on: false, from: null, to: null };
-function measureOn() { return !!window.measure.on; }
+function measureOn() { return !!window.measure.on && !!measureLiveFrom(); }
 window.measureOn = measureOn;
 const measureCtrl = L.control({ position: 'bottomright' });
 measureCtrl.onAdd = function () {
@@ -1192,7 +1199,7 @@ measureCtrl.onAdd = function () {
   b.id = 'measure-btn';
   b.setAttribute('aria-pressed', 'false');
   setMapIcon(b, 'measure');
-  b.title = S.measureTitle || 'Measure: tap a point for its distance, bearing and time';
+  b.title = S.measureTitle || 'Measure from the aircraft: tap a point for its distance, bearing and time';
   b.setAttribute('aria-label', b.title);
   b.addEventListener('click', () => measureToggle());
   wrap.appendChild(b);
@@ -1220,28 +1227,47 @@ function measureSave() {
     else localStorage.removeItem(MEASURE_KEY);
   } catch (e) { /* storage off: the measurement just does not come back */ }
 }
+// The button and the body class follow whether measuring is in force: dimmed with its reason
+// while no position shows, lit while on. Run with every draw, so a position starting or
+// stopping is reflected at once; the DOM is only touched when something changed.
+let measureShown = null;
+function refreshMeasureControl() {
+  const live = !!measureLiveFrom(), active = !!window.measure.on && live;
+  const key = live + ':' + active;
+  if (key === measureShown) return;
+  measureShown = key;
+  const b = document.getElementById('measure-btn');
+  if (b) {
+    setButtonWhy(b, live ? null : (S.whyMeasureNoPosition || 'Measure works from your position: turn on Location'));
+    b.classList.toggle('measure-on', active);
+    b.setAttribute('aria-pressed', String(active));
+  }
+  document.body.classList.toggle('measuring', active);
+  if (typeof refreshPrimingCursor === 'function') refreshPrimingCursor();   // the primed Add is not lit while measuring
+  if (typeof window.refreshEditColumn === 'function') window.refreshEditColumn();   // Clear also clears a measurement
+}
+window.refreshMeasureControl = refreshMeasureControl;
 function measureToggle(on, quiet) {
   const m = window.measure;
-  m.on = typeof on === 'boolean' ? on : !m.on;
+  const want = typeof on === 'boolean' ? on : !m.on;
+  if (want && !measureLiveFrom()) { refreshMeasureControl(); return; }      // dimmed: nothing to measure from
+  m.on = want;
   m.from = null; m.to = null;
+  if (m.on && (state.mode === 'add' || state.mode === 'note')) setMode(null);   // one map tool at a time
   measureSave();
-  document.body.classList.toggle('measuring', m.on);
-  const b = document.getElementById('measure-btn');
-  if (b) { b.classList.toggle('measure-on', m.on); b.setAttribute('aria-pressed', String(m.on)); }
+  refreshMeasureControl();
   if (m.on && !quiet && typeof showToast === 'function') {
-    showToast(measureLiveFrom() ? (S.measureHintLive || 'Tap a point: distance and time from the aircraft')
-      : (S.measureHint || 'Tap the start, then the end'));
+    showToast(S.measureHintLive || 'Tap a point: distance and time from the aircraft');
   }
   if (typeof draw === 'function') draw();
 }
 window.measureToggle = measureToggle;
 function measureTap(latlng) {
+  if (!measureOn()) return;
   const m = window.measure;
   const r = typeof applyNavSnap === 'function' ? applyNavSnap(latlng, '') : latlng;
-  const p = { lat: r.lat, lng: r.lng, name: r.name || '' };
-  if (measureLiveFrom()) { m.from = null; m.to = p; }
-  else if (!m.from || m.to) { m.from = p; m.to = null; }
-  else m.to = p;
+  m.from = null;
+  m.to = { lat: r.lat, lng: r.lng, name: r.name || '' };
   measureSave();
   if (typeof draw === 'function') draw();
 }
@@ -1253,10 +1279,13 @@ function measureRestore() {
   try { saved = JSON.parse(localStorage.getItem(MEASURE_KEY) || 'null'); } catch (e) { saved = null; }
   if (!saved || !saved.on) return;
   const ok = (p) => p && Number.isFinite(p.lat) && Number.isFinite(p.lng) ? { lat: p.lat, lng: p.lng, name: String(p.name || '') } : null;
-  measureToggle(true, true);                     // as it was: no "tap a point" hint again
-  window.measure.from = ok(saved.from);
+  // As it was, without the hint -- and kept even before the position is back (Location comes
+  // back on a moment after the page): it shows as soon as there is a position to measure from.
+  window.measure.on = true;
+  window.measure.from = null;
   window.measure.to = ok(saved.to);
   measureSave();
+  refreshMeasureControl();
   if (typeof draw === 'function') draw();
 }
 if (document.readyState === 'complete') setTimeout(measureRestore, 0);
@@ -1366,7 +1395,8 @@ function refreshEditColumn() {
   // A locked route (the padlock, or a live position) locks all four, with the one message the
   // lock already uses; otherwise Undo / Clear say when there is nothing for them to do.
   const lockWhy = locked ? (S.editLockBlockedToast || 'Route is locked — unlock it to edit') : null;
-  const empty = !(state.waypoints && state.waypoints.length) && !(state.notes && state.notes.length);
+  const empty = !(state.waypoints && state.waypoints.length) && !(state.notes && state.notes.length)
+    && !(typeof measureOn === 'function' && measureOn());
   setButtonWhy(add, lockWhy);
   setButtonWhy(note, lockWhy);
   setButtonWhy(undoBtn, lockWhy || ((menuUndo && menuUndo.disabled) ? (S.whyNothingToUndo || 'Nothing to undo') : null));
@@ -4593,6 +4623,9 @@ document.getElementById('clear').onclick = async () => {
   state.commChangeSuppressions = [];
   state.wind = { dir: 270, speed: 0 };     // cleared route: reset wind so a new hand-built route doesn't inherit it
   state.selected = null;
+  // The measurement goes with everything else: Clear map is "start again", and a dashed line
+  // and its label left on an empty chart is not that.
+  if (window.measure && window.measure.on) measureToggle(false);
   routeAltPrefix = null;    // empty route unpins its altitude layer
   // The direction filter belonged to the route that had a direction to filter. With the
   // route gone it hides nothing, and leaving it set meant the next route was drawn with half

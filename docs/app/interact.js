@@ -5105,6 +5105,7 @@ function addModeExtendThroughWaypoint(i) {
 // neither behaviour: no waypoint AND no inspector.
 function routePrimingArmed() {
   if (state.waypoints && state.waypoints.length) return false;
+  if (typeof measureOn === 'function' && measureOn()) return false;   // a tap measures, it does not start a route
   return !!document.getElementById('empty-route-hint');
 }
 
