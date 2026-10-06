@@ -5,6 +5,12 @@
 // something.
 const { test, expect } = require('./_setup');
 
+// The new-user route intro is off by default (featureRouteIntro); these specs are about it,
+// so they switch it on before the app boots.
+test.beforeEach(async ({ page }) => {
+  await page.addInitScript(() => { window.__navaidTune = Object.assign(window.__navaidTune || {}, { featureRouteIntro: true }); });
+});
+
 async function fresh(page) {
   await page.goto('?lang=en&nogist');
   await page.waitForFunction(() => typeof draw === 'function' && typeof setMode === 'function');
@@ -178,7 +184,7 @@ test('a returning user gets no crosshair — nothing is primed', async ({ page }
 test.describe('the featureRouteIntro switch', () => {
   test('off: no hint, no priming, and a plain click does nothing', async ({ page }) => {
     await fresh(page);
-    await expect(page.locator('#empty-route-hint')).toBeVisible();   // on by default
+    await expect(page.locator('#empty-route-hint')).toBeVisible();   // switched on for these specs
     await page.evaluate(() => { setTune('featureRouteIntro', false); refreshEmptyRouteHint(); });
     await expect(page.locator('#empty-route-hint')).toHaveCount(0);
     expect(await page.evaluate(() => document.getElementById('map').classList.contains('priming'))).toBe(false);
@@ -189,9 +195,9 @@ test.describe('the featureRouteIntro switch', () => {
     expect(r.mode).toBeNull();
   });
 
-  test('on is the shipped default', async ({ page }) => {
+  test('off is the shipped default (the live gist turns it off too)', async ({ page }) => {
     await fresh(page);
-    expect(await page.evaluate(() => tune('featureRouteIntro'))).toBe(true);
+    expect(await page.evaluate(() => NavAid.tuningDefaults.featureRouteIntro.value)).toBe(false);
   });
 });
 

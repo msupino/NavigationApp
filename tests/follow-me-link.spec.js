@@ -11,6 +11,12 @@
 // publishing a position is exactly the wrong thing to have in a repository.
 const { test, expect } = require('./_setup');
 
+// The new-user route intro is off by default (featureRouteIntro); these specs are about it,
+// so they switch it on before the app boots.
+test.beforeEach(async ({ page }) => {
+  await page.addInitScript(() => { window.__navaidTune = Object.assign(window.__navaidTune || {}, { featureRouteIntro: true }); });
+});
+
 // The stub is installed BEFORE any page script runs, and replaces window.WebSocket
 // outright: boot can now resume a stored session on its own, and a test that quietly
 // starts publishing a position to a public broker is exactly the wrong thing to have in a

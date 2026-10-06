@@ -903,7 +903,7 @@ NavAid.tuningDefaults = {
   // priming that goes with it (an empty map's first plain click drops a waypoint instead of
   // inspecting). Both are the same onboarding gesture, so one switch governs them: off, and
   // the map behaves for everyone the way it does for a pilot who has already seen the hint.
-  featureRouteIntro: { value: true, type: 'bool', label: 'Feature: new-user route intro' },
+  featureRouteIntro: { value: false, type: 'bool', label: 'Feature: new-user route intro' },
   // The first-launch map tour (tour.js): one control at a time, with Settings → Show the tour.
   featureTour: { value: true, type: 'bool', label: 'Feature: first-launch map tour' },
   // The inspector stays shut while a real fix is driving the map (recording or showing
@@ -1331,6 +1331,11 @@ function applyBundledGist() {
 }
 NavAid.gistSnapshotApplied = applyBundledGist();
 NavAid.gistWarmStart = applyCachedRemoteConfig();
+// Specs only: values a test sets before the app boots (window.__navaidTune), applied after the
+// defaults and any gist so a feature that is off by default can still be tested switched on.
+if (typeof window !== 'undefined' && window.__navaidTune && typeof window.__navaidTune === 'object') {
+  for (const [k, v] of Object.entries(window.__navaidTune)) setTune(k, v);
+}
 // What a key comes back to when the pilot's own value is dropped: the gist's, if the last gist
 // seen (or, never having seen one, the bundled snapshot) sets it, else the built-in default. Non-destructive -- reads, and leaves the value in
 // force alone.
