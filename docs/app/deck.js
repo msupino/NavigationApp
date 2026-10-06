@@ -641,7 +641,7 @@
   // altitude and heading are the instrument and are never dropped -- the flight name gives way
   // instead, because a shortened name still names the flight.
   function stripDropRank(chunk) {
-    if (/[\u2033"]/.test(chunk)) return 0;              // 29.85″
+    if (/[\u2033"]|\bhPa$/.test(chunk)) return 0;      // the QNH, 29.85″ or 1011 hPa: first to go
     if (/\bpts\b/.test(chunk)) return 1;
     if (/^\d{1,4}:\d{2}$/.test(chunk)) return 2;           // elapsed mm:ss -- 125:30 on a long flight
     return 99;                                          // kt, ft, heading: the instrument

@@ -796,10 +796,37 @@ function gpsIndicatedAltitudeFt(rawFt, q) {
 }
 // The altitude every consumer should use: alerts, the readout, anything compared against
 // a planned (pressure) altitude.
+// Where the altitude comes from: the GPS (corrected to indicated, above), or the phone's own
+// barometer with the QNH -- the same sum an altimeter does, so it reads what the altimeter
+// reads, with far less noise than a GPS height. Settings -> Altitude from. The barometer
+// needs a fresh reading (device-extras.js) and a QNH; without either it falls back to the
+// GPS, and the GPS details say which one is in use. Static pressure in the cabin: close to
+// outside in an unpressurised aeroplane, meaningless in a pressurised one.
+const ALT_SOURCE_KEY = 'navaid.altSource';
+function gpsAltSource() {
+  let v = null;
+  try { v = localStorage.getItem(ALT_SOURCE_KEY); } catch (e) { /* storage off */ }
+  if (v !== 'gps' && v !== 'baro') v = (typeof tune === 'function' && tune('defaultAltSource')) || 'gps';
+  return v === 'baro' ? 'baro' : 'gps';
+}
+function gpsBaroAltitudeFt() {
+  const b = window.NavAid && NavAid.device && NavAid.device.baro;
+  if (!b || !Number.isFinite(b.hPa) || !(Date.now() - b.at < 5000)) return null;
+  const qnh = gpsQnh && gpsQnh.hPa;
+  if (!Number.isFinite(qnh) || qnh <= 0) return null;
+  return 145366.45 * (1 - Math.pow(b.hPa / qnh, 0.190284));
+}
+var gpsAltFrom = 'gps';            // which one the last altitude came from: 'gps' | 'baro'
 function gpsAltitudeForCompare() {
+  if (gpsAltSource() === 'baro') {
+    const b = gpsBaroAltitudeFt();
+    if (b != null) { gpsAltFrom = 'baro'; return b; }
+  }
+  gpsAltFrom = 'gps';
   if (gpsLastAlt == null) return null;
   return gpsAltIsGeometric ? gpsIndicatedAltitudeFt(gpsLastAlt) : gpsLastAlt;
 }
+window.gpsAltSource = gpsAltSource;
 
 // Live readout next to the toolbar button: points · elapsed · ground speed ·
 // altitude (the last two only when the fix provides them). No-op if absent.
@@ -959,8 +986,8 @@ function gpsReadoutHeading() {
 function gpsPushAltitudeParts(parts) {
   const alt = gpsAltitudeForCompare();
   parts.push(alt != null ? Math.round(alt) + ' ft' : null);
-  const inHg = gpsQnh && gpsFormatInHg(gpsQnh.inHg);
-  parts.push(inHg ? inHg + '\u2033' : null);   // 29.83" -- the subscale setting, not a length
+  // The subscale setting, in the pilot's unit: 29.83" or 1010 hPa (Settings -> Pressure unit).
+  parts.push(gpsQnh && Number.isFinite(gpsQnh.hPa) && typeof fmtPressure === 'function' ? fmtPressure(gpsQnh.hPa) : null);
 }
 // Ground speed for the readout, or a placeholder holding its place.
 // The first fix of a session carries no speed unless the device reports one -- there is no
