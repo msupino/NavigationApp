@@ -1,0 +1,25 @@
+// @ts-check
+// Three phone controls that were under the 44px touch minimum (UX review): the attribution
+// toggle (drawn 30px tall, tap area now 44), Comm fail on a 360px phone where it is icon-only
+// (36 wide), and the safety notice's language picker (32 tall).
+const { test, expect } = require('./_setup');
+test.use({ viewport: { width: 360, height: 740 }, hasTouch: true, isMobile: true });
+
+test('attribution toggle, narrow Comm fail and the notice language picker reach 44px', async ({ page }) => {
+  await page.goto('?lang=en&nogist');
+  await page.waitForFunction(() => typeof NavAid !== 'undefined' && NavAid.disclaimerDone);
+  const r = await page.evaluate(() => {
+    const box = (sel) => { const e = document.querySelector(sel); const b = e.getBoundingClientRect(); return { w: b.width, h: b.height, e, b }; };
+    const at = box('.attrib-toggle');
+    // The tap area: a touch 6px above or below the drawn button still lands on it.
+    const hits = [-6, 6].map(d => { const y = d < 0 ? at.b.top + d : at.b.bottom + d - 1; const h = document.elementFromPoint(at.b.left + at.w / 2, y); return !!h && at.e.contains(h); });
+    const cf = box('.deck-strip-commfail');
+    NavAid.showDisclaimer();
+    const ls = box('.disclaimer-lang-select');
+    return { hits, cf: [cf.w, cf.h], ls: ls.h };
+  });
+  expect(r.hits).toEqual([true, true]);
+  expect(r.cf[0]).toBeGreaterThanOrEqual(44);
+  expect(r.cf[1]).toBeGreaterThanOrEqual(44);
+  expect(r.ls).toBeGreaterThanOrEqual(44);
+});
