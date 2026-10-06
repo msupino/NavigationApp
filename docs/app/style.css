@@ -1473,6 +1473,8 @@ body.deck-on .leaflet-control.edit-col-ctrl {
 .leaflet-control.edit-col-ctrl button.edit-col-on { background: var(--navaid-mapbtn-on); }
 .leaflet-control.edit-col-ctrl button:disabled,
 .leaflet-control.edit-col-ctrl button.is-dim { opacity: 0.45; }
+/* The ruler without a position: dimmed the same way, still tappable to say why. */
+.leaflet-control.measure-ctrl button.is-dim { opacity: 0.45; }
 .leaflet-control.edit-col-ctrl button:focus-visible {
   outline: 2px solid #ffffff;
   outline-offset: 2px;
@@ -2253,9 +2255,13 @@ body.theme-light .resize-grip {
 body.theme-light .wind-fetch-status.windfield-loading { color: #1f252c; }
 /* A toggle whose data source is currently unavailable (e.g. NOTAM feed down). */
 .navtoggle-disabled { opacity: 0.45; cursor: not-allowed; }
-/* Nothing in force across the look-ahead (SIGMET / AIRMET / NOTAM): dimmed like a disabled row,
-   but still clickable -- the pilot's on/off choice is theirs, not the feed's. */
+/* Nothing in force across the look-ahead (SIGMET / AIRMET / NOTAM): dimmed, and not usable --
+   a tap says why instead of toggling. The pilot's saved choice is kept (ui.js setLayerIdle). */
 .navtoggle-idle { opacity: 0.45; }
+.navtoggle-idle, .navtoggle-idle * { cursor: not-allowed; }
+/* Every control that cannot act right now looks it: a button marked unusable (setButtonWhy) is
+   dimmed wherever it sits. Zero specificity, so a control's own dimmed style still wins. */
+:where(button[aria-disabled="true"]) { opacity: 0.45; }
 /* The "(n)" count beside a layer control: quieter than the label, tabular so the width does
    not jump between 9 and 10 items. unicode-bidi:isolate keeps "(53)" a self-contained unit at
    the logical end of the line -- without it, in a Hebrew label that ends in a Latin word
