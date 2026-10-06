@@ -9321,3 +9321,48 @@ body.theme-dark #map-tour .tour-bubble { background: #1c2430; color: #e8eef3; }
 #map-tour .tour-skip { border-color: transparent; text-decoration: underline; font-weight: 500; }
 #map-tour .tour-back:disabled { opacity: 0.4; cursor: default; }
 #map-tour button:focus-visible { outline: 3px solid #3d8bfd; outline-offset: 2px; }
+
+/* --- GPS status line (gps-status.js) ------------------------------------------------------
+   While the phone's own position shows: one short line, centred under the top strip (phone)
+   or the menubar (desktop), in the map buttons' dark glass. The left edge says the quality at
+   a glance -- green good, amber fair, red poor or stale -- so the colour is never the only
+   signal (the text says it too). Drawn 32 px tall; the tap area reaches 44. */
+#gps-status {
+  position: fixed;
+  left: 50%;
+  top: 62px;
+  transform: translateX(-50%);
+  z-index: 900;
+  min-height: 32px;
+  max-width: calc(100vw - 132px);
+  padding: 0 12px;
+  border: 0;
+  border-inline-start: 4px solid #7d8a99;
+  border-radius: 8px;
+  background: rgba(22, 30, 40, 0.88);
+  color: #ffffff;
+  font: 600 13px/1 system-ui, sans-serif;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  unicode-bidi: isolate;
+}
+#gps-status svg { flex: none; }
+#gps-status .gps-status-text { overflow: hidden; text-overflow: ellipsis; }
+#gps-status::before { content: ''; position: absolute; inset: -6px 0; }
+#gps-status[hidden] { display: none; }
+#gps-status[data-q="good"] { border-inline-start-color: #2fb36b; }
+#gps-status[data-q="fair"] { border-inline-start-color: #e0a526; }
+#gps-status[data-q="poor"] { border-inline-start-color: #e5484d; }
+#gps-status:focus-visible { outline: 3px solid #3d8bfd; outline-offset: 2px; }
+body.deck-on #gps-status { top: calc(var(--navaid-deck-strip-h, 46px) + 8px + env(safe-area-inset-top, 0px)); }
+.gps-status-modal { max-width: min(380px, 94vw); }
+.gps-status-table { width: 100%; border-collapse: collapse; font-size: 14px; }
+.gps-status-table th { text-align: start; font-weight: 500; padding: 5px 8px 5px 0; opacity: 0.8; }
+.gps-status-table td { text-align: end; padding: 5px 0; font-variant-numeric: tabular-nums; font-weight: 600; }
+.gps-status-table tr + tr { border-top: 1px solid rgba(127, 127, 127, 0.2); }
+.gps-status-note { margin: 10px 0 0; font-size: 13px; opacity: 0.8; }

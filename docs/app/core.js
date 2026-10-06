@@ -906,6 +906,8 @@ NavAid.tuningDefaults = {
   featureRouteIntro: { value: false, type: 'bool', label: 'Feature: new-user route intro' },
   // The first-launch map tour (tour.js): one control at a time, with Settings → Show the tour.
   featureTour: { value: true, type: 'bool', label: 'Feature: first-launch map tour' },
+  // The location status line (gps-status.js): accuracy, fix rate and, in the Android app, satellites.
+  featureGpsStatus: { value: true, type: 'bool', label: 'Feature: GPS status line (accuracy, satellites)' },
   // The inspector stays shut while a real fix is driving the map (recording or showing
   // location). Set true to have a tap open it in flight, the way it used to.
   featureInspectorWhileTracking: { value: false, type: 'bool', label: 'Feature: inspector while tracking' },
@@ -1144,7 +1146,7 @@ NavAid.tuningGroups = [
     'defaultViewZoom', 'defaultViewLat', 'defaultViewLng'] },
   { name: 'Export', keys: ['exportBgColor'] },
   { name: 'Global palette', keys: ['inkColor', 'selectedColor', 'labelFillColor', 'kiteTextColor', 'legKiteHaloColor', 'kiteNoteAlpha'] },
-  { name: 'Default layer visibility', keys: ['defaultShowNavWP', 'defaultShowAirfields', 'defaultShowVor', 'defaultShowHotspots', 'defaultShowWpNames', 'defaultShowCumTime', 'defaultShowDrift', 'defaultShowCommChange', 'defaultVoiceAlerts', 'defaultShowMidLeg', 'defaultHighlightDiff', 'defaultLimitLegKites', 'defaultShowMsa', 'defaultShowReporting', 'defaultForceSnap', 'defaultShowReturn', 'featureShowReturn', 'featureFplReturnJoin', 'offlineAutoCvfr', 'offlineCvfrUnmeteredOnly', 'offlineCvfrMinZoom', 'offlineCvfrMaxZoom', 'featureRouteIntro', 'featureTour', 'featureSatZoomButtons', 'featureInspectorResize', 'featureInspectorWhileTracking', 'featureAssistant', 'featureMobileDeck', 'featureDisclaimer', 'featureOtaUpdates', 'featureNavLog', 'reverseWarnMs', 'notamSeenDays', 'toastReadWpm', 'toastNoticeMs', 'toastMinMs', 'toastWarnMinMs', 'toastMaxMs', 'reverseWarnBlink', 'reverseRotatesMap', 'addToRouteOpensInspector', 'defaultShowNotam', 'defaultShowAirmet', 'defaultShowSigmet', 'defaultShowWind', 'defaultWindField', 'defaultAirfieldWind', 'defaultImsPwx', 'defaultSigwxOv', 'defaultShowLsaBubbles', 'defaultAutoRoute', 'defaultShowCircuit', 'defaultShowTraining', 'defaultShowCvfr', 'defaultShowHeli', 'defaultShowCommfail', 'defaultShowAdc', 'defaultShowIfr', 'plateFieldZoom'] },
+  { name: 'Default layer visibility', keys: ['defaultShowNavWP', 'defaultShowAirfields', 'defaultShowVor', 'defaultShowHotspots', 'defaultShowWpNames', 'defaultShowCumTime', 'defaultShowDrift', 'defaultShowCommChange', 'defaultVoiceAlerts', 'defaultShowMidLeg', 'defaultHighlightDiff', 'defaultLimitLegKites', 'defaultShowMsa', 'defaultShowReporting', 'defaultForceSnap', 'defaultShowReturn', 'featureShowReturn', 'featureFplReturnJoin', 'offlineAutoCvfr', 'offlineCvfrUnmeteredOnly', 'offlineCvfrMinZoom', 'offlineCvfrMaxZoom', 'featureRouteIntro', 'featureTour', 'featureGpsStatus', 'featureSatZoomButtons', 'featureInspectorResize', 'featureInspectorWhileTracking', 'featureAssistant', 'featureMobileDeck', 'featureDisclaimer', 'featureOtaUpdates', 'featureNavLog', 'reverseWarnMs', 'notamSeenDays', 'toastReadWpm', 'toastNoticeMs', 'toastMinMs', 'toastWarnMinMs', 'toastMaxMs', 'reverseWarnBlink', 'reverseRotatesMap', 'addToRouteOpensInspector', 'defaultShowNotam', 'defaultShowAirmet', 'defaultShowSigmet', 'defaultShowWind', 'defaultWindField', 'defaultAirfieldWind', 'defaultImsPwx', 'defaultSigwxOv', 'defaultShowLsaBubbles', 'defaultAutoRoute', 'defaultShowCircuit', 'defaultShowTraining', 'defaultShowCvfr', 'defaultShowHeli', 'defaultShowCommfail', 'defaultShowAdc', 'defaultShowIfr', 'plateFieldZoom'] },
 ];
 // Padding pair + maxZoom for a fitBounds call, from the tuning registry. Every "frame the
 // map on X" call goes through this instead of carrying its own literals.
@@ -2429,6 +2431,20 @@ window.S = Object.assign({
   orientHeadingToast: 'Heading up',
   orientNorthToast: 'North up',
   backOnline: 'Back online: map, NOTAMs and weather updated',
+  gpsStatusSearching: 'GPS: searching for satellites…',
+  gpsStatusNoFix: function (s) { return 'GPS: no fix for ' + s + ' s'; },
+  gpsStatusTitle: 'Position quality — tap for details',
+  gpsStatusDetailTitle: 'GPS position',
+  gpsStatusAccuracy: 'Accuracy',
+  gpsStatusAltAccuracy: 'Altitude accuracy',
+  gpsStatusAge: 'Last fix',
+  gpsStatusNow: 'now',
+  gpsStatusRate: 'Fixes',
+  gpsStatusEvery: 'every',
+  gpsStatusTtff: 'Time to first fix',
+  gpsStatusSatellites: 'Satellites (used / in view)',
+  gpsStatusSignal: 'Signal (used, mean)',
+  gpsStatusNoSats: 'Satellite counts are shown in the Android app; this browser gives only the position and its accuracy.',
   voiceOnToast: 'Audio alerts on',
   voiceOffToast: 'Audio alerts off',
   voiceOnTitle: 'Alerts are spoken — tap to silence them',
