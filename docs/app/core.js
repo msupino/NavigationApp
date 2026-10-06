@@ -906,6 +906,12 @@ NavAid.tuningDefaults = {
   featureRouteIntro: { value: false, type: 'bool', label: 'Feature: new-user route intro' },
   // The first-launch map tour (tour.js): one control at a time, with Settings → Show the tour.
   featureTour: { value: true, type: 'bool', label: 'Feature: first-launch map tour' },
+  // Pressure as the pilot sets it: inches of mercury (the subscale most GA altimeters have) or
+  // hectopascals (what ATIS and METARs give). A choice made in Settings outranks it.
+  defaultPressureUnit: { value: 'inHg', type: 'select', options: ['inHg', 'hPa'], label: 'Pressure unit (pilot can change in Settings)' },
+  // Where the in-flight altitude comes from: the GPS, or the barometer in the phone with the QNH
+  // (gps.js gpsAltitudeForCompare). A choice made in Settings outranks it.
+  defaultAltSource: { value: 'gps', type: 'select', options: ['gps', 'baro'], label: 'Altitude from: GPS or phone barometer (pilot can change in Settings)' },
   // The location status line (gps-status.js): accuracy, fix rate and, in the Android app, satellites.
   featureGpsStatus: { value: true, type: 'bool', label: 'Feature: GPS status line (accuracy, satellites)' },
   // Phone hardware in the Android app (device-extras.js, gdl90.js, ble-gps.js), one switch each.
@@ -1155,7 +1161,7 @@ NavAid.tuningGroups = [
     'defaultViewZoom', 'defaultViewLat', 'defaultViewLng'] },
   { name: 'Export', keys: ['exportBgColor'] },
   { name: 'Global palette', keys: ['inkColor', 'selectedColor', 'labelFillColor', 'kiteTextColor', 'legKiteHaloColor', 'kiteNoteAlpha'] },
-  { name: 'Default layer visibility', keys: ['defaultShowNavWP', 'defaultShowAirfields', 'defaultShowVor', 'defaultShowHotspots', 'defaultShowWpNames', 'defaultShowCumTime', 'defaultShowDrift', 'defaultShowCommChange', 'defaultVoiceAlerts', 'defaultShowMidLeg', 'defaultHighlightDiff', 'defaultLimitLegKites', 'defaultShowMsa', 'defaultShowReporting', 'defaultForceSnap', 'defaultShowReturn', 'featureShowReturn', 'featureFplReturnJoin', 'offlineAutoCvfr', 'offlineCvfrUnmeteredOnly', 'offlineCvfrMinZoom', 'offlineCvfrMaxZoom', 'featureRouteIntro', 'featureTour', 'featureGpsStatus', 'featureKeepAwake', 'featureHaptics', 'featureBrightness', 'featureBarometer', 'featureBatteryWarn', 'featureFullscreenFlight', 'featureGdl90', 'featureBleGps', 'featureSatZoomButtons', 'featureInspectorResize', 'featureInspectorWhileTracking', 'featureAssistant', 'featureMobileDeck', 'featureDisclaimer', 'featureOtaUpdates', 'featureNavLog', 'reverseWarnMs', 'notamSeenDays', 'toastReadWpm', 'toastNoticeMs', 'toastMinMs', 'toastWarnMinMs', 'toastMaxMs', 'reverseWarnBlink', 'reverseRotatesMap', 'addToRouteOpensInspector', 'defaultShowNotam', 'defaultShowAirmet', 'defaultShowSigmet', 'defaultShowWind', 'defaultWindField', 'defaultAirfieldWind', 'defaultImsPwx', 'defaultSigwxOv', 'defaultShowLsaBubbles', 'defaultAutoRoute', 'defaultShowCircuit', 'defaultShowTraining', 'defaultShowCvfr', 'defaultShowHeli', 'defaultShowCommfail', 'defaultShowAdc', 'defaultShowIfr', 'plateFieldZoom'] },
+  { name: 'Default layer visibility', keys: ['defaultShowNavWP', 'defaultShowAirfields', 'defaultShowVor', 'defaultShowHotspots', 'defaultShowWpNames', 'defaultShowCumTime', 'defaultShowDrift', 'defaultShowCommChange', 'defaultVoiceAlerts', 'defaultShowMidLeg', 'defaultHighlightDiff', 'defaultLimitLegKites', 'defaultShowMsa', 'defaultShowReporting', 'defaultForceSnap', 'defaultShowReturn', 'featureShowReturn', 'featureFplReturnJoin', 'offlineAutoCvfr', 'offlineCvfrUnmeteredOnly', 'offlineCvfrMinZoom', 'offlineCvfrMaxZoom', 'featureRouteIntro', 'featureTour', 'defaultPressureUnit', 'defaultAltSource', 'featureGpsStatus', 'featureKeepAwake', 'featureHaptics', 'featureBrightness', 'featureBarometer', 'featureBatteryWarn', 'featureFullscreenFlight', 'featureGdl90', 'featureBleGps', 'featureSatZoomButtons', 'featureInspectorResize', 'featureInspectorWhileTracking', 'featureAssistant', 'featureMobileDeck', 'featureDisclaimer', 'featureOtaUpdates', 'featureNavLog', 'reverseWarnMs', 'notamSeenDays', 'toastReadWpm', 'toastNoticeMs', 'toastMinMs', 'toastWarnMinMs', 'toastMaxMs', 'reverseWarnBlink', 'reverseRotatesMap', 'addToRouteOpensInspector', 'defaultShowNotam', 'defaultShowAirmet', 'defaultShowSigmet', 'defaultShowWind', 'defaultWindField', 'defaultAirfieldWind', 'defaultImsPwx', 'defaultSigwxOv', 'defaultShowLsaBubbles', 'defaultAutoRoute', 'defaultShowCircuit', 'defaultShowTraining', 'defaultShowCvfr', 'defaultShowHeli', 'defaultShowCommfail', 'defaultShowAdc', 'defaultShowIfr', 'plateFieldZoom'] },
 ];
 // Padding pair + maxZoom for a fitBounds call, from the tuning registry. Every "frame the
 // map on X" call goes through this instead of carrying its own literals.
@@ -2440,6 +2446,13 @@ window.S = Object.assign({
   orientHeadingToast: 'Heading up',
   orientNorthToast: 'North up',
   backOnline: 'Back online: map, NOTAMs and weather updated',
+  tbPressureUnit: 'Pressure unit',
+  tbAltSource: 'Altitude from',
+  tbAltSourceTitle: 'GPS, or the phone\u2019s barometer with the QNH (reads like the altimeter; not in a pressurised cabin). Falls back to GPS without a sensor or QNH.',
+  tbAltSourceGps: 'GPS',
+  tbAltSourceBaro: 'Barometer + QNH',
+  gpsStatusAltFrom: 'Altitude from',
+  tbPressureUnitTitle: 'QNH and pressure in inches of mercury or hectopascals',
   gpsStatusSource: 'Source',
   gpsStatusBle: 'Bluetooth GPS',
   gpsStatusSatsUsed: 'Satellites used',
@@ -5370,12 +5383,32 @@ function wxWind(dir, spd, gst) {
 // airmanship. The inches figure is the one you dial, so it gets the two decimals it is set
 // with, and the double-prime is how it is written on a plate.
 const HPA_PER_INHG = 33.8639;
-function fmtQnhBoth(hPa) {
-  const v = Number(hPa);
+// The unit the pilot reads pressure in (Settings -> Pressure unit), else the default from the gist.
+const PRESSURE_UNIT_KEY = 'navaid.pressureUnit';
+function pressureUnit() {
+  let v = null;
+  try { v = localStorage.getItem(PRESSURE_UNIT_KEY); } catch (e) { /* storage off */ }
+  if (v !== 'inHg' && v !== 'hPa') v = (typeof tune === 'function' && tune('defaultPressureUnit')) || 'inHg';
+  return v === 'hPa' ? 'hPa' : 'inHg';
+}
+window.pressureUnit = pressureUnit;
+// One pressure in the unit the pilot chose. `precise` adds a decimal (a sensor reading, not a setting).
+function fmtPressure(hPa, precise) {
+  let v = Number(hPa);
   if (!Number.isFinite(v)) return '';
-  // Below 900 the number was already in inches (some feeds send it that way).
-  if (v < 900) return v.toFixed(2) + '\u2033 · ' + Math.round(v * HPA_PER_INHG) + ' hPa';
-  return Math.round(v) + ' hPa · ' + (v / HPA_PER_INHG).toFixed(2) + '\u2033';
+  if (v < 900) v *= HPA_PER_INHG;                    // already in inches (some feeds send it that way)
+  return pressureUnit() === 'hPa'
+    ? (precise ? v.toFixed(1) : String(Math.round(v))) + ' hPa'
+    : (v / HPA_PER_INHG).toFixed(2) + '\u2033';
+}
+window.fmtPressure = fmtPressure;
+// Both scales, the chosen one first: ATIS gives hectopascals, a Cessna subscale is in inches.
+function fmtQnhBoth(hPa) {
+  let v = Number(hPa);
+  if (!Number.isFinite(v)) return '';
+  if (v < 900) v *= HPA_PER_INHG;                    // already in inches
+  const hpa = Math.round(v) + ' hPa', inch = (v / HPA_PER_INHG).toFixed(2) + '\u2033';
+  return pressureUnit() === 'hPa' ? hpa + ' · ' + inch : inch + ' · ' + hpa;
 }
 window.fmtQnhBoth = fmtQnhBoth;
 

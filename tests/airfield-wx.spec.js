@@ -60,7 +60,7 @@ test('decodeMetar renders wind/vis/wx/cloud/temp/QNH', async ({ page }) => {
   expect(txt).toContain('mist');
   expect(txt).toContain('Clouds Few 3000 ft');
   expect(txt).toContain('Temperature 24°C');
-  expect(txt).toContain('QNH 1013 hPa');
+  expect(txt).toContain('QNH 29.91″ · 1013 hPa');      // both scales, the pilot's unit first (inches by default)
 });
 
 test('decodeTaf expands BECMG/TEMPO and drops an empty visibility', async ({ page }) => {
