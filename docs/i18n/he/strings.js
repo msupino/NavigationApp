@@ -131,6 +131,11 @@ window.S = {
   appUpdatePending: 'העדכון מוכן: יותקן בהפעלה הבאה של NavAid',
   appUpdateRestart: 'הפעל מחדש עכשיו',
   appUpdateLater: 'אחר כך',
+  offlineCvfrAskTitle: 'לשמור את מפת ה-CVFR במכשיר?',
+  offlineCvfrAskText: function (mb) {
+    return 'כ-\u2066' + mb + ' MB\u2069, נשמרים בטלפון כדי שהמפה תעבוד גם בלי קליטה. הטלפון הזה לא מגלה ל-NavAid אם הוא מחובר ל-Wi-Fi, אז כדאי להוריד כשכן.';
+  },
+  offlineCvfrAskOk: 'הורד עכשיו',
   tbTourReplay: 'הצג את הסיור',
   tourNext: 'הבא', tourBack: 'הקודם', tourSkip: 'דלג', tourDone: 'סיום',
   tourEditTitle: 'עריכת המסלול',

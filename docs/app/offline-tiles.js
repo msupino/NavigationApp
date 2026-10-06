@@ -872,6 +872,36 @@
     if (!report.complete && !runningPromise) await downloadPack();
   }
 
+  // A phone that will not say what it is connected to -- Safari on iOS has no
+  // navigator.connection -- cannot be held to "Wi-Fi only": the transfer would simply start,
+  // on mobile data as readily as on Wi-Fi. There the first automatic download is asked for,
+  // once, with its size. Yes is remembered; Later waits for another start. The Offline CVFR
+  // button is the pilot's own request and is never asked about. The APK knows its connection.
+  const ASK_KEY = 'navaid.cvfrAutoAsk';
+  let askedLaterThisSession = false;
+  function connectionUnknownOnPhone() {
+    try {
+      if (typeof tune === 'function' && tune('offlineCvfrUnmeteredOnly') === false) return false;
+      if (window.NavAidNativeTiles && NavAidNativeTiles.enabled) return false;
+      if (navigator.connection || navigator.mozConnection || navigator.webkitConnection) return false;
+      return (navigator.maxTouchPoints || 0) > 0;
+    } catch (e) { return false; }
+  }
+  async function automaticDownloadAgreed(report) {
+    if (!connectionUnknownOnPhone()) return true;
+    try { if (localStorage.getItem(ASK_KEY) === 'yes') return true; } catch (e) { /* storage off */ }
+    if (askedLaterThisSession || typeof window.askYesNo !== 'function') return false;
+    const missing = Math.max(0, (report.total || 0) - (report.present || 0));
+    const mb = Math.max(1, Math.round(missing * AVG_TILE_KB / 1024));
+    const yes = await window.askYesNo(S.offlineCvfrAskTitle || 'Keep the CVFR chart offline?',
+      typeof S.offlineCvfrAskText === 'function' ? S.offlineCvfrAskText(mb)
+        : 'About ' + mb + ' MB. This phone does not tell NavAid whether it is on Wi-Fi, so download when you are.',
+      S.offlineCvfrAskOk || 'Download now', S.appUpdateLater || 'Later');
+    if (yes) { try { localStorage.setItem(ASK_KEY, 'yes'); } catch (e) { /* storage off */ } }
+    else askedLaterThisSession = true;
+    return yes;
+  }
+
   async function auditAndMaintain() {
     const report = await cvfrCoverage(undefined, undefined, { pruneOtherLayers: true });
     if (!automaticCvfrWanted() || suppressAutoThisSession) {
@@ -880,6 +910,11 @@
       return report;
     }
     setReport(report);
+    if (!report.complete && !(await automaticDownloadAgreed(report))) {
+      report.waiting = true;
+      setReport(report);
+      return report;
+    }
     if (!report.complete) await downloadPack();
     // The pilot's own packs are finished off on the same terms: a download cut short by a
     // lost connection completes the next time there is a good one.
@@ -921,6 +956,7 @@
     offlineTileList, cvfrPlan, chartPlan, areaPlan, routeTileDistanceSq, prioritizeRouteTiles, reprioritizeRemaining,
     cvfrCoverage, chartCoverage, areaCoverage, connectionSuitable, automaticCvfrWanted,
     downloadPack, fetchFloor, deletePack, packSize, auditAndMaintain, scheduleAuto,
+    connectionUnknownOnPhone, automaticDownloadAgreed,
     downloadChart, deleteChart, downloadArea, deleteArea, screenArea, readPacks, wantedTileUrls, openManager,
     offlineTileCount, TILE_CACHE, OFFLINE_MIN_Z, OFFLINE_MAX_Z, AREA_TILE_LIMIT,
   };
