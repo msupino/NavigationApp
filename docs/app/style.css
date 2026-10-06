@@ -6685,8 +6685,9 @@ html[data-theme="light"] #insp-body .insp-actions {
   #search-close { min-width: 44px; min-height: 44px; }
   .attrib-toggle { display: inline-flex; align-items: center; justify-content: center;
                    min-width: 44px; min-height: 30px; position: relative; }
-  /* Drawn 30px tall to keep the attribution row slim; the tap area reaches the 44px minimum. */
-  .attrib-toggle::before { content: ''; position: absolute; inset: -7px 0; }
+  /* Drawn 30px tall to keep the attribution row slim; the tap area reaches the 44px minimum,
+     all of it upward -- the bottom bar sits right under it. */
+  .attrib-toggle::before { content: ''; position: absolute; inset: -14px 0 0 0; }
   /* The safety notice's language picker: the first control a new user may need. */
   select.disclaimer-lang-select { min-height: 44px; }   /* outranks the base rule further down */
   .leaflet-control-attribution.attrib-compact .attrib-body { display: none; }
