@@ -908,7 +908,7 @@ NavAid.tuningDefaults = {
   featureTour: { value: true, type: 'bool', label: 'Feature: first-launch map tour' },
   // The location status line (gps-status.js): accuracy, fix rate and, in the Android app, satellites.
   featureGpsStatus: { value: true, type: 'bool', label: 'Feature: GPS status line (accuracy, satellites)' },
-  // The phone's hardware, in the Android app (device-extras.js, gdl90.js, ble-gps.js): one switch each.
+  // Phone hardware in the Android app (device-extras.js, gdl90.js, ble-gps.js), one switch each.
   featureKeepAwake: { value: true, type: 'bool', label: 'Feature: keep the screen on while a position shows (app)' },
   featureHaptics: { value: true, type: 'bool', label: 'Feature: vibrate with in-flight alerts' },
   featureBrightness: { value: true, type: 'bool', label: 'Feature: Settings > Screen brightness' },
