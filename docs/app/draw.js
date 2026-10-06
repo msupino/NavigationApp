@@ -1443,22 +1443,20 @@ function measureLabelBox(show) {
   el.hidden = false;
   return el;
 }
-// Where the label hangs: the end point b while it is on screen, else the last on-screen point of
-// the line a->b (the segment clipped to the w x h screen, inset by m). null if none of it shows.
-function measureLabelAnchor(a, b, w, h, m) {
-  const inside = (p) => p.x >= m && p.x <= w - m && p.y >= m && p.y <= h - m;
-  if (inside(b)) return { x: b.x, y: b.y };
+// The part of the line a->b inside the rectangle v ({l, t, r, b}): { t0, t1 } along a->b (0 = a,
+// 1 = b), or null when none of it is inside.
+function measureClip(a, b, v) {
   const dx = b.x - a.x, dy = b.y - a.y;
   let t0 = 0, t1 = 1;
-  for (const [p, q] of [[-dx, a.x - m], [dx, w - m - a.x], [-dy, a.y - m], [dy, h - m - a.y]]) {
+  for (const [p, q] of [[-dx, a.x - v.l], [dx, v.r - a.x], [-dy, a.y - v.t], [dy, v.b - a.y]]) {
     if (p === 0) { if (q < 0) return null; continue; }
     const r = q / p;
     if (p < 0) t0 = Math.max(t0, r); else t1 = Math.min(t1, r);
     if (t0 > t1) return null;
   }
-  return { x: a.x + dx * t1, y: a.y + dy * t1 };
+  return { t0, t1 };
 }
-window.measureLabelAnchor = measureLabelAnchor;   // tests
+window.measureClip = measureClip;   // tests
 function drawMeasure() {
   const m = window.measure;
   const onScreen = octx.canvas === overlay;
@@ -1495,21 +1493,48 @@ function drawMeasure() {
   // Of the four corners around the point, the first that is on screen and clear of the map
   // buttons (the right-hand column, the edit column) -- preferring the side away from the line.
   const cr = octx.canvas.getBoundingClientRect();
+  const box = (r) => ({ l: r.left - cr.left - 6, t: r.top - cr.top - 6, r: r.right - cr.left + 6, b: r.bottom - cr.top + 6 });
+  // What of the map is actually seen: the phone's top strip and bottom bar, and the desktop
+  // toolbar, sit over the canvas. A label placed under them was hidden -- a line leaving the top
+  // of a phone screen put it under the strip.
+  const view = { l: 4, t: 4, r: cr.width - 4, b: cr.height - 4 };
+  const chrome = ['#deck-strip', '#deck-bar', '#toolbar'].map(sel => document.querySelector(sel))
+    .filter(e => e && e.getClientRects().length && getComputedStyle(e).visibility !== 'hidden')
+    .map(e => e.getBoundingClientRect()).filter(r => r.width > cr.width / 2);
+  for (const r of chrome) {
+    if (r.top - cr.top < cr.height / 2) view.t = Math.max(view.t, r.bottom - cr.top + 4);
+    else view.b = Math.min(view.b, r.top - cr.top - 4);
+  }
   const blocks = [...document.querySelectorAll('.leaflet-control-container .leaflet-control')]
-    .filter(e => e.getClientRects().length).map(e => e.getBoundingClientRect())
-    .map(r => ({ l: r.left - cr.left - 6, t: r.top - cr.top - 6, r: r.right - cr.left + 6, b: r.bottom - cr.top + 6 }));
-  const fits = (x, y) => x >= 4 && y >= 4 && x + w <= cr.width - 4 && y + h <= cr.height - 4
+    .filter(e => e.getClientRects().length).map(e => box(e.getBoundingClientRect()));
+  const fits = (x, y) => x >= view.l && y >= view.t && x + w <= view.r && y + h <= view.b
     && !blocks.some(k => x < k.r && x + w > k.l && y < k.b && y + h > k.t);
-  // Beside the point -- or, with the point off screen, beside where the line leaves the screen,
-  // so the label stays on the line rather than pinned to an edge far from it. No line on screen:
-  // no label.
-  const at = measureLabelAnchor(a, b, cr.width, cr.height, 8);
-  if (!at) { octx.restore(); return; }
+  // Beside the point while it is in view. With the point out of view, at the middle of the part of
+  // the line that is seen -- toward the middle of the screen, not jammed at the edge it leaves
+  // by -- and where the buttons leave no room there, at the nearest spot along the line that
+  // has it. No line in view: no label.
+  const seg = measureClip(a, b, { l: view.l + 4, t: view.t + 4, r: view.r - 4, b: view.b - 4 });
+  if (!seg) { octx.restore(); return; }
   const right = b.x >= a.x, down = b.y >= a.y;
-  const tries = [[right, down], [right, !down], [!right, down], [!right, !down]]
-    .map(([rt, dn]) => [rt ? at.x + 12 : at.x - 12 - w, dn ? at.y + 10 : at.y - 10 - h]);
-  const pick = tries.find(([tx, ty]) => fits(tx, ty)) || tries[0];
-  const x = Math.max(4, Math.min(cr.width - w - 4, pick[0])), y = Math.max(4, Math.min(cr.height - h - 4, pick[1]));
+  const around = (p) => [[right, down], [right, !down], [!right, down], [!right, !down]]
+    .map(([rt, dn]) => [rt ? p.x + 12 : p.x - 12 - w, dn ? p.y + 10 : p.y - 10 - h]);
+  const len = Math.hypot(b.x - a.x, b.y - a.y) || 1;
+  const step = 24 / len;
+  const home = seg.t1 >= 1 ? 1 : (seg.t0 + seg.t1) / 2;
+  const ts = [home];
+  for (let k = 1; home - k * step >= seg.t0 || home + k * step <= seg.t1; k++) {
+    if (home - k * step >= seg.t0) ts.push(home - k * step);
+    if (home + k * step <= seg.t1) ts.push(home + k * step);
+  }
+  let pick = null, first = null;
+  for (const t of ts) {
+    const tries = around({ x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t });
+    if (!first) first = tries[0];
+    pick = tries.find(([tx, ty]) => fits(tx, ty));
+    if (pick) break;
+  }
+  pick = pick || first;
+  const x = Math.max(view.l, Math.min(view.r - w, pick[0])), y = Math.max(view.t, Math.min(view.b - h, pick[1]));
   if (onScreen) {
     const el = measureLabelBox(true), mr = map.getContainer().getBoundingClientRect();
     el.replaceChildren(...lines.map(t => { const d = document.createElement('div'); d.dir = 'auto'; d.textContent = t; return d; }));

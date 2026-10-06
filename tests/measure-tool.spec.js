@@ -117,3 +117,54 @@ test('with the point off screen, the label sits where the line leaves the screen
   expect(r.gap).toBeLessThan(30);
   expect(r.hiddenOff).toBe(true);
 });
+
+// Reported on a phone: east, west and south worked, north did not -- the line left the screen
+// under the top strip, and the label went under it too. And due east the line leaves through
+// the button column; the label slides back along the line rather than sit on the buttons.
+test.describe('phone: the label is in the seen map, clear of the strip, bar and buttons', () => {
+  test.use({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true });
+  for (const [dir, to] of [['north', [33.6, 34.9]], ['east', [32.0, 36.4]], ['south', [30.4, 34.9]], ['west', [32.0, 33.4]]]) {
+    test(dir, async ({ page }) => {
+      await page.goto('?lang=en&nogist');
+      await page.waitForFunction(() => typeof measureToggle === 'function' && NavAid.disclaimerDone && document.body.classList.contains('deck-on'));
+      const r = await page.evaluate((to) => {
+        map.setView([32.0, 34.9], 10, { animate: false });
+        measureToggle(true);
+        window.measure.from = L.latLng(32.0, 34.9); window.measure.to = L.latLng(to[0], to[1]);
+        draw();
+        const el = document.getElementById('measure-label'), lb = el.getBoundingClientRect();
+        const over = (q) => { const r = q.getBoundingClientRect(); return lb.left < r.right && lb.right > r.left && lb.top < r.bottom && lb.bottom > r.top; };
+        const chrome = ['#deck-strip', '#deck-bar'].map(s => document.querySelector(s)).filter(Boolean);
+        const buttons = [...document.querySelectorAll('.leaflet-control-container .leaflet-control')].filter(e => e.getClientRects().length);
+        const a = map.latLngToContainerPoint(window.measure.from), b = map.latLngToContainerPoint(window.measure.to);
+        let gap = Infinity;
+        for (let i = 0; i <= 400; i++) {
+          const t = i / 400, x = a.x + (b.x - a.x) * t, y = a.y + (b.y - a.y) * t;
+          const dx = Math.max(lb.left - x, 0, x - lb.right), dy = Math.max(lb.top - y, 0, y - lb.bottom);
+          if (x >= 0 && y >= 0 && x <= innerWidth && y <= innerHeight) gap = Math.min(gap, Math.hypot(dx, dy));
+        }
+        return { shown: !el.hidden, underChrome: chrome.some(over), onButtons: buttons.filter(over).map(e => e.className.split(' ')[1]), gap: Math.round(gap) };
+      }, to);
+      expect(r.shown).toBe(true);
+      expect(r.underChrome).toBe(false);
+      expect(r.onButtons).toEqual([]);
+      expect(r.gap).toBeLessThan(30);
+    });
+  }
+});
+
+// Picking a measure point: the crosshair, over the chart and over a marker or NOTAM area alike
+// (it was the pointing hand there).
+test('measuring shows the crosshair, not the hand', async ({ page }) => {
+  await page.goto('?lang=en&nogist');
+  await page.waitForFunction(() => typeof measureToggle === 'function' && NavAid.disclaimerDone);
+  const r = await page.evaluate(() => {
+    measureToggle(true);
+    const c = map.getContainer();
+    c.style.cursor = 'pointer';                            // as a NOTAM hover leaves it
+    map.fire('mousemove', { latlng: map.getCenter(), containerPoint: L.point(10, 10), originalEvent: new MouseEvent('mousemove') });
+    const marker = document.querySelector('#map .leaflet-marker-icon, #map .leaflet-interactive');
+    return { map: getComputedStyle(c).cursor, marker: marker ? getComputedStyle(marker).cursor : 'crosshair' };
+  });
+  expect(r).toEqual({ map: 'crosshair', marker: 'crosshair' });
+});

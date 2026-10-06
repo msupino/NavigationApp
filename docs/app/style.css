@@ -44,6 +44,13 @@ html.app-booting .leaflet-control-container { visibility: hidden; }
 #map.add .leaflet-interactive,
 #map.priming .leaflet-grab,
 #map.priming .leaflet-interactive { cursor: crosshair; }
+/* Measuring: a tap picks a point, so the pointer is the crosshair everywhere on the chart --
+   over a marker too, where it was the pointing hand. */
+body.measuring #map,
+body.measuring #map .leaflet-grab,
+body.measuring #map .leaflet-interactive,
+body.measuring #map .leaflet-marker-icon,
+body.measuring #map .leaflet-pane * { cursor: crosshair; }
 #map.leaflet-dragging .leaflet-grab { cursor: grabbing; }
 /* Flight-plan VOR Radial/DME columns collapse when no reference VOR is set. */
 .flight-table.no-vor .fp-vor-col { display: none; }
