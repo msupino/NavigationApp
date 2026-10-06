@@ -5334,8 +5334,11 @@ map.on('movestart', () => {
 
 map.on('mousemove', e => {
   if (!drag) {
-    // Pointer cursor over clickable NOTAM areas/badges (select mode only).
-    if (window.showNotam && state.mode !== 'add' && state.mode !== 'note' &&
+    // Pointer cursor over clickable NOTAM areas/badges (select mode only). Not while measuring:
+    // a tap there picks a measure point, so the crosshair (style.css) stays.
+    const measuring = typeof measureOn === 'function' && measureOn();
+    if (measuring) map.getContainer().style.cursor = '';
+    else if (window.showNotam && state.mode !== 'add' && state.mode !== 'note' &&
         typeof notamsAtLatLng === 'function') {
       map.getContainer().style.cursor = notamsAtLatLng(e.latlng).length ? 'pointer' : '';
     }

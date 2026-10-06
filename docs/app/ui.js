@@ -1209,14 +1209,26 @@ function measureLiveFrom() {
   return null;
 }
 window.measureLiveFrom = measureLiveFrom;
-function measureToggle(on) {
+// The measurement survives a reload (an APK restart, an update, a refresh): what is on screen
+// when the app goes is on screen when it comes back. Device-local.
+const MEASURE_KEY = 'navaid.measure';
+function measureSave() {
+  const m = window.measure;
+  const pt = (p) => (p ? { lat: p.lat, lng: p.lng, name: p.name || '' } : null);
+  try {
+    if (m.on) localStorage.setItem(MEASURE_KEY, JSON.stringify({ on: true, from: pt(m.from), to: pt(m.to) }));
+    else localStorage.removeItem(MEASURE_KEY);
+  } catch (e) { /* storage off: the measurement just does not come back */ }
+}
+function measureToggle(on, quiet) {
   const m = window.measure;
   m.on = typeof on === 'boolean' ? on : !m.on;
   m.from = null; m.to = null;
+  measureSave();
   document.body.classList.toggle('measuring', m.on);
   const b = document.getElementById('measure-btn');
   if (b) { b.classList.toggle('measure-on', m.on); b.setAttribute('aria-pressed', String(m.on)); }
-  if (m.on && typeof showToast === 'function') {
+  if (m.on && !quiet && typeof showToast === 'function') {
     showToast(measureLiveFrom() ? (S.measureHintLive || 'Tap a point: distance and time from the aircraft')
       : (S.measureHint || 'Tap the start, then the end'));
   }
@@ -1230,9 +1242,25 @@ function measureTap(latlng) {
   if (measureLiveFrom()) { m.from = null; m.to = p; }
   else if (!m.from || m.to) { m.from = p; m.to = null; }
   else m.to = p;
+  measureSave();
   if (typeof draw === 'function') draw();
 }
 window.measureTap = measureTap;
+// After the page has loaded, not while ui.js is still being read: a draw from here reached
+// code declared further down and threw, which stopped the rest of the file.
+function measureRestore() {
+  let saved = null;
+  try { saved = JSON.parse(localStorage.getItem(MEASURE_KEY) || 'null'); } catch (e) { saved = null; }
+  if (!saved || !saved.on) return;
+  const ok = (p) => p && Number.isFinite(p.lat) && Number.isFinite(p.lng) ? { lat: p.lat, lng: p.lng, name: String(p.name || '') } : null;
+  measureToggle(true, true);                     // as it was: no "tap a point" hint again
+  window.measure.from = ok(saved.from);
+  window.measure.to = ok(saved.to);
+  measureSave();
+  if (typeof draw === 'function') draw();
+}
+if (document.readyState === 'complete') setTimeout(measureRestore, 0);
+else window.addEventListener('load', () => setTimeout(measureRestore, 0));
 const editLockBtn = document.getElementById('edit-lock');
 // The button shows whether the route CAN be moved, not merely whether the pilot pressed it.
 // Starting a recording or Location locks the route on its own, and a button still showing an
@@ -6923,20 +6951,30 @@ document.addEventListener('visibilitychange', () => {
 // again: chart tiles stay blank squares, and NOTAM / SIGMET / AIRMET wait for the 10-minute
 // poll. When the phone says the connection is back, the tiles that failed are reloaded and the
 // feeds re-polled at once, and one line says so.
+// Only a tile that failed while the phone was offline counts: a tile that is simply not there
+// (open sea, the edge of a chart) fails online too, and reloading its whole layer on every
+// reconnect would flash the chart for nothing.
 function noteTileErrors(layer) {
   if (!(layer instanceof L.GridLayer) || layer._navaidErrWatch) return;
   layer._navaidErrWatch = true;
-  layer.on('tileerror', () => { layer._navaidTileErr = true; });
+  layer.on('tileerror', () => { if (navigator.onLine === false) layer._navaidTileErr = true; });
 }
 map.eachLayer(noteTileErrors);
 map.on('layeradd', e => noteTileErrors(e.layer));
+// A phone's link flaps -- a second without signal in a turn, then back. The feeds are re-polled
+// on every return (that is cheap), but the message is kept for a real outage or a chart that
+// actually had to reload, so it does not pop up every few minutes in flight.
+let offlineSince = 0;
+window.addEventListener('offline', () => { if (!offlineSince) offlineSince = Date.now(); });
 function refreshAfterReconnect() {
   let tiles = 0;
   map.eachLayer(l => {
     if (l._navaidTileErr && typeof l.redraw === 'function') { l._navaidTileErr = false; l.redraw(); tiles++; }
   });
   refreshHazardFeeds();
-  if (typeof showToast === 'function') showToast(S.backOnline || 'Back online: map, NOTAMs and weather updated');
+  const longGone = offlineSince && Date.now() - offlineSince >= 15000;
+  offlineSince = 0;
+  if ((tiles || longGone) && typeof showToast === 'function') showToast(S.backOnline || 'Back online: map, NOTAMs and weather updated');
   return tiles;
 }
 window.refreshAfterReconnect = refreshAfterReconnect;   // tests

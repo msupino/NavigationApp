@@ -1443,6 +1443,20 @@ function measureLabelBox(show) {
   el.hidden = false;
   return el;
 }
+// The part of the line a->b inside the rectangle v ({l, t, r, b}): { t0, t1 } along a->b (0 = a,
+// 1 = b), or null when none of it is inside.
+function measureClip(a, b, v) {
+  const dx = b.x - a.x, dy = b.y - a.y;
+  let t0 = 0, t1 = 1;
+  for (const [p, q] of [[-dx, a.x - v.l], [dx, v.r - a.x], [-dy, a.y - v.t], [dy, v.b - a.y]]) {
+    if (p === 0) { if (q < 0) return null; continue; }
+    const r = q / p;
+    if (p < 0) t0 = Math.max(t0, r); else t1 = Math.min(t1, r);
+    if (t0 > t1) return null;
+  }
+  return { t0, t1 };
+}
+window.measureClip = measureClip;   // tests
 function drawMeasure() {
   const m = window.measure;
   const onScreen = octx.canvas === overlay;
@@ -1479,16 +1493,48 @@ function drawMeasure() {
   // Of the four corners around the point, the first that is on screen and clear of the map
   // buttons (the right-hand column, the edit column) -- preferring the side away from the line.
   const cr = octx.canvas.getBoundingClientRect();
+  const box = (r) => ({ l: r.left - cr.left - 6, t: r.top - cr.top - 6, r: r.right - cr.left + 6, b: r.bottom - cr.top + 6 });
+  // What of the map is actually seen: the phone's top strip and bottom bar, and the desktop
+  // toolbar, sit over the canvas. A label placed under them was hidden -- a line leaving the top
+  // of a phone screen put it under the strip.
+  const view = { l: 4, t: 4, r: cr.width - 4, b: cr.height - 4 };
+  const chrome = ['#deck-strip', '#deck-bar', '#toolbar'].map(sel => document.querySelector(sel))
+    .filter(e => e && e.getClientRects().length && getComputedStyle(e).visibility !== 'hidden')
+    .map(e => e.getBoundingClientRect()).filter(r => r.width > cr.width / 2);
+  for (const r of chrome) {
+    if (r.top - cr.top < cr.height / 2) view.t = Math.max(view.t, r.bottom - cr.top + 4);
+    else view.b = Math.min(view.b, r.top - cr.top - 4);
+  }
   const blocks = [...document.querySelectorAll('.leaflet-control-container .leaflet-control')]
-    .filter(e => e.getClientRects().length).map(e => e.getBoundingClientRect())
-    .map(r => ({ l: r.left - cr.left - 6, t: r.top - cr.top - 6, r: r.right - cr.left + 6, b: r.bottom - cr.top + 6 }));
-  const fits = (x, y) => x >= 4 && y >= 4 && x + w <= cr.width - 4 && y + h <= cr.height - 4
+    .filter(e => e.getClientRects().length).map(e => box(e.getBoundingClientRect()));
+  const fits = (x, y) => x >= view.l && y >= view.t && x + w <= view.r && y + h <= view.b
     && !blocks.some(k => x < k.r && x + w > k.l && y < k.b && y + h > k.t);
+  // At the middle of the part of the line that is seen -- whether or not the end point is in
+  // view -- so it sits toward the middle of the screen, not at an edge or on the end dot; where
+  // the buttons leave no room there, at the nearest spot along the line that has it. No line
+  // in view: no label.
+  const seg = measureClip(a, b, { l: view.l + 4, t: view.t + 4, r: view.r - 4, b: view.b - 4 });
+  if (!seg) { octx.restore(); return; }
   const right = b.x >= a.x, down = b.y >= a.y;
-  const tries = [[right, down], [right, !down], [!right, down], [!right, !down]]
-    .map(([rt, dn]) => [rt ? b.x + 12 : b.x - 12 - w, dn ? b.y + 10 : b.y - 10 - h]);
-  const pick = tries.find(([tx, ty]) => fits(tx, ty)) || tries[0];
-  const x = Math.max(4, Math.min(cr.width - w - 4, pick[0])), y = Math.max(4, Math.min(cr.height - h - 4, pick[1]));
+  const around = (p) => [[right, down], [right, !down], [!right, down], [!right, !down]]
+    .map(([rt, dn]) => [rt ? p.x + 12 : p.x - 12 - w, dn ? p.y + 10 : p.y - 10 - h]);
+  const len = Math.hypot(b.x - a.x, b.y - a.y) || 1;
+  const step = 24 / len;
+  const home = (seg.t0 + seg.t1) / 2;
+  const ts = [home];
+  for (let k = 1; home - k * step >= seg.t0 || home + k * step <= seg.t1; k++) {
+    if (home - k * step >= seg.t0) ts.push(home - k * step);
+    if (home + k * step <= seg.t1) ts.push(home + k * step);
+  }
+  let pick = null, first = null;
+  for (const t of ts) {
+    const tries = around({ x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t });
+    if (!first) first = tries[0];
+    pick = tries.find(([tx, ty]) => fits(tx, ty));
+    if (pick) break;
+  }
+  pick = pick || first;
+  const x = Math.max(view.l, Math.min(view.r - w, pick[0])), y = Math.max(view.t, Math.min(view.b - h, pick[1]));
   if (onScreen) {
     const el = measureLabelBox(true), mr = map.getContainer().getBoundingClientRect();
     el.replaceChildren(...lines.map(t => { const d = document.createElement('div'); d.dir = 'auto'; d.textContent = t; return d; }));
