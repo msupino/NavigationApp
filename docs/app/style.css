@@ -6677,7 +6677,11 @@ html[data-theme="light"] #insp-body .insp-actions {
   #lang-select { min-height: 44px; font-size: 15px; }
   #search-close { min-width: 44px; min-height: 44px; }
   .attrib-toggle { display: inline-flex; align-items: center; justify-content: center;
-                   min-width: 44px; min-height: 30px; }
+                   min-width: 44px; min-height: 30px; position: relative; }
+  /* Drawn 30px tall to keep the attribution row slim; the tap area reaches the 44px minimum. */
+  .attrib-toggle::before { content: ''; position: absolute; inset: -7px 0; }
+  /* The safety notice's language picker: the first control a new user may need. */
+  select.disclaimer-lang-select { min-height: 44px; }   /* outranks the base rule further down */
   .leaflet-control-attribution.attrib-compact .attrib-body { display: none; }
   .leaflet-control-attribution.attrib-compact.attrib-open .attrib-body { display: inline; }
   .leaflet-control-attribution.attrib-compact { padding: 0 4px; }
@@ -8082,7 +8086,7 @@ body.deck-on .deck-strip > .deck-strip-sub { grid-column: 1; }
 .deck-strip-commfail[aria-pressed="true"] { background: #fff; color: #c62f2f; box-shadow: inset 0 0 0 2px #c62f2f; }
 .deck-strip-commfail:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
 /* A narrow phone with a full readout: the icon alone, the label in the accessible name. */
-@media (max-width: 360px) { .deck-strip-commfail-label { display: none; } .deck-strip-commfail { padding: 0 9px; } }
+@media (max-width: 360px) { .deck-strip-commfail-label { display: none; } .deck-strip-commfail { padding: 0 9px; min-width: 44px; justify-content: center; } }
 /* Engaged, not merely visited: Record and Here light while they are actually running. */
 /* Running, not merely chosen. A tinted label was all that said Location was on, and on a
    sunlit screen at arm's length that is not a state -- it is a shade. The whole cell lights:
