@@ -3,6 +3,12 @@
 // could not do before, so a regression shows up as a failing behaviour, not a diff.
 const { test, expect } = require('./_setup');
 
+// The new-user route intro is off by default (featureRouteIntro); these specs are about it,
+// so they switch it on before the app boots.
+test.beforeEach(async ({ page }) => {
+  await page.addInitScript(() => { window.__navaidTune = Object.assign(window.__navaidTune || {}, { featureRouteIntro: true }); });
+});
+
 async function boot(page, w, h) {
   if (w) await page.setViewportSize({ width: w, height: h });
   await page.goto('?lang=en&nogist');
