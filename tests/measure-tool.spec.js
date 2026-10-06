@@ -168,3 +168,23 @@ test('measuring shows the crosshair, not the hand', async ({ page }) => {
   });
   expect(r).toEqual({ map: 'crosshair', marker: 'crosshair' });
 });
+
+// The label sits at the middle of the line in view, even when the end point is on screen too.
+test('with both ends in view the label sits at the middle of the line', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await page.goto('?lang=en&nogist');
+  await page.waitForFunction(() => typeof measureToggle === 'function' && NavAid.disclaimerDone);
+  const r = await page.evaluate(() => {
+    map.setView([32.0, 34.9], 10, { animate: false });
+    measureToggle(true);
+    window.measure.from = L.latLng(31.9, 34.75); window.measure.to = L.latLng(32.1, 35.05);
+    draw();
+    const lb = document.getElementById('measure-label').getBoundingClientRect();
+    const a = map.latLngToContainerPoint(window.measure.from), b = map.latLngToContainerPoint(window.measure.to);
+    const mid = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
+    const dx = Math.max(lb.left - mid.x, 0, mid.x - lb.right), dy = Math.max(lb.top - mid.y, 0, mid.y - lb.bottom);
+    return { gapToMid: Math.round(Math.hypot(dx, dy)), toEnd: Math.round(Math.hypot(lb.left + lb.width / 2 - b.x, lb.top + lb.height / 2 - b.y)), len: Math.round(Math.hypot(b.x - a.x, b.y - a.y)) };
+  });
+  expect(r.gapToMid).toBeLessThan(20);           // its corner is at the line's midpoint
+  expect(r.toEnd).toBeGreaterThan(r.len / 4);    // not at the end dot
+});

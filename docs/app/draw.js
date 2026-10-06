@@ -1509,10 +1509,10 @@ function drawMeasure() {
     .filter(e => e.getClientRects().length).map(e => box(e.getBoundingClientRect()));
   const fits = (x, y) => x >= view.l && y >= view.t && x + w <= view.r && y + h <= view.b
     && !blocks.some(k => x < k.r && x + w > k.l && y < k.b && y + h > k.t);
-  // Beside the point while it is in view. With the point out of view, at the middle of the part of
-  // the line that is seen -- toward the middle of the screen, not jammed at the edge it leaves
-  // by -- and where the buttons leave no room there, at the nearest spot along the line that
-  // has it. No line in view: no label.
+  // At the middle of the part of the line that is seen -- whether or not the end point is in
+  // view -- so it sits toward the middle of the screen, not at an edge or on the end dot; where
+  // the buttons leave no room there, at the nearest spot along the line that has it. No line
+  // in view: no label.
   const seg = measureClip(a, b, { l: view.l + 4, t: view.t + 4, r: view.r - 4, b: view.b - 4 });
   if (!seg) { octx.restore(); return; }
   const right = b.x >= a.x, down = b.y >= a.y;
@@ -1520,7 +1520,7 @@ function drawMeasure() {
     .map(([rt, dn]) => [rt ? p.x + 12 : p.x - 12 - w, dn ? p.y + 10 : p.y - 10 - h]);
   const len = Math.hypot(b.x - a.x, b.y - a.y) || 1;
   const step = 24 / len;
-  const home = seg.t1 >= 1 ? 1 : (seg.t0 + seg.t1) / 2;
+  const home = (seg.t0 + seg.t1) / 2;
   const ts = [home];
   for (let k = 1; home - k * step >= seg.t0 || home + k * step <= seg.t1; k++) {
     if (home - k * step >= seg.t0) ts.push(home - k * step);
