@@ -123,6 +123,9 @@ function setMode(mode) {
     }
     mode = null;
   }
+  // One map tool at a time: arming Add or Note puts the ruler away (a tap cannot be both a
+  // waypoint and a measure point), and turning the ruler on leaves Add / Note (measureToggle).
+  if (mode && typeof measureOn === 'function' && measureOn()) measureToggle(false);
   state.mode = mode;
   const addBtn = document.getElementById('tool-add');
   const noteBtn = document.getElementById('tool-note');
@@ -1224,10 +1227,13 @@ function measureToggle(on, quiet) {
   const m = window.measure;
   m.on = typeof on === 'boolean' ? on : !m.on;
   m.from = null; m.to = null;
+  if (m.on && (state.mode === 'add' || state.mode === 'note')) setMode(null);   // one map tool at a time
   measureSave();
   document.body.classList.toggle('measuring', m.on);
   const b = document.getElementById('measure-btn');
   if (b) { b.classList.toggle('measure-on', m.on); b.setAttribute('aria-pressed', String(m.on)); }
+  if (typeof refreshPrimingCursor === 'function') refreshPrimingCursor();   // the primed Add is not lit while measuring
+  if (typeof window.refreshEditColumn === 'function') window.refreshEditColumn();   // Clear also clears a measurement
   if (m.on && !quiet && typeof showToast === 'function') {
     showToast(measureLiveFrom() ? (S.measureHintLive || 'Tap a point: distance and time from the aircraft')
       : (S.measureHint || 'Tap the start, then the end'));
@@ -1366,7 +1372,8 @@ function refreshEditColumn() {
   // A locked route (the padlock, or a live position) locks all four, with the one message the
   // lock already uses; otherwise Undo / Clear say when there is nothing for them to do.
   const lockWhy = locked ? (S.editLockBlockedToast || 'Route is locked — unlock it to edit') : null;
-  const empty = !(state.waypoints && state.waypoints.length) && !(state.notes && state.notes.length);
+  const empty = !(state.waypoints && state.waypoints.length) && !(state.notes && state.notes.length)
+    && !(window.measure && window.measure.on);
   setButtonWhy(add, lockWhy);
   setButtonWhy(note, lockWhy);
   setButtonWhy(undoBtn, lockWhy || ((menuUndo && menuUndo.disabled) ? (S.whyNothingToUndo || 'Nothing to undo') : null));
@@ -4593,6 +4600,9 @@ document.getElementById('clear').onclick = async () => {
   state.commChangeSuppressions = [];
   state.wind = { dir: 270, speed: 0 };     // cleared route: reset wind so a new hand-built route doesn't inherit it
   state.selected = null;
+  // The measurement goes with everything else: Clear map is "start again", and a dashed line
+  // and its label left on an empty chart is not that.
+  if (typeof measureOn === 'function' && measureOn()) measureToggle(false);
   routeAltPrefix = null;    // empty route unpins its altitude layer
   // The direction filter belonged to the route that had a direction to filter. With the
   // route gone it hides nothing, and leaving it set meant the next route was drawn with half

@@ -213,3 +213,45 @@ test('the measurement survives a reload', async ({ page }) => {
   await page.waitForFunction(() => typeof measureToggle === 'function');
   expect(await page.evaluate(() => measureOn())).toBe(false);
 });
+
+// One map tool at a time: the ruler and Add / Note never both take the tap.
+test('measuring and adding exclude each other', async ({ page }) => {
+  await page.addInitScript(() => { window.__navaidTune = Object.assign(window.__navaidTune || {}, { featureRouteIntro: true }); });
+  await page.goto('?lang=en&nogist');
+  await page.waitForFunction(() => typeof measureToggle === 'function' && NavAid.disclaimerDone);
+  const r = await page.evaluate(() => {
+    const out = {};
+    setMode('add');
+    measureToggle(true);
+    out.afterMeasure = { mode: state.mode, measuring: measureOn(), addLit: document.getElementById('edit-col-add').getAttribute('aria-pressed') };
+    setMode('note');
+    out.afterNote = { mode: state.mode, measuring: measureOn(), ruler: document.getElementById('measure-btn').getAttribute('aria-pressed') };
+    setMode(null);
+    // An empty map primed to start a route: measuring takes the tap, and Add is not shown lit.
+    state.waypoints = []; state.notes = []; syncLegs(); draw();
+    measureToggle(true);
+    out.primed = { armed: routePrimingArmed(), toolAdd: document.getElementById('tool-add').classList.contains('active') };
+    map.fire('click', { latlng: L.latLng(32.0, 34.9) });
+    out.tap = { wps: state.waypoints.length, measured: !!(window.measure.from || window.measure.to) };
+    return out;
+  });
+  expect(r.afterMeasure).toEqual({ mode: null, measuring: true, addLit: 'false' });
+  expect(r.afterNote).toEqual({ mode: 'note', measuring: false, ruler: 'false' });
+  expect(r.primed).toEqual({ armed: false, toolAdd: false });
+  expect(r.tap).toEqual({ wps: 0, measured: true });
+});
+
+// Clear map takes the measurement with it, and with only a measurement on the map Clear is live.
+test('Clear map removes the measurement', async ({ page }) => {
+  await page.goto('?lang=en&nogist');
+  await page.waitForFunction(() => typeof measureToggle === 'function' && NavAid.disclaimerDone);
+  await page.evaluate(() => {
+    state.waypoints = []; state.notes = []; syncLegs(); draw();
+    measureToggle(true); measureTap(L.latLng(31.9, 34.8)); measureTap(L.latLng(32.1, 35.0));
+  });
+  await expect(page.locator('#edit-col-clear')).not.toHaveAttribute('aria-disabled', 'true');
+  await page.locator('#edit-col-clear').click();
+  await expect.poll(() => page.evaluate(() => measureOn())).toBe(false);
+  await expect(page.locator('#measure-label')).toBeHidden();
+  expect(await page.evaluate(() => localStorage.getItem('navaid.measure'))).toBeNull();
+});
