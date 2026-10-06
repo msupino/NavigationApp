@@ -9366,3 +9366,7 @@ body.deck-on #gps-status { top: calc(var(--navaid-deck-strip-h, 46px) + 8px + en
 .gps-status-table td { text-align: end; padding: 5px 0; font-variant-numeric: tabular-nums; font-weight: 600; }
 .gps-status-table tr + tr { border-top: 1px solid rgba(127, 127, 127, 0.2); }
 .gps-status-note { margin: 10px 0 0; font-size: 13px; opacity: 0.8; }
+
+/* Screen brightness below what a browser can set (device-extras.js): a dark veil over
+   everything, taps passing through. */
+#dim-veil { position: fixed; inset: 0; background: #000; pointer-events: none; z-index: 2147483000; }

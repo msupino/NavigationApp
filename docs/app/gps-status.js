@@ -30,6 +30,7 @@
       acc: Number.isFinite(c.accuracy) ? c.accuracy : null,
       altAcc: Number.isFinite(c.altitudeAccuracy) ? c.altitudeAccuracy : null,
       t: pos.timestamp || now, at: now,
+      source: pos.source || 'phone',                // 'ble': the Bluetooth GPS (ble-gps.js)
     };
     arrivals.push(now);
     while (arrivals.length > 6) arrivals.shift();
@@ -72,6 +73,7 @@
       return t + tail;
     }
     const parts = [];
+    if (raw.source === 'ble') parts.push('BT');     // the Bluetooth GPS, not the phone's own
     if (raw.acc != null) parts.push('±' + Math.round(raw.acc) + ' m');
     const hz = rateHz();
     if (hz != null) parts.push(hz >= 0.75 ? Math.round(hz) + ' Hz' : (1 / hz).toFixed(0) + ' s');
@@ -134,6 +136,11 @@
     row(tb, str('gpsStatusAge', 'Last fix'), age == null ? dash : (age < 1.5 ? str('gpsStatusNow', 'now') : Math.round(age) + ' s'));
     const hz = rateHz();
     row(tb, str('gpsStatusRate', 'Fixes'), hz == null ? dash : (hz >= 0.75 ? hz.toFixed(1) + ' Hz' : str('gpsStatusEvery', 'every') + ' ' + (1 / hz).toFixed(0) + ' s'));
+    if (raw && raw.source === 'ble') {
+      const b = (window.NavAid && NavAid.bleGps) ? NavAid.bleGps.dev : {};
+      row(tb, str('gpsStatusSource', 'Source'), str('gpsStatusBle', 'Bluetooth GPS') + (b.name ? ' (' + b.name + ')' : ''));
+      if (Number.isFinite(b.sats)) row(tb, str('gpsStatusSatsUsed', 'Satellites used'), String(b.sats));
+    }
     if (firstFixMs != null) row(tb, str('gpsStatusTtff', 'Time to first fix'), (firstFixMs / 1000).toFixed(1) + ' s');
     if (gnss && Number.isFinite(gnss.inView)) {
       row(tb, str('gpsStatusSatellites', 'Satellites (used / in view)'), gnss.used + ' / ' + gnss.inView);
@@ -142,6 +149,14 @@
       for (const k of Object.keys(sys).sort((a, b) => (sys[b].inView - sys[a].inView))) {
         row(tb, ' ' + k, sys[k].used + ' / ' + sys[k].inView);
       }
+    }
+    // The phone's pressure sensor (device-extras.js): static pressure in the cabin, so close to
+    // the outside in an unpressurised aeroplane, and nothing like it in a pressurised one.
+    const baro = window.NavAid && NavAid.device && NavAid.device.baro;
+    if (baro && Number.isFinite(baro.hPa)) {
+      row(tb, str('gpsStatusPressure', 'Pressure (cabin)'), baro.hPa.toFixed(1) + ' hPa');
+      row(tb, str('gpsStatusPressAlt', 'Pressure altitude'), Math.round(baro.pAltFt).toLocaleString('en-US') + ' ft');
+      if (Number.isFinite(baro.vsFpm)) row(tb, str('gpsStatusVs', 'Vertical speed'), (baro.vsFpm >= 0 ? '+' : '\u2212') + Math.abs(Math.round(baro.vsFpm / 10) * 10) + ' fpm');
     }
     tbl.appendChild(tb);
     body.appendChild(tbl);

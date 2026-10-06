@@ -944,6 +944,16 @@
         <button id="freq-table" data-i18n="tbFreqTable" data-i18n-title="tbFreqTableTitle"></button>
         <button id="alt-pairs" data-i18n="tbAltPairs" data-i18n-title="tbAltPairsTitle"></button>
         <button id="tour-replay" type="button" data-i18n="tbTourReplay"></button>
+        <!-- The phone's own hardware (device-extras.js, ble-gps.js): screen brightness for the
+             cockpit, and an external Bluetooth GPS. Each is dimmed where it cannot work. -->
+        <div class="tb-group-separator" aria-hidden="true"></div>
+        <label class="navtoggle" id="brightness-row" data-i18n-title="tbBrightnessTitle">
+          <span data-i18n="tbBrightness"></span>
+          <input type="range" id="brightness-range" min="0" max="100" step="5" value="100">
+          <span class="slider-val" id="brightness-val"></span>
+        </label>
+        <button id="brightness-system" type="button" data-i18n="tbBrightnessSystem"></button>
+        <button id="ble-gps-btn" type="button" data-i18n="tbBleGps"></button>
       </div>
     </div>
 
@@ -1294,6 +1304,9 @@
         'app/taf-validity.js' + v,
         'app/routecheck.js' + v,
         'app/gps-status.js' + v,
+        'app/device-extras.js' + v,
+        'app/gdl90.js' + v,
+        'app/ble-gps.js' + v,
         'app/tour.js' + v,
         'app/disclaimer.js' + v,
         'app/ota.js' + v

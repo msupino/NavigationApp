@@ -908,6 +908,15 @@ NavAid.tuningDefaults = {
   featureTour: { value: true, type: 'bool', label: 'Feature: first-launch map tour' },
   // The location status line (gps-status.js): accuracy, fix rate and, in the Android app, satellites.
   featureGpsStatus: { value: true, type: 'bool', label: 'Feature: GPS status line (accuracy, satellites)' },
+  // The phone's hardware, in the Android app (device-extras.js, gdl90.js, ble-gps.js): one switch each.
+  featureKeepAwake: { value: true, type: 'bool', label: 'Feature: keep the screen on while a position shows (app)' },
+  featureHaptics: { value: true, type: 'bool', label: 'Feature: vibrate with in-flight alerts' },
+  featureBrightness: { value: true, type: 'bool', label: 'Feature: Settings > Screen brightness' },
+  featureBarometer: { value: true, type: 'bool', label: 'Feature: phone barometer (pressure altitude, vertical speed)' },
+  featureBatteryWarn: { value: false, type: 'bool', label: 'Feature: low-battery warning in flight' },
+  featureFullscreenFlight: { value: false, type: 'bool', label: 'Feature: hide the status bar while a position shows (app)' },
+  featureGdl90: { value: false, type: 'bool', label: 'Feature: ADS-B receiver traffic (GDL90, Wi-Fi UDP 4000, app)' },
+  featureBleGps: { value: false, type: 'bool', label: 'Feature: external Bluetooth GPS (NMEA over BLE UART, app)' },
   // The inspector stays shut while a real fix is driving the map (recording or showing
   // location). Set true to have a tap open it in flight, the way it used to.
   featureInspectorWhileTracking: { value: false, type: 'bool', label: 'Feature: inspector while tracking' },
@@ -1146,7 +1155,7 @@ NavAid.tuningGroups = [
     'defaultViewZoom', 'defaultViewLat', 'defaultViewLng'] },
   { name: 'Export', keys: ['exportBgColor'] },
   { name: 'Global palette', keys: ['inkColor', 'selectedColor', 'labelFillColor', 'kiteTextColor', 'legKiteHaloColor', 'kiteNoteAlpha'] },
-  { name: 'Default layer visibility', keys: ['defaultShowNavWP', 'defaultShowAirfields', 'defaultShowVor', 'defaultShowHotspots', 'defaultShowWpNames', 'defaultShowCumTime', 'defaultShowDrift', 'defaultShowCommChange', 'defaultVoiceAlerts', 'defaultShowMidLeg', 'defaultHighlightDiff', 'defaultLimitLegKites', 'defaultShowMsa', 'defaultShowReporting', 'defaultForceSnap', 'defaultShowReturn', 'featureShowReturn', 'featureFplReturnJoin', 'offlineAutoCvfr', 'offlineCvfrUnmeteredOnly', 'offlineCvfrMinZoom', 'offlineCvfrMaxZoom', 'featureRouteIntro', 'featureTour', 'featureGpsStatus', 'featureSatZoomButtons', 'featureInspectorResize', 'featureInspectorWhileTracking', 'featureAssistant', 'featureMobileDeck', 'featureDisclaimer', 'featureOtaUpdates', 'featureNavLog', 'reverseWarnMs', 'notamSeenDays', 'toastReadWpm', 'toastNoticeMs', 'toastMinMs', 'toastWarnMinMs', 'toastMaxMs', 'reverseWarnBlink', 'reverseRotatesMap', 'addToRouteOpensInspector', 'defaultShowNotam', 'defaultShowAirmet', 'defaultShowSigmet', 'defaultShowWind', 'defaultWindField', 'defaultAirfieldWind', 'defaultImsPwx', 'defaultSigwxOv', 'defaultShowLsaBubbles', 'defaultAutoRoute', 'defaultShowCircuit', 'defaultShowTraining', 'defaultShowCvfr', 'defaultShowHeli', 'defaultShowCommfail', 'defaultShowAdc', 'defaultShowIfr', 'plateFieldZoom'] },
+  { name: 'Default layer visibility', keys: ['defaultShowNavWP', 'defaultShowAirfields', 'defaultShowVor', 'defaultShowHotspots', 'defaultShowWpNames', 'defaultShowCumTime', 'defaultShowDrift', 'defaultShowCommChange', 'defaultVoiceAlerts', 'defaultShowMidLeg', 'defaultHighlightDiff', 'defaultLimitLegKites', 'defaultShowMsa', 'defaultShowReporting', 'defaultForceSnap', 'defaultShowReturn', 'featureShowReturn', 'featureFplReturnJoin', 'offlineAutoCvfr', 'offlineCvfrUnmeteredOnly', 'offlineCvfrMinZoom', 'offlineCvfrMaxZoom', 'featureRouteIntro', 'featureTour', 'featureGpsStatus', 'featureKeepAwake', 'featureHaptics', 'featureBrightness', 'featureBarometer', 'featureBatteryWarn', 'featureFullscreenFlight', 'featureGdl90', 'featureBleGps', 'featureSatZoomButtons', 'featureInspectorResize', 'featureInspectorWhileTracking', 'featureAssistant', 'featureMobileDeck', 'featureDisclaimer', 'featureOtaUpdates', 'featureNavLog', 'reverseWarnMs', 'notamSeenDays', 'toastReadWpm', 'toastNoticeMs', 'toastMinMs', 'toastWarnMinMs', 'toastMaxMs', 'reverseWarnBlink', 'reverseRotatesMap', 'addToRouteOpensInspector', 'defaultShowNotam', 'defaultShowAirmet', 'defaultShowSigmet', 'defaultShowWind', 'defaultWindField', 'defaultAirfieldWind', 'defaultImsPwx', 'defaultSigwxOv', 'defaultShowLsaBubbles', 'defaultAutoRoute', 'defaultShowCircuit', 'defaultShowTraining', 'defaultShowCvfr', 'defaultShowHeli', 'defaultShowCommfail', 'defaultShowAdc', 'defaultShowIfr', 'plateFieldZoom'] },
 ];
 // Padding pair + maxZoom for a fitBounds call, from the tuning registry. Every "frame the
 // map on X" call goes through this instead of carrying its own literals.
@@ -2431,6 +2440,23 @@ window.S = Object.assign({
   orientHeadingToast: 'Heading up',
   orientNorthToast: 'North up',
   backOnline: 'Back online: map, NOTAMs and weather updated',
+  gpsStatusSource: 'Source',
+  gpsStatusBle: 'Bluetooth GPS',
+  gpsStatusSatsUsed: 'Satellites used',
+  gpsStatusPressure: 'Pressure (cabin)',
+  gpsStatusPressAlt: 'Pressure altitude',
+  gpsStatusVs: 'Vertical speed',
+  tbBrightness: 'Screen brightness',
+  tbBrightnessTitle: 'Dim the screen for night flying — below the phone\u2019s own minimum if needed',
+  tbBrightnessSystem: 'Brightness: back to the phone\u2019s setting',
+  tbBrightnessAuto: 'System',
+  batteryLow: function (pct) { return 'Battery ' + pct + '%: plug the phone in'; },
+  tbBleGps: 'Connect Bluetooth GPS',
+  bleGpsDisconnect: function (name) { return 'Disconnect Bluetooth GPS' + (name ? ' (' + name + ')' : ''); },
+  bleGpsConnected: function (name) { return 'Bluetooth GPS connected' + (name ? ': ' + name : ''); },
+  bleGpsFailed: 'Bluetooth GPS: could not connect',
+  bleGpsLost: 'Bluetooth GPS disconnected: using the phone\u2019s GPS',
+  whyBleGpsApp: 'Bluetooth GPS works in the Android app',
   gpsStatusSearching: 'GPS: searching for satellites…',
   gpsStatusNoFix: function (s) { return 'GPS: no fix for ' + s + ' s'; },
   gpsStatusTitle: 'Position quality — tap for details',
