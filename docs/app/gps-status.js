@@ -21,7 +21,7 @@
   let gnss = null;           // the last satellite summary (Android)
   let firstFixMs = null;     // time to first fix, from the satellite engine
   let startedAt = 0;         // when this position session began
-  let plugin = null, listener = null, timer = null, el = null, detail = null;
+  let plugin = null, listener = null, el = null, detail = null;
 
   function noteFix(pos) {
     if (!pos || !pos.coords) return;
@@ -204,7 +204,7 @@
     wasLive = now;
     render();
   }
-  timer = setInterval(tick, 1000);
+  setInterval(tick, 1000);
 
   window.NavAid = window.NavAid || {};
   NavAid.gpsStatus = { noteFix, tick, text: lineText, open: openDetail, _startedAt: () => startedAt };
