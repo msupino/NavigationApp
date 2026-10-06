@@ -200,7 +200,7 @@ function gpsStartWatch(onPos, onErr, title, message) {
     onPos({
       coords: {
         latitude: loc.latitude, longitude: loc.longitude, accuracy: loc.accuracy,
-        altitude: loc.altitude, speed: loc.speed, heading: loc.bearing,
+        altitude: loc.altitude, altitudeAccuracy: loc.altitudeAccuracy, speed: loc.speed, heading: loc.bearing,
       },
       timestamp: loc.time || Date.now(),
     });
@@ -285,6 +285,11 @@ function gpsPublishFollowMeFix(p, hdg, hdgFromCompass) {
 }
 function onLivePosition(pos) {
   if (!gpsLiveOn || !pos || !pos.coords) return;
+  // A connected Bluetooth GPS (ble-gps.js) is the better receiver: while it delivers, the
+  // phone's own fixes are set aside rather than fighting it for the symbol.
+  if (pos.source !== 'ble' && window.NavAid && NavAid.bleGps && NavAid.bleGps.fresh()) return;
+  // Every fix, before the accuracy filter below: the status line shows a coarse fix as coarse.
+  if (window.NavAid && NavAid.gpsStatus) NavAid.gpsStatus.noteFix(pos);
   if (gpsRecording) return;   // recording drives own-ship + recenter; avoid dueling
   const c = pos.coords;
   if (c.accuracy != null && c.accuracy > gpsMaxAccM()) return;
@@ -1013,6 +1018,8 @@ function gpsUpdateReadout() {
 
 function onGpsPosition(pos) {
   if (!gpsRecording || !pos || !pos.coords) return;
+  if (pos.source !== 'ble' && window.NavAid && NavAid.bleGps && NavAid.bleGps.fresh()) return;   // the Bluetooth GPS leads
+  if (window.NavAid && NavAid.gpsStatus) NavAid.gpsStatus.noteFix(pos);   // the status line, before the filter
   const c = pos.coords;
   if (c.accuracy != null && c.accuracy > gpsMaxAccM()) return;       // too imprecise
   const pt = { lat: r5(c.latitude), lng: r5(c.longitude), t: pos.timestamp || Date.now(),
@@ -2406,6 +2413,8 @@ function gpsSendWatchAlert(title, body, speech) {
   // its own return paths (native plugin, service worker, plain constructor) that must not
   // decide whether the pilot hears the alert.
   gpsSpeak(speech);
+  // ...and felt: a vibration reaches a pilot whose phone is on the kneeboard under a headset.
+  if (window.NavAid && NavAid.device) NavAid.device.haptic('alert');
   const nn = _nativeNotify();
   if (nn) {
     const id = _watchAlertId++;
