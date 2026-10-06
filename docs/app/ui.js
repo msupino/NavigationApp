@@ -50,12 +50,15 @@ window.addEventListener('click', (e) => {
   e.stopImmediatePropagation();
   if (typeof showToast === 'function') showToast(b.dataset.why);
 }, true);
-// Dim a hazard layer's Extra-layers row when nothing is in force across the look-ahead. Only a
-// look: the box stays clickable, so a pilot's saved on/off choice is never changed by the data.
-function setLayerIdle(cbId, idle) {
+// Dim a hazard layer's Extra-layers row when nothing is in force across the look-ahead. Dimmed
+// means not usable: the box does not toggle, and a tap says why (setButtonWhy's listener). The
+// pilot's saved on/off choice is left as it is, so the layer shows by itself once something is
+// in force again -- the data never rewrites the choice.
+function setLayerIdle(cbId, idle, why) {
   const cb = document.getElementById(cbId);
   const row = cb && cb.closest('.navtoggle');
   if (row) row.classList.toggle('navtoggle-idle', !!idle);
+  if (cb) setButtonWhy(cb, idle ? (why || 'Nothing in force in the next 24 hours') : null);
 }
 window.setLayerIdle = setLayerIdle;
 function setLayerCount(id, n) {
@@ -7099,7 +7102,7 @@ function refreshNotamListBtn() {
     setButtonWhy(notamListBtn, (have && (shownHere.length || ahead.length)) ? null
       : (S.whyNoNotam || 'No NOTAM in force in the next 24 hours'));
   }
-  if (notams !== null) setLayerIdle('notam-cb', !ahead.length);
+  if (notams !== null) setLayerIdle('notam-cb', !ahead.length, S.whyNoNotam);
   setLayerCount('notam-count', shownHere.length);
   setLayerCount('notam-list-count', shownHere.length);
   // Gray out the NOTAM toggle when the feed has no data (source currently
@@ -8841,7 +8844,7 @@ function refreshSigmetLayerCount() {
   const n = (typeof activeSigmets === 'function' && typeof metAreaLatLngs === 'function')
     ? activeSigmets().filter(metAreaLatLngs).length : 0;
   setLayerCount('sigmet-layer-count', n);
-  setLayerIdle('sigmet-cb', !(typeof sigmetsInLookahead === 'function' && sigmetsInLookahead().length));
+  setLayerIdle('sigmet-cb', !(typeof sigmetsInLookahead === 'function' && sigmetsInLookahead().length), S.whyNoSigmet);
   refreshMetUpdated('sigmet');
 }
 window.refreshSigmetLayerCount = refreshSigmetLayerCount;
@@ -8863,7 +8866,7 @@ function refreshAirmetGroup() {
   // vanish when its data is momentarily absent. The layer just draws nothing while none is in force.
   if (group) group.hidden = false;
   setLayerCount('airmet-count', (typeof activeAirmets === 'function') ? activeAirmets().length : 0);
-  setLayerIdle('airmet-cb', !(typeof airmetsInLookahead === 'function' && airmetsInLookahead().length));
+  setLayerIdle('airmet-cb', !(typeof airmetsInLookahead === 'function' && airmetsInLookahead().length), S.whyNoAirmet);
   if (typeof refreshMetUpdated === 'function') refreshMetUpdated('airmet');
 }
 if (airmetCb) {

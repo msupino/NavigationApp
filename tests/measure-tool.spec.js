@@ -39,12 +39,15 @@ test('live: from the aircraft, with distance, bearing and time at the ground spe
 test('no position: the ruler is dimmed and says why; a position lights it', async ({ page }) => {
   await boot(page);
   await expect(page.locator('#measure-btn')).toHaveAttribute('aria-disabled', 'true');
+  // It looks dimmed, like the edit column's unavailable buttons.
+  expect(await page.evaluate(() => Number(getComputedStyle(document.getElementById('measure-btn')).opacity))).toBeLessThan(0.6);
   await page.locator('#measure-btn').click({ force: true });     // dimmed, still tappable
   expect(await page.evaluate(() => window.measure.on)).toBe(false);
   await expect(page.locator('#toast-stack .toast').filter({ hasText: 'turn on Location' }).first()).toBeAttached();
   await fly(page, 32.18, 34.83);
   await page.evaluate(() => draw());
   await expect(page.locator('#measure-btn')).not.toHaveAttribute('aria-disabled', 'true');
+  expect(await page.evaluate(() => Number(getComputedStyle(document.getElementById('measure-btn')).opacity))).toBe(1);
   await page.locator('#measure-btn').click();
   expect(await page.evaluate(() => measureOn())).toBe(true);
   // The position stops: measuring stops being in force (nothing drawn, the ruler dims), and comes
