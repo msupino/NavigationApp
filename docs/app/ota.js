@@ -302,7 +302,8 @@
       const next = typeof p.getNextBundle === 'function' ? await p.getNextBundle() : null;
       if (next && next.id && next.status !== 'error') {
         const cur = await currentBundle(p);
-        if (!cur || cur.id !== next.id) return { state: 'pending', version: next.version || '' };
+        // Downloaded; the question to restart onto it waits while a position is live.
+        if (!cur || cur.id !== next.id) return { state: 'pending', version: next.version || '', wait: inFlight() ? 'flight' : null };
       }
     } catch (e) { /* no pending bundle */ }
     const manifest = o.manifest || await readManifest();
@@ -311,7 +312,15 @@
     if (running === manifest.version || sameBuild(webVersion(), manifest.version)) {
       return { state: 'current', version: manifest.version };
     }
-    return { state: 'available', version: manifest.version, bytes: Number(manifest.bytes) || 0, manifest };
+    // Why it has not simply downloaded on its own -- said in the row, not left as silence:
+    // the automatic download waits for Wi-Fi, and for the bundled chart to finish copying.
+    let wait = null;
+    if (!(await onUnmeteredConnection())) wait = 'wifi';
+    else {
+      const tiles = window.NavAidNativeTiles;
+      if (tiles && typeof tiles.bundledSeeded === 'function' && !(await tiles.bundledSeeded())) wait = 'charts';
+    }
+    return { state: 'available', version: manifest.version, bytes: Number(manifest.bytes) || 0, manifest, wait };
   }
 
   // The pilot asked for it: on mobile data too (the row asks first), and the packed chart is
@@ -444,14 +453,31 @@
     const ok = await notifyReady({ plugin: p });
     if (ok) clearAttempt();          // this bundle works: let a later one be tried once too
     // Only then look for a newer one, and not while the chart is still being drawn.
-    setTimeout(() => {
-      checkForUpdate({ plugin: p }).then((r) => {
+    let lastCheck = 0;
+    const check = (apkToo) => {
+      lastCheck = Date.now();
+      return checkForUpdate({ plugin: p }).then((r) => {
         // Downloaded now, or earlier and still waiting: offer it (once per version).
         if (r && (r.updated || r.pending)) return offerRestart(r.version || '', { plugin: p });
         // Nothing for the web app: is there a new APK? One question at a time, never both.
-        return checkForNewApk();
+        return apkToo ? checkForNewApk() : null;
       }).catch(() => {});
-    }, 15000);
+    };
+    setTimeout(() => check(true), 15000);
+    // Once at start was all it did: an app started away from Wi-Fi -- the normal case before a
+    // flight -- never looked again until the next restart. Look again when Wi-Fi comes back,
+    // and when the app comes back to the screen after a while.
+    const net = window.Capacitor && Capacitor.Plugins && Capacitor.Plugins.Network;
+    if (net && typeof net.addListener === 'function') {
+      try {
+        net.addListener('networkStatusChange', (s) => {
+          if (s && s.connected && s.connectionType === 'wifi' && Date.now() - lastCheck > 60000) check(false);
+        });
+      } catch (e) { /* no listener: the checks below still run */ }
+    }
+    document.addEventListener('visibilitychange', () => {
+      if (!document.hidden && Date.now() - lastCheck > 30 * 60000) check(false);
+    });
   }
 
   if (typeof document !== 'undefined') {
