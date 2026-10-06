@@ -8,6 +8,12 @@
 // was nothing lit to explain the crosshair and nothing to press to leave.
 const { test, expect } = require('./_setup');
 
+// The new-user route intro is off by default (featureRouteIntro); these specs are about it,
+// so they switch it on before the app boots.
+test.beforeEach(async ({ page }) => {
+  await page.addInitScript(() => { window.__navaidTune = Object.assign(window.__navaidTune || {}, { featureRouteIntro: true }); });
+});
+
 async function fresh(page) {
   await page.addInitScript(() => {
     try { localStorage.removeItem('navaid.emptyHintSeen'); } catch (e) { /* */ }
