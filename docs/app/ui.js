@@ -58,7 +58,7 @@ function setLayerIdle(cbId, idle, why) {
   const cb = document.getElementById(cbId);
   const row = cb && cb.closest('.navtoggle');
   if (row) row.classList.toggle('navtoggle-idle', !!idle);
-  if (cb) setButtonWhy(cb, idle ? (why || S.whyNothingInForce || 'Nothing in force in the next 24 hours') : null);
+  if (cb) setButtonWhy(cb, idle ? (why || 'Nothing in force in the next 24 hours') : null);
 }
 window.setLayerIdle = setLayerIdle;
 function setLayerCount(id, n) {
