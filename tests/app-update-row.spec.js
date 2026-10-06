@@ -121,3 +121,15 @@ test('an update already downloaded and waiting is not downloaded again', async (
   await page.evaluate(() => NavAid.appUpdate.refresh());
   await expect(row).toContainText('installs the next time');
 });
+
+// The row says why the automatic download has not happened, instead of leaving it to silence.
+test('says it is waiting for Wi-Fi, and that a downloaded update waits for the position to stop', async ({ page }) => {
+  const row = await boot(page, { manifest: MANIFEST, network: 'cellular', running: '1.0-0000000' });
+  await expect(row).toContainText('downloads by itself on Wi-Fi');
+  await expect(row.locator('.app-update-btn')).toHaveText('Download now');
+  // Downloaded, with Location on: the restart question waits, and the row says so.
+  await page.evaluate(() => { window.__ota.next = { id: 'dl', version: '1.0-abcdef1', status: 'pending' };
+    new Function('gpsLiveOn = true; gpsFollow = false')(); });
+  await page.evaluate(() => NavAid.appUpdate.refresh());
+  await expect(row).toContainText('restart is offered when your position stops showing');
+});

@@ -366,9 +366,14 @@ const appUpdate = (function () {
     else if (st.state === 'current') { line = S.appUpdateCurrent || 'Up to date'; action = 'check'; }
     else if (st.state === 'available') {
       line = typeof S.appUpdateAvailable === 'function' ? S.appUpdateAvailable(mb(st.bytes) ? ltr(mb(st.bytes) + ' MB') : '') : 'Update available';
+      // Why it is not downloading by itself: the button below does it now anyway.
+      if (st.wait === 'wifi') line += ' \u2014 ' + (S.appUpdateWaitWifi || 'downloads by itself on Wi-Fi');
+      else if (st.wait === 'charts') line += ' \u2014 ' + (S.appUpdateWaitCharts || 'after the charts finish copying');
       action = 'download';
     } else if (st.state === 'pending') {
-      line = S.appUpdatePending || 'Update ready: installs the next time NavAid starts';
+      line = st.wait === 'flight'
+        ? (S.appUpdatePendingFlight || 'Update ready: restart is offered when your position stops showing, or at the next start')
+        : (S.appUpdatePending || 'Update ready: installs the next time NavAid starts');
       action = 'restart';
     }
     else { line = S.appUpdateUnknown || 'Could not check for updates'; action = 'check'; }
