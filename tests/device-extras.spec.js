@@ -162,3 +162,10 @@ test('the four default-on extras are on, the other four off, without a gist', as
   await expect(page.locator('#brightness-row')).not.toHaveAttribute('hidden', '');
   await expect(page.locator('#ble-gps-btn')).toBeHidden();
 });
+
+// The alert is read on screen too: a bubble at the bottom with its text, while the app is in view.
+test('an in-flight alert shows its text in a bubble as well', async ({ page }) => {
+  await boot(page);
+  await page.evaluate(() => gpsSendWatchAlert('Next leg', 'BAZRA 095° 2500 ft'));
+  await expect(page.locator('#toast-stack .toast').filter({ hasText: 'Next leg: BAZRA 095° 2500 ft' }).first()).toBeAttached();
+});

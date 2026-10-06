@@ -2442,6 +2442,12 @@ function gpsSendWatchAlert(title, body, speech) {
   gpsSpeak(speech);
   // ...and felt: a vibration reaches a pilot whose phone is on the kneeboard under a headset.
   if (window.NavAid && NavAid.device) NavAid.device.haptic('alert');
+  // ...and read, in the app: a bubble at the bottom with the same words, so an alert spoken over
+  // engine noise (or with the voice off) is on screen while the app is. The notification below
+  // still goes out -- it is what the lock screen and a paired watch show.
+  if (typeof showToast === 'function' && !(typeof document !== 'undefined' && document.hidden)) {
+    showToast(body ? title + ': ' + body : title, { warn: true });
+  }
   const nn = _nativeNotify();
   if (nn) {
     const id = _watchAlertId++;
