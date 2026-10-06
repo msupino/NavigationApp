@@ -1443,6 +1443,22 @@ function measureLabelBox(show) {
   el.hidden = false;
   return el;
 }
+// Where the label hangs: the end point b while it is on screen, else the last on-screen point of
+// the line a->b (the segment clipped to the w x h screen, inset by m). null if none of it shows.
+function measureLabelAnchor(a, b, w, h, m) {
+  const inside = (p) => p.x >= m && p.x <= w - m && p.y >= m && p.y <= h - m;
+  if (inside(b)) return { x: b.x, y: b.y };
+  const dx = b.x - a.x, dy = b.y - a.y;
+  let t0 = 0, t1 = 1;
+  for (const [p, q] of [[-dx, a.x - m], [dx, w - m - a.x], [-dy, a.y - m], [dy, h - m - a.y]]) {
+    if (p === 0) { if (q < 0) return null; continue; }
+    const r = q / p;
+    if (p < 0) t0 = Math.max(t0, r); else t1 = Math.min(t1, r);
+    if (t0 > t1) return null;
+  }
+  return { x: a.x + dx * t1, y: a.y + dy * t1 };
+}
+window.measureLabelAnchor = measureLabelAnchor;   // tests
 function drawMeasure() {
   const m = window.measure;
   const onScreen = octx.canvas === overlay;
@@ -1484,9 +1500,14 @@ function drawMeasure() {
     .map(r => ({ l: r.left - cr.left - 6, t: r.top - cr.top - 6, r: r.right - cr.left + 6, b: r.bottom - cr.top + 6 }));
   const fits = (x, y) => x >= 4 && y >= 4 && x + w <= cr.width - 4 && y + h <= cr.height - 4
     && !blocks.some(k => x < k.r && x + w > k.l && y < k.b && y + h > k.t);
+  // Beside the point -- or, with the point off screen, beside where the line leaves the screen,
+  // so the label stays on the line rather than pinned to an edge far from it. No line on screen:
+  // no label.
+  const at = measureLabelAnchor(a, b, cr.width, cr.height, 8);
+  if (!at) { octx.restore(); return; }
   const right = b.x >= a.x, down = b.y >= a.y;
   const tries = [[right, down], [right, !down], [!right, down], [!right, !down]]
-    .map(([rt, dn]) => [rt ? b.x + 12 : b.x - 12 - w, dn ? b.y + 10 : b.y - 10 - h]);
+    .map(([rt, dn]) => [rt ? at.x + 12 : at.x - 12 - w, dn ? at.y + 10 : at.y - 10 - h]);
   const pick = tries.find(([tx, ty]) => fits(tx, ty)) || tries[0];
   const x = Math.max(4, Math.min(cr.width - w - 4, pick[0])), y = Math.max(4, Math.min(cr.height - h - 4, pick[1]));
   if (onScreen) {

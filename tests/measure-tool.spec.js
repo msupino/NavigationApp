@@ -83,3 +83,37 @@ test('zoomed out, the measure label sits above the chart symbols', async ({ page
   await page.evaluate(() => measureToggle(false));
   await expect(page.locator('#measure-label')).toBeHidden();
 });
+
+// The end point off screen: the label stays on the line, where it leaves the screen, instead of
+// pinned to an edge away from it. With none of the line on screen there is no label.
+test('with the point off screen, the label sits where the line leaves the screen', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('?lang=en&nogist');
+  await page.waitForFunction(() => typeof measureToggle === 'function' && NavAid.disclaimerDone);
+  const r = await page.evaluate(() => {
+    map.setView([32.0, 34.9], 10, { animate: false });
+    measureToggle(true);
+    window.measure.from = L.latLng(32.0, 34.9);           // centre of the screen
+    window.measure.to = L.latLng(32.6, 35.6);             // far off to the north-east
+    draw();
+    const el = document.getElementById('measure-label');
+    const lb = el.getBoundingClientRect();
+    const a = map.latLngToContainerPoint(window.measure.from), b = map.latLngToContainerPoint(window.measure.to);
+    // Distance from the label box to the line a->b, sampled along the on-screen part.
+    let best = Infinity;
+    for (let i = 0; i <= 400; i++) {
+      const t = i / 400, x = a.x + (b.x - a.x) * t, y = a.y + (b.y - a.y) * t;
+      if (x < 0 || y < 0 || x > innerWidth || y > innerHeight) continue;
+      const dx = Math.max(lb.left - x, 0, x - lb.right), dy = Math.max(lb.top - y, 0, y - lb.bottom);
+      best = Math.min(best, Math.hypot(dx, dy));
+    }
+    const shown = { visible: !el.hidden, inside: lb.left >= 0 && lb.top >= 0 && lb.right <= innerWidth && lb.bottom <= innerHeight, gap: Math.round(best) };
+    // Now none of the line on screen.
+    map.setView([31.0, 34.6], 12, { animate: false }); draw();
+    return { ...shown, hiddenOff: el.hidden };
+  });
+  expect(r.visible).toBe(true);
+  expect(r.inside).toBe(true);
+  expect(r.gap).toBeLessThan(30);
+  expect(r.hiddenOff).toBe(true);
+});
