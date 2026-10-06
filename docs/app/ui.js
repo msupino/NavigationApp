@@ -6951,20 +6951,30 @@ document.addEventListener('visibilitychange', () => {
 // again: chart tiles stay blank squares, and NOTAM / SIGMET / AIRMET wait for the 10-minute
 // poll. When the phone says the connection is back, the tiles that failed are reloaded and the
 // feeds re-polled at once, and one line says so.
+// Only a tile that failed while the phone was offline counts: a tile that is simply not there
+// (open sea, the edge of a chart) fails online too, and reloading its whole layer on every
+// reconnect would flash the chart for nothing.
 function noteTileErrors(layer) {
   if (!(layer instanceof L.GridLayer) || layer._navaidErrWatch) return;
   layer._navaidErrWatch = true;
-  layer.on('tileerror', () => { layer._navaidTileErr = true; });
+  layer.on('tileerror', () => { if (navigator.onLine === false) layer._navaidTileErr = true; });
 }
 map.eachLayer(noteTileErrors);
 map.on('layeradd', e => noteTileErrors(e.layer));
+// A phone's link flaps -- a second without signal in a turn, then back. The feeds are re-polled
+// on every return (that is cheap), but the message is kept for a real outage or a chart that
+// actually had to reload, so it does not pop up every few minutes in flight.
+let offlineSince = 0;
+window.addEventListener('offline', () => { if (!offlineSince) offlineSince = Date.now(); });
 function refreshAfterReconnect() {
   let tiles = 0;
   map.eachLayer(l => {
     if (l._navaidTileErr && typeof l.redraw === 'function') { l._navaidTileErr = false; l.redraw(); tiles++; }
   });
   refreshHazardFeeds();
-  if (typeof showToast === 'function') showToast(S.backOnline || 'Back online: map, NOTAMs and weather updated');
+  const longGone = offlineSince && Date.now() - offlineSince >= 15000;
+  offlineSince = 0;
+  if ((tiles || longGone) && typeof showToast === 'function') showToast(S.backOnline || 'Back online: map, NOTAMs and weather updated');
   return tiles;
 }
 window.refreshAfterReconnect = refreshAfterReconnect;   // tests
