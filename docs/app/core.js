@@ -3418,7 +3418,6 @@ var currentRouteLibraryId = null;
 var showDrift = true;       // 10-degree drift reference lines
 var showWind = false;       // wind effect: inputs + arrows + readout — opt-in
 var sigmets = null;         // null = not loaded; [] or populated once fetched
-var sigmetMeta = null;      // { generatedAt } of the loaded SIGMET file
 var showNotam = false;      // NOTAM overlay — opt-in
 var notams = null;          // null = not loaded; [] or populated once fetched
 var notamMeta = null;       // { generatedAt } of the loaded NOTAM file
