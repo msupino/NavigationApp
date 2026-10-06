@@ -188,3 +188,28 @@ test('with both ends in view the label sits at the middle of the line', async ({
   expect(r.gapToMid).toBeLessThan(20);           // its corner is at the line's midpoint
   expect(r.toEnd).toBeGreaterThan(r.len / 4);    // not at the end dot
 });
+
+// A reload (refresh, APK restart, update) keeps the measurement on screen, without the hint.
+test('the measurement survives a reload', async ({ page }) => {
+  await page.goto('?lang=en&nogist');
+  await page.waitForFunction(() => typeof measureToggle === 'function' && NavAid.disclaimerDone);
+  await page.evaluate(() => {
+    map.setView([32.0, 34.9], 10, { animate: false });
+    measureToggle(true);
+    measureTap(L.latLng(31.9, 34.8));
+    measureTap(L.latLng(32.1, 35.0));
+  });
+  const before = await page.evaluate(() => window.__measureLabel);
+  expect(before).toMatch(/NM/);
+  await page.reload();
+  await page.waitForFunction(() => typeof measureToggle === 'function' && NavAid.disclaimerDone);
+  const r = await page.evaluate(() => ({ on: measureOn(), label: window.__measureLabel, pressed: document.getElementById('measure-btn').getAttribute('aria-pressed'),
+    shown: !document.getElementById('measure-label')?.hidden }));
+  expect(r).toEqual({ on: true, label: before, pressed: 'true', shown: true });
+  await expect(page.locator('#toast-stack .toast').filter({ hasText: 'Tap the start' })).toHaveCount(0);
+  // Turned off, it stays off after the next reload.
+  await page.evaluate(() => measureToggle(false));
+  await page.reload();
+  await page.waitForFunction(() => typeof measureToggle === 'function');
+  expect(await page.evaluate(() => measureOn())).toBe(false);
+});

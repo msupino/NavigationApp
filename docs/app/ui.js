@@ -1209,14 +1209,26 @@ function measureLiveFrom() {
   return null;
 }
 window.measureLiveFrom = measureLiveFrom;
-function measureToggle(on) {
+// The measurement survives a reload (an APK restart, an update, a refresh): what is on screen
+// when the app goes is on screen when it comes back. Device-local.
+const MEASURE_KEY = 'navaid.measure';
+function measureSave() {
+  const m = window.measure;
+  const pt = (p) => (p ? { lat: p.lat, lng: p.lng, name: p.name || '' } : null);
+  try {
+    if (m.on) localStorage.setItem(MEASURE_KEY, JSON.stringify({ on: true, from: pt(m.from), to: pt(m.to) }));
+    else localStorage.removeItem(MEASURE_KEY);
+  } catch (e) { /* storage off: the measurement just does not come back */ }
+}
+function measureToggle(on, quiet) {
   const m = window.measure;
   m.on = typeof on === 'boolean' ? on : !m.on;
   m.from = null; m.to = null;
+  measureSave();
   document.body.classList.toggle('measuring', m.on);
   const b = document.getElementById('measure-btn');
   if (b) { b.classList.toggle('measure-on', m.on); b.setAttribute('aria-pressed', String(m.on)); }
-  if (m.on && typeof showToast === 'function') {
+  if (m.on && !quiet && typeof showToast === 'function') {
     showToast(measureLiveFrom() ? (S.measureHintLive || 'Tap a point: distance and time from the aircraft')
       : (S.measureHint || 'Tap the start, then the end'));
   }
@@ -1230,9 +1242,25 @@ function measureTap(latlng) {
   if (measureLiveFrom()) { m.from = null; m.to = p; }
   else if (!m.from || m.to) { m.from = p; m.to = null; }
   else m.to = p;
+  measureSave();
   if (typeof draw === 'function') draw();
 }
 window.measureTap = measureTap;
+// After the page has loaded, not while ui.js is still being read: a draw from here reached
+// code declared further down and threw, which stopped the rest of the file.
+function measureRestore() {
+  let saved = null;
+  try { saved = JSON.parse(localStorage.getItem(MEASURE_KEY) || 'null'); } catch (e) { saved = null; }
+  if (!saved || !saved.on) return;
+  const ok = (p) => p && Number.isFinite(p.lat) && Number.isFinite(p.lng) ? { lat: p.lat, lng: p.lng, name: String(p.name || '') } : null;
+  measureToggle(true, true);                     // as it was: no "tap a point" hint again
+  window.measure.from = ok(saved.from);
+  window.measure.to = ok(saved.to);
+  measureSave();
+  if (typeof draw === 'function') draw();
+}
+if (document.readyState === 'complete') setTimeout(measureRestore, 0);
+else window.addEventListener('load', () => setTimeout(measureRestore, 0));
 const editLockBtn = document.getElementById('edit-lock');
 // The button shows whether the route CAN be moved, not merely whether the pilot pressed it.
 // Starting a recording or Location locks the route on its own, and a button still showing an
