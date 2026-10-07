@@ -57,6 +57,7 @@ test('the grid request covers many points over Israel in m/s', async ({ page }) 
   await page.addInitScript(() => { try { localStorage.setItem('navaid.sec.weather', '1'); } catch (e) {} });
   await page.goto('?lang=en');
   await page.waitForFunction(() => typeof L !== 'undefined' && typeof L.velocityLayer === 'function', null, { timeout: 20000 });
+  await page.evaluate(() => map.setView([31.5, 35.0], 7, { animate: false }));   // all of Israel in view
   await loadWind(page);
   await expect.poll(() => url).toMatch(/wind_speed_\d+hPa/);
   const lats = new URLSearchParams(url.split('?')[1]).get('latitude').split(',');
@@ -315,4 +316,33 @@ test('unchecking mid-fetch leaves no orphan wind layer', async ({ page }) => {
   await page.waitForTimeout(1500);                    // let the stale fetch finish
   await expect(page.locator('.leaflet-windfield-pane canvas')).toHaveCount(0);
   await expect(page.locator('#windfield-cb')).not.toBeChecked();
+});
+
+// Open-Meteo is global, so the grid follows the map: over Greece it asks for Greece, and the
+// spacing grows with the area so a region costs about the same number of points as a valley.
+test('the grid follows the map anywhere, with spacing for the zoom', async ({ page }) => {
+  const urls = [];
+  await page.route(OM_RE, r => { urls.push(r.request().url()); return r.fulfill({ status: 200, contentType: 'application/json', body: gridBody(r.request().url()) }); });
+  await page.addInitScript(() => { try { localStorage.setItem('navaid.sec.weather', '1'); } catch (e) {} });
+  await page.goto('?lang=en&nogist');
+  await page.waitForFunction(() => typeof L !== 'undefined' && typeof L.velocityLayer === 'function', null, { timeout: 20000 });
+  await page.evaluate(() => map.setView([38.0, 23.7], 7, { animate: false }));   // Athens
+  await loadWind(page);
+  await expect.poll(() => urls.length).toBeGreaterThan(0);
+  const pts = (u) => { const q = new URLSearchParams(u.split('?')[1]);
+    return q.get('latitude').split(',').map(Number).map((la, i) => [la, Number(q.get('longitude').split(',')[i])]); };
+  const g = pts(urls[0]);
+  expect(g.some(([la, lo]) => Math.abs(la - 38) < 1 && Math.abs(lo - 23.7) < 1)).toBe(true);   // over Greece
+  const mean = (k) => g.reduce((t, p) => t + p[k], 0) / g.length;
+  expect(Math.abs(mean(0) - 38)).toBeLessThan(2);                                                // centred on Athens,
+  expect(Math.abs(mean(1) - 23.7)).toBeLessThan(2);                                              // not the Israel box
+  expect(g.length).toBeLessThanOrEqual(260);
+  // Zoomed far out over Europe: still about the same number of points, wider apart.
+  const before = urls.length;
+  await page.evaluate(() => map.setView([48, 12], 4, { animate: false }));
+  await expect.poll(() => urls.length, { timeout: 5000 }).toBeGreaterThan(before);
+  const wide = pts(urls[urls.length - 1]);
+  expect(wide.length).toBeLessThanOrEqual(260);
+  const lats = [...new Set(wide.map(p => p[0]))].sort((a, b) => a - b);
+  expect(lats[1] - lats[0]).toBeGreaterThanOrEqual(1);                                           // a degree or more apart
 });
