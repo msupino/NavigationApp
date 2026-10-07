@@ -64,7 +64,7 @@ test('an out-and-back lights the picker; clearing the map dims it and resets it'
   const cleared = await picker(page);
   expect(cleared.disabled).toBe(true);        // nothing to divide
   expect(cleared.dimmed).toBe(true);
-  expect(cleared.value).toBe('both');         // not the deleted route's 'back'
+  expect(cleared.value).toBe('na');           // "Not relevant" on an empty map, not the deleted route's 'back'
   expect(cleared.filter).toBe('both');
   expect(await page.evaluate(() => state.waypoints.length)).toBe(0);
 });
@@ -78,7 +78,7 @@ test('the next route that has a turn starts on both, not the cleared one\'s filt
     sel.dispatchEvent(new Event('change', { bubbles: true }));
   });
   await page.evaluate(async () => { window.appConfirm = () => true; await document.getElementById('clear').onclick(); });
-  expect((await picker(page)).value).toBe('both');
+  expect((await picker(page)).value).toBe('na');     // empty map: "Not relevant"
   // A new out-and-back starts on 'both': Clear map put the stored choice back too, so the
   // deleted route's filter cannot follow the pilot into the next one.
   await page.evaluate((wps) => { state.waypoints = wps.map(w => ({ ...w })); syncLegs(); }, OUT_AND_BACK);
