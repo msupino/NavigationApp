@@ -6402,7 +6402,7 @@ if (windDepartSlider) {
   // about windFieldMaxPoints points (0.25° close in, a degree or two over a region), snapped to
   // that spacing so a small pan asks for the same points. windFieldFollowMap off brings back
   // the fixed box over Israel (windFieldWest/East/North/South).
-  const NICE_STEPS = [0.25, 0.5, 1, 1.5, 2, 2.5, 5, 10];
+  const NICE_STEPS = [0.25, 0.5, 1, 1.5, 2, 2.5, 5, 10, 15, 20];
   function viewGridBounds() {
     const v = map.getBounds().pad(0.3);
     const minD = tn('windFieldGridDeg', 0.25), maxPts = tn('windFieldMaxPoints', 200);
@@ -6697,6 +6697,7 @@ if (windDepartSlider) {
       applyTimeLabel();
     }
     if (layer) layer._navaidGrid = store.g;
+    requestAnimationFrame(clipToWorld);
   }
   // The view moved: a field fetched for another area, or far too coarse or fine for this zoom,
   // is fetched again for what is in view now -- after the pan settles, not on every drag frame.
@@ -6733,6 +6734,7 @@ if (windDepartSlider) {
     clearTimeout(rotSettle);
     rotSettle = setTimeout(restartField, 150);
   }
+  map.on('moveend zoomend rotate resize', () => clipToWorld());
   map.on('moveend', onWindViewChange);
   map.on('zoomend', onWindViewChange);
   map.on('rotate', onRotateSettle);
@@ -6743,6 +6745,17 @@ if (windDepartSlider) {
   function velocityCanvas() {
     return (layer && layer._canvasLayer && layer._canvasLayer._canvas) || null;
   }
+  // Only over the map. Zoomed out, the world ends at 180° E/W (it does not repeat) and the
+  // field kept drawing across the grey beyond it. The canvas sits at the container origin, so
+  // the world's four corners in container pixels -- rotation included -- are its clip.
+  function clipToWorld() {
+    const c = velocityCanvas();
+    if (!c) return;
+    const pts = [[85.05, -180], [85.05, 180], [-85.05, 180], [-85.05, -180]]
+      .map(ll => map.latLngToContainerPoint(ll));
+    c.style.clipPath = 'polygon(' + pts.map(p => Math.round(p.x) + 'px ' + Math.round(p.y) + 'px').join(', ') + ')';
+  }
+  window.windFieldClipToWorld = clipToWorld;   // tests
   function applyOpacity() {
     const c = velocityCanvas();
     if (c && opacity) c.style.opacity = String(opacity.value);

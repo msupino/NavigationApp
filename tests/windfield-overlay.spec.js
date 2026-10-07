@@ -374,3 +374,24 @@ test('zooming out after switching it on draws the new, wider grid', async ({ pag
   expect(after.la2).toBeLessThanOrEqual(v[1]);
   expect(after.la1).toBeGreaterThanOrEqual(v[3]);
 });
+
+// Zoomed out to the whole world, the field stays on the map: clipped at 180° E/W, not drawn
+// across the grey beyond the world's edge.
+test('the field is clipped to the world at low zoom', async ({ page }) => {
+  await boot(page);
+  await page.setViewportSize({ width: 1600, height: 800 });
+  await page.evaluate(() => map.setView([20, 0], 2, { animate: false }));
+  await loadWind(page);
+  await expect(page.locator('.leaflet-windfield-pane canvas')).toHaveCount(1, { timeout: 10000 });
+  await page.waitForTimeout(300);
+  const r = await page.evaluate(() => {
+    const c = document.querySelector('.leaflet-windfield-pane canvas');
+    const west = map.latLngToContainerPoint([0, -180]).x, east = map.latLngToContainerPoint([0, 180]).x;
+    const xs = (c.style.clipPath.match(/-?\d+px/g) || []).filter((_, i) => i % 2 === 0).map(v => parseInt(v, 10));
+    return { clip: c.style.clipPath, west: Math.round(west), east: Math.round(east), minX: Math.min(...xs), maxX: Math.max(...xs), width: innerWidth };
+  });
+  expect(r.clip).toMatch(/^polygon\(/);
+  expect(Math.abs(r.minX - r.west)).toBeLessThanOrEqual(1);
+  expect(Math.abs(r.maxX - r.east)).toBeLessThanOrEqual(1);
+  expect(r.east - r.west).toBeLessThan(r.width);      // at zoom 2 the world is narrower than the screen
+});
