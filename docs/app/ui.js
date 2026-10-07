@@ -6397,11 +6397,30 @@ if (windDepartSlider) {
   function level() {
     return (typeof nearestPressureLevelHpa === 'function') ? nearestPressureLevelHpa(altFt()) : 900;
   }
-  // Grid over Israel (+margin), tunable. leaflet-velocity scans la1(N)→S, lo1(W)→E.
+  // The grid. leaflet-velocity scans la1(N)→S, lo1(W)→E. Open-Meteo answers anywhere on earth,
+  // so the grid follows the map: the area in view plus a margin, its spacing chosen to keep
+  // about windFieldMaxPoints points (0.25° close in, a degree or two over a region), snapped to
+  // that spacing so a small pan asks for the same points. windFieldFollowMap off brings back
+  // the fixed box over Israel (windFieldWest/East/North/South).
+  const NICE_STEPS = [0.25, 0.5, 1, 1.5, 2, 2.5, 5, 10, 15, 20];
+  function viewGridBounds() {
+    const v = map.getBounds().pad(0.3);
+    const minD = tn('windFieldGridDeg', 0.25), maxPts = tn('windFieldMaxPoints', 200);
+    let west = Math.max(-180, v.getWest()), east = Math.min(180, v.getEast());
+    let south = Math.max(-80, v.getSouth()), north = Math.min(80, v.getNorth());
+    const want = Math.sqrt(Math.max(0.01, (east - west) * (north - south)) / maxPts);
+    const d = NICE_STEPS.find(x => x >= Math.max(minD, want)) || NICE_STEPS[NICE_STEPS.length - 1];
+    west = Math.max(-180, Math.floor(west / d) * d); east = Math.min(180, Math.ceil(east / d) * d);
+    south = Math.max(-80, Math.floor(south / d) * d); north = Math.min(80, Math.ceil(north / d) * d);
+    return { west, east, north, south, d };
+  }
   function gridBounds() {
-    return { west: tn('windFieldWest', 34.2), east: tn('windFieldEast', 35.95),
-             north: tn('windFieldNorth', 33.45), south: tn('windFieldSouth', 29.45),
-             d: tn('windFieldGridDeg', 0.25) };
+    if (typeof tune === 'function' && tune('windFieldFollowMap') === false) {
+      return { west: tn('windFieldWest', 34.2), east: tn('windFieldEast', 35.95),
+               north: tn('windFieldNorth', 33.45), south: tn('windFieldSouth', 29.45),
+               d: tn('windFieldGridDeg', 0.25) };
+    }
+    return viewGridBounds();
   }
   let layer = null;
   let busy = false;
@@ -6409,8 +6428,7 @@ if (windDepartSlider) {
   let enableGen = 0;            // bumped on every toggle: a request belongs to one switch-on
   let store = null;     // { g, times, sp[k][], di[k][], baseIdx } — all 48 fetched hours
 
-  function gridPoints() {
-    const b = gridBounds();
+  function gridPoints(b) {
     const nx = Math.round((b.east - b.west) / b.d) + 1;
     const ny = Math.round((b.north - b.south) / b.d) + 1;
     const lats = [], lngs = [];
@@ -6418,11 +6436,12 @@ if (windDepartSlider) {
       const lat = b.north - j * b.d;
       for (let i = 0; i < nx; i++) { lats.push(lat); lngs.push(b.west + i * b.d); }
     }
-    return { nx, ny, lats, lngs };
+    return { nx, ny, lats, lngs, b };
   }
 
+  // The header describes the grid the data was FETCHED on, not the one the view would ask for now.
   function velocityData(g, U, V) {
-    const b = gridBounds();
+    const b = g.b;
     const base = {
       parameterUnit: 'm.s-1', parameterCategory: 2,
       lo1: b.west, la1: b.north, lo2: b.east, la2: b.south,
@@ -6445,21 +6464,18 @@ if (windDepartSlider) {
   function frameData() {
     const idx = absIndex(), g = store.g, n = g.lats.length;
     const U = new Array(n).fill(0), V = new Array(n).fill(0);
-    // Rotate the wind vectors by the map bearing. leaflet-velocity draws
-    // (u, -v) in screen space assuming north-up, so on a rotated map the flow
-    // would otherwise point the wrong way. Positions are already bearing-aware
-    // (the canvas lives in a non-rotating pane, plotted via
-    // latLngToContainerPoint) — only the vectors need this pre-rotation.
-    const th = (typeof map !== 'undefined' && map.getBearing) ? (map.getBearing() || 0) * Math.PI / 180 : 0;
-    const cb = Math.cos(th), sb = Math.sin(th);
+    // Geographic U/V, never turned by the bearing: the library inverts screen pixels with
+    // containerPointToLatLng and builds its u/v->screen Jacobian through
+    // latLngToContainerPoint, both bearing-aware under leaflet-rotate. Turning U/V as well
+    // rotated a field built at a bearing twice (track-up, or a new grid fetched while turned).
     for (let k = 0; k < n; k++) {
       const spd = store.sp[k] && store.sp[k][idx], dir = store.di[k] && store.di[k][idx];
       if (!Number.isFinite(spd) || !Number.isFinite(dir)) continue;
       const r = dir * Math.PI / 180;                  // met direction = FROM
       const u = -spd * Math.sin(r);                   // eastward component
       const v = -spd * Math.cos(r);                   // northward component
-      U[k] = u * cb + v * sb;
-      V[k] = v * cb - u * sb;
+      U[k] = u;
+      V[k] = v;
     }
     return velocityData(g, U, V);
   }
@@ -6493,7 +6509,7 @@ if (windDepartSlider) {
     const gen = enableGen;
     const mine = () => gen === enableGen && lv === level();
     try {
-      const g = gridPoints();
+      const g = gridPoints(gridBounds());
       // Fetch a few forecast days of hourly samples so the slider can scrub
       // forward from the current hour (tunable horizon).
       const url = 'https://api.open-meteo.com/v1/forecast' +
@@ -6669,10 +6685,38 @@ if (windDepartSlider) {
       buildLayer();
       applyTimeLabel();
       if (statusEl) { statusEl.textContent = ''; statusEl.style.display = 'none'; }
+    } else if (layer._navaidGrid !== store.g) {
+      // A new grid (the view moved on, or a new altitude) into the layer already on the map.
+      // Building only when there was no layer left the FIRST grid drawn for good: zoomed out
+      // after switching it on, the field stayed a band the size of the first view.
+      if (typeof layer.setData === 'function') layer.setData(frameData());
+      else { removeLayer(); buildLayer(); }
+      applyTimeLabel();
     }
+    if (layer) layer._navaidGrid = store.g;
+    requestAnimationFrame(clipToWorld);
   }
+  // The view moved: a field fetched for another area, or far too coarse or fine for this zoom,
+  // is fetched again for what is in view now -- after the pan settles, not on every drag frame.
+  let viewRefetch = null;
+  function needsNewGrid() {
+    if (!store || !store.g || !store.g.b || (typeof tune === 'function' && tune('windFieldFollowMap') === false)) return false;
+    const have = store.g.b, v = map.getBounds(), want = viewGridBounds();
+    const inside = v.getWest() >= have.west && v.getEast() <= have.east && v.getSouth() >= have.south && v.getNorth() <= have.north;
+    return !inside || want.d < have.d / 1.9;
+  }
+  function maybeRefetchForView() {
+    clearTimeout(viewRefetch);
+    viewRefetch = setTimeout(() => {
+      if (!cb.checked || !needsNewGrid()) return;
+      if (busy) { refetchPending = true; return; }
+      addLayer();
+    }, 700);
+  }
+  window.windFieldNeedsNewGrid = () => needsNewGrid();   // tests
   let rotStatePending = false;
   function onWindViewChange() {
+    maybeRefetchForView();
     if (busy || rotStatePending) return;   // mid-fetch: addLayer will settle state on completion
     rotStatePending = true;
     requestAnimationFrame(() => { rotStatePending = false; applyRotationState(); });
@@ -6687,6 +6731,7 @@ if (windDepartSlider) {
     clearTimeout(rotSettle);
     rotSettle = setTimeout(restartField, 150);
   }
+  map.on('moveend zoomend rotate resize', () => clipToWorld());
   map.on('moveend', onWindViewChange);
   map.on('zoomend', onWindViewChange);
   map.on('rotate', onRotateSettle);
@@ -6697,6 +6742,17 @@ if (windDepartSlider) {
   function velocityCanvas() {
     return (layer && layer._canvasLayer && layer._canvasLayer._canvas) || null;
   }
+  // Only over the map. Zoomed out, the world ends at 180° E/W (it does not repeat) and the
+  // field kept drawing across the grey beyond it. The canvas sits at the container origin, so
+  // the world's four corners in container pixels -- rotation included -- are its clip.
+  function clipToWorld() {
+    const c = velocityCanvas();
+    if (!c) return;
+    const pts = [[85.05, -180], [85.05, 180], [-85.05, 180], [-85.05, -180]]
+      .map(ll => map.latLngToContainerPoint(ll));
+    c.style.clipPath = 'polygon(' + pts.map(p => Math.round(p.x) + 'px ' + Math.round(p.y) + 'px').join(', ') + ')';
+  }
+  window.windFieldClipToWorld = clipToWorld;   // tests
   function applyOpacity() {
     const c = velocityCanvas();
     if (c && opacity) c.style.opacity = String(opacity.value);
