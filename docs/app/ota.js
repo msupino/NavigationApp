@@ -454,14 +454,21 @@
     if (ok) clearAttempt();          // this bundle works: let a later one be tried once too
     // Only then look for a newer one, and not while the chart is still being drawn.
     let lastCheck = 0;
+    let checking = null;               // one check at a time; a second request joins it
     const check = (apkToo) => {
+      if (checking) return checking;
       lastCheck = Date.now();
-      return checkForUpdate({ plugin: p }).then((r) => {
+      checking = checkForUpdate({ plugin: p }).then((r) => {
         // Downloaded now, or earlier and still waiting: offer it (once per version).
         if (r && (r.updated || r.pending)) return offerRestart(r.version || '', { plugin: p });
         // Nothing for the web app: is there a new APK? One question at a time, never both.
         return apkToo ? checkForNewApk() : null;
-      }).catch(() => {});
+      }).catch(() => {}).finally(() => {
+        checking = null;
+        // Settings -> App version shows what it is waiting for: say it again now.
+        if (window.NavAid && NavAid.appUpdate && typeof NavAid.appUpdate.refresh === 'function') NavAid.appUpdate.refresh();
+      });
+      return checking;
     };
     setTimeout(() => check(true), 15000);
     // Once at start was all it did: an app started away from Wi-Fi -- the normal case before a
@@ -470,8 +477,12 @@
     const net = window.Capacitor && Capacitor.Plugins && Capacitor.Plugins.Network;
     if (net && typeof net.addListener === 'function') {
       try {
+        // Every time Wi-Fi comes on, however soon after the start-up check: a pilot who opens the
+        // app and then joins the Wi-Fi a minute later was skipped by a 60 s guard, and nothing
+        // looked again for half an hour. The single-flight above keeps it to one at a time.
         net.addListener('networkStatusChange', (s) => {
-          if (s && s.connected && s.connectionType === 'wifi' && Date.now() - lastCheck > 60000) check(false);
+          if (s && s.connected && s.connectionType === 'wifi') check(false);
+          else if (window.NavAid && NavAid.appUpdate && typeof NavAid.appUpdate.refresh === 'function') NavAid.appUpdate.refresh();
         });
       } catch (e) { /* no listener: the checks below still run */ }
     }
