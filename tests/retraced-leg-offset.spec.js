@@ -153,7 +153,8 @@ test('Clear map puts the direction picker back to both', async ({ page }) => {
     return { filter: window.legDirFilter, picker: sel ? sel.value : 'both',
              legs: state.legs.length };
   });
-  expect(after).toEqual({ filter: 'both', picker: 'both', legs: 0 });
+  // The filter is back to both; the picker, with no route to divide, reads "Not relevant".
+  expect(after).toEqual({ filter: 'both', picker: 'na', legs: 0 });
 });
 
 // Clearing the map is the pilot saying "done with that": the stored choice goes back to
@@ -172,7 +173,7 @@ test('the stored choice goes back to both as well', async ({ page }) => {
   });
   expect(out.before).toBe('back');
   expect(out.after).toBe('both');
-  expect(out.picker).toBe('both');
+  expect(out.picker).toBe('na');          // empty map: "Not relevant"
 });
 
 // Reported with a screenshot: a-b-a-b-a-a still piled the arrows up. Two causes. The kites

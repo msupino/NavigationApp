@@ -1594,6 +1594,7 @@ window.S = {
   tbLegDirOut: 'הלוך בלבד',
   tbLegDirBack: 'חזור בלבד',
   tbLegDirNoTurn: 'המסלול הזה אינו חוזר על עקבותיו ולא סומנה נקודת חזרה, ולכן אין הלוך וחזור להפריד ביניהם. סמנו נקודת חזרה על נקודת ציון כדי לאפשר זאת.',
+  tbLegDirNa: 'לא רלוונטי',
   inspTurnSet: '\u21bb סימון כנקודת חזרה',
   inspTurnClear: '\u21bb ביטול נקודת החזרה',
   inspTurnFixedAt: function (name) {

@@ -95,6 +95,9 @@ test('the only way out is the acknowledgement', async ({ page }) => {
 // it, because the splash drops pointer events as soon as the map is ready. An acknowledgement
 // that can be recorded by a tap on a screen which never showed the words is worth nothing.
 test('the notice waits for the boot screen, and cannot be tapped through it', async ({ page }) => {
+  // The splash held for ten seconds (its minimum-time tunable), so it is certainly still up when
+  // asked: on a quick deployment the first chart tiles painted, and took it down, first.
+  await page.addInitScript(() => { window.__navaidTune = Object.assign(window.__navaidTune || {}, { bootLogoMinMs: 10000 }); });
   await page.goto('?lang=en&nogist');
   await page.waitForFunction(() => typeof draw === 'function');
   const during = await page.evaluate(() => {
@@ -127,6 +130,13 @@ test('a boot screen that never clears does not swallow the notice', async ({ pag
   await page.goto('?lang=en&nogist');
   await page.waitForFunction(() => window.NavAid && NavAid.whenBootScreenGone);
   const got = await page.evaluate(() => new Promise((resolve) => {
+    // A splash that never clears, made here: racing the real one made this depend on how fast
+    // the first chart tiles paint, and on a quick deployment it was gone before the test began.
+    if (!document.getElementById('boot-loading')) {
+      const stuck = document.createElement('div');
+      stuck.id = 'boot-loading';
+      document.body.appendChild(stuck);
+    }
     const splashUp = !!document.getElementById('boot-loading');
     const started = Date.now();
     NavAid.whenBootScreenGone(
