@@ -95,6 +95,9 @@ test('the only way out is the acknowledgement', async ({ page }) => {
 // it, because the splash drops pointer events as soon as the map is ready. An acknowledgement
 // that can be recorded by a tap on a screen which never showed the words is worth nothing.
 test('the notice waits for the boot screen, and cannot be tapped through it', async ({ page }) => {
+  // The splash held for ten seconds (its minimum-time tunable), so it is certainly still up when
+  // asked: on a quick deployment the first chart tiles painted, and took it down, first.
+  await page.addInitScript(() => { window.__navaidTune = Object.assign(window.__navaidTune || {}, { bootLogoMinMs: 10000 }); });
   await page.goto('?lang=en&nogist');
   await page.waitForFunction(() => typeof draw === 'function');
   const during = await page.evaluate(() => {
