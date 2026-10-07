@@ -143,3 +143,21 @@ test('each control sits with the thing it acts on', async ({ page }) => {
   expect(where.base).toBe('display');
   expect(where.label).toMatch(/Layer opacity/);        // not "Map opacity": it dims the layer
 });
+
+// OpenFlightMaps is a transparent aeronautical layer: as the floor it sits on OpenStreetMap, so
+// there is a real map under its lines, and the chart is on top of both.
+test('OpenFlightMaps as the floor: on top of OpenStreetMap, under the chart', async ({ page }) => {
+  await boot(page);
+  const r = await page.evaluate(() => {
+    setBaseLayerName('OpenFlightMaps');
+    const osm = underlayLayer('OpenStreetMap'), ofm = underlayLayer('OpenFlightMaps');
+    const z = (l) => Number(l.getContainer() && l.getContainer().style.zIndex);
+    return { osm: map.hasLayer(osm), ofm: map.hasLayer(ofm), order: z(ofm) > z(osm),
+             pane: [osm.options.pane, ofm.options.pane] };
+  });
+  expect(r).toEqual({ osm: true, ofm: true, order: true, pane: ['basemapUnderlay', 'basemapUnderlay'] });
+  // Another floor: OpenStreetMap alone, OpenFlightMaps gone.
+  const r2 = await page.evaluate(() => { setBaseLayerName('Satellite');
+    return [map.hasLayer(underlayLayer('OpenStreetMap')), map.hasLayer(underlayLayer('OpenFlightMaps')), map.hasLayer(underlayLayer('Satellite'))]; });
+  expect(r2).toEqual([false, false, true]);
+});
