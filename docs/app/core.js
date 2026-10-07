@@ -6010,19 +6010,26 @@ window.baseLayerName = (() => {
   } catch (e) { /* storage unavailable */ }
   return tune('defaultBaseLayer');
 })();
+// OpenFlightMaps is an aeronautical layer on a transparent ground (airspace, airports and
+// labels; no terrain), so on its own it is lines on the plain world map. As the floor it goes
+// on top of OpenStreetMap: a real map with the aeronautical lines over it, the chart above both.
+const UNDERLAY_STACKS = { OpenFlightMaps: ['OpenStreetMap', 'OpenFlightMaps'] };
 function updateBasemapUnderlay() {
   let cur = null;
   for (const n in layers) if (map.hasLayer(layers[n])) cur = n;
+  // Never the same chart twice: under itself it is invisible and costs a second set of tiles,
+  // and under nothing at all there is no map to fill in.
+  const wanted = (!baseLayerName || baseLayerName === 'none') ? []
+    : (UNDERLAY_STACKS[baseLayerName] || [baseLayerName]).filter(n => n !== cur);
   for (const n in _underlayCache) {
-    // Never the same chart twice: under itself it is invisible and costs a second set of
-    // tiles, and under nothing at all there is no map to fill in.
-    if (n !== baseLayerName || n === cur) {
-      if (map.hasLayer(_underlayCache[n])) map.removeLayer(_underlayCache[n]);
-    }
+    if (!wanted.includes(n) && map.hasLayer(_underlayCache[n])) map.removeLayer(_underlayCache[n]);
   }
-  if (!baseLayerName || baseLayerName === 'none' || baseLayerName === cur) return;
-  const l = underlayLayer(baseLayerName);
-  if (l && !map.hasLayer(l)) l.addTo(map);
+  wanted.forEach((n, i) => {
+    const l = underlayLayer(n);
+    if (!l) return;
+    if (typeof l.setZIndex === 'function') l.setZIndex(i + 1);        // bottom first
+    if (!map.hasLayer(l)) l.addTo(map);
+  });
 }
 window.updateBasemapUnderlay = updateBasemapUnderlay;
 window.setBaseLayerName = function (name) {
