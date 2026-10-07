@@ -127,6 +127,13 @@ test('a boot screen that never clears does not swallow the notice', async ({ pag
   await page.goto('?lang=en&nogist');
   await page.waitForFunction(() => window.NavAid && NavAid.whenBootScreenGone);
   const got = await page.evaluate(() => new Promise((resolve) => {
+    // A splash that never clears, made here: racing the real one made this depend on how fast
+    // the first chart tiles paint, and on a quick deployment it was gone before the test began.
+    if (!document.getElementById('boot-loading')) {
+      const stuck = document.createElement('div');
+      stuck.id = 'boot-loading';
+      document.body.appendChild(stuck);
+    }
     const splashUp = !!document.getElementById('boot-loading');
     const started = Date.now();
     NavAid.whenBootScreenGone(
