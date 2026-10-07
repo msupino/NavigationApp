@@ -116,10 +116,25 @@
   }
 
   // --- details -------------------------------------------------------------------------
+  // `value` is a string, or a list of parts shown with middle dots between them. Each part is
+  // its own isolated run: in Hebrew a part like "גובה ±9 m" keeps its words in order next to
+  // the numbers, which a single left-to-right cell scrambled.
   function row(tbody, label, value) {
     const tr = document.createElement('tr');
     const th = document.createElement('th'); th.textContent = label;
-    const td = document.createElement('td'); td.textContent = value; td.dir = 'ltr';
+    const td = document.createElement('td');
+    const wrap = document.createElement('div');
+    wrap.className = 'gps-status-parts';
+    // The parts follow the page: right to left in Hebrew, so the first one is read first. Each
+    // pill isolates its own text, so "±9 m" and "1.0 Hz" stay as they are written.
+    for (const t of (Array.isArray(value) ? value : [value])) {
+      const sp = document.createElement('span');
+      sp.dir = 'auto';
+      sp.className = 'gps-status-part';
+      sp.textContent = t;
+      wrap.appendChild(sp);
+    }
+    td.appendChild(wrap);
     tr.append(th, td);
     tbody.appendChild(tr);
   }
@@ -130,25 +145,32 @@
     tbl.className = 'gps-status-table';
     const tb = document.createElement('tbody');
     const dash = '—';
-    row(tb, str('gpsStatusAccuracy', 'Accuracy'), raw && raw.acc != null ? '±' + Math.round(raw.acc) + ' m' : dash);
-    row(tb, str('gpsStatusAltAccuracy', 'Altitude accuracy'), raw && raw.altAcc != null ? '±' + Math.round(raw.altAcc) + ' m' : dash);
+    // Related numbers share a row, so the panel fits a phone without scrolling: at most seven
+    // rows, where it used to take one per number and one per satellite system.
+    const acc = [];
+    if (raw && raw.acc != null) acc.push('\u00b1' + Math.round(raw.acc) + ' m');
+    if (raw && raw.altAcc != null) acc.push(str('gpsStatusAltShort', 'alt') + ' \u00b1' + Math.round(raw.altAcc) + ' m');
+    row(tb, str('gpsStatusAccuracy', 'Accuracy'), acc.length ? acc : dash);
+    const fix = [];
     const age = fixAgeSec();
-    row(tb, str('gpsStatusAge', 'Last fix'), age == null ? dash : (age < 1.5 ? str('gpsStatusNow', 'now') : Math.round(age) + ' s'));
+    fix.push(age == null ? dash : (age < 1.5 ? str('gpsStatusNow', 'now') : Math.round(age) + ' s'));
     const hz = rateHz();
-    row(tb, str('gpsStatusRate', 'Fixes'), hz == null ? dash : (hz >= 0.75 ? hz.toFixed(1) + ' Hz' : str('gpsStatusEvery', 'every') + ' ' + (1 / hz).toFixed(0) + ' s'));
+    if (hz != null) fix.push(hz >= 0.75 ? hz.toFixed(1) + ' Hz' : str('gpsStatusEvery', 'every') + ' ' + (1 / hz).toFixed(0) + ' s');
+    if (firstFixMs != null) fix.push(typeof S.gpsStatusFirstFix === 'function' ? S.gpsStatusFirstFix((firstFixMs / 1000).toFixed(1)) : 'first fix ' + (firstFixMs / 1000).toFixed(1) + ' s');
+    row(tb, str('gpsStatusAge', 'Last fix'), fix);
     if (raw && raw.source === 'ble') {
       const b = (window.NavAid && NavAid.bleGps) ? NavAid.bleGps.dev : {};
-      row(tb, str('gpsStatusSource', 'Source'), str('gpsStatusBle', 'Bluetooth GPS') + (b.name ? ' (' + b.name + ')' : ''));
-      if (Number.isFinite(b.sats)) row(tb, str('gpsStatusSatsUsed', 'Satellites used'), String(b.sats));
+      const src = [str('gpsStatusBle', 'Bluetooth GPS') + (b.name ? ' (' + b.name + ')' : '')];
+      if (Number.isFinite(b.sats)) src.push(b.sats + ' ' + str('gpsStatusSatsWord', 'sats'));
+      row(tb, str('gpsStatusSource', 'Source'), src);
     }
-    if (firstFixMs != null) row(tb, str('gpsStatusTtff', 'Time to first fix'), (firstFixMs / 1000).toFixed(1) + ' s');
     if (gnss && Number.isFinite(gnss.inView)) {
-      row(tb, str('gpsStatusSatellites', 'Satellites (used / in view)'), gnss.used + ' / ' + gnss.inView);
-      if (gnss.cn0) row(tb, str('gpsStatusSignal', 'Signal (used, mean)'), gnss.cn0 + ' dB-Hz');
+      row(tb, str('gpsStatusSatellites', 'Satellites'),
+        [typeof S.gpsStatusSatsOf === 'function' ? S.gpsStatusSatsOf(gnss.used, gnss.inView) : gnss.used + ' of ' + gnss.inView + ' used']
+          .concat(gnss.cn0 ? [gnss.cn0 + ' dB-Hz'] : []));
       const sys = gnss.systems || {};
-      for (const k of Object.keys(sys).sort((a, b) => (sys[b].inView - sys[a].inView))) {
-        row(tb, ' ' + k, sys[k].used + ' / ' + sys[k].inView);
-      }
+      const list = Object.keys(sys).sort((a, b) => (sys[b].inView - sys[a].inView)).map(k => k + ' ' + sys[k].used + '/' + sys[k].inView);
+      if (list.length) row(tb, str('gpsStatusSystems', 'Systems'), list);
     }
     // The phone's pressure sensor (device-extras.js): static pressure in the cabin, so close to
     // the outside in an unpressurised aeroplane, and nothing like it in a pressurised one.
@@ -160,9 +182,11 @@
       row(tb, str('gpsStatusAltFrom', 'Altitude from'), from);
     }
     if (baro && Number.isFinite(baro.hPa)) {
-      row(tb, str('gpsStatusPressure', 'Pressure (cabin)'), (typeof fmtPressure === 'function' ? fmtPressure(baro.hPa, true) : baro.hPa.toFixed(1) + ' hPa'));
-      row(tb, str('gpsStatusPressAlt', 'Pressure altitude'), Math.round(baro.pAltFt).toLocaleString('en-US') + ' ft');
-      if (Number.isFinite(baro.vsFpm)) row(tb, str('gpsStatusVs', 'Vertical speed'), (baro.vsFpm >= 0 ? '+' : '\u2212') + Math.abs(Math.round(baro.vsFpm / 10) * 10) + ' fpm');
+      // Pressure, pressure altitude, vertical speed: one instrument, one row.
+      const parts = [typeof fmtPressure === 'function' ? fmtPressure(baro.hPa, true) : baro.hPa.toFixed(1) + ' hPa',
+        Math.round(baro.pAltFt).toLocaleString('en-US') + ' ft'];
+      if (Number.isFinite(baro.vsFpm)) parts.push((baro.vsFpm >= 0 ? '+' : '\u2212') + Math.abs(Math.round(baro.vsFpm / 10) * 10) + ' fpm');
+      row(tb, str('gpsStatusBaro', 'Barometer'), parts);
     }
     tbl.appendChild(tb);
     body.appendChild(tbl);

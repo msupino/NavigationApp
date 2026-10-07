@@ -9370,6 +9370,10 @@ body.deck-on #gps-status { top: calc(var(--navaid-deck-strip-bottom, var(--navai
 .gps-status-table { width: 100%; border-collapse: collapse; font-size: 14px; }
 .gps-status-table th { text-align: start; font-weight: 500; padding: 5px 8px 5px 0; opacity: 0.8; }
 .gps-status-table td { text-align: end; padding: 5px 0; font-variant-numeric: tabular-nums; font-weight: 600; }
+/* A row's parts are small pills laid left to right: no separator to strand at the start of a
+   wrapped line, and a Hebrew part keeps its own direction inside its pill. */
+.gps-status-table .gps-status-parts { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 4px; }
+.gps-status-table .gps-status-part { unicode-bidi: isolate; white-space: nowrap; padding: 1px 6px; border-radius: 5px; background: rgba(127, 127, 127, 0.16); }
 .gps-status-table tr + tr { border-top: 1px solid rgba(127, 127, 127, 0.2); }
 .gps-status-note { margin: 10px 0 0; font-size: 13px; opacity: 0.8; }
 
