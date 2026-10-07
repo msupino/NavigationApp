@@ -5612,6 +5612,14 @@ document.getElementById('cumtime-cb').checked = showCumTime;
     o.textContent = (S && S[key]) || v;
     sel.appendChild(o);
   }
+  // What the dimmed control reads while there is no return point: "Not relevant", rather than
+  // a direction that describes nothing. Shown only then; the filter underneath keeps its value.
+  const naOpt = document.createElement('option');
+  naOpt.value = 'na';
+  naOpt.textContent = (S && S.tbLegDirNa) || 'Not relevant';
+  naOpt.hidden = true;
+  sel.appendChild(naOpt);
+  const showNa = (on) => { naOpt.hidden = !on; if (on) sel.value = 'na'; };
   sel.value = window.legDirFilter || 'both';
   sel.onchange = () => {
     window.legDirFilter = sel.value;
@@ -5641,8 +5649,8 @@ document.getElementById('cumtime-cb').checked = showCumTime;
       let savedEmpty = null;
       try { savedEmpty = lsGet(LEG_DIR_KEY); } catch (e) { /* storage unavailable */ }
       const val = ['both', 'out', 'back'].includes(savedEmpty) ? savedEmpty : 'both';
-      sel.value = val;
       window.legDirFilter = val;
+      showNa(true);
       return;
     }
     if (!has) {
@@ -5652,10 +5660,11 @@ document.getElementById('cumtime-cb').checked = showCumTime;
       // localStorage is deliberately NOT written: this reflects the route in front of you,
       // and a real choice made on a route that HAS a turn must survive opening one that
       // does not.
-      sel.value = 'out';
       window.legDirFilter = 'out';
+      showNa(true);
       return;
     }
+    showNa(false);
     let saved = null;
     try { saved = lsGet(LEG_DIR_KEY); } catch (e) { /* storage unavailable */ }
     const restored = ['both', 'out', 'back'].includes(saved) ? saved : 'both';

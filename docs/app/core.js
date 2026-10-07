@@ -3198,6 +3198,7 @@ window.S = Object.assign({
   tbLegDirOut: 'Outbound only',
   tbLegDirBack: 'Return only',
   tbLegDirNoTurn: 'This route does not double back and no turning point is marked, so there is no outbound and return to separate. Mark one on a waypoint to enable this.',
+  tbLegDirNa: 'Not relevant',
   inspTurnSet: '\u21bb Mark as turning point',
   inspTurnClear: '\u21bb Clear turning point',
   inspTurnFixedAt: function (name) {
