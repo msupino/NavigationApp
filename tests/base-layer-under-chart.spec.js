@@ -29,19 +29,20 @@ const state = (page) => page.evaluate(() => {
   return { top, under, chosen: window.baseLayerName };
 });
 
-test('OpenStreetMap is the floor until something else is chosen', async ({ page }) => {
+test('OpenFlightMaps is the floor until something else is chosen', async ({ page }) => {
   await boot(page);
   const s = await state(page);
-  expect(s.chosen).toBe('OpenStreetMap');
+  expect(s.chosen).toBe('OpenFlightMaps');
   expect(s.top).toBe('CVFR');
-  expect(s.under.OpenStreetMap).toBe(true);
+  expect(s.under.OpenFlightMaps).toBe(true);
   // The default is the gist's to change, and the picker offers every chart plus none.
   const opts = await page.evaluate(() =>
     Array.from(document.getElementById('base-layer-select').options).map(o => o.value));
   expect(opts[0]).toBe('none');
   expect(opts).toContain('Satellite');
   expect(opts).toContain('ATS');
-  expect(await page.evaluate(() => tune('defaultBaseLayer'))).toBe('OpenStreetMap');
+  expect(opts).toContain('OpenStreetMap');
+  expect(await page.evaluate(() => tune('defaultBaseLayer'))).toBe('OpenFlightMaps');
 });
 
 test('ATS over Satellite: the sheet on top, imagery underneath', async ({ page }) => {
@@ -106,7 +107,7 @@ test('the choice is remembered, and the gist sets the default for a device that 
     if (typeof window.rebuildBaseLayerPicker === 'function') window.rebuildBaseLayerPicker();
     return window.baseLayerName;
   });
-  expect(gisted).toBe('OpenStreetMap');    // already resolved at boot; the gist lands earlier in life
+  expect(gisted).toBe('OpenFlightMaps');   // already resolved at boot; the gist lands earlier in life
 });
 
 test('how strongly the floor shows through is tunable', async ({ page }) => {
