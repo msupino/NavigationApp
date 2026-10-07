@@ -5,7 +5,14 @@ const { test, expect } = require('./_setup');
 
 async function boot(page, size, lang = 'en') {
   await page.setViewportSize(size);
-  await page.addInitScript(() => { window.__navaidNoTour = false; try { localStorage.removeItem('navaid.tourSeen'); } catch (e) {} });
+  // A first launch: the "seen" flag cleared on the FIRST load only. Cleared on every load, the
+  // reload that checks "plays once" was a first launch again, and only timing hid it.
+  await page.addInitScript(() => {
+    window.__navaidNoTour = false;
+    try {
+      if (!sessionStorage.getItem('__tourFirstLoad')) { sessionStorage.setItem('__tourFirstLoad', '1'); localStorage.removeItem('navaid.tourSeen'); }
+    } catch (e) { /* storage off */ }
+  });
   await page.goto('?lang=' + lang + '&nogist');
   await page.waitForFunction(() => window.NavAid && NavAid.tour && typeof map !== 'undefined');
 }
@@ -34,7 +41,8 @@ for (const [name, size, lang] of [['phone', { width: 390, height: 844 }, 'he'], 
     await expect(tour).toHaveCount(0);
     expect(await page.evaluate(() => localStorage.getItem('navaid.tourSeen'))).toBe('1');
     await page.reload();
-    await page.waitForTimeout(2500);
+    await page.waitForFunction(() => window.NavAid && NavAid.tour && NavAid.disclaimerDone);
+    await page.waitForTimeout(3000);                       // past the auto-start's own delays
     await expect(tour).toHaveCount(0);                     // once
   });
 }
