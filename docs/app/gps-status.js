@@ -191,10 +191,20 @@
     tbl.appendChild(tb);
     body.appendChild(tbl);
     if (!gnss) {
-      const p = document.createElement('p');
-      p.className = 'gps-status-note';
-      p.textContent = str('gpsStatusNoSats', 'Satellite counts are shown in the Android app; this browser gives only the position and its accuracy.');
-      body.appendChild(p);
+      // Why there are no satellites: in a browser that is all there is; in the app, the reason.
+      const note = {
+        browser: ['gpsStatusNoSats', 'Satellite counts are shown in the Android app; this browser gives only the position and its accuracy.'],
+        waiting: ['gpsStatusSatsWaiting', 'No satellite data from the phone yet. Android reports satellites only while its GPS receiver runs; indoors, or on a Wi-Fi or cell fix, there may be none.'],
+        engine: ['gpsStatusSatsEngine', 'The GPS receiver is on; no satellites in view yet. A clear view of the sky helps.'],
+        denied: ['gpsStatusSatsDenied', 'Satellite data needs precise location: Settings > Apps > NavAid > Location > Use precise location.'],
+        unavailable: ['gpsStatusSatsNone', 'This phone does not report satellite data.'],
+      }[satState] || null;
+      if (note) {
+        const p = document.createElement('p');
+        p.className = 'gps-status-note';
+        p.textContent = str(note[0], note[1]);
+        body.appendChild(p);
+      }
     }
   }
   function openDetail() {
@@ -213,19 +223,31 @@
     const C = window.Capacitor;
     return (C && typeof C.isNativePlatform === 'function' && C.isNativePlatform() && C.Plugins && C.Plugins.GnssStatus) || null;
   }
+  // Where the satellite data stands, so the details say the true reason when there is none:
+  // 'browser' (no plugin: a browser or iOS), 'waiting' (asked; Android sends satellites only
+  // while its GPS receiver runs -- not indoors, nor while the fix comes from Wi-Fi or cell),
+  // 'engine' (the receiver is on, nothing in view yet), 'denied' (no precise location),
+  // 'unavailable' (this phone reports none), 'ok'.
+  let satState = 'browser';
   async function startSats() {
     plugin = gnssPlugin();
-    if (!plugin) return;
+    if (!plugin) { satState = 'browser'; return; }
+    satState = 'waiting';
     try {
       listener = await plugin.addListener('gnss', (e) => {
         if (!e) return;
         if (Number.isFinite(e.firstFixMs)) firstFixMs = e.firstFixMs;
-        if (e.stopped) gnss = null;
-        else if (Number.isFinite(e.inView)) gnss = e;
+        if (e.started) { if (satState !== 'ok') satState = 'engine'; }
+        else if (e.stopped) { gnss = null; satState = 'waiting'; }
+        else if (Number.isFinite(e.inView)) { gnss = e; satState = 'ok'; }
         render();
       });
       await plugin.start();
-    } catch (e) { /* no permission yet, or no GNSS: the line just has no satellite part */ }
+    } catch (e) {
+      const code = (e && (e.code || e.message)) || '';
+      satState = /PERMISSION/i.test(code) ? 'denied' : 'unavailable';
+      render();
+    }
   }
   function stopSats() {
     if (listener && typeof listener.remove === 'function') { try { listener.remove(); } catch (e) { /* gone */ } }
@@ -252,5 +274,5 @@
   setInterval(tick, 1000);
 
   window.NavAid = window.NavAid || {};
-  NavAid.gpsStatus = { noteFix, tick, text: lineText, open: openDetail, _startedAt: () => startedAt };
+  NavAid.gpsStatus = { satState: () => satState, noteFix, tick, text: lineText, open: openDetail, _startedAt: () => startedAt };
 }());
