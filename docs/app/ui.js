@@ -6688,7 +6688,15 @@ if (windDepartSlider) {
       buildLayer();
       applyTimeLabel();
       if (statusEl) { statusEl.textContent = ''; statusEl.style.display = 'none'; }
+    } else if (layer._navaidGrid !== store.g) {
+      // A new grid (the view moved on, or a new altitude) into the layer already on the map.
+      // Building only when there was no layer left the FIRST grid drawn for good: zoomed out
+      // after switching it on, the field stayed a band the size of the first view.
+      if (typeof layer.setData === 'function') layer.setData(frameData());
+      else { removeLayer(); buildLayer(); }
+      applyTimeLabel();
     }
+    if (layer) layer._navaidGrid = store.g;
   }
   // The view moved: a field fetched for another area, or far too coarse or fine for this zoom,
   // is fetched again for what is in view now -- after the pan settles, not on every drag frame.

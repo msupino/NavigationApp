@@ -346,3 +346,31 @@ test('the grid follows the map anywhere, with spacing for the zoom', async ({ pa
   const lats = [...new Set(wide.map(p => p[0]))].sort((a, b) => a - b);
   expect(lats[1] - lats[0]).toBeGreaterThanOrEqual(1);                                           // a degree or more apart
 });
+
+// Reported on the preview: switched on zoomed in, then zoomed out -- the field stayed a band the
+// size of the first view. The new grid was fetched, but only a missing layer was ever built;
+// the one on the map kept its first data.
+test('zooming out after switching it on draws the new, wider grid', async ({ page }) => {
+  await page.route(OM_RE, r => r.fulfill({ status: 200, contentType: 'application/json', body: gridBody(r.request().url()) }));
+  await page.addInitScript(() => { try { localStorage.setItem('navaid.sec.weather', '1'); } catch (e) {} });
+  await page.goto('?lang=en&nogist');
+  await page.waitForFunction(() => typeof L !== 'undefined' && typeof L.velocityLayer === 'function', null, { timeout: 20000 });
+  await page.evaluate(() => map.setView([32.1, 34.85], 11, { animate: false }));
+  await loadWind(page);
+  await expect(page.locator('.leaflet-windfield-pane canvas')).toHaveCount(1, { timeout: 10000 });
+  const header = () => page.evaluate(() => {
+    let h = null;
+    map.eachLayer(l => { if (l.options && Array.isArray(l.options.data) && l.options.data[0] && l.options.data[0].header) h = l.options.data[0].header; });
+    return h && { lo1: h.lo1, lo2: h.lo2, la1: h.la1, la2: h.la2 };
+  });
+  const first = await header();
+  await page.evaluate(() => map.setView([31.5, 35.5], 7, { animate: false }));
+  await expect.poll(async () => { const h = await header(); return h && (h.lo2 - h.lo1); }, { timeout: 8000 })
+    .toBeGreaterThan(first.lo2 - first.lo1 + 2);
+  const after = await header();
+  const v = await page.evaluate(() => map.getBounds().toBBoxString().split(',').map(Number));
+  expect(after.lo1).toBeLessThanOrEqual(v[0]);   // the grid covers the whole view
+  expect(after.lo2).toBeGreaterThanOrEqual(v[2]);
+  expect(after.la2).toBeLessThanOrEqual(v[1]);
+  expect(after.la1).toBeGreaterThanOrEqual(v[3]);
+});
