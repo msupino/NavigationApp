@@ -198,8 +198,10 @@ NavAid.tuningDefaults = {
   layerEnabledHelicopters: { value: false, type: 'bool', label: 'Offer the Helicopters layer' },
   layerEnabledATS: { value: true, type: 'bool', label: 'Offer the ATS routes chart layer' },
   worldRelief: { value: true, type: 'bool', label: 'Shaded relief under the world map (offline, Natural Earth)' },
-  defaultBaseLayer: { value: 'OpenStreetMap', type: 'select',
-    options: ['none', 'OpenStreetMap', 'Satellite', 'CVFR', 'Navigation', 'Low Alt', 'Helicopters', 'ATS'],
+  // OpenFlightMaps under the chart: it covers Europe and other regions, not Israel, where the
+  // CVFR chart and the offline world map (relief) fill in.
+  defaultBaseLayer: { value: 'OpenFlightMaps', type: 'select',
+    options: ['none', 'OpenStreetMap', 'OpenFlightMaps', 'Satellite', 'World', 'CVFR', 'Navigation', 'Low Alt', 'Helicopters', 'ATS'],
     label: 'Which map sits under the chart by default' },
   baseLayerOpacity: { value: 0.7, min: 0.1, max: 1, step: 0.05,
     label: 'How strongly the map under the chart shows through (0-1)' },
