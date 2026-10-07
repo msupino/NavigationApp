@@ -100,3 +100,25 @@ test('the details fit a phone: related numbers share a row', async ({ page }) =>
   expect(r.rows).toBeLessThanOrEqual(7);
   expect(r.scrolls).toBe(false);
 });
+
+// In the app, no satellites has a reason, and the details give it -- not the browser's note.
+test('app without satellite data: the details say why (waiting, receiver on, no permission)', async ({ page }) => {
+  await boot(page);
+  await page.evaluate(() => { window.Capacitor.isNativePlatform = () => true; });
+  await goLive(page);
+  await fix(page, 7);
+  await expect.poll(() => page.evaluate(() => NavAid.gpsStatus.satState())).toBe('waiting');
+  await page.locator('#gps-status').click();
+  const m = page.locator('.gps-status-modal');
+  await expect(m).toContainText('only while its GPS receiver runs');
+  await expect(m).not.toContainText('this browser');
+  await page.evaluate(() => window.__gnss.cb({ started: true }));
+  await expect(m).toContainText('The GPS receiver is on');
+  // Precise location refused: the plugin's start is rejected.
+  await page.evaluate(() => {
+    new Function('gpsLiveOn = false')(); NavAid.gpsStatus.tick();
+    window.Capacitor.Plugins.GnssStatus.start = async () => { const e = new Error('Location permission not granted'); e.code = 'NO_PERMISSION'; throw e; };
+    new Function('gpsLiveOn = true; gpsFollow = false')(); NavAid.gpsStatus.tick();
+  });
+  await expect.poll(() => page.evaluate(() => NavAid.gpsStatus.satState())).toBe('denied');
+});
