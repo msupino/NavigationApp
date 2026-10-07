@@ -6464,21 +6464,18 @@ if (windDepartSlider) {
   function frameData() {
     const idx = absIndex(), g = store.g, n = g.lats.length;
     const U = new Array(n).fill(0), V = new Array(n).fill(0);
-    // Rotate the wind vectors by the map bearing. leaflet-velocity draws
-    // (u, -v) in screen space assuming north-up, so on a rotated map the flow
-    // would otherwise point the wrong way. Positions are already bearing-aware
-    // (the canvas lives in a non-rotating pane, plotted via
-    // latLngToContainerPoint) — only the vectors need this pre-rotation.
-    const th = (typeof map !== 'undefined' && map.getBearing) ? (map.getBearing() || 0) * Math.PI / 180 : 0;
-    const cb = Math.cos(th), sb = Math.sin(th);
+    // Geographic U/V, never turned by the bearing: the library inverts screen pixels with
+    // containerPointToLatLng and builds its u/v->screen Jacobian through
+    // latLngToContainerPoint, both bearing-aware under leaflet-rotate. Turning U/V as well
+    // rotated a field built at a bearing twice (track-up, or a new grid fetched while turned).
     for (let k = 0; k < n; k++) {
       const spd = store.sp[k] && store.sp[k][idx], dir = store.di[k] && store.di[k][idx];
       if (!Number.isFinite(spd) || !Number.isFinite(dir)) continue;
       const r = dir * Math.PI / 180;                  // met direction = FROM
       const u = -spd * Math.sin(r);                   // eastward component
       const v = -spd * Math.cos(r);                   // northward component
-      U[k] = u * cb + v * sb;
-      V[k] = v * cb - u * sb;
+      U[k] = u;
+      V[k] = v;
     }
     return velocityData(g, U, V);
   }

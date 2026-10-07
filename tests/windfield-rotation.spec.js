@@ -115,3 +115,34 @@ test('rotating back and forth keeps the field alive', async ({ page }) => {
   expect(back.x).toBeGreaterThan(1);          // east again
   expect(back.ink).toBeGreaterThan(0);
 });
+
+// Data built while the map is already turned (switched on in track-up, or a new grid fetched
+// after a pan at a bearing) must point the same way as data built north-up and then rotated.
+// The library already turns vectors through its bearing-aware Jacobian; turning U/V as well
+// rotated the field twice.
+test('a field built at a bearing points the same way as one rotated after', async ({ page }) => {
+  await page.route(OM_RE, r => r.fulfill({ status: 200, contentType: 'application/json',
+    body: gridBody(r.request().url()) }));
+  await page.addInitScript(() => { try { localStorage.setItem('navaid.sec.weather', '1'); } catch (e) {} });
+  await page.goto('?lang=en&nogist');
+  await page.waitForFunction(() => typeof map !== 'undefined' && !!document.getElementById('windfield-cb'));
+  await page.evaluate(() => map.setBearing(90));
+  await page.waitForTimeout(300);
+  await page.evaluate(() => {
+    const cb = document.getElementById('windfield-cb');
+    cb.checked = true; cb.dispatchEvent(new Event('change'));
+  });
+  await page.waitForFunction(() => !!document.querySelector('canvas.velocity-overlay'), null,
+    { timeout: 20000 });
+  await page.waitForTimeout(1500);
+  const built = await sample(page);
+  expect(built.err).toBeUndefined();
+  expect(built.bearing).toBe(90);
+
+  await rotate(page, 0);
+  await rotate(page, 90);
+  const rotated = await sample(page);
+  expect(Math.abs(built.y)).toBeGreaterThan(1);
+  expect(Math.sign(built.y)).toBe(Math.sign(rotated.y));
+  expect(Math.abs(built.x)).toBeLessThan(1);
+});
