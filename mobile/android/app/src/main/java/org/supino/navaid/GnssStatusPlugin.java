@@ -63,6 +63,13 @@ public class GnssStatusPlugin extends Plugin {
             }
 
             @Override
+            public void onStarted() {
+              JSObject o = new JSObject();
+              o.put("started", true);
+              notifyListeners("gnss", o);
+            }
+
+            @Override
             public void onStopped() {
               JSObject o = new JSObject();
               o.put("stopped", true);
