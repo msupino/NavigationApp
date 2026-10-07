@@ -153,3 +153,18 @@ test('the AIRMET and SIGMET toggles say when their feed was updated, as the NOTA
   expect(got.off).toEqual([true, true]);
   expect(got.on).toEqual(['Updated 2026-10-02 21:25Z', 'Updated 2026-10-02 21:20Z']);
 });
+
+// A neighbouring FIR's warning whose area runs far beyond the region (Jeddah: thunderstorms N of
+// a line, out to 15 N / 56 E) is still an area: listed AND drawn, so both counts agree. Garbage
+// -- nothing near the region, or impossible numbers -- is still refused.
+test('a SIGMET area that reaches the region is drawn even where it runs far beyond it', async ({ page }) => {
+  await page.goto('?lang=en&nogist');
+  await page.waitForFunction(() => typeof metAreaLatLngs === 'function');
+  const r = await page.evaluate(() => {
+    const jeddah = { coords: [[29.4, 35.0], [32.16, 39.0], [29.0, 47.0], [24.0, 55.66], [15.59, 41.0], [26.1, 37.6]] };
+    const far = { coords: [[51.0, 0.0], [52.0, 1.0], [51.5, 2.0]] };
+    const bad = { coords: [[29.4, 35.0], [132.0, 39.0], [29.0, 47.0]] };
+    return [!!metAreaLatLngs(jeddah), !!metAreaLatLngs(far), !!metAreaLatLngs(bad)];
+  });
+  expect(r).toEqual([true, false, false]);
+});

@@ -5181,7 +5181,12 @@ function metAreaLatLngs(w) {
   const pts = (w && Array.isArray(w.coords) ? w.coords : [])
     .filter(c => Array.isArray(c) && Number.isFinite(c[0]) && Number.isFinite(c[1]));
   if (pts.length < 3) return null;
-  if (!pts.every(c => c[0] > 20 && c[0] < 45 && c[1] > 22 && c[1] < 50)) return null;
+  // Real coordinates, and the area reaches this region -- the same rule the feed is built with
+  // (scripts/build-aviation-feeds.mjs: any point in the box). EVERY point in the box threw out a
+  // neighbouring FIR's warning whose area also runs far beyond it: Jeddah's thunderstorms "N of
+  // line" reach 15 N and 56 E, so it was listed (1) but not drawn and not counted on the map (0).
+  if (!pts.every(c => Math.abs(c[0]) <= 90 && Math.abs(c[1]) <= 180)) return null;
+  if (!pts.some(c => c[0] > 20 && c[0] < 45 && c[1] > 22 && c[1] < 50)) return null;
   const lats = pts.map(c => c[0]), lngs = pts.map(c => c[1]);
   if (Math.max(...lats) - Math.min(...lats) < 0.01 || Math.max(...lngs) - Math.min(...lngs) < 0.01) return null;
   return pts;

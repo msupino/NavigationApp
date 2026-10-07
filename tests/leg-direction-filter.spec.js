@@ -88,7 +88,8 @@ test('the toggle persists and is restored on load', async ({ page }) => {
     selValue: document.getElementById('leg-dir-select').value,
   }));
   expect(restored.filter).toBe('out');
-  expect(restored.selValue).toBe('out');
+  expect(restored.selValue).toBe('na');     // an empty map: the dimmed control reads "Not relevant"
+  expect(await page.evaluate(() => document.getElementById('leg-dir-select').selectedOptions[0].textContent)).toBe('Not relevant');
 });
 
 test('the selected direction hides the other half route line and leg decorations', async ({ page }) => {
@@ -879,7 +880,7 @@ test.describe('the picker reflects the route in front of you', () => {
                stored: localStorage.getItem('navaid.legDirFilter') };
     });
     expect(out.disabled).toBe(true);
-    expect(out.shown).toBe('out');      // not the stale 'back'
+    expect(out.shown).toBe('na');       // reads "Not relevant", not the stale 'back'
     expect(out.filter).toBe('out');
     expect(out.stored).toBe('back');    // the real preference is not clobbered
 
@@ -932,7 +933,7 @@ test('clearing the turning point drops the picker back to outbound only', async 
   });
   expect(cleared.anyMarked).toBe(false);
   expect(cleared.disabled).toBe(true);
-  expect(cleared.shown).toBe('out');    // not the 'back' it was left on
+  expect(cleared.shown).toBe('na');     // "Not relevant", not the 'back' it was left on
   expect(cleared.filter).toBe('out');
 });
 
@@ -1240,4 +1241,16 @@ test('the turning point survives a reload, including a language change', async (
   expect(afterLang.marked).toBe(2);
   expect(afterLang.turn).toBe(2);
   expect(afterLang.picker).toBe(false);   // and the picker is still usable
+});
+
+// With a turn, "Not relevant" is not on offer: the three real choices only.
+test('Not relevant is only for a route without a return point', async ({ page }) => {
+  await boot(page);
+  await outAndBack(page);
+  const r = await page.evaluate(() => {
+    if (typeof refreshLegDirEnabled === 'function') refreshLegDirEnabled();
+    const sel = document.getElementById('leg-dir-select');
+    return { value: sel.value, naHidden: [...sel.options].find(o => o.value === 'na').hidden, disabled: sel.disabled };
+  });
+  expect(r).toEqual({ value: 'both', naHidden: true, disabled: false });
 });
