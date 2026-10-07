@@ -19,8 +19,12 @@ permissions:
   security-events: write   # CodeQL upload
   actions: read
 
+# One slot per ref AND trigger. A dev->main promotion starts this twice for the same commit --
+# the push, and the auto-merge watcher's workflow_dispatch -- and with one shared slot each
+# cancelled the other, leaving the PR's checks red ("cancelled") and the promotion blocked until
+# someone re-ran them. A newer run of the same trigger still replaces an older one.
 concurrency:
-  group: review-${{ github.ref }}
+  group: review-${{ github.ref }}-${{ github.event_name }}
   cancel-in-progress: true
 
 jobs:
