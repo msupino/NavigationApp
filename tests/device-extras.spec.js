@@ -83,7 +83,9 @@ test('barometer: pressure altitude and vertical speed, in the GPS details', asyn
   await page.evaluate(() => NavAid.gpsStatus.tick());
   await page.locator('#gps-status').click();
   await expect(page.locator('.gps-status-modal')).toContainText('+600 fpm');
-  await expect(page.locator('.gps-status-modal')).toContainText('Pressure altitude');
+  await expect(page.locator('.gps-status-modal')).toContainText('Barometer');
+  const baroRow = await page.locator('.gps-status-modal tr').filter({ hasText: 'Barometer' }).locator('.gps-status-part').allTextContents();
+  expect(baroRow.slice(1)).toEqual(['100 ft', '+600 fpm']);       // one row: pressure · altitude · VS
 });
 
 test('battery warning (when switched on): once at 20 %, in flight, not charging', async ({ page }) => {

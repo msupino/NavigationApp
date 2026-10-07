@@ -62,9 +62,11 @@ test('Android: satellites used / in view on the line, per system in the details 
   await expect(page.locator('#gps-status')).toHaveText('±5 m · 14/27');
   await page.locator('#gps-status').click();
   const m = page.locator('.gps-status-modal');
-  await expect(m).toContainText('14 / 27');
   await expect(m).toContainText('Galileo');
-  await expect(m).toContainText('33 dB-Hz');
+  // Related numbers share a row; each is its own part (the dots between them are drawn by CSS).
+  const rows = await m.locator('tr').evaluateAll(trs => trs.map(tr => [...tr.querySelectorAll('.gps-status-part')].map(p => p.textContent)));
+  expect(rows).toContainEqual(['14 מתוך 27 בשימוש', '33 dB-Hz']);
+  expect(rows).toContainEqual(['GPS 7/11', 'Galileo 5/8', 'GLONASS 2/8']);   // the systems on one row
   await page.evaluate(() => { new Function('gpsLiveOn = false')(); NavAid.gpsStatus.tick(); });
   expect(await page.evaluate(() => window.__gnss.stopped)).toBe(1);
   await expect(m).toHaveCount(0);
@@ -76,4 +78,25 @@ test('the gist can switch it off', async ({ page }) => {
   await goLive(page);
   await fix(page, 6);
   await expect(page.locator('#gps-status')).toHaveCount(0);
+});
+
+// Everything at once -- satellites, systems, barometer -- still fits a phone without scrolling.
+test('the details fit a phone: related numbers share a row', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 740 });
+  await boot(page);
+  await page.evaluate(() => { window.Capacitor.isNativePlatform = () => true; });
+  await goLive(page);
+  await expect.poll(() => page.evaluate(() => window.__gnss.started)).toBe(1);
+  await page.evaluate(() => {
+    window.__gnss.cb({ firstFixMs: 12300 });
+    window.__gnss.cb({ inView: 31, used: 18, cn0: 34, systems: { GPS: { inView: 11, used: 7 }, Galileo: { inView: 8, used: 5 },
+      GLONASS: { inView: 7, used: 4 }, BeiDou: { inView: 5, used: 2 } } });
+    Object.assign(NavAid.device.baro, { hPa: 970, pAltFt: 1240, vsFpm: 600, at: Date.now() });
+  });
+  await fix(page, 5);
+  await page.locator('#gps-status').click();
+  const r = await page.evaluate(() => { const m = document.querySelector('.gps-status-modal');
+    return { rows: m.querySelectorAll('tr').length, scrolls: m.scrollHeight > m.clientHeight + 1 }; });
+  expect(r.rows).toBeLessThanOrEqual(7);
+  expect(r.scrolls).toBe(false);
 });
