@@ -674,6 +674,10 @@ NavAid.tuningDefaults = {
   windFieldDefaultAltFt: { value: 1500, min: 1000, max: 5000, step: 500, label: 'Wind field default altitude (ft)' },
   windFieldDefaultOpacity: { value: 0.7, min: 0.2, max: 1, step: 0.05, label: 'Wind field default opacity' },
   windFieldGridDeg: { value: 0.25, min: 0.1, max: 1, step: 0.05, label: 'Wind field grid spacing (°)' },
+  // The wind field follows the map anywhere on earth (Open-Meteo is global), about this many
+  // grid points per view; off, it keeps to the fixed box over Israel (windFieldWest/East/...).
+  windFieldFollowMap: { value: true, type: 'bool', label: 'Wind field: follow the map (anywhere), not the Israel box' },
+  windFieldMaxPoints: { value: 200, min: 50, max: 600, step: 10, label: 'Wind field: grid points per view (about)' },
   windFieldWest: { value: 34.2, min: 33, max: 37, step: 0.05, label: 'Wind field grid west (°)' },
   windFieldEast: { value: 35.95, min: 33, max: 37, step: 0.05, label: 'Wind field grid east (°)' },
   windFieldSouth: { value: 29.45, min: 28, max: 34, step: 0.05, label: 'Wind field grid south (°)' },
@@ -1148,7 +1152,7 @@ NavAid.tuningGroups = [
   { name: 'Map clock', keys: ['featureMapClock', 'hideMapClockWhileLive', 'hideIdleMapClockOnPhone', 'mapClockHoursAhead'] },
   { name: 'Route check', keys: ['featureRouteCheck'] },
   { name: 'Airfield wind', keys: ['afWindBarbLenPx', 'afWindBarbTickPx', 'afWindBarbTickGapPx', 'afWindBarbWidthPx', 'afWindCalmRadiusPx', 'afWindBarbColor', 'afWindOffsetPx', 'afWindLabelFontPx', 'afWindLabelHaloPx', 'afWindMinZoom', 'afWindLabelMinZoom', 'afWindGustDeltaKt', 'afWindRunwayMinKt', 'afWindCalmMaxKt', 'afWindCrossDeadbandKt', 'afWindCacheMin', 'afWindForecastDays', 'afWindSampleToleranceMin', 'afWindPennantWidthFactor', 'afWindPennantGapFactor', 'afWindFullTickSlantFactor', 'afWindHalfTickSlantFactor', 'afWindHalfTickLenFactor', 'afWindStartGapPx', 'afWindBarbHaloPx', 'afWindObsColor', 'afWindModelDashPx', 'afWindModelGapPx', 'afWindModelLabelAlpha', 'afWindObsMaxAgeMin', 'featureAirfieldWind'] },
-  { name: 'Wind field', keys: ['windFieldDefaultAltFt', 'windFieldDefaultOpacity', 'windFieldGridDeg', 'windFieldWest', 'windFieldEast', 'windFieldSouth', 'windFieldNorth', 'windFieldVelocityScale', 'windFieldParticleAge', 'windFieldParticleMultiplier', 'windFieldLineWidth', 'windFieldMaxVelocity', 'windFieldMinVelocity', 'windFieldFrameRate', 'windFieldHoursAhead', 'windFieldForecastDays'] },
+  { name: 'Wind field', keys: ['windFieldDefaultAltFt', 'windFieldDefaultOpacity', 'windFieldGridDeg', 'windFieldFollowMap', 'windFieldMaxPoints', 'windFieldWest', 'windFieldEast', 'windFieldSouth', 'windFieldNorth', 'windFieldVelocityScale', 'windFieldParticleAge', 'windFieldParticleMultiplier', 'windFieldLineWidth', 'windFieldMaxVelocity', 'windFieldMinVelocity', 'windFieldFrameRate', 'windFieldHoursAhead', 'windFieldForecastDays'] },
   { name: 'Chrome layout', keys: ['inspectorDefaultTopPx', 'inspectorBottomGapPx', 'floatingPanelGapPx', 'zuluClockMinWidthPx', 'zuluClockPadYPx', 'zuluClockPadXPx', 'zuluClockMarginTopPx', 'zuluClockMarginRightPx', 'zuluClockFontPx', 'zuluClockFontWeight', 'zuluClockLineHeight', 'zuluClockTextColor', 'zuluClockBgColor', 'zuluClockBgAlpha', 'zuluClockBorderColor', 'zuluClockBorderWidthPx', 'zuluClockBorderRadiusPx', 'zuluClockShadowYPx', 'zuluClockShadowBlurPx', 'zuluClockShadowAlpha'] },
   // Includes the former 'First-run view' group: the first-run centre/zoom and the
   // fit-with-no-route view answer the same question, and a pilot tuning one wants the other
