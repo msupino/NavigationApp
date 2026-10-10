@@ -638,8 +638,9 @@ jobs:
     strategy:
       # One shard's failure is not the others' business: let them all report.
       fail-fast: false
+      # Six, as in ci.yml: four sat a few minutes under the cap.
       matrix:
-        shard: [1, 2, 3, 4]
+        shard: [1, 2, 3, 4, 5, 6]
     # A shard is a quarter of the suite, but the cap still has to lead its growth:
     # a SIGINT at the cap kills tests mid-flight and surfaces as bogus failures
     # that read like a regression (that is how the old 15 min cap failed, with
