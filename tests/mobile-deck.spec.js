@@ -425,7 +425,17 @@ test('press and hold says what is under the finger', async ({ page }) => {
   expect(got.rows[0]).toBe('Position');
   expect(got.coords).toMatch(/\d+°/);
   expect(got.rows).toContain('Nearest field');
-  expect(got.actions).toEqual(['Direct to', 'Add waypoint']);
+  // An empty map: the held point starts the route, in the inspector's words.
+  expect(got.actions).toEqual(['Direct to', 'Start route here']);
+});
+
+test('with a route, the held point is added to it', async ({ page }) => {
+  await boot(page);
+  await route(page);
+  await press(page, 200, 420);
+  await page.waitForSelector('.deck-here');
+  const actions = await page.evaluate(() => Array.from(document.querySelectorAll('.deck-here-btn')).map(b => b.textContent));
+  expect(actions).toEqual(['Direct to', 'Add to route']);
 });
 
 test('a tap is not a press, and neither is a drag', async ({ page }) => {
@@ -441,7 +451,7 @@ test('a tap is not a press, and neither is a drag', async ({ page }) => {
   expect(await page.evaluate(() => document.getElementById('deck-sheet').hidden)).toBe(true);
 });
 
-test('Add waypoint puts the held point on the end of the plan', async ({ page }) => {
+test('Add to route puts the held point on the end of the plan', async ({ page }) => {
   await boot(page);
   await route(page);
   await press(page, 200, 420);
@@ -449,7 +459,7 @@ test('Add waypoint puts the held point on the end of the plan', async ({ page })
   const before = await page.evaluate(() => state.waypoints.length);
   await page.evaluate(() => {
     const btn = Array.from(document.querySelectorAll('.deck-here-btn'))
-      .find(b => b.textContent === 'Add waypoint');
+      .find(b => b.textContent === 'Add to route');
     btn.click();
   });
   const got = await page.evaluate(() => ({

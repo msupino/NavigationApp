@@ -507,7 +507,13 @@
       const add = document.createElement('button');
       add.type = 'button';
       add.className = 'deck-here-btn';
-      add.textContent = (typeof S === 'object' && S && S.deckAddWaypoint) || 'Add waypoint';
+      // Same words as the inspector's button for a chart point: on an empty map this point
+      // STARTS the route, and saying "add" there read as a different action from the
+      // airfield panel's "Start route here" for the same tap.
+      const empty = !(typeof state === 'object' && state && state.waypoints && state.waypoints.length);
+      add.textContent = empty
+        ? ((typeof S === 'object' && S && S.deckStartRouteHere) || 'Start route here')
+        : ((typeof S === 'object' && S && S.deckAddWaypoint) || 'Add to route');
       add.disabled = locked;
       add.title = locked ? ((typeof S === 'object' && S && S.editLockBlockedToast) || '') : '';
       add.addEventListener('click', () => { addHere(latlng); });
