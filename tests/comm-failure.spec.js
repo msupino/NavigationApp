@@ -222,6 +222,8 @@ const fixAt = (page, lat, lng) => page.evaluate(([la, ln]) => window.__geoOk({ c
   accuracy: 5, altitude: null, heading: null, speed: null }, timestamp: Date.now() }), [lat, lng]);
 
 test('it waits for the GPS as long as it takes, showing 7600 meanwhile', async ({ page }) => {
+  // A fixed 9 s wait by design, inside the default 15 s: a slow CI boot left no room.
+  test.slow();
   await boot(page, 'en', 'hold');
   await page.evaluate(() => map.setView([32.2, 34.85], 10));
   await page.click('#commfail-btn');
@@ -348,6 +350,8 @@ test('NOW follows the aircraft, so the first leg stays measured from where it is
 });
 
 test('comm failure survives a language switch, and Cancel still puts the old route back', async ({ page }) => {
+  // Three full page loads; on a slow runner they outgrew the default budget.
+  test.slow();
   await boot(page);
   await planned(page);
   await page.click('#commfail-btn');
