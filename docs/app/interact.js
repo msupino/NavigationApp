@@ -3207,6 +3207,13 @@ function appendAirfieldHours(body, af) {
   const text = document.createElement('div');
   text.className = 'hours-text';
   sec.appendChild(head);
+  // Published hours are not an open field: weather, security, a NOTAM or the operator can
+  // still close it. Said beside the verdict, where it is read, not only in the folded text.
+  const caveat = document.createElement('div');
+  caveat.className = 'hours-caveat';
+  caveat.textContent = S.afHoursCaveat || 'Published hours only: weather, security, NOTAMs or the operator may still close the field.';
+  caveat.hidden = true;
+  sec.appendChild(caveat);
   sec.appendChild(toggle);
   sec.appendChild(text);
   let expanded = false;
@@ -3258,6 +3265,7 @@ function appendAirfieldHours(body, af) {
     const ahead = Number.isFinite(window.lookaheadTarget) && window.lookaheadTarget > Date.now();
     const at = ahead ? new Date(window.lookaheadTarget) : new Date();
     const st = AH.status(af.name, af, at, lookup);
+    caveat.hidden = st.state !== 'open';
     if (st.state === null) { pill.hidden = true; return; }
     const bits = [];
     if (ahead && typeof S.afHoursAt === 'function') {

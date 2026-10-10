@@ -132,6 +132,12 @@ test('the panel shows the AIP hours, the source and the verdict', async ({ page 
   expect(h.src).toContain('check NOTAMs');
   expect(h.pill).toBe('Within published hours · until 14:00');
   expect(h.open).toBe(true);
+  // "Within published hours" is not "open": the caveat sits beside the verdict, unfolded.
+  const caveat = () => page.evaluate(() => {
+    const c = document.querySelector('#insp-body .hours-section .hours-caveat');
+    return c && c.offsetParent ? c.textContent : null;
+  });
+  expect(await caveat()).toBe('Published hours only: weather, security, NOTAMs or the operator may still close the field.');
   // The AIP text starts folded: the verdict is what is read in passing.
   const fold = () => page.evaluate(() => {
     const sec = document.querySelector('#insp-body .hours-section');
@@ -178,6 +184,8 @@ test('in Hebrew: the AIP wording and a Hebrew verdict', async ({ page }) => {
   expect(h.lines[0]).toContain('ימי חול');
   expect(h.pill).toBe('מחוץ לשעות הפעילות המפורסמות · נפתח ב-16:00');
   expect(h.closed).toBe(true);
+  // Outside the hours there is nothing to qualify.
+  expect(await page.evaluate(() => document.querySelector('#insp-body .hours-section .hours-caveat').hidden)).toBe(true);
 });
 
 // The verdict answers for the moment the time slider points at, not only for now: the

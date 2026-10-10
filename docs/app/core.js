@@ -2371,6 +2371,7 @@ window.S = Object.assign({
   afHoursPpr: 'prior coordination required',
   afHoursShow: 'Show the published hours',
   afHoursHide: 'Hide the published hours',
+  afHoursCaveat: 'Published hours only: weather, security, NOTAMs or the operator may still close the field.',
   afHoursNone: 'No hours published in the AIP',
   afHoursSource: function (amendment, date) { return 'AIP, amendment ' + amendment + ' (' + date + ') · Israel local time · check NOTAMs'; },
   afWindLegend: 'Solid barb = reported · dashed = forecast',

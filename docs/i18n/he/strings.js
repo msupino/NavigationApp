@@ -917,6 +917,7 @@ window.S = {
   afHoursPpr: 'נדרש תיאום מוקדם',
   afHoursShow: 'הצג את שעות הפעילות המפורסמות',
   afHoursHide: 'הסתר את שעות הפעילות',
+  afHoursCaveat: 'שעות מפורסמות בלבד: מזג אוויר, ביטחון, NOTAM או מפעיל השדה עדיין עלולים לסגור אותו.',
   afHoursNone: 'לא פורסמו שעות פעילות בפמ"ת',
   afHoursSource: function (amendment, date) { return 'פמ"ת, עדכון ' + amendment + ' (' + date + ') · שעון ישראל · יש לבדוק NOTAM'; },
   afWindLegend: 'נוצה מלאה = מדווח · מקווקו = תחזית',
