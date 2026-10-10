@@ -139,14 +139,14 @@ test('the panel shows the AIP hours, the source and the verdict', async ({ page 
     return { hidden: sec.querySelector('.hours-text').hidden, expanded: t.getAttribute('aria-expanded'),
       visibleLines: [...sec.querySelectorAll('.hours-line')].filter(n => n.offsetParent).length };
   });
-  expect(await fold(page)).toEqual({ hidden: true, expanded: 'false', visibleLines: 0 });
+  expect(await fold()).toEqual({ hidden: true, expanded: 'false', visibleLines: 0 });
   await page.click('#insp-body .hours-section .hours-toggle');
-  const open1 = await fold(page);
+  const open1 = await fold();
   expect(open1.hidden).toBe(false);
   expect(open1.expanded).toBe('true');
   expect(open1.visibleLines).toBeGreaterThan(3);
   await page.click('#insp-body .hours-section .insp-section-badge');
-  expect((await fold(page)).hidden).toBe(true);
+  expect((await fold()).hidden).toBe(true);
   // It sits before the radios.
   const order = await page.evaluate(() => {
     const secs = [...document.querySelectorAll('#insp-body .insp-frame')].map(s => s.className);
