@@ -2368,6 +2368,8 @@ window.S = Object.assign({
   afHoursUntil: function (t, approx) { return 'until ' + (approx ? 'about ' : '') + t; },
   afHoursOpens: function (t, approx) { return 'opens ' + (approx ? 'about ' : '') + t; },
   afHoursPpr: 'prior coordination required',
+  afHoursShow: 'Show the hours',
+  afHoursHide: 'Hide the hours',
   afHoursNone: 'No hours published in the AIP',
   afHoursSource: function (amendment, date) { return 'AIP, amendment ' + amendment + ' (' + date + ') · Israel local time · check NOTAMs'; },
   afWindLegend: 'Solid barb = reported · dashed = forecast',

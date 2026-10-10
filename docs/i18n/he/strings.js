@@ -914,6 +914,8 @@ window.S = {
   afHoursUntil: function (t, approx) { return 'עד ' + (approx ? 'בערך ' : '') + t; },
   afHoursOpens: function (t, approx) { return 'נפתח ' + (approx ? 'בערך ' : '') + 'ב-' + t; },
   afHoursPpr: 'נדרש תיאום מוקדם',
+  afHoursShow: 'הצג את השעות',
+  afHoursHide: 'הסתר את השעות',
   afHoursNone: 'לא פורסמו שעות פעילות בפמ"ת',
   afHoursSource: function (amendment, date) { return 'פמ"ת, עדכון ' + amendment + ' (' + date + ') · שעון ישראל · יש לבדוק NOTAM'; },
   afWindLegend: 'נוצה מלאה = מדווח · מקווקו = תחזית',

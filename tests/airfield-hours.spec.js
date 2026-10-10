@@ -132,6 +132,21 @@ test('the panel shows the AIP hours, the source and the verdict', async ({ page 
   expect(h.src).toContain('check NOTAMs');
   expect(h.pill).toBe('Within published hours · until 14:00');
   expect(h.open).toBe(true);
+  // The AIP text starts folded: the verdict is what is read in passing.
+  const fold = () => page.evaluate(() => {
+    const sec = document.querySelector('#insp-body .hours-section');
+    const t = sec.querySelector('.hours-toggle');
+    return { hidden: sec.querySelector('.hours-text').hidden, expanded: t.getAttribute('aria-expanded'),
+      visibleLines: [...sec.querySelectorAll('.hours-line')].filter(n => n.offsetParent).length };
+  });
+  expect(await fold(page)).toEqual({ hidden: true, expanded: 'false', visibleLines: 0 });
+  await page.click('#insp-body .hours-section .hours-toggle');
+  const open1 = await fold(page);
+  expect(open1.hidden).toBe(false);
+  expect(open1.expanded).toBe('true');
+  expect(open1.visibleLines).toBeGreaterThan(3);
+  await page.click('#insp-body .hours-section .insp-section-badge');
+  expect((await fold(page)).hidden).toBe(true);
   // It sits before the radios.
   const order = await page.evaluate(() => {
     const secs = [...document.querySelectorAll('#insp-body .insp-frame')].map(s => s.className);
@@ -148,6 +163,11 @@ test('a prior-coordination field says so; a field with no hours says that', asyn
   const h = await readHours(page);
   expect(h.lines).toEqual(['No hours published in the AIP']);
   expect(h.pill).toBe(null);
+  // Nothing to fold: the one line shows, and there is no toggle.
+  expect(await page.evaluate(() => {
+    const sec = document.querySelector('#insp-body .hours-section');
+    return { lineShown: !!sec.querySelector('.hours-none').offsetParent, toggle: sec.querySelector('.hours-toggle').hidden };
+  })).toEqual({ lineShown: true, toggle: true });
 });
 
 test('in Hebrew: the AIP wording and a Hebrew verdict', async ({ page }) => {

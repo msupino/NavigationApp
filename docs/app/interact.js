@@ -3196,7 +3196,31 @@ function appendAirfieldHours(body, af) {
   pill.className = 'hours-now';
   pill.hidden = true;
   head.appendChild(pill);
+  // The AIP text is long (Herzliya's runs to six paragraphs) and the verdict beside the title
+  // is what is read in passing, so the text starts folded. The toggle is the title itself
+  // plus a chevron: one tap target, and nothing to find.
+  const toggle = document.createElement('button');
+  toggle.type = 'button';
+  toggle.className = 'hours-toggle';
+  toggle.hidden = true;
+  head.insertBefore(toggle, pill);
+  const text = document.createElement('div');
+  text.className = 'hours-text';
   sec.appendChild(head);
+  sec.appendChild(text);
+  let expanded = false;
+  const setExpanded = (on) => {
+    expanded = on;
+    text.hidden = !on;
+    toggle.textContent = on ? '▾' : '▸';
+    toggle.title = on ? (S.afHoursHide || 'Hide the hours') : (S.afHoursShow || 'Show the hours');
+    toggle.setAttribute('aria-label', toggle.title);
+    toggle.setAttribute('aria-expanded', String(on));
+  };
+  toggle.onclick = () => setExpanded(!expanded);
+  lbl.style.cursor = 'pointer';
+  lbl.onclick = () => { if (!toggle.hidden) setExpanded(!expanded); };
+  setExpanded(false);
   body.appendChild(sec);
   const lang = (document.documentElement.lang || '').toLowerCase().startsWith('he') ? 'he' : 'en';
   const lookup = k => ((typeof airfields !== 'undefined' && airfields) || []).find(a => a.name === k) || null;
@@ -3204,19 +3228,22 @@ function appendAirfieldHours(body, af) {
     const entry = AH.entryFor(af.name);
     sec.querySelectorAll('.hours-line, .hours-src').forEach(n => n.remove());
     if (!entry) {
+      // One short line: nothing to fold, so it is shown and the toggle is not.
       const none = document.createElement('div');
       none.className = 'hours-line hours-none';
       none.textContent = S.afHoursNone || 'No hours published in the AIP';
       sec.appendChild(none);
       pill.hidden = true;
+      toggle.hidden = true;
       return;
     }
+    toggle.hidden = false;
     for (const t of (entry[lang] || entry.en || [])) {
       const line = document.createElement('div');
       line.className = 'hours-line';
       line.dir = 'auto';
       line.textContent = t;
-      sec.appendChild(line);
+      text.appendChild(line);
     }
     if (entry.source) {
       const src = document.createElement('div');
@@ -3224,7 +3251,7 @@ function appendAirfieldHours(body, af) {
       src.textContent = (typeof S.afHoursSource === 'function')
         ? S.afHoursSource(entry.source.amdt, entry.source.date)
         : 'AIP ' + entry.source.amdt + ' (' + entry.source.date + ')';
-      sec.appendChild(src);
+      text.appendChild(src);
     }
     const st = AH.status(af.name, af, new Date(), lookup);
     if (st.state === null) { pill.hidden = true; return; }
