@@ -456,6 +456,26 @@
   }
 
   function openHere(latlng) {
+    // On the ground a held spot gets the same inspector as a known point -- satellite view,
+    // VOR radial, nearest field, terrain, Start route here -- rather than a thinner sheet of
+    // its own (reported: "match the unknown point to the known one, with sat and all"). In
+    // flight the inspector stays off the chart (inspectorAllowedNow), so there the compact
+    // sheet is what keeps Direct to one hold away.
+    const sel = { type: 'coord', lat: latlng.lat, lng: latlng.lng, held: true };
+    if (typeof showInspector === 'function' && typeof state === 'object' && state
+        && (typeof inspectorAllowedNow !== 'function' || inspectorAllowedNow(sel))) {
+      closeSheet();
+      state.selected = sel;
+      showInspector();
+      return;
+    }
+    // Falling back to the sheet: a held-point inspector from before the fix came on would sit
+    // under it with stale buttons (Direct to dimmed for want of a position it now has).
+    if (typeof state === 'object' && state && state.selected && state.selected.held
+        && typeof showInspector === 'function') {
+      state.selected = null;
+      showInspector();
+    }
     const title = (typeof S === 'object' && S && S.deckHereTitle) || 'What is here';
     openSheet('here-point', title, (body) => {
       body.classList.add('deck-here');
@@ -822,6 +842,10 @@
 
   window.NavAid = window.NavAid || {};
   NavAid.refreshMobileDeck = apply;
+  // The coordinate inspector offers the same Direct to and reads the same nearest field.
+  NavAid.deckDirectTo = directTo;
+  NavAid.deckNearestField = nearestField;
+  NavAid.deckFmtBearing = fmtBearing;
   if (window.matchMedia) {
     const mq = window.matchMedia(NARROW);
     const onChange = () => apply();

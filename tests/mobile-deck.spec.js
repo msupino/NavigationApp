@@ -411,31 +411,47 @@ const press = async (page, x, y, ms) => {
   await page.mouse.up();
 };
 
+// What a hold opens: on the ground the point's own inspector (as for a known point), in flight
+// -- where the inspector stays off the chart -- the compact sheet. These read either, so each
+// test states the behaviour, not the surface.
+const HERE_SEL = '.deck-here, #inspector:not(.hidden) #insp-add-to-route';
+const hereButtons = (page) => page.evaluate(() => {
+  const btns = Array.from(document.querySelectorAll('.deck-here-btn, #inspector:not(.hidden) #insp-direct-to, #inspector:not(.hidden) #insp-add-to-route'));
+  return btns.map(b => ({ text: b.textContent.replace(/^\u2795\s*/, ''),
+    disabled: b.disabled || b.getAttribute('aria-disabled') === 'true',
+    why: b.title || (b.dataset && b.dataset.why) || '' }));
+});
+const clickHere = (page, text) => page.evaluate((t) => {
+  const b = Array.from(document.querySelectorAll('.deck-here-btn, #inspector:not(.hidden) #insp-direct-to, #inspector:not(.hidden) #insp-add-to-route'))
+    .find(x => x.textContent.replace(/^\u2795\s*/, '') === t);
+  b.click();
+}, text);
+
 test('press and hold says what is under the finger', async ({ page }) => {
   await boot(page);
   await press(page, 200, 420);
-  await page.waitForSelector('.deck-here');
+  await page.waitForSelector(HERE_SEL);
+  // The same inspector a known point gets: position, nearest field, satellite view, the
+  // route buttons -- titled for what it is.
   const got = await page.evaluate(() => ({
-    title: document.querySelector('.deck-sheet-title').textContent,
-    rows: Array.from(document.querySelectorAll('.deck-here-row span:first-child')).map(s => s.textContent),
-    coords: document.querySelector('.deck-here-value').textContent,
-    actions: Array.from(document.querySelectorAll('.deck-here-btn')).map(b => b.textContent),
+    title: document.getElementById('insp-title').value,
+    rows: Array.from(document.querySelectorAll('#insp-body .row label')).map(l => l.textContent),
+    sat: !!document.querySelector('#insp-body .sat-snippet, #insp-body [class*="sat"]'),
   }));
   expect(got.title).toBe('What is here');
   expect(got.rows[0]).toBe('Position');
-  expect(got.coords).toMatch(/\d+°/);
   expect(got.rows).toContain('Nearest field');
-  // An empty map: the held point starts the route, in the inspector's words.
-  expect(got.actions).toEqual(['Direct to', 'Start route here']);
+  expect(got.sat).toBe(true);
+  // An empty map: the held point starts the route, in the known point's words.
+  expect((await hereButtons(page)).map(b => b.text)).toEqual(['Direct to', 'Start route here']);
 });
 
 test('with a route, the held point is added to it', async ({ page }) => {
   await boot(page);
   await route(page);
   await press(page, 200, 420);
-  await page.waitForSelector('.deck-here');
-  const actions = await page.evaluate(() => Array.from(document.querySelectorAll('.deck-here-btn')).map(b => b.textContent));
-  expect(actions).toEqual(['Direct to', 'Add to route']);
+  await page.waitForSelector(HERE_SEL);
+  expect((await hereButtons(page)).map(b => b.text)).toEqual(['Direct to', 'Add to route']);
 });
 
 test('a tap is not a press, and neither is a drag', async ({ page }) => {
@@ -455,31 +471,22 @@ test('Add to route puts the held point on the end of the plan', async ({ page })
   await boot(page);
   await route(page);
   await press(page, 200, 420);
-  await page.waitForSelector('.deck-here');
+  await page.waitForSelector(HERE_SEL);
   const before = await page.evaluate(() => state.waypoints.length);
-  await page.evaluate(() => {
-    const btn = Array.from(document.querySelectorAll('.deck-here-btn'))
-      .find(b => b.textContent === 'Add to route');
-    btn.click();
-  });
+  await clickHere(page, 'Add to route');
   const got = await page.evaluate(() => ({
     count: state.waypoints.length,
-    sheet: document.getElementById('deck-sheet').hidden,
     legs: state.legs.length,
   }));
   expect(got.count).toBe(before + 1);
   expect(got.legs).toBe(got.count - 1);            // the plan, not just a list of points
-  expect(got.sheet).toBe(true);
 });
 
 test('Direct to waits for a position rather than inventing one', async ({ page }) => {
   await boot(page);
   await press(page, 200, 420);
-  await page.waitForSelector('.deck-here');
-  const off = await page.evaluate(() => {
-    const b = Array.from(document.querySelectorAll('.deck-here-btn')).find(x => x.textContent === 'Direct to');
-    return { disabled: b.disabled, why: b.title };
-  });
+  await page.waitForSelector(HERE_SEL);
+  const off = (await hereButtons(page)).find(b => b.text === 'Direct to');
   // Dim, never hide -- and it says why.
   expect(off.disabled).toBe(true);
   expect(off.why).toMatch(/Location/);
@@ -488,16 +495,11 @@ test('Direct to waits for a position rather than inventing one', async ({ page }
     window.gpsLiveOn = true;
     window.gpsOwn = { lat: 32.05, lng: 34.85, hdg: 90, t: Date.now() };
   });
-  // Above the open sheet: the sheet is not the chart, so a press on it is a press on it.
-  await press(page, 200, 200);
-  await page.waitForFunction(() => {
-    const b = Array.from(document.querySelectorAll('.deck-here-btn')).find(x => x.textContent === 'Direct to');
-    return b && !b.disabled;
-  });
-  await page.evaluate(() => {
-    const b = Array.from(document.querySelectorAll('.deck-here-btn')).find(x => x.textContent === 'Direct to');
-    b.click();
-  });
+  // Above the open panel: the panel is not the chart, so a press on it is a press on it.
+  await press(page, 200, 120);
+  await expect.poll(async () => ((await hereButtons(page)).find(b => b.text === 'Direct to') || {}).disabled).toBe(false);
+  await clickHere(page, 'Direct to');
+  await page.waitForTimeout(50);
   const got = await page.evaluate(() => ({
     count: state.waypoints.length,
     from: state.waypoints[0],
@@ -515,13 +517,13 @@ test('Direct to asks before it throws a plan away', async ({ page }) => {
     window.gpsOwn = { lat: 32.05, lng: 34.85, hdg: 90, t: Date.now() };
   });
   await press(page, 200, 200);
-  await page.waitForSelector('.deck-here');
+  await page.waitForSelector(HERE_SEL);
   // The app's own dialog, not the browser's: a question about throwing a plan away is one the
   // pilot has to be able to read, in their language, on a phone.
   const asked = await page.evaluate(async () => {
     const seen = [];
     window.askYesNo = async (title, text) => { seen.push(String(text)); return false; };
-    const b = Array.from(document.querySelectorAll('.deck-here-btn')).find(x => x.textContent === 'Direct to');
+    const b = Array.from(document.querySelectorAll('.deck-here-btn, #inspector:not(.hidden) #insp-direct-to')).find(x => x.textContent === 'Direct to');
     b.click();
     await new Promise(r => setTimeout(r, 30));
     return seen;
@@ -541,10 +543,10 @@ test('Direct to replaces the plan once the pilot agrees', async ({ page }) => {
     window.gpsOwn = { lat: 32.05, lng: 34.85, hdg: 90, t: Date.now() };
   });
   await press(page, 200, 200);
-  await page.waitForSelector('.deck-here');
+  await page.waitForSelector(HERE_SEL);
   await page.evaluate(async () => {
     window.askYesNo = async () => true;
-    const b = Array.from(document.querySelectorAll('.deck-here-btn')).find(x => x.textContent === 'Direct to');
+    const b = Array.from(document.querySelectorAll('.deck-here-btn, #inspector:not(.hidden) #insp-direct-to')).find(x => x.textContent === 'Direct to');
     b.click();
     await new Promise(r => setTimeout(r, 30));
   });
@@ -565,10 +567,10 @@ test('Direct to leaves the plan alone when it cannot ask', async ({ page }) => {
     window.gpsOwn = { lat: 32.05, lng: 34.85, hdg: 90, t: Date.now() };
   });
   await press(page, 200, 200);
-  await page.waitForSelector('.deck-here');
+  await page.waitForSelector(HERE_SEL);
   await page.evaluate(async () => {
     window.askYesNo = undefined;
-    const b = Array.from(document.querySelectorAll('.deck-here-btn')).find(x => x.textContent === 'Direct to');
+    const b = Array.from(document.querySelectorAll('.deck-here-btn, #inspector:not(.hidden) #insp-direct-to')).find(x => x.textContent === 'Direct to');
     b.click();
     await new Promise(r => setTimeout(r, 30));
   });
@@ -584,9 +586,8 @@ test('a locked route refuses both, and says so', async ({ page }) => {
     if (typeof refreshEditLockControl === 'function') refreshEditLockControl();
   });
   await press(page, 200, 420);
-  await page.waitForSelector('.deck-here');
-  const got = await page.evaluate(() => Array.from(document.querySelectorAll('.deck-here-btn'))
-    .map(b => ({ text: b.textContent, disabled: b.disabled })));
+  await page.waitForSelector(HERE_SEL);
+  const got = await hereButtons(page);
   expect(got.every(b => b.disabled), JSON.stringify(got)).toBe(true);
 });
 
