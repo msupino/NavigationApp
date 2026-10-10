@@ -3197,24 +3197,24 @@ function appendAirfieldHours(body, af) {
   pill.hidden = true;
   head.appendChild(pill);
   // The AIP text is long (Herzliya's runs to six paragraphs) and the verdict beside the title
-  // is what is read in passing, so the text starts folded. The toggle is the title itself
-  // plus a chevron: one tap target, and nothing to find.
+  // is what is read in passing, so the text starts folded. The toggle says what it does in
+  // words, on its own row: a bare chevron beside the title was not read as something that
+  // opens.
   const toggle = document.createElement('button');
   toggle.type = 'button';
   toggle.className = 'hours-toggle';
   toggle.hidden = true;
-  head.insertBefore(toggle, pill);
   const text = document.createElement('div');
   text.className = 'hours-text';
   sec.appendChild(head);
+  sec.appendChild(toggle);
   sec.appendChild(text);
   let expanded = false;
   const setExpanded = (on) => {
     expanded = on;
     text.hidden = !on;
-    toggle.textContent = on ? '▾' : '▸';
-    toggle.title = on ? (S.afHoursHide || 'Hide the hours') : (S.afHoursShow || 'Show the hours');
-    toggle.setAttribute('aria-label', toggle.title);
+    toggle.textContent = (on ? (S.afHoursHide || 'Hide the published hours')
+      : (S.afHoursShow || 'Show the published hours')) + (on ? ' ▴' : ' ▾');
     toggle.setAttribute('aria-expanded', String(on));
   };
   toggle.onclick = () => setExpanded(!expanded);
@@ -3253,19 +3253,38 @@ function appendAirfieldHours(body, af) {
         : 'AIP ' + entry.source.amdt + ' (' + entry.source.date + ')';
       text.appendChild(src);
     }
-    const st = AH.status(af.name, af, new Date(), lookup);
+    // The moment the panel's time slider points at: live, or the top of a later hour. Hours
+    // are a question about when you will get there, not only about now.
+    const ahead = Number.isFinite(window.lookaheadTarget) && window.lookaheadTarget > Date.now();
+    const at = ahead ? new Date(window.lookaheadTarget) : new Date();
+    const st = AH.status(af.name, af, at, lookup);
     if (st.state === null) { pill.hidden = true; return; }
-    const bits = [st.state === 'open' ? (S.afHoursWithin || 'Within published hours')
-      : (S.afHoursOutside || 'Outside published hours')];
+    const bits = [];
+    if (ahead && typeof S.afHoursAt === 'function') {
+      bits.push(S.afHoursAt(new Intl.DateTimeFormat('en-GB', { timeZone: 'Asia/Jerusalem',
+        hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).format(at)));
+    }
+    bits.push(st.state === 'open' ? (S.afHoursWithin || 'Within published hours')
+      : (S.afHoursOutside || 'Outside published hours'));
     if (st.state === 'open' && st.until && typeof S.afHoursUntil === 'function') bits.push(S.afHoursUntil(st.until, st.approx));
     if (st.state === 'closed' && st.opens && typeof S.afHoursOpens === 'function') bits.push(S.afHoursOpens(st.opens, st.approx));
     if (st.state === 'open' && entry.ppr) bits.push(S.afHoursPpr || 'prior coordination required');
     pill.textContent = bits.join(' · ');
+    pill.classList.toggle('is-ahead', ahead);
     pill.classList.toggle('is-open', st.state === 'open');
     pill.classList.toggle('is-closed', st.state === 'closed');
     pill.hidden = false;
   };
   AH.load().then(() => { if (sec.isConnected) paint(); });
+  // Follow the time slider, as the wind row does; dropped once the panel is gone.
+  const timeEl = document.getElementById('airfield-wind-time');
+  if (timeEl) {
+    const onTime = () => {
+      if (!sec.isConnected) { timeEl.removeEventListener('input', onTime); return; }
+      paint();
+    };
+    timeEl.addEventListener('input', onTime);
+  }
   // An inspector left open across a window edge would otherwise keep saying "within" after
   // the field has closed. Once a minute, and only while the panel is on screen.
   const timer = setInterval(() => {

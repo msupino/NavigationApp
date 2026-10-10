@@ -179,3 +179,25 @@ test('in Hebrew: the AIP wording and a Hebrew verdict', async ({ page }) => {
   expect(h.pill).toBe('מחוץ לשעות הפעילות המפורסמות · נפתח ב-16:00');
   expect(h.closed).toBe(true);
 });
+
+// The verdict answers for the moment the time slider points at, not only for now: the
+// question a pilot asks is whether the field will be open when they get there.
+test('the verdict follows the time slider', async ({ page }) => {
+  await boot(page, 'en', '2026-10-12T10:00:00+03:00');   // Monday, 07:00Z
+  await open(page, 'LLHZ');
+  const slide = (h) => page.evaluate((v) => {
+    const m = document.getElementById('lookahead-time');
+    m.value = String(v);
+    m.dispatchEvent(new Event('input'));
+  }, h);
+  expect((await readHours(page)).pill).toBe('Within published hours · until 14:00');
+  await slide(5);                                          // 15:00 local: the midday break
+  let h = await readHours(page);
+  expect(h.pill).toBe('At 15:00 local · Outside published hours · opens 16:00');
+  expect(h.closed).toBe(true);
+  await slide(7);                                          // 17:00 local
+  h = await readHours(page);
+  expect(h.pill).toMatch(/^At 17:00 local · Within published hours · until about 18:2\d$/);
+  await slide(0);                                          // back to live
+  expect((await readHours(page)).pill).toBe('Within published hours · until 14:00');
+});
