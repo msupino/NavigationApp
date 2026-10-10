@@ -1,0 +1,80 @@
+name: AIP updates
+
+# Tells a person the CAA has published something, so they know a refresh is due. The plate
+# workflow (aip-plates.yml) keeps one drift issue current, but editing an issue notifies
+# nobody, and it only looks at files we ship. This compares the whole AIP index with
+# yesterday's copy of it and, when anything was added, amended or withdrawn, opens a NEW issue
+# assigned to the repository owner -- an assignment is what GitHub actually notifies on (mail,
+# the app, the bell). Sorted by what it touches: airfield hours pages, charts we ship, CVFR
+# sheets, the rest.
+#
+# Yesterday's index lives in the Actions cache, saved under a new key every run and restored
+# from the newest. If it is ever evicted the run records a fresh baseline and says nothing,
+# rather than reporting the whole AIP as new.
+
+on:
+  schedule:
+    - cron: '41 4 * * *'     # daily, after aip-plates.yml (04:17)
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+concurrency:
+  group: aip-updates
+  cancel-in-progress: false
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Restore yesterday's index
+        uses: actions/cache/restore@v4
+        with:
+          path: .aip-index
+          key: aip-index-${{ github.run_id }}
+          restore-keys: aip-index-
+
+      - name: Compare today's index with it
+        id: cmp
+        run: |
+          set +e
+          mkdir -p .aip-index
+          PREV=()
+          [ -f .aip-index/index.json ] && PREV=(--prev .aip-index/index.json)
+          python3 scripts/aip-updates.py "${PREV[@]}" --out /tmp/index.json --md /tmp/updates.md | tee /tmp/updates.txt
+          echo "changed=${PIPESTATUS[0]}" >> "$GITHUB_OUTPUT"
+          set -e
+          # Only a successful fetch replaces the saved copy: a failed one must not become
+          # tomorrow's baseline.
+          if [ -s /tmp/index.json ]; then cp /tmp/index.json .aip-index/index.json; fi
+          { echo '### AIP updates'; echo '```'; cat /tmp/updates.txt; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Save today's index
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: .aip-index
+          key: aip-index-${{ github.run_id }}
+
+      - name: Open an issue for the owner
+        if: steps.cmp.outputs.changed == '1'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          SUMMARY=$(head -1 /tmp/updates.txt | sed 's/^AIP index: [0-9]* files; //')
+          TITLE="AIP updated $(date -u +%Y-%m-%d): ${SUMMARY}"
+          {
+            echo 'The CAA has changed its AIP since the last daily check. What it touches:'
+            echo
+            cat /tmp/updates.md
+            echo
+            echo 'Refreshing is a person'"'"'s job: hours are read by hand, and most plates are georeferenced by hand.'
+            echo 'Check what we ship with `python3 scripts/aip-drift.py`. Opened by the `AIP updates` workflow.'
+          } > /tmp/body.md
+          gh issue create --title "$TITLE" --body-file /tmp/body.md --assignee "${{ github.repository_owner }}"

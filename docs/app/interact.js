@@ -3155,6 +3155,9 @@ function appendAirfieldDetailRows(body, af, label) {
     if (af.lighting === 'minimal') bits.push(S.airfieldMinimalLighting || 'minimal lighting');
     body.appendChild(textRow(S.airfieldLongestRunway || 'Runway', bits.join(' · ')));
   }
+  // Published hours before the radios: whether the field is there to be used at all comes
+  // before how to talk to it.
+  appendAirfieldHours(body, af);
   // Frequencies in a frame of their own: on a field with a tower, a clearance delivery and
   // an ATIS this is four or five rows of numbers, and unlabelled they read as a list of
   // settings rather than as the radios to set.
@@ -3170,6 +3173,132 @@ function appendAirfieldDetailRows(body, af, label) {
   appendVorRadialRow(body, af.lat, af.lng);
   appendAirfieldNotams(body, af);
   appendAirfieldPlates(body, af);
+}
+
+// The AIP's published operating hours, with a verdict for right now. The verdict says
+// "within / outside published hours" and only when the rules decide it (see
+// airfield-hours.js); the AIP text is always shown, because the conditions around the hours
+// (prior coordination, helicopters only, commercial flights only) are not something a pill
+// can carry. A field the AIP gives no hours says so, rather than showing nothing: no row
+// would read as "no restriction".
+function appendAirfieldHours(body, af) {
+  const AH = window.NavAid && window.NavAid.airfieldHours;
+  if (!AH || !af) return;
+  const sec = document.createElement('div');
+  sec.className = 'insp-frame hours-section';
+  const head = document.createElement('div');
+  head.className = 'insp-frame-head';
+  const lbl = document.createElement('span');
+  lbl.className = 'insp-section-badge';
+  lbl.textContent = S.afHoursTitle || 'Hours';
+  head.appendChild(lbl);
+  const pill = document.createElement('span');
+  pill.className = 'hours-now';
+  pill.hidden = true;
+  head.appendChild(pill);
+  // The AIP text is long (Herzliya's runs to six paragraphs) and the verdict beside the title
+  // is what is read in passing, so the text starts folded. The toggle says what it does in
+  // words, on its own row: a bare chevron beside the title was not read as something that
+  // opens.
+  const toggle = document.createElement('button');
+  toggle.type = 'button';
+  toggle.className = 'hours-toggle';
+  toggle.hidden = true;
+  const text = document.createElement('div');
+  text.className = 'hours-text';
+  sec.appendChild(head);
+  // Published hours are not an open field: weather, security, a NOTAM or the operator can
+  // still close it. Said beside the verdict, where it is read, not only in the folded text.
+  const caveat = document.createElement('div');
+  caveat.className = 'hours-caveat';
+  caveat.textContent = S.afHoursCaveat || 'Published hours only: weather, security, NOTAMs or the operator may still close the field.';
+  caveat.hidden = true;
+  sec.appendChild(caveat);
+  sec.appendChild(toggle);
+  sec.appendChild(text);
+  let expanded = false;
+  const setExpanded = (on) => {
+    expanded = on;
+    text.hidden = !on;
+    toggle.textContent = (on ? (S.afHoursHide || 'Hide the published hours')
+      : (S.afHoursShow || 'Show the published hours')) + (on ? ' ▴' : ' ▾');
+    toggle.setAttribute('aria-expanded', String(on));
+  };
+  toggle.onclick = () => setExpanded(!expanded);
+  lbl.style.cursor = 'pointer';
+  lbl.onclick = () => { if (!toggle.hidden) setExpanded(!expanded); };
+  setExpanded(false);
+  body.appendChild(sec);
+  const lang = (document.documentElement.lang || '').toLowerCase().startsWith('he') ? 'he' : 'en';
+  const lookup = k => ((typeof airfields !== 'undefined' && airfields) || []).find(a => a.name === k) || null;
+  const paint = () => {
+    const entry = AH.entryFor(af.name);
+    sec.querySelectorAll('.hours-line, .hours-src').forEach(n => n.remove());
+    if (!entry) {
+      // One short line: nothing to fold, so it is shown and the toggle is not.
+      const none = document.createElement('div');
+      none.className = 'hours-line hours-none';
+      none.textContent = S.afHoursNone || 'No hours published in the AIP';
+      sec.appendChild(none);
+      pill.hidden = true;
+      toggle.hidden = true;
+      return;
+    }
+    toggle.hidden = false;
+    for (const t of (entry[lang] || entry.en || [])) {
+      const line = document.createElement('div');
+      line.className = 'hours-line';
+      line.dir = 'auto';
+      line.textContent = t;
+      text.appendChild(line);
+    }
+    if (entry.source) {
+      const src = document.createElement('div');
+      src.className = 'hours-src';
+      src.textContent = (typeof S.afHoursSource === 'function')
+        ? S.afHoursSource(entry.source.amdt, entry.source.date)
+        : 'AIP ' + entry.source.amdt + ' (' + entry.source.date + ')';
+      text.appendChild(src);
+    }
+    // The moment the panel's time slider points at: live, or the top of a later hour. Hours
+    // are a question about when you will get there, not only about now.
+    const ahead = Number.isFinite(window.lookaheadTarget) && window.lookaheadTarget > Date.now();
+    const at = ahead ? new Date(window.lookaheadTarget) : new Date();
+    const st = AH.status(af.name, af, at, lookup);
+    caveat.hidden = st.state !== 'open';
+    if (st.state === null) { pill.hidden = true; return; }
+    const bits = [];
+    if (ahead && typeof S.afHoursAt === 'function') {
+      bits.push(S.afHoursAt(new Intl.DateTimeFormat('en-GB', { timeZone: 'Asia/Jerusalem',
+        hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).format(at)));
+    }
+    bits.push(st.state === 'open' ? (S.afHoursWithin || 'Within published hours')
+      : (S.afHoursOutside || 'Outside published hours'));
+    if (st.state === 'open' && st.until && typeof S.afHoursUntil === 'function') bits.push(S.afHoursUntil(st.until, st.approx));
+    if (st.state === 'closed' && st.opens && typeof S.afHoursOpens === 'function') bits.push(S.afHoursOpens(st.opens, st.approx));
+    if (st.state === 'open' && entry.ppr) bits.push(S.afHoursPpr || 'prior coordination required');
+    pill.textContent = bits.join(' · ');
+    pill.classList.toggle('is-ahead', ahead);
+    pill.classList.toggle('is-open', st.state === 'open');
+    pill.classList.toggle('is-closed', st.state === 'closed');
+    pill.hidden = false;
+  };
+  AH.load().then(() => { if (sec.isConnected) paint(); });
+  // Follow the time slider, as the wind row does; dropped once the panel is gone.
+  const timeEl = document.getElementById('airfield-wind-time');
+  if (timeEl) {
+    const onTime = () => {
+      if (!sec.isConnected) { timeEl.removeEventListener('input', onTime); return; }
+      paint();
+    };
+    timeEl.addEventListener('input', onTime);
+  }
+  // An inspector left open across a window edge would otherwise keep saying "within" after
+  // the field has closed. Once a minute, and only while the panel is on screen.
+  const timer = setInterval(() => {
+    if (!sec.isConnected) { clearInterval(timer); return; }
+    paint();
+  }, 60000);
 }
 
 // Live METAR / TAF for an ICAO-coded airfield. Fetched on demand from

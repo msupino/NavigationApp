@@ -1445,6 +1445,7 @@ window.S = Object.assign({
   worldCountriesUrl: 'data/world-countries.json?v=2',  // country outlines + names, always offline  // published comm-failure entry points per field
   navWpSearchField: 'en',              // which locale label to show/search in results
   airfieldsUrl: 'data/airfields.json?v=43',  // resolved relative to index.html (docs/)
+  airfieldHoursUrl: 'data/airfield-hours.json?v=1',  // published hours (airfield-hours.js)
   airfieldLabelField: 'en',            // which locale label to show on the overlay
   routeTemplatesUrl: 'data/route-templates.json?v=2', // ready-made route templates
   vorUrl: 'data/vor.json?v=2',              // Israeli VOR/DME stations
@@ -2358,6 +2359,21 @@ window.S = Object.assign({
   afWindFromRight: 'from the right',
   afWindModelNote: 'Forecast model wind, not an observation',
   afWindObsNote: 'Reported wind, from the METAR',
+  // Published operating hours (airfield-hours.js). "Within / outside published hours", not
+  // "open / closed": the AIP's hours are what is stated, and a NOTAM, a PPR field's operator
+  // or a closed gate can still say otherwise.
+  afHoursTitle: 'Hours',
+  afHoursWithin: 'Within published hours',
+  afHoursOutside: 'Outside published hours',
+  afHoursAt: function (t) { return 'At ' + t + ' local'; },
+  afHoursUntil: function (t, approx) { return 'until ' + (approx ? 'about ' : '') + t; },
+  afHoursOpens: function (t, approx) { return 'opens ' + (approx ? 'about ' : '') + t; },
+  afHoursPpr: 'prior coordination required',
+  afHoursShow: 'Show the published hours',
+  afHoursHide: 'Hide the published hours',
+  afHoursCaveat: 'Published hours only: weather, security, NOTAMs or the operator may still close the field.',
+  afHoursNone: 'No hours published in the AIP',
+  afHoursSource: function (amendment, date) { return 'AIP, amendment ' + amendment + ' (' + date + ') · Israel local time · check NOTAMs'; },
   afWindLegend: 'Solid barb = reported · dashed = forecast',
   mapTimeNow: 'Now',
   mapTimeNowTitle: 'Back to live: show every layer as it is right now',
