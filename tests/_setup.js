@@ -21,6 +21,13 @@ const GA_HOSTS = [
 ];
 
 const EXPECTED_SHA = process.env.EXPECTED_SHA;
+// NAVAID_EXTERNAL_LOG=<file>: record every request that actually leaves the machine (audit).
+const EXTERNAL_LOG = process.env.NAVAID_EXTERNAL_LOG;
+// Every request this worker let leave the machine (host + path). tests/no-third-party-load
+// reads it; the only hosts that may appear are the pinned library CDNs.
+const externalHits = [];
+exports.externalHits = externalHits;
+exports.ALLOWED_EXTERNAL = ['unpkg.com', 'cdn.jsdelivr.net'];
 
 // A 1x1 transparent PNG, served in place of every real map tile. Nothing in the suite
 // asserts on tile PIXELS -- specs check which URL a layer builds, not what comes back --
@@ -46,6 +53,9 @@ const TILE_HOSTS = [
   'navaid-tiles.supino.org',
   'tile.openstreetmap.org',
   'newaydata.com',
+  // Esri World Imagery: the satellite view every airfield/waypoint/point inspector opens.
+  // ~1,400 live tile requests per local run before it was stubbed.
+  'arcgisonline.com',
 ];
 function isTileHost(host) {
   return TILE_HOSTS.some(h => host === h || host.endsWith('.' + h));
@@ -110,6 +120,14 @@ exports.test = base.test.extend({
             /(?:\/notam-data\/|\/notam\.json)$/.test(new URL(url).pathname)) {
           return route.abort();
         }
+        // The other live data branches (IMS charts, SIGMET, AIRMET, METAR/TAF) the same way:
+        // ~10,000 requests to GitHub per local run, and tests that depended on whatever the
+        // live feeds said that hour. The app falls back to its same-origin data/*.json; specs
+        // about these feeds register their own route, which wins.
+        if (host === 'raw.githubusercontent.com' &&
+            /^\/msupino\/NavigationApp\/(ims-data|sigmet-data|airmet-data|wx-data)\//.test(new URL(url).pathname)) {
+          return route.abort();
+        }
         // Map tiles never leave the harness -- fulfilled, not aborted: an aborted tile
         // makes Leaflet retry and log errors, so the quiet answer is a real (empty) image.
         // Specs that need tile behaviour register their own route, which wins by later
@@ -131,6 +149,14 @@ exports.test = base.test.extend({
           });
         }
       } catch (e) { /* relative URLs etc. */ }
+      try {
+        const u = new URL(url);
+        if (/^https?:$/.test(u.protocol) && !/^(127\.0\.0\.1|localhost)$/.test(u.hostname) &&
+            !(EXPECTED_SHA && u.hostname === 'navaid.supino.org')) {
+          externalHits.push(u.hostname + u.pathname.slice(0, 60));
+          if (EXTERNAL_LOG) require('fs').appendFileSync(EXTERNAL_LOG, u.hostname + ' ' + u.pathname.slice(0, 60) + '\n');
+        }
+      } catch (e) { /* */ }
       return route.continue();
     });
 
