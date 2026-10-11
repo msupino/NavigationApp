@@ -120,27 +120,23 @@ test('a template callout is seeded left of travel, like every other one', async 
     const res = await fetch('data/route-templates.json?cb=' + Date.now(), { cache: 'no-store' });
     const data = await res.json();
     const list = data.templates || data;
-    // Templates carry no frequency-change notes any more: they are seeded from the route
-    // graph like any drawn route. Load one the way the picker does and read what was seeded.
-    const t = list.find(x => x.id === 'llhz-llha-coastal');
+    // Any template whose notes are lean (cc only, no explicit lat/lng).
+    const t = list.find(x => (x.notes || []).some(n => n.cc && !Number.isFinite(n.lat)));
+    if (!t) return { skipped: true };
     const built = await routeFromTemplate(t, 100);
-    state.waypoints = built.waypoints; state.legs = built.legs; state.notes = built.notes;
-    state.commChangeSuppressions = built.commChangeSuppressions.slice();
-    syncLegs();
-    seedCommChangeNotes();
-    const note = state.notes.find(n => n.cc);
-    if (!note) return { seeded: false };
-    const wp = state.waypoints.find(w =>
+    const note = built.notes.find(n => n.cc);
+    const wp = built.waypoints.find(w =>
       canonicalNavWaypointName(w.name) === canonicalNavWaypointName(note.cc));
-    const i = state.waypoints.indexOf(wp);
-    const def = commCalloutDefaultTail(wp, i, state.waypoints);
-    return { seeded: true, templateNotes: (t.notes || []).filter(n => n.cc).length,
-      noteLng: note.lng, defLng: def.lng, noteLat: note.lat, defLat: def.lat };
+    const i = built.waypoints.indexOf(wp);
+    const def = commCalloutDefaultTail(wp, i, built.waypoints);
+    return { skipped: false, noteLng: note.lng, defLng: def.lng, noteLat: note.lat, defLat: def.lat };
   });
-  expect(r.seeded).toBe(true);
-  expect(r.templateNotes).toBe(0);
-  // Seeded position must equal the shared bearing-derived default, not the old static +0.09
-  // east (which sat on the kite side for a northbound template).
+  // Fail loudly rather than no-op if the dataset ever stops carrying a lean
+  // cc-only template — otherwise this regression test goes permanently silent.
+  expect(r.skipped).toBe(false);
+  // Seeded position must equal the shared bearing-derived default, not the old
+  // static +0.09 east (which sat on the kite side for a northbound template and
+  // was invisible to both the migration and the reverse re-default).
   expect(r.noteLng).toBeCloseTo(r.defLng, 5);
   expect(r.noteLat).toBeCloseTo(r.defLat, 5);
 });

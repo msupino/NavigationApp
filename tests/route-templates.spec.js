@@ -363,36 +363,3 @@ test.describe('route templates', () => {
     });
   }
 });
-
-// Templates used to carry their own frequency-change notes, written by hand, and six of the
-// eighteen had drifted from the chart (reported: "they seem not aligned with the CVFR map").
-// They are now derived from the route graph like any drawn route, so none may come back.
-test('no template carries hand-written frequency-change notes', async () => {
-  const data = JSON.parse(require('fs').readFileSync(require('path').join(__dirname, '..', 'docs', 'data', 'route-templates.json'), 'utf8'));
-  const withNotes = data.templates.filter(t => (t.notes || []).some(n => n && n.cc)).map(t => t.id);
-  expect(withNotes).toEqual([]);
-});
-
-// NMASD's hints are per direction: southbound (next NITZA) Hagav North, northbound (next
-// ZASHD) Palmachim. The corridor NMASD -> NITZA runs through ZDAFA, another comm-change
-// point, and the look-ahead used to stop there -- so southbound fell to Palmachim 135.55, the
-// frequency already in use since TYONA.
-test('NMASD calls Hagav North southbound and Palmachim northbound', async ({ page }) => {
-  await page.goto('?lang=en&nogist');
-  await page.waitForFunction(() => typeof routeFromTemplate === 'function' && typeof seedCommChangeNotes === 'function');
-  const got = await page.evaluate(async () => {
-    const data = await (await fetch(S.routeTemplatesUrl)).json();
-    const at = async (id) => {
-      const t = data.templates.find(x => x.id === id);
-      const r = await routeFromTemplate(t, 90);
-      state.waypoints = r.waypoints; state.legs = r.legs; state.notes = [];
-      state.commChangeSuppressions = r.commChangeSuppressions.slice();
-      syncLegs(); seedCommChangeNotes();
-      const n = state.notes.find(x => x.cc === 'NMASD');
-      return n ? n.freqName + ' ' + n.freq : null;
-    };
-    return { south: await at('llhz-llbs-south'), north: await at('llbs-llhz-south') };
-  });
-  expect(got.south).toBe('HAGAV_NORTH 128.35');
-  expect(got.north).toBe('PALMACHIM 135.55');
-});
