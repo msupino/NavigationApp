@@ -79,3 +79,22 @@ test.describe('Reporting-type overlay (#404)', () => {
     await expect(page.locator('#insp-body .reporting-badge-row')).toHaveCount(0);
   });
 });
+
+// Asked: the inspector should show when a waypoint is a mandatory reporting point -- "even if
+// not on route?". Tapped on the chart, ZYAAR's panel said nothing about it until it was put on
+// the route. The chart point's own panel carries the same Reporting row now.
+test('a chart point shows its reporting type before it is on the route', async ({ page }) => {
+  await page.goto('?lang=en&nogist');
+  await page.waitForFunction(() => typeof showInspector === 'function' && typeof findNavWpToken === 'function');
+  const rows = await page.evaluate(async () => {
+    if (navWP === null) await loadNavWaypoints();
+    state.waypoints = []; state.legs = []; draw();
+    const i = navWP.findIndex(n => n.name === 'ZYAAR');
+    state.selected = { type: 'navwp', index: i };
+    showInspector();
+    const row = document.querySelector('#insp-body .reporting-badge-row');
+    return row ? row.textContent : null;
+  });
+  expect(rows).toMatch(/Reporting/);
+  expect(rows).toMatch(/Mandatory report/);
+});
