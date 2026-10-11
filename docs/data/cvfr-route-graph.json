@@ -435,6 +435,10 @@
         {
           "after": "ZMGID",
           "callSign": "PLUTO_EAST"
+        },
+        {
+          "after": "EITAN",
+          "callSign": "PLUTO_EAST"
         }
       ]
     },

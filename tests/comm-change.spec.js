@@ -823,8 +823,11 @@ test('AFULA towards ZMGID stays on Pluto East, Pluto West at ZMGID; Megiddo only
     return {
       south: seeded(['DESHE', 'TAVOR', 'AFULA', 'ZMGID', 'EIRON']),
       llmg: seeded(['TAVOR', 'AFULA', 'LLMG']),
+      eitan: seeded(['DESHE', 'TAVOR', 'AFULA', 'EITAN']),
     };
   });
   expect(got.south).toEqual(['DESHE=PLUTO_EAST 123.85', 'ZMGID=PLUTO_WEST 118.40']);
   expect(got.llmg).toEqual(['AFULA=MEGIDDO 124.40']);
+  // Towards EITAN AFULA is Pluto East too: no change when it is already in use.
+  expect(got.eitan).toEqual(['DESHE=PLUTO_EAST 123.85']);
 });
