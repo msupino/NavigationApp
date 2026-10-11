@@ -804,3 +804,54 @@ test.describe('comm-change rendering (fixture-backed)', () => {
     expect(backNote).toBe(true);
   });
 });
+
+// Reported: reversing LLIB -> LLHZ left ZMGID on Pluto West although DEROR had already put
+// Pluto West in effect, and it should be Pluto East (ZMGID -> AFULA). A station picked for one
+// direction -- by hand or by a template -- says nothing about the other, so Reverse works every
+// callout out again: the reversed route matches the published LLHZ -> LLIB template.
+test('reversing a route re-derives its frequency changes for the new direction', async ({ page }) => {
+  await page.goto('?lang=en&nogist');
+  await page.waitForFunction(() => typeof applyRouteTemplate === 'function' && typeof seedCommChangeNotes === 'function');
+  const got = await page.evaluate(async () => {
+    const data = await (await fetch(S.routeTemplatesUrl)).json();
+    const list = () => state.notes.filter(n => n.cc).map(n => n.cc + '=' + n.freqName + ' ' + n.freq).sort();
+    window.appConfirm = async () => true;
+    await applyRouteTemplate(data.templates.find(x => x.id === 'llib-llhz-north'), 90);
+    document.getElementById('reverse').click();
+    await new Promise(r => setTimeout(r, 300));
+    const reversed = list();
+    state.waypoints = []; state.notes = [];
+    await applyRouteTemplate(data.templates.find(x => x.id === 'llhz-llib-north'), 90);
+    return { reversed, published: list() };
+  });
+  expect(got.reversed).toEqual(got.published);
+  expect(got.reversed).toContain('ZMGID=PLUTO_EAST 123.85');
+  expect(got.reversed.some(n => n.startsWith('AFULA='))).toBe(false);
+});
+
+// Reported: AFULA -> ZMGID showed a change to Megiddo (LLMG's frequency), which is right only
+// when LLMG is the next point. AFULA has three stations (Pluto East, Ramat David, Megiddo);
+// towards ZMGID it stays on Pluto East (routeHint after ZMGID), and the switch to Pluto West
+// is ZMGID's own callout.
+test('AFULA towards ZMGID stays on Pluto East, Pluto West at ZMGID; Megiddo only towards LLMG', async ({ page }) => {
+  await page.goto('?lang=en&nogist');
+  await page.waitForFunction(() => typeof seedCommChangeNotes === 'function' && typeof findNavWpToken === 'function');
+  const got = await page.evaluate(async () => {
+    if (navWP === null) await loadNavWaypoints();
+    await loadCommChange();
+    const seeded = (codes) => {
+      state.waypoints = codes.map(c => { const p = findNavWpToken(c); return { lat: p.lat, lng: p.lng, name: p.name }; });
+      state.legs = []; state.notes = []; state.commChangeSuppressions = []; syncLegs(); seedCommChangeNotes();
+      return state.notes.filter(n => n.cc).map(n => n.cc + '=' + n.freqName + ' ' + n.freq);
+    };
+    return {
+      south: seeded(['DESHE', 'TAVOR', 'AFULA', 'ZMGID', 'EIRON']),
+      llmg: seeded(['TAVOR', 'AFULA', 'LLMG']),
+      eitan: seeded(['DESHE', 'TAVOR', 'AFULA', 'EITAN']),
+    };
+  });
+  expect(got.south).toEqual(['DESHE=PLUTO_EAST 123.85', 'ZMGID=PLUTO_WEST 118.40']);
+  expect(got.llmg).toEqual(['AFULA=MEGIDDO 124.40']);
+  // Towards EITAN AFULA is Pluto East too: no change when it is already in use.
+  expect(got.eitan).toEqual(['DESHE=PLUTO_EAST 123.85']);
+});
