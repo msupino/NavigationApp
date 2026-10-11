@@ -65,3 +65,21 @@ test('Back, Skip and Escape; Settings plays it again', async ({ page }) => {
   await page.locator('#map-tour .tour-skip').click();
   await expect(page.locator('#map-tour')).toHaveCount(0);
 });
+
+// Reported with a screenshot: the Edit step lit the whole column, Route check included.
+test('the Edit step lights the edit buttons, not Route check above them', async ({ page }) => {
+  await boot(page, { width: 1280, height: 800 });
+  await expect(page.locator('#map-tour')).toBeVisible({ timeout: 10000 });
+  const titles = await page.evaluate(() => NavAid.tour.steps().map(s => s.k));
+  for (let k = 0; k < titles.indexOf('Edit'); k++) await page.locator('#map-tour .tour-next').click();
+  await page.waitForTimeout(400);                          // the spot glides to its place
+  const r = await page.evaluate(() => {
+    const st = document.querySelector('#map-tour .tour-spot').style;
+    const top = parseFloat(st.top), bottom = top + parseFloat(st.height);
+    const box = id => document.getElementById(id).getBoundingClientRect();
+    return { top, bottom, check: box('edit-col-check'), add: box('edit-col-add'), clear: box('edit-col-clear') };
+  });
+  expect(r.top).toBeGreaterThan(r.check.bottom - 2);       // Route check is outside the ring
+  expect(r.top).toBeLessThanOrEqual(r.add.top);             // Add waypoint inside it
+  expect(r.bottom).toBeGreaterThanOrEqual(r.clear.bottom);  // ...down to Clear map
+});
