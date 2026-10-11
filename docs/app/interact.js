@@ -3166,6 +3166,21 @@ function coordRow(lat, lng) {
   return row;
 }
 
+// Reporting-type badge. The chart's סוג דיווח class lives inline on the nav-WP (`report`):
+// mandatory (חובה) vs on request (דרישה). Shown for a route waypoint that matches a known
+// reporting point and for the chart point itself -- tapped on the map, ZYAAR said nothing about
+// being a mandatory report until it was put on the route (reported).
+function appendReportingRow(body, name) {
+  if (typeof reportingFor !== 'function') return;
+  const rep = reportingFor(name);
+  if (rep !== 'mandatory' && rep !== 'onRequest') return;
+  const row = textRow(S.report || 'Reporting',
+    rep === 'mandatory' ? (S.reportingMandatory || '📍 Mandatory report')
+                        : (S.reportingOnRequest || '📍 Report on request'));
+  row.classList.add('reporting-badge-row');
+  body.appendChild(row);
+}
+
 function airfieldInspectorTitle(af) {
   return referenceInspectorTitle(af, 'airfield');
 }
@@ -4306,6 +4321,7 @@ function showInspector() {
     appendNavWaypointCommChangeInfo(body, nw.name);
     appendSatelliteSnippet(body, nw, title.value);
     appendVorRadialRow(body, nw.lat, nw.lng);
+    appendReportingRow(body, nw.name);
     appendAddToRouteButton(body, nw);
   } else {
     const wp = state.waypoints[state.selected.index];
@@ -4349,19 +4365,7 @@ function showInspector() {
       appendSatelliteSnippet(body, wp, title.value);
       appendVorRadialRow(body, wp.lat, wp.lng);
     }
-    // Reporting-type badge. The chart's סוג דיווח class lives
-    // inline on the nav-WP (`report`). Surfaces mandatory (חובה) vs on-request
-    // (דרישה) for a route waypoint that matches a known reporting point.
-    if (typeof reportingFor === 'function') {
-      const rep = reportingFor(wp.name);
-      if (rep === 'mandatory' || rep === 'onRequest') {
-        const row = textRow(S.report || 'Reporting',
-          rep === 'mandatory' ? (S.reportingMandatory || '📍 Mandatory report')
-                              : (S.reportingOnRequest || '📍 Report on request'));
-        row.classList.add('reporting-badge-row');
-        body.appendChild(row);
-      }
-    }
+    appendReportingRow(body, wp.name);
     // Comm-change badge/editor, including manual callouts. Known
     // comm-change points show the chart badge; any named waypoint without a
     // linked callout can still add a manual frequency-change arrow.
