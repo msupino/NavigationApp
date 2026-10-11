@@ -297,7 +297,8 @@ function appendAddFreqChangeButton(body, wp, ccKey) {
   const atTurn = wpIdx >= 0 && typeof legRetraceTurnIndex === 'function' &&
     legRetraceTurnIndex() === wpIdx;
   const add = document.createElement('button');
-  add.className = 'insp-btn add-freq-change-btn';
+  add.className = 'insp-btn add-freq-change-btn freq-change-slot';
+  add.setAttribute('aria-pressed', 'false');
   add.textContent = S.addFreqChange || 'Add frequency change';
   add.disabled = atTurn;
   if (atTurn) add.title = S.addFreqChangeAtTurn ||
@@ -3613,6 +3614,10 @@ const INSPECTOR_ACTION_ORDER = [
   'insp-turn-btn',          // mark the turn
 ];
 function inspectorActionRank(el) {
+  // Add and Delete frequency change are one control in two states: the same slot, so the
+  // button does not jump from the second row to the foot of the panel when a callout is
+  // added (reported, with screenshots of both states). Delete keeps its red.
+  if (el.classList.contains('freq-change-slot')) return INSPECTOR_ACTION_ORDER.indexOf('add-freq-change-btn');
   if (el.classList.contains('insp-btn-danger')) return INSPECTOR_ACTION_ORDER.length + 1;
   const i = INSPECTOR_ACTION_ORDER.findIndex(k => el.id === k || el.classList.contains(k));
   return i === -1 ? INSPECTOR_ACTION_ORDER.length : i;
@@ -3636,14 +3641,27 @@ function finalizeInspectorActions(body) {
     return { el, rank: el.classList.contains('insp-status') ? lastRank : inspectorActionRank(el), i };
   });
   ranked.sort((a, b) => (a.rank - b.rank) || (a.i - b.i));
+  // On a phone the action block is pinned to the foot of the panel (sticky, two buttons a
+  // row), so a status line inside it -- one that appears when its button is pressed (the
+  // turning point, the clock) -- grew the block upwards and lifted every button in it: the
+  // pressed one moved 47 px from under the finger (found by a sweep for controls that move
+  // when pressed). There the status lines sit at the end of the scrolling content instead,
+  // just above the block, where appearing moves no button. In a wider panel the block is not
+  // pinned, and a line under its own button pushed every button below it down (~44 px), so
+  // they go after the last button: appearing there moves nothing either.
+  const narrow = typeof window.matchMedia === 'function' && window.matchMedia('(max-width: 680px)').matches;
+  const statuses = ranked.filter(r => r.el.classList.contains('insp-status')).map(r => r.el);
+  if (narrow) for (const el of statuses) body.appendChild(el);
   for (const { el: b } of ranked) {
+    if (b.classList.contains('insp-status')) continue;
     if (b.classList.contains('insp-btn')) {
       const txt = (b.textContent || '').toLowerCase();
-      const destructive = /🗑|delete|remove|מחק|הסר/.test(txt);
+      const destructive = /🗑|delete|remove|מחק|הסר/.test(txt) && !b.classList.contains('freq-change-slot');
       if (!destructive) b.classList.add('insp-btn-safe');
     }
     wrap.appendChild(b);
   }
+  if (!narrow) for (const el of statuses) wrap.appendChild(el);
   body.appendChild(wrap);
 }
 
@@ -4436,10 +4454,13 @@ function showInspector() {
       const timerIdx = (typeof routeTimerIndex === 'function') ? routeTimerIndex() : -1;
       const isTimer = timerIdx === state.selected.index;
       const timer = document.createElement('button');
-      timer.className = 'insp-btn';
+      // Lit while the clock starts here, like every other toggle in this panel (hotspot,
+      // turning point, frequency change): it was the one toggle with no pressed look.
+      timer.className = 'insp-btn' + (isTimer ? ' insp-btn-on' : '');
       timer.id = 'insp-timer-btn';
+      timer.setAttribute('aria-pressed', isTimer ? 'true' : 'false');
       timer.textContent = isTimer
-        ? (S.inspTimerClear || '⏱ Count from departure again')
+        ? (S.inspTimerClear || '⏱ Clear clock start')
         : (S.inspTimerStart || '⏱ Start the clock here');
       if (S.inspTimerStartTitle) timer.title = S.inspTimerStartTitle;
       timer.onclick = () => {
@@ -5061,9 +5082,13 @@ function appendFreqEdit(body, note, editOptions) {
   updateTemplateHint();
   // Reset the callout to its default tail position beside the waypoint.
   const target = typeof commCalloutTarget === 'function' ? commCalloutTarget(note) : null;
-  if (target && typeof commCalloutDefaultTail === 'function') {
+  // In the callout's own panel only. In the waypoint panel it appeared the moment a callout was
+  // added, inserting a button and pushing the ones below it down; reserving its place instead
+  // cost a phone a whole row of the panel. Tapping the callout opens its panel, with it there.
+  const inWaypointPanel = !!(editOptions && editOptions.deleteButton);
+  if (target && !inWaypointPanel && typeof commCalloutDefaultTail === 'function') {
     const reset = document.createElement('button');
-    reset.className = 'insp-btn';
+    reset.className = 'insp-btn freq-reset-location-btn';
     reset.textContent = S.resetFreqLocation || S.resetLegMarkers || '↻';
     reset.title = S.resetFreqLocationTitle || 'Reset callout location';
     reset.setAttribute('aria-label', reset.title);
@@ -5077,7 +5102,12 @@ function appendFreqEdit(body, note, editOptions) {
   }
   if (editOptions && editOptions.deleteButton) {
     const del = document.createElement('button');
-    del.className = 'insp-btn insp-btn-danger';
+    // Add frequency change's other state, shown the way the hotspot toggle shows its own: the
+    // same button in the same slot, lit (insp-btn-on) while on. As a danger button it took the
+    // red outline and the gap danger buttons get above them, so the one control changed style
+    // and jumped when pressed (reported with screenshots of both states).
+    del.className = 'insp-btn insp-btn-on freq-change-slot';
+    del.setAttribute('aria-pressed', 'true');
     del.textContent = S.deleteFreqChange || S.deleteNote;
     del.onclick = () => {
       if (note.cc && isKnownCommChangeKey(waypointFreqChangeKey({ name: note.cc })) &&
