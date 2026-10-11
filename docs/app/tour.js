@@ -12,6 +12,8 @@
   const SEEN_KEY = 'navaid.tourSeen';
   // Each step: the first VISIBLE match of `sel` is the target; `only` limits it to a layout.
   const STEPS = [
+    // Route check heads the edit column: its own step, before the edit buttons it checks.
+    { sel: ['#edit-col-check'], k: 'Check' },
     { sel: ['.edit-col-ctrl'], k: 'Edit' },
     { sel: ['#measure-btn'], k: 'Measure' },
     { sel: ['#edit-lock'], k: 'Lock' },

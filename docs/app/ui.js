@@ -862,6 +862,9 @@ const MAP_ICONS = {
     + ' fill="currentColor" fill-opacity=".18"/><path d="M12 7.3v6.4M8.8 10.5h6.4"/>',
   addNote: '<path d="M5 4.5h14v10l-5 5H5z" fill="currentColor" fill-opacity=".18"/>'
     + '<path d="M14 19.5v-5h5M8.5 8.5h7M8.5 12h4.5"/>',
+  // Route check: the plan, checked -- a tick in the same outlined family.
+  routeCheck: '<circle cx="12" cy="12" r="8.5" fill="currentColor" fill-opacity=".18"/>'
+    + '<path d="m8 12.4 2.7 2.7L16.2 9.4"/>',
   undo: '<path d="M9 14.5 4 9.5l5-5"/><path d="M4 9.5h10a5.5 5.5 0 0 1 0 11h-3.5"/>',
   clearMap: '<path d="M6.2 7.5 7.3 20h9.4l1.1-12.5" fill="currentColor" fill-opacity=".18"/>'
     + '<path d="M4 7.5h16M9.5 7.5V4.5h5v3M10.3 11v5.5M13.7 11v5.5"/>',
@@ -1356,7 +1359,10 @@ refreshEditLockControl();
 const editColCtrl = L.control({ position: 'topleft' });
 editColCtrl.onAdd = function () {
   const wrap = L.DomUtil.create('div', 'leaflet-control edit-col-ctrl');
+  // Route check heads the column: it reads the plan the buttons below build, and on a phone the
+  // menu it otherwise lives in covers the very map it is about.
   const items = [
+    ['edit-col-check', 'routeCheck', 'tbRouteCheckTitle', 'tbRouteCheck'],
     ['edit-col-add', 'addWp', 'tbAddWpTitle', 'tbAddWp'],
     ['edit-col-note', 'addNote', 'tbAddNoteTitle', 'tbAddNote'],
     ['edit-col-undo', 'undo', 'tbUndoTitle', 'tbUndo'],
@@ -1366,6 +1372,7 @@ editColCtrl.onAdd = function () {
   // (placeEditColumn: top right on a Hebrew desktop), and buttons wired once by id after the
   // first build were replaced by bare ones -- the column looked right and did nothing.
   const actions = {
+    'edit-col-check': () => document.getElementById('route-check-btn').click(),
     'edit-col-add': () => setMode('add'),
     'edit-col-note': () => setMode('note'),
     'edit-col-undo': () => document.getElementById('undo').click(),
@@ -1409,6 +1416,16 @@ function refreshEditColumn() {
   setButtonWhy(note, lockWhy);
   setButtonWhy(undoBtn, lockWhy || ((menuUndo && menuUndo.disabled) ? (S.whyNothingToUndo || 'Nothing to undo') : null));
   setButtonWhy(document.getElementById('edit-col-clear'), lockWhy || (empty ? (S.whyNothingToClear || 'The map is already empty') : null));
+  // Route check reads the plan, it does not edit it, so the lock leaves it alone; it dims when
+  // there is no route to check (two points, as the check itself requires) or the gist has
+  // withdrawn the feature.
+  const checkBtn = document.getElementById('edit-col-check');
+  if (checkBtn) {
+    const featureOff = typeof tune === 'function' && tune('featureRouteCheck') === false;
+    const noRoute = !(state.waypoints && state.waypoints.length >= 2);
+    setButtonWhy(checkBtn, featureOff ? (S.whyRouteCheckOff || 'Route check is switched off')
+      : (noRoute ? (S.routeCheckNeedRoute || S.errNeedWps || 'Draw a route first.') : null));
+  }
 }
 window.refreshEditColumn = refreshEditColumn;
 refreshEditColumn();

@@ -13,7 +13,7 @@ async function boot(page, size) {
   await page.waitForFunction(() => typeof setMode === 'function' && !!document.getElementById('edit-col-add'));
 }
 
-test('on a phone: four buttons, top left, in the menu\'s order, drawn icons', async ({ page }) => {
+test('on a phone: route check, then the menu\'s four, top left, drawn icons', async ({ page }) => {
   await boot(page);
   const out = await page.evaluate(() => {
     const col = document.querySelector('.edit-col-ctrl');
@@ -27,8 +27,8 @@ test('on a phone: four buttons, top left, in the menu\'s order, drawn icons', as
     };
   });
   expect(out.visible).toBe(true);
-  expect(out.ids).toEqual(['edit-col-add', 'edit-col-note', 'edit-col-undo', 'edit-col-clear']);
-  expect(out.icons).toEqual(['addWp', 'addNote', 'undo', 'clearMap']);
+  expect(out.ids).toEqual(['edit-col-check', 'edit-col-add', 'edit-col-note', 'edit-col-undo', 'edit-col-clear']);
+  expect(out.icons).toEqual(['routeCheck', 'addWp', 'addNote', 'undo', 'clearMap']);
   expect(out.left).toBeLessThan(40);                 // the left edge, opposite the live column
   expect(out.top).toBeGreaterThanOrEqual(out.stripBottom);   // below the top strip, not under it
 });
@@ -85,6 +85,23 @@ test('Add waypoint and Add note each switch on and off, and only one at a time',
   await note.click();                                   // again: off
   expect(await page.evaluate(() => state.mode)).toBe(null);
   await expect(note).not.toHaveClass(/edit-col-on/);
+});
+
+// Requested: "add the check route button above add waypoint, a V icon", "dimmed if no route".
+test('Route check is dim without a route, says why, and opens the check once there is one', async ({ page }) => {
+  await boot(page);
+  const btn = page.locator('#edit-col-check');
+  await expect(btn).toHaveClass(/is-dim/);
+  await expect(btn).toBeVisible();
+  expect(await btn.getAttribute('aria-label')).toBe('Route check');
+  expect(await btn.getAttribute('data-why')).toMatch(/Draw a route first/);
+  await page.evaluate(() => {
+    state.waypoints = [{ lat: 32.18, lng: 34.83, name: 'LLHZ' }, { lat: 32.98, lng: 35.57, name: 'LLIB' }];
+    syncLegs(); draw();
+  });
+  await expect(btn).not.toHaveClass(/is-dim/);
+  await btn.click();
+  await expect(page.locator('.route-check-modal').first()).toBeVisible();
 });
 
 test('Undo is dim until there is something to undo, then undoes', async ({ page }) => {
