@@ -3636,7 +3636,19 @@ function finalizeInspectorActions(body) {
     return { el, rank: el.classList.contains('insp-status') ? lastRank : inspectorActionRank(el), i };
   });
   ranked.sort((a, b) => (a.rank - b.rank) || (a.i - b.i));
+  // On a phone the action block is pinned to the foot of the panel (sticky, two buttons a
+  // row), so a status line inside it -- one that appears when its button is pressed (the
+  // turning point, the clock) -- grew the block upwards and lifted every button in it: the
+  // pressed one moved 47 px from under the finger (found by a sweep for controls that move
+  // when pressed). There the status lines sit at the end of the scrolling content instead,
+  // just above the block, where appearing moves no button. In a wider panel the block is not
+  // pinned, and a line under its own button pushed every button below it down (~44 px), so
+  // they go after the last button: appearing there moves nothing either.
+  const narrow = typeof window.matchMedia === 'function' && window.matchMedia('(max-width: 680px)').matches;
+  const statuses = ranked.filter(r => r.el.classList.contains('insp-status')).map(r => r.el);
+  if (narrow) for (const el of statuses) body.appendChild(el);
   for (const { el: b } of ranked) {
+    if (b.classList.contains('insp-status')) continue;
     if (b.classList.contains('insp-btn')) {
       const txt = (b.textContent || '').toLowerCase();
       const destructive = /🗑|delete|remove|מחק|הסר/.test(txt);
@@ -3644,6 +3656,7 @@ function finalizeInspectorActions(body) {
     }
     wrap.appendChild(b);
   }
+  if (!narrow) for (const el of statuses) wrap.appendChild(el);
   body.appendChild(wrap);
 }
 
