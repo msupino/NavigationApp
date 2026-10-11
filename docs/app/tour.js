@@ -14,7 +14,9 @@
   const STEPS = [
     // Route check heads the edit column: its own step, before the edit buttons it checks.
     { sel: ['#edit-col-check'], k: 'Check' },
-    { sel: ['.edit-col-ctrl'], k: 'Edit' },
+    // The edit buttons only: Route check sits in the same column but had its own step, and a
+    // spotlight round the whole column read as if checking were an edit too.
+    { sel: ['.edit-col-ctrl'], k: 'Edit', group: ['#edit-col-add', '#edit-col-note', '#edit-col-undo', '#edit-col-clear'] },
     { sel: ['#measure-btn'], k: 'Measure' },
     { sel: ['#edit-lock'], k: 'Lock' },
     { sel: ['.rotate-ctrl', '#rotate-dial'], k: 'Dial' },
@@ -64,6 +66,16 @@
     return { x: a.x + dx * Math.max(0, t), y: a.y + dy * Math.max(0, t) };
   }
 
+  // The box to light: the target's own, or the union of a step's `group` that is on screen.
+  function rectOf(step, el) {
+    const parts = (step.group || []).map((s) => document.querySelector(s)).filter(visible);
+    if (!parts.length) return el.getBoundingClientRect();
+    const rs = parts.map((p) => p.getBoundingClientRect());
+    const left = Math.min(...rs.map((r) => r.left)), top = Math.min(...rs.map((r) => r.top));
+    const right = Math.max(...rs.map((r) => r.right)), bottom = Math.max(...rs.map((r) => r.bottom));
+    return { left, top, right, bottom, width: right - left, height: bottom - top };
+  }
+
   function place() {
     if (!root) return;
     const step = list[i];
@@ -83,7 +95,7 @@
       return;
     }
     root.classList.remove('tour-plain');
-    const r = el.getBoundingClientRect();
+    const r = rectOf(step, el);
     const pad = 6;
     spot.hidden = false;
     // The ring stays on screen even for a control at the very edge (the phone's bottom bar).
