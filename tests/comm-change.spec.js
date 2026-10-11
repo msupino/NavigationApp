@@ -513,7 +513,7 @@ test.describe('shared-file failure recovery', () => {
       cc: Object.keys((await loadCommChange()) || {}).length,
       la: Object.keys((await loadLegAltitudes()) || {}).length,
     }));
-    expect(healed.cc).toBe(52);                   // the shipped comm-change points
+    expect(healed.cc).toBe(51);                   // the shipped comm-change points (ZASHD is not one)
     expect(healed.la).toBeGreaterThan(200);       // the altitude table came back too
   });
 });
