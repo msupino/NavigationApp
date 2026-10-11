@@ -3230,17 +3230,7 @@
         "lsa"
       ],
       "name": "ZASHD",
-      "report": "mandatory",
-      "commChange": true,
-      "callSigns": [
-        "PALMACHIM"
-      ],
-      "routeHints": [
-        {
-          "after": "LLHS",
-          "callSign": "PALMACHIM"
-        }
-      ]
+      "report": "mandatory"
     },
     "ZDAFA": {
       "code": "ZDAFA",
@@ -9672,7 +9662,6 @@
       "AYLON",
       "SORES",
       "ZUKIM",
-      "ZASHD",
       "NMASD",
       "ZDAFA",
       "HODYA",

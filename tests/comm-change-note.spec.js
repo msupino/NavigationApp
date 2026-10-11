@@ -2296,9 +2296,7 @@ test.describe('commRouteAfterNames folds in the published corridor, not just dra
       return state.notes.filter(n => n.cc).map(n => ({ cc: n.cc, freqName: n.freqName }));
     });
     // NTAIM's PALMACHIM (via BOVED) matches TYONA's already-active PALMACHIM -- suppressed.
-    // ZASHD publishes PALMACHIM only: a single-station point is certain, not a guess, so its
-    // repeat of the frequency in effect is dropped too (the unhinted-is-never-suppressed rule
-    // protects the solver's picks at multi-station points, which ZASHD is not).
+    // ZASHD is not a frequency-change point on the CVFR chart, so it has no callout at all.
     expect(out).toEqual([
       { cc: 'TYONA', freqName: 'PALMACHIM' },
     ]);
