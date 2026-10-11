@@ -4756,7 +4756,19 @@ function commRouteAfterNames(entry) {
         }
       }
     }
-    if (stopped) break;
+    // The waypoint actually drawn next always counts, even when the published corridor to it
+    // crosses another comm-change point on the way: a hint is written for the leg the pilot
+    // flies. NMASD's southbound hint ("after: NITZA" -> Hagav North) never fired because the
+    // corridor NMASD -> NITZA runs through ZDAFA, itself a comm-change point, and the span
+    // stopped there -- so a drawn LLHZ -> LLBS route told the pilot to "change" to Palmachim
+    // 135.55 at NMASD, the frequency already in use since TYONA.
+    if (stopped) {
+      if (i === entry.index + 1) {
+        const first = canonicalNavWaypointName(wp && wp.name);
+        if (first && !names.includes(first)) names.push(first);
+      }
+      break;
+    }
     const nm = canonicalNavWaypointName(wp && wp.name);
     if (nm) names.push(nm);
     const row = commChangeMap && wp && commChangeMap[wp.name];

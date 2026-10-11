@@ -21,18 +21,6 @@
         "GALIM",
         "LLHA"
       ],
-      "notes": [
-        {
-          "cc": "DEROR",
-          "freqName": "PLUTO_WEST",
-          "freqAuto": true
-        },
-        {
-          "cc": "DAROM",
-          "freqName": "HAIFA",
-          "freqAuto": true
-        }
-      ],
       "layer": "cvfr"
     },
     {
@@ -54,18 +42,6 @@
         "DEROR",
         "BAZRA",
         "LLHZ"
-      ],
-      "notes": [
-        {
-          "cc": "DAROM",
-          "freqName": "PLUTO_WEST",
-          "freqAuto": true
-        },
-        {
-          "cc": "DEROR",
-          "freqName": "HERZLIYA",
-          "freqAuto": true
-        }
       ],
       "layer": "cvfr"
     },
@@ -90,22 +66,6 @@
         "AMNON",
         "LLIB"
       ],
-      "notes": [
-        {
-          "cc": "DEROR",
-          "freqName": "PLUTO_WEST",
-          "freqAuto": true
-        },
-        {
-          "cc": "ZMGID",
-          "freqName": "PLUTO_EAST"
-        },
-        {
-          "cc": "DESHE",
-          "freqName": "ROSH_PINA",
-          "freqAuto": true
-        }
-      ],
       "layer": "cvfr"
     },
     {
@@ -128,22 +88,6 @@
         "DEROR",
         "BAZRA",
         "LLHZ"
-      ],
-      "notes": [
-        {
-          "cc": "DEROR",
-          "freqName": "HERZLIYA",
-          "freqAuto": true
-        },
-        {
-          "cc": "ZMGID",
-          "freqName": "PLUTO_WEST"
-        },
-        {
-          "cc": "DESHE",
-          "freqName": "PLUTO_EAST",
-          "freqAuto": true
-        }
       ],
       "layer": "cvfr"
     },
@@ -177,35 +121,6 @@
         "SHALM",
         "ENGDI",
         "LLMZ"
-      ],
-      "notes": [
-        {
-          "cc": "SFAIM",
-          "freqName": "PLUTO_WEST",
-          "freqAuto": true
-        },
-        {
-          "cc": "TYONA",
-          "freqName": "PALMACHIM"
-        },
-        {
-          "cc": "NTAIM",
-          "freqName": "TEL_NOF"
-        },
-        {
-          "cc": "SORES",
-          "freqName": "PLUTO_EAST",
-          "freqAuto": true
-        },
-        {
-          "cc": "ZUKIM",
-          "freqName": "HAGAV_SOUTH"
-        },
-        {
-          "cc": "LLMZ",
-          "freqName": "MASADA",
-          "freqAuto": true
-        }
       ],
       "commChangeSuppressions": [
         "NSHRM",
@@ -242,30 +157,6 @@
         "MINGV",
         "NASIH",
         "LLBS"
-      ],
-      "notes": [
-        {
-          "cc": "SFAIM",
-          "freqName": "PLUTO_WEST",
-          "freqAuto": true
-        },
-        {
-          "cc": "TYONA",
-          "freqName": "PALMACHIM"
-        },
-        {
-          "cc": "NMASD",
-          "freqName": "HAGAV_NORTH"
-        },
-        {
-          "cc": "SOVAL",
-          "freqName": "KEDEM"
-        },
-        {
-          "cc": "LLBS",
-          "freqName": "TEYMAN",
-          "freqAuto": true
-        }
       ],
       "commChangeSuppressions": [
         "ZASHD",
@@ -304,33 +195,6 @@
         "HTZUK",
         "KNTRY",
         "LLHZ"
-      ],
-      "notes": [
-        {
-          "cc": "TYONA",
-          "freqName": "PLUTO_WEST",
-          "freqAuto": true
-        },
-        {
-          "cc": "NMASD",
-          "freqName": "PALMACHIM",
-          "freqAuto": true
-        },
-        {
-          "cc": "SOVAL",
-          "freqName": "HAGAV_NORTH",
-          "freqAuto": true
-        },
-        {
-          "cc": "LLBS",
-          "freqName": "TEYMAN",
-          "freqAuto": true
-        },
-        {
-          "cc": "KNTRY",
-          "freqName": "HERZLIYA",
-          "freqAuto": true
-        }
       ],
       "commChangeSuppressions": [
         "NOAAM",
@@ -372,40 +236,6 @@
         "KNTRY",
         "LLHZ"
       ],
-      "notes": [
-        {
-          "cc": "TYONA",
-          "freqName": "PLUTO_WEST"
-        },
-        {
-          "cc": "NTAIM",
-          "freqName": "TEL_NOF"
-        },
-        {
-          "cc": "AYLON",
-          "freqName": "TEL_NOF"
-        },
-        {
-          "cc": "SORES",
-          "freqName": "PLUTO_EAST",
-          "freqAuto": true
-        },
-        {
-          "cc": "ZUKIM",
-          "freqName": "PLUTO_EAST",
-          "freqAuto": true
-        },
-        {
-          "cc": "LLMZ",
-          "freqName": "MASADA",
-          "freqAuto": true
-        },
-        {
-          "cc": "KNTRY",
-          "freqName": "HERZLIYA",
-          "freqAuto": true
-        }
-      ],
       "layer": "cvfr"
     },
     {
@@ -425,18 +255,6 @@
         "AMNON",
         "LLIB"
       ],
-      "notes": [
-        {
-          "cc": "GILAM",
-          "freqName": "PLUTO_EAST",
-          "freqAuto": true
-        },
-        {
-          "cc": "DESHE",
-          "freqName": "ROSH_PINA",
-          "freqAuto": true
-        }
-      ],
       "layer": "cvfr"
     },
     {
@@ -455,18 +273,6 @@
         "EVLYM",
         "GILAM",
         "LLHA"
-      ],
-      "notes": [
-        {
-          "cc": "DESHE",
-          "freqName": "PLUTO_EAST",
-          "freqAuto": true
-        },
-        {
-          "cc": "GILAM",
-          "freqName": "HAIFA",
-          "freqAuto": true
-        }
       ],
       "layer": "cvfr"
     },
@@ -489,18 +295,6 @@
         "ZMGID",
         "LLMG"
       ],
-      "notes": [
-        {
-          "cc": "DAROM",
-          "freqName": "PLUTO_WEST",
-          "freqAuto": true
-        },
-        {
-          "cc": "ZMGID",
-          "freqName": "MEGIDDO",
-          "freqAuto": true
-        }
-      ],
       "layer": "cvfr"
     },
     {
@@ -518,18 +312,6 @@
         "AMNON",
         "LLIB"
       ],
-      "notes": [
-        {
-          "cc": "AFULA",
-          "freqName": "PLUTO_EAST",
-          "freqAuto": true
-        },
-        {
-          "cc": "DESHE",
-          "freqName": "ROSH_PINA",
-          "freqAuto": true
-        }
-      ],
       "layer": "cvfr"
     },
     {
@@ -546,18 +328,6 @@
         "TAVOR",
         "AFULA",
         "LLMG"
-      ],
-      "notes": [
-        {
-          "cc": "DESHE",
-          "freqName": "PLUTO_EAST",
-          "freqAuto": true
-        },
-        {
-          "cc": "AFULA",
-          "freqName": "MEGIDDO",
-          "freqAuto": true
-        }
       ],
       "layer": "cvfr"
     },
@@ -579,18 +349,6 @@
         "DAROM",
         "GALIM",
         "LLHA"
-      ],
-      "notes": [
-        {
-          "cc": "ZMGID",
-          "freqName": "PLUTO_WEST",
-          "freqAuto": true
-        },
-        {
-          "cc": "DAROM",
-          "freqName": "HAIFA",
-          "freqAuto": true
-        }
       ],
       "layer": "cvfr"
     },
@@ -616,23 +374,6 @@
         "DAROM",
         "GALIM",
         "LLHA"
-      ],
-      "notes": [
-        {
-          "cc": "DESHE",
-          "freqName": "PLUTO_EAST",
-          "freqAuto": true
-        },
-        {
-          "cc": "ZMGID",
-          "freqName": "PLUTO_WEST",
-          "freqAuto": true
-        },
-        {
-          "cc": "DAROM",
-          "freqName": "HAIFA",
-          "freqAuto": true
-        }
       ],
       "commChangeSuppressions": [
         "AFULA"
@@ -662,23 +403,6 @@
         "AMNON",
         "LLIB"
       ],
-      "notes": [
-        {
-          "cc": "DAROM",
-          "freqName": "PLUTO_WEST",
-          "freqAuto": true
-        },
-        {
-          "cc": "ZMGID",
-          "freqName": "PLUTO_EAST",
-          "freqAuto": true
-        },
-        {
-          "cc": "DESHE",
-          "freqName": "ROSH_PINA",
-          "freqAuto": true
-        }
-      ],
       "layer": "cvfr"
     },
     {
@@ -697,18 +421,6 @@
         "EIRON",
         "ZMGID",
         "LLMG"
-      ],
-      "notes": [
-        {
-          "cc": "DEROR",
-          "freqName": "PLUTO_WEST",
-          "freqAuto": true
-        },
-        {
-          "cc": "ZMGID",
-          "freqName": "MEGIDDO",
-          "freqAuto": true
-        }
       ],
       "layer": "cvfr"
     },
@@ -729,20 +441,8 @@
         "BAZRA",
         "LLHZ"
       ],
-      "notes": [
-        {
-          "cc": "ZMGID",
-          "freqName": "PLUTO_WEST",
-          "freqAuto": true
-        },
-        {
-          "cc": "DEROR",
-          "freqName": "HERZLIYA",
-          "freqAuto": true
-        }
-      ],
       "layer": "cvfr"
     }
   ],
-  "_comment": "Route templates (shared). Each template carries a \"layer\" tag (cvfr|lsa|heli|any); the app shows templates matching the active base layer (plus any)."
+  "_comment": "Route templates (shared). Each template carries a \"layer\" tag (cvfr|lsa|heli|any); the app shows templates matching the active base layer (plus any). Templates carry no frequency-change notes: those are derived from the layer's route graph, as for any drawn route, so a template cannot drift from the chart. commChangeSuppressions still hides graph points a template's route deliberately skips."
 }
