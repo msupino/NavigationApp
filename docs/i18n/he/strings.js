@@ -157,7 +157,7 @@ window.S = {
   tourRecordTitle: 'הקלטה',
   tourRecordText: 'מקליט את הטיסה כמסלול שאפשר להציג שוב ולייצא.',
   tourCommfailTitle: 'תקלת קשר',
-  tourCommfailText: 'אבד הקשר? מנתב לשדה הקרוב עם נוהל מפורסם, עם סקווק 7600 והטלפון של המגדל.',
+  tourCommfailText: 'אבד הקשר? מנתב לשדה הקרוב שיש לו נוהל מפורסם, עם תזכורת לסקווק ומספר הטלפון של המגדל.',
   tourMenuTitle: 'תפריט',
   tourMenuText: 'דפיות, שכבות נוספות (NOTAM, מזג אוויר, מרחבי אוויר), תכנית הטיסה וההגדרות.',
   tourSearchTitle: 'חיפוש',

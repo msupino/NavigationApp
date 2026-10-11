@@ -1597,7 +1597,7 @@ window.S = Object.assign({
   tourRecordTitle: 'Record',
   tourRecordText: 'Records the flight as a track you can show again and export.',
   tourCommfailTitle: 'Comm fail',
-  tourCommfailText: 'Lost the radio? Routes you to the nearest field with a published procedure, with squawk 7600 and the tower phone.',
+  tourCommfailText: 'Lost the radio? Routes you to the nearest field with a published procedure, with a squawk reminder and the tower phone number.',
   tourMenuTitle: 'Menu',
   tourMenuText: 'Charts, extra layers (NOTAM, weather, airspace), the flight plan, and settings.',
   tourSearchTitle: 'Find',

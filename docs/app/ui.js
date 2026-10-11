@@ -4614,6 +4614,13 @@ document.getElementById('reverse').onclick = () => {
   } else if (sel && sel.type === 'wp' && Number.isFinite(sel.index)) {
     state.selected = Object.assign({}, sel, { index: state.waypoints.length - 1 - sel.index });
   }
+  // Which station a comm-change point calls depends on the direction flown, so callouts that
+  // were defaults for the old direction are worked out again for the new one. Reported:
+  // reversing LLIB -> LLHZ kept ZMGID on Pluto West, already in use since DEROR, where flying
+  // ZMGID -> AFULA it is Pluto East. A template's notes carry no freqAuto flag and were left
+  // alone as if hand-picked; a station the pilot picks by hand is freqAuto === false, and
+  // stays exactly as chosen.
+  for (const n of state.notes) if (n && n.cc && n.freqAuto !== false) n.freqAuto = true;
   if (showCommChange && typeof seedCommChangeNotes === 'function') seedCommChangeNotes();
   // Turn the chart round with the route. What was ahead of the aircraft is now behind it,
   // and a map left facing the old way shows the flight that is no longer planned -- the
