@@ -1520,6 +1520,7 @@ window.S = Object.assign({
   tbRouteCheckTitle: 'Airspace, NOTAMs, SIGMET/AIRMET and ceiling against this route, at the time you plan to fly it',
   routeCheckTitle: 'Route check',
   routeCheckWorking: 'Asking airspace, NOTAMs, SIGMET/AIRMET, the aerodrome reports and the forecast along the route\u2026',
+  whyRouteCheckOff: 'Route check is switched off',
   routeCheckNeedRoute: 'Draw a route first: there is nothing to check yet.',
   routeCheckWindow: 'Checked for',
   routeCheckClear: 'Nothing found against this plan in that window.',
