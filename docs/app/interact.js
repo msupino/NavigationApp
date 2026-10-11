@@ -137,7 +137,7 @@ function normalizeInspectorSelection(sel) {
   // below, which would throw it away for having no index.
   if (sel.type === 'coord') {
     return (Number.isFinite(sel.lat) && Number.isFinite(sel.lng))
-      ? { type: 'coord', lat: sel.lat, lng: sel.lng } : null;
+      ? Object.assign({ type: 'coord', lat: sel.lat, lng: sel.lng }, sel.held ? { held: true } : {}) : null;
   }
   const index = Number(sel.index);
   if (!Number.isInteger(index) || index < 0) return null;
@@ -1339,6 +1339,35 @@ function populateInspectorVorSelect(sel, selected) {
     sel.appendChild(opt);
   }
   sel.value = selected || '';
+}
+
+// Direct to from a position that is only a position: the same action the long-press sheet
+// offers, now that a held spot opens this inspector. Dimmed, never hidden, without a live fix
+// or under the deliberate edit lock, saying why.
+function appendDirectToButton(body, pt) {
+  if (!(window.NavAid && typeof NavAid.deckDirectTo === 'function')) return;
+  const btn = document.createElement('button');
+  btn.className = 'insp-btn';
+  btn.id = 'insp-direct-to';
+  btn.textContent = S.deckDirectTo || 'Direct to';
+  const locked = window.editLocked === true && window.editUnlockOverride !== true;
+  const live = typeof gpsOwn === 'object' && gpsOwn && Number.isFinite(gpsOwn.lat)
+    && typeof gpsPositionLive === 'function' && gpsPositionLive();
+  const blocked = !live || locked;
+  if (typeof setButtonWhy === 'function') {
+    setButtonWhy(btn, locked ? (S.editLockBlockedToast || '') : (!live ? (S.deckDirectNeedsFix || 'No position yet — turn Location on') : ''));
+  } else {
+    btn.disabled = blocked;
+    btn.title = locked ? (S.editLockBlockedToast || '') : (!live ? (S.deckDirectNeedsFix || '') : '');
+  }
+  btn.onclick = async () => {
+    if (blocked) return;
+    const before = state.waypoints.length ? state.waypoints[state.waypoints.length - 1] : null;
+    await NavAid.deckDirectTo(pt);
+    const after = state.waypoints[state.waypoints.length - 1];
+    if (after && after !== before) { state.selected = null; showInspector(); }
+  };
+  body.appendChild(btn);
 }
 
 // Chart points (nav waypoints, airfields) had no way onto the route: clicking one
@@ -4221,12 +4250,26 @@ function showInspector() {
     // gets an inspector so a coordinate off an exercise or a clearance can be LOOKED at -- where
     // it falls, what is around it -- and then put on the route, instead of being a place the map
     // merely flew to and left no handle on.
+    // A spot held on the chart lands here too, so it reads like a known point: position,
+    // nearest field, terrain, satellite view, VOR radial, and the route buttons.
     const pt = { lat: state.selected.lat, lng: state.selected.lng };
-    title.value = S.coordPointTitle || 'Coordinate';
+    title.value = state.selected.held ? (S.deckHereTitle || 'What is here') : (S.coordPointTitle || 'Coordinate');
     title.placeholder = ''; title.readOnly = true; title.oninput = null;
     appendPointCoordinateRows(body, pt);
+    const near = window.NavAid && NavAid.deckNearestField ? NavAid.deckNearestField(pt) : null;
+    if (near) {
+      const lang = (document.documentElement.lang || '').toLowerCase().startsWith('he') ? 'he' : 'en';
+      const name = near.af[lang] || near.af.en || near.af.name || '';
+      body.appendChild(textRow(S.deckHereNearest || 'Nearest field',
+        name + '  ' + near.dist.toFixed(1) + ' NM  ' + NavAid.deckFmtBearing(near.brg)));
+    }
+    const terrain = typeof terrainMaxAtLatLng === 'function' ? terrainMaxAtLatLng(pt.lat, pt.lng) : null;
+    if (Number.isFinite(terrain)) {
+      body.appendChild(textRow(S.deckHereTerrain || 'Highest terrain', Math.round(terrain) + ' ft'));
+    }
     appendSatelliteSnippet(body, pt, title.value);
     appendVorRadialRow(body, pt.lat, pt.lng);
+    appendDirectToButton(body, pt);
     appendAddToRouteButton(body, pt);
   } else if (state.selected.type === 'navwp') {
     const nw = navWP && navWP[state.selected.index];
