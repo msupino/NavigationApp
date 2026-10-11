@@ -141,7 +141,7 @@ test.describe('comm-change schema + UI plumbing (shipped populated dataset)', ()
     expect(map.TYONA.callSigns).toContain('PLUTO_WEST');
     expect(map.TYONA.callSigns).toContain('PALMACHIM');
     expect(map.AAKKO.callSigns).toEqual(['PLUTO_EAST', 'HAIFA']);
-    expect(map.AFULA.callSigns).toEqual(['PLUTO_EAST', 'RAMAT_DAVID', 'MEGIDDO', 'PLUTO_WEST']);
+    expect(map.AFULA.callSigns).toEqual(['PLUTO_EAST', 'RAMAT_DAVID', 'MEGIDDO']);
     expect(map.ARRAD.callSigns).toEqual(['HAGAV_SOUTH', 'HAGAV_NORTH', 'NEGEV']);
     expect(map.AYLON.callSigns).toEqual(['BEN_GURION', 'TEL_NOF']);
     expect(map.BEREC.callSigns).toEqual(['RAMON', 'OVDA']);
@@ -806,23 +806,25 @@ test.describe('comm-change rendering (fixture-backed)', () => {
 });
 
 // Reported: AFULA -> ZMGID showed a change to Megiddo (LLMG's frequency), which is right only
-// when LLMG is the next point. Heading to ZMGID the call is Pluto West (AFULA data: callSign
-// PLUTO_WEST with routeHint after ZMGID).
-test('AFULA towards ZMGID calls Pluto West; Megiddo only towards LLMG', async ({ page }) => {
+// when LLMG is the next point. AFULA has three stations (Pluto East, Ramat David, Megiddo);
+// towards ZMGID it stays on Pluto East (routeHint after ZMGID), and the switch to Pluto West
+// is ZMGID's own callout.
+test('AFULA towards ZMGID stays on Pluto East, Pluto West at ZMGID; Megiddo only towards LLMG', async ({ page }) => {
   await page.goto('?lang=en&nogist');
   await page.waitForFunction(() => typeof seedCommChangeNotes === 'function' && typeof findNavWpToken === 'function');
   const got = await page.evaluate(async () => {
     if (navWP === null) await loadNavWaypoints();
     await loadCommChange();
-    const at = (codes) => {
+    const seeded = (codes) => {
       state.waypoints = codes.map(c => { const p = findNavWpToken(c); return { lat: p.lat, lng: p.lng, name: p.name }; });
-      state.legs = []; state.notes = []; state.commChangeSuppressions = []; syncLegs();
-      const d = commRouteCalloutDefaultsMap().defaults.AFULA;
-      return d ? d.freqName + ' ' + d.freq : null;
+      state.legs = []; state.notes = []; state.commChangeSuppressions = []; syncLegs(); seedCommChangeNotes();
+      return state.notes.filter(n => n.cc).map(n => n.cc + '=' + n.freqName + ' ' + n.freq);
     };
-    return { zmgid: at(['TAVOR', 'AFULA', 'ZMGID']), llmg: at(['TAVOR', 'AFULA', 'LLMG']), tavor: at(['ZMGID', 'AFULA', 'TAVOR']) };
+    return {
+      south: seeded(['DESHE', 'TAVOR', 'AFULA', 'ZMGID', 'EIRON']),
+      llmg: seeded(['TAVOR', 'AFULA', 'LLMG']),
+    };
   });
-  expect(got.zmgid).toBe('PLUTO_WEST 118.40');
-  expect(got.llmg).toBe('MEGIDDO 124.40');
-  expect(got.tavor).toBe('PLUTO_EAST 123.85');
+  expect(got.south).toEqual(['DESHE=PLUTO_EAST 123.85', 'ZMGID=PLUTO_WEST 118.40']);
+  expect(got.llmg).toEqual(['AFULA=MEGIDDO 124.40']);
 });
