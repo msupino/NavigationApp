@@ -421,7 +421,8 @@
       "callSigns": [
         "PLUTO_EAST",
         "RAMAT_DAVID",
-        "MEGIDDO"
+        "MEGIDDO",
+        "PLUTO_WEST"
       ],
       "routeHints": [
         {
@@ -431,6 +432,10 @@
         {
           "after": "LLMG",
           "callSign": "MEGIDDO"
+        },
+        {
+          "after": "ZMGID",
+          "callSign": "PLUTO_WEST"
         }
       ]
     },
