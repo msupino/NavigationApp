@@ -2303,3 +2303,32 @@ test.describe('commRouteAfterNames folds in the published corridor, not just dra
     ]);
   });
 });
+
+// Reported with screenshots: "Add frequency change" sat second in the waypoint panel's actions
+// and "Delete frequency change" at the foot, beside Delete waypoint -- one control that jumped
+// across the panel when pressed. Both now take the same slot; Delete keeps its red.
+test('Add and Delete frequency change sit in the same place among the actions', async ({ page }) => {
+  await page.goto('?lang=en&nogist');
+  await page.waitForFunction(() => typeof seedCommChangeNotes === 'function' && typeof findNavWpToken === 'function');
+  const slot = () => page.evaluate(() => {
+    const btns = [...document.querySelectorAll('#insp-body .insp-actions .insp-btn')];
+    const i = btns.findIndex(b => b.classList.contains('freq-change-slot'));
+    return { i, text: i >= 0 ? btns[i].textContent : null, danger: i >= 0 && btns[i].classList.contains('insp-btn-danger') };
+  });
+  await page.evaluate(async () => {
+    if (navWP === null) await loadNavWaypoints();
+    await loadCommChange();
+    state.waypoints = ['LLHZ', 'DEROR', 'SHARO'].map(c => { const p = findNavWpToken(c); return { lat: p.lat, lng: p.lng, name: p.name }; });
+    state.legs = []; state.notes = []; state.commChangeSuppressions = ['DEROR'];
+    syncLegs(); draw();
+    state.selected = { type: 'wp', index: 1 };
+    showInspector();
+  });
+  const before = await slot();
+  expect(before.text).toMatch(/Add freq/);
+  await page.locator('#insp-body .add-freq-change-btn').click();
+  const after = await slot();
+  expect(after.text).toMatch(/Delete freq/);
+  expect(after.danger).toBe(true);
+  expect(after.i).toBe(before.i);
+});

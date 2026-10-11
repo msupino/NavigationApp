@@ -297,7 +297,7 @@ function appendAddFreqChangeButton(body, wp, ccKey) {
   const atTurn = wpIdx >= 0 && typeof legRetraceTurnIndex === 'function' &&
     legRetraceTurnIndex() === wpIdx;
   const add = document.createElement('button');
-  add.className = 'insp-btn add-freq-change-btn';
+  add.className = 'insp-btn add-freq-change-btn freq-change-slot';
   add.textContent = S.addFreqChange || 'Add frequency change';
   add.disabled = atTurn;
   if (atTurn) add.title = S.addFreqChangeAtTurn ||
@@ -3613,6 +3613,10 @@ const INSPECTOR_ACTION_ORDER = [
   'insp-turn-btn',          // mark the turn
 ];
 function inspectorActionRank(el) {
+  // Add and Delete frequency change are one control in two states: the same slot, so the
+  // button does not jump from the second row to the foot of the panel when a callout is
+  // added (reported, with screenshots of both states). Delete keeps its red.
+  if (el.classList.contains('freq-change-slot')) return INSPECTOR_ACTION_ORDER.indexOf('add-freq-change-btn');
   if (el.classList.contains('insp-btn-danger')) return INSPECTOR_ACTION_ORDER.length + 1;
   const i = INSPECTOR_ACTION_ORDER.findIndex(k => el.id === k || el.classList.contains(k));
   return i === -1 ? INSPECTOR_ACTION_ORDER.length : i;
@@ -5077,7 +5081,7 @@ function appendFreqEdit(body, note, editOptions) {
   }
   if (editOptions && editOptions.deleteButton) {
     const del = document.createElement('button');
-    del.className = 'insp-btn insp-btn-danger';
+    del.className = 'insp-btn insp-btn-danger freq-change-slot';
     del.textContent = S.deleteFreqChange || S.deleteNote;
     del.onclick = () => {
       if (note.cc && isKnownCommChangeKey(waypointFreqChangeKey({ name: note.cc })) &&
