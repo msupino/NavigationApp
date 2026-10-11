@@ -186,7 +186,8 @@ test.describe('comm-change schema + UI plumbing (shipped populated dataset)', ()
     expect(map.RUHOT.callSigns).toEqual(['RAMON', 'HAGAV_SOUTH']);
     expect(map.YAPAL.callSigns).toEqual(['PLUTO_WEST', 'HAGAV_NORTH']);
     expect(map.ZMGID.callSigns).toEqual(['PLUTO_EAST', 'PLUTO_WEST', 'MEGIDDO']);
-    expect(map.ZASHD.callSigns).toEqual(['PALMACHIM']);
+    // ZASHD is not a frequency-change point on the CVFR chart (it is a mandatory report).
+    expect(map.ZASHD).toBeUndefined();
     expect(map.ZDAFA.callSigns).toEqual(['HAGAV_NORTH', 'HATZOR']);
     expect(map.ZMGEN.callSigns).toEqual(['HAGAV_NORTH', 'KEDEM']);
     expect(map.ZUKIM.callSigns).toEqual(['PLUTO_EAST', 'HAGAV_SOUTH']);
@@ -512,7 +513,7 @@ test.describe('shared-file failure recovery', () => {
       cc: Object.keys((await loadCommChange()) || {}).length,
       la: Object.keys((await loadLegAltitudes()) || {}).length,
     }));
-    expect(healed.cc).toBe(52);                   // the shipped comm-change points
+    expect(healed.cc).toBe(51);                   // the shipped comm-change points (ZASHD is not one)
     expect(healed.la).toBeGreaterThan(200);       // the altitude table came back too
   });
 });
@@ -854,4 +855,22 @@ test('AFULA towards ZMGID stays on Pluto East, Pluto West at ZMGID; Megiddo only
   expect(got.llmg).toEqual(['AFULA=MEGIDDO 124.40']);
   // Towards EITAN AFULA is Pluto East too: no change when it is already in use.
   expect(got.eitan).toEqual(['DESHE=PLUTO_EAST 123.85']);
+});
+
+// Reported (screenshot comparison with #2598): a drawn LLHZ -> LLBS showed ZASHD = Palmachim
+// 135.55 right after TYONA's Palmachim 135.55. ZASHD is not a frequency-change point on the CVFR
+// chart at all (reported: "zashd has no such change, see cvfr layer"), so it gets no callout.
+test('ZASHD is not a frequency-change point: no callout on a drawn LLHZ -> LLBS', async ({ page }) => {
+  await page.goto('?lang=en&nogist');
+  await page.waitForFunction(() => typeof seedCommChangeNotes === 'function' && typeof findNavWpToken === 'function');
+  const notes = await page.evaluate(async () => {
+    if (navWP === null) await loadNavWaypoints();
+    await loadCommChange();
+    state.waypoints = ['LLHZ', 'SFAIM', 'HTZUK', 'RIDNG', 'CLORE', 'TYONA', 'NTAIM', 'BOVED', 'NAGID', 'YAVNE', 'ZASHD', 'NMASD', 'NITZA']
+      .map(c => { const q = findNavWpToken(c); return { lat: q.lat, lng: q.lng, name: q.name }; });
+    state.legs = []; state.notes = []; state.commChangeSuppressions = []; syncLegs(); seedCommChangeNotes();
+    return state.notes.filter(n => n.cc).map(n => n.cc + '=' + n.freq);
+  });
+  expect(notes).toContain('TYONA=135.55');
+  expect(notes.some(n => n.startsWith('ZASHD='))).toBe(false);
 });

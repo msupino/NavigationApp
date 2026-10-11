@@ -8,6 +8,7 @@ const { clickToolbarControl, hideToolbarMenus } = require('./_toolbar');
 
 const DEROR = { lat: 32.25722, lng: 34.89111, name: 'DEROR' };
 const DAROM = { lat: 32.79611, lng: 34.94333, name: 'DAROM' };
+const TYONA = { lat: 32.00472, lng: 34.72722, name: 'TYONA' };
 
 const FIXTURE = {
   version: 1,
@@ -533,15 +534,17 @@ test.describe('Charts modal — frequency catalog table', () => {
   test('edits local frequencies and restores originals', async ({ page }) => {
     await installCommChangeFixture(page);
     await boot(page);
-    await page.evaluate(({ deror, darom }) => {
+    await page.evaluate(({ deror, tyona, darom }) => {
       localStorage.removeItem('navaid.commFreqOverrides');
       window.showCommChange = true;
-      state.waypoints = [deror, darom];
+      // TYONA (another station) between the two HERZLIYA points: DAROM is then a real change
+      // with its own callout -- back to back, the second would be a repeat and dropped.
+      state.waypoints = [deror, tyona, darom];
       state.notes = [];
       syncLegs();
       seedCommChangeNotes();
       showFreqTableModal();
-    }, { deror: DEROR, darom: DAROM });
+    }, { deror: DEROR, tyona: TYONA, darom: DAROM });
 
     const herzliya = page.locator('.charts-freq-input[data-call-sign="HERZLIYA"]');
     const pluto = page.locator('.charts-freq-input[data-call-sign="PLUTO"]');
@@ -583,7 +586,7 @@ test.describe('Charts modal — frequency catalog table', () => {
 
     const edited = await page.evaluate(() => ({
       overrides: JSON.parse(localStorage.getItem('navaid.commFreqOverrides') || '{}'),
-      notes: state.notes.map(n => ({
+      notes: state.notes.filter(n => n.cc !== 'TYONA').map(n => ({
         cc: n.cc,
         freqName: n.freqName,
         freq: n.freq,
@@ -604,7 +607,7 @@ test.describe('Charts modal — frequency catalog table', () => {
     await expect(herzliyaRow).not.toHaveClass(/overridden/);
     const rowRestored = await page.evaluate(() => ({
       rawOverrides: localStorage.getItem('navaid.commFreqOverrides'),
-      notes: state.notes.map(n => ({
+      notes: state.notes.filter(n => n.cc !== 'TYONA').map(n => ({
         cc: n.cc,
         freqName: n.freqName,
         freq: n.freq,

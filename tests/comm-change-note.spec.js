@@ -1652,15 +1652,17 @@ test.describe('comm-change auto-note (#487)', () => {
     ];
     await installCommChangeFixture(page, fixture);
     await boot(page);
-    await page.evaluate(({ deror, darom }) => {
+    await page.evaluate(({ deror, tyona, darom }) => {
       localStorage.removeItem('navaid.commFreqOverrides');
-      state.waypoints = [deror, darom];
+      // TYONA (another station) between the two: DAROM's HERZLIYA is then a real change with
+      // its own callout -- two HERZLIYA callouts in a row would be one repeat, now dropped.
+      state.waypoints = [deror, tyona, darom];
       state.notes = [];
       syncLegs();
       seedCommChangeNotes();
       state.selected = { type: 'note', index: 0 };
       showInspector();
-    }, { deror: DEROR, darom: DAROM });
+    }, { deror: DEROR, tyona: TYONA, darom: DAROM });
 
     const fields = page.locator('#insp-body .freq-input');
     const resetFreq = page.locator('#insp-body .commchange-freq-reset');
@@ -1681,7 +1683,7 @@ test.describe('comm-change auto-note (#487)', () => {
 
     const edited = await page.evaluate(() => ({
       overrides: JSON.parse(localStorage.getItem('navaid.commFreqOverrides') || '{}'),
-      notes: state.notes.map(n => ({
+      notes: state.notes.filter(n => n.cc !== 'TYONA').map(n => ({
         cc: n.cc,
         freqName: n.freqName,
         freq: n.freq,
@@ -1702,7 +1704,7 @@ test.describe('comm-change auto-note (#487)', () => {
     await expect(page.locator('#insp-body .commchange-template')).toBeHidden();
     const reverted = await page.evaluate(() => ({
       rawOverrides: localStorage.getItem('navaid.commFreqOverrides'),
-      notes: state.notes.map(n => ({
+      notes: state.notes.filter(n => n.cc !== 'TYONA').map(n => ({
         cc: n.cc,
         freqName: n.freqName,
         freq: n.freq,
@@ -1719,7 +1721,7 @@ test.describe('comm-change auto-note (#487)', () => {
     const reseeded = await page.evaluate(() => {
       state.notes = [];
       seedCommChangeNotes();
-      return state.notes.map(n => ({ cc: n.cc, freqName: n.freqName, freq: n.freq }));
+      return state.notes.filter(n => n.cc !== 'TYONA').map(n => ({ cc: n.cc, freqName: n.freqName, freq: n.freq }));
     });
     expect(reseeded).toEqual([
       { cc: 'DEROR', freqName: 'HERZLIYA', freq: '125.60' },
@@ -2294,12 +2296,9 @@ test.describe('commRouteAfterNames folds in the published corridor, not just dra
       return state.notes.filter(n => n.cc).map(n => ({ cc: n.cc, freqName: n.freqName }));
     });
     // NTAIM's PALMACHIM (via BOVED) matches TYONA's already-active PALMACHIM -- suppressed.
-    // ZASHD keeps its own note: single-option static default, never a verified hint, so
-    // never suppressed even though it also happens to be PALMACHIM (same policy as the
-    // "an UNHINTED point is never suppressed" rule above).
+    // ZASHD is not a frequency-change point on the CVFR chart, so it has no callout at all.
     expect(out).toEqual([
       { cc: 'TYONA', freqName: 'PALMACHIM' },
-      { cc: 'ZASHD', freqName: 'PALMACHIM' },
     ]);
   });
 });
