@@ -7150,6 +7150,13 @@ function refreshSettingsAircraft() {
   if (!a || !(Number(a.gph) > 0)) a = { gph: tune('defaultGph'), taxiGal: tune('defaultTaxiGal') };
   if (document.activeElement !== g) g.value = a.gph;
   if (document.activeElement !== t) t.value = a.taxiGal;
+  // Vertical speed: the flight plan's V/S, the same window.profileVS / navaid.profileVS.
+  const vs = document.getElementById('settings-vs');
+  if (vs && document.activeElement !== vs) {
+    let v = window.profileVS > 0 ? window.profileVS : 0;
+    if (!v) { try { v = parseInt(localStorage.getItem('navaid.profileVS'), 10) || 0; } catch (e) { v = 0; } }
+    vs.value = String(v > 0 ? v : 500);
+  }
 }
 window.refreshSettingsAircraft = refreshSettingsAircraft;
 (function wireSettingsAircraft() {
@@ -7172,6 +7179,16 @@ window.refreshSettingsAircraft = refreshSettingsAircraft;
   };
   g.addEventListener('input', onInput);
   t.addEventListener('input', onInput);
+  const vs = document.getElementById('settings-vs');
+  if (vs) vs.addEventListener('input', () => {
+    const v = parseInt(vs.value, 10);
+    if (!(v > 0)) return;
+    const fpVs = document.querySelector('.fp-profile-vs-input');
+    if (fpVs) { fpVs.value = String(v); fpVs.dispatchEvent(new Event('input')); return; }
+    window.profileVS = v;
+    try { localStorage.setItem('navaid.profileVS', String(v)); } catch (e) { /* ignore */ }
+    draw();            // the map's TOC marker moves with the climb
+  });
   refreshSettingsAircraft();
 })();
 
