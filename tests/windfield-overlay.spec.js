@@ -57,6 +57,7 @@ test('the grid request covers many points over Israel in m/s', async ({ page }) 
   await page.addInitScript(() => { try { localStorage.setItem('navaid.sec.weather', '1'); } catch (e) {} });
   await page.goto('?lang=en');
   await page.waitForFunction(() => typeof L !== 'undefined' && typeof L.velocityLayer === 'function', null, { timeout: 20000 });
+  await page.evaluate(() => map.setView([31.5, 35.0], 7, { animate: false }));   // all of Israel in view
   await loadWind(page);
   await expect.poll(() => url).toMatch(/wind_speed_\d+hPa/);
   const lats = new URLSearchParams(url.split('?')[1]).get('latitude').split(',');
@@ -315,4 +316,82 @@ test('unchecking mid-fetch leaves no orphan wind layer', async ({ page }) => {
   await page.waitForTimeout(1500);                    // let the stale fetch finish
   await expect(page.locator('.leaflet-windfield-pane canvas')).toHaveCount(0);
   await expect(page.locator('#windfield-cb')).not.toBeChecked();
+});
+
+// Open-Meteo is global, so the grid follows the map: over Greece it asks for Greece, and the
+// spacing grows with the area so a region costs about the same number of points as a valley.
+test('the grid follows the map anywhere, with spacing for the zoom', async ({ page }) => {
+  const urls = [];
+  await page.route(OM_RE, r => { urls.push(r.request().url()); return r.fulfill({ status: 200, contentType: 'application/json', body: gridBody(r.request().url()) }); });
+  await page.addInitScript(() => { try { localStorage.setItem('navaid.sec.weather', '1'); } catch (e) {} });
+  await page.goto('?lang=en&nogist');
+  await page.waitForFunction(() => typeof L !== 'undefined' && typeof L.velocityLayer === 'function', null, { timeout: 20000 });
+  await page.evaluate(() => map.setView([38.0, 23.7], 7, { animate: false }));   // Athens
+  await loadWind(page);
+  await expect.poll(() => urls.length).toBeGreaterThan(0);
+  const pts = (u) => { const q = new URLSearchParams(u.split('?')[1]);
+    return q.get('latitude').split(',').map(Number).map((la, i) => [la, Number(q.get('longitude').split(',')[i])]); };
+  const g = pts(urls[0]);
+  expect(g.some(([la, lo]) => Math.abs(la - 38) < 1 && Math.abs(lo - 23.7) < 1)).toBe(true);   // over Greece
+  const mean = (k) => g.reduce((t, p) => t + p[k], 0) / g.length;
+  expect(Math.abs(mean(0) - 38)).toBeLessThan(2);                                                // centred on Athens,
+  expect(Math.abs(mean(1) - 23.7)).toBeLessThan(2);                                              // not the Israel box
+  expect(g.length).toBeLessThanOrEqual(260);
+  // Zoomed far out over Europe: still about the same number of points, wider apart.
+  const before = urls.length;
+  await page.evaluate(() => map.setView([48, 12], 4, { animate: false }));
+  await expect.poll(() => urls.length, { timeout: 5000 }).toBeGreaterThan(before);
+  const wide = pts(urls[urls.length - 1]);
+  expect(wide.length).toBeLessThanOrEqual(260);
+  const lats = [...new Set(wide.map(p => p[0]))].sort((a, b) => a - b);
+  expect(lats[1] - lats[0]).toBeGreaterThanOrEqual(1);                                           // a degree or more apart
+});
+
+// Reported on the preview: switched on zoomed in, then zoomed out -- the field stayed a band the
+// size of the first view. The new grid was fetched, but only a missing layer was ever built;
+// the one on the map kept its first data.
+test('zooming out after switching it on draws the new, wider grid', async ({ page }) => {
+  await page.route(OM_RE, r => r.fulfill({ status: 200, contentType: 'application/json', body: gridBody(r.request().url()) }));
+  await page.addInitScript(() => { try { localStorage.setItem('navaid.sec.weather', '1'); } catch (e) {} });
+  await page.goto('?lang=en&nogist');
+  await page.waitForFunction(() => typeof L !== 'undefined' && typeof L.velocityLayer === 'function', null, { timeout: 20000 });
+  await page.evaluate(() => map.setView([32.1, 34.85], 11, { animate: false }));
+  await loadWind(page);
+  await expect(page.locator('.leaflet-windfield-pane canvas')).toHaveCount(1, { timeout: 10000 });
+  const header = () => page.evaluate(() => {
+    let h = null;
+    map.eachLayer(l => { if (l.options && Array.isArray(l.options.data) && l.options.data[0] && l.options.data[0].header) h = l.options.data[0].header; });
+    return h && { lo1: h.lo1, lo2: h.lo2, la1: h.la1, la2: h.la2 };
+  });
+  const first = await header();
+  await page.evaluate(() => map.setView([31.5, 35.5], 7, { animate: false }));
+  await expect.poll(async () => { const h = await header(); return h && (h.lo2 - h.lo1); }, { timeout: 8000 })
+    .toBeGreaterThan(first.lo2 - first.lo1 + 2);
+  const after = await header();
+  const v = await page.evaluate(() => map.getBounds().toBBoxString().split(',').map(Number));
+  expect(after.lo1).toBeLessThanOrEqual(v[0]);   // the grid covers the whole view
+  expect(after.lo2).toBeGreaterThanOrEqual(v[2]);
+  expect(after.la2).toBeLessThanOrEqual(v[1]);
+  expect(after.la1).toBeGreaterThanOrEqual(v[3]);
+});
+
+// Zoomed out to the whole world, the field stays on the map: clipped at 180° E/W, not drawn
+// across the grey beyond the world's edge.
+test('the field is clipped to the world at low zoom', async ({ page }) => {
+  await boot(page);
+  await page.setViewportSize({ width: 1600, height: 800 });
+  await page.evaluate(() => map.setView([20, 0], 2, { animate: false }));
+  await loadWind(page);
+  await expect(page.locator('.leaflet-windfield-pane canvas')).toHaveCount(1, { timeout: 10000 });
+  await page.waitForTimeout(300);
+  const r = await page.evaluate(() => {
+    const c = document.querySelector('.leaflet-windfield-pane canvas');
+    const west = map.latLngToContainerPoint([0, -180]).x, east = map.latLngToContainerPoint([0, 180]).x;
+    const xs = (c.style.clipPath.match(/-?\d+px/g) || []).filter((_, i) => i % 2 === 0).map(v => parseInt(v, 10));
+    return { clip: c.style.clipPath, west: Math.round(west), east: Math.round(east), minX: Math.min(...xs), maxX: Math.max(...xs), width: innerWidth };
+  });
+  expect(r.clip).toMatch(/^polygon\(/);
+  expect(Math.abs(r.minX - r.west)).toBeLessThanOrEqual(1);
+  expect(Math.abs(r.maxX - r.east)).toBeLessThanOrEqual(1);
+  expect(r.east - r.west).toBeLessThan(r.width);      // at zoom 2 the world is narrower than the screen
 });

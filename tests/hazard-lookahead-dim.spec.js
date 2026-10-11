@@ -25,16 +25,20 @@ function feed(page, from, to) {
     const off = id => document.getElementById(id).getAttribute('aria-disabled') === 'true';
     return { btn: [off('sigmet-btn'), off('airmet-btn'), off('notam-list-btn')],
              row: [idle('sigmet-cb'), idle('airmet-cb'), idle('notam-cb')],
-             rowClickable: !document.getElementById('sigmet-cb').disabled };
+             // Dimmed means not usable: a tap leaves the box as it was (and says why).
+             toggles: (() => { const cb = document.getElementById('sigmet-cb'); const was = cb.checked; cb.click(); const now = cb.checked; if (now !== was) cb.click(); return now !== was; })(),
+             marked: document.getElementById('sigmet-cb').getAttribute('aria-disabled') === 'true' };
   }, [from, to, H]);
 }
 
-test('nothing in the next 24 h: buttons and rows dim, the toggles stay usable', async ({ page }) => {
+test('nothing in the next 24 h: buttons and rows dim, and a dimmed toggle does not toggle', async ({ page }) => {
   await boot(page);
   const r = await feed(page, 30, 34);          // starts after the look-ahead ends
   expect(r.btn).toEqual([true, true, true]);
   expect(r.row).toEqual([true, true, true]);
-  expect(r.rowClickable).toBe(true);
+  expect(r.toggles).toBe(false);
+  expect(r.marked).toBe(true);
+  await expect(page.locator('#toast-stack .toast').filter({ hasText: 'No SIGMET in force' }).first()).toBeAttached();
   const past = await feed(page, -6, -1);       // already over
   expect(past.btn).toEqual([true, true, true]);
   expect(past.row).toEqual([true, true, true]);

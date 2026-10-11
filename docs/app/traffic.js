@@ -169,7 +169,30 @@
     if (typeof showInspector === 'function') showInspector();
   }
 
+  // Two sources, one map: the internet feed polled here, and a receiver in the cockpit
+  // (gdl90.js) that pushes its own targets. The receiver's report wins for an aircraft both
+  // know -- it is what this aeroplane hears now, not what a ground station heard seconds ago.
+  let polled = [];
+  let external = [];
+  function render() {
+    const byHex = new Map();
+    for (const a of polled) byHex.set(a.hex || (a.lat + ',' + a.lon), a);
+    for (const a of external) byHex.set(a.hex || (a.lat + ',' + a.lon), a);
+    const mine = typeof gpsLastFix === 'function' ? gpsLastFix() : null;
+    window.trafficAircraft = [...byHex.values()].filter(a => !(mine && Number.isFinite(a.lat) &&
+      Math.abs(a.lat - mine.lat) < 0.001 && Math.abs(a.lon - mine.lng) < 0.001));
+    if (window.trafficAircraft.length) draw(window.trafficAircraft);
+    else if (group) { group.clearLayers(); if (map.hasLayer(group)) map.removeLayer(group); }
+    dropSelectionIfGone();
+  }
+  window.trafficSetExternal = function (list) {
+    external = Array.isArray(list) ? list.filter(a => a && Number.isFinite(a.lat) && Number.isFinite(a.lon)) : [];
+    render();
+  };
+
   function clear() {
+    polled = [];
+    if (external.length) { render(); return; }
     if (group && map.hasLayer(group)) map.removeLayer(group);
     if (group) group.clearLayers();
     window.trafficAircraft = [];
@@ -189,14 +212,10 @@
       // Still the same layer that asked? A response that outlived its own switch-off is
       // stale by definition, and drawing it puts traffic back on a cleared map.
       if (myGen !== generation || !on()) return;
-      const list = ((d && (d.ac || d.aircraft)) || []).map(normalize);
       // Own-ship is in the feed too when the transponder is on: it is already drawn, and a
-      // second aeroplane on top of yourself reads as traffic in your lap.
-      const mine = typeof gpsLastFix === 'function' ? gpsLastFix() : null;
-      window.trafficAircraft = list.filter(a => !(mine && Number.isFinite(a.lat) &&
-        Math.abs(a.lat - mine.lat) < 0.001 && Math.abs(a.lon - mine.lng) < 0.001));
-      draw(window.trafficAircraft);
-      dropSelectionIfGone();
+      // second aeroplane on top of yourself reads as traffic in your lap (render drops it).
+      polled = ((d && (d.ac || d.aircraft)) || []).map(normalize);
+      render();
       fails = 0;
       window.trafficLastError = null;
     } catch (e) {

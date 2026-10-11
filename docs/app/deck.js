@@ -100,14 +100,24 @@
     document.body.appendChild(strip);
     // The menu opens under the strip, so it has to know how tall the strip is -- which
     // depends on the language, the font and whether the second line has anything to say.
-    const measure = () => document.documentElement.style.setProperty(
-      '--navaid-deck-strip-h', Math.round(strip.getBoundingClientRect().height) + 'px');
+    // Its bottom EDGE is a second number: the panels and the GPS line hang from where the strip
+    // ends on screen, which is its height only when it starts at the very top. In the app the
+    // status bar can push it down, and a panel placed a height's worth from the top went under it.
+    const measure = () => {
+      const r = strip.getBoundingClientRect();
+      document.documentElement.style.setProperty('--navaid-deck-strip-h', Math.round(r.height) + 'px');
+      document.documentElement.style.setProperty('--navaid-deck-strip-bottom', Math.round(r.bottom) + 'px');
+    };
     if (typeof ResizeObserver === 'function') {
       const ro = new ResizeObserver(measure);
       ro.observe(strip);
       observers.push(ro);
     }
     measure();
+    // A strip MOVED rather than resized (the app's status-bar inset arriving after start, a
+    // rotation) changes its bottom edge without a resize the observer would see.
+    window.addEventListener('resize', measure);
+    [300, 1500, 4000].forEach((ms) => setTimeout(measure, ms));
   }
 
   // Each entry: the id of the button it drives, or a handler of its own. Nothing here
@@ -446,6 +456,26 @@
   }
 
   function openHere(latlng) {
+    // On the ground a held spot gets the same inspector as a known point -- satellite view,
+    // VOR radial, nearest field, terrain, Start route here -- rather than a thinner sheet of
+    // its own (reported: "match the unknown point to the known one, with sat and all"). In
+    // flight the inspector stays off the chart (inspectorAllowedNow), so there the compact
+    // sheet is what keeps Direct to one hold away.
+    const sel = { type: 'coord', lat: latlng.lat, lng: latlng.lng, held: true };
+    if (typeof showInspector === 'function' && typeof state === 'object' && state
+        && (typeof inspectorAllowedNow !== 'function' || inspectorAllowedNow(sel))) {
+      closeSheet();
+      state.selected = sel;
+      showInspector();
+      return;
+    }
+    // Falling back to the sheet: a held-point inspector from before the fix came on would sit
+    // under it with stale buttons (Direct to dimmed for want of a position it now has).
+    if (typeof state === 'object' && state && state.selected && state.selected.held
+        && typeof showInspector === 'function') {
+      state.selected = null;
+      showInspector();
+    }
     const title = (typeof S === 'object' && S && S.deckHereTitle) || 'What is here';
     openSheet('here-point', title, (body) => {
       body.classList.add('deck-here');
@@ -497,7 +527,13 @@
       const add = document.createElement('button');
       add.type = 'button';
       add.className = 'deck-here-btn';
-      add.textContent = (typeof S === 'object' && S && S.deckAddWaypoint) || 'Add waypoint';
+      // Same words as the inspector's button for a chart point: on an empty map this point
+      // STARTS the route, and saying "add" there read as a different action from the
+      // airfield panel's "Start route here" for the same tap.
+      const empty = !(typeof state === 'object' && state && state.waypoints && state.waypoints.length);
+      add.textContent = empty
+        ? ((typeof S === 'object' && S && S.deckStartRouteHere) || 'Start route here')
+        : ((typeof S === 'object' && S && S.deckAddWaypoint) || 'Add to route');
       add.disabled = locked;
       add.title = locked ? ((typeof S === 'object' && S && S.editLockBlockedToast) || '') : '';
       add.addEventListener('click', () => { addHere(latlng); });
@@ -641,7 +677,7 @@
   // altitude and heading are the instrument and are never dropped -- the flight name gives way
   // instead, because a shortened name still names the flight.
   function stripDropRank(chunk) {
-    if (/[\u2033"]/.test(chunk)) return 0;              // 29.85″
+    if (/[\u2033"]|\bhPa$/.test(chunk)) return 0;      // the QNH, 29.85″ or 1011 hPa: first to go
     if (/\bpts\b/.test(chunk)) return 1;
     if (/^\d{1,4}:\d{2}$/.test(chunk)) return 2;           // elapsed mm:ss -- 125:30 on a long flight
     return 99;                                          // kt, ft, heading: the instrument
@@ -743,6 +779,7 @@
     if (strip) strip.remove();
     if (deck) deck.remove();
     document.documentElement.style.removeProperty('--navaid-deck-strip-h');
+    document.documentElement.style.removeProperty('--navaid-deck-strip-bottom');
     document.documentElement.style.removeProperty('--navaid-deck-bar-h');
     strip = deck = stripLeg = stripVals = stripSub = null;
     for (const key of Object.keys(buttons)) delete buttons[key];
@@ -805,6 +842,10 @@
 
   window.NavAid = window.NavAid || {};
   NavAid.refreshMobileDeck = apply;
+  // The coordinate inspector offers the same Direct to and reads the same nearest field.
+  NavAid.deckDirectTo = directTo;
+  NavAid.deckNearestField = nearestField;
+  NavAid.deckFmtBearing = fmtBearing;
   if (window.matchMedia) {
     const mq = window.matchMedia(NARROW);
     const onChange = () => apply();

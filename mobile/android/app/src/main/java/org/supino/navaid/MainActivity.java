@@ -24,6 +24,9 @@ public class MainActivity extends BridgeActivity
   @Override
   public void onCreate(Bundle savedInstanceState) {
     registerPlugin(XPlaneDiscoveryPlugin.class);
+    registerPlugin(GnssStatusPlugin.class);
+    registerPlugin(BarometerPlugin.class);
+    registerPlugin(Gdl90Plugin.class);
     super.onCreate(savedInstanceState);
     applySystemFontScale();
   }

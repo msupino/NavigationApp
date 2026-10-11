@@ -1,0 +1,186 @@
+{
+  "_note": "Published operating hours, read by hand from the CAA AIP (Israel). he: the AIP wording, section 6 of each field's domestic text pages ('דפי מלל' / 'דברי מלל'), or AD 2.3 for the international airports. en: a faithful translation. schedule: the same rules in a form airfield-hours.js can evaluate; first entry whose day tag matches wins; closures then cut their window out of whatever the day allows. Times are Israel local time. 'dusk' = end of evening civil twilight, 'dawn' = start of morning civil twilight, 'sunrise'/'sunset' = the sun's upper limb on the horizon. 'day' windows are within hours only between sunrise and sunset and unknown in the twilight either side. A field not listed publishes no hours. Source titles are the AIP index's own words, and hash is the page's SHA-512 as the index listed it, so scripts/aip-drift.py can say which page was amended.",
+  "source": "CAA AIP Israel (https://apiaip.azurewebsites.net/getJson)",
+  "readOn": "2026-10-09",
+  "fields": {
+    "LLBG": {
+      "source": { "title": "AD 2.5  TEL-AVIV-BEN-GURION - LLBG", "hash": "ffd31eba0e1b933e606f97b2fe1619117cdf5dba29456ac89c5ff016db38f524d1cc154cd6c39cfb33180837a8de2d2368f5e6d52fa2509ffc225f94b08d7079", "amdt": "AIRAC AMDT 001/2026", "date": "2026-08-06" },
+      "he": ["24 שעות ביממה (H24)."],
+      "en": ["H24."],
+      "schedule": [{ "days": ["any"], "h24": true }]
+    },
+    "LLHA": {
+      "source": { "title": "שדה תעופה חיפה - LLHA - דברי מלל", "hash": "93c6fc234e01ae4ab1467b9712dd77d0bcfe6dcebbba2c4914713f9bd9b439f902b7374cfc0d08c7d25419ae77e186b8eb32998925d24ee3bc8aa164b2d9ceb4", "amdt": "1/26", "date": "2026-08-06" },
+      "he": [
+        "ימים א', ה': 0800-2200.",
+        "ימים ב', ג', ד': 0800-2000; בין 2000-2200 רק לתובלה אווירית מסחרית (הובלת נוסעים) במטוסים של 30 מושבים או יותר.",
+        "יום ו' וערב חג: 0700-1900.",
+        "שבת וחג: 0800-2000; בין 2000-2200 רק לתובלה אווירית מסחרית כנ\"ל.",
+        "ערב ראש השנה וערב פסח: נסגר ב-1800. ערב יום כיפור: נסגר ב-1400 ועד מוצאי החג.",
+        "כשהנמל סגור אין אישור למטוסי כנף קבועה לנחות. טיסות מעבר לשעות — בקשה למרכז תפעול וביטחון חיפה לפחות 24 שעות מראש."
+      ],
+      "en": [
+        "Sun, Thu: 0800-2200.",
+        "Mon, Tue, Wed: 0800-2000; 2000-2200 only for commercial passenger flights in aircraft of 30 seats or more.",
+        "Fri and holiday eves: 0700-1900.",
+        "Sat and holidays: 0800-2000; 2000-2200 only for commercial passenger flights as above.",
+        "Rosh Hashana eve and Passover eve: closes 1800. Yom Kippur eve: closes 1400 until the end of the holiday.",
+        "While closed, fixed-wing aircraft may not land. Flights outside these hours: ask the Haifa Operation and Security Center at least 24 hours ahead."
+      ],
+      "schedule": [
+        { "days": ["ykEve"], "windows": [["07:00", "14:00"]] },
+        { "days": ["yk"], "closed": true, "reopensAfter": "dusk" },
+        { "days": ["rhEve", "pesachEve"], "windows": [["07:00", "18:00"]] },
+        { "days": ["holiday", "sat"], "windows": [["08:00", "20:00"]] },
+        { "days": ["holidayEve", "fri"], "windows": [["07:00", "19:00"]] },
+        { "days": ["sun", "thu"], "windows": [["08:00", "22:00"]] },
+        { "days": ["mon", "tue", "wed"], "windows": [["08:00", "20:00"]] }
+      ]
+    },
+    "LLER": {
+      "source": { "title": "AD 2.7  EILAT - ILAN AND ASAF RAMON - LLER", "hash": "41caf5cb374967771b39153b484c831fd8e3754f489a6339fec3972b03d3bfd9b6f3a74dc0940740dd8c3ab115927489a2211ed4e9e2ac232c2ae42c5226fed4", "amdt": "AIRAC AMDT 001/2026", "date": "2026-08-06" },
+      "he": [
+        "הנהלת השדה: א'-ה' 0530-2330; ו' וערב חג 0600-1800; שבת וחג 0700-2330.",
+        "מעבר לשעות — באישור מיוחד של הנהלת השדה. כשדה חלופי — 24 שעות ביממה. שירותי תעבורה אווירית: 24 שעות ביממה."
+      ],
+      "en": [
+        "AD administration: Sun-Thu 0530-2330; Fri and holiday eves 0600-1800; Sat and holidays 0700-2330.",
+        "Beyond these hours by special permission of the airport management. As an alternate: H24. ATS: H24."
+      ],
+      "schedule": [
+        { "days": ["holiday", "sat"], "windows": [["07:00", "23:30"]] },
+        { "days": ["holidayEve", "fri"], "windows": [["06:00", "18:00"]] },
+        { "days": ["sun", "mon", "tue", "wed", "thu"], "windows": [["05:30", "23:30"]] }
+      ]
+    },
+    "LLHZ": {
+      "source": { "title": "שדה תעופה הרצליה - LLHZ - דברי מלל", "hash": "ef179ecdcb21be85686933bd7a2eb5e94e0d16a795d52217d2ea51395ef0a6d9531fcfe4cc15ddb1cca4754849ebe7881713b05399e59cb17d8e76f2a25f0a88", "amdt": "1/26", "date": "2026-08-06" },
+      "he": [
+        "ימי חול: 07:00-14:00, ומ-16:00 עד 10 דקות לפני גמר דמדומי הערב או עד 19:30, לפי המוקדם.",
+        "מסוקים: מותרת פעילות גם בין 14:00-16:00, ללא אימון הקפות. בין 14:00-16:00 התנעות והסעות לאחזקה; מ-15:45 התנעה והסעה להמראה למטוסי כנף קבועה — המראה/נחיתה מ-16:00 בלבד.",
+        "שישי וערבי חג: 07:30-14:00, ומ-16:00 עד 10 דקות לפני גמר דמדומי הערב או עד 19:30, לפי המוקדם.",
+        "ערב ראש השנה, סוכות, שמחת תורה, פסח ושבועות: עד שעה לפני גמר דמדומי הערב.",
+        "שבת וחג: 09:00-14:00, ומ-16:00 עד 10 דקות לפני גמר דמדומי הערב או עד 19:30, לפי המוקדם.",
+        "יום כיפור: סגור מ-13:00 בערב החג ועד מוצאי החג. גמר דמדומי הערב — לפי טבלת בן-גוריון (א-1-16)."
+      ],
+      "en": [
+        "Weekdays: 07:00-14:00, and from 16:00 until 10 minutes before the end of evening civil twilight or 19:30, whichever is earlier.",
+        "Helicopters may also operate 14:00-16:00, without circuit training. 14:00-16:00: engine starts and taxi for maintenance; from 15:45 fixed-wing start and taxi for departure — take-off/landing from 16:00 only.",
+        "Fri and holiday eves: 07:30-14:00, and from 16:00 until twilight end − 10 min or 19:30, whichever is earlier.",
+        "Eves of Rosh Hashana, Sukkot, Simchat Torah, Passover and Shavuot: until one hour before the end of evening civil twilight.",
+        "Sat and holidays: 09:00-14:00, and from 16:00 until twilight end − 10 min or 19:30, whichever is earlier.",
+        "Yom Kippur: closed from 13:00 on the eve until the end of the holiday. Twilight end as in the Ben Gurion table (AIP A-1-16)."
+      ],
+      "twilightAt": "LLBG",
+      "schedule": [
+        { "days": ["ykEve"], "windows": [["07:30", "13:00"]] },
+        { "days": ["yk"], "closed": true, "reopensAfter": "dusk" },
+        { "days": ["rhEve", "sukkotEve", "sheminiEve", "pesachEve", "shavuotEve"], "windows": [["07:30", "14:00"], ["16:00", "dusk-60"]] },
+        { "days": ["holiday", "sat"], "windows": [["09:00", "14:00"], ["16:00", { "min": ["dusk-10", "19:30"] }]] },
+        { "days": ["holidayEve", "fri"], "windows": [["07:30", "14:00"], ["16:00", { "min": ["dusk-10", "19:30"] }]] },
+        { "days": ["sun", "mon", "tue", "wed", "thu"], "windows": [["07:00", "14:00"], ["16:00", { "min": ["dusk-10", "19:30"] }]] }
+      ]
+    },
+    "LLIB": {
+      "source": { "title": "שדה תעופה ראש פינה - LLIB - דברי מלל", "hash": "8f6669a7a31f5b495451060060d31cea9a587be09fe8b668be96cbebbf98264f00740a9e0fac00d8c5df1b5dd25aeb8d52a03c1ba234b3988abe2249355ac2cc", "amdt": "1/26", "date": "2026-08-06" },
+      "he": [
+        "א'-ה': 07:00-18:30. שישי וערבי חג: 07:00-17:00.",
+        "שבת וחג: 09:00-18:00 (בשעון קיץ 09:00-19:00).",
+        "ערב יום כיפור: נסגר ב-13:00 ועד מוצאי החג.",
+        "טיסות מעבר לשעות — בקשה להנהלת השדה לפחות 24 שעות מראש."
+      ],
+      "en": [
+        "Sun-Thu: 07:00-18:30. Fri and holiday eves: 07:00-17:00.",
+        "Sat and holidays: 09:00-18:00 (09:00-19:00 in summer time).",
+        "Yom Kippur eve: closes 13:00 until the end of the holiday.",
+        "Flights outside these hours: ask the airport management at least 24 hours ahead."
+      ],
+      "schedule": [
+        { "days": ["ykEve"], "windows": [["07:00", "13:00"]] },
+        { "days": ["yk"], "closed": true, "reopensAfter": "dusk" },
+        { "days": ["holiday", "sat"], "windows": [["09:00", { "summer": "19:00", "winter": "18:00" }]] },
+        { "days": ["holidayEve", "fri"], "windows": [["07:00", "17:00"]] },
+        { "days": ["sun", "mon", "tue", "wed", "thu"], "windows": [["07:00", "18:30"]] }
+      ]
+    },
+    "LLRS": {
+      "source": { "title": "מנחת ראשון לציון -  LLRS  - דפי מלל", "hash": "ff9d3a072ff3fc72b8505615866560cc462a24fb8a180a59bb11d89fa2b4339d525dd143dd579d6251dc26349fbedabf843d777d32f7e3454263ee6c56280ef0", "amdt": "2/25", "date": "2025-10-02" },
+      "he": [
+        "ימי חול: מזריחה עד שקיעה. סוף שבוע וחג: המראה ראשונה ב-07:00, סיום בשקיעה.",
+        "המנחת ואזור אימונים ב' סגורים בימי שני ורביעי בין 14:00-15:00.",
+        "משטח המסוקים: 07:00-22:00; טיסה בין 22:00-06:00 — בתיאום עם מגדל פלמחים עד 20:00 באותו יום."
+      ],
+      "en": [
+        "Weekdays: sunrise to sunset. Weekends and holidays: first take-off 07:00, end at sunset.",
+        "The strip and training area B are closed Mon and Wed 14:00-15:00.",
+        "Helicopter pad: 07:00-22:00; flights 22:00-06:00 by coordination with Palmachim tower by 20:00 the same day."
+      ],
+      "schedule": [
+        { "days": ["holiday", "fri", "sat"], "windows": [["07:00", "sunset"]] },
+        { "days": ["sun", "mon", "tue", "wed", "thu"], "windows": [["sunrise", "sunset"]] }
+      ],
+      "closures": [{ "days": ["mon", "wed"], "window": ["14:00", "15:00"] }]
+    },
+    "LLMZ": {
+      "source": { "title": "מנחת מצדה -  LLMZ  - דפי מלל", "hash": "398c032ed9afc8365793f7f316b253cac9ef36814d14b65f5350c7cc85634d1ebfbb4d4cf772fe77a6110d16fbf79b771b82b028d60aad7c2059d65614c04d28", "amdt": "1/26", "date": "2026-08-06" },
+      "he": ["בכל ימות השבוע בין השעות 08:00-17:00."],
+      "en": ["Every day 08:00-17:00."],
+      "schedule": [{ "days": ["any"], "windows": [["08:00", "17:00"]] }]
+    },
+    "LLKZ": {
+      "source": { "title": "מנחת קציעות - LLKZ - דפי מלל", "hash": "3beed9de6b06173ba4294d186e2bdaa0cf7daf201ee4e9b301e8adf8c35a209c6dbad12daeb3a079c4cafa6e9238560cce8a7dee8dfae7fcb3e69f5339cd0077", "amdt": "2/25", "date": "2025-10-02" },
+      "he": ["ימי א'-ה': 08:00-22:00."],
+      "en": ["Sun-Thu: 08:00-22:00."],
+      "schedule": [
+        { "days": ["sun", "mon", "tue", "wed", "thu"], "windows": [["08:00", "22:00"]] },
+        { "days": ["fri", "sat"], "closed": true }
+      ]
+    },
+    "LLEY": {
+      "source": { "title": "מנחת עין יהב -  LLEY  - דפי מלל", "hash": "f9e123c92cafe0497752542d0ca2dbd967e74e6920904862928c9e94b7f8f083851e9c73d16c3cb22733f4c0d84419170fd1e1a281cc9dce49373d08a8994298", "amdt": "1/26", "date": "2026-08-06" },
+      "he": ["בשעות היום בלבד, כל השבוע. יש ליידע את \"חגב דרומי\" בתחילת הפעילות ובסיומה."],
+      "en": ["Daytime only, all week. Tell \"Hagav Dromi\" when activity starts and ends."],
+      "schedule": [{ "days": ["any"], "windows": ["day"] }]
+    },
+    "LLBO": {
+      "source": { "title": "מנחת הבונים -  LLBO - דפי מלל", "hash": "e5eeb862af105bf6a6b8015d3a757cc9ead37415fc40fbf6de484ec22c6637185da067d177dd7e0d8de10af2130f1a58f483adc70cd426e64aae4e93d36d98aa", "amdt": "1/26", "date": "2026-08-06" },
+      "he": ["בשעות אור יום, כל השבוע. בלילה — טיסות הצנחה במטוס C208B בלבד."],
+      "en": ["Daylight, all week. At night only parachute flights in a C208B."],
+      "schedule": [{ "days": ["any"], "windows": ["day"] }]
+    },
+    "LLMG": {
+      "source": { "title": "מנחת מגידו -  LLMG - דפי מלל", "hash": "06e090a703a848ec5ba5cdfe99bf8b8b515e66d44a1f74e313437fda8a2f904a15c596d961bffb646c73d1317d6e3b1c0ae097fa05a8dd1db397e5d56ba1e874", "amdt": "2/25", "date": "2025-10-02" },
+      "he": ["כל שעות היממה, בתיאום מוקדם עם מפעיל המנחת. פעילות אחרי אור אחרון — תיאום 15 דקות לפני המראה עם \"פלוטו\"."],
+      "en": ["H24, by prior coordination with the operator. After last light, coordinate with \"Pluto\" 15 minutes before take-off."],
+      "ppr": true,
+      "schedule": [{ "days": ["any"], "h24": true }]
+    },
+    "LLES": {
+      "source": { "title": "מנחת עין שמר -  LLES - דפי מלל", "hash": "443786c229c7008926ca497c488c23bfb4ed7f7fb06d097020ff13ad771d885ab910f9d79263897f07505d1ac9532196679a18a2d2b7f2202d6eef671957183f", "amdt": "1/25", "date": "2025-05-15" },
+      "he": ["כל שעות היממה."],
+      "en": ["H24."],
+      "schedule": [{ "days": ["any"], "h24": true }]
+    },
+    "LLFK": {
+      "source": { "title": "מנחת פיק -  LLFK - דפי מלל", "hash": "aaf8de05085d3f5fc59f1671ab065023bc8eaa0cec5660e621e4fb4e4077561dcedc0744999acaff44700e4bc986d0e255e5ab86626b2f553aa9fad26958b7f2", "amdt": "1/26", "date": "2026-08-06" },
+      "he": ["כל שעות היממה. נדרש תיאום מוקדם עם מפעיל המנחת."],
+      "en": ["H24. Prior coordination with the operator required."],
+      "ppr": true,
+      "schedule": [{ "days": ["any"], "h24": true }]
+    },
+    "LLKS": {
+      "source": { "title": "מנחת קרית שמונה - LLKS - דפי מלל", "hash": "ed413332df74823feed3c4d286673709eebbc5ebd3ee55707c6fddab7d0b192cd2de5257a82f6c7fba87749f2eb1827c13883d0057302aaafdc65eb59964eaba", "amdt": "1/26", "date": "2026-08-06" },
+      "he": ["כל שעות היממה. נדרש תיאום מוקדם עם מפעיל המנחת."],
+      "en": ["H24. Prior coordination with the operator required."],
+      "ppr": true,
+      "schedule": [{ "days": ["any"], "h24": true }]
+    },
+    "LLBS": {
+      "source": { "title": "מנחת באר-שבע -  LLBS  - דפי מלל", "hash": "295df4aa5840221a353f6feffd6b9c6a0b1fae4d5ca00a6cbeba4c19e1aee76706b1dcaf9684182f5cacf2a85b9a4bae132ab89e0b869ff3a47e76102bd4d161", "amdt": "3/23", "date": "2023-11-02" },
+      "he": ["כל שעות היממה. חובה לתאם ולקבל מראש את אישור המפעיל לפעילות יום או לילה; תיאום נחיתה בטלפון בין 08:00-17:00."],
+      "en": ["H24. The operator's approval is required in advance, day or night; landing coordination by phone 08:00-17:00."],
+      "ppr": true,
+      "schedule": [{ "days": ["any"], "h24": true }]
+    }
+  }
+}

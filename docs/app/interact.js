@@ -137,7 +137,7 @@ function normalizeInspectorSelection(sel) {
   // below, which would throw it away for having no index.
   if (sel.type === 'coord') {
     return (Number.isFinite(sel.lat) && Number.isFinite(sel.lng))
-      ? { type: 'coord', lat: sel.lat, lng: sel.lng } : null;
+      ? Object.assign({ type: 'coord', lat: sel.lat, lng: sel.lng }, sel.held ? { held: true } : {}) : null;
   }
   const index = Number(sel.index);
   if (!Number.isInteger(index) || index < 0) return null;
@@ -1339,6 +1339,35 @@ function populateInspectorVorSelect(sel, selected) {
     sel.appendChild(opt);
   }
   sel.value = selected || '';
+}
+
+// Direct to from a position that is only a position: the same action the long-press sheet
+// offers, now that a held spot opens this inspector. Dimmed, never hidden, without a live fix
+// or under the deliberate edit lock, saying why.
+function appendDirectToButton(body, pt) {
+  if (!(window.NavAid && typeof NavAid.deckDirectTo === 'function')) return;
+  const btn = document.createElement('button');
+  btn.className = 'insp-btn';
+  btn.id = 'insp-direct-to';
+  btn.textContent = S.deckDirectTo || 'Direct to';
+  const locked = window.editLocked === true && window.editUnlockOverride !== true;
+  const live = typeof gpsOwn === 'object' && gpsOwn && Number.isFinite(gpsOwn.lat)
+    && typeof gpsPositionLive === 'function' && gpsPositionLive();
+  const blocked = !live || locked;
+  if (typeof setButtonWhy === 'function') {
+    setButtonWhy(btn, locked ? (S.editLockBlockedToast || '') : (!live ? (S.deckDirectNeedsFix || 'No position yet — turn Location on') : ''));
+  } else {
+    btn.disabled = blocked;
+    btn.title = locked ? (S.editLockBlockedToast || '') : (!live ? (S.deckDirectNeedsFix || '') : '');
+  }
+  btn.onclick = async () => {
+    if (blocked) return;
+    const before = state.waypoints.length ? state.waypoints[state.waypoints.length - 1] : null;
+    await NavAid.deckDirectTo(pt);
+    const after = state.waypoints[state.waypoints.length - 1];
+    if (after && after !== before) { state.selected = null; showInspector(); }
+  };
+  body.appendChild(btn);
 }
 
 // Chart points (nav waypoints, airfields) had no way onto the route: clicking one
@@ -3155,6 +3184,9 @@ function appendAirfieldDetailRows(body, af, label) {
     if (af.lighting === 'minimal') bits.push(S.airfieldMinimalLighting || 'minimal lighting');
     body.appendChild(textRow(S.airfieldLongestRunway || 'Runway', bits.join(' · ')));
   }
+  // Published hours before the radios: whether the field is there to be used at all comes
+  // before how to talk to it.
+  appendAirfieldHours(body, af);
   // Frequencies in a frame of their own: on a field with a tower, a clearance delivery and
   // an ATIS this is four or five rows of numbers, and unlabelled they read as a list of
   // settings rather than as the radios to set.
@@ -3170,6 +3202,132 @@ function appendAirfieldDetailRows(body, af, label) {
   appendVorRadialRow(body, af.lat, af.lng);
   appendAirfieldNotams(body, af);
   appendAirfieldPlates(body, af);
+}
+
+// The AIP's published operating hours, with a verdict for right now. The verdict says
+// "within / outside published hours" and only when the rules decide it (see
+// airfield-hours.js); the AIP text is always shown, because the conditions around the hours
+// (prior coordination, helicopters only, commercial flights only) are not something a pill
+// can carry. A field the AIP gives no hours says so, rather than showing nothing: no row
+// would read as "no restriction".
+function appendAirfieldHours(body, af) {
+  const AH = window.NavAid && window.NavAid.airfieldHours;
+  if (!AH || !af) return;
+  const sec = document.createElement('div');
+  sec.className = 'insp-frame hours-section';
+  const head = document.createElement('div');
+  head.className = 'insp-frame-head';
+  const lbl = document.createElement('span');
+  lbl.className = 'insp-section-badge';
+  lbl.textContent = S.afHoursTitle || 'Hours';
+  head.appendChild(lbl);
+  const pill = document.createElement('span');
+  pill.className = 'hours-now';
+  pill.hidden = true;
+  head.appendChild(pill);
+  // The AIP text is long (Herzliya's runs to six paragraphs) and the verdict beside the title
+  // is what is read in passing, so the text starts folded. The toggle says what it does in
+  // words, on its own row: a bare chevron beside the title was not read as something that
+  // opens.
+  const toggle = document.createElement('button');
+  toggle.type = 'button';
+  toggle.className = 'hours-toggle';
+  toggle.hidden = true;
+  const text = document.createElement('div');
+  text.className = 'hours-text';
+  sec.appendChild(head);
+  // Published hours are not an open field: weather, security, a NOTAM or the operator can
+  // still close it. Said beside the verdict, where it is read, not only in the folded text.
+  const caveat = document.createElement('div');
+  caveat.className = 'hours-caveat';
+  caveat.textContent = S.afHoursCaveat || 'Published hours only: weather, security, NOTAMs or the operator may still close the field.';
+  caveat.hidden = true;
+  sec.appendChild(caveat);
+  sec.appendChild(toggle);
+  sec.appendChild(text);
+  let expanded = false;
+  const setExpanded = (on) => {
+    expanded = on;
+    text.hidden = !on;
+    toggle.textContent = (on ? (S.afHoursHide || 'Hide the published hours')
+      : (S.afHoursShow || 'Show the published hours')) + (on ? ' ▴' : ' ▾');
+    toggle.setAttribute('aria-expanded', String(on));
+  };
+  toggle.onclick = () => setExpanded(!expanded);
+  lbl.style.cursor = 'pointer';
+  lbl.onclick = () => { if (!toggle.hidden) setExpanded(!expanded); };
+  setExpanded(false);
+  body.appendChild(sec);
+  const lang = (document.documentElement.lang || '').toLowerCase().startsWith('he') ? 'he' : 'en';
+  const lookup = k => ((typeof airfields !== 'undefined' && airfields) || []).find(a => a.name === k) || null;
+  const paint = () => {
+    const entry = AH.entryFor(af.name);
+    sec.querySelectorAll('.hours-line, .hours-src').forEach(n => n.remove());
+    if (!entry) {
+      // One short line: nothing to fold, so it is shown and the toggle is not.
+      const none = document.createElement('div');
+      none.className = 'hours-line hours-none';
+      none.textContent = S.afHoursNone || 'No hours published in the AIP';
+      sec.appendChild(none);
+      pill.hidden = true;
+      toggle.hidden = true;
+      return;
+    }
+    toggle.hidden = false;
+    for (const t of (entry[lang] || entry.en || [])) {
+      const line = document.createElement('div');
+      line.className = 'hours-line';
+      line.dir = 'auto';
+      line.textContent = t;
+      text.appendChild(line);
+    }
+    if (entry.source) {
+      const src = document.createElement('div');
+      src.className = 'hours-src';
+      src.textContent = (typeof S.afHoursSource === 'function')
+        ? S.afHoursSource(entry.source.amdt, entry.source.date)
+        : 'AIP ' + entry.source.amdt + ' (' + entry.source.date + ')';
+      text.appendChild(src);
+    }
+    // The moment the panel's time slider points at: live, or the top of a later hour. Hours
+    // are a question about when you will get there, not only about now.
+    const ahead = Number.isFinite(window.lookaheadTarget) && window.lookaheadTarget > Date.now();
+    const at = ahead ? new Date(window.lookaheadTarget) : new Date();
+    const st = AH.status(af.name, af, at, lookup);
+    caveat.hidden = st.state !== 'open';
+    if (st.state === null) { pill.hidden = true; return; }
+    const bits = [];
+    if (ahead && typeof S.afHoursAt === 'function') {
+      bits.push(S.afHoursAt(new Intl.DateTimeFormat('en-GB', { timeZone: 'Asia/Jerusalem',
+        hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).format(at)));
+    }
+    bits.push(st.state === 'open' ? (S.afHoursWithin || 'Within published hours')
+      : (S.afHoursOutside || 'Outside published hours'));
+    if (st.state === 'open' && st.until && typeof S.afHoursUntil === 'function') bits.push(S.afHoursUntil(st.until, st.approx));
+    if (st.state === 'closed' && st.opens && typeof S.afHoursOpens === 'function') bits.push(S.afHoursOpens(st.opens, st.approx));
+    if (st.state === 'open' && entry.ppr) bits.push(S.afHoursPpr || 'prior coordination required');
+    pill.textContent = bits.join(' · ');
+    pill.classList.toggle('is-ahead', ahead);
+    pill.classList.toggle('is-open', st.state === 'open');
+    pill.classList.toggle('is-closed', st.state === 'closed');
+    pill.hidden = false;
+  };
+  AH.load().then(() => { if (sec.isConnected) paint(); });
+  // Follow the time slider, as the wind row does; dropped once the panel is gone.
+  const timeEl = document.getElementById('airfield-wind-time');
+  if (timeEl) {
+    const onTime = () => {
+      if (!sec.isConnected) { timeEl.removeEventListener('input', onTime); return; }
+      paint();
+    };
+    timeEl.addEventListener('input', onTime);
+  }
+  // An inspector left open across a window edge would otherwise keep saying "within" after
+  // the field has closed. Once a minute, and only while the panel is on screen.
+  const timer = setInterval(() => {
+    if (!sec.isConnected) { clearInterval(timer); return; }
+    paint();
+  }, 60000);
 }
 
 // Live METAR / TAF for an ICAO-coded airfield. Fetched on demand from
@@ -4092,12 +4250,26 @@ function showInspector() {
     // gets an inspector so a coordinate off an exercise or a clearance can be LOOKED at -- where
     // it falls, what is around it -- and then put on the route, instead of being a place the map
     // merely flew to and left no handle on.
+    // A spot held on the chart lands here too, so it reads like a known point: position,
+    // nearest field, terrain, satellite view, VOR radial, and the route buttons.
     const pt = { lat: state.selected.lat, lng: state.selected.lng };
-    title.value = S.coordPointTitle || 'Coordinate';
+    title.value = state.selected.held ? (S.deckHereTitle || 'What is here') : (S.coordPointTitle || 'Coordinate');
     title.placeholder = ''; title.readOnly = true; title.oninput = null;
     appendPointCoordinateRows(body, pt);
+    const near = window.NavAid && NavAid.deckNearestField ? NavAid.deckNearestField(pt) : null;
+    if (near) {
+      const lang = (document.documentElement.lang || '').toLowerCase().startsWith('he') ? 'he' : 'en';
+      const name = near.af[lang] || near.af.en || near.af.name || '';
+      body.appendChild(textRow(S.deckHereNearest || 'Nearest field',
+        name + '  ' + near.dist.toFixed(1) + ' NM  ' + NavAid.deckFmtBearing(near.brg)));
+    }
+    const terrain = typeof terrainMaxAtLatLng === 'function' ? terrainMaxAtLatLng(pt.lat, pt.lng) : null;
+    if (Number.isFinite(terrain)) {
+      body.appendChild(textRow(S.deckHereTerrain || 'Highest terrain', Math.round(terrain) + ' ft'));
+    }
     appendSatelliteSnippet(body, pt, title.value);
     appendVorRadialRow(body, pt.lat, pt.lng);
+    appendDirectToButton(body, pt);
     appendAddToRouteButton(body, pt);
   } else if (state.selected.type === 'navwp') {
     const nw = navWP && navWP[state.selected.index];
@@ -5105,6 +5277,7 @@ function addModeExtendThroughWaypoint(i) {
 // neither behaviour: no waypoint AND no inspector.
 function routePrimingArmed() {
   if (state.waypoints && state.waypoints.length) return false;
+  if (typeof measureOn === 'function' && measureOn()) return false;   // a tap measures, it does not start a route
   return !!document.getElementById('empty-route-hint');
 }
 
@@ -5334,8 +5507,11 @@ map.on('movestart', () => {
 
 map.on('mousemove', e => {
   if (!drag) {
-    // Pointer cursor over clickable NOTAM areas/badges (select mode only).
-    if (window.showNotam && state.mode !== 'add' && state.mode !== 'note' &&
+    // Pointer cursor over clickable NOTAM areas/badges (select mode only). Not while measuring:
+    // a tap there picks a measure point, so the crosshair (style.css) stays.
+    const measuring = typeof measureOn === 'function' && measureOn();
+    if (measuring) map.getContainer().style.cursor = '';
+    else if (window.showNotam && state.mode !== 'add' && state.mode !== 'note' &&
         typeof notamsAtLatLng === 'function') {
       map.getContainer().style.cursor = notamsAtLatLng(e.latlng).length ? 'pointer' : '';
     }

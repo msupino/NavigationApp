@@ -154,12 +154,15 @@ test.describe('the first load says it is loading', () => {
   });
 
   test('it explains the wait in the selected language before app scripts finish', async ({ page }) => {
-    await page.goto('?lang=en&nogist');
+    // Read it at DOMContentLoaded -- "before app scripts finish" -- not after the load event:
+    // waiting for every script raced the screen's own hold, and each script the app gained
+    // made the screen more likely to be gone before the test looked.
+    await page.goto('?lang=en&nogist', { waitUntil: 'domcontentloaded' });
     await expect(page.locator('#boot-loading .boot-message-en')).toHaveText('Loading…');
     await expect(page.locator('#boot-loading .boot-message-en')).toBeVisible();
     await expect(page.locator('#boot-loading .boot-message-he')).toBeHidden();
 
-    await page.goto('?lang=he&nogist');
+    await page.goto('?lang=he&nogist', { waitUntil: 'domcontentloaded' });
     await expect(page.locator('#boot-loading .boot-message-he')).toHaveText('טוען…');
     await expect(page.locator('#boot-loading .boot-message-he')).toBeVisible();
     await expect(page.locator('#boot-loading .boot-message-en')).toBeHidden();
@@ -242,8 +245,8 @@ test.describe('the first load says it is loading', () => {
   // it, the screen stops taking pointer events even though it is still on show. Without
   // this it swallowed the first tap of every quick start.
   test('a tap during the hold reaches the app', async ({ page }) => {
-    await page.goto('?lang=en&nogist');
-    await page.waitForFunction(() => typeof map !== 'undefined');
+    // Watch from DOMContentLoaded, as above: after the load event the hold could be over.
+    await page.goto('?lang=en&nogist', { waitUntil: 'domcontentloaded' });
     const passthrough = await page.evaluate(async () => {
       const el = () => document.getElementById('boot-loading');
       // Wait for the screen to still be up but no longer interactive.

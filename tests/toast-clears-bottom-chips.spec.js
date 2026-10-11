@@ -14,7 +14,7 @@ test('while a toast shows, the hint and the coordinate readout wait; measuring h
   await expect.poll(() => vis('#coord-readout')).toBe(false);
   expect(hintBefore).toBe(true);
   expect(await vis('#empty-route-hint')).toBe(false);
-  await page.evaluate(() => measureToggle(true));
+  await page.evaluate(() => { simOn = true; simAircraft = { lat: 32.05, lng: 34.95, alt: 300, hdg: 0, ias: 0 }; measureToggle(true); });
   expect(await page.evaluate(() => document.body.classList.contains('measuring'))).toBe(true);
   if (hintBefore) {
     await page.evaluate(() => document.querySelectorAll('#toast-stack .toast').forEach(t => t.remove()));

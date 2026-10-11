@@ -201,18 +201,25 @@ test('a current-only answer still gives the present hour', async ({ page }) => {
   expect((await readDa(page)).value).toBe('—');
 });
 
-// The same pair everywhere pressure is shown, decoded METAR included.
-test('pressure is given in both scales', async ({ page }) => {
+// The same pair everywhere pressure is shown, decoded METAR included -- the pilot's unit first
+// (Settings -> Pressure unit; inches by default).
+test('pressure is given in both scales, the chosen one first', async ({ page }) => {
   await boot(page);
-  const out = await page.evaluate(() => ({
+  const read = () => page.evaluate(() => ({
     hpa: fmtQnhBoth(1009),
     inches: fmtQnhBoth(29.92),          // some feeds send inches; the pair still reads right
     rubbish: fmtQnhBoth('x'),
     metar: decodeMetar({ altim: 1013, temp: 20 }),
   }));
-  expect(out.hpa).toBe('1009 hPa · 29.80\u2033');
+  let out = await read();
+  expect(out.hpa).toBe('29.80\u2033 · 1009 hPa');
   expect(out.inches).toBe('29.92\u2033 · 1013 hPa');
   expect(out.rubbish).toBe('');
+  expect(out.metar).toContain('QNH 29.91\u2033 · 1013 hPa');
+  await page.evaluate(() => localStorage.setItem('navaid.pressureUnit', 'hPa'));
+  out = await read();
+  expect(out.hpa).toBe('1009 hPa · 29.80\u2033');
+  expect(out.inches).toBe('1013 hPa · 29.92\u2033');
   expect(out.metar).toContain('QNH 1013 hPa · 29.91\u2033');
 });
 

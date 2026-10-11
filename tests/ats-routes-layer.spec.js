@@ -56,7 +56,8 @@ test('choosing it puts the sheet on the map, on the bounds its data states', asy
 test('the map under the chart fills in around it', async ({ page }) => {
   await boot(page);
   await pick(page, 'ATS');
-  expect(await page.evaluate(() => map.hasLayer(underlayLayer('OpenStreetMap')))).toBe(true);
+  // The default floor (OpenFlightMaps; the gist's to change).
+  expect(await page.evaluate(() => map.hasLayer(underlayLayer(tune('defaultBaseLayer'))))).toBe(true);
 });
 
 // Being a chart is what makes "Follow chart" meaningful: its own reporting points come up

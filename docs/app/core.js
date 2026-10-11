@@ -198,8 +198,10 @@ NavAid.tuningDefaults = {
   layerEnabledHelicopters: { value: false, type: 'bool', label: 'Offer the Helicopters layer' },
   layerEnabledATS: { value: true, type: 'bool', label: 'Offer the ATS routes chart layer' },
   worldRelief: { value: true, type: 'bool', label: 'Shaded relief under the world map (offline, Natural Earth)' },
-  defaultBaseLayer: { value: 'OpenStreetMap', type: 'select',
-    options: ['none', 'OpenStreetMap', 'Satellite', 'CVFR', 'Navigation', 'Low Alt', 'Helicopters', 'ATS'],
+  // OpenFlightMaps under the chart: it covers Europe and other regions, not Israel, where the
+  // CVFR chart and the offline world map (relief) fill in.
+  defaultBaseLayer: { value: 'OpenFlightMaps', type: 'select',
+    options: ['none', 'OpenStreetMap', 'OpenFlightMaps', 'Satellite', 'World', 'CVFR', 'Navigation', 'Low Alt', 'Helicopters', 'ATS'],
     label: 'Which map sits under the chart by default' },
   baseLayerOpacity: { value: 0.7, min: 0.1, max: 1, step: 0.05,
     label: 'How strongly the map under the chart shows through (0-1)' },
@@ -672,6 +674,10 @@ NavAid.tuningDefaults = {
   windFieldDefaultAltFt: { value: 1500, min: 1000, max: 5000, step: 500, label: 'Wind field default altitude (ft)' },
   windFieldDefaultOpacity: { value: 0.7, min: 0.2, max: 1, step: 0.05, label: 'Wind field default opacity' },
   windFieldGridDeg: { value: 0.25, min: 0.1, max: 1, step: 0.05, label: 'Wind field grid spacing (°)' },
+  // The wind field follows the map anywhere on earth (Open-Meteo is global), about this many
+  // grid points per view; off, it keeps to the fixed box over Israel (windFieldWest/East/...).
+  windFieldFollowMap: { value: true, type: 'bool', label: 'Wind field: follow the map (anywhere), not the Israel box' },
+  windFieldMaxPoints: { value: 200, min: 50, max: 600, step: 10, label: 'Wind field: grid points per view (about)' },
   windFieldWest: { value: 34.2, min: 33, max: 37, step: 0.05, label: 'Wind field grid west (°)' },
   windFieldEast: { value: 35.95, min: 33, max: 37, step: 0.05, label: 'Wind field grid east (°)' },
   windFieldSouth: { value: 29.45, min: 28, max: 34, step: 0.05, label: 'Wind field grid south (°)' },
@@ -906,6 +912,23 @@ NavAid.tuningDefaults = {
   featureRouteIntro: { value: false, type: 'bool', label: 'Feature: new-user route intro' },
   // The first-launch map tour (tour.js): one control at a time, with Settings → Show the tour.
   featureTour: { value: true, type: 'bool', label: 'Feature: first-launch map tour' },
+  // Pressure as the pilot sets it: inches of mercury (the subscale most GA altimeters have) or
+  // hectopascals (what ATIS and METARs give). A choice made in Settings outranks it.
+  defaultPressureUnit: { value: 'inHg', type: 'select', options: ['inHg', 'hPa'], label: 'Pressure unit (pilot can change in Settings)' },
+  // Where the in-flight altitude comes from: the GPS, or the barometer in the phone with the QNH
+  // (gps.js gpsAltitudeForCompare). A choice made in Settings outranks it.
+  defaultAltSource: { value: 'gps', type: 'select', options: ['gps', 'baro'], label: 'Altitude from: GPS or phone barometer (pilot can change in Settings)' },
+  // The location status line (gps-status.js): accuracy, fix rate and, in the Android app, satellites.
+  featureGpsStatus: { value: true, type: 'bool', label: 'Feature: GPS status line (accuracy, satellites)' },
+  // Phone hardware in the Android app (device-extras.js, gdl90.js, ble-gps.js), one switch each.
+  featureKeepAwake: { value: true, type: 'bool', label: 'Feature: keep the screen on while a position shows (app)' },
+  featureHaptics: { value: true, type: 'bool', label: 'Feature: vibrate with in-flight alerts' },
+  featureBrightness: { value: true, type: 'bool', label: 'Feature: Settings > Screen brightness' },
+  featureBarometer: { value: true, type: 'bool', label: 'Feature: phone barometer (pressure altitude, vertical speed)' },
+  featureBatteryWarn: { value: false, type: 'bool', label: 'Feature: low-battery warning in flight' },
+  featureFullscreenFlight: { value: false, type: 'bool', label: 'Feature: hide the status bar while a position shows (app)' },
+  featureGdl90: { value: false, type: 'bool', label: 'Feature: ADS-B receiver traffic (GDL90, Wi-Fi UDP 4000, app)' },
+  featureBleGps: { value: false, type: 'bool', label: 'Feature: external Bluetooth GPS (NMEA over BLE UART, app)' },
   // The inspector stays shut while a real fix is driving the map (recording or showing
   // location). Set true to have a tap open it in flight, the way it used to.
   featureInspectorWhileTracking: { value: false, type: 'bool', label: 'Feature: inspector while tracking' },
@@ -1129,7 +1152,7 @@ NavAid.tuningGroups = [
   { name: 'Map clock', keys: ['featureMapClock', 'hideMapClockWhileLive', 'hideIdleMapClockOnPhone', 'mapClockHoursAhead'] },
   { name: 'Route check', keys: ['featureRouteCheck'] },
   { name: 'Airfield wind', keys: ['afWindBarbLenPx', 'afWindBarbTickPx', 'afWindBarbTickGapPx', 'afWindBarbWidthPx', 'afWindCalmRadiusPx', 'afWindBarbColor', 'afWindOffsetPx', 'afWindLabelFontPx', 'afWindLabelHaloPx', 'afWindMinZoom', 'afWindLabelMinZoom', 'afWindGustDeltaKt', 'afWindRunwayMinKt', 'afWindCalmMaxKt', 'afWindCrossDeadbandKt', 'afWindCacheMin', 'afWindForecastDays', 'afWindSampleToleranceMin', 'afWindPennantWidthFactor', 'afWindPennantGapFactor', 'afWindFullTickSlantFactor', 'afWindHalfTickSlantFactor', 'afWindHalfTickLenFactor', 'afWindStartGapPx', 'afWindBarbHaloPx', 'afWindObsColor', 'afWindModelDashPx', 'afWindModelGapPx', 'afWindModelLabelAlpha', 'afWindObsMaxAgeMin', 'featureAirfieldWind'] },
-  { name: 'Wind field', keys: ['windFieldDefaultAltFt', 'windFieldDefaultOpacity', 'windFieldGridDeg', 'windFieldWest', 'windFieldEast', 'windFieldSouth', 'windFieldNorth', 'windFieldVelocityScale', 'windFieldParticleAge', 'windFieldParticleMultiplier', 'windFieldLineWidth', 'windFieldMaxVelocity', 'windFieldMinVelocity', 'windFieldFrameRate', 'windFieldHoursAhead', 'windFieldForecastDays'] },
+  { name: 'Wind field', keys: ['windFieldDefaultAltFt', 'windFieldDefaultOpacity', 'windFieldGridDeg', 'windFieldFollowMap', 'windFieldMaxPoints', 'windFieldWest', 'windFieldEast', 'windFieldSouth', 'windFieldNorth', 'windFieldVelocityScale', 'windFieldParticleAge', 'windFieldParticleMultiplier', 'windFieldLineWidth', 'windFieldMaxVelocity', 'windFieldMinVelocity', 'windFieldFrameRate', 'windFieldHoursAhead', 'windFieldForecastDays'] },
   { name: 'Chrome layout', keys: ['inspectorDefaultTopPx', 'inspectorBottomGapPx', 'floatingPanelGapPx', 'zuluClockMinWidthPx', 'zuluClockPadYPx', 'zuluClockPadXPx', 'zuluClockMarginTopPx', 'zuluClockMarginRightPx', 'zuluClockFontPx', 'zuluClockFontWeight', 'zuluClockLineHeight', 'zuluClockTextColor', 'zuluClockBgColor', 'zuluClockBgAlpha', 'zuluClockBorderColor', 'zuluClockBorderWidthPx', 'zuluClockBorderRadiusPx', 'zuluClockShadowYPx', 'zuluClockShadowBlurPx', 'zuluClockShadowAlpha'] },
   // Includes the former 'First-run view' group: the first-run centre/zoom and the
   // fit-with-no-route view answer the same question, and a pilot tuning one wants the other
@@ -1144,7 +1167,7 @@ NavAid.tuningGroups = [
     'defaultViewZoom', 'defaultViewLat', 'defaultViewLng'] },
   { name: 'Export', keys: ['exportBgColor'] },
   { name: 'Global palette', keys: ['inkColor', 'selectedColor', 'labelFillColor', 'kiteTextColor', 'legKiteHaloColor', 'kiteNoteAlpha'] },
-  { name: 'Default layer visibility', keys: ['defaultShowNavWP', 'defaultShowAirfields', 'defaultShowVor', 'defaultShowHotspots', 'defaultShowWpNames', 'defaultShowCumTime', 'defaultShowDrift', 'defaultShowCommChange', 'defaultVoiceAlerts', 'defaultShowMidLeg', 'defaultHighlightDiff', 'defaultLimitLegKites', 'defaultShowMsa', 'defaultShowReporting', 'defaultForceSnap', 'defaultShowReturn', 'featureShowReturn', 'featureFplReturnJoin', 'offlineAutoCvfr', 'offlineCvfrUnmeteredOnly', 'offlineCvfrMinZoom', 'offlineCvfrMaxZoom', 'featureRouteIntro', 'featureTour', 'featureSatZoomButtons', 'featureInspectorResize', 'featureInspectorWhileTracking', 'featureAssistant', 'featureMobileDeck', 'featureDisclaimer', 'featureOtaUpdates', 'featureNavLog', 'reverseWarnMs', 'notamSeenDays', 'toastReadWpm', 'toastNoticeMs', 'toastMinMs', 'toastWarnMinMs', 'toastMaxMs', 'reverseWarnBlink', 'reverseRotatesMap', 'addToRouteOpensInspector', 'defaultShowNotam', 'defaultShowAirmet', 'defaultShowSigmet', 'defaultShowWind', 'defaultWindField', 'defaultAirfieldWind', 'defaultImsPwx', 'defaultSigwxOv', 'defaultShowLsaBubbles', 'defaultAutoRoute', 'defaultShowCircuit', 'defaultShowTraining', 'defaultShowCvfr', 'defaultShowHeli', 'defaultShowCommfail', 'defaultShowAdc', 'defaultShowIfr', 'plateFieldZoom'] },
+  { name: 'Default layer visibility', keys: ['defaultShowNavWP', 'defaultShowAirfields', 'defaultShowVor', 'defaultShowHotspots', 'defaultShowWpNames', 'defaultShowCumTime', 'defaultShowDrift', 'defaultShowCommChange', 'defaultVoiceAlerts', 'defaultShowMidLeg', 'defaultHighlightDiff', 'defaultLimitLegKites', 'defaultShowMsa', 'defaultShowReporting', 'defaultForceSnap', 'defaultShowReturn', 'featureShowReturn', 'featureFplReturnJoin', 'offlineAutoCvfr', 'offlineCvfrUnmeteredOnly', 'offlineCvfrMinZoom', 'offlineCvfrMaxZoom', 'featureRouteIntro', 'featureTour', 'defaultPressureUnit', 'defaultAltSource', 'featureGpsStatus', 'featureKeepAwake', 'featureHaptics', 'featureBrightness', 'featureBarometer', 'featureBatteryWarn', 'featureFullscreenFlight', 'featureGdl90', 'featureBleGps', 'featureSatZoomButtons', 'featureInspectorResize', 'featureInspectorWhileTracking', 'featureAssistant', 'featureMobileDeck', 'featureDisclaimer', 'featureOtaUpdates', 'featureNavLog', 'reverseWarnMs', 'notamSeenDays', 'toastReadWpm', 'toastNoticeMs', 'toastMinMs', 'toastWarnMinMs', 'toastMaxMs', 'reverseWarnBlink', 'reverseRotatesMap', 'addToRouteOpensInspector', 'defaultShowNotam', 'defaultShowAirmet', 'defaultShowSigmet', 'defaultShowWind', 'defaultWindField', 'defaultAirfieldWind', 'defaultImsPwx', 'defaultSigwxOv', 'defaultShowLsaBubbles', 'defaultAutoRoute', 'defaultShowCircuit', 'defaultShowTraining', 'defaultShowCvfr', 'defaultShowHeli', 'defaultShowCommfail', 'defaultShowAdc', 'defaultShowIfr', 'plateFieldZoom'] },
 ];
 // Padding pair + maxZoom for a fitBounds call, from the tuning registry. Every "frame the
 // map on X" call goes through this instead of carrying its own literals.
@@ -1422,6 +1445,7 @@ window.S = Object.assign({
   worldCountriesUrl: 'data/world-countries.json?v=2',  // country outlines + names, always offline  // published comm-failure entry points per field
   navWpSearchField: 'en',              // which locale label to show/search in results
   airfieldsUrl: 'data/airfields.json?v=43',  // resolved relative to index.html (docs/)
+  airfieldHoursUrl: 'data/airfield-hours.json?v=1',  // published hours (airfield-hours.js)
   airfieldLabelField: 'en',            // which locale label to show on the overlay
   routeTemplatesUrl: 'data/route-templates.json?v=2', // ready-made route templates
   vorUrl: 'data/vor.json?v=2',              // Israeli VOR/DME stations
@@ -1496,6 +1520,7 @@ window.S = Object.assign({
   tbRouteCheckTitle: 'Airspace, NOTAMs, SIGMET/AIRMET and ceiling against this route, at the time you plan to fly it',
   routeCheckTitle: 'Route check',
   routeCheckWorking: 'Asking airspace, NOTAMs, SIGMET/AIRMET, the aerodrome reports and the forecast along the route\u2026',
+  whyRouteCheckOff: 'Route check is switched off',
   routeCheckNeedRoute: 'Draw a route first: there is nothing to check yet.',
   routeCheckWindow: 'Checked for',
   routeCheckClear: 'Nothing found against this plan in that window.',
@@ -1545,6 +1570,9 @@ window.S = Object.assign({
   appUpdateCurrent: 'Up to date',
   appUpdateAvailable: function (size) { return 'Update available' + (size ? ' · ' + size : ''); },
   appUpdatePending: 'Update ready: installs the next time NavAid starts',
+  appUpdatePendingFlight: 'Update ready: restart is offered when your position stops showing, or at the next start',
+  appUpdateWaitWifi: 'downloads by itself on Wi-Fi',
+  appUpdateWaitCharts: 'after the charts finish copying',
   appUpdateRestart: 'Restart now',
   appUpdateLater: 'Later',
   offlineCvfrAskTitle: 'Keep the CVFR chart offline?',
@@ -1554,10 +1582,12 @@ window.S = Object.assign({
   offlineCvfrAskOk: 'Download now',
   tbTourReplay: 'Show the tour',
   tourNext: 'Next', tourBack: 'Back', tourSkip: 'Skip', tourDone: 'Done',
+  tourCheckTitle: 'Check the route',
+  tourCheckText: 'Airspace, NOTAMs, SIGMET/AIRMET and ceiling against the route, at the time you plan to fly it. Dimmed until there is a route.',
   tourEditTitle: 'Edit the route',
   tourEditText: 'Add a waypoint, add a note, undo, clear the map. The lit button shows what is armed; tap it again to stop.',
   tourMeasureTitle: 'Measure',
-  tourMeasureText: 'Tap the ruler, then a point: distance, bearing and time from the aircraft. Nothing is added to the route.',
+  tourMeasureText: 'With your position showing, tap the ruler, then a point: distance, bearing and time from the aircraft. Nothing is added to the route.',
   tourLockTitle: 'Edit lock',
   tourLockText: 'Shut, nothing on the route can move. It locks by itself while your position is showing.',
   tourDialTitle: 'Turn the chart',
@@ -2026,6 +2056,7 @@ window.S = Object.assign({
   msaLowTitle: 'Planned altitude is below the minimum safe altitude for this leg',
   profileTitle: 'Vertical profile',
   profileVs: 'V/S (ft/min)',
+  profileVsHint: 'V/S shapes the departure climb on the profile and the TOC on the map; it does not change times or fuel.',
   profileVsTitle: 'Climb rate used to draw the departure climb on the profile. It does not affect leg times or fuel — those are distance and speed only.',
   fpDirection: 'Direction',
   toc: 'TOC',
@@ -2337,6 +2368,21 @@ window.S = Object.assign({
   afWindFromRight: 'from the right',
   afWindModelNote: 'Forecast model wind, not an observation',
   afWindObsNote: 'Reported wind, from the METAR',
+  // Published operating hours (airfield-hours.js). "Within / outside published hours", not
+  // "open / closed": the AIP's hours are what is stated, and a NOTAM, a PPR field's operator
+  // or a closed gate can still say otherwise.
+  afHoursTitle: 'Hours',
+  afHoursWithin: 'Within published hours',
+  afHoursOutside: 'Outside published hours',
+  afHoursAt: function (t) { return 'At ' + t + ' local'; },
+  afHoursUntil: function (t, approx) { return 'until ' + (approx ? 'about ' : '') + t; },
+  afHoursOpens: function (t, approx) { return 'opens ' + (approx ? 'about ' : '') + t; },
+  afHoursPpr: 'prior coordination required',
+  afHoursShow: 'Show the published hours',
+  afHoursHide: 'Hide the published hours',
+  afHoursCaveat: 'Published hours only: weather, security, NOTAMs or the operator may still close the field.',
+  afHoursNone: 'No hours published in the AIP',
+  afHoursSource: function (amendment, date) { return 'AIP, amendment ' + amendment + ' (' + date + ') · Israel local time · check NOTAMs'; },
   afWindLegend: 'Solid barb = reported · dashed = forecast',
   mapTimeNow: 'Now',
   mapTimeNowTitle: 'Back to live: show every layer as it is right now',
@@ -2357,7 +2403,8 @@ window.S = Object.assign({
   deckDirectNeedsFix: 'No position yet — turn Location on',
   deckDirectConfirm: 'Replace the route with a direct leg to this point?',
   deckDirectOk: 'Replace route',
-  deckAddWaypoint: 'Add waypoint',
+  deckAddWaypoint: 'Add to route',
+  deckStartRouteHere: 'Start route here',
   attribToggle: 'Chart and map credits',
   mapTimeLabel: 'Look ahead',
   mapTimeCharts: 'charts',
@@ -2434,6 +2481,46 @@ window.S = Object.assign({
   orientHeadingToast: 'Heading up',
   orientNorthToast: 'North up',
   backOnline: 'Back online: map, NOTAMs and weather updated',
+  tbPressureUnit: 'Pressure unit',
+  tbAltSource: 'Altitude from',
+  tbAltSourceTitle: 'GPS, or the phone\u2019s barometer with the QNH (reads like the altimeter; not in a pressurised cabin). Falls back to GPS without a sensor or QNH.',
+  tbAltSourceGps: 'GPS',
+  tbAltSourceBaro: 'Barometer + QNH',
+  gpsStatusAltFrom: 'Altitude from',
+  tbPressureUnitTitle: 'QNH and pressure in inches of mercury or hectopascals',
+  gpsStatusSource: 'Source',
+  gpsStatusBle: 'Bluetooth GPS',
+  tbBrightness: 'Screen brightness',
+  tbBrightnessTitle: 'Dim the screen for night flying — below the phone\u2019s own minimum if needed',
+  tbBrightnessSystem: 'Brightness: back to the phone\u2019s setting',
+  tbBrightnessAuto: 'System',
+  batteryLow: function (pct) { return 'Battery ' + pct + '%: plug the phone in'; },
+  tbBleGps: 'Connect Bluetooth GPS',
+  bleGpsDisconnect: function (name) { return 'Disconnect Bluetooth GPS' + (name ? ' (' + name + ')' : ''); },
+  bleGpsConnected: function (name) { return 'Bluetooth GPS connected' + (name ? ': ' + name : ''); },
+  bleGpsFailed: 'Bluetooth GPS: could not connect',
+  bleGpsLost: 'Bluetooth GPS disconnected: using the phone\u2019s GPS',
+  whyBleGpsApp: 'Bluetooth GPS works in the Android app',
+  gpsStatusSearching: 'GPS: searching for satellites…',
+  gpsStatusNoFix: function (s) { return 'GPS: no fix for ' + s + ' s'; },
+  gpsStatusTitle: 'Position quality — tap for details',
+  gpsStatusDetailTitle: 'GPS position',
+  gpsStatusAccuracy: 'Accuracy',
+  gpsStatusAltShort: 'alt',
+  gpsStatusFirstFix: function (s) { return 'first fix ' + s + ' s'; },
+  gpsStatusSystems: 'Systems',
+  gpsStatusSatsWord: 'sats',
+  gpsStatusBaro: 'Barometer',
+  gpsStatusAge: 'Last fix',
+  gpsStatusNow: 'now',
+  gpsStatusEvery: 'every',
+  gpsStatusSatellites: 'Satellites',
+  gpsStatusSatsOf: function (used, inView) { return used + ' of ' + inView + ' used'; },
+  gpsStatusNoSats: 'Satellite counts are shown in the Android app; this browser gives only the position and its accuracy.',
+  gpsStatusSatsWaiting: 'No satellite data from the phone yet. Android reports satellites only while its GPS receiver runs; indoors, or on a Wi-Fi or cell fix, there may be none.',
+  gpsStatusSatsEngine: 'The GPS receiver is on; no satellites in view yet. A clear view of the sky helps.',
+  gpsStatusSatsDenied: 'Satellite data needs precise location: Settings > Apps > NavAid > Location > Use precise location.',
+  gpsStatusSatsNone: 'This phone does not report satellite data.',
   voiceOnToast: 'Audio alerts on',
   voiceOffToast: 'Audio alerts off',
   voiceOnTitle: 'Alerts are spoken — tap to silence them',
@@ -2447,9 +2534,9 @@ window.S = Object.assign({
   editLockOff: 'Points and labels can be dragged — tap to lock the route',
   editLockAuto: 'Route is locked while a position is showing — tap to allow moving it',
   editLockBlockedToast: 'Route is locked — unlock it to edit',
-  measureTitle: 'Measure: tap a point for its distance, bearing and time',
+  measureTitle: 'Measure from the aircraft: tap a point for its distance, bearing and time',
   measureHintLive: 'Tap a point: distance and time from the aircraft',
-  measureHint: 'Tap the start, then the end',
+  whyMeasureNoPosition: 'Measure works from your position: turn on Location',
   measureEte: function (min, kt) {
     const t = min < 60 ? min + ' min' : Math.floor(min / 60) + ' h ' + String(min % 60).padStart(2, '0');
     return t + ' at ' + kt + ' kt';
@@ -3141,6 +3228,7 @@ window.S = Object.assign({
   tbLegDirOut: 'Outbound only',
   tbLegDirBack: 'Return only',
   tbLegDirNoTurn: 'This route does not double back and no turning point is marked, so there is no outbound and return to separate. Mark one on a waypoint to enable this.',
+  tbLegDirNa: 'Not relevant',
   inspTurnSet: '\u21bb Mark as turning point',
   inspTurnClear: '\u21bb Clear turning point',
   inspTurnFixedAt: function (name) {
@@ -3423,7 +3511,6 @@ var currentRouteLibraryId = null;
 var showDrift = true;       // 10-degree drift reference lines
 var showWind = false;       // wind effect: inputs + arrows + readout — opt-in
 var sigmets = null;         // null = not loaded; [] or populated once fetched
-var sigmetMeta = null;      // { generatedAt } of the loaded SIGMET file
 var showNotam = false;      // NOTAM overlay — opt-in
 var notams = null;          // null = not loaded; [] or populated once fetched
 var notamMeta = null;       // { generatedAt } of the loaded NOTAM file
@@ -5334,12 +5421,32 @@ function wxWind(dir, spd, gst) {
 // airmanship. The inches figure is the one you dial, so it gets the two decimals it is set
 // with, and the double-prime is how it is written on a plate.
 const HPA_PER_INHG = 33.8639;
-function fmtQnhBoth(hPa) {
-  const v = Number(hPa);
+// The unit the pilot reads pressure in (Settings -> Pressure unit), else the default from the gist.
+const PRESSURE_UNIT_KEY = 'navaid.pressureUnit';
+function pressureUnit() {
+  let v = null;
+  try { v = localStorage.getItem(PRESSURE_UNIT_KEY); } catch (e) { /* storage off */ }
+  if (v !== 'inHg' && v !== 'hPa') v = (typeof tune === 'function' && tune('defaultPressureUnit')) || 'inHg';
+  return v === 'hPa' ? 'hPa' : 'inHg';
+}
+window.pressureUnit = pressureUnit;
+// One pressure in the unit the pilot chose. `precise` adds a decimal (a sensor reading, not a setting).
+function fmtPressure(hPa, precise) {
+  let v = Number(hPa);
   if (!Number.isFinite(v)) return '';
-  // Below 900 the number was already in inches (some feeds send it that way).
-  if (v < 900) return v.toFixed(2) + '\u2033 · ' + Math.round(v * HPA_PER_INHG) + ' hPa';
-  return Math.round(v) + ' hPa · ' + (v / HPA_PER_INHG).toFixed(2) + '\u2033';
+  if (v < 900) v *= HPA_PER_INHG;                    // already in inches (some feeds send it that way)
+  return pressureUnit() === 'hPa'
+    ? (precise ? v.toFixed(1) : String(Math.round(v))) + ' hPa'
+    : (v / HPA_PER_INHG).toFixed(2) + '\u2033';
+}
+window.fmtPressure = fmtPressure;
+// Both scales, the chosen one first: ATIS gives hectopascals, a Cessna subscale is in inches.
+function fmtQnhBoth(hPa) {
+  let v = Number(hPa);
+  if (!Number.isFinite(v)) return '';
+  if (v < 900) v *= HPA_PER_INHG;                    // already in inches
+  const hpa = Math.round(v) + ' hPa', inch = (v / HPA_PER_INHG).toFixed(2) + '\u2033';
+  return pressureUnit() === 'hPa' ? hpa + ' · ' + inch : inch + ' · ' + hpa;
 }
 window.fmtQnhBoth = fmtQnhBoth;
 
@@ -5934,19 +6041,26 @@ window.baseLayerName = (() => {
   } catch (e) { /* storage unavailable */ }
   return tune('defaultBaseLayer');
 })();
+// OpenFlightMaps is an aeronautical layer on a transparent ground (airspace, airports and
+// labels; no terrain), so on its own it is lines on the plain world map. As the floor it goes
+// on top of OpenStreetMap: a real map with the aeronautical lines over it, the chart above both.
+const UNDERLAY_STACKS = { OpenFlightMaps: ['OpenStreetMap', 'OpenFlightMaps'] };
 function updateBasemapUnderlay() {
   let cur = null;
   for (const n in layers) if (map.hasLayer(layers[n])) cur = n;
+  // Never the same chart twice: under itself it is invisible and costs a second set of tiles,
+  // and under nothing at all there is no map to fill in.
+  const wanted = (!baseLayerName || baseLayerName === 'none') ? []
+    : (UNDERLAY_STACKS[baseLayerName] || [baseLayerName]).filter(n => n !== cur);
   for (const n in _underlayCache) {
-    // Never the same chart twice: under itself it is invisible and costs a second set of
-    // tiles, and under nothing at all there is no map to fill in.
-    if (n !== baseLayerName || n === cur) {
-      if (map.hasLayer(_underlayCache[n])) map.removeLayer(_underlayCache[n]);
-    }
+    if (!wanted.includes(n) && map.hasLayer(_underlayCache[n])) map.removeLayer(_underlayCache[n]);
   }
-  if (!baseLayerName || baseLayerName === 'none' || baseLayerName === cur) return;
-  const l = underlayLayer(baseLayerName);
-  if (l && !map.hasLayer(l)) l.addTo(map);
+  wanted.forEach((n, i) => {
+    const l = underlayLayer(n);
+    if (!l) return;
+    if (typeof l.setZIndex === 'function') l.setZIndex(i + 1);        // bottom first
+    if (!map.hasLayer(l)) l.addTo(map);
+  });
 }
 window.updateBasemapUnderlay = updateBasemapUnderlay;
 window.setBaseLayerName = function (name) {

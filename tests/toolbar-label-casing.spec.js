@@ -15,7 +15,7 @@ const { test, expect } = require('./_setup');
 const PROPER = new Set(['NOTAM', 'NOTAMs', 'SIGWX', 'PWX', 'VOR', 'GPS', 'CVFR', 'VFR', 'IFR',
   'ATIS', 'METAR', 'TAF', 'ICAO', 'LSA', 'MSA', 'AIP', 'TMA', 'CTR', 'ATS', 'OSM', 'KML',
   'GPX', 'CSV', 'PDF', 'PNG', 'JSON', 'FPL', 'AIS', 'FDR', 'FMS', 'PLN', 'ADS-B', 'AIRMET',
-  'AIRMETs', 'SIGMET', 'SIGMETs', 'X-Plane', 'Google', 'Earth', 'NavAid', 'Drive', 'Zulu',
+  'AIRMETs', 'SIGMET', 'SIGMETs', 'X-Plane', 'Bluetooth', 'Google', 'Earth', 'NavAid', 'Drive', 'Zulu',
   'Israel', 'Garmin', 'MSFS', 'Ctrl-F', 'Ctrl-Z', 'Wi-Fi', 'HTTP', 'HTTPS', 'URL', 'CORS',
   'Find', 'Offline', 'Alt', 'Low', 'Helicopters', 'Navigation', 'Satellite', 'OpenStreetMap']);
 

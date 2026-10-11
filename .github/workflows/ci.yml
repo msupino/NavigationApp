@@ -283,7 +283,7 @@ jobs:
         run: npm run lint:spell
 
   # Sharded: the suite is ~2150 tests and one 4-vCPU runner took ~21 min of every
-  # PR's wall clock. Playwright splits by file across shards, so four runners cut
+  # PR's wall clock. Playwright splits by file across shards, so six runners cut
   # that to ~6. Branch protection requires a check named exactly `e2e`, which a
   # matrix job cannot provide (it becomes `e2e-shard (1)`), hence the gate job
   # below -- do not rename either without updating the required checks.
@@ -314,8 +314,11 @@ jobs:
       # One shard's failure is not the others' business: let them all report, so a
       # single red shard doesn't hide a second, unrelated break.
       fail-fast: false
+      # Six, not four: at four the shards ran 16-19 min against the 20 min cap, and a slow
+      # runner day tipped every one of them over -- timeouts across unrelated reload tests
+      # that passed locally, on two PRs at once.
       matrix:
-        shard: [1, 2, 3, 4]
+        shard: [1, 2, 3, 4, 5, 6]
     steps:
       - name: Checkout
         uses: actions/checkout@v6

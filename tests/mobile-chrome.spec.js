@@ -94,7 +94,7 @@ test('the required credits fold behind one button, and still say everything', as
   await expect(btn).toBeVisible();
   await expect(body, 'the credits row was still spread across the bottom').toBeHidden();
   // Hidden, never gone: the notice is a licence condition, and it is one tap away.
-  expect(await body.textContent()).toMatch(/OpenStreetMap/);
+  expect(await body.textContent()).toMatch(/open flightmaps association/);   // the default base map's credit
   expect(await btn.getAttribute('aria-expanded')).toBe('false');
   await btn.click();
   await expect(body).toBeVisible();

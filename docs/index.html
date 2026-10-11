@@ -511,29 +511,31 @@
       <div class="tb-section-head" tabindex="0" role="button" data-i18n-aria="tbSecCharts"><span class="tb-sec-icon" aria-hidden="true" data-nav-icon="charts"></span><span class="tb-sec-text"><span class="tb-section-title" data-i18n="tbSecCharts"></span><span class="tb-sec-hint" aria-hidden="true" data-i18n="tbSecChartsHint"></span></span></div>
       <div class="tb-section-body">
         <button id="route-templates" type="button" data-i18n="tbRouteTemplates" data-i18n-title="tbRouteTemplatesTitle"></button>
-        <button id="nav-log" type="button" data-i18n="tbNavTable" data-i18n-title="tbNavTableTitle"></button>
-        <button id="charts" data-i18n="tbCharts" data-i18n-title="tbChartsTitle"></button>
-        <!-- SIGWX significant-weather chart viewer (image modal). Hidden until
-             the ims-data sigwx manifest loads. The on-map overlay lives in the
-             Information section. -->
-        <button id="sigwx-btn" type="button" hidden
-                data-i18n="tbSigwx" data-i18n-title="tbSigwxTitle"></button>
+        <!-- The warnings and weather charts in the order Extra layers lists their map layers:
+             NOTAM, AIRMET, SIGMET, then wind/temperature and significant weather. -->
+        <!-- Active-NOTAM text list (modal). Hidden until notam data loads; the
+             on-map NOTAM layer + timeline live in the Extra layers section. -->
+        <button id="notam-list-btn" type="button" disabled data-i18n-title="tbNotamListTitle"><span data-i18n="tbNotamList"></span><span class="layer-count" id="notam-list-count" aria-hidden="true"></span></button>
+        <!-- Active-AIRMET decoded list (modal). Hidden until an AIRMET is active. -->
+        <button id="airmet-btn" type="button" disabled data-i18n-title="tbAirmetTitle"><span data-i18n="tbAirmet"></span><span class="layer-count" id="airmet-btn-count" aria-hidden="true"></span></button>
+        <!-- Active-SIGMET decoded list (modal). Hidden until SIGMET data loads. -->
+        <button id="sigmet-btn" type="button" disabled data-i18n-title="tbSigmetTitle"><span data-i18n="tbSigmet"></span><span class="layer-count" id="sigmet-count" aria-hidden="true"></span></button>
         <!-- IMS wind/temperature (PWX) original chart viewer (image modal),
              by flight level + valid time. The on-map overlay lives in the
              Information section. Hidden until the ims-data pwx manifest loads. -->
         <button id="pwx-btn" type="button" hidden
                 data-i18n="tbPwxCharts" data-i18n-title="tbPwxChartsTitle"></button>
-        <!-- Active-SIGMET decoded list (modal). Hidden until SIGMET data loads. -->
-        <button id="sigmet-btn" type="button" disabled data-i18n-title="tbSigmetTitle"><span data-i18n="tbSigmet"></span><span class="layer-count" id="sigmet-count" aria-hidden="true"></span></button>
-        <!-- Active-AIRMET decoded list (modal). Hidden until an AIRMET is active. -->
-        <button id="airmet-btn" type="button" disabled data-i18n-title="tbAirmetTitle"><span data-i18n="tbAirmet"></span><span class="layer-count" id="airmet-btn-count" aria-hidden="true"></span></button>
-        <!-- Active-NOTAM text list (modal). Hidden until notam data loads; the
-             on-map NOTAM layer + timeline live in the Information section. -->
+        <!-- SIGWX significant-weather chart viewer (image modal). Hidden until
+             the ims-data sigwx manifest loads. The on-map overlay lives in the
+             Information section. -->
+        <button id="sigwx-btn" type="button" hidden
+                data-i18n="tbSigwx" data-i18n-title="tbSigwxTitle"></button>
         <!-- The four things that can say "not this plan, not at this time": airspace
              crossed, NOTAMs on the route or its fields, SIGMET/AIRMET polygons, and a
              ceiling below a planned leg -- all against the planned time window. -->
         <button id="route-check-btn" type="button" data-i18n-title="tbRouteCheckTitle"><span data-i18n="tbRouteCheck"></span></button>
-        <button id="notam-list-btn" type="button" disabled data-i18n-title="tbNotamListTitle"><span data-i18n="tbNotamList"></span><span class="layer-count" id="notam-list-count" aria-hidden="true"></span></button>
+        <button id="nav-log" type="button" data-i18n="tbNavTable" data-i18n-title="tbNavTableTitle"></button>
+        <button id="charts" data-i18n="tbCharts" data-i18n-title="tbChartsTitle"></button>
         <!-- LSA airspace bubble list (modal). Hidden until areas load on the Low
              Alt layer; the on-map bubbles + toggle live in the Extra layers section. -->
         <button id="lsa-list-btn" type="button" hidden data-i18n="tbLsaList" data-i18n-title="tbLsaListTitle"></button>
@@ -938,12 +940,55 @@
             </select>
           </span>
         </label>
+        <label class="navtoggle" data-i18n-title="tbPressureUnitTitle">
+          <span data-i18n="tbPressureUnit"></span>
+          <select id="pressure-unit">
+            <option value="inHg">inHg (29.92″)</option>
+            <option value="hPa">hPa (1013)</option>
+          </select>
+        </label>
+        <label class="navtoggle" data-i18n-title="tbAltSourceTitle">
+          <span data-i18n="tbAltSource"></span>
+          <select id="alt-source">
+            <option value="gps" data-i18n="tbAltSourceGps"></option>
+            <option value="baro" data-i18n="tbAltSourceBaro"></option>
+          </select>
+        </label>
+        <!-- The aircraft's own numbers start here, set apart from the pilot/app settings above. -->
+        <div class="tb-group-separator" aria-hidden="true"></div>
+        <!-- The aircraft's fuel figures, the same two the flight plan shows: one profile, so a
+             change in either place is a change in both (ui.js, wireSettingsAircraft). -->
+        <label class="navtoggle" data-i18n-title="tbGphTitle">
+          <span data-i18n="tbGph"></span>
+          <input type="number" id="settings-gph" min="1" max="50" step="0.5" inputmode="decimal">
+        </label>
+        <label class="navtoggle" data-i18n-title="tbTaxiGalTitle">
+          <span data-i18n="tbTaxiGal"></span>
+          <input type="number" id="settings-taxi" min="0" max="20" step="0.1" inputmode="decimal">
+        </label>
+        <!-- Vertical speed, shared with the flight plan's profile strip. Said in words what it
+             changes, because a rate field reads as if it moves times and fuel, and it does not. -->
+        <label class="navtoggle" data-i18n-title="profileVsTitle">
+          <span data-i18n="profileVs"></span>
+          <input type="number" id="settings-vs" min="50" step="50" inputmode="numeric">
+        </label>
+        <div class="settings-hint" id="settings-vs-hint" data-i18n="profileVsHint"></div>
         <!-- Reference tables a pilot sets up once and consults: the frequency table and the
              altitude pairs, moved here from Charts. -->
         <div class="tb-group-separator" aria-hidden="true"></div>
         <button id="freq-table" data-i18n="tbFreqTable" data-i18n-title="tbFreqTableTitle"></button>
         <button id="alt-pairs" data-i18n="tbAltPairs" data-i18n-title="tbAltPairsTitle"></button>
         <button id="tour-replay" type="button" data-i18n="tbTourReplay"></button>
+        <!-- The phone's own hardware (device-extras.js, ble-gps.js): screen brightness for the
+             cockpit, and an external Bluetooth GPS. Each is dimmed where it cannot work. -->
+        <div class="tb-group-separator" aria-hidden="true"></div>
+        <label class="navtoggle" id="brightness-row" data-i18n-title="tbBrightnessTitle">
+          <span data-i18n="tbBrightness"></span>
+          <input type="range" id="brightness-range" min="0" max="100" step="5" value="100">
+          <span class="slider-val" id="brightness-val"></span>
+        </label>
+        <button id="brightness-system" type="button" data-i18n="tbBrightnessSystem"></button>
+        <button id="ble-gps-btn" type="button" data-i18n="tbBleGps"></button>
       </div>
     </div>
 
@@ -1286,6 +1331,7 @@
         'app/followme.js' + v,
         'app/density-altitude.js' + v,
         'app/airfield-wind.js' + v,
+        'app/airfield-hours.js' + v,
         'app/editor.js' + v,
         'app/assistant.js' + v,
         'app/offline-tiles.js' + v,
@@ -1293,6 +1339,10 @@
         'app/navlog.js' + v,
         'app/taf-validity.js' + v,
         'app/routecheck.js' + v,
+        'app/gps-status.js' + v,
+        'app/device-extras.js' + v,
+        'app/gdl90.js' + v,
+        'app/ble-gps.js' + v,
         'app/tour.js' + v,
         'app/disclaimer.js' + v,
         'app/ota.js' + v

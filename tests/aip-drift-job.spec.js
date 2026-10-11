@@ -74,6 +74,7 @@ test('the issue is opened on drift and closed only when there is none', () => {
 
 test('the script still exits 1 on drift, which is the contract the job depends on', () => {
   const src = readFileSync(join(root, 'scripts/aip-drift.py'), 'utf8');
-  expect(src).toMatch(/return 1 if drifted else 0/);
+  // Drifted plates, or an hours page (airfield-hours.json) the CAA has since amended.
+  expect(src).toMatch(/return 1 if drifted or hours_amended else 0/);
   expect(src).toMatch(/sys\.exit\(main\(\)\)/);
 });

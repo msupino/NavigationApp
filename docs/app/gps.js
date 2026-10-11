@@ -200,7 +200,7 @@ function gpsStartWatch(onPos, onErr, title, message) {
     onPos({
       coords: {
         latitude: loc.latitude, longitude: loc.longitude, accuracy: loc.accuracy,
-        altitude: loc.altitude, speed: loc.speed, heading: loc.bearing,
+        altitude: loc.altitude, altitudeAccuracy: loc.altitudeAccuracy, speed: loc.speed, heading: loc.bearing,
       },
       timestamp: loc.time || Date.now(),
     });
@@ -285,6 +285,11 @@ function gpsPublishFollowMeFix(p, hdg, hdgFromCompass) {
 }
 function onLivePosition(pos) {
   if (!gpsLiveOn || !pos || !pos.coords) return;
+  // A connected Bluetooth GPS (ble-gps.js) is the better receiver: while it delivers, the
+  // phone's own fixes are set aside rather than fighting it for the symbol.
+  if (pos.source !== 'ble' && window.NavAid && NavAid.bleGps && NavAid.bleGps.fresh()) return;
+  // Every fix, before the accuracy filter below: the status line shows a coarse fix as coarse.
+  if (window.NavAid && NavAid.gpsStatus) NavAid.gpsStatus.noteFix(pos);
   if (gpsRecording) return;   // recording drives own-ship + recenter; avoid dueling
   const c = pos.coords;
   if (c.accuracy != null && c.accuracy > gpsMaxAccM()) return;
@@ -791,10 +796,37 @@ function gpsIndicatedAltitudeFt(rawFt, q) {
 }
 // The altitude every consumer should use: alerts, the readout, anything compared against
 // a planned (pressure) altitude.
+// Where the altitude comes from: the GPS (corrected to indicated, above), or the phone's own
+// barometer with the QNH -- the same sum an altimeter does, so it reads what the altimeter
+// reads, with far less noise than a GPS height. Settings -> Altitude from. The barometer
+// needs a fresh reading (device-extras.js) and a QNH; without either it falls back to the
+// GPS, and the GPS details say which one is in use. Static pressure in the cabin: close to
+// outside in an unpressurised aeroplane, meaningless in a pressurised one.
+const ALT_SOURCE_KEY = 'navaid.altSource';
+function gpsAltSource() {
+  let v = null;
+  try { v = localStorage.getItem(ALT_SOURCE_KEY); } catch (e) { /* storage off */ }
+  if (v !== 'gps' && v !== 'baro') v = (typeof tune === 'function' && tune('defaultAltSource')) || 'gps';
+  return v === 'baro' ? 'baro' : 'gps';
+}
+function gpsBaroAltitudeFt() {
+  const b = window.NavAid && NavAid.device && NavAid.device.baro;
+  if (!b || !Number.isFinite(b.hPa) || !(Date.now() - b.at < 5000)) return null;
+  const qnh = gpsQnh && gpsQnh.hPa;
+  if (!Number.isFinite(qnh) || qnh <= 0) return null;
+  return 145366.45 * (1 - Math.pow(b.hPa / qnh, 0.190284));
+}
+var gpsAltFrom = 'gps';            // which one the last altitude came from: 'gps' | 'baro'
 function gpsAltitudeForCompare() {
+  if (gpsAltSource() === 'baro') {
+    const b = gpsBaroAltitudeFt();
+    if (b != null) { gpsAltFrom = 'baro'; return b; }
+  }
+  gpsAltFrom = 'gps';
   if (gpsLastAlt == null) return null;
   return gpsAltIsGeometric ? gpsIndicatedAltitudeFt(gpsLastAlt) : gpsLastAlt;
 }
+window.gpsAltSource = gpsAltSource;
 
 // Live readout next to the toolbar button: points · elapsed · ground speed ·
 // altitude (the last two only when the fix provides them). No-op if absent.
@@ -954,8 +986,8 @@ function gpsReadoutHeading() {
 function gpsPushAltitudeParts(parts) {
   const alt = gpsAltitudeForCompare();
   parts.push(alt != null ? Math.round(alt) + ' ft' : null);
-  const inHg = gpsQnh && gpsFormatInHg(gpsQnh.inHg);
-  parts.push(inHg ? inHg + '\u2033' : null);   // 29.83" -- the subscale setting, not a length
+  // The subscale setting, in the pilot's unit: 29.83" or 1010 hPa (Settings -> Pressure unit).
+  parts.push(gpsQnh && Number.isFinite(gpsQnh.hPa) && typeof fmtPressure === 'function' ? fmtPressure(gpsQnh.hPa) : null);
 }
 // Ground speed for the readout, or a placeholder holding its place.
 // The first fix of a session carries no speed unless the device reports one -- there is no
@@ -1013,6 +1045,8 @@ function gpsUpdateReadout() {
 
 function onGpsPosition(pos) {
   if (!gpsRecording || !pos || !pos.coords) return;
+  if (pos.source !== 'ble' && window.NavAid && NavAid.bleGps && NavAid.bleGps.fresh()) return;   // the Bluetooth GPS leads
+  if (window.NavAid && NavAid.gpsStatus) NavAid.gpsStatus.noteFix(pos);   // the status line, before the filter
   const c = pos.coords;
   if (c.accuracy != null && c.accuracy > gpsMaxAccM()) return;       // too imprecise
   const pt = { lat: r5(c.latitude), lng: r5(c.longitude), t: pos.timestamp || Date.now(),
@@ -2406,6 +2440,14 @@ function gpsSendWatchAlert(title, body, speech) {
   // its own return paths (native plugin, service worker, plain constructor) that must not
   // decide whether the pilot hears the alert.
   gpsSpeak(speech);
+  // ...and felt: a vibration reaches a pilot whose phone is on the kneeboard under a headset.
+  if (window.NavAid && NavAid.device) NavAid.device.haptic('alert');
+  // ...and read, in the app: a bubble at the bottom with the same words, so an alert spoken over
+  // engine noise (or with the voice off) is on screen while the app is. The notification below
+  // still goes out -- it is what the lock screen and a paired watch show.
+  if (typeof showToast === 'function' && !(typeof document !== 'undefined' && document.hidden)) {
+    showToast(body ? title + ': ' + body : title, { warn: true });
+  }
   const nn = _nativeNotify();
   if (nn) {
     const id = _watchAlertId++;

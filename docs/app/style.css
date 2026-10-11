@@ -44,6 +44,13 @@ html.app-booting .leaflet-control-container { visibility: hidden; }
 #map.add .leaflet-interactive,
 #map.priming .leaflet-grab,
 #map.priming .leaflet-interactive { cursor: crosshair; }
+/* Measuring: a tap picks a point, so the pointer is the crosshair everywhere on the chart --
+   over a marker too, where it was the pointing hand. */
+body.measuring #map,
+body.measuring #map .leaflet-grab,
+body.measuring #map .leaflet-interactive,
+body.measuring #map .leaflet-marker-icon,
+body.measuring #map .leaflet-pane * { cursor: crosshair; }
 #map.leaflet-dragging .leaflet-grab { cursor: grabbing; }
 /* Flight-plan VOR Radial/DME columns collapse when no reference VOR is set. */
 .flight-table.no-vor .fp-vor-col { display: none; }
@@ -1466,6 +1473,8 @@ body.deck-on .leaflet-control.edit-col-ctrl {
 .leaflet-control.edit-col-ctrl button.edit-col-on { background: var(--navaid-mapbtn-on); }
 .leaflet-control.edit-col-ctrl button:disabled,
 .leaflet-control.edit-col-ctrl button.is-dim { opacity: 0.45; }
+/* The ruler without a position: dimmed the same way, still tappable to say why. */
+.leaflet-control.measure-ctrl button.is-dim { opacity: 0.45; }
 .leaflet-control.edit-col-ctrl button:focus-visible {
   outline: 2px solid #ffffff;
   outline-offset: 2px;
@@ -2246,9 +2255,13 @@ body.theme-light .resize-grip {
 body.theme-light .wind-fetch-status.windfield-loading { color: #1f252c; }
 /* A toggle whose data source is currently unavailable (e.g. NOTAM feed down). */
 .navtoggle-disabled { opacity: 0.45; cursor: not-allowed; }
-/* Nothing in force across the look-ahead (SIGMET / AIRMET / NOTAM): dimmed like a disabled row,
-   but still clickable -- the pilot's on/off choice is theirs, not the feed's. */
+/* Nothing in force across the look-ahead (SIGMET / AIRMET / NOTAM): dimmed, and not usable --
+   a tap says why instead of toggling. The pilot's saved choice is kept (ui.js setLayerIdle). */
 .navtoggle-idle { opacity: 0.45; }
+.navtoggle-idle, .navtoggle-idle * { cursor: not-allowed; }
+/* Every control that cannot act right now looks it: a button marked unusable (setButtonWhy) is
+   dimmed wherever it sits. Zero specificity, so a control's own dimmed style still wins. */
+:where(button[aria-disabled="true"]) { opacity: 0.45; }
 /* The "(n)" count beside a layer control: quieter than the label, tabular so the width does
    not jump between 9 and 10 items. unicode-bidi:isolate keeps "(53)" a self-contained unit at
    the logical end of the line -- without it, in a Hebrew label that ends in a Latin word
@@ -4836,6 +4849,25 @@ body.theme-light .insp-notam-link { color: #1d6fe0; }
 }
 body.theme-light .insp-frame { border-top-color: #d8dde5; }
 body.theme-light .insp-frame-head { color: #47505c; }
+/* Published airfield hours: the AIP text, its source, and a within/outside verdict. */
+.hours-line { font-size: 12px; font-weight: 400; line-height: 1.35; margin: 2px 0; }
+.hours-none { opacity: 0.75; font-style: italic; }
+.hours-caveat { font-size: 11px; opacity: 0.8; margin: 2px 0 0; line-height: 1.3; }
+.hours-toggle {
+  display: block; background: none; border: 0; padding: 4px 0; min-height: 28px;
+  font: inherit; font-size: 12px; font-weight: 600; color: #6fb0ff; cursor: pointer;
+  text-decoration: underline; text-underline-offset: 2px;
+}
+body.theme-light .hours-toggle { color: #1d6fe0; }
+.hours-src { font-size: 10.5px; opacity: 0.7; margin-top: 3px; }
+.hours-now {
+  font-size: 11px; font-weight: 600; padding: 1px 8px; border-radius: 999px;
+  border: 1px solid currentColor; white-space: normal; text-align: end; max-width: 70%;
+}
+.hours-now.is-open { color: #4caf50; }
+.hours-now.is-closed { color: #e0a030; }
+body.theme-light .hours-now.is-open { color: #1b7a32; }
+body.theme-light .hours-now.is-closed { color: #9a5b00; }
 /* Whether an area is in force right now, beside its printed hours. */
 .airspace-now { font-size: 11px; opacity: 0.85; }
 .airspace-now.is-active { color: #d64545; font-weight: 700; opacity: 1; }
@@ -6677,7 +6709,12 @@ html[data-theme="light"] #insp-body .insp-actions {
   #lang-select { min-height: 44px; font-size: 15px; }
   #search-close { min-width: 44px; min-height: 44px; }
   .attrib-toggle { display: inline-flex; align-items: center; justify-content: center;
-                   min-width: 44px; min-height: 30px; }
+                   min-width: 44px; min-height: 30px; position: relative; }
+  /* Drawn 30px tall to keep the attribution row slim; the tap area reaches the 44px minimum,
+     all of it upward -- the bottom bar sits right under it. */
+  .attrib-toggle::before { content: ''; position: absolute; inset: -14px 0 0 0; }
+  /* The safety notice's language picker: the first control a new user may need. */
+  select.disclaimer-lang-select { min-height: 44px; }   /* outranks the base rule further down */
   .leaflet-control-attribution.attrib-compact .attrib-body { display: none; }
   .leaflet-control-attribution.attrib-compact.attrib-open .attrib-body { display: inline; }
   .leaflet-control-attribution.attrib-compact { padding: 0 4px; }
@@ -8082,7 +8119,7 @@ body.deck-on .deck-strip > .deck-strip-sub { grid-column: 1; }
 .deck-strip-commfail[aria-pressed="true"] { background: #fff; color: #c62f2f; box-shadow: inset 0 0 0 2px #c62f2f; }
 .deck-strip-commfail:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
 /* A narrow phone with a full readout: the icon alone, the label in the accessible name. */
-@media (max-width: 360px) { .deck-strip-commfail-label { display: none; } .deck-strip-commfail { padding: 0 9px; } }
+@media (max-width: 360px) { .deck-strip-commfail-label { display: none; } .deck-strip-commfail { padding: 0 9px; min-width: 44px; justify-content: center; } }
 /* Engaged, not merely visited: Record and Here light while they are actually running. */
 /* Running, not merely chosen. A tinted label was all that said Location was on, and on a
    sunlit screen at arm's length that is not a state -- it is a shade. The whole cell lights:
@@ -8283,7 +8320,7 @@ body.theme-dark .deck-here-btn { background: #1e2831; }
    and a tall sheet scrolls between them rather than under them. */
 body.deck-on .modal-back,
 body.deck-on .sim-overlay {
-  top: var(--navaid-deck-strip-h, 46px);
+  top: var(--navaid-deck-strip-bottom, var(--navaid-deck-strip-h, 46px));
   bottom: calc(var(--navaid-deck-bar-h, 52px) + env(safe-area-inset-bottom, 0px));
 }
 body.deck-on .modal-back > .modal,
@@ -9309,3 +9346,60 @@ body.theme-dark #map-tour .tour-bubble { background: #1c2430; color: #e8eef3; }
 #map-tour .tour-skip { border-color: transparent; text-decoration: underline; font-weight: 500; }
 #map-tour .tour-back:disabled { opacity: 0.4; cursor: default; }
 #map-tour button:focus-visible { outline: 3px solid #3d8bfd; outline-offset: 2px; }
+
+/* --- GPS status line (gps-status.js) ------------------------------------------------------
+   While the phone's own position shows: one short line, centred under the top strip (phone)
+   or the menubar (desktop), in the map buttons' dark glass. The left edge says the quality at
+   a glance -- green good, amber fair, red poor or stale -- so the colour is never the only
+   signal (the text says it too). Drawn 32 px tall; the tap area reaches 44. */
+#gps-status {
+  position: fixed;
+  left: 50%;
+  top: 62px;
+  transform: translateX(-50%);
+  z-index: 900;
+  min-height: 32px;
+  max-width: calc(100vw - 132px);
+  padding: 0 12px;
+  border: 0;
+  border-inline-start: 4px solid #7d8a99;
+  border-radius: 8px;
+  background: rgba(22, 30, 40, 0.88);
+  color: #ffffff;
+  font: 600 13px/1 system-ui, sans-serif;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  unicode-bidi: isolate;
+}
+#gps-status svg { flex: none; }
+#gps-status .gps-status-text { overflow: hidden; text-overflow: ellipsis; }
+#gps-status::before { content: ''; position: absolute; inset: -6px 0; }
+#gps-status[hidden] { display: none; }
+#gps-status[data-q="good"] { border-inline-start-color: #2fb36b; }
+#gps-status[data-q="fair"] { border-inline-start-color: #e0a526; }
+#gps-status[data-q="poor"] { border-inline-start-color: #e5484d; }
+#gps-status:focus-visible { outline: 3px solid #3d8bfd; outline-offset: 2px; }
+body.deck-on #gps-status { top: calc(var(--navaid-deck-strip-bottom, var(--navaid-deck-strip-h, 46px)) + 8px); }
+.gps-status-modal { max-width: min(380px, 94vw); }
+.gps-status-table { width: 100%; border-collapse: collapse; font-size: 14px; }
+.gps-status-table th { text-align: start; font-weight: 500; padding: 5px 8px 5px 0; opacity: 0.8; }
+.gps-status-table td { text-align: end; padding: 5px 0; font-variant-numeric: tabular-nums; font-weight: 600; }
+/* A row's parts are small pills laid left to right: no separator to strand at the start of a
+   wrapped line, and a Hebrew part keeps its own direction inside its pill. */
+.gps-status-table .gps-status-parts { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 4px; }
+.gps-status-table .gps-status-part { unicode-bidi: isolate; white-space: nowrap; padding: 1px 6px; border-radius: 5px; background: rgba(127, 127, 127, 0.16); }
+.gps-status-table tr + tr { border-top: 1px solid rgba(127, 127, 127, 0.2); }
+.gps-status-note { margin: 10px 0 0; font-size: 13px; opacity: 0.8; }
+
+/* Screen brightness below what a browser can set (device-extras.js): a dark veil over
+   everything, taps passing through. */
+#dim-veil { position: fixed; inset: 0; background: #000; pointer-events: none; z-index: 2147483000; }
+
+/* What vertical speed changes, said in words: in Settings under its row, and under the
+   flight plan's profile title. */
+.settings-hint, .fp-profile-vs-hint { font-size: 11px; opacity: 0.75; line-height: 1.3; margin: 0 0 6px; }

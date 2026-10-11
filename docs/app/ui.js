@@ -50,12 +50,15 @@ window.addEventListener('click', (e) => {
   e.stopImmediatePropagation();
   if (typeof showToast === 'function') showToast(b.dataset.why);
 }, true);
-// Dim a hazard layer's Extra-layers row when nothing is in force across the look-ahead. Only a
-// look: the box stays clickable, so a pilot's saved on/off choice is never changed by the data.
-function setLayerIdle(cbId, idle) {
+// Dim a hazard layer's Extra-layers row when nothing is in force across the look-ahead. Dimmed
+// means not usable: the box does not toggle, and a tap says why (setButtonWhy's listener). The
+// pilot's saved on/off choice is left as it is, so the layer shows by itself once something is
+// in force again -- the data never rewrites the choice.
+function setLayerIdle(cbId, idle, why) {
   const cb = document.getElementById(cbId);
   const row = cb && cb.closest('.navtoggle');
   if (row) row.classList.toggle('navtoggle-idle', !!idle);
+  if (cb) setButtonWhy(cb, idle ? (why || 'Nothing in force in the next 24 hours') : null);
 }
 window.setLayerIdle = setLayerIdle;
 function setLayerCount(id, n) {
@@ -123,6 +126,9 @@ function setMode(mode) {
     }
     mode = null;
   }
+  // One map tool at a time: arming Add or Note puts the ruler away (a tap cannot be both a
+  // waypoint and a measure point), and turning the ruler on leaves Add / Note (measureToggle).
+  if (mode && window.measure && window.measure.on) measureToggle(false);
   state.mode = mode;
   const addBtn = document.getElementById('tool-add');
   const noteBtn = document.getElementById('tool-note');
@@ -360,9 +366,14 @@ const appUpdate = (function () {
     else if (st.state === 'current') { line = S.appUpdateCurrent || 'Up to date'; action = 'check'; }
     else if (st.state === 'available') {
       line = typeof S.appUpdateAvailable === 'function' ? S.appUpdateAvailable(mb(st.bytes) ? ltr(mb(st.bytes) + ' MB') : '') : 'Update available';
+      // Why it is not downloading by itself: the button below does it now anyway.
+      if (st.wait === 'wifi') line += ' \u2014 ' + (S.appUpdateWaitWifi || 'downloads by itself on Wi-Fi');
+      else if (st.wait === 'charts') line += ' \u2014 ' + (S.appUpdateWaitCharts || 'after the charts finish copying');
       action = 'download';
     } else if (st.state === 'pending') {
-      line = S.appUpdatePending || 'Update ready: installs the next time NavAid starts';
+      line = st.wait === 'flight'
+        ? (S.appUpdatePendingFlight || 'Update ready: restart is offered when your position stops showing, or at the next start')
+        : (S.appUpdatePending || 'Update ready: installs the next time NavAid starts');
       action = 'restart';
     }
     else { line = S.appUpdateUnknown || 'Could not check for updates'; action = 'check'; }
@@ -851,6 +862,9 @@ const MAP_ICONS = {
     + ' fill="currentColor" fill-opacity=".18"/><path d="M12 7.3v6.4M8.8 10.5h6.4"/>',
   addNote: '<path d="M5 4.5h14v10l-5 5H5z" fill="currentColor" fill-opacity=".18"/>'
     + '<path d="M14 19.5v-5h5M8.5 8.5h7M8.5 12h4.5"/>',
+  // Route check: the plan, checked -- a tick in the same outlined family.
+  routeCheck: '<circle cx="12" cy="12" r="8.5" fill="currentColor" fill-opacity=".18"/>'
+    + '<path d="m8 12.4 2.7 2.7L16.2 9.4"/>',
   undo: '<path d="M9 14.5 4 9.5l5-5"/><path d="M4 9.5h10a5.5 5.5 0 0 1 0 11h-3.5"/>',
   clearMap: '<path d="M6.2 7.5 7.3 20h9.4l1.1-12.5" fill="currentColor" fill-opacity=".18"/>'
     + '<path d="M4 7.5h16M9.5 7.5V4.5h5v3M10.3 11v5.5M13.7 11v5.5"/>',
@@ -1181,8 +1195,12 @@ editLockCtrl.addTo(map);
 // first tap is the start and the second the end. A tap snaps to a published point the way
 // adding a waypoint does. Measuring changes nothing, so the route lock does not stop it.
 // Pressing the ruler again puts it away.
+// Only from the aircraft: the ruler works while a position is showing (Location, recording or
+// the simulator) and is dimmed otherwise, saying why -- while planning, two waypoints already
+// give a distance. A measurement left on when the position stops is kept, not drawn, and comes
+// back with the position (a reload, a GPS gap).
 window.measure = { on: false, from: null, to: null };
-function measureOn() { return !!window.measure.on; }
+function measureOn() { return !!window.measure.on && !!measureLiveFrom(); }
 window.measureOn = measureOn;
 const measureCtrl = L.control({ position: 'bottomright' });
 measureCtrl.onAdd = function () {
@@ -1192,7 +1210,7 @@ measureCtrl.onAdd = function () {
   b.id = 'measure-btn';
   b.setAttribute('aria-pressed', 'false');
   setMapIcon(b, 'measure');
-  b.title = S.measureTitle || 'Measure: tap a point for its distance, bearing and time';
+  b.title = S.measureTitle || 'Measure from the aircraft: tap a point for its distance, bearing and time';
   b.setAttribute('aria-label', b.title);
   b.addEventListener('click', () => measureToggle());
   wrap.appendChild(b);
@@ -1209,30 +1227,80 @@ function measureLiveFrom() {
   return null;
 }
 window.measureLiveFrom = measureLiveFrom;
-function measureToggle(on) {
+// The measurement survives a reload (an APK restart, an update, a refresh): what is on screen
+// when the app goes is on screen when it comes back. Device-local.
+const MEASURE_KEY = 'navaid.measure';
+function measureSave() {
   const m = window.measure;
-  m.on = typeof on === 'boolean' ? on : !m.on;
-  m.from = null; m.to = null;
-  document.body.classList.toggle('measuring', m.on);
+  const pt = (p) => (p ? { lat: p.lat, lng: p.lng, name: p.name || '' } : null);
+  try {
+    if (m.on) localStorage.setItem(MEASURE_KEY, JSON.stringify({ on: true, from: pt(m.from), to: pt(m.to) }));
+    else localStorage.removeItem(MEASURE_KEY);
+  } catch (e) { /* storage off: the measurement just does not come back */ }
+}
+// The button and the body class follow whether measuring is in force: dimmed with its reason
+// while no position shows, lit while on. Run with every draw, so a position starting or
+// stopping is reflected at once; the DOM is only touched when something changed.
+let measureShown = null;
+function refreshMeasureControl() {
+  const live = !!measureLiveFrom(), active = !!window.measure.on && live;
+  const key = live + ':' + active;
+  if (key === measureShown) return;
+  measureShown = key;
   const b = document.getElementById('measure-btn');
-  if (b) { b.classList.toggle('measure-on', m.on); b.setAttribute('aria-pressed', String(m.on)); }
-  if (m.on && typeof showToast === 'function') {
-    showToast(measureLiveFrom() ? (S.measureHintLive || 'Tap a point: distance and time from the aircraft')
-      : (S.measureHint || 'Tap the start, then the end'));
+  if (b) {
+    setButtonWhy(b, live ? null : (S.whyMeasureNoPosition || 'Measure works from your position: turn on Location'));
+    b.classList.toggle('measure-on', active);
+    b.setAttribute('aria-pressed', String(active));
+  }
+  document.body.classList.toggle('measuring', active);
+  if (typeof refreshPrimingCursor === 'function') refreshPrimingCursor();   // the primed Add is not lit while measuring
+  if (typeof window.refreshEditColumn === 'function') window.refreshEditColumn();   // Clear also clears a measurement
+}
+window.refreshMeasureControl = refreshMeasureControl;
+function measureToggle(on, quiet) {
+  const m = window.measure;
+  const want = typeof on === 'boolean' ? on : !m.on;
+  if (want && !measureLiveFrom()) { refreshMeasureControl(); return; }      // dimmed: nothing to measure from
+  m.on = want;
+  m.from = null; m.to = null;
+  if (m.on && (state.mode === 'add' || state.mode === 'note')) setMode(null);   // one map tool at a time
+  measureSave();
+  refreshMeasureControl();
+  if (m.on && !quiet && typeof showToast === 'function') {
+    showToast(S.measureHintLive || 'Tap a point: distance and time from the aircraft');
   }
   if (typeof draw === 'function') draw();
 }
 window.measureToggle = measureToggle;
 function measureTap(latlng) {
+  if (!measureOn()) return;
   const m = window.measure;
   const r = typeof applyNavSnap === 'function' ? applyNavSnap(latlng, '') : latlng;
-  const p = { lat: r.lat, lng: r.lng, name: r.name || '' };
-  if (measureLiveFrom()) { m.from = null; m.to = p; }
-  else if (!m.from || m.to) { m.from = p; m.to = null; }
-  else m.to = p;
+  m.from = null;
+  m.to = { lat: r.lat, lng: r.lng, name: r.name || '' };
+  measureSave();
   if (typeof draw === 'function') draw();
 }
 window.measureTap = measureTap;
+// After the page has loaded, not while ui.js is still being read: a draw from here reached
+// code declared further down and threw, which stopped the rest of the file.
+function measureRestore() {
+  let saved = null;
+  try { saved = JSON.parse(localStorage.getItem(MEASURE_KEY) || 'null'); } catch (e) { saved = null; }
+  if (!saved || !saved.on) return;
+  const ok = (p) => p && Number.isFinite(p.lat) && Number.isFinite(p.lng) ? { lat: p.lat, lng: p.lng, name: String(p.name || '') } : null;
+  // As it was, without the hint -- and kept even before the position is back (Location comes
+  // back on a moment after the page): it shows as soon as there is a position to measure from.
+  window.measure.on = true;
+  window.measure.from = null;
+  window.measure.to = ok(saved.to);
+  measureSave();
+  refreshMeasureControl();
+  if (typeof draw === 'function') draw();
+}
+if (document.readyState === 'complete') setTimeout(measureRestore, 0);
+else window.addEventListener('load', () => setTimeout(measureRestore, 0));
 const editLockBtn = document.getElementById('edit-lock');
 // The button shows whether the route CAN be moved, not merely whether the pilot pressed it.
 // Starting a recording or Location locks the route on its own, and a button still showing an
@@ -1291,7 +1359,10 @@ refreshEditLockControl();
 const editColCtrl = L.control({ position: 'topleft' });
 editColCtrl.onAdd = function () {
   const wrap = L.DomUtil.create('div', 'leaflet-control edit-col-ctrl');
+  // Route check heads the column: it reads the plan the buttons below build, and on a phone the
+  // menu it otherwise lives in covers the very map it is about.
   const items = [
+    ['edit-col-check', 'routeCheck', 'tbRouteCheckTitle', 'tbRouteCheck'],
     ['edit-col-add', 'addWp', 'tbAddWpTitle', 'tbAddWp'],
     ['edit-col-note', 'addNote', 'tbAddNoteTitle', 'tbAddNote'],
     ['edit-col-undo', 'undo', 'tbUndoTitle', 'tbUndo'],
@@ -1301,6 +1372,7 @@ editColCtrl.onAdd = function () {
   // (placeEditColumn: top right on a Hebrew desktop), and buttons wired once by id after the
   // first build were replaced by bare ones -- the column looked right and did nothing.
   const actions = {
+    'edit-col-check': () => document.getElementById('route-check-btn').click(),
     'edit-col-add': () => setMode('add'),
     'edit-col-note': () => setMode('note'),
     'edit-col-undo': () => document.getElementById('undo').click(),
@@ -1338,11 +1410,22 @@ function refreshEditColumn() {
   // A locked route (the padlock, or a live position) locks all four, with the one message the
   // lock already uses; otherwise Undo / Clear say when there is nothing for them to do.
   const lockWhy = locked ? (S.editLockBlockedToast || 'Route is locked — unlock it to edit') : null;
-  const empty = !(state.waypoints && state.waypoints.length) && !(state.notes && state.notes.length);
+  const empty = !(state.waypoints && state.waypoints.length) && !(state.notes && state.notes.length)
+    && !(typeof measureOn === 'function' && measureOn());
   setButtonWhy(add, lockWhy);
   setButtonWhy(note, lockWhy);
   setButtonWhy(undoBtn, lockWhy || ((menuUndo && menuUndo.disabled) ? (S.whyNothingToUndo || 'Nothing to undo') : null));
   setButtonWhy(document.getElementById('edit-col-clear'), lockWhy || (empty ? (S.whyNothingToClear || 'The map is already empty') : null));
+  // Route check reads the plan, it does not edit it, so the lock leaves it alone; it dims when
+  // there is no route to check (two points, as the check itself requires) or the gist has
+  // withdrawn the feature.
+  const checkBtn = document.getElementById('edit-col-check');
+  if (checkBtn) {
+    const featureOff = typeof tune === 'function' && tune('featureRouteCheck') === false;
+    const noRoute = !(state.waypoints && state.waypoints.length >= 2);
+    setButtonWhy(checkBtn, featureOff ? (S.whyRouteCheckOff || 'Route check is switched off')
+      : (noRoute ? (S.routeCheckNeedRoute || S.errNeedWps || 'Draw a route first.') : null));
+  }
 }
 window.refreshEditColumn = refreshEditColumn;
 refreshEditColumn();
@@ -4565,6 +4648,9 @@ document.getElementById('clear').onclick = async () => {
   state.commChangeSuppressions = [];
   state.wind = { dir: 270, speed: 0 };     // cleared route: reset wind so a new hand-built route doesn't inherit it
   state.selected = null;
+  // The measurement goes with everything else: Clear map is "start again", and a dashed line
+  // and its label left on an empty chart is not that.
+  if (window.measure && window.measure.on) measureToggle(false);
   routeAltPrefix = null;    // empty route unpins its altitude layer
   // The direction filter belonged to the route that had a direction to filter. With the
   // route gone it hides nothing, and leaving it set meant the next route was drawn with half
@@ -5543,6 +5629,14 @@ document.getElementById('cumtime-cb').checked = showCumTime;
     o.textContent = (S && S[key]) || v;
     sel.appendChild(o);
   }
+  // What the dimmed control reads while there is no return point: "Not relevant", rather than
+  // a direction that describes nothing. Shown only then; the filter underneath keeps its value.
+  const naOpt = document.createElement('option');
+  naOpt.value = 'na';
+  naOpt.textContent = (S && S.tbLegDirNa) || 'Not relevant';
+  naOpt.hidden = true;
+  sel.appendChild(naOpt);
+  const showNa = (on) => { naOpt.hidden = !on; if (on) sel.value = 'na'; };
   sel.value = window.legDirFilter || 'both';
   sel.onchange = () => {
     window.legDirFilter = sel.value;
@@ -5572,8 +5666,8 @@ document.getElementById('cumtime-cb').checked = showCumTime;
       let savedEmpty = null;
       try { savedEmpty = lsGet(LEG_DIR_KEY); } catch (e) { /* storage unavailable */ }
       const val = ['both', 'out', 'back'].includes(savedEmpty) ? savedEmpty : 'both';
-      sel.value = val;
       window.legDirFilter = val;
+      showNa(true);
       return;
     }
     if (!has) {
@@ -5583,10 +5677,11 @@ document.getElementById('cumtime-cb').checked = showCumTime;
       // localStorage is deliberately NOT written: this reflects the route in front of you,
       // and a real choice made on a route that HAS a turn must survive opening one that
       // does not.
-      sel.value = 'out';
       window.legDirFilter = 'out';
+      showNa(true);
       return;
     }
+    showNa(false);
     let saved = null;
     try { saved = lsGet(LEG_DIR_KEY); } catch (e) { /* storage unavailable */ }
     const restored = ['both', 'out', 'back'].includes(saved) ? saved : 'both';
@@ -6319,11 +6414,30 @@ if (windDepartSlider) {
   function level() {
     return (typeof nearestPressureLevelHpa === 'function') ? nearestPressureLevelHpa(altFt()) : 900;
   }
-  // Grid over Israel (+margin), tunable. leaflet-velocity scans la1(N)→S, lo1(W)→E.
+  // The grid. leaflet-velocity scans la1(N)→S, lo1(W)→E. Open-Meteo answers anywhere on earth,
+  // so the grid follows the map: the area in view plus a margin, its spacing chosen to keep
+  // about windFieldMaxPoints points (0.25° close in, a degree or two over a region), snapped to
+  // that spacing so a small pan asks for the same points. windFieldFollowMap off brings back
+  // the fixed box over Israel (windFieldWest/East/North/South).
+  const NICE_STEPS = [0.25, 0.5, 1, 1.5, 2, 2.5, 5, 10, 15, 20];
+  function viewGridBounds() {
+    const v = map.getBounds().pad(0.3);
+    const minD = tn('windFieldGridDeg', 0.25), maxPts = tn('windFieldMaxPoints', 200);
+    let west = Math.max(-180, v.getWest()), east = Math.min(180, v.getEast());
+    let south = Math.max(-80, v.getSouth()), north = Math.min(80, v.getNorth());
+    const want = Math.sqrt(Math.max(0.01, (east - west) * (north - south)) / maxPts);
+    const d = NICE_STEPS.find(x => x >= Math.max(minD, want)) || NICE_STEPS[NICE_STEPS.length - 1];
+    west = Math.max(-180, Math.floor(west / d) * d); east = Math.min(180, Math.ceil(east / d) * d);
+    south = Math.max(-80, Math.floor(south / d) * d); north = Math.min(80, Math.ceil(north / d) * d);
+    return { west, east, north, south, d };
+  }
   function gridBounds() {
-    return { west: tn('windFieldWest', 34.2), east: tn('windFieldEast', 35.95),
-             north: tn('windFieldNorth', 33.45), south: tn('windFieldSouth', 29.45),
-             d: tn('windFieldGridDeg', 0.25) };
+    if (typeof tune === 'function' && tune('windFieldFollowMap') === false) {
+      return { west: tn('windFieldWest', 34.2), east: tn('windFieldEast', 35.95),
+               north: tn('windFieldNorth', 33.45), south: tn('windFieldSouth', 29.45),
+               d: tn('windFieldGridDeg', 0.25) };
+    }
+    return viewGridBounds();
   }
   let layer = null;
   let busy = false;
@@ -6331,8 +6445,7 @@ if (windDepartSlider) {
   let enableGen = 0;            // bumped on every toggle: a request belongs to one switch-on
   let store = null;     // { g, times, sp[k][], di[k][], baseIdx } — all 48 fetched hours
 
-  function gridPoints() {
-    const b = gridBounds();
+  function gridPoints(b) {
     const nx = Math.round((b.east - b.west) / b.d) + 1;
     const ny = Math.round((b.north - b.south) / b.d) + 1;
     const lats = [], lngs = [];
@@ -6340,11 +6453,12 @@ if (windDepartSlider) {
       const lat = b.north - j * b.d;
       for (let i = 0; i < nx; i++) { lats.push(lat); lngs.push(b.west + i * b.d); }
     }
-    return { nx, ny, lats, lngs };
+    return { nx, ny, lats, lngs, b };
   }
 
+  // The header describes the grid the data was FETCHED on, not the one the view would ask for now.
   function velocityData(g, U, V) {
-    const b = gridBounds();
+    const b = g.b;
     const base = {
       parameterUnit: 'm.s-1', parameterCategory: 2,
       lo1: b.west, la1: b.north, lo2: b.east, la2: b.south,
@@ -6367,21 +6481,18 @@ if (windDepartSlider) {
   function frameData() {
     const idx = absIndex(), g = store.g, n = g.lats.length;
     const U = new Array(n).fill(0), V = new Array(n).fill(0);
-    // Rotate the wind vectors by the map bearing. leaflet-velocity draws
-    // (u, -v) in screen space assuming north-up, so on a rotated map the flow
-    // would otherwise point the wrong way. Positions are already bearing-aware
-    // (the canvas lives in a non-rotating pane, plotted via
-    // latLngToContainerPoint) — only the vectors need this pre-rotation.
-    const th = (typeof map !== 'undefined' && map.getBearing) ? (map.getBearing() || 0) * Math.PI / 180 : 0;
-    const cb = Math.cos(th), sb = Math.sin(th);
+    // Geographic U/V, never turned by the bearing: the library inverts screen pixels with
+    // containerPointToLatLng and builds its u/v->screen Jacobian through
+    // latLngToContainerPoint, both bearing-aware under leaflet-rotate. Turning U/V as well
+    // rotated a field built at a bearing twice (track-up, or a new grid fetched while turned).
     for (let k = 0; k < n; k++) {
       const spd = store.sp[k] && store.sp[k][idx], dir = store.di[k] && store.di[k][idx];
       if (!Number.isFinite(spd) || !Number.isFinite(dir)) continue;
       const r = dir * Math.PI / 180;                  // met direction = FROM
       const u = -spd * Math.sin(r);                   // eastward component
       const v = -spd * Math.cos(r);                   // northward component
-      U[k] = u * cb + v * sb;
-      V[k] = v * cb - u * sb;
+      U[k] = u;
+      V[k] = v;
     }
     return velocityData(g, U, V);
   }
@@ -6415,7 +6526,7 @@ if (windDepartSlider) {
     const gen = enableGen;
     const mine = () => gen === enableGen && lv === level();
     try {
-      const g = gridPoints();
+      const g = gridPoints(gridBounds());
       // Fetch a few forecast days of hourly samples so the slider can scrub
       // forward from the current hour (tunable horizon).
       const url = 'https://api.open-meteo.com/v1/forecast' +
@@ -6591,10 +6702,38 @@ if (windDepartSlider) {
       buildLayer();
       applyTimeLabel();
       if (statusEl) { statusEl.textContent = ''; statusEl.style.display = 'none'; }
+    } else if (layer._navaidGrid !== store.g) {
+      // A new grid (the view moved on, or a new altitude) into the layer already on the map.
+      // Building only when there was no layer left the FIRST grid drawn for good: zoomed out
+      // after switching it on, the field stayed a band the size of the first view.
+      if (typeof layer.setData === 'function') layer.setData(frameData());
+      else { removeLayer(); buildLayer(); }
+      applyTimeLabel();
     }
+    if (layer) layer._navaidGrid = store.g;
+    requestAnimationFrame(clipToWorld);
   }
+  // The view moved: a field fetched for another area, or far too coarse or fine for this zoom,
+  // is fetched again for what is in view now -- after the pan settles, not on every drag frame.
+  let viewRefetch = null;
+  function needsNewGrid() {
+    if (!store || !store.g || !store.g.b || (typeof tune === 'function' && tune('windFieldFollowMap') === false)) return false;
+    const have = store.g.b, v = map.getBounds(), want = viewGridBounds();
+    const inside = v.getWest() >= have.west && v.getEast() <= have.east && v.getSouth() >= have.south && v.getNorth() <= have.north;
+    return !inside || want.d < have.d / 1.9;
+  }
+  function maybeRefetchForView() {
+    clearTimeout(viewRefetch);
+    viewRefetch = setTimeout(() => {
+      if (!cb.checked || !needsNewGrid()) return;
+      if (busy) { refetchPending = true; return; }
+      addLayer();
+    }, 700);
+  }
+  window.windFieldNeedsNewGrid = () => needsNewGrid();   // tests
   let rotStatePending = false;
   function onWindViewChange() {
+    maybeRefetchForView();
     if (busy || rotStatePending) return;   // mid-fetch: addLayer will settle state on completion
     rotStatePending = true;
     requestAnimationFrame(() => { rotStatePending = false; applyRotationState(); });
@@ -6609,6 +6748,7 @@ if (windDepartSlider) {
     clearTimeout(rotSettle);
     rotSettle = setTimeout(restartField, 150);
   }
+  map.on('moveend zoomend rotate resize', () => clipToWorld());
   map.on('moveend', onWindViewChange);
   map.on('zoomend', onWindViewChange);
   map.on('rotate', onRotateSettle);
@@ -6619,6 +6759,17 @@ if (windDepartSlider) {
   function velocityCanvas() {
     return (layer && layer._canvasLayer && layer._canvasLayer._canvas) || null;
   }
+  // Only over the map. Zoomed out, the world ends at 180° E/W (it does not repeat) and the
+  // field kept drawing across the grey beyond it. The canvas sits at the container origin, so
+  // the world's four corners in container pixels -- rotation included -- are its clip.
+  function clipToWorld() {
+    const c = velocityCanvas();
+    if (!c) return;
+    const pts = [[85.05, -180], [85.05, 180], [-85.05, 180], [-85.05, -180]]
+      .map(ll => map.latLngToContainerPoint(ll));
+    c.style.clipPath = 'polygon(' + pts.map(p => Math.round(p.x) + 'px ' + Math.round(p.y) + 'px').join(', ') + ')';
+  }
+  window.windFieldClipToWorld = clipToWorld;   // tests
   function applyOpacity() {
     const c = velocityCanvas();
     if (c && opacity) c.style.opacity = String(opacity.value);
@@ -6923,20 +7074,30 @@ document.addEventListener('visibilitychange', () => {
 // again: chart tiles stay blank squares, and NOTAM / SIGMET / AIRMET wait for the 10-minute
 // poll. When the phone says the connection is back, the tiles that failed are reloaded and the
 // feeds re-polled at once, and one line says so.
+// Only a tile that failed while the phone was offline counts: a tile that is simply not there
+// (open sea, the edge of a chart) fails online too, and reloading its whole layer on every
+// reconnect would flash the chart for nothing.
 function noteTileErrors(layer) {
   if (!(layer instanceof L.GridLayer) || layer._navaidErrWatch) return;
   layer._navaidErrWatch = true;
-  layer.on('tileerror', () => { layer._navaidTileErr = true; });
+  layer.on('tileerror', () => { if (navigator.onLine === false) layer._navaidTileErr = true; });
 }
 map.eachLayer(noteTileErrors);
 map.on('layeradd', e => noteTileErrors(e.layer));
+// A phone's link flaps -- a second without signal in a turn, then back. The feeds are re-polled
+// on every return (that is cheap), but the message is kept for a real outage or a chart that
+// actually had to reload, so it does not pop up every few minutes in flight.
+let offlineSince = 0;
+window.addEventListener('offline', () => { if (!offlineSince) offlineSince = Date.now(); });
 function refreshAfterReconnect() {
   let tiles = 0;
   map.eachLayer(l => {
     if (l._navaidTileErr && typeof l.redraw === 'function') { l._navaidTileErr = false; l.redraw(); tiles++; }
   });
   refreshHazardFeeds();
-  if (typeof showToast === 'function') showToast(S.backOnline || 'Back online: map, NOTAMs and weather updated');
+  const longGone = offlineSince && Date.now() - offlineSince >= 15000;
+  offlineSince = 0;
+  if ((tiles || longGone) && typeof showToast === 'function') showToast(S.backOnline || 'Back online: map, NOTAMs and weather updated');
   return tiles;
 }
 window.refreshAfterReconnect = refreshAfterReconnect;   // tests
@@ -6990,6 +7151,64 @@ const notamCb = document.getElementById('notam-cb');
 // The five things that can say "not this plan, not at this time", asked together and against
 // the clock. Each of them already knew its own half; none of them looked at the plan, and none
 // of them looked at when. See routecheck.js.
+// Settings -> Gallons per hour / Taxi and takeoff: the flight plan's two aircraft fields, in
+// the place a pilot sets things once. One profile (`aircraft`, navaid.aircraft): typing here
+// while the flight plan is open goes through ITS fields, so its fuel column and the route
+// totals follow at once; with it closed, the profile is saved and the map redrawn.
+// The flight plan, in turn, calls refreshSettingsAircraft() so this row follows it.
+function refreshSettingsAircraft() {
+  const g = document.getElementById('settings-gph');
+  const t = document.getElementById('settings-taxi');
+  if (!g || !t) return;
+  // Read only: an empty flight-plan box leaves `aircraft` null on purpose (fuel shows '--'),
+  // and loading the stored profile here would quietly undo that.
+  let a = aircraft;
+  if (!a) { try { a = JSON.parse(localStorage.getItem('navaid.aircraft') || 'null'); } catch (e) { a = null; } }
+  if (!a || !(Number(a.gph) > 0)) a = { gph: tune('defaultGph'), taxiGal: tune('defaultTaxiGal') };
+  if (document.activeElement !== g) g.value = a.gph;
+  if (document.activeElement !== t) t.value = a.taxiGal;
+  // Vertical speed: the flight plan's V/S, the same window.profileVS / navaid.profileVS.
+  const vs = document.getElementById('settings-vs');
+  if (vs && document.activeElement !== vs) {
+    let v = window.profileVS > 0 ? window.profileVS : 0;
+    if (!v) { try { v = parseInt(localStorage.getItem('navaid.profileVS'), 10) || 0; } catch (e) { v = 0; } }
+    vs.value = String(v > 0 ? v : 500);
+  }
+}
+window.refreshSettingsAircraft = refreshSettingsAircraft;
+(function wireSettingsAircraft() {
+  const g = document.getElementById('settings-gph');
+  const t = document.getElementById('settings-taxi');
+  if (!g || !t) return;
+  const onInput = () => {
+    const fpG = document.getElementById('aircraft-gph');
+    const fpT = document.getElementById('aircraft-taxi');
+    if (fpG && fpT) {
+      fpG.value = g.value; fpT.value = t.value;
+      fpG.dispatchEvent(new Event('input'));
+      return;
+    }
+    const gph = parseFloat(g.value);
+    if (!(gph > 0)) return;            // an empty box is not a profile; storage keeps the last one
+    aircraft = { gph, taxiGal: parseFloat(t.value) || 0 };
+    if (typeof saveAircraft === 'function') saveAircraft();
+    draw();
+  };
+  g.addEventListener('input', onInput);
+  t.addEventListener('input', onInput);
+  const vs = document.getElementById('settings-vs');
+  if (vs) vs.addEventListener('input', () => {
+    const v = parseInt(vs.value, 10);
+    if (!(v > 0)) return;
+    const fpVs = document.querySelector('.fp-profile-vs-input');
+    if (fpVs) { fpVs.value = String(v); fpVs.dispatchEvent(new Event('input')); return; }
+    window.profileVS = v;
+    try { localStorage.setItem('navaid.profileVS', String(v)); } catch (e) { /* ignore */ }
+    draw();            // the map's TOC marker moves with the climb
+  });
+  refreshSettingsAircraft();
+})();
+
 const routeCheckBtn = document.getElementById('route-check-btn');
 // Dim, never hide: with the feature withdrawn by the gist the button stayed fully enabled
 // and show() returned silently, so the control looked live and did nothing at all when
@@ -7028,7 +7247,7 @@ function refreshNotamListBtn() {
     setButtonWhy(notamListBtn, (have && (shownHere.length || ahead.length)) ? null
       : (S.whyNoNotam || 'No NOTAM in force in the next 24 hours'));
   }
-  if (notams !== null) setLayerIdle('notam-cb', !ahead.length);
+  if (notams !== null) setLayerIdle('notam-cb', !ahead.length, S.whyNoNotam);
   setLayerCount('notam-count', shownHere.length);
   setLayerCount('notam-list-count', shownHere.length);
   // Gray out the NOTAM toggle when the feed has no data (source currently
@@ -8770,7 +8989,7 @@ function refreshSigmetLayerCount() {
   const n = (typeof activeSigmets === 'function' && typeof metAreaLatLngs === 'function')
     ? activeSigmets().filter(metAreaLatLngs).length : 0;
   setLayerCount('sigmet-layer-count', n);
-  setLayerIdle('sigmet-cb', !(typeof sigmetsInLookahead === 'function' && sigmetsInLookahead().length));
+  setLayerIdle('sigmet-cb', !(typeof sigmetsInLookahead === 'function' && sigmetsInLookahead().length), S.whyNoSigmet);
   refreshMetUpdated('sigmet');
 }
 window.refreshSigmetLayerCount = refreshSigmetLayerCount;
@@ -8792,7 +9011,7 @@ function refreshAirmetGroup() {
   // vanish when its data is momentarily absent. The layer just draws nothing while none is in force.
   if (group) group.hidden = false;
   setLayerCount('airmet-count', (typeof activeAirmets === 'function') ? activeAirmets().length : 0);
-  setLayerIdle('airmet-cb', !(typeof airmetsInLookahead === 'function' && airmetsInLookahead().length));
+  setLayerIdle('airmet-cb', !(typeof airmetsInLookahead === 'function' && airmetsInLookahead().length), S.whyNoAirmet);
   if (typeof refreshMetUpdated === 'function') refreshMetUpdated('airmet');
 }
 if (airmetCb) {
@@ -9802,6 +10021,23 @@ function reapplyStoredTuneOverrides() {
 // belongs beside the layer picker rather than in the hidden tuning panel — it is
 // the one performance number every pilot needs to set once for their aircraft.
 // Registered as a tune override so it outranks the gist and survives its reload.
+// Settings -> Pressure unit and Altitude from: two pilot choices read where they are used
+// (core.js pressureUnit, gps.js gpsAltSource); here they are shown, saved and applied at once.
+(function pressureSettings() {
+  const pairs = [['pressure-unit', 'navaid.pressureUnit', () => pressureUnit()],
+                 ['alt-source', 'navaid.altSource', () => (typeof gpsAltSource === 'function' ? gpsAltSource() : 'gps')]];
+  for (const [id, key, current] of pairs) {
+    const el = document.getElementById(id);
+    if (!el) continue;
+    el.value = current();
+    el.addEventListener('change', () => {
+      try { localStorage.setItem(key, el.value); } catch (e) { /* storage off: this session only */ }
+      if (typeof gpsUpdateReadout === 'function') gpsUpdateReadout();
+      if (window.NavAid && NavAid.gpsStatus) NavAid.gpsStatus.tick();
+      if (typeof draw === 'function') draw();
+    });
+  }
+}());
 const DEFAULTSPEED_KEY = 'navaid.defaultSpeed';
 const DEFAULTSPEED_EL = document.getElementById('default-speed');
 const defaultSpeedOk = n => Number.isFinite(n) && n >= 20 && n <= 400;

@@ -23,11 +23,18 @@ function makeModalDraggable(el, handle, key) {
     }
     return { left: 0, top: 0, w: window.innerWidth, h: window.innerHeight };
   }
+  // Where the panel may go: the visible frame -- its backdrop, which on a phone is the space
+  // between the strip and the deck -- even when the panel is positioned against the window
+  // (position: fixed, which a drag sets). Clamped to the window alone, a dragged panel could go
+  // up under the strip, or over it, and take its title bar and close button with it.
   function clamp(x, y) {
     const f = frame();
+    const back = el.closest && el.closest('.modal-back');
+    const b = back ? back.getBoundingClientRect() : { left: f.left, top: f.top, right: f.left + f.w, bottom: f.top + f.h };
+    const minX = b.left - f.left, minY = b.top - f.top;
     return {
-      x: Math.max(0, Math.min(f.w - el.offsetWidth, x)),
-      y: Math.max(0, Math.min(f.h - el.offsetHeight, y)),
+      x: Math.max(minX, Math.min(b.right - f.left - el.offsetWidth, x)),
+      y: Math.max(minY, Math.min(b.bottom - f.top - el.offsetHeight, y)),
     };
   }
   function setPos(x, y) {
@@ -4078,6 +4085,7 @@ function showFlightPlan() {
       // every fuel figure stayed '--'. Storage keeps the last usable profile.
       aircraft = a;
       if (a) saveAircraft();
+      if (typeof window.refreshSettingsAircraft === 'function') window.refreshSettingsAircraft();
       draw(); refresh();
     };
   });
@@ -4157,6 +4165,7 @@ function showFlightPlan() {
     if (v > 0) {
       window.profileVS = v;
       try { localStorage.setItem('navaid.profileVS', String(v)); } catch (e) { /* ignore */ }
+      if (typeof window.refreshSettingsAircraft === 'function') window.refreshSettingsAircraft();
       draw();        // the map TOC marker moves with the new ramp
       refresh();     // redraw the profile strip (leg times do not depend on V/S)
     }
@@ -4164,6 +4173,12 @@ function showFlightPlan() {
   vsLbl.appendChild(vsInput);
   profLbl.appendChild(vsLbl);
   profWrap.appendChild(profLbl);
+  // What the number changes, on screen rather than only in a tooltip (asked: "show the
+  // affect text"): a rate field reads as if it moves times and fuel, and it does not.
+  const vsHint = document.createElement('div');
+  vsHint.className = 'fp-profile-vs-hint';
+  vsHint.textContent = S.profileVsHint || '';
+  profWrap.appendChild(vsHint);
   // Direction indicator above the strip — the profile/X-axis mirrors in RTL
   // (Hebrew), so spell out the flow: departure → destination with a centred
   // arrow, oriented to match the axis (arrow points the way it's flown).
@@ -5174,7 +5189,12 @@ function metAreaLatLngs(w) {
   const pts = (w && Array.isArray(w.coords) ? w.coords : [])
     .filter(c => Array.isArray(c) && Number.isFinite(c[0]) && Number.isFinite(c[1]));
   if (pts.length < 3) return null;
-  if (!pts.every(c => c[0] > 20 && c[0] < 45 && c[1] > 22 && c[1] < 50)) return null;
+  // Real coordinates, and the area reaches this region -- the same rule the feed is built with
+  // (scripts/build-aviation-feeds.mjs: any point in the box). EVERY point in the box threw out a
+  // neighbouring FIR's warning whose area also runs far beyond it: Jeddah's thunderstorms "N of
+  // line" reach 15 N and 56 E, so it was listed (1) but not drawn and not counted on the map (0).
+  if (!pts.every(c => Math.abs(c[0]) <= 90 && Math.abs(c[1]) <= 180)) return null;
+  if (!pts.some(c => c[0] > 20 && c[0] < 45 && c[1] > 22 && c[1] < 50)) return null;
   const lats = pts.map(c => c[0]), lngs = pts.map(c => c[1]);
   if (Math.max(...lats) - Math.min(...lats) < 0.01 || Math.max(...lngs) - Math.min(...lngs) < 0.01) return null;
   return pts;
@@ -7396,10 +7416,11 @@ function createDraggableModal(titleText, className, onClose, options = {}) {
     box.style.margin = '0';
     const onMove = function (e) {
       if (!drag) return;
-      // Clamp to the viewport so the title bar + ✕ stay reachable. Same
-      // pattern the flight-plan modal already uses.
-      const x = Math.max(0, Math.min(window.innerWidth - box.offsetWidth, e.clientX - drag.ox));
-      const y = Math.max(0, Math.min(window.innerHeight - box.offsetHeight, e.clientY - drag.oy));
+      // Clamp to the visible frame (the backdrop: under the strip, above the deck on a phone)
+      // so the title bar + ✕ stay reachable.
+      const v = back.getBoundingClientRect();
+      const x = Math.max(v.left, Math.min(v.right - box.offsetWidth, e.clientX - drag.ox));
+      const y = Math.max(v.top, Math.min(v.bottom - box.offsetHeight, e.clientY - drag.oy));
       box.style.left = x + 'px';
       box.style.top = y + 'px';
     };

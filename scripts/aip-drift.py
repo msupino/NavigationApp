@@ -40,6 +40,7 @@ UA = 'NavAid/1.0 (+https://navaid.supino.org) aip-drift'
 WATCHED = [ROOT / 'docs' / 'byop', ROOT / 'docs' / 'byop-enr']
 DERIVED_MAP = ROOT / 'docs' / 'data' / 'plate-derived.json'
 SOURCES_MAP = ROOT / 'docs' / 'data' / 'plate-sources.json'
+HOURS_MAP = ROOT / 'docs' / 'data' / 'airfield-hours.json'
 
 
 def plate_names():
@@ -70,6 +71,21 @@ def derived_sources():
     except Exception:
         return {}
     return {k: v for k, v in raw.items() if not k.startswith('_') and isinstance(v, dict)}
+
+
+def hours_sources():
+    """ICAO -> the AIP page its published hours were read from: {title, hash, amdt}.
+
+    The hours are hand-read text, not a shipped PDF, so there is no local file to hash. What
+    is recorded instead is the hash of the page as the index listed it when it was read; when
+    that hash leaves the index, the page was amended and the hours may be stale.
+    """
+    try:
+        raw = json.loads(HOURS_MAP.read_text(encoding='utf-8'))
+    except Exception:
+        return {}
+    return {k: v.get('source', {}) for k, v in (raw.get('fields') or {}).items()
+            if isinstance(v, dict)}
 
 
 def fetch_index():
@@ -219,6 +235,13 @@ def main():
         if len(titled) > 12:
             print('         … and %d more' % (len(titled) - 12))
 
+    hours = hours_sources()
+    hours_amended = sorted(k for k, src in hours.items() if src.get('hash') not in current)
+    print('hours:     %d current, %d amended' % (len(hours) - len(hours_amended), len(hours_amended)))
+    for k in hours_amended:
+        print('  %-6s %s (read at amendment %s) -- re-read section 6 / AD 2.3 into airfield-hours.json'
+              % (k, hours[k].get('title', '')[:50], hours[k].get('amdt', '?')))
+
     if '--json' in sys.argv:
         out = Path(sys.argv[sys.argv.index('--json') + 1])
         out.write_text(json.dumps({
@@ -227,11 +250,12 @@ def main():
             'drifted': sorted(drifted),
             'byField': {k: sorted(v) for k, v in by_field.items()},
             'packs': {k: {'title': v[0], 'amended': v[1]} for k, v in packs.items()},
+            'hoursAmended': hours_amended,
         }, ensure_ascii=False, indent=1) + '\n', encoding='utf-8')
         print('wrote %s' % out)
 
     # Exit 1 on drift so a workflow can act on it, and 0 when everything matches.
-    return 1 if drifted else 0
+    return 1 if drifted or hours_amended else 0
 
 
 if __name__ == '__main__':
