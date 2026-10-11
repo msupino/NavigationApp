@@ -1,0 +1,74 @@
+{
+ "generatedAt": "2026-10-11T05:00:59.177Z",
+ "source": "NOAA AWC isigmet",
+ "sigmets": [
+  {
+   "id": "01",
+   "firId": "OEJD",
+   "firName": "OEJD JEDDAH",
+   "hazard": "TS",
+   "qualifier": "EMBD",
+   "base": null,
+   "top": 39000,
+   "dir": "NE",
+   "spd": "0",
+   "validFrom": 1791687600,
+   "validTo": 1791702000,
+   "coords": [
+    [
+     32.16,
+     39.218
+    ],
+    [
+     32.001,
+     39.013
+    ],
+    [
+     31.492,
+     37.011
+    ],
+    [
+     30.486,
+     38.004
+    ],
+    [
+     30.326,
+     37.669
+    ],
+    [
+     30,
+     37.494
+    ],
+    [
+     29.824,
+     36.749
+    ],
+    [
+     29.509,
+     36.543
+    ],
+    [
+     29.502,
+     36.533
+    ],
+    [
+     28.9,
+     36.533
+    ],
+    [
+     31.983,
+     40.1
+    ],
+    [
+     31.997,
+     40.1
+    ],
+    [
+     32.16,
+     39.218
+    ]
+   ],
+   "raw": "WSSD20 OEJD 110301\nOEJD SIGMET 01 VALID 110300/110700 OEJN-\nOEJD JEDDAH  FIR EMBD TS FCST N OF LINE N3159 E04006 - N2854 E03632\nTOP ABV FL390 MOV NE NC="
+  }
+ ]
+}
