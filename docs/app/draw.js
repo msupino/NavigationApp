@@ -5228,6 +5228,12 @@ function seedCommChangeNotes() {
   if (pruneStaleCommChangeNotes()) changed = true;
   if (pruneStaleCommChangeSuppressions()) changed = true;
   const { defaults: routeDefaults, hinted } = commRouteCalloutDefaultsMap();
+  // A point that publishes ONE station is not a guess either: its frequency is certain, so a
+  // repeat of the one already in effect is dropped exactly as a hinted one is. ZASHD (Palmachim
+  // only) put a second Palmachim 135.55 callout right after TYONA's on a drawn LLHZ -> LLBS.
+  // The hinted-only rule exists for the solver's uncertain picks at multi-station points.
+  const certain = (name) => hinted.has(name) ||
+    !!(commChangeMap[name] && Array.isArray(commChangeMap[name].callSigns) && commChangeMap[name].callSigns.length === 1);
   // The frequency actually in effect as the route is walked in order. Two DIFFERENT
   // comm-change points along the way can happen to publish the SAME frequency (e.g. two
   // adjacent reporting points share one call sign) -- crossing the second one is not a
@@ -5290,7 +5296,7 @@ function seedCommChangeNotes() {
       // suppress". Same condition the "no existing note" branch below already uses to
       // skip CREATING one; applied retroactively here too. A note the pilot hand-created
       // or hand-edited (freqAuto !== true) is never removed this way.
-      if (existing.freqAuto === true && calloutFreq && calloutFreq === routeFreq && hinted.has(nm)) {
+      if (existing.freqAuto === true && calloutFreq && calloutFreq === routeFreq && certain(nm)) {
         const idx = state.notes.indexOf(existing);
         if (idx !== -1) { state.notes.splice(idx, 1); changed = true; }
         routeFreq = calloutFreq;
@@ -5334,7 +5340,7 @@ function seedCommChangeNotes() {
     // Same frequency already in effect from an earlier point on the route: crossing this
     // one calls for no action on the radio, so no note is seeded for it. Gated on `hinted`
     // -- see the comment above the loop for why an unverified match must never suppress.
-    if (calloutFreq && calloutFreq === routeFreq && hinted.has(nm)) continue;
+    if (calloutFreq && calloutFreq === routeFreq && certain(nm)) continue;
     const tail = commCalloutDefaultTail(wp, wpIdx);
     state.notes.push({
       lat: tail.lat,

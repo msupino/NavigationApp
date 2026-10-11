@@ -855,3 +855,21 @@ test('AFULA towards ZMGID stays on Pluto East, Pluto West at ZMGID; Megiddo only
   // Towards EITAN AFULA is Pluto East too: no change when it is already in use.
   expect(got.eitan).toEqual(['DESHE=PLUTO_EAST 123.85']);
 });
+
+// Reported (screenshot comparison with #2598): a drawn LLHZ -> LLBS showed ZASHD = Palmachim
+// 135.55 right after TYONA's Palmachim 135.55. ZASHD publishes one station only, so its
+// frequency is certain and a repeat of the one in effect is dropped, as a hinted one is.
+test('a single-station point repeating the frequency in effect gets no callout (ZASHD)', async ({ page }) => {
+  await page.goto('?lang=en&nogist');
+  await page.waitForFunction(() => typeof seedCommChangeNotes === 'function' && typeof findNavWpToken === 'function');
+  const notes = await page.evaluate(async () => {
+    if (navWP === null) await loadNavWaypoints();
+    await loadCommChange();
+    state.waypoints = ['LLHZ', 'SFAIM', 'HTZUK', 'RIDNG', 'CLORE', 'TYONA', 'NTAIM', 'BOVED', 'NAGID', 'YAVNE', 'ZASHD', 'NMASD', 'NITZA']
+      .map(c => { const q = findNavWpToken(c); return { lat: q.lat, lng: q.lng, name: q.name }; });
+    state.legs = []; state.notes = []; state.commChangeSuppressions = []; syncLegs(); seedCommChangeNotes();
+    return state.notes.filter(n => n.cc).map(n => n.cc + '=' + n.freq);
+  });
+  expect(notes).toContain('TYONA=135.55');
+  expect(notes.some(n => n.startsWith('ZASHD='))).toBe(false);
+});
