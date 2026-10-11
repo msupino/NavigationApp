@@ -266,8 +266,9 @@
     return el;
   }
   // What the tower can still tell a pilot it cannot talk to: the ICAO light signals to an
-  // aircraft in flight, and how to answer them. Open on a larger screen; on a phone it starts
-  // folded, because open it covers the map the pilot is flying by -- one tap opens it.
+  // aircraft in flight, and how to answer them. Starts folded on every screen (asked: "collapse
+  // lights even in desktop"): open, it covers the map the pilot is flying by, and the route
+  // and the squawk are what the card is read for first -- one tap opens it.
   const LIGHTS = [
     ['green', false, 'commFailLightGreen', 'Cleared to land'],
     ['green', true, 'commFailLightGreenFlash', 'Return for landing'],
@@ -279,8 +280,7 @@
   function lightSignals() {
     const box = document.createElement('details');
     box.className = 'commfail-lights';
-    const phone = typeof window.matchMedia === 'function' && window.matchMedia('(max-width: 680px)').matches;
-    box.open = !phone;
+    box.open = false;
     const sum = document.createElement('summary');
     sum.textContent = S_('commFailLights', 'Light signals from the tower');
     box.appendChild(sum);
