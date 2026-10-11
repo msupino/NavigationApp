@@ -136,7 +136,7 @@ test('comm change lives on the node, with its call signs', () => {
   // 13 nodes both charts mark.
   const cvfr = Object.values(layerGraph('cvfr').nodes).filter(n => n.commChange);
   const lsa = Object.values(layerGraph('lsa').nodes).filter(n => n.commChange);
-  expect(cvfr.length).toBe(52);
+  expect(cvfr.length).toBe(51);                   // ZASHD is not a change point on the CVFR chart
   expect(lsa.length).toBe(28);
   for (const n of [...cvfr, ...lsa]) {
     expect(Array.isArray(n.callSigns)).toBe(true);
@@ -255,7 +255,8 @@ test('the data census matches what the maintainer last signed off', () => {
     // published CVFR legs the graph was simply missing, which is why MZDOT had no segment.
     // +1 segment: EITAN <-> AFULA, 3000 eastbound / 2500 westbound. Published on the
     // chart and missing from the graph; found with the ?graphlegs=1 review overlay.
-    cvfr: { layerNodes: 172, activeNodes: 170, segments: 272, commChange: 52, unknown: 6 },
+    // commChange 52 -> 51: ZASHD is not a frequency-change point on the CVFR chart (reported, #2598).
+    cvfr: { layerNodes: 172, activeNodes: 170, segments: 272, commChange: 51, unknown: 6 },
     heli: { layerNodes: 209, activeNodes: 209, segments: 85, commChange: 0, unknown: 38 },
     // +9 nodes / +12 segments / +12 unknowns: GORAL, TAALL, MACHR and the six airstrips
     // from the second capture (#1485) -- the first census update under the new mechanism.
