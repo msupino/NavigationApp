@@ -37,10 +37,15 @@ const TRANSPARENT_PNG = Buffer.from(
 // OpenStreetMap's tile policy says the same thing about automated bulk use, and
 // navaid-tiles.supino.org is only the CORS mirror of the same charts. None of them are
 // under test here; the app's own behaviour is.
+// newaydata.com serves OpenFlightMaps, which became the default map under the chart: from
+// then on every test booted the map into live OFM tiles too. On a day that server answered in
+// 7-8 s a tile, the page's load event waited on them and every goto/reload in the suite ran
+// out of its 15 s -- the same unrelated tests failing on every PR at once.
 const TILE_HOSTS = [
   'flight-maps.com',
   'navaid-tiles.supino.org',
   'tile.openstreetmap.org',
+  'newaydata.com',
 ];
 function isTileHost(host) {
   return TILE_HOSTS.some(h => host === h || host.endsWith('.' + h));
