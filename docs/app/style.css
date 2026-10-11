@@ -9399,3 +9399,7 @@ body.deck-on #gps-status { top: calc(var(--navaid-deck-strip-bottom, var(--navai
 /* Screen brightness below what a browser can set (device-extras.js): a dark veil over
    everything, taps passing through. */
 #dim-veil { position: fixed; inset: 0; background: #000; pointer-events: none; z-index: 2147483000; }
+
+/* What vertical speed changes, said in words: in Settings under its row, and under the
+   flight plan's profile title. */
+.settings-hint, .fp-profile-vs-hint { font-size: 11px; opacity: 0.75; line-height: 1.3; margin: 0 0 6px; }

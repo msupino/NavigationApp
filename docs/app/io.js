@@ -4085,6 +4085,7 @@ function showFlightPlan() {
       // every fuel figure stayed '--'. Storage keeps the last usable profile.
       aircraft = a;
       if (a) saveAircraft();
+      if (typeof window.refreshSettingsAircraft === 'function') window.refreshSettingsAircraft();
       draw(); refresh();
     };
   });
@@ -4164,6 +4165,7 @@ function showFlightPlan() {
     if (v > 0) {
       window.profileVS = v;
       try { localStorage.setItem('navaid.profileVS', String(v)); } catch (e) { /* ignore */ }
+      if (typeof window.refreshSettingsAircraft === 'function') window.refreshSettingsAircraft();
       draw();        // the map TOC marker moves with the new ramp
       refresh();     // redraw the profile strip (leg times do not depend on V/S)
     }
@@ -4171,6 +4173,12 @@ function showFlightPlan() {
   vsLbl.appendChild(vsInput);
   profLbl.appendChild(vsLbl);
   profWrap.appendChild(profLbl);
+  // What the number changes, on screen rather than only in a tooltip (asked: "show the
+  // affect text"): a rate field reads as if it moves times and fuel, and it does not.
+  const vsHint = document.createElement('div');
+  vsHint.className = 'fp-profile-vs-hint';
+  vsHint.textContent = S.profileVsHint || '';
+  profWrap.appendChild(vsHint);
   // Direction indicator above the strip — the profile/X-axis mirrors in RTL
   // (Hebrew), so spell out the flow: departure → destination with a centred
   // arrow, oriented to match the axis (arrow points the way it's flown).

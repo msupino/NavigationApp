@@ -2051,6 +2051,7 @@ window.S = Object.assign({
   msaLowTitle: 'Planned altitude is below the minimum safe altitude for this leg',
   profileTitle: 'Vertical profile',
   profileVs: 'V/S (ft/min)',
+  profileVsHint: 'V/S shapes the departure climb on the profile and the TOC on the map; it does not change times or fuel.',
   profileVsTitle: 'Climb rate used to draw the departure climb on the profile. It does not affect leg times or fuel — those are distance and speed only.',
   fpDirection: 'Direction',
   toc: 'TOC',
