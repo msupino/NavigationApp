@@ -42,7 +42,9 @@ test.describe('third-party runtime integrity', () => {
     // branch build or the native shell would mix three different things into one property.
     expect(html, 'the staging / pr / branch exclusion').toMatch(/staging\|pr\|branch/);
     expect(html, 'the native-shell exclusion').toMatch(/typeof window\.Capacitor === 'undefined'/);
-    expect(html, 'the local-dev exclusion').toMatch(/location\.hostname !== 'app\.navaid\.local'/);
+    // Production host only, and never an automated browser (CI, Lighthouse, monitors).
+    expect(html, 'the production-host allowlist').toMatch(/location\.hostname === 'navaid\.supino\.org'/);
+    expect(html, 'the automation exclusion').toMatch(/!navigator\.webdriver/);
   });
 
   // The gate is a regex in a one-line script, which is exactly the kind of thing that rots
@@ -105,4 +107,32 @@ test.describe('third-party runtime integrity', () => {
       expect(asset.crossOrigin, asset.url).toBe('anonymous');
     }
   });
+});
+
+// Asked: GitHub runs should not hit Google Analytics. The gate used to exclude a list of
+// hosts and paths, which left localhost (the Lighthouse job, a dev server) reporting into the
+// production property. Run the page's own gate against where it can be loaded from.
+test('the gate fires only on the production host, for a person', () => {
+  const fs = require('fs');
+  const path = require('path');
+  const html = fs.readFileSync(path.join(__dirname, '..', 'docs', 'index.html'), 'utf8');
+  const m = /if \((location\.hostname === [\s\S]*?)\) \{\s*\(function\(w,d,s\)/.exec(html);
+  expect(m, 'the GA gate condition').not.toBeNull();
+  const cond = m[1].replace(/ +\/\/ native[^\n]*/, '');
+  const gate = new Function('location', 'navigator', 'window', 'return (' + cond + ');');
+  const at = (url, opts = {}) => {
+    const u = new URL(url);
+    return gate({ hostname: u.hostname, pathname: u.pathname },
+      { webdriver: !!opts.webdriver }, opts.native ? { Capacitor: {} } : {});
+  };
+  expect(at('https://navaid.supino.org/')).toBe(true);
+  expect(at('https://navaid.supino.org/?lang=he')).toBe(true);
+  // Everything that is not a person on production:
+  expect(at('http://localhost:8080/')).toBe(false);                    // the Lighthouse job
+  expect(at('http://127.0.0.1:8000/')).toBe(false);                    // the test server
+  expect(at('https://navaid.supino.org/', { webdriver: true })).toBe(false);   // CI against prod
+  expect(at('https://navaid.supino.org/', { native: true })).toBe(false);      // the APK shell
+  expect(at('https://navaid.supino.org/pr/2599/')).toBe(false);
+  expect(at('https://navaid.supino.org/staging/')).toBe(false);
+  expect(at('https://msupino.github.io/NavigationApp/')).toBe(false);
 });
