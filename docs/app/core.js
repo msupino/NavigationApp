@@ -1577,6 +1577,8 @@ window.S = Object.assign({
   appUpdateLater: 'Later',
   tbTourReplay: 'Show the tour',
   tourNext: 'Next', tourBack: 'Back', tourSkip: 'Skip', tourDone: 'Done',
+  tourCheckTitle: 'Check the route',
+  tourCheckText: 'Airspace, NOTAMs, SIGMET/AIRMET and ceiling against the route, at the time you plan to fly it. Dimmed until there is a route.',
   tourEditTitle: 'Edit the route',
   tourEditText: 'Add a waypoint, add a note, undo, clear the map. The lit button shows what is armed; tap it again to stop.',
   tourMeasureTitle: 'Measure',

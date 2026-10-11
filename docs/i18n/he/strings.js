@@ -137,6 +137,8 @@ window.S = {
   appUpdateLater: 'אחר כך',
   tbTourReplay: 'הצג את הסיור',
   tourNext: 'הבא', tourBack: 'הקודם', tourSkip: 'דלג', tourDone: 'סיום',
+  tourCheckTitle: 'בדיקת המסלול',
+  tourCheckText: 'מרחב אווירי, NOTAM, SIGMET/AIRMET ובסיס עננים מול המסלול, בשעה שבה אתם מתכננים לטוס. מעומעם עד שיש מסלול.',
   tourEditTitle: 'עריכת המסלול',
   tourEditText: 'הוספת נקודת ציון, הוספת הערה, ביטול, ניקוי המפה. הכפתור הדולק מראה מה פעיל; הקשה נוספת עליו עוצרת.',
   tourMeasureTitle: 'מדידה',

@@ -19,6 +19,9 @@ async function boot(page, size, lang = 'en') {
 
 for (const [name, size, lang] of [['phone', { width: 390, height: 844 }, 'he'], ['desktop', { width: 1280, height: 800 }, 'en']]) {
   test(`plays once on first launch and walks the controls (${name})`, async ({ page }) => {
+    // Every step clicked through, then a reload and a fixed 3 s wait: past 15 s once the tour
+    // grew a Route check step.
+    test.slow();
     await boot(page, size, lang);
     const tour = page.locator('#map-tour');
     await expect(tour).toBeVisible({ timeout: 10000 });
