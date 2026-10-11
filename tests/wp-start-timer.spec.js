@@ -117,7 +117,7 @@ test('the inspector offers it, says when it is set, and takes it back', async ({
   await btn.click();
   expect(await page.evaluate(() => routeTimerIndex())).toBe(2);
   await expect(page.locator('#insp-timer-status')).toBeVisible();
-  await expect(btn).toHaveText('Count from departure again');
+  await expect(btn).toHaveText('Clear clock start');
   await btn.click();
   expect(await page.evaluate(() => routeTimerIndex())).toBe(-1);
   await expect(page.locator('#insp-timer-status')).toHaveCount(0);

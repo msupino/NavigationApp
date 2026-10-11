@@ -1368,7 +1368,7 @@ test.describe('comm-change auto-note (#487)', () => {
     expect(out.notes).toEqual([]);
     expect(out.suppressions).toEqual(['TYONA']);
     expect(out.selected).toEqual({ type: 'wp', index: 0 });
-    await expect(page.locator('#insp-body .insp-btn').filter({ hasText: /Add frequency change/ })).toBeVisible();
+    await expect(page.locator('#insp-body .insp-btn').filter({ hasText: /Add freq change/ })).toBeVisible();
 
     // Close the toolbar dropdowns first: the boot opens every section, and a real click at the
     // centred waypoint would otherwise land on a Charts button (the offline-maps opener) that
@@ -1377,7 +1377,7 @@ test.describe('comm-change auto-note (#487)', () => {
     await page.mouse.click(center.x, center.y);
     await expect.poll(() => page.evaluate(() => state.notes.filter(n => n && n.cc).length)).toBe(0);
 
-    await page.locator('#insp-body .insp-btn').filter({ hasText: /Add frequency change/ }).click();
+    await page.locator('#insp-body .insp-btn').filter({ hasText: /Add freq change/ }).click();
     await expect.poll(() => page.evaluate(() => ({
       selected: state.selected,
       suppressions: state.commChangeSuppressions.slice(),
@@ -1438,9 +1438,9 @@ test.describe('comm-change auto-note (#487)', () => {
       notes: [],
       suppressions: ['TYONA'],
     });
-    await expect(page.locator('#insp-body .insp-btn').filter({ hasText: /Add frequency change/ })).toBeVisible();
+    await expect(page.locator('#insp-body .insp-btn').filter({ hasText: /Add freq change/ })).toBeVisible();
 
-    await page.locator('#insp-body .insp-btn').filter({ hasText: /Add frequency change/ }).click();
+    await page.locator('#insp-body .insp-btn').filter({ hasText: /Add freq change/ }).click();
     await expect.poll(() => page.evaluate(() => ({
       notes: state.notes.map(n => ({
         cc: n.cc || '',
@@ -1466,8 +1466,8 @@ test.describe('comm-change auto-note (#487)', () => {
       draw();
     }, TYONA);
 
-    await expect(page.locator('#insp-body .insp-btn').filter({ hasText: /Add frequency change/ })).toBeVisible();
-    await page.locator('#insp-body .insp-btn').filter({ hasText: /Add frequency change/ }).click();
+    await expect(page.locator('#insp-body .insp-btn').filter({ hasText: /Add freq change/ })).toBeVisible();
+    await page.locator('#insp-body .insp-btn').filter({ hasText: /Add freq change/ }).click();
     await expect(page.locator('#insp-body .commchange-name-row input')).toHaveValue('NOPEX');
     await expect(page.locator('#insp-body .commchange-freq-edit input')).toHaveValue('');
 
@@ -2302,4 +2302,47 @@ test.describe('commRouteAfterNames folds in the published corridor, not just dra
       { cc: 'ZASHD', freqName: 'PALMACHIM' },
     ]);
   });
+});
+
+// Reported with screenshots: "Add frequency change" sat second in the waypoint panel's actions
+// and "Delete frequency change" at the foot, beside Delete waypoint -- one control that jumped
+// across the panel when pressed. Both now take the same slot; Delete keeps its red.
+test('Add and Delete frequency change sit in the same place among the actions', async ({ page }) => {
+  await page.goto('?lang=en&nogist');
+  await page.waitForFunction(() => typeof seedCommChangeNotes === 'function' && typeof findNavWpToken === 'function');
+  const slot = () => page.evaluate(() => {
+    const btns = [...document.querySelectorAll('#insp-body .insp-actions .insp-btn')];
+    const i = btns.findIndex(b => b.classList.contains('freq-change-slot'));
+    const reset = btns.findIndex(b => b.classList.contains('freq-reset-location-btn'));
+    return { i, text: i >= 0 ? btns[i].textContent : null,
+      danger: i >= 0 && btns[i].classList.contains('insp-btn-danger'),
+      on: i >= 0 && btns[i].classList.contains('insp-btn-on'),
+      pressed: i >= 0 ? btns[i].getAttribute('aria-pressed') : null,
+      reset, resetDim: reset >= 0 && btns[reset].getAttribute('aria-disabled') === 'true',
+      top: i >= 0 ? Math.round(btns[i].getBoundingClientRect().top) : null };
+  });
+  await page.evaluate(async () => {
+    if (navWP === null) await loadNavWaypoints();
+    await loadCommChange();
+    state.waypoints = ['LLHZ', 'DEROR', 'SHARO'].map(c => { const p = findNavWpToken(c); return { lat: p.lat, lng: p.lng, name: p.name }; });
+    state.legs = []; state.notes = []; state.commChangeSuppressions = ['DEROR'];
+    syncLegs(); draw();
+    state.selected = { type: 'wp', index: 1 };
+    showInspector();
+  });
+  const before = await slot();
+  expect(before.text).toMatch(/Add freq/);
+  expect(before.on).toBe(false);
+  expect(before.pressed).toBe('false');
+  await page.locator('#insp-body .add-freq-change-btn').click();
+  const after = await slot();
+  expect(after.text).toMatch(/Delete freq/);
+  // A toggle like the hotspot: lit while on, never the red danger outline and its gap.
+  expect(after.danger).toBe(false);
+  expect(after.on).toBe(true);
+  expect(after.pressed).toBe('true');
+  expect(after.i).toBe(before.i);
+  expect(Math.abs(after.top - before.top)).toBeLessThanOrEqual(4);
+  // Reset callout location lives in the callout's own panel: adding one inserts no button here.
+  expect(after.reset).toBe(-1);
 });
