@@ -145,8 +145,14 @@
       } catch (e) { /* no storage or history: the link just does not unlock */ }
     }());
   </script>
+  <!-- Only the production host, and only a person: an allowlist, not exclusions. Excluding
+       app.navaid.local left localhost, 127.0.0.1 and any other host reporting -- the Lighthouse
+       job loads http://localhost:8080 on every review run, and a dev server does the same.
+       navigator.webdriver is set by every automated browser (Lighthouse, Playwright, Puppeteer),
+       so a CI or monitoring run against production itself does not report either. -->
   <script>
-    if (location.hostname !== 'app.navaid.local' &&
+    if (location.hostname === 'navaid.supino.org' &&
+        !navigator.webdriver &&
         typeof window.Capacitor === 'undefined' &&   // native shell loads the prod URL — keep GA browser-only
         !location.pathname.match(/^(?:\/[^/]+)?\/(?:staging|pr|branch)\//)) {
       (function(w,d,s){var f=d.getElementsByTagName(s)[0],j=d.createElement(s);
