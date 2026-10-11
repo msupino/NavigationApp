@@ -5,7 +5,8 @@ name: Draft + auto-merge
 
 on:
   pull_request:
-    types: [opened, ready_for_review]
+    # `edited`: a title changed to DONT MERGE after the PR was armed has to disarm it.
+    types: [opened, ready_for_review, edited]
   # Self-dispatch: the watcher below hands its remaining wait to a fresh run
   # rather than failing when a PR legitimately takes longer than one window
   # (a conflict to resolve, a re-push, two 15-min e2e runs back to back).
@@ -29,6 +30,34 @@ permissions:
   actions: write
 
 jobs:
+  # A PR titled DONT MERGE / DO NOT MERGE / WIP never merges by itself. #2589 was renamed
+  # "... - DONT MERGE" twenty minutes after it was marked ready; the auto-merge armed at
+  # ready stayed armed, nothing read the title, and it merged once re-run CI passed. This
+  # disarms it and puts it back to draft whenever such a title is set or the PR is opened or
+  # readied with one; the watcher below also re-reads the title on every poll.
+  hold-on-title:
+    if: >-
+      github.event_name == 'pull_request' &&
+      (github.event.action == 'edited' || github.event.action == 'opened' ||
+       github.event.action == 'ready_for_review')
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Disarm a PR whose title says not to merge it
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          PR: ${{ github.event.pull_request.number }}
+          TITLE: ${{ github.event.pull_request.title }}
+        run: |
+          if printf '%s' "$TITLE" | grep -qiE "do[ _-]?(n'?t|not)[ _-]?merge|(^|[^a-z])wip([^a-z]|$)"; then
+            gh pr merge "$PR" --disable-auto 2>/dev/null || true
+            gh pr ready --undo "$PR" 2>/dev/null || true
+            echo "PR #$PR is titled not-to-merge: auto-merge off, back to draft."
+          else
+            echo "PR #$PR title allows merging."
+          fi
+
   ensure-draft:
     if: github.event.action == 'opened' && !github.event.pull_request.draft
     runs-on: ubuntu-latest
@@ -71,6 +100,11 @@ jobs:
           # A handed-off run has no pull_request payload, so read the title back.
           if [ -z "$TITLE" ]; then
             TITLE=$(gh pr view "$PR" --json title --jq '.title')
+          fi
+          # Guard: never arm a PR whose title says not to merge it (see hold-on-title).
+          if printf '%s' "$TITLE" | grep -qiE "do[ _-]?(n'?t|not)[ _-]?merge|(^|[^a-z])wip([^a-z]|$)"; then
+            echo "PR #$PR is titled not-to-merge -- not arming auto-merge."
+            exit 0
           fi
           # Guard: only enable if PR is not a draft.
           STATE=$(gh pr view "$PR" \
@@ -123,6 +157,13 @@ jobs:
           # merge, then explicitly `gh workflow run` the downstream
           # workflows below. Poll up to 60 min @ 30 s = 120 iters.
           for i in $(seq 1 120); do
+            # Renamed to DONT MERGE while CI ran: disarm and stop watching.
+            NOW_TITLE=$(gh pr view "$PR" --json title --jq '.title')
+            if printf '%s' "$NOW_TITLE" | grep -qiE "do[ _-]?(n'?t|not)[ _-]?merge|(^|[^a-z])wip([^a-z]|$)"; then
+              gh pr merge "$PR" --disable-auto 2>/dev/null || true
+              echo "PR #$PR was retitled not-to-merge -- auto-merge disarmed."
+              exit 0
+            fi
             MERGE_STATE=$(gh pr view "$PR" --json state --jq '.state')
             case "$MERGE_STATE" in
               MERGED)
