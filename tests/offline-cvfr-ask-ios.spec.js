@@ -46,3 +46,29 @@ test('a phone that reports its connection is not asked', async ({ page }) => {
   await page.waitForFunction(() => window.NavAidOfflineTiles && typeof NavAidOfflineTiles.connectionUnknownOnPhone === 'function');
   expect(await page.evaluate(() => NavAidOfflineTiles.connectionUnknownOnPhone())).toBe(false);
 });
+
+test('two automatic checks close together open one question, not two', async ({ page }) => {
+  await bootLikeIos(page);
+  await page.evaluate(() => {
+    const q = { total: 2000, present: 500 };
+    window.__both = Promise.all([NavAidOfflineTiles.automaticDownloadAgreed(q), NavAidOfflineTiles.automaticDownloadAgreed(q)]);
+  });
+  await expect(ask(page)).toHaveCount(1);
+  await ask(page).locator('.follow-me-ask-ok').click();
+  expect(await page.evaluate(() => window.__both)).toEqual([true, true]);
+  await expect(ask(page)).toHaveCount(0);
+});
+
+test('the question waits for the tour to close', async ({ page }) => {
+  await bootLikeIos(page);
+  await page.evaluate(() => {
+    const tour = document.createElement('div');
+    tour.id = 'map-tour';
+    document.body.appendChild(tour);
+  });
+  await agreed(page);
+  await page.waitForTimeout(1500);
+  await expect(ask(page)).toHaveCount(0);
+  await page.evaluate(() => document.getElementById('map-tour').remove());
+  await expect(ask(page)).toHaveCount(1);
+});

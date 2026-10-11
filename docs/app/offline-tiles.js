@@ -887,10 +887,22 @@
       return (navigator.maxTouchPoints || 0) > 0;
     } catch (e) { return false; }
   }
-  async function automaticDownloadAgreed(report) {
+  // One question at a time: a start and an 'online' event close together both reach here, and
+  // the second waits for the pilot's answer to the first instead of opening a dialog on top.
+  let askOpen = null;
+  function automaticDownloadAgreed(report) {
+    if (!askOpen) askOpen = askAutomaticDownload(report).finally(() => { askOpen = null; });
+    return askOpen;
+  }
+  // The first-run tour holds the screen; the question waits until it is closed.
+  async function tourClosed() {
+    while (document.getElementById('map-tour')) await new Promise((r) => setTimeout(r, 1000));
+  }
+  async function askAutomaticDownload(report) {
     if (!connectionUnknownOnPhone()) return true;
     try { if (localStorage.getItem(ASK_KEY) === 'yes') return true; } catch (e) { /* storage off */ }
     if (askedLaterThisSession || typeof window.askYesNo !== 'function') return false;
+    await tourClosed();
     const missing = Math.max(0, (report.total || 0) - (report.present || 0));
     const mb = Math.max(1, Math.round(missing * AVG_TILE_KB / 1024));
     const yes = await window.askYesNo(S.offlineCvfrAskTitle || 'Keep the CVFR chart offline?',
@@ -911,7 +923,8 @@
     }
     setReport(report);
     if (!report.complete && !(await automaticDownloadAgreed(report))) {
-      report.waiting = true;
+      // Later: not waiting on a connection -- the line stays the pilot's own Download button.
+      report.waiting = false;
       setReport(report);
       return report;
     }
