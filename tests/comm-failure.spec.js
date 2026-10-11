@@ -300,12 +300,14 @@ test('from training area 3 it returns to Herzliya via BAZRA at 1,200 and says wh
   expect(await page.evaluate(() => state.legs.map(l => l.inboundAltitude))).toEqual([1200, 1200]);
 });
 
-test('the card carries the tower light signals, open on a larger screen, in both languages', async ({ page }) => {
+test('the card carries the tower light signals, folded on a desktop too, in both languages', async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 900 });
   await boot(page, 'he');
   await page.evaluate(() => map.setView([32.9, 35.5], 10));
   await page.click('#commfail-btn');
   const lights = page.locator('[data-chart-modal="commfail"] .commfail-lights');
+  await expect(lights).not.toHaveAttribute('open', '');
+  await lights.locator('summary').click();
   await expect(lights).toHaveAttribute('open', '');
   await expect(lights.locator('dd')).toHaveCount(6);
   await expect(lights).toContainText('ירוק רציף');
