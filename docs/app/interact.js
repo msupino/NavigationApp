@@ -298,6 +298,7 @@ function appendAddFreqChangeButton(body, wp, ccKey) {
     legRetraceTurnIndex() === wpIdx;
   const add = document.createElement('button');
   add.className = 'insp-btn add-freq-change-btn freq-change-slot';
+  add.setAttribute('aria-pressed', 'false');
   add.textContent = S.addFreqChange || 'Add frequency change';
   add.disabled = atTurn;
   if (atTurn) add.title = S.addFreqChangeAtTurn ||
@@ -311,6 +312,15 @@ function appendAddFreqChangeButton(body, wp, ccKey) {
     draw(); showInspector();
   };
   body.appendChild(add);
+  // Its companion once a callout exists, Reset label location: present now too, dimmed with
+  // the reason, so adding a callout does not insert a button and push the ones below down.
+  const reset = document.createElement('button');
+  reset.className = 'insp-btn freq-reset-location-btn';
+  reset.textContent = S.resetFreqLocation || S.resetLegMarkers || '↻';
+  reset.title = S.resetFreqLocationTitle || 'Reset callout location';
+  if (typeof setButtonWhy === 'function') setButtonWhy(reset, S.whyNoFreqCallout || 'No frequency change here yet');
+  else reset.disabled = true;
+  body.appendChild(reset);
 }
 
 function appendNavWaypointCommChangeInfo(body, name) {
@@ -3643,7 +3653,7 @@ function finalizeInspectorActions(body) {
   for (const { el: b } of ranked) {
     if (b.classList.contains('insp-btn')) {
       const txt = (b.textContent || '').toLowerCase();
-      const destructive = /🗑|delete|remove|מחק|הסר/.test(txt);
+      const destructive = /🗑|delete|remove|מחק|הסר/.test(txt) && !b.classList.contains('freq-change-slot');
       if (!destructive) b.classList.add('insp-btn-safe');
     }
     wrap.appendChild(b);
@@ -4440,10 +4450,13 @@ function showInspector() {
       const timerIdx = (typeof routeTimerIndex === 'function') ? routeTimerIndex() : -1;
       const isTimer = timerIdx === state.selected.index;
       const timer = document.createElement('button');
-      timer.className = 'insp-btn';
+      // Lit while the clock starts here, like every other toggle in this panel (hotspot,
+      // turning point, frequency change): it was the one toggle with no pressed look.
+      timer.className = 'insp-btn' + (isTimer ? ' insp-btn-on' : '');
       timer.id = 'insp-timer-btn';
+      timer.setAttribute('aria-pressed', isTimer ? 'true' : 'false');
       timer.textContent = isTimer
-        ? (S.inspTimerClear || '⏱ Count from departure again')
+        ? (S.inspTimerClear || '⏱ Clear clock start')
         : (S.inspTimerStart || '⏱ Start the clock here');
       if (S.inspTimerStartTitle) timer.title = S.inspTimerStartTitle;
       timer.onclick = () => {
@@ -5067,7 +5080,7 @@ function appendFreqEdit(body, note, editOptions) {
   const target = typeof commCalloutTarget === 'function' ? commCalloutTarget(note) : null;
   if (target && typeof commCalloutDefaultTail === 'function') {
     const reset = document.createElement('button');
-    reset.className = 'insp-btn';
+    reset.className = 'insp-btn freq-reset-location-btn';
     reset.textContent = S.resetFreqLocation || S.resetLegMarkers || '↻';
     reset.title = S.resetFreqLocationTitle || 'Reset callout location';
     reset.setAttribute('aria-label', reset.title);
@@ -5081,7 +5094,12 @@ function appendFreqEdit(body, note, editOptions) {
   }
   if (editOptions && editOptions.deleteButton) {
     const del = document.createElement('button');
-    del.className = 'insp-btn insp-btn-danger freq-change-slot';
+    // Add frequency change's other state, shown the way the hotspot toggle shows its own: the
+    // same button in the same slot, lit (insp-btn-on) while on. As a danger button it took the
+    // red outline and the gap danger buttons get above them, so the one control changed style
+    // and jumped when pressed (reported with screenshots of both states).
+    del.className = 'insp-btn insp-btn-on freq-change-slot';
+    del.setAttribute('aria-pressed', 'true');
     del.textContent = S.deleteFreqChange || S.deleteNote;
     del.onclick = () => {
       if (note.cc && isKnownCommChangeKey(waypointFreqChangeKey({ name: note.cc })) &&

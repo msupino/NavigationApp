@@ -2313,7 +2313,13 @@ test('Add and Delete frequency change sit in the same place among the actions', 
   const slot = () => page.evaluate(() => {
     const btns = [...document.querySelectorAll('#insp-body .insp-actions .insp-btn')];
     const i = btns.findIndex(b => b.classList.contains('freq-change-slot'));
-    return { i, text: i >= 0 ? btns[i].textContent : null, danger: i >= 0 && btns[i].classList.contains('insp-btn-danger') };
+    const reset = btns.findIndex(b => b.classList.contains('freq-reset-location-btn'));
+    return { i, text: i >= 0 ? btns[i].textContent : null,
+      danger: i >= 0 && btns[i].classList.contains('insp-btn-danger'),
+      on: i >= 0 && btns[i].classList.contains('insp-btn-on'),
+      pressed: i >= 0 ? btns[i].getAttribute('aria-pressed') : null,
+      reset, resetDim: reset >= 0 && btns[reset].getAttribute('aria-disabled') === 'true',
+      top: i >= 0 ? Math.round(btns[i].getBoundingClientRect().top) : null };
   });
   await page.evaluate(async () => {
     if (navWP === null) await loadNavWaypoints();
@@ -2326,9 +2332,20 @@ test('Add and Delete frequency change sit in the same place among the actions', 
   });
   const before = await slot();
   expect(before.text).toMatch(/Add freq/);
+  expect(before.on).toBe(false);
+  expect(before.pressed).toBe('false');
+  // Reset callout location is there already, dimmed: adding a callout inserts no button.
+  expect(before.reset).toBeGreaterThan(-1);
+  expect(before.resetDim).toBe(true);
   await page.locator('#insp-body .add-freq-change-btn').click();
   const after = await slot();
   expect(after.text).toMatch(/Delete freq/);
-  expect(after.danger).toBe(true);
+  // A toggle like the hotspot: lit while on, never the red danger outline and its gap.
+  expect(after.danger).toBe(false);
+  expect(after.on).toBe(true);
+  expect(after.pressed).toBe('true');
   expect(after.i).toBe(before.i);
+  expect(Math.abs(after.top - before.top)).toBeLessThanOrEqual(4);
+  expect(after.reset).toBe(before.reset);
+  expect(after.resetDim).toBe(false);
 });

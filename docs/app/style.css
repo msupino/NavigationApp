@@ -2414,7 +2414,10 @@ body.theme-light .insp-btn.insp-btn-safe.insp-btn-on {
   font-weight: 900;
   color: #fff;
   background: #b03636;
-  border: 2px solid #fff;
+  /* The ring is 2 px to the eye but 1 px to the layout: a 2 px border made a pressed toggle
+     2 px taller than its unpressed self and nudged every button below it. */
+  border: 1px solid #fff;
+  box-shadow: inset 0 0 0 1px #fff;
 }
 .insp-btn.insp-btn-safe.insp-btn-on:hover,
 body.theme-light .insp-btn.insp-btn-safe.insp-btn-on:hover {
