@@ -132,6 +132,18 @@ both branches and assembles a single Pages site:
   `https://navaid-tiles.supino.org`. No build step, no bundler, no
   transpiler — keep `docs/` plain HTML / CSS / JS. Capacitor dependencies
   live only under `mobile/`.
+- **Tests never load a third party's server.** Any change that makes the app fetch
+  from a new external host (a map layer, tile server, API, feed) stubs that host in
+  `tests/_setup.js` in the same PR. The suite boots the app thousands of times per
+  CI run, twice per push (local and against the deployed preview), so an unstubbed
+  host gets hundreds of thousands of requests from GitHub runners. It has happened
+  twice: flight-maps.com (its owner complained), and OpenFlightMaps
+  (`newaydata.com`) after it became the default base map, fixed in #2592.
+  `tests/no-third-party-load.spec.js` fails if a booted page reaches any host
+  outside the allowlist; `NAVAID_EXTERNAL_LOG=<file>` records every request that
+  leaves the machine for an audit. Same-origin and the pinned library CDNs
+  (unpkg, jsdelivr) are the only exceptions. Symptom to recognise: unrelated
+  goto/reload timeouts on every PR at once, the day the third party is slow.
 
 ## Live + repo
 
