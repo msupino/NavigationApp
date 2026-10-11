@@ -862,6 +862,9 @@ const MAP_ICONS = {
     + ' fill="currentColor" fill-opacity=".18"/><path d="M12 7.3v6.4M8.8 10.5h6.4"/>',
   addNote: '<path d="M5 4.5h14v10l-5 5H5z" fill="currentColor" fill-opacity=".18"/>'
     + '<path d="M14 19.5v-5h5M8.5 8.5h7M8.5 12h4.5"/>',
+  // Route check: the plan, checked -- a tick in the same outlined family.
+  routeCheck: '<circle cx="12" cy="12" r="8.5" fill="currentColor" fill-opacity=".18"/>'
+    + '<path d="m8 12.4 2.7 2.7L16.2 9.4"/>',
   undo: '<path d="M9 14.5 4 9.5l5-5"/><path d="M4 9.5h10a5.5 5.5 0 0 1 0 11h-3.5"/>',
   clearMap: '<path d="M6.2 7.5 7.3 20h9.4l1.1-12.5" fill="currentColor" fill-opacity=".18"/>'
     + '<path d="M4 7.5h16M9.5 7.5V4.5h5v3M10.3 11v5.5M13.7 11v5.5"/>',
@@ -1356,7 +1359,10 @@ refreshEditLockControl();
 const editColCtrl = L.control({ position: 'topleft' });
 editColCtrl.onAdd = function () {
   const wrap = L.DomUtil.create('div', 'leaflet-control edit-col-ctrl');
+  // Route check heads the column: it reads the plan the buttons below build, and on a phone the
+  // menu it otherwise lives in covers the very map it is about.
   const items = [
+    ['edit-col-check', 'routeCheck', 'tbRouteCheckTitle', 'tbRouteCheck'],
     ['edit-col-add', 'addWp', 'tbAddWpTitle', 'tbAddWp'],
     ['edit-col-note', 'addNote', 'tbAddNoteTitle', 'tbAddNote'],
     ['edit-col-undo', 'undo', 'tbUndoTitle', 'tbUndo'],
@@ -1366,6 +1372,7 @@ editColCtrl.onAdd = function () {
   // (placeEditColumn: top right on a Hebrew desktop), and buttons wired once by id after the
   // first build were replaced by bare ones -- the column looked right and did nothing.
   const actions = {
+    'edit-col-check': () => document.getElementById('route-check-btn').click(),
     'edit-col-add': () => setMode('add'),
     'edit-col-note': () => setMode('note'),
     'edit-col-undo': () => document.getElementById('undo').click(),
@@ -1409,6 +1416,16 @@ function refreshEditColumn() {
   setButtonWhy(note, lockWhy);
   setButtonWhy(undoBtn, lockWhy || ((menuUndo && menuUndo.disabled) ? (S.whyNothingToUndo || 'Nothing to undo') : null));
   setButtonWhy(document.getElementById('edit-col-clear'), lockWhy || (empty ? (S.whyNothingToClear || 'The map is already empty') : null));
+  // Route check reads the plan, it does not edit it, so the lock leaves it alone; it dims when
+  // there is no route to check (two points, as the check itself requires) or the gist has
+  // withdrawn the feature.
+  const checkBtn = document.getElementById('edit-col-check');
+  if (checkBtn) {
+    const featureOff = typeof tune === 'function' && tune('featureRouteCheck') === false;
+    const noRoute = !(state.waypoints && state.waypoints.length >= 2);
+    setButtonWhy(checkBtn, featureOff ? (S.whyRouteCheckOff || 'Route check is switched off')
+      : (noRoute ? (S.routeCheckNeedRoute || S.errNeedWps || 'Draw a route first.') : null));
+  }
 }
 window.refreshEditColumn = refreshEditColumn;
 refreshEditColumn();
@@ -7134,6 +7151,64 @@ const notamCb = document.getElementById('notam-cb');
 // The five things that can say "not this plan, not at this time", asked together and against
 // the clock. Each of them already knew its own half; none of them looked at the plan, and none
 // of them looked at when. See routecheck.js.
+// Settings -> Gallons per hour / Taxi and takeoff: the flight plan's two aircraft fields, in
+// the place a pilot sets things once. One profile (`aircraft`, navaid.aircraft): typing here
+// while the flight plan is open goes through ITS fields, so its fuel column and the route
+// totals follow at once; with it closed, the profile is saved and the map redrawn.
+// The flight plan, in turn, calls refreshSettingsAircraft() so this row follows it.
+function refreshSettingsAircraft() {
+  const g = document.getElementById('settings-gph');
+  const t = document.getElementById('settings-taxi');
+  if (!g || !t) return;
+  // Read only: an empty flight-plan box leaves `aircraft` null on purpose (fuel shows '--'),
+  // and loading the stored profile here would quietly undo that.
+  let a = aircraft;
+  if (!a) { try { a = JSON.parse(localStorage.getItem('navaid.aircraft') || 'null'); } catch (e) { a = null; } }
+  if (!a || !(Number(a.gph) > 0)) a = { gph: tune('defaultGph'), taxiGal: tune('defaultTaxiGal') };
+  if (document.activeElement !== g) g.value = a.gph;
+  if (document.activeElement !== t) t.value = a.taxiGal;
+  // Vertical speed: the flight plan's V/S, the same window.profileVS / navaid.profileVS.
+  const vs = document.getElementById('settings-vs');
+  if (vs && document.activeElement !== vs) {
+    let v = window.profileVS > 0 ? window.profileVS : 0;
+    if (!v) { try { v = parseInt(localStorage.getItem('navaid.profileVS'), 10) || 0; } catch (e) { v = 0; } }
+    vs.value = String(v > 0 ? v : 500);
+  }
+}
+window.refreshSettingsAircraft = refreshSettingsAircraft;
+(function wireSettingsAircraft() {
+  const g = document.getElementById('settings-gph');
+  const t = document.getElementById('settings-taxi');
+  if (!g || !t) return;
+  const onInput = () => {
+    const fpG = document.getElementById('aircraft-gph');
+    const fpT = document.getElementById('aircraft-taxi');
+    if (fpG && fpT) {
+      fpG.value = g.value; fpT.value = t.value;
+      fpG.dispatchEvent(new Event('input'));
+      return;
+    }
+    const gph = parseFloat(g.value);
+    if (!(gph > 0)) return;            // an empty box is not a profile; storage keeps the last one
+    aircraft = { gph, taxiGal: parseFloat(t.value) || 0 };
+    if (typeof saveAircraft === 'function') saveAircraft();
+    draw();
+  };
+  g.addEventListener('input', onInput);
+  t.addEventListener('input', onInput);
+  const vs = document.getElementById('settings-vs');
+  if (vs) vs.addEventListener('input', () => {
+    const v = parseInt(vs.value, 10);
+    if (!(v > 0)) return;
+    const fpVs = document.querySelector('.fp-profile-vs-input');
+    if (fpVs) { fpVs.value = String(v); fpVs.dispatchEvent(new Event('input')); return; }
+    window.profileVS = v;
+    try { localStorage.setItem('navaid.profileVS', String(v)); } catch (e) { /* ignore */ }
+    draw();            // the map's TOC marker moves with the climb
+  });
+  refreshSettingsAircraft();
+})();
+
 const routeCheckBtn = document.getElementById('route-check-btn');
 // Dim, never hide: with the feature withdrawn by the gist the button stayed fully enabled
 // and show() returned silently, so the control looked live and did nothing at all when
