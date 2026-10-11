@@ -312,15 +312,6 @@ function appendAddFreqChangeButton(body, wp, ccKey) {
     draw(); showInspector();
   };
   body.appendChild(add);
-  // Its companion once a callout exists, Reset label location: present now too, dimmed with
-  // the reason, so adding a callout does not insert a button and push the ones below down.
-  const reset = document.createElement('button');
-  reset.className = 'insp-btn freq-reset-location-btn';
-  reset.textContent = S.resetFreqLocation || S.resetLegMarkers || '↻';
-  reset.title = S.resetFreqLocationTitle || 'Reset callout location';
-  if (typeof setButtonWhy === 'function') setButtonWhy(reset, S.whyNoFreqCallout || 'No frequency change here yet');
-  else reset.disabled = true;
-  body.appendChild(reset);
 }
 
 function appendNavWaypointCommChangeInfo(body, name) {
@@ -5091,7 +5082,11 @@ function appendFreqEdit(body, note, editOptions) {
   updateTemplateHint();
   // Reset the callout to its default tail position beside the waypoint.
   const target = typeof commCalloutTarget === 'function' ? commCalloutTarget(note) : null;
-  if (target && typeof commCalloutDefaultTail === 'function') {
+  // In the callout's own panel only. In the waypoint panel it appeared the moment a callout was
+  // added, inserting a button and pushing the ones below it down; reserving its place instead
+  // cost a phone a whole row of the panel. Tapping the callout opens its panel, with it there.
+  const inWaypointPanel = !!(editOptions && editOptions.deleteButton);
+  if (target && !inWaypointPanel && typeof commCalloutDefaultTail === 'function') {
     const reset = document.createElement('button');
     reset.className = 'insp-btn freq-reset-location-btn';
     reset.textContent = S.resetFreqLocation || S.resetLegMarkers || '↻';

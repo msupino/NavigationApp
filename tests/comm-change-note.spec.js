@@ -1368,7 +1368,7 @@ test.describe('comm-change auto-note (#487)', () => {
     expect(out.notes).toEqual([]);
     expect(out.suppressions).toEqual(['TYONA']);
     expect(out.selected).toEqual({ type: 'wp', index: 0 });
-    await expect(page.locator('#insp-body .insp-btn').filter({ hasText: /Add frequency change/ })).toBeVisible();
+    await expect(page.locator('#insp-body .insp-btn').filter({ hasText: /Add freq change/ })).toBeVisible();
 
     // Close the toolbar dropdowns first: the boot opens every section, and a real click at the
     // centred waypoint would otherwise land on a Charts button (the offline-maps opener) that
@@ -1377,7 +1377,7 @@ test.describe('comm-change auto-note (#487)', () => {
     await page.mouse.click(center.x, center.y);
     await expect.poll(() => page.evaluate(() => state.notes.filter(n => n && n.cc).length)).toBe(0);
 
-    await page.locator('#insp-body .insp-btn').filter({ hasText: /Add frequency change/ }).click();
+    await page.locator('#insp-body .insp-btn').filter({ hasText: /Add freq change/ }).click();
     await expect.poll(() => page.evaluate(() => ({
       selected: state.selected,
       suppressions: state.commChangeSuppressions.slice(),
@@ -1438,9 +1438,9 @@ test.describe('comm-change auto-note (#487)', () => {
       notes: [],
       suppressions: ['TYONA'],
     });
-    await expect(page.locator('#insp-body .insp-btn').filter({ hasText: /Add frequency change/ })).toBeVisible();
+    await expect(page.locator('#insp-body .insp-btn').filter({ hasText: /Add freq change/ })).toBeVisible();
 
-    await page.locator('#insp-body .insp-btn').filter({ hasText: /Add frequency change/ }).click();
+    await page.locator('#insp-body .insp-btn').filter({ hasText: /Add freq change/ }).click();
     await expect.poll(() => page.evaluate(() => ({
       notes: state.notes.map(n => ({
         cc: n.cc || '',
@@ -1466,8 +1466,8 @@ test.describe('comm-change auto-note (#487)', () => {
       draw();
     }, TYONA);
 
-    await expect(page.locator('#insp-body .insp-btn').filter({ hasText: /Add frequency change/ })).toBeVisible();
-    await page.locator('#insp-body .insp-btn').filter({ hasText: /Add frequency change/ }).click();
+    await expect(page.locator('#insp-body .insp-btn').filter({ hasText: /Add freq change/ })).toBeVisible();
+    await page.locator('#insp-body .insp-btn').filter({ hasText: /Add freq change/ }).click();
     await expect(page.locator('#insp-body .commchange-name-row input')).toHaveValue('NOPEX');
     await expect(page.locator('#insp-body .commchange-freq-edit input')).toHaveValue('');
 
@@ -2334,9 +2334,6 @@ test('Add and Delete frequency change sit in the same place among the actions', 
   expect(before.text).toMatch(/Add freq/);
   expect(before.on).toBe(false);
   expect(before.pressed).toBe('false');
-  // Reset callout location is there already, dimmed: adding a callout inserts no button.
-  expect(before.reset).toBeGreaterThan(-1);
-  expect(before.resetDim).toBe(true);
   await page.locator('#insp-body .add-freq-change-btn').click();
   const after = await slot();
   expect(after.text).toMatch(/Delete freq/);
@@ -2346,6 +2343,6 @@ test('Add and Delete frequency change sit in the same place among the actions', 
   expect(after.pressed).toBe('true');
   expect(after.i).toBe(before.i);
   expect(Math.abs(after.top - before.top)).toBeLessThanOrEqual(4);
-  expect(after.reset).toBe(before.reset);
-  expect(after.resetDim).toBe(false);
+  // Reset callout location lives in the callout's own panel: adding one inserts no button here.
+  expect(after.reset).toBe(-1);
 });
