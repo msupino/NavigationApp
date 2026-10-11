@@ -954,6 +954,16 @@
             <option value="baro" data-i18n="tbAltSourceBaro"></option>
           </select>
         </label>
+        <!-- The aircraft's fuel figures, the same two the flight plan shows: one profile, so a
+             change in either place is a change in both (ui.js, wireSettingsAircraft). -->
+        <label class="navtoggle" data-i18n-title="tbGphTitle">
+          <span data-i18n="tbGph"></span>
+          <input type="number" id="settings-gph" min="1" max="50" step="0.5" inputmode="decimal">
+        </label>
+        <label class="navtoggle" data-i18n-title="tbTaxiGalTitle">
+          <span data-i18n="tbTaxiGal"></span>
+          <input type="number" id="settings-taxi" min="0" max="20" step="0.1" inputmode="decimal">
+        </label>
         <!-- Reference tables a pilot sets up once and consults: the frequency table and the
              altitude pairs, moved here from Charts. -->
         <div class="tb-group-separator" aria-hidden="true"></div>

@@ -4085,6 +4085,7 @@ function showFlightPlan() {
       // every fuel figure stayed '--'. Storage keeps the last usable profile.
       aircraft = a;
       if (a) saveAircraft();
+      if (typeof window.refreshSettingsAircraft === 'function') window.refreshSettingsAircraft();
       draw(); refresh();
     };
   });

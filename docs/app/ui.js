@@ -7134,6 +7134,47 @@ const notamCb = document.getElementById('notam-cb');
 // The five things that can say "not this plan, not at this time", asked together and against
 // the clock. Each of them already knew its own half; none of them looked at the plan, and none
 // of them looked at when. See routecheck.js.
+// Settings -> Gallons per hour / Taxi and takeoff: the flight plan's two aircraft fields, in
+// the place a pilot sets things once. One profile (`aircraft`, navaid.aircraft): typing here
+// while the flight plan is open goes through ITS fields, so its fuel column and the route
+// totals follow at once; with it closed, the profile is saved and the map redrawn.
+// The flight plan, in turn, calls refreshSettingsAircraft() so this row follows it.
+function refreshSettingsAircraft() {
+  const g = document.getElementById('settings-gph');
+  const t = document.getElementById('settings-taxi');
+  if (!g || !t) return;
+  // Read only: an empty flight-plan box leaves `aircraft` null on purpose (fuel shows '--'),
+  // and loading the stored profile here would quietly undo that.
+  let a = aircraft;
+  if (!a) { try { a = JSON.parse(localStorage.getItem('navaid.aircraft') || 'null'); } catch (e) { a = null; } }
+  if (!a || !(Number(a.gph) > 0)) a = { gph: tune('defaultGph'), taxiGal: tune('defaultTaxiGal') };
+  if (document.activeElement !== g) g.value = a.gph;
+  if (document.activeElement !== t) t.value = a.taxiGal;
+}
+window.refreshSettingsAircraft = refreshSettingsAircraft;
+(function wireSettingsAircraft() {
+  const g = document.getElementById('settings-gph');
+  const t = document.getElementById('settings-taxi');
+  if (!g || !t) return;
+  const onInput = () => {
+    const fpG = document.getElementById('aircraft-gph');
+    const fpT = document.getElementById('aircraft-taxi');
+    if (fpG && fpT) {
+      fpG.value = g.value; fpT.value = t.value;
+      fpG.dispatchEvent(new Event('input'));
+      return;
+    }
+    const gph = parseFloat(g.value);
+    if (!(gph > 0)) return;            // an empty box is not a profile; storage keeps the last one
+    aircraft = { gph, taxiGal: parseFloat(t.value) || 0 };
+    if (typeof saveAircraft === 'function') saveAircraft();
+    draw();
+  };
+  g.addEventListener('input', onInput);
+  t.addEventListener('input', onInput);
+  refreshSettingsAircraft();
+})();
+
 const routeCheckBtn = document.getElementById('route-check-btn');
 // Dim, never hide: with the feature withdrawn by the gist the button stayed fully enabled
 // and show() returned silently, so the control looked live and did nothing at all when
