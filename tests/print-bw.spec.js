@@ -15,7 +15,7 @@ async function exportWith(page, bw) {
       { lat: 32.60, lng: 35.05, name: 'C' }];
     state.legs = []; syncLegs();
     map.setView([32.4, 34.95], 10, { animate: false }); draw();
-    const blob = await new Promise((resolve) => { window.saveFile = (b, _name) => resolve(b); exportPNG('save');   // the app passes (blob, name) });
+    const blob = await new Promise((resolve) => { window.saveFile = (b, _name) => resolve(b); exportPNG('save'); });   // the app passes (blob, name)
     const bmp = await createImageBitmap(blob);
     const c = document.createElement('canvas'); c.width = bmp.width; c.height = bmp.height;
     const g = c.getContext('2d'); g.drawImage(bmp, 0, 0);
