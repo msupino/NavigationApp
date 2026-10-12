@@ -230,14 +230,29 @@ dressMenus();
 // The waypoint panel's actions and the dialogs' action rows: same idea, keyed by the glyph the
 // label starts with (these are built afresh each time, by many branches).
 const GLYPH_ICONS = { '🗑': 'trash', '↻': 'reset', '🔥': 'hotspot', '⏱': 'timer', '📡': 'antenna',
-  '✈': 'plane', '+': 'plus', '📍': 'location', '⇄': 'reverse', '🧭': 'compass', '🔑': 'key',
-  '📋': 'list', '🔗': 'link', '💾': 'save', '📂': 'folder', '⬇': 'download', '⬆': 'upload', '🖨': 'print' };
-function dressByGlyph(btn) {
-  if (!btn || btn.querySelector(':scope > .mi-icon') || typeof navIconSvg !== 'function') return;
+  '✈': 'plane', '+': 'plus', '➕': 'plus', '＋': 'plus', '📍': 'location', '⇄': 'reverse', '🧭': 'compass',
+  '🔑': 'key', '📋': 'list', '🔗': 'link', '💾': 'save', '📂': 'folder', '⬇': 'download', '⬆': 'upload',
+  '🖨': 'print', '⊘': 'hide', '✓': 'check', '✔': 'check' };
+// Every button carries an icon ("every button should have an icon, new or existing"). The ones
+// whose label has no glyph to key on are named by their id or class instead.
+const BUTTON_ICONS = { 'insp-direct-to': 'direct', 'insp-add-to-route': 'plus', 'insp-vor-use-ref': 'compass',
+  'satellite-expand-hint': 'expand', 'insp-charts-btn': 'charts', 'add-freq-change-btn': 'antenna',
+  'hours-toggle': 'list' };
+function buttonIconName(btn) {
+  if (!btn) return '';
   const t = (btn.textContent || '').trim();
   const g = Object.keys(GLYPH_ICONS).find(k => t.startsWith(k));
-  if (!g) return;
-  MENU_ICONS[btn.id || (btn.id = 'gi-' + Math.random().toString(36).slice(2, 8))] = GLYPH_ICONS[g];
+  if (g) return GLYPH_ICONS[g];
+  if (btn.id && BUTTON_ICONS[btn.id]) return BUTTON_ICONS[btn.id];
+  for (const c of btn.classList || []) if (BUTTON_ICONS[c]) return BUTTON_ICONS[c];
+  return '';
+}
+window.navButtonIconName = buttonIconName;
+function dressByGlyph(btn) {
+  if (!btn || btn.querySelector(':scope > .mi-icon') || typeof navIconSvg !== 'function') return;
+  const name = buttonIconName(btn);
+  if (!name) return;
+  MENU_ICONS[btn.id || (btn.id = 'gi-' + Math.random().toString(36).slice(2, 8))] = name;
   dressMenuItem(btn);
 }
 window.dressByGlyph = dressByGlyph;
@@ -253,7 +268,7 @@ if (typeof MutationObserver === 'function') {
   });
   const scan = (root) => {
     if (!root.querySelectorAll) return;
-    root.querySelectorAll('.insp-btn, .modal-btns button').forEach(dressByGlyph);
+    root.querySelectorAll('.insp-btn, .modal-btns button, #insp-body button').forEach(dressByGlyph);
     linkRowLabels(root);
   };
   const ins = document.getElementById('insp-body');

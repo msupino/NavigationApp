@@ -9416,3 +9416,64 @@ body.deck-on #gps-status { top: calc(var(--navaid-deck-strip-bottom, var(--navai
 /* What vertical speed changes, said in words: in Settings under its row, and under the
    flight plan's profile title. */
 .settings-hint, .fp-profile-vs-hint { font-size: 11px; opacity: 0.75; line-height: 1.3; margin: 0 0 6px; }
+
+/* Right-click quick actions (context-menu.js): a small menu at the cursor, over the inspector.
+   Dark like the panels; the light theme below. A dimmed item keeps its place and says why. */
+.ctx-menu {
+  position: fixed;
+  z-index: 3000;
+  min-width: 200px;
+  max-width: 300px;
+  padding: 4px;
+  background: #2b2727;
+  color: #eee;
+  border: 1px solid #4a4444;
+  border-radius: 8px;
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.45);
+  font-size: 13px;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+.ctx-title {
+  padding: 5px 10px 6px;
+  font-weight: 600;
+  color: #b9b3b3;
+  border-bottom: 1px solid #4a4444;
+  margin-bottom: 3px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ctx-item {
+  font: inherit;
+  color: inherit;
+  background: none;
+  border: none;
+  border-radius: 5px;
+  padding: 7px 10px;
+  text-align: start;
+  cursor: pointer;
+}
+.ctx-item { display: flex; align-items: center; gap: 8px; }
+.ctx-item .mi-icon { display: inline-flex; flex: 0 0 16px; opacity: 0.85; }
+.ctx-item:hover, .ctx-item:focus-visible { background: #3d3737; outline: none; }
+/* Pressed, as the panel's own toggles show it (.insp-btn-on): filled red with a white ring. */
+.ctx-item.ctx-on,
+body.theme-light .ctx-item.ctx-on {
+  font-weight: 900;
+  color: #fff;
+  background: #b03636;
+  box-shadow: inset 0 0 0 1px #fff;
+}
+.ctx-item.ctx-on:hover, .ctx-item.ctx-on:focus-visible,
+body.theme-light .ctx-item.ctx-on:hover, body.theme-light .ctx-item.ctx-on:focus-visible { background: #c44141; }
+.ctx-item.ctx-on .mi-icon { opacity: 1; }
+.ctx-item.is-dim { opacity: 0.48; cursor: default; }   /* as .insp-btn:disabled */
+.ctx-item.ctx-danger { color: #ff8a80; }
+.ctx-sep { height: 1px; background: #4a4444; margin: 3px 4px; }
+body.theme-light .ctx-menu { background: #fafcff; color: #1d2430; border-color: #cfd6e0; box-shadow: 0 6px 24px rgba(20, 30, 50, 0.18); }
+body.theme-light .ctx-title { color: #5b6575; border-bottom-color: #dfe4ec; }
+body.theme-light .ctx-item:hover, body.theme-light .ctx-item:focus-visible { background: #e9eef6; }
+body.theme-light .ctx-item.ctx-danger { color: #b03636; }
+body.theme-light .ctx-sep { background: #dfe4ec; }
