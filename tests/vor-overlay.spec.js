@@ -909,7 +909,8 @@ test('the AIP detail is carried through loadVors and shown on the STATION inspec
     state.selected = { type: 'vor', index: vors.findIndex(v => v.ident === 'ZFR') };
     draw(); showInspector();
     const z = vors.find(v => v.ident === 'ZFR');
-    const info = document.querySelector('.vor-aip-info');
+    const rows = [...document.querySelectorAll('#insp-body .vor-aip-row')];
+    const info = rows.length ? { textContent: rows.map(r => r.textContent).join(' ') } : null;
     return {
       // loadVors used to whitelist six fields, silently dropping all of this.
       carried: { type: z.type, ch: z.ch, hours: z.hours, cov: z.coverageNm, elev: z.elevFt,
