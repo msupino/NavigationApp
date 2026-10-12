@@ -4991,7 +4991,10 @@ function showFlightPlan() {
     document.head.appendChild(pageStyle);
     document.body.classList.add('printing-plan');
     window.print();
-    setTimeout(cleanup, 4000);           // belt-and-braces for Safari
+    // Belt-and-braces for Safari -- but not while the Android app's print dialog is up: it
+    // prints after the dialog, and the plan's print layout has to be there when it does.
+    const later = () => (window.NavAidNativePrint && NavAidNativePrint.busy()) ? setTimeout(later, 1000) : cleanup();
+    setTimeout(later, 4000);
   };
   btns.appendChild(printBtn);
   const csvBtn = document.createElement('button');
@@ -6130,29 +6133,56 @@ function drawA4x2TileMarks(cx, t, total, pxPerMm) {
 // an @page rule, then fire the print dialog — so it prints 1:1 regardless of the
 // printer's "fit to page" default (the only reliable way to hit the physical mm
 // sizes). Non-framed falls back to printing the image on the default page.
-// One image, or several -- the two halves of an A4x2 -- each a sheet of its own, printed once
-// they have all loaded.
+// The page is printed from a hidden frame inside the app: the print dialog opens, and nothing
+// else -- it used to open a new tab with the image as well ("print opens a print menu, and the
+// page in a new window; can it be only the print menu?"). A frame needs no pop-up permission
+// either, so a long export is never refused as a blocked pop-up. One image, or several -- the
+// two halves of an A4x2 -- each a sheet of its own, printed once they have all loaded.
 function openPrintWindow(blobs, paperWmm, paperHmm) {
   const list = Array.isArray(blobs) ? blobs : [blobs];
+  // The Android app prints through its own plugin (native-print.js): no frame there prints.
+  if (window.NavAidNativePrint && NavAidNativePrint.available()) {
+    NavAidNativePrint.printImages(list, paperWmm, paperHmm);
+    return;
+  }
   const urls = list.map(b => URL.createObjectURL(b));
-  const free = () => urls.forEach(u => URL.revokeObjectURL(u));
-  const w = window.open('', '_blank');
-  if (!w) { refuse(S.errPopupBlocked || 'Allow pop-ups to print.'); free(); return; }
+  const old = document.getElementById('navaid-print-frame');
+  if (old) old.remove();
+  const frame = document.createElement('iframe');
+  frame.id = 'navaid-print-frame';
+  frame.setAttribute('aria-hidden', 'true');
+  frame.tabIndex = -1;
+  // Out of sight but laid out (display:none would print a blank page in some browsers).
+  frame.style.cssText = 'position:fixed;right:0;bottom:0;width:0;height:0;border:0;visibility:hidden';
+  document.body.appendChild(frame);
+  let cleaned = false;
+  const cleanup = () => {
+    if (cleaned) return;
+    cleaned = true;
+    urls.forEach(u => URL.revokeObjectURL(u));
+    frame.remove();
+  };
   const sized = (paperWmm && paperHmm)
     ? `@page{size:${paperWmm}mm ${paperHmm}mm;margin:0}img{width:${paperWmm}mm;height:${paperHmm}mm;display:block}`
     : `@page{margin:0}img{max-width:100%;display:block}`;
-  w.document.open();
-  w.document.write('<!doctype html><html><head><meta charset="utf-8"><title>' +
+  const doc = frame.contentDocument;
+  doc.open();
+  doc.write('<!doctype html><html><head><meta charset="utf-8"><title>' +
     (S.printBtn || 'Print') + '</title><style>html,body{margin:0;padding:0}' + sized +
     'img{break-after:page;page-break-after:always}img:last-child{break-after:auto;page-break-after:auto}' +
     '</style></head><body>' + urls.map(() => '<img alt="">').join('') + '</body></html>');
-  w.document.close();
-  const imgs = [...w.document.querySelectorAll('img')];
+  doc.close();
+  const w = frame.contentWindow;
+  const imgs = [...doc.querySelectorAll('img')];
   let left = imgs.length;
-  const go = () => { try { w.focus(); w.print(); } catch (e) {} setTimeout(free, 60000); };
+  const go = () => {
+    try { w.addEventListener('afterprint', () => setTimeout(cleanup, 500)); } catch (e) { /* */ }
+    try { w.focus(); w.print(); } catch (e) { /* */ }
+    setTimeout(cleanup, 120000);        // a print dialog left open, or a browser without afterprint
+  };
   imgs.forEach((img, i) => {
     img.onload = () => { if (--left === 0) setTimeout(go, 60); };
-    img.onerror = () => { free(); };
+    img.onerror = () => { cleanup(); };
     img.src = urls[i];
   });
 }
@@ -6177,9 +6207,7 @@ window.printBwOn = printBwOn;
 // The chart for a mono printer: grey, and lightened, so it is a pale ground and the black route
 // over it reads. Canvas filters where the browser has them; otherwise the pixels, by hand.
 const PRINT_BW_CHART_FILTER = 'grayscale(1) brightness(1.2) contrast(0.7)';
-function printBwChart(ctx, img, w, h) {
-  if ('filter' in ctx) { ctx.filter = PRINT_BW_CHART_FILTER; ctx.drawImage(img, 0, 0); ctx.filter = 'none'; return; }
-  ctx.drawImage(img, 0, 0);
+function printBwPixels(ctx, w, h) {
   try {
     const d = ctx.getImageData(0, 0, w, h);
     const px = d.data;
@@ -6432,16 +6460,11 @@ function exportPNG(mode) {
         failed++;
       }
     }
-    let chart = tileCanvas;
-    if (bw) {
-      const g = document.createElement('canvas');
-      g.width = Wc; g.height = Hc;
-      const gc = g.getContext('2d');
-      gc.fillStyle = PRINT_BW_TUNES.exportBgColor;
-      gc.fillRect(0, 0, Wc, Hc);
-      printBwChart(gc, tileCanvas, Wc, Hc);
-      chart = g;
-    }
+    // Black and white: the grey filter is applied as the chart is drawn onto the page below, or
+    // -- where the browser has no canvas filter -- to these pixels in place. A third canvas the
+    // size of this one, as it was, is the one too many on a phone near its memory limit.
+    const filterOnDraw = bw && ('filter' in o);
+    if (bw && !filterOnDraw) printBwPixels(tc, Wc, Hc);
 
     // Draw the tile canvas onto the output, rotated by the map bearing so the
     // result matches the screen view.  The frame centre in tile-canvas space
@@ -6456,7 +6479,9 @@ function exportPNG(mode) {
     o.rotate(exportBearing * Math.PI / 180);
     o.translate(-fcx, -fcy);
     o.globalAlpha = (typeof mapOpacity === 'number') ? mapOpacity : 1;
-    o.drawImage(chart, 0, 0);
+    if (filterOnDraw) o.filter = PRINT_BW_CHART_FILTER;
+    o.drawImage(tileCanvas, 0, 0);
+    if (filterOnDraw) o.filter = 'none';
     o.restore();
 
     // Route overlay: screen coords already encode bearing, so the standard
@@ -12069,10 +12094,15 @@ function showFplXcForm(opts) {
       catch (e) { /* storage unavailable */ }
     }
     document.body.classList.add('printing-xc');
+    // Back to the form once the print is done: afterprint (a browser raises it as print()
+    // returns; the Android app when its print dialog closes), with a fallback that waits out
+    // the app's dialog.
+    const restore = () => document.body.classList.remove('printing-xc');
+    window.addEventListener('afterprint', restore, { once: true });
     setTimeout(() => {
-      try { window.print(); } finally {
-        setTimeout(() => document.body.classList.remove('printing-xc'), 0);
-      }
+      window.print();
+      const later = () => (window.NavAidNativePrint && NavAidNativePrint.busy()) ? setTimeout(later, 1000) : restore();
+      setTimeout(later, 1000);
     }, 50);
   };
   const mailBtn = document.createElement('button');

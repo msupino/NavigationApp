@@ -2698,7 +2698,10 @@ function showRouteMosaicModal() {
     };
     window.addEventListener('afterprint', cleanup);
     window.print();
-    setTimeout(cleanup, 1000);   // fallback if afterprint never fires
+    // Fallback if afterprint never fires -- waiting out the Android app's print dialog, which
+    // prints after it closes, with the mosaic's print layout still needed.
+    const later = () => (window.NavAidNativePrint && NavAidNativePrint.busy()) ? setTimeout(later, 1000) : cleanup();
+    setTimeout(later, 1000);
   };
   bar.appendChild(printBtn);
   if (wps.length) body.appendChild(bar);
