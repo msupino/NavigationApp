@@ -9,7 +9,8 @@ const order = (page, sel, a, b) => page.evaluate(([sel, a, b]) => {
   const el = typeof sel === 'string' ? document.querySelector(sel) : null;
   const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
   const x = (needle) => {
-    for (let n = walker.currentNode = el; (n = walker.nextNode());) {
+    walker.currentNode = el;
+    for (let n = walker.nextNode(); n; n = walker.nextNode()) {
       const i = n.nodeValue.indexOf(needle);
       if (i < 0) continue;
       const r = document.createRange(); r.setStart(n, i); r.setEnd(n, i + 1);
