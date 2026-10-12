@@ -1669,7 +1669,8 @@ test.describe('comm-change auto-note (#487)', () => {
     await expect(fields).toHaveCount(1);
     await expect(fields.first()).toHaveValue('122.20');
     await expect(fields.first()).toHaveClass(/is-default/);
-    await expect(resetFreq).toHaveText('↻');
+    // Drawn as the reset icon, like every button ("every button should have an icon").
+    await expect(resetFreq.locator('.mi-icon[data-icon="reset"]')).toHaveCount(1);
     await expect(resetFreq).toBeDisabled();
     await expect(resetFreq).toHaveAttribute('title', 'Reset frequency to default');
     await expect(page.locator('#insp-body .commchange-template')).toBeHidden();

@@ -4112,6 +4112,7 @@ function showInspector() {
     appendSatelliteSnippet(body, v, title.value);
     const useBtn = document.createElement('button');
     useBtn.className = 'insp-btn';
+    useBtn.id = 'insp-vor-use-ref';
     const isRef = vorRef === v.ident;
     useBtn.textContent = isRef ? (S.vorRefActive || '✓ Reference VOR (tap to clear)')
                                : (S.vorUseRef || 'Use as reference VOR');
@@ -4284,7 +4285,7 @@ function showInspector() {
     // A spot held on the chart lands here too, so it reads like a known point: position,
     // nearest field, terrain, satellite view, VOR radial, and the route buttons.
     const pt = { lat: state.selected.lat, lng: state.selected.lng };
-    title.value = state.selected.held ? (S.deckHereTitle || 'What is here') : (S.coordPointTitle || 'Coordinate');
+    title.value = state.selected.held ? (S.deckHereTitle || 'Point details') : (S.coordPointTitle || 'Coordinate');
     title.placeholder = ''; title.readOnly = true; title.oninput = null;
     appendPointCoordinateRows(body, pt);
     appendPlaceRows(body, pt);

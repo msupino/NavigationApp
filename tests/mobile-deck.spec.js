@@ -438,7 +438,7 @@ test('press and hold says what is under the finger', async ({ page }) => {
     rows: Array.from(document.querySelectorAll('#insp-body .row label')).map(l => l.textContent),
     sat: !!document.querySelector('#insp-body .sat-snippet, #insp-body [class*="sat"]'),
   }));
-  expect(got.title).toBe('What is here');
+  expect(got.title).toBe('Point details');
   expect(got.rows[0]).toBe('Position');
   expect(got.rows).toContain('Nearest field');
   expect(got.sat).toBe(true);
