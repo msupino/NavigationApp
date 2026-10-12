@@ -589,7 +589,9 @@
     }
     const here = { lat: gpsOwn.lat, lng: gpsOwn.lng,
                    name: (typeof S === 'object' && S && S.deckHereNow) || 'NOW' };
-    const snapped = (typeof applyNavSnap === 'function') ? applyNavSnap(latlng, '') : latlng;
+    // A route waypoint or chart point brings its own name (Direct to "Bravo" keeps it); a
+    // held spot has none and takes the chart point it snaps to, as before.
+    const snapped = (typeof applyNavSnap === 'function') ? applyNavSnap(latlng, latlng.name || '') : latlng;
     state.waypoints = [here, { lat: snapped.lat, lng: snapped.lng, name: snapped.name || '' }];
     if (typeof syncLegs === 'function') syncLegs();
     if (typeof draw === 'function') draw();

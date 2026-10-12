@@ -4770,11 +4770,12 @@ function inputRow(label, value, onChange) {
   return row;
 }
 // Nearest published field, as a spot held on the chart shows it -- on a chart point and a
-// route waypoint too ("add nearest field to known wp, like unknown ones"). A point that IS a
-// field (within half a mile) has its own airfield panel and no row.
+// route waypoint too ("add nearest field to known wp, like unknown ones").
 function appendNearestFieldRow(body, pt) {
+  // No cutoff near a field: a spot held on one reads "Herzliya 0.2 NM", which names it. (A
+  // route waypoint on a field has the airfield panel instead and never gets here.)
   const near = window.NavAid && NavAid.deckNearestField ? NavAid.deckNearestField(pt) : null;
-  if (!near || near.dist < 0.5) return;
+  if (!near || !(NavAid.deckNearestFieldText)) return;
   body.appendChild(textRow(S.deckHereNearest || 'Nearest field', NavAid.deckNearestFieldText(near)));
 }
 
