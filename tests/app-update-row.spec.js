@@ -105,6 +105,30 @@ test('on Wi-Fi it downloads without asking', async ({ page }) => {
   await expect(row.locator('.app-update-btn')).toHaveText('Restart now');
 });
 
+// Reported: "when the APK downloads in the background because Wi-Fi is on, it is not shown by
+// the download progress, and it still lets me trigger the download". The automatic download
+// now shows in the row like one asked for, and a second request joins it instead of
+// fetching the same bundle again.
+test('the automatic Wi-Fi download shows its progress, and Download does not start another', async ({ page }) => {
+  const row = await boot(page, { manifest: MANIFEST, network: 'wifi', running: '1.0-0000000' });
+  await expect(row.locator('.app-update-btn')).toHaveText('Download now');
+  // What ota.js does by itself on Wi-Fi.
+  await page.evaluate(() => { window.__auto = NavAid.ota.checkForUpdate(); });
+  await expect(row).toContainText('Downloading… 45%');
+  await expect(row.locator('.app-update-btn')).toBeHidden();          // nothing to press meanwhile
+  expect(await row.locator('.app-update-progress').evaluate(b => b.value)).toBe(45);
+  expect(await page.evaluate(() => NavAid.ota.status().then(s => s.state))).toBe('downloading');
+  // Asked for again while it runs (a button press, another automatic look): it joins.
+  await page.evaluate(() => { window.__again = NavAid.ota.downloadNow({}); });
+  await page.evaluate(() => window.__ota.finish());
+  const [a, b] = await page.evaluate(() => Promise.all([window.__auto, window.__again]));
+  expect(a.updated).toBe(true);
+  expect(b.updated).toBe(true);
+  expect(await page.evaluate(() => window.__ota.downloads)).toBe(1);
+  await expect(row).toContainText('installs the next time NavAid starts');
+  await expect(row.locator('.app-update-progress')).toHaveAttribute('hidden', '');
+});
+
 test('the web app has no such row', async ({ page }) => {
   await page.goto('?lang=en&nogist');
   await page.waitForFunction(() => window.NavAid && NavAid.appUpdate);

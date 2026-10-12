@@ -372,6 +372,10 @@ const appUpdate = (function () {
   const ltr = (t) => '\u2066' + t + '\u2069';
   function paint(st, busy) {
     const version = (window.NavAid && NavAid.version) || '';
+    // A download under way, whether the automatic one on Wi-Fi or one asked for here: shown
+    // with its progress, and nothing to press (reported: it was not shown, and Download could
+    // start the same download again).
+    if (st && st.state === 'downloading') { busy = 'downloading'; pct = st.pct != null ? st.pct : pct; }
     let line = '', action = null;
     if (busy === 'checking') line = S.appUpdateChecking || 'Checking…';
     else if (busy === 'downloading') {
@@ -449,23 +453,13 @@ const appUpdate = (function () {
         : false;
       if (!ok) return;
     }
-    // The plugin reports progress as it goes ('download', { percent }): 26 MB on mobile data is
-    // long enough to wonder whether anything is happening.
+    // Progress comes from ota.js ('navaid-ota-download', below): it owns the download, the
+    // automatic one included -- 26 MB on mobile data is long enough to wonder.
     pct = null;
     paint(last || {}, 'downloading');
-    const updater = window.Capacitor && Capacitor.Plugins && Capacitor.Plugins.CapacitorUpdater;
-    let handle = null;
-    try {
-      if (updater && typeof updater.addListener === 'function') {
-        handle = await updater.addListener('download', (e) => {
-          const p = Math.max(0, Math.min(100, Math.round(Number(e && e.percent))));
-          if (Number.isFinite(p) && p !== pct) { pct = p; paint(last || {}, 'downloading'); }
-        });
-      }
-    } catch (e) { handle = null; }
     let r;
     try { r = await o.downloadNow({ manifest: last && last.manifest }); }
-    finally { try { if (handle && handle.remove) await handle.remove(); } catch (e) { /* gone */ } pct = null; }
+    finally { pct = null; }
     if (r && (r.updated || r.pending)) {
       last = { state: 'pending', version: r.version || '' }; paint(last);
       // Downloaded on request: offer the restart straight away rather than at the next start.
@@ -477,6 +471,12 @@ const appUpdate = (function () {
     if (r && r.reason && r.reason !== 'already running it' && typeof showToast === 'function') {
       showToast(typeof S.appUpdateFailed === 'function' ? S.appUpdateFailed(r.reason) : r.reason, { warn: true });
     }
+  });
+  // ota.js says when a download starts, moves on, and ends -- the automatic one on Wi-Fi too.
+  window.addEventListener('navaid-ota-download', (e) => {
+    const d = e && e.detail;
+    if (d) { last = { state: 'downloading', version: d.version, pct: d.pct }; if (!row.hidden) paint(last); }
+    else { pct = null; refresh(); }
   });
   return { refresh, paint };
 }());
