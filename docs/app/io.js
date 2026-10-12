@@ -5613,6 +5613,22 @@ function showExportModal() {
   opacityRow.appendChild(opResetBtn);
   body.appendChild(opacityRow);
 
+  // Black-and-white printer: the chart in light grey, the route black on white (exportPNG).
+  // Remembered on this device -- it is about the printer here, not the pilot's other devices.
+  const bwLabel = document.createElement('label');
+  bwLabel.style.cssText = 'display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer';
+  bwLabel.title = S.exportBwTitle || '';
+  const bwCb = document.createElement('input');
+  bwCb.type = 'checkbox';
+  bwCb.id = 'export-bw';
+  bwCb.checked = printBwOn();
+  bwCb.addEventListener('change', () => {
+    try { localStorage.setItem(PRINT_BW_KEY, bwCb.checked ? '1' : '0'); } catch (e) { /* private */ }
+  });
+  bwLabel.appendChild(bwCb);
+  bwLabel.appendChild(document.createTextNode(S.exportBw || 'Optimized for a black-and-white printer'));
+  body.appendChild(bwLabel);
+
   // Page-size warning — red + blinking, and kept live (updateExportPageWarn is
   // called from refreshPageButtons, so toggling A3/A4 while this panel is open
   // shows/hides it immediately).
@@ -6091,6 +6107,29 @@ function openPrintWindow(blob, paperWmm, paperHmm) {
   img.onerror = () => { URL.revokeObjectURL(url); };
   img.src = url;
 }
+// "Black-and-white printer" in the Print dialog (device-local).
+const PRINT_BW_KEY = 'navaid.printBw';
+function printBwOn() {
+  try { return localStorage.getItem(PRINT_BW_KEY) === '1'; } catch (e) { return false; }
+}
+window.printBwOn = printBwOn;
+// The chart for a mono printer: grey, and lightened, so it is a pale ground and the black route
+// over it reads. Canvas filters where the browser has them; otherwise the pixels, by hand.
+const PRINT_BW_CHART_FILTER = 'grayscale(1) brightness(1.2) contrast(0.7)';
+function printBwChart(ctx, img, w, h) {
+  if ('filter' in ctx) { ctx.filter = PRINT_BW_CHART_FILTER; ctx.drawImage(img, 0, 0); ctx.filter = 'none'; return; }
+  ctx.drawImage(img, 0, 0);
+  try {
+    const d = ctx.getImageData(0, 0, w, h);
+    const px = d.data;
+    for (let i = 0; i < px.length; i += 4) {
+      const y = 0.299 * px[i] + 0.587 * px[i + 1] + 0.114 * px[i + 2];
+      const v = 255 - (255 - y) * 0.6;            // lighter: a pale ground, not a dark one
+      px[i] = px[i + 1] = px[i + 2] = v;
+    }
+    ctx.putImageData(d, 0, 0);
+  } catch (e) { /* a tile the canvas may not read: printed as it is */ }
+}
 function exportPNG(mode) {
   // Export matches the screen view exactly, including map bearing.
   // Tiles are fetched north-up (axis-aligned) for a bounding box that covers
@@ -6184,14 +6223,15 @@ function exportPNG(mode) {
   tileCanvas.width  = Wbb;
   tileCanvas.height = Hbb;
   const tc = tileCanvas.getContext('2d');
-  tc.fillStyle = tune('exportBgColor');
+  const bw = printBwOn();
+  tc.fillStyle = bw ? PRINT_BW_TUNES.exportBgColor : tune('exportBgColor');
   tc.fillRect(0, 0, Wbb, Hbb);
 
   const out = document.createElement('canvas');
   out.width  = W;
   out.height = H;
   const o = out.getContext('2d');
-  o.fillStyle = tune('exportBgColor');
+  o.fillStyle = bw ? PRINT_BW_TUNES.exportBgColor : tune('exportBgColor');
   o.fillRect(0, 0, W, H);
 
   const btn = document.getElementById('print');
@@ -6256,6 +6296,16 @@ function exportPNG(mode) {
         failed++;
       }
     }
+    let chart = tileCanvas;
+    if (bw) {
+      const g = document.createElement('canvas');
+      g.width = Wbb; g.height = Hbb;
+      const gc = g.getContext('2d');
+      gc.fillStyle = PRINT_BW_TUNES.exportBgColor;
+      gc.fillRect(0, 0, Wbb, Hbb);
+      printBwChart(gc, tileCanvas, Wbb, Hbb);
+      chart = g;
+    }
 
     // Draw the tile canvas onto the output, rotated by the map bearing so the
     // result matches the screen view.  The frame centre in tile-canvas space
@@ -6270,7 +6320,7 @@ function exportPNG(mode) {
     o.rotate(exportBearing * Math.PI / 180);
     o.translate(-fcx, -fcy);
     o.globalAlpha = (typeof mapOpacity === 'number') ? mapOpacity : 1;
-    o.drawImage(tileCanvas, 0, 0);
+    o.drawImage(chart, 0, 0);
     o.restore();
 
     // Route overlay: screen coords already encode bearing, so the standard
@@ -6278,6 +6328,10 @@ function exportPNG(mode) {
     const s = W / fr.w;
     const prevOctx = octx;
     octx = o;
+    // The route in black and white, for this draw only: synchronous, so the screen's own
+    // redraws never see it.
+    const prevOverride = NavAid.printOverride;
+    if (bw) NavAid.printOverride = PRINT_BW_TUNES;
     // Symbols size themselves geographically (printPxPerMm, = 250/metresPerPixel
     // at 1:250,000), identical on screen and here — so the export is a faithful
     // scaled copy of what you arranged on screen and lands at the intended
@@ -6305,6 +6359,7 @@ function exportPNG(mode) {
       o.restore();
     } finally {
       octx = prevOctx;
+      NavAid.printOverride = prevOverride;
     }
 
     // A4×2: the frame is A3-sized — slice it into two A4 tiles at the same
