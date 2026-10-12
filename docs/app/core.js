@@ -1477,7 +1477,7 @@ window.S = Object.assign({
   airfieldsUrl: 'data/airfields.json?v=43',  // resolved relative to index.html (docs/)
   airfieldHoursUrl: 'data/airfield-hours.json?v=1',  // published hours (airfield-hours.js)
   airfieldLabelField: 'en',            // which locale label to show on the overlay
-  routeTemplatesUrl: 'data/route-templates.json?v=2', // ready-made route templates
+  routeTemplatesUrl: 'data/route-templates.json?v=3', // ready-made route templates
   vorUrl: 'data/vor.json?v=2',              // Israeli VOR/DME stations
 
   // --- English UI copy (default locale) -------------------------------
@@ -1755,6 +1755,9 @@ window.S = Object.assign({
   routeLibraryGdriveRaced: 'Another device changed this while syncing — nothing was overwritten. Sync again.',
   routeTemplatesTitle: 'Route templates',
   routeTemplateRoute: 'Route',
+  routeTemplateFrom: 'From',
+  routeTemplateTo: 'To',
+  routeTemplateVia: 'Via',
   routeTemplateSpeed: 'Speed (kt)',
   routeTemplateApply: 'Build route',
   routeTemplateEmpty: 'No route templates available',
