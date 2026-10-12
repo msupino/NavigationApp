@@ -2554,6 +2554,8 @@ window.S = Object.assign({
   kmlDocName: 'NavAid flythrough',
   kmlRouteName: 'Route',
   kmlTourName: 'Fly the route',
+  layerNoDataHere: function (layer, where) { return layer + ' has no data here' + (where ? ': ' + where : '') + '.'; },
+  layerCoverage: { OpenFlightMaps: 'it covers about twenty regions, mostly in Europe', israel: 'it covers Israel' },
   layerNoDataOverIsrael: 'No data over Israel: OpenFlightMaps covers about twenty regions, mostly in Europe. Move the map there to use it.',
   layerLabels: { 'CVFR': 'CVFR', 'Navigation': 'Navigation', 'Low Alt': 'Low Alt',
                  'Helicopters': 'Helicopters', 'Satellite': 'Satellite', 'OpenStreetMap': 'OpenStreetMap',
@@ -5867,16 +5869,18 @@ const CHART_SPECS = {
   // than asking for tiles that are blank. CORS is open, so an export can read the canvas.
   'OpenFlightMaps': (pane) => (window.NavAidNativeTiles ? NavAidNativeTiles.tileLayer : L.tileLayer)(
     'https://nwy-tiles-api.prod.newaydata.com/tiles/{z}/{x}/{y}.png?path=latest/aero/latest',
-    withPane({ minZoom: 4, maxZoom: 18, maxNativeZoom: 12, corsOk: true,
+    // crossOrigin: the map reads its tiles to tell an area with no data (every tile the same
+    // transparent PNG) from one with -- layerViewIsBlank, ui.js. The server sends CORS for all.
+    withPane({ minZoom: 4, maxZoom: 18, maxNativeZoom: 12, corsOk: true, crossOrigin: 'anonymous',
       attribution: '<a href="https://www.openflightmaps.org/" target="_blank" rel="noopener">© open flightmaps association</a>' }, pane)),
 };
 // The always-offline world map (world-offline.js) is drawn under every chart; as a chart of
 // its own it is an empty layer, so what shows is that world map alone, zoomable out to a
 // continent. Nothing to fetch, so nothing to download: it is offline by construction.
 CHART_SPECS['World'] = () => L.layerGroup();
-// Where a chart has nothing to show. open flightmaps does not cover Israel, so over the
-// Israeli charts' own frame (the ATS sheet's, which spans the FIR) the layer is dimmed in the
-// picker, with the reason, rather than offered as a chart that draws nothing.
+// Where a chart has nothing to show. open flightmaps does not cover Israel, so an offline area
+// over the Israeli charts' own frame (the ATS sheet's, which spans the FIR) is refused with the
+// reason. On the map itself an empty view is read from the tiles (layerViewIsBlank, ui.js).
 const ISRAEL_CHART_FRAME = [[29.376677, 33.426611], [33.420846, 36.158314]];
 const LAYER_NO_DATA_OVER_ISRAEL = new Set(['OpenFlightMaps']);
 function layerHasNoDataHere(name, center) {
