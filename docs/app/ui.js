@@ -3106,7 +3106,8 @@ function showRouteTemplatesModal() {
     const refreshVia = () => {
       const pair = pairTemplates().map(t => ({ value: t.id, label: viaName(t) })).sort(byName);
       fill(via.sel, pair, via.sel.value);
-      via.row.hidden = pair.length < 2;
+      // Always shown, so a pilot reads which way the route goes, even where there is one.
+      via.sel.disabled = pair.length < 2;
     };
     fill(from.sel, origins);
     refreshTo();
@@ -3117,8 +3118,14 @@ function showRouteTemplatesModal() {
       } };
     from.sel.addEventListener('change', refreshTo);
     to.sel.addEventListener('change', refreshVia);
-    const routeRow = document.createDocumentFragment();
-    routeRow.append(from.row, to.row, via.row);
+    // Two to a row: From beside To, Via beside Speed -- four rows stacked took too much room.
+    const pairRow = (...rows) => {
+      const r = document.createElement('div');
+      r.className = 'route-template-pair';
+      r.append(...rows);
+      return r;
+    };
+    const routeRow = pairRow(from.row, to.row);
 
     const speedRow = document.createElement('label');
     speedRow.className = 'route-template-row';
@@ -3177,7 +3184,7 @@ function showRouteTemplatesModal() {
       }
     };
 
-    body.append(routeRow, speedRow, path, desc, btns);
+    body.append(routeRow, pairRow(via.row, speedRow), path, desc, btns);
     select.focus();
   }).catch(e => {
     body.innerHTML = '';

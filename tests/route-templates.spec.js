@@ -38,7 +38,7 @@ async function pickTemplate(page, id) {
   }, id);
   await page.locator('.route-template-from').selectOption(t.from);
   await page.locator('.route-template-to').selectOption(t.to);
-  if (await page.locator('.route-template-via').isVisible()) {
+  if (await page.locator('.route-template-via').isEnabled()) {
     await page.locator('.route-template-via').selectOption(id);
   }
 }
@@ -86,11 +86,15 @@ test.describe('route templates', () => {
     const to = await page.locator('.route-template-to option').allTextContents();
     expect(to).toEqual([...to].sort((a, b) => a.localeCompare(b)));
     expect(to).toEqual(['Beer Sheva', 'Haifa', 'Masada', 'Megiddo', 'Rosh Pina']);
-    await expect(page.locator('.route-template-via')).toBeHidden();   // one route each
+    // Via always shows which way the route goes; with one route it is that one, not a choice.
+    await page.locator('.route-template-to').selectOption('LLHA');
+    await expect(page.locator('.route-template-via')).toBeVisible();
+    await expect(page.locator('.route-template-via')).toBeDisabled();
+    expect(await page.locator('.route-template-via option').allTextContents()).toEqual(['along the coast']);
     // Rosh Pina to Haifa has two: Via appears, with both.
     await page.locator('.route-template-from').selectOption('LLIB');
     await page.locator('.route-template-to').selectOption('LLHA');
-    await expect(page.locator('.route-template-via')).toBeVisible();
+    await expect(page.locator('.route-template-via')).toBeEnabled();
     expect(await page.locator('.route-template-via option').allTextContents())
       .toEqual(['via the Galilee', 'via the valleys']);
     // Every template is reachable through From / To / Via.
