@@ -143,15 +143,13 @@ test.describe('Magnifier alignment under rotation', () => {
       if (!magnifierOn) toggleMagnifier();
       window.magnifierZoom = 1;
       const mapRect = map.getContainer().getBoundingClientRect();
-      _magX = mapRect.left + mapRect.width / 2; _magY = mapRect.top + mapRect.height / 2;
-      const mag = document.getElementById('magnifier');
-      mag.style.left = (_magX - 200) + 'px'; mag.style.top = (_magY - 200) + 'px';
-      _magDirty = true; rebuildMagnifier(); applyMagnifierTransform();
-      await new Promise(r => requestAnimationFrame(r));
+      const cx = mapRect.left + mapRect.width / 2, cy = mapRect.top + mapRect.height / 2;
+      updateMagnifier({ clientX: cx, clientY: cy });      // the app's own cursor path
+      await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
       // The real tile nearest the lens centre, and its clone in the lens.
       const real = [...document.querySelectorAll('.leaflet-tile-pane img')].filter(i => i.src)
         .map(i => ({ i, r: i.getBoundingClientRect() }))
-        .sort((p, q) => Math.hypot(p.r.left - _magX, p.r.top - _magY) - Math.hypot(q.r.left - _magX, q.r.top - _magY))[0];
+        .sort((p, q) => Math.hypot(p.r.left - cx, p.r.top - cy) - Math.hypot(q.r.left - cx, q.r.top - cy))[0];
       const clone = [...document.querySelectorAll('#mag-content img')].find(i => i.src === real.i.src && !i.dataset.batch);
       const c = clone.getBoundingClientRect();
       return { pan, gap: Math.hypot(c.left - real.r.left, c.top - real.r.top) };
