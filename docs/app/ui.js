@@ -680,6 +680,9 @@ rebuildLayerPicker();
 // The world-wide layers (OpenStreetMap, Satellite, World) are never empty. A tile that failed
 // for any other reason -- no signal in the air -- is not "no data": then nothing is said.
 const LAYERS_EVERYWHERE = ['OpenStreetMap', 'Satellite', 'World'];
+// Where each chart does have data, for the message. A chart not listed is told without it.
+const LAYER_COVERAGE_KEY = { OpenFlightMaps: 'OpenFlightMaps', CVFR: 'israel', Navigation: 'israel',
+  'Low Alt': 'israel', Helicopters: 'israel', ATS: 'israel' };
 function tileIsBlank(img) {
   const c = document.createElement('canvas');
   c.width = c.height = 128;
@@ -693,8 +696,10 @@ function tileIsBlank(img) {
 // the same coverage as wherever the live tiles come from and answers CORS, so its status can
 // be read. Only a 404 counts; anything else (offline, a server error) is "cannot tell".
 async function tileMissing(layer, coords) {
-  const tpl = layer.options.exportUrl || (layer.options.corsOk ? layer._url : '');
-  if (!tpl) return null;
+  // Only our own mirror is asked -- never the third party a live tile came from -- and not
+  // while the device says it is offline: in the air every pan would be a request that fails.
+  const tpl = layer.options.exportUrl;
+  if (!tpl || (typeof navigator !== 'undefined' && navigator.onLine === false)) return null;
   try {
     const url = L.Util.template(tpl, Object.assign({ s: 'a', r: '' }, coords));
     const res = await fetch(url, { method: 'HEAD', cache: 'no-store' });
@@ -732,7 +737,7 @@ async function noteLayerBlankHere() {
   // Once per arrival in an empty area, not once per pan: a pan is a GPS fix in the air.
   if (blank && !_layerBlankTold && typeof showToast === 'function') {
     const label = (S.layerLabels && S.layerLabels[name]) || name;
-    const where = S.layerCoverage && (S.layerCoverage[name] || S.layerCoverage.israel);
+    const where = S.layerCoverage && S.layerCoverage[LAYER_COVERAGE_KEY[name]];
     showToast(typeof S.layerNoDataHere === 'function' ? S.layerNoDataHere(label, where)
       : label + ' has no data here.');
   }

@@ -85,3 +85,15 @@ test('every kind of point reads its place alike, under Position', async ({ page 
   });
   expect(gap).toBeGreaterThan(8);
 });
+
+// Review: a spot held ON a field lost its nearest-field row to a half-mile cutoff meant for
+// route waypoints -- which show the airfield panel anyway. Held on Herzliya, it names it.
+test('a spot held on a field still names it', async ({ page }) => {
+  const got = await page.evaluate(() => {
+    const hz = airfields.find(a => a.name === 'LLHZ');
+    state.selected = { type: 'coord', lat: hz.lat + 0.001, lng: hz.lng, held: true }; showInspector();
+    const row = [...document.querySelectorAll('#insp-body .row')].find(r => r.querySelector('label').textContent === 'Nearest field');
+    return row ? row.querySelector('.val').textContent : null;
+  });
+  expect(got).toMatch(/Herzliya\s+⁦?0\.\d NM/);
+});
