@@ -3046,7 +3046,7 @@ function showRouteTemplatesModal() {
     }
 
     // From, then To -- only the destinations that have a route from there -- and Via where a
-    // pair has more than one (Rosh Pina - Haifa: by the Galilee or by the valleys). One long
+    // pair has more than one (Rosh Pina - Haifa: by the Galilee or by Hadera). One long
     // list of "X to Y" was too crowded to find a route in (asked: "maybe From and To in
     // different inputs, with all existing couples"). Each list in the language's own order.
     const lang = (window.__navLang || document.documentElement.lang || '').toLowerCase().slice(0, 2);

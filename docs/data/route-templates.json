@@ -358,12 +358,12 @@
     },
     {
       "id": "llib-llha-valley",
-      "name": "Rosh Pina to Haifa (via the valleys)",
-      "he": "ראש פינה לחיפה (דרך העמקים)",
+      "name": "Rosh Pina to Haifa (via Hadera)",
+      "he": "ראש פינה לחיפה (דרך חדרה)",
       "description": "Long CVFR route from Rosh Pina to Haifa via Tavor, Afula, Eiron and the coast.",
       "heDescription": "מסלול CVFR ארוך מראש פינה לחיפה דרך תבור, עפולה, עירון והחוף.",
-      "via": "the valleys",
-      "heVia": "העמקים",
+      "via": "Hadera",
+      "heVia": "חדרה",
       "defaultSpeed": 90,
       "waypoints": [
         "LLIB",
@@ -388,12 +388,12 @@
     },
     {
       "id": "llha-llib-valley",
-      "name": "Haifa to Rosh Pina (via the valleys)",
-      "he": "חיפה לראש פינה (דרך העמקים)",
+      "name": "Haifa to Rosh Pina (via Hadera)",
+      "he": "חיפה לראש פינה (דרך חדרה)",
       "description": "Long CVFR route from Haifa via the coast, Eiron, Afula and Tavor to Rosh Pina.",
       "heDescription": "מסלול CVFR ארוך מחיפה דרך החוף, עירון, עפולה ותבור לראש פינה.",
-      "via": "the valleys",
-      "heVia": "העמקים",
+      "via": "Hadera",
+      "heVia": "חדרה",
       "defaultSpeed": 90,
       "waypoints": [
         "LLHA",

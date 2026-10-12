@@ -96,7 +96,7 @@ test.describe('route templates', () => {
     await page.locator('.route-template-to').selectOption('LLHA');
     await expect(page.locator('.route-template-via')).toBeEnabled();
     expect(await page.locator('.route-template-via option').allTextContents())
-      .toEqual(['the Galilee', 'the valleys']);   // under the label "Via": the place alone
+      .toEqual(['Hadera', 'the Galilee']);   // under the label "Via": the place alone
     // Every template is reachable through From / To / Via.
     const all = await page.evaluate(async () => (await (await fetch(S.routeTemplatesUrl)).json()).templates.length);
     let reachable = 0;
@@ -217,7 +217,7 @@ test.describe('route templates', () => {
     },
     {
       id: 'llha-llib-valley',
-      name: 'Haifa to Rosh Pina (via the valleys)',
+      name: 'Haifa to Rosh Pina (via Hadera)',
       waypoints: [
         'LLHA', 'GALIM', 'DAROM', 'HOTRM', 'BOREN', 'FRDIS', 'HADRA',
         'EIRON', 'ZMGID', 'AFULA', 'TAVOR', 'DESHE', 'AMNON', 'LLIB',
