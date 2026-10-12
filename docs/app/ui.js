@@ -3032,7 +3032,10 @@ function showRouteTemplatesModal() {
   modal.box.appendChild(body);
   modal.show();
 
-  loadRouteTemplates().then(templates => {
+  // The fields' names, in the language on screen, come from the airfields list.
+  Promise.all([loadRouteTemplates(),
+    typeof loadAirfields === 'function' ? loadAirfields().catch(() => null) : null,
+  ]).then(([templates]) => {
     body.innerHTML = '';
     if (!templates.length) {
       const empty = document.createElement('p');
@@ -3042,19 +3045,89 @@ function showRouteTemplatesModal() {
       return;
     }
 
-    const routeRow = document.createElement('label');
-    routeRow.className = 'route-template-row';
-    const routeLabel = document.createElement('span');
-    routeLabel.textContent = S.routeTemplateRoute || 'Route';
-    const select = document.createElement('select');
-    select.className = 'route-template-select';
-    for (const template of templates) {
-      const option = document.createElement('option');
-      option.value = template.id;
-      option.textContent = routeTemplateLabel(template);
-      select.appendChild(option);
+    // From, then To -- only the destinations that have a route from there -- and Via where a
+    // pair has more than one (Rosh Pina - Haifa: by the Galilee or by Hadera). One long
+    // list of "X to Y" was too crowded to find a route in (asked: "maybe From and To in
+    // different inputs, with all existing couples"). Each list in the language's own order.
+    const lang = (window.__navLang || document.documentElement.lang || '').toLowerCase().slice(0, 2);
+    const ends = (t) => ({ from: t.waypoints[0], to: t.waypoints[t.waypoints.length - 1] });
+    // A place by the name the templates call it ("Herzliya to Haifa", "הרצליה לחיפה") -- the
+    // familiar one, "Masada" rather than the airfield's "Bar Yehuda (Masada)" -- and failing
+    // that the airfield's own name, or its code.
+    const placeNames = {};
+    for (const t of templates) {
+      const e = ends(t);
+      const label = routeTemplateLabel(t).replace(/\s*\([^)]*\)\s*$/, '');
+      const parts = lang === 'he' ? label.split(/ ל(?=\S)/) : label.split(/ to /);
+      if (parts.length === 2) {
+        if (!placeNames[e.from]) placeNames[e.from] = parts[0].trim();
+        if (!placeNames[e.to]) placeNames[e.to] = parts[1].trim();
+      }
     }
-    routeRow.append(routeLabel, select);
+    const fieldName = (code) => {
+      if (placeNames[code]) return placeNames[code];
+      const af = Array.isArray(window.airfields) ? airfields.find(a => a && a.name === code) : null;
+      return (af && (lang === 'he' ? af.he : af.en)) || code;
+    };
+    const viaName = (t) => (lang === 'he' ? t.heVia : t.via) ||
+      ((routeTemplateLabel(t).match(/\(([^)]+)\)\s*$/) || [])[1]) || routeTemplateLabel(t);
+    const byName = (a, b) => a.label.localeCompare(b.label, lang || undefined);
+    const row = (labelText, cls) => {
+      const r = document.createElement('label');
+      r.className = 'route-template-row';
+      const l = document.createElement('span');
+      l.textContent = labelText;
+      const sel = document.createElement('select');
+      sel.className = 'route-template-select ' + cls;
+      r.append(l, sel);
+      return { row: r, sel };
+    };
+    const fill = (sel, items, keep) => {
+      sel.innerHTML = '';
+      for (const it of items) {
+        const o = document.createElement('option');
+        o.value = it.value; o.textContent = it.label;
+        sel.appendChild(o);
+      }
+      if (keep && items.some(it => it.value === keep)) sel.value = keep;
+    };
+    const from = row(S.routeTemplateFrom || 'From', 'route-template-from');
+    const to = row(S.routeTemplateTo || 'To', 'route-template-to');
+    const via = row(S.routeTemplateVia || 'Via', 'route-template-via');
+    const origins = [...new Set(templates.map(t => ends(t).from))]
+      .map(c => ({ value: c, label: fieldName(c) })).sort(byName);
+    const pairTemplates = () => templates.filter(t => ends(t).from === from.sel.value && ends(t).to === to.sel.value);
+    const refreshTo = () => {
+      const dests = [...new Set(templates.filter(t => ends(t).from === from.sel.value).map(t => ends(t).to))]
+        .map(c => ({ value: c, label: fieldName(c) })).sort(byName);
+      fill(to.sel, dests, to.sel.value);
+      refreshVia();
+    };
+    const refreshVia = () => {
+      const pair = pairTemplates().map(t => ({ value: t.id, label: viaName(t) })).sort(byName);
+      // Always there, dimmed where the pair has one route: then there is nothing to choose, and
+      // no name to give it -- "along the coast" for the only route was a judgement, not a fact.
+      if (pair.length < 2) pair.forEach(p => { p.label = '—'; });
+      fill(via.sel, pair, via.sel.value);
+      via.sel.disabled = pair.length < 2;
+    };
+    fill(from.sel, origins);
+    refreshTo();
+    // The whole set, as the template id: what Build route and the details below read.
+    const select = { get value() { return via.sel.value || (pairTemplates()[0] || {}).id; },
+      focus() { from.sel.focus(); }, addEventListener(ev, fn) {
+        from.sel.addEventListener(ev, fn); to.sel.addEventListener(ev, fn); via.sel.addEventListener(ev, fn);
+      } };
+    from.sel.addEventListener('change', refreshTo);
+    to.sel.addEventListener('change', refreshVia);
+    // Two to a row: From beside To, Via beside Speed -- four rows stacked took too much room.
+    const pairRow = (...rows) => {
+      const r = document.createElement('div');
+      r.className = 'route-template-pair';
+      r.append(...rows);
+      return r;
+    };
+    const routeRow = pairRow(from.row, to.row);
 
     const speedRow = document.createElement('label');
     speedRow.className = 'route-template-row';
@@ -3113,7 +3186,7 @@ function showRouteTemplatesModal() {
       }
     };
 
-    body.append(routeRow, speedRow, path, desc, btns);
+    body.append(routeRow, pairRow(via.row, speedRow), path, desc, btns);
     select.focus();
   }).catch(e => {
     body.innerHTML = '';
