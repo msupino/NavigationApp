@@ -938,6 +938,7 @@ window.S = {
   deckHereTitle: 'מה יש כאן',
   exportBw: 'מותאם למדפסת שחור-לבן',
   exportResolution: 'איכות תמונה',
+  printPreparing: 'מכין את הדף… הוא יופיע כאן להדפסה.',
   // "X מתוך Y" rather than "X / Y": two numbers around a slash in a Hebrew line read in either order.
   exportProgressTiles: function (done, total, secs) { return 'טוען את המפה: ' + done + ' מתוך ' + total + ' אריחים · ' + secs + ' שניות'; },
   exportProgressCompose: function (secs) { return 'מרכיב את הדף… ' + secs + ' שניות'; },

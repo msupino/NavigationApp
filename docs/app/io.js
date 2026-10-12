@@ -6084,7 +6084,7 @@ function exportA4x2Tiles(out, W, H, done, mode) {
     c.toBlob(b => {
       // A null blob (canvas memory limits) must surface, not silently drop a
       // page — the user would tape together half a chart. Abort the sequence.
-      if (!b) { refuse(S.errPngFail); done(); return; }
+      if (!b) { closePendingPrintWindow(); refuse(S.errPngFail); done(); return; }
       b.arrayBuffer()
         .then(buf => dl(new Blob([injectPngPhys(buf, ppmX, ppmY)], { type: 'image/png' })))
         .catch(() => dl(b));
@@ -6130,13 +6130,38 @@ function drawA4x2TileMarks(cx, t, total, pxPerMm) {
 // an @page rule, then fire the print dialog — so it prints 1:1 regardless of the
 // printer's "fit to page" default (the only reliable way to hit the physical mm
 // sizes). Non-framed falls back to printing the image on the default page.
+// The print window is opened at the press, not when the page is ready: a browser lets a page
+// open a window only for a few seconds after a click (Chrome's "user activation"), and a sharp
+// A3 takes far longer -- the print was refused as a blocked pop-up. It shows "Preparing the
+// page" until the image arrives; an export that fails closes it.
+let exportPrintWindow = null;
+function openPendingPrintWindow() {
+  let w = null;
+  try { w = window.open('', '_blank'); } catch (e) { w = null; }
+  if (!w) return null;
+  try {
+    w.document.open();
+    w.document.write('<!doctype html><html><head><meta charset="utf-8"><title>' +
+      (S.printBtn || 'Print') + '</title></head><body style="font:16px sans-serif;margin:40px;color:#444">' +
+      (S.printPreparing || 'Preparing the page… it will appear here to print.') + '</body></html>');
+    w.document.close();
+  } catch (e) { /* written properly when the page is ready */ }
+  return w;
+}
+function closePendingPrintWindow() {
+  const w = exportPrintWindow;
+  exportPrintWindow = null;
+  try { if (w && !w.closed) w.close(); } catch (e) { /* gone */ }
+}
 // One image, or several -- the two halves of an A4x2 -- each a sheet of its own, printed once
 // they have all loaded.
 function openPrintWindow(blobs, paperWmm, paperHmm) {
   const list = Array.isArray(blobs) ? blobs : [blobs];
   const urls = list.map(b => URL.createObjectURL(b));
   const free = () => urls.forEach(u => URL.revokeObjectURL(u));
-  const w = window.open('', '_blank');
+  const pending = exportPrintWindow;
+  exportPrintWindow = null;
+  const w = (pending && !pending.closed) ? pending : window.open('', '_blank');
   if (!w) { refuse(S.errPopupBlocked || 'Allow pop-ups to print.'); free(); return; }
   const sized = (paperWmm && paperHmm)
     ? `@page{size:${paperWmm}mm ${paperHmm}mm;margin:0}img{width:${paperWmm}mm;height:${paperHmm}mm;display:block}`
@@ -6244,6 +6269,9 @@ function exportPNG(mode) {
     if (map.hasLayer(layers[n])) { base = layers[n]; baseName = n; }
   }
   if (!base || !base._url) { NavAid.exporting = false; return; }
+  // Still inside the press: the only moment a browser lets the print window open.
+  closePendingPrintWindow();
+  if (mode === 'print') exportPrintWindow = openPendingPrintWindow();
 
   // Lock map interaction for the duration of the async tile fetch.  The
   // route overlay is composited using live proj() after the awaited tiles
@@ -6519,7 +6547,7 @@ function exportPNG(mode) {
       unlockMap();
       NavAid.exporting = false;
       if (typeof NavAid._restoreExport === 'function') NavAid._restoreExport();
-      if (!b) { refuse(S.errPngFail); return; }
+      if (!b) { closePendingPrintWindow(); refuse(S.errPngFail); return; }
 
       // Embed physical DPI metadata so the PNG prints at the correct
       // physical size on A3 / A4 at 1:250,000 scale.
@@ -6557,6 +6585,7 @@ function exportPNG(mode) {
     // the UI so the user can retry, and surface the failure.
     console.warn('PNG export pipeline failed:', err);
     progress.close();
+    closePendingPrintWindow();
     btn.textContent = btnLabel;
     btn.disabled = false;
     unlockMap();

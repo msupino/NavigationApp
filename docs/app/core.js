@@ -2422,6 +2422,7 @@ window.S = Object.assign({
   deckHereTitle: 'Point details',
   exportBw: 'Optimized for a black-and-white printer',
   exportResolution: 'Image quality',
+  printPreparing: 'Preparing the page… it will appear here to print.',
   exportProgressTiles: function (done, total, secs) { return 'Fetching the map: ' + done + ' / ' + total + ' tiles · ' + secs + ' s'; },
   exportProgressCompose: function (secs) { return 'Composing the page… ' + secs + ' s'; },
   exportResLow: 'Low',

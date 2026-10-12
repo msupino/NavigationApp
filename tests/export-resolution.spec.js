@@ -110,3 +110,32 @@ test('a progress panel counts the tiles and the seconds, and goes when the page 
   expect(seen.samples.some(s => /Fetching the map: \d+ \/ \d+ tiles · \d+ s/.test(s.text) && s.value > 0)).toBe(true);
   expect(seen.after).toBe(false);
 });
+
+// Review: Print opened its window when the page was ready, but a browser allows a window only
+// for a few seconds after the click -- a sharp A3 takes longer, and the print was blocked as a
+// pop-up. The window opens at the press ("Preparing the page"), and the page arrives in it.
+test('Print opens its window at the press, and the page arrives in that window', async ({ page }) => {
+  await page.route(u => u.hostname === 'navaid-tiles.supino.org', async (r) => {
+    await new Promise(x => setTimeout(x, 30));
+    await r.fulfill({ status: 404, body: '' });
+  });
+  const r = await page.evaluate(async () => {
+    window.refuse = () => {};
+    setPage('A4');
+    await new Promise(r => setTimeout(r, 200));
+    const frame = document.createElement('iframe');
+    document.body.appendChild(frame);
+    let opens = 0, printed = 0;
+    window.open = () => { opens++; frame.contentWindow.print = () => { printed++; }; return frame.contentWindow; };
+    exportPNG('print');
+    const openedAtPress = opens;                       // before any tile has come back
+    const preparing = frame.contentDocument.body.textContent;
+    for (let i = 0; i < 200 && !printed; i++) await new Promise(x => setTimeout(x, 100));
+    return { openedAtPress, opens, preparing, imgs: frame.contentDocument.querySelectorAll('img').length, printed };
+  });
+  expect(r.openedAtPress).toBe(1);
+  expect(r.preparing).toContain('Preparing the page');
+  expect(r.opens).toBe(1);                              // the same window, not a second one
+  expect(r.imgs).toBe(1);
+  expect(r.printed).toBe(1);
+});
