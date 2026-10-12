@@ -9477,3 +9477,28 @@ body.theme-light .ctx-title { color: #5b6575; border-bottom-color: #dfe4ec; }
 body.theme-light .ctx-item:hover, body.theme-light .ctx-item:focus-visible { background: #e9eef6; }
 body.theme-light .ctx-item.ctx-danger { color: #b03636; }
 body.theme-light .ctx-sep { background: #dfe4ec; }
+
+/* Export progress (io.js exportProgress): tiles fetched and the seconds running, at the foot of
+   the screen above everything, until the page is saved. */
+#export-progress {
+  position: fixed;
+  left: 50%;
+  bottom: calc(24px + env(safe-area-inset-bottom, 0px));
+  transform: translateX(-50%);
+  z-index: 3500;
+  min-width: 260px;
+  max-width: calc(100vw - 32px);
+  padding: 10px 14px;
+  background: #2b2727;
+  color: #eee;
+  border: 1px solid #4a4444;
+  border-radius: 8px;
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.45);
+  font-size: 13px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+#export-progress progress { width: 100%; height: 8px; accent-color: #ffd966; }
+.export-progress-label { font-variant-numeric: tabular-nums; }
+body.theme-light #export-progress { background: #fafcff; color: #1d2430; border-color: #cfd6e0; box-shadow: 0 6px 24px rgba(20, 30, 50, 0.18); }

@@ -84,3 +84,29 @@ test('the Print dialog has the Resolution slider, remembered on this device', as
   expect(await page.evaluate(() => localStorage.getItem('navaid.printRes'))).toBe('low');
   await expect(slider).toHaveAttribute('aria-valuetext', 'Low');
 });
+
+// Asked: "show a timer running for export, let the user know something is happening" -- "some
+// progress bar". A panel shows the tiles fetched and the seconds running, then "composing",
+// and goes when the page is saved.
+test('a progress panel counts the tiles and the seconds, and goes when the page is saved', async ({ page }) => {
+  await page.route(u => u.hostname === 'navaid-tiles.supino.org', async (r) => {
+    await new Promise(x => setTimeout(x, 40));
+    await r.fulfill({ status: 404, body: '' });
+  });
+  const seen = await page.evaluate(async () => {
+    window.refuse = () => {};
+    setPage('A4');
+    await new Promise(r => setTimeout(r, 200));
+    const samples = [];
+    const iv = setInterval(() => {
+      const el = document.getElementById('export-progress');
+      if (el) samples.push({ text: el.textContent, value: el.querySelector('progress').value, max: el.querySelector('progress').max });
+    }, 100);
+    await new Promise((resolve) => { window.saveFile = (b, _name) => resolve(b); exportPNG('save'); });
+    clearInterval(iv);
+    return { samples, after: !!document.getElementById('export-progress') };
+  });
+  expect(seen.samples.length).toBeGreaterThan(2);
+  expect(seen.samples.some(s => /Fetching the map: \d+ \/ \d+ tiles · \d+ s/.test(s.text) && s.value > 0)).toBe(true);
+  expect(seen.after).toBe(false);
+});

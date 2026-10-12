@@ -937,7 +937,10 @@ window.S = {
   deckSheetGrip: 'גררו לשינוי גובה, הקישו למעבר בין גבהים',
   deckHereTitle: 'מה יש כאן',
   exportBw: 'מותאם למדפסת שחור-לבן',
-  exportResolution: 'רזולוציה',
+  exportResolution: 'איכות תמונה',
+  // "X מתוך Y" rather than "X / Y": two numbers around a slash in a Hebrew line read in either order.
+  exportProgressTiles: function (done, total, secs) { return 'טוען את המפה: ' + done + ' מתוך ' + total + ' אריחים · ' + secs + ' שניות'; },
+  exportProgressCompose: function (secs) { return 'מרכיב את הדף… ' + secs + ' שניות'; },
   exportResLow: 'נמוכה',
   exportResMedium: 'בינונית',
   exportResHigh: 'גבוהה',

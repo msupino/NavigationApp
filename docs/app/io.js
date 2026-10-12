@@ -6172,6 +6172,42 @@ function printBwChart(ctx, img, w, h) {
     ctx.putImageData(d, 0, 0);
   } catch (e) { /* a tile the canvas may not read: printed as it is */ }
 }
+// Something to watch while a page is made ("show a timer running for export, let the user know
+// something is happening" -- "some progress bar"): a sharp A3 is a thousand tiles and half a
+// minute. A small panel at the foot of the screen with a bar for the tiles fetched, the count,
+// and the seconds running; then a "composing" step while the image is put together and saved.
+function exportProgress(total) {
+  const el = document.createElement('div');
+  el.id = 'export-progress';
+  el.setAttribute('role', 'status');
+  el.setAttribute('aria-live', 'polite');
+  const label = document.createElement('div');
+  label.className = 'export-progress-label';
+  const bar = document.createElement('progress');
+  bar.max = Math.max(1, total);
+  bar.value = 0;
+  el.append(label, bar);
+  document.body.appendChild(el);
+  const t0 = Date.now();
+  let done = 0, stage = 'tiles';
+  const secs = () => Math.floor((Date.now() - t0) / 1000);
+  const paint = () => {
+    label.textContent = stage === 'tiles'
+      ? (typeof S.exportProgressTiles === 'function' ? S.exportProgressTiles(done, total, secs())
+        : 'Fetching the map: ' + done + ' / ' + total + ' tiles · ' + secs() + ' s')
+      : (typeof S.exportProgressCompose === 'function' ? S.exportProgressCompose(secs())
+        : 'Composing the page… ' + secs() + ' s');
+    if (stage === 'tiles') bar.value = done; else bar.removeAttribute('value');   // indeterminate
+  };
+  paint();
+  const timer = setInterval(paint, 250);
+  return {
+    tile() { done++; },
+    compose() { stage = 'compose'; paint(); },
+    close() { clearInterval(timer); el.remove(); },
+  };
+}
+
 function exportPNG(mode) {
   // Export matches the screen view exactly, including map bearing.
   // Tiles are fetched north-up (axis-aligned) for a bounding box that covers
@@ -6244,7 +6280,10 @@ function exportPNG(mode) {
   const mapZoom = map.getZoom();
   const ua = (typeof navigator !== 'undefined' && navigator.userAgent) || '';
   const safari = /AppleWebKit/.test(ua) && !/Chrome|Chromium|Android/.test(ua);
-  const MAX_AREA = safari ? 16000000 : 48000000;   // pixels per canvas
+  const android = /Android/.test(ua);
+  // Pixels per canvas: Safari's own ceiling; a phone's memory in the APK / Android (two canvases
+  // of 32 M is ~250 MB); more on a computer.
+  const MAX_AREA = safari ? 16000000 : android ? 32000000 : 48000000;
   const MAX_SIDE = 16384;
   const MAX_TILES = 1200;
   // Output pixels per screen pixel, and the tile zoom they are drawn from.
@@ -6355,6 +6394,8 @@ function exportPNG(mode) {
       jobs.push(job);
     }
   }
+  const progress = exportProgress(jobs.length);
+  for (const j of jobs) { const run = j.run; j.run = () => run().then(() => progress.tile()); }
   const POOL = 16;
   let nextJob = 0;
   const worker = () => (nextJob < jobs.length ? jobs[nextJob++].run().then(worker) : Promise.resolve());
@@ -6362,6 +6403,7 @@ function exportPNG(mode) {
   for (const j of jobs) j.done = pool;
 
   Promise.all(jobs.map(j => j.done)).then(() => {
+    progress.compose();
     let failed = 0;
     for (const j of jobs) {
       if (j.bmp) {
@@ -6445,6 +6487,7 @@ function exportPNG(mode) {
       // NavAid.exporting stays true until both tile downloads have fired,
       // so a second export can't start mid-tiling.
       exportA4x2Tiles(out, W, H, () => {
+        progress.close();
         btn.textContent = btnLabel;
         btn.disabled = false;
         unlockMap();
@@ -6456,6 +6499,7 @@ function exportPNG(mode) {
     }
 
     out.toBlob(b => {
+      progress.close();
       btn.textContent = btnLabel;
       btn.disabled = false;
       unlockMap();
@@ -6498,6 +6542,7 @@ function exportPNG(mode) {
     // bitmap) would otherwise leave the button disabled forever. Restore
     // the UI so the user can retry, and surface the failure.
     console.warn('PNG export pipeline failed:', err);
+    progress.close();
     btn.textContent = btnLabel;
     btn.disabled = false;
     unlockMap();
