@@ -1100,6 +1100,7 @@ window.S = {
   layerLabels: { 'CVFR': 'CVFR', 'Navigation': 'ניווט', 'Low Alt': 'גובה נמוך',
                  'Helicopters': 'מסוקים', 'Satellite': 'לוויין', 'OpenStreetMap': 'OpenStreetMap',
                  'OpenFlightMaps': 'OpenFlightMaps', 'World': 'עולם (לא מקוון)', 'ATS': 'נתיבי ATS' },
+  layerNoDataHere: function (layer) { return 'ל-' + layer + ' אין נתונים כאן: הוא מכסה כעשרים אזורים, רובם באירופה.'; },
   layerNoDataOverIsrael: 'אין נתונים מעל ישראל: OpenFlightMaps מכסה כעשרים אזורים, רובם באירופה. הזיזו את המפה לשם כדי להשתמש בה.',
   tbHandleTitle: 'גרור להזזה',
   tbBrandTag: '— מתכנן טיסות CVFR לישראל',

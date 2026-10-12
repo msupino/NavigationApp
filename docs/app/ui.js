@@ -658,12 +658,6 @@ function rebuildLayerPicker() {
     opt.value = name;
     opt.textContent = (S.layerLabels && S.layerLabels[name]) || name;
     if (map.hasLayer(layers[name])) opt.selected = true;
-    // Dimmed, never removed, where it has nothing to draw -- and never while it is the one
-    // showing, or the picker could not say what is on the map.
-    if (!opt.selected && typeof layerHasNoDataHere === 'function' && layerHasNoDataHere(name, map.getCenter())) {
-      opt.disabled = true;
-      opt.title = S.layerNoDataOverIsrael || '';
-    }
     layerSelect.appendChild(opt);
   }
   const active = (typeof currentLayerName === 'function') ? currentLayerName() : current;
@@ -674,16 +668,49 @@ function rebuildLayerPicker() {
   }
 }
 rebuildLayerPicker();
-// Over Israel or away from it decides whether open flightmaps has anything to draw, so the
-// picker follows the map. Only on a change of that answer: a rebuild per pan is a rebuild per
-// GPS fix in the air.
-let _layerNoDataKey = '';
-map.on('moveend', () => {
-  const key = Object.keys(layers).filter(n => layerHasNoDataHere(n, map.getCenter())).join(',');
-  if (key === _layerNoDataKey) return;
-  _layerNoDataKey = key;
-  rebuildLayerPicker();
-});
+// open flightmaps covers about twenty regions, mostly European; elsewhere (Israel, Spain, the
+// UK...) its server answers every tile with the same fully transparent PNG, so the layer
+// draws nothing at all. It used to be dimmed in the picker over Israel, which only puzzled
+// ("un-dim it, it's stupid" -- "not only over Israel"): it is always offered, and the map
+// says so instead, wherever the tiles in view come back empty. Read from the tiles, not from
+// a list of regions: no list to keep, and right wherever the coverage changes.
+const LAYERS_BLANK_WITHOUT_DATA = ['OpenFlightMaps'];
+// true: every tile in view loaded and is fully transparent. false: something is drawn.
+// null: cannot tell (nothing loaded yet, or a tile the canvas may not read).
+function layerViewIsBlank(name) {
+  const layer = layers[name];
+  if (!layer || !map.hasLayer(layer)) return null;
+  const tiles = Object.values(layer._tiles || {}).filter(t => t && t.current && t.el
+    && t.el.complete && t.el.naturalWidth > 0);
+  if (!tiles.length) return null;
+  try {
+    const c = document.createElement('canvas');
+    c.width = c.height = 128;
+    const g = c.getContext('2d', { willReadFrequently: true });
+    for (const t of tiles) {
+      g.clearRect(0, 0, 128, 128);
+      g.drawImage(t.el, 0, 0, 128, 128);
+      const px = g.getImageData(0, 0, 128, 128).data;
+      for (let i = 3; i < px.length; i += 4) if (px[i]) return false;
+    }
+    return true;
+  } catch (e) { return null; }          // a tile the canvas may not read: say nothing
+}
+let _layerBlankTold = false;
+function noteLayerBlankHere() {
+  const name = typeof currentLayerName === 'function' ? currentLayerName() : '';
+  if (LAYERS_BLANK_WITHOUT_DATA.indexOf(name) === -1) { _layerBlankTold = false; return; }
+  const blank = layerViewIsBlank(name);
+  if (blank === null) return;
+  // Once per arrival in an empty area, not once per pan: a pan is a GPS fix in the air.
+  if (blank && !_layerBlankTold && typeof showToast === 'function') {
+    const label = (S.layerLabels && S.layerLabels[name]) || name;
+    showToast(typeof S.layerNoDataHere === 'function' ? S.layerNoDataHere(label)
+      : label + ' has no data here.');
+  }
+  _layerBlankTold = blank;
+}
+for (const name of LAYERS_BLANK_WITHOUT_DATA) if (layers[name]) layers[name].on('load', noteLayerBlankHere);
 // The three charts a route can be planned ON. Each carries its own route graph, its own
 // waypoints and its own reporting points, so a route drawn on one is a set of names the
 // other two do not have -- carrying it across silently leaves the pilot reading a plan
@@ -731,6 +758,7 @@ layerSelect.onchange = () => {
   draw();                                // keep the route overlay on top
   try { localStorage.setItem(LAYER_KEY, layerSelect.value); }
   catch (e) { /* storage unavailable */ }
+  _layerBlankTold = false;                // a new choice is told afresh, once its tiles are in
 };
 
 // The active base layer decides which data files feed the overlays. On a layer

@@ -1,13 +1,19 @@
 // @ts-check
-// open flightmaps: an aeronautical chart for about twenty regions, mostly European, with no
-// data over Israel. It is offered in the chart picker everywhere, and dimmed -- with the
-// reason -- while the map is over Israel, where its tiles are empty.
+// open flightmaps: an aeronautical chart for about twenty regions, mostly European. Elsewhere
+// (Israel, Spain, the UK...) its server answers every tile with the same fully transparent
+// PNG. It is offered in the chart picker everywhere -- the dimming over Israel was dropped
+// ("un-dim it, it's stupid") -- and the map says when the view is empty instead.
 const { test, expect } = require('./_setup');
 
-async function boot(page, lang = 'en') {
+// What the server sends where it has no data (transparent), and where it has (a drawn pixel).
+const BLANK = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR4nGNgYGBgAAAABQABpfZFQAAAAABJRU5ErkJggg==', 'base64');
+const DRAWN = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR4nGM4wcDwHwAEJAHIBqHEeAAAAABJRU5ErkJggg==', 'base64');
+
+async function boot(page, lang = 'en', tiles = null) {
   // No tile traffic to the real service from the suite.
   await page.route(url => url.hostname === 'nwy-tiles-api.prod.newaydata.com',
-    r => r.fulfill({ status: 204, body: '' }));
+    r => tiles ? r.fulfill({ status: 200, contentType: 'image/png', body: tiles(r.request().url()),
+      headers: { 'access-control-allow-origin': '*' } }) : r.fulfill({ status: 204, body: '' }));
   await page.goto('?lang=' + lang + '&nogist');
   await page.waitForFunction(() => typeof layers !== 'undefined' && typeof rebuildLayerPicker === 'function');
 }
@@ -24,15 +30,40 @@ const panTo = (page, lat, lng) => page.evaluate(([a, b]) => new Promise(done => 
   map.setView([a, b], 9, { animate: false });
 }), [lat, lng]);
 
-test('over Israel it is dimmed with the reason; over Europe it is offered', async ({ page }) => {
+test('it is offered everywhere, over Israel too', async ({ page }) => {
   await boot(page);
   await panTo(page, 32.1, 34.9);
-  expect(await option(page)).toEqual({ disabled: true, label: 'OpenFlightMaps',
-    title: expect.stringContaining('No data over Israel') });
+  expect(await option(page)).toMatchObject({ disabled: false, label: 'OpenFlightMaps' });
   await panTo(page, 47.3, 11.4);                      // Innsbruck
   expect(await option(page)).toMatchObject({ disabled: false });
-  await panTo(page, 32.1, 34.9);
-  expect(await option(page)).toMatchObject({ disabled: true });
+});
+
+const toasts = (page) => page.evaluate(() => [...document.querySelectorAll('.toast')].map(t => t.textContent));
+const loaded = (page) => page.waitForFunction(() => {
+  const t = Object.values(layers.OpenFlightMaps._tiles || {});
+  return t.length && t.every(x => !x.current || (x.el.complete && x.el.naturalWidth));
+});
+
+test('chosen where its tiles are empty, the map says it has no data here -- once', async ({ page }) => {
+  await boot(page, 'en', () => BLANK);
+  await panTo(page, 40.4, -3.7);                      // Madrid: not covered, not Israel either
+  await choose(page, 'OpenFlightMaps');
+  await loaded(page);
+  await expect.poll(() => toasts(page)).toContainEqual(expect.stringContaining('OpenFlightMaps has no data here'));
+  const n = (await toasts(page)).length;
+  await panTo(page, 40.6, -3.5);                      // still nothing here: not told again
+  await loaded(page);
+  await page.waitForTimeout(300);
+  expect((await toasts(page)).filter(t => t.includes('no data here')).length).toBeLessThanOrEqual(n);
+});
+
+test('where its tiles draw something, nothing is said', async ({ page }) => {
+  await boot(page, 'en', () => DRAWN);
+  await panTo(page, 47.3, 11.4);
+  await choose(page, 'OpenFlightMaps');
+  await loaded(page);
+  await page.waitForTimeout(300);
+  expect((await toasts(page)).some(t => t.includes('no data here'))).toBe(false);
 });
 
 test('choosing it draws the open flightmaps aero tiles, credited', async ({ page }) => {
@@ -72,8 +103,10 @@ test('the gist can pull it', async ({ page }) => {
   expect(has).toBe(false);
 });
 
-test('Hebrew explains the dimming in Hebrew', async ({ page }) => {
-  await boot(page, 'he');
+test('Hebrew says it in Hebrew', async ({ page }) => {
+  await boot(page, 'he', () => BLANK);
   await panTo(page, 32.1, 34.9);
-  expect((await option(page)).title).toContain('אין נתונים מעל ישראל');
+  await choose(page, 'OpenFlightMaps');
+  await loaded(page);
+  await expect.poll(() => toasts(page)).toContainEqual(expect.stringContaining('אין נתונים כאן'));
 });
