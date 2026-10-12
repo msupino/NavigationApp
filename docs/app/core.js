@@ -127,7 +127,7 @@ NavAid.tuningDefaults = {
   qnhMaxAgeMin: { value: 15, min: 1, max: 180, step: 1, label: 'QNH refetch after (min)' },
   qnhMoveNm: { value: 5, min: 1, max: 200, step: 1, label: 'QNH refetch after moving (NM)' },
   compassMaxKt: { value: 3, min: 0, max: 40, step: 1, label: 'Compass stands in below (kt)' },
-  alertNotifyTtlSec: { value: 15, min: 0, max: 3600, step: 5, label: 'Alert notification life (s)' },
+  alertNotifyTtlSec: { value: 60, min: 0, max: 3600, step: 5, label: 'Alert notification life (s)' },
   compassFallback: { value: true, type: 'bool', label: 'Compass heading when stopped' },
   // How far the heading must move before a heading-up map is rotated. Every rotation
   // redraws the whole chart, and a degree of GPS scatter is not worth that -- nor the
@@ -3060,6 +3060,8 @@ window.S = Object.assign({
   // channel SMS/WhatsApp use. Not shown in-app; only ever read from a notification tray.
   // Bare "next leg" -- no "NavAid —" prefix -- watch notification tiles already show the
   // sending app's icon/name, so the prefix only ate characters off a tiny watch screen.
+  alertChannelName: 'Flight alerts',
+  alertChannelDescription: 'In-flight alerts: next leg, altitude, TOP, off route',
   watchAlertLegTitle: 'Next leg',
   // alt/hdg/time describe the NEXT leg -- the one starting at `wp`, not the one ending
   // there -- so the alert doubles as prep for the turn, explicitly labelled as such (not
