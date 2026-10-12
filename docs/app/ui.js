@@ -721,6 +721,9 @@ async function layerViewIsBlank(name) {
   for (const t of tiles) {
     // A failed tile shows the layer's errorTileUrl (a transparent PNG): failed, not blank.
     if (!(t.el.naturalWidth > 0) || (errorSrc && t.el.src === errorSrc)) { failed.push(t); continue; }
+    // Only a layer that loads its tiles crossOrigin (open flightmaps) can be read; any other
+    // loaded tile is a drawn chart tile. Reading one would throw -- on every move, in the air.
+    if (!layer.options.crossOrigin) return false;
     try { if (!tileIsBlank(t.el)) return false; }
     catch (e) { return false; }      // drawn, but not readable here: it is a chart tile
   }
@@ -12147,7 +12150,12 @@ armAndroidBackButton();
 // An inspector already open when it arrives -- restored after a reload, as a language switch
 // is -- is drawn again, or its Highest terrain / MSA rows stay missing until it is reopened.
 if (typeof loadTerrain === "function") {
-  loadTerrain().then(() => { if (typeof refreshInspectorIfVisible === 'function') refreshInspectorIfVisible(); });
+  loadTerrain().then(() => {
+    // Not under a pilot typing in it (a waypoint name): a rebuild would take the caret away.
+    const a = document.activeElement;
+    if (a && a.closest && a.closest('#inspector') && /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName)) return;
+    if (typeof refreshInspectorIfVisible === 'function') refreshInspectorIfVisible();
+  });
 }
 // CTR boundary points: the route clock starts there, not at the field.
 if (typeof loadCtrBoundaries === "function") loadCtrBoundaries();
