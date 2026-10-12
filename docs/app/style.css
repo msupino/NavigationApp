@@ -9514,4 +9514,9 @@ body.theme-light #export-progress { background: #fafcff; color: #1d2430; border-
   gap: 3px;
 }
 .route-template-pair .route-template-row > span { font-size: 12px; }
-.route-template-row select:disabled { opacity: 1; cursor: default; }   /* one route: read, not dimmed */
+.route-template-row select:disabled { opacity: 0.5; cursor: not-allowed; }   /* one route: nothing to choose */
+/* A phone: fields a finger can hit (44 px, the touch-target minimum). */
+@media (max-width: 680px) {
+  .route-template-row select,
+  .route-template-row input { min-height: 44px; font-size: 15px; }
+}

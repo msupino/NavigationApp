@@ -7,8 +7,6 @@
       "he": "הרצליה לחיפה",
       "description": "Coastal CVFR route from Herzliya to Haifa.",
       "heDescription": "מסלול CVFR חופי מהרצליה לחיפה.",
-      "via": "along the coast",
-      "heVia": "לאורך החוף",
       "defaultSpeed": 90,
       "waypoints": [
         "LLHZ",
@@ -31,8 +29,6 @@
       "he": "חיפה להרצליה",
       "description": "Coastal CVFR route from Haifa to Herzliya.",
       "heDescription": "מסלול CVFR חופי מחיפה להרצליה.",
-      "via": "along the coast",
-      "heVia": "לאורך החוף",
       "defaultSpeed": 90,
       "waypoints": [
         "LLHA",
@@ -55,8 +51,6 @@
       "he": "הרצליה לראש פינה",
       "description": "CVFR route from Herzliya to Rosh Pina via Megiddo and Tavor.",
       "heDescription": "מסלול CVFR מהרצליה לראש פינה דרך מגידו ותבור.",
-      "via": "via Megiddo and Tavor",
-      "heVia": "דרך מגידו ותבור",
       "defaultSpeed": 90,
       "waypoints": [
         "LLHZ",
@@ -80,8 +74,6 @@
       "he": "ראש פינה להרצליה",
       "description": "CVFR route from Rosh Pina to Herzliya via Tavor and Megiddo.",
       "heDescription": "מסלול CVFR מראש פינה להרצליה דרך תבור ומגידו.",
-      "via": "via Tavor and Megiddo",
-      "heVia": "דרך תבור ומגידו",
       "defaultSpeed": 90,
       "waypoints": [
         "LLIB",
@@ -105,8 +97,6 @@
       "he": "הרצליה למצדה",
       "description": "CVFR route from Herzliya to Masada via Jerusalem and the Dead Sea.",
       "heDescription": "מסלול CVFR מהרצליה למצדה דרך ירושלים וים המלח.",
-      "via": "via Jerusalem and the Dead Sea",
-      "heVia": "דרך ירושלים וים המלח",
       "defaultSpeed": 90,
       "waypoints": [
         "LLHZ",
@@ -144,8 +134,6 @@
       "he": "הרצליה לבאר שבע",
       "description": "CVFR route from Herzliya to Beer Sheva.",
       "heDescription": "מסלול CVFR מהרצליה לבאר שבע.",
-      "via": "via Yavne and Beit Kama",
-      "heVia": "דרך יבנה ובית קמה",
       "defaultSpeed": 90,
       "waypoints": [
         "LLHZ",
@@ -184,8 +172,6 @@
       "he": "באר שבע להרצליה",
       "description": "CVFR route from Beer Sheva to Herzliya.",
       "heDescription": "מסלול CVFR מבאר שבע להרצליה.",
-      "via": "via Beit Kama and Yavne",
-      "heVia": "דרך בית קמה ויבנה",
       "defaultSpeed": 90,
       "waypoints": [
         "LLBS",
@@ -224,8 +210,6 @@
       "he": "מצדה להרצליה",
       "description": "CVFR return route from Masada to Herzliya via the Dead Sea and coastline.",
       "heDescription": "מסלול CVFR ממצדה להרצליה דרך ים המלח והחוף.",
-      "via": "via the Dead Sea and Jerusalem",
-      "heVia": "דרך ים המלח וירושלים",
       "defaultSpeed": 90,
       "waypoints": [
         "LLMZ",
@@ -260,8 +244,8 @@
       "he": "חיפה לראש פינה",
       "description": "Northern CVFR route from Haifa to Rosh Pina via the Galilee.",
       "heDescription": "מסלול CVFR צפוני מחיפה לראש פינה דרך הגליל.",
-      "via": "via the Galilee",
-      "heVia": "דרך הגליל",
+      "via": "the Galilee",
+      "heVia": "הגליל",
       "defaultSpeed": 90,
       "waypoints": [
         "LLHA",
@@ -281,8 +265,8 @@
       "he": "ראש פינה לחיפה",
       "description": "Northern CVFR route from Rosh Pina to Haifa via the Galilee.",
       "heDescription": "מסלול CVFR צפוני מראש פינה לחיפה דרך הגליל.",
-      "via": "via the Galilee",
-      "heVia": "דרך הגליל",
+      "via": "the Galilee",
+      "heVia": "הגליל",
       "defaultSpeed": 90,
       "waypoints": [
         "LLIB",
@@ -302,8 +286,6 @@
       "he": "חיפה למגידו",
       "description": "CVFR route from Haifa down the coast and through Eiron to Megiddo.",
       "heDescription": "מסלול CVFR מחיפה לאורך החוף ודרך עירון למגידו.",
-      "via": "along the coast and Eiron",
-      "heVia": "לאורך החוף ודרך עירון",
       "defaultSpeed": 90,
       "waypoints": [
         "LLHA",
@@ -325,8 +307,6 @@
       "he": "מגידו לראש פינה",
       "description": "CVFR route from Megiddo to Rosh Pina via Tavor and the Kinneret.",
       "heDescription": "מסלול CVFR ממגידו לראש פינה דרך תבור והכנרת.",
-      "via": "via Tavor and the Kinneret",
-      "heVia": "דרך תבור והכנרת",
       "defaultSpeed": 90,
       "waypoints": [
         "LLMG",
@@ -344,8 +324,6 @@
       "he": "ראש פינה למגידו",
       "description": "CVFR route from Rosh Pina to Megiddo via the Kinneret and Tavor.",
       "heDescription": "מסלול CVFR מראש פינה למגידו דרך הכנרת ותבור.",
-      "via": "via the Kinneret and Tavor",
-      "heVia": "דרך הכנרת ותבור",
       "defaultSpeed": 90,
       "waypoints": [
         "LLIB",
@@ -363,8 +341,6 @@
       "he": "מגידו לחיפה",
       "description": "CVFR route from Megiddo through Eiron and up the coast to Haifa.",
       "heDescription": "מסלול CVFR ממגידו דרך עירון ולאורך החוף לחיפה.",
-      "via": "via Eiron and the coast",
-      "heVia": "דרך עירון והחוף",
       "defaultSpeed": 90,
       "waypoints": [
         "LLMG",
@@ -386,8 +362,8 @@
       "he": "ראש פינה לחיפה (דרך העמקים)",
       "description": "Long CVFR route from Rosh Pina to Haifa via Tavor, Afula, Eiron and the coast.",
       "heDescription": "מסלול CVFR ארוך מראש פינה לחיפה דרך תבור, עפולה, עירון והחוף.",
-      "via": "via the valleys",
-      "heVia": "דרך העמקים",
+      "via": "the valleys",
+      "heVia": "העמקים",
       "defaultSpeed": 90,
       "waypoints": [
         "LLIB",
@@ -416,8 +392,8 @@
       "he": "חיפה לראש פינה (דרך העמקים)",
       "description": "Long CVFR route from Haifa via the coast, Eiron, Afula and Tavor to Rosh Pina.",
       "heDescription": "מסלול CVFR ארוך מחיפה דרך החוף, עירון, עפולה ותבור לראש פינה.",
-      "via": "via the valleys",
-      "heVia": "דרך העמקים",
+      "via": "the valleys",
+      "heVia": "העמקים",
       "defaultSpeed": 90,
       "waypoints": [
         "LLHA",
@@ -443,8 +419,6 @@
       "he": "הרצליה למגידו",
       "description": "CVFR route from Herzliya up the coast and through Eiron to Megiddo.",
       "heDescription": "מסלול CVFR מהרצליה לאורך החוף ודרך עירון למגידו.",
-      "via": "along the coast and Eiron",
-      "heVia": "לאורך החוף ודרך עירון",
       "defaultSpeed": 90,
       "waypoints": [
         "LLHZ",
@@ -464,8 +438,6 @@
       "he": "מגידו להרצליה",
       "description": "CVFR route from Megiddo through Eiron and down the coast to Herzliya.",
       "heDescription": "מסלול CVFR ממגידו דרך עירון ולאורך החוף להרצליה.",
-      "via": "via Eiron and the coast",
-      "heVia": "דרך עירון והחוף",
       "defaultSpeed": 90,
       "waypoints": [
         "LLMG",

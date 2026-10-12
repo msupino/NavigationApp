@@ -3105,8 +3105,10 @@ function showRouteTemplatesModal() {
     };
     const refreshVia = () => {
       const pair = pairTemplates().map(t => ({ value: t.id, label: viaName(t) })).sort(byName);
+      // Always there, dimmed where the pair has one route: then there is nothing to choose, and
+      // no name to give it -- "along the coast" for the only route was a judgement, not a fact.
+      if (pair.length < 2) pair.forEach(p => { p.label = '—'; });
       fill(via.sel, pair, via.sel.value);
-      // Always shown, so a pilot reads which way the route goes, even where there is one.
       via.sel.disabled = pair.length < 2;
     };
     fill(from.sel, origins);

@@ -86,17 +86,17 @@ test.describe('route templates', () => {
     const to = await page.locator('.route-template-to option').allTextContents();
     expect(to).toEqual([...to].sort((a, b) => a.localeCompare(b)));
     expect(to).toEqual(['Beer Sheva', 'Haifa', 'Masada', 'Megiddo', 'Rosh Pina']);
-    // Via always shows which way the route goes; with one route it is that one, not a choice.
+    // Via is always there, dimmed where a pair has one route: nothing to choose, no name for it.
     await page.locator('.route-template-to').selectOption('LLHA');
     await expect(page.locator('.route-template-via')).toBeVisible();
     await expect(page.locator('.route-template-via')).toBeDisabled();
-    expect(await page.locator('.route-template-via option').allTextContents()).toEqual(['along the coast']);
+    expect(await page.locator('.route-template-via option').allTextContents()).toEqual(['—']);
     // Rosh Pina to Haifa has two: Via appears, with both.
     await page.locator('.route-template-from').selectOption('LLIB');
     await page.locator('.route-template-to').selectOption('LLHA');
     await expect(page.locator('.route-template-via')).toBeEnabled();
     expect(await page.locator('.route-template-via option').allTextContents())
-      .toEqual(['via the Galilee', 'via the valleys']);
+      .toEqual(['the Galilee', 'the valleys']);   // under the label "Via": the place alone
     // Every template is reachable through From / To / Via.
     const all = await page.evaluate(async () => (await (await fetch(S.routeTemplatesUrl)).json()).templates.length);
     let reachable = 0;
