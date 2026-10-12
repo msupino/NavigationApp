@@ -1104,7 +1104,8 @@ window.S = {
     // "לניווט", but "ל-CVFR": a Latin name takes the prefix with a hyphen.
     return (/^[\u0590-\u05FF]/.test(layer) ? 'ל' : 'ל-') + layer + ' אין נתונים כאן' + (where ? ': ' + where : '') + '.';
   },
-  layerCoverage: { OpenFlightMaps: 'היא מכסה כעשרים אזורים, רובם באירופה', israel: 'היא מכסה את ישראל' },
+  // "המפה" rather than "היא": the chart names differ in gender and number (נתיבי ATS).
+  layerCoverage: { OpenFlightMaps: 'המפה מכסה כעשרים אזורים, רובם באירופה', israel: 'המפה מכסה את ישראל' },
   layerNoDataOverIsrael: 'אין נתונים מעל ישראל: OpenFlightMaps מכסה כעשרים אזורים, רובם באירופה. הזיזו את המפה לשם כדי להשתמש בה.',
   tbHandleTitle: 'גרור להזזה',
   tbBrandTag: '— מתכנן טיסות CVFR לישראל',

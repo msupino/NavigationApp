@@ -85,3 +85,28 @@ test('every kind of point reads its place alike, under Position', async ({ page 
   });
   expect(gap).toBeGreaterThan(8);
 });
+
+// Review: a spot held ON a field lost its nearest-field row to a half-mile cutoff meant for
+// route waypoints -- which show the airfield panel anyway. Held on Herzliya, it names it.
+test('a spot held on a field still names it', async ({ page }) => {
+  const got = await page.evaluate(() => {
+    const hz = airfields.find(a => a.name === 'LLHZ');
+    state.selected = { type: 'coord', lat: hz.lat + 0.001, lng: hz.lng, held: true }; showInspector();
+    const row = [...document.querySelectorAll('#insp-body .row')].find(r => r.querySelector('label').textContent === 'Nearest field');
+    return row ? row.querySelector('.val').textContent : null;
+  });
+  expect(got).toMatch(/Herzliya\s+⁦?0\.\d NM/);
+});
+
+// Review: Direct to a named route waypoint dropped the name (it snapped with an empty one).
+test('Direct to a named route waypoint keeps its name', async ({ page }) => {
+  const names = await page.evaluate(async () => {
+    window.gpsOwn = { lat: 32.30, lng: 34.90 };
+    window.askYesNo = async () => true;
+    state.waypoints = [{ lat: 32.40, lng: 34.95, name: 'A' }, { lat: 32.62, lng: 35.31, name: 'Bravo' }];
+    state.legs = []; syncLegs(); draw();
+    await NavAid.deckDirectTo(state.waypoints[1]);
+    return state.waypoints.map(w => w.name);
+  });
+  expect(names[1]).toBe('Bravo');
+});
