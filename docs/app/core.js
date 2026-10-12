@@ -127,7 +127,8 @@ NavAid.tuningDefaults = {
   qnhMaxAgeMin: { value: 15, min: 1, max: 180, step: 1, label: 'QNH refetch after (min)' },
   qnhMoveNm: { value: 5, min: 1, max: 200, step: 1, label: 'QNH refetch after moving (NM)' },
   compassMaxKt: { value: 3, min: 0, max: 40, step: 1, label: 'Compass stands in below (kt)' },
-  alertNotifyTtlSec: { value: 15, min: 0, max: 3600, step: 5, label: 'Alert notification life (s)' },
+  alertNotifyTtlSec: { value: 60, min: 0, max: 3600, step: 5, label: 'Alert notification life (s)' },
+  alertIconColor: { value: '#4A90D9', type: 'color', label: 'Alert notification icon colour (phone / watch)' },
   compassFallback: { value: true, type: 'bool', label: 'Compass heading when stopped' },
   // How far the heading must move before a heading-up map is rotated. Every rotation
   // redraws the whole chart, and a degree of GPS scatter is not worth that -- nor the
@@ -1074,7 +1075,7 @@ NavAid.tuningDefaults = {
 // interaction (hit testing), tools (alt pairs, export), and finally the
 // global colour palette.
 NavAid.tuningGroups = [
-  { name: 'Navigation', keys: ['magVarAuto', 'magneticVariationDeg', 'msaBufferFt', 'altimetryCorrection', 'geoidUndulationFt', 'followResumeMs', 'followZoomFloor', 'followZoomCeiling', 'followZoomCtrFloor', 'followZoomCtrCeiling', 'gpsReadoutFontPx', 'gpsReadoutRefitPx', 'alertNotifyTtlSec', 'altToleranceFt', 'altMaxAlertsPerLeg', 'legEtaLeadSec', 'atisLeadSec', 'atisMarkerColor', 'atisMarkerRadiusPx', 'atisMarkerFontPx', 'liveHeadingEndLabel', 'legCaptureNm', 'driftTrackErrorDeg', 'driftCheckSec', 'coneUnknownSec', 'gpsMaxAccuracyM', 'gpsMinMoveM', 'gpsGlide', 'gpsGlideMinKt', 'gpsGlideMaxHz', 'vorReadoutMaxNm', 'measureLineColor', 'measureDotFill', 'measureLabelBg', 'measureLabelText', 'gpsStaleSec', 'qnhMaxAgeMin', 'qnhMoveNm', 'compassMaxKt', 'compassFallback', 'headingUpMinDeltaDeg', 'crosshairSizePx', 'crosshairWidthPx', 'crosshairColor', 'crosshairHaloColor', 'crosshairAlpha'] },
+  { name: 'Navigation', keys: ['magVarAuto', 'magneticVariationDeg', 'msaBufferFt', 'altimetryCorrection', 'geoidUndulationFt', 'followResumeMs', 'followZoomFloor', 'followZoomCeiling', 'followZoomCtrFloor', 'followZoomCtrCeiling', 'gpsReadoutFontPx', 'gpsReadoutRefitPx', 'alertNotifyTtlSec', 'alertIconColor', 'altToleranceFt', 'altMaxAlertsPerLeg', 'legEtaLeadSec', 'atisLeadSec', 'atisMarkerColor', 'atisMarkerRadiusPx', 'atisMarkerFontPx', 'liveHeadingEndLabel', 'legCaptureNm', 'driftTrackErrorDeg', 'driftCheckSec', 'coneUnknownSec', 'gpsMaxAccuracyM', 'gpsMinMoveM', 'gpsGlide', 'gpsGlideMinKt', 'gpsGlideMaxHz', 'vorReadoutMaxNm', 'measureLineColor', 'measureDotFill', 'measureLabelBg', 'measureLabelText', 'gpsStaleSec', 'qnhMaxAgeMin', 'qnhMoveNm', 'compassMaxKt', 'compassFallback', 'headingUpMinDeltaDeg', 'crosshairSizePx', 'crosshairWidthPx', 'crosshairColor', 'crosshairHaloColor', 'crosshairAlpha'] },
   { name: 'Performance defaults', keys: ['profileClimbFpm', 'profileClimbKt', 'defaultGph', 'defaultTaxiGal'] },
   { name: 'Altitude inference', keys: ['legAltInferMaxHops', 'legAltInferMaxDistRatio', 'legAltInferMaxExtraNm'] },
   { name: 'Plan card', keys: ['planCardBaseRowPx', 'planCardGripPx', 'planCardBgColor', 'planCardHeaderBgColor', 'planCardTotalBgColor', 'planCardStripeBgColor', 'planCardGridColor', 'planCardTextColor', 'planCardGripColor', 'planCardGripLineColor'] },
@@ -2394,7 +2395,16 @@ window.S = Object.assign({
   deckLabel: 'Primary',
   deckNoRoute: 'No route',
   deckSheetGrip: 'Drag to resize, tap to change height',
-  deckHereTitle: 'What is here',
+  deckHereTitle: 'Point details',
+  ctxMenuLabel: 'Quick actions',
+  ctxAddNoteHere: 'Add note here',
+  ctxDistanceHere: 'Distance from the aircraft',
+  ctxInsertAfter: 'Insert waypoint after',
+  ctxInsertHere: 'Insert waypoint here',
+  ctxRename: 'Rename',
+  ctxEditNote: 'Edit text',
+  ctxLastPoint: 'The last point has no leg after it',
+  ctxUnavailable: 'Not available here',
   deckHereCoords: 'Position',
   deckHereNearest: 'Nearest field',
   deckHereTerrain: 'Highest terrain',
@@ -2558,6 +2568,8 @@ window.S = Object.assign({
   kmlDocName: 'NavAid flythrough',
   kmlRouteName: 'Route',
   kmlTourName: 'Fly the route',
+  layerNoDataHere: function (layer, where) { return layer + ' has no data here' + (where ? ': ' + where : '') + '.'; },
+  layerCoverage: { OpenFlightMaps: 'it covers about twenty regions, mostly in Europe', israel: 'it covers Israel' },
   layerNoDataOverIsrael: 'No data over Israel: OpenFlightMaps covers about twenty regions, mostly in Europe. Move the map there to use it.',
   layerLabels: { 'CVFR': 'CVFR', 'Navigation': 'Navigation', 'Low Alt': 'Low Alt',
                  'Helicopters': 'Helicopters', 'Satellite': 'Satellite', 'OpenStreetMap': 'OpenStreetMap',
@@ -3065,6 +3077,8 @@ window.S = Object.assign({
   // channel SMS/WhatsApp use. Not shown in-app; only ever read from a notification tray.
   // Bare "next leg" -- no "NavAid —" prefix -- watch notification tiles already show the
   // sending app's icon/name, so the prefix only ate characters off a tiny watch screen.
+  alertChannelName: 'Flight alerts',
+  alertChannelDescription: 'In-flight alerts: next leg, altitude, TOP, off route',
   watchAlertLegTitle: 'Next leg',
   // alt/hdg/time describe the NEXT leg -- the one starting at `wp`, not the one ending
   // there -- so the alert doubles as prep for the turn, explicitly labelled as such (not
@@ -3379,6 +3393,14 @@ const NAV_ICONS = {
   hotspot: '<circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="3.5" fill="currentColor" fill-opacity=".35"/>',
   timer: '<circle cx="12" cy="13.5" r="7.5"/><path d="M12 13.5V9.5M9.5 3h5M12 3v3M18.5 6.5l1.5-1.5"/>',
   plus: '<path d="M12 5v14M5 12h14"/>',
+  // Straight to a point: a line from here to a target.
+  direct: '<circle cx="17.5" cy="6.5" r="2.5"/><path d="M4 20 15.5 8.5M9.5 8h6.5v6.5"/>',
+  // Not drawn (hide a kite / drift lines): an eye struck through.
+  hide: '<path d="M3 3l18 18"/><path d="M10.6 6.2A9.6 9.6 0 0 1 12 6c5 0 8.5 4.5 9.5 6-.5.8-1.6 2.3-3.2 3.6M6.4 7.9C4.6 9.2 3.2 11 2.5 12c1 1.5 4.5 6 9.5 6 1.6 0 3-.4 4.3-1.1"/><path d="M9.9 9.9a3 3 0 0 0 4.2 4.2"/>',
+  // A distance: a ruler.
+  ruler: '<path d="M3.5 16.5 16.5 3.5l4 4-13 13z"/><path d="m7 13 2 2M10 10l2 2M13 7l2 2"/>',
+  // A new point on a leg.
+  insert: '<path d="M3 19 9.6 14.4M14.4 9.6 21 5"/><circle cx="12" cy="12" r="3"/>',
   stop: '<rect x="6.5" y="6.5" width="11" height="11" rx="2" fill="currentColor" stroke="none"/>',
   language: '<circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.6 2.6 3.8 5.6 3.8 9s-1.2 6.4-3.8 9c-2.6-2.6-3.8-5.6-3.8-9S9.4 5.6 12 3z"/>',
 };
@@ -5714,9 +5736,13 @@ const FM_RENDER_BOUNDS = [
 // world map and the underlay beneath it.
 const TRANSPARENT_TILE_URL =
   'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNgYAAAAAMAASsJTYQAAAAASUVORK5CYII=';
+// How far in the map zooms, one value for every chart ("higher on all, they should all
+// match"): the 18 Satellite, OpenStreetMap and open flightmaps already allowed. A chart past
+// its own sharpest tiles (maxNativeZoom) is drawn from those, enlarged.
+const MAP_MAX_ZOOM = 18;
 const TILE = {
   minZoom: 6,
-  maxZoom: 16,
+  maxZoom: MAP_MAX_ZOOM,
   maxNativeZoom: 13,
   chartBounds: FM_BOUNDS,
   // A tiny inset avoids floating-point overlap with the unpublished neighbour tile.
@@ -5858,9 +5884,9 @@ const CHART_SPECS = {
   'Satellite': (pane) => L.tileLayer(
     'https://services.arcgisonline.com/ArcGIS/rest/services/' +
     'World_Imagery/MapServer/tile/{z}/{y}/{x}',
-    withPane({ minZoom: 6, maxZoom: 18, attribution: 'Imagery © Esri' }, pane)),
+    withPane({ minZoom: 6, maxZoom: MAP_MAX_ZOOM, attribution: 'Imagery © Esri' }, pane)),
   'OpenStreetMap': (pane) => L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
-    withPane({ minZoom: 4, maxZoom: 18, subdomains: 'abc',
+    withPane({ minZoom: 4, maxZoom: MAP_MAX_ZOOM, subdomains: 'abc',
       attribution: '© OpenStreetMap contributors' }, pane)),
   // open flightmaps' aeronautical chart: about twenty regions, mostly European (Greece, Italy,
   // Croatia...) -- and nothing over Israel, where its tiles come back empty. The aero tiles
@@ -5869,16 +5895,18 @@ const CHART_SPECS = {
   // than asking for tiles that are blank. CORS is open, so an export can read the canvas.
   'OpenFlightMaps': (pane) => (window.NavAidNativeTiles ? NavAidNativeTiles.tileLayer : L.tileLayer)(
     'https://nwy-tiles-api.prod.newaydata.com/tiles/{z}/{x}/{y}.png?path=latest/aero/latest',
-    withPane({ minZoom: 4, maxZoom: 18, maxNativeZoom: 12, corsOk: true,
+    // crossOrigin: the map reads its tiles to tell an area with no data (every tile the same
+    // transparent PNG) from one with -- layerViewIsBlank, ui.js. The server sends CORS for all.
+    withPane({ minZoom: 4, maxZoom: MAP_MAX_ZOOM, maxNativeZoom: 12, corsOk: true, crossOrigin: 'anonymous',
       attribution: '<a href="https://www.openflightmaps.org/" target="_blank" rel="noopener">© open flightmaps association</a>' }, pane)),
 };
 // The always-offline world map (world-offline.js) is drawn under every chart; as a chart of
 // its own it is an empty layer, so what shows is that world map alone, zoomable out to a
 // continent. Nothing to fetch, so nothing to download: it is offline by construction.
 CHART_SPECS['World'] = () => L.layerGroup();
-// Where a chart has nothing to show. open flightmaps does not cover Israel, so over the
-// Israeli charts' own frame (the ATS sheet's, which spans the FIR) the layer is dimmed in the
-// picker, with the reason, rather than offered as a chart that draws nothing.
+// Where a chart has nothing to show. open flightmaps does not cover Israel, so an offline area
+// over the Israeli charts' own frame (the ATS sheet's, which spans the FIR) is refused with the
+// reason. On the map itself an empty view is read from the tiles (layerViewIsBlank, ui.js).
 const ISRAEL_CHART_FRAME = [[29.376677, 33.426611], [33.420846, 36.158314]];
 const LAYER_NO_DATA_OVER_ISRAEL = new Set(['OpenFlightMaps']);
 function layerHasNoDataHere(name, center) {
@@ -5970,7 +5998,7 @@ const map = L.map('map', {
   center: _initialView.center,
   zoom: _initialView.zoom,
   minZoom: mapMinZoomFor(),
-  maxZoom: 15,
+  maxZoom: MAP_MAX_ZOOM,
   layers: [initialLayer],
   zoomControl: false,
   zoomAnimation: false,        // keep the canvas overlay in sync
@@ -6020,7 +6048,7 @@ function underlayLayer(name) {
   if (name === 'OpenStreetMap') {
     if (!_underlayCache[name]) {
       _underlayCache[name] = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
-        { pane: 'basemapUnderlay', minZoom: 4, maxZoom: 18, subdomains: 'abc',
+        { pane: 'basemapUnderlay', minZoom: 4, maxZoom: MAP_MAX_ZOOM, subdomains: 'abc',
           attribution: '© OpenStreetMap contributors' });
     }
   } else if (!_underlayCache[name]) {

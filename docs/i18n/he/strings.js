@@ -890,7 +890,7 @@ window.S = {
   windEffect: 'עם רוח',
   windEffectTitle: 'כיוון מגנטי מתוקן-רוח, מהירות קרקע, זווית תיקון רוח, וזמן קטע.',
   windEffectText: function(hdg, gs, wca, time) {
-    return 'כיוון ' + hdg + '  GS ' + gs + '  WCA ' + wca + '  ' + time;
+    return 'כיוון ' + hdg + '  \u2066GS ' + gs + '\u2069  \u2066WCA ' + wca + '\u2069  ' + time;
   },
   windUnflyable: 'הרוח חזקה ממהירות האוויר',
   windResetTitle: 'נקה דריסת רוח (השתמש ברוח המסלול)',
@@ -941,6 +941,15 @@ window.S = {
   deckNoRoute: 'אין מסלול',
   deckSheetGrip: 'גררו לשינוי גובה, הקישו למעבר בין גבהים',
   deckHereTitle: 'מה יש כאן',
+  ctxMenuLabel: 'פעולות מהירות',
+  ctxAddNoteHere: 'הוסף הערה כאן',
+  ctxDistanceHere: 'מרחק מהמטוס',
+  ctxInsertAfter: 'הוסף נקודה אחרי',
+  ctxInsertHere: 'הוסף נקודה כאן',
+  ctxRename: 'שנה שם',
+  ctxEditNote: 'ערוך טקסט',
+  ctxLastPoint: 'לנקודה האחרונה אין קטע אחריה',
+  ctxUnavailable: 'לא זמין כאן',
   deckHereCoords: 'מיקום',
   deckHereNearest: 'השדה הקרוב',
   deckHereTerrain: 'התבליט הגבוה',
@@ -1018,7 +1027,7 @@ window.S = {
   satelliteZoomOut: 'התרחק',
   satelliteResetCenter: 'מרכז מחדש על נקודת הדרך',
   gotoTitle: 'לחץ כדי לנווט לקואורדינטות',
-  gotoError: 'הקלד ספרות או הדבק קואורדינטה כמו 32°00\'17"N 34°43\'38"E',
+  gotoError: 'הקלד ספרות או הדבק קואורדינטה כמו \u206632°00\'17"N 34°43\'38"E\u2069',
   dialTitle: function(b) { return 'סיבוב מפה ' + b + '° — גרור לסיבוב, לחץ לצפון'; },
   rotateHeadingLabel: 'כיוון המפה (מעלות)',
   rotateDialLabel: 'חוגת סיבוב המפה (מעלות) — חצים מסובבים, Home לצפון למעלה',
@@ -1105,6 +1114,12 @@ window.S = {
   layerLabels: { 'CVFR': 'CVFR', 'Navigation': 'ניווט', 'Low Alt': 'גובה נמוך',
                  'Helicopters': 'מסוקים', 'Satellite': 'לוויין', 'OpenStreetMap': 'OpenStreetMap',
                  'OpenFlightMaps': 'OpenFlightMaps', 'World': 'עולם (לא מקוון)', 'ATS': 'נתיבי ATS' },
+  layerNoDataHere: function (layer, where) {
+    // "לניווט", but "ל-CVFR": a Latin name takes the prefix with a hyphen.
+    return (/^[\u0590-\u05FF]/.test(layer) ? 'ל' : 'ל-') + layer + ' אין נתונים כאן' + (where ? ': ' + where : '') + '.';
+  },
+  // "המפה" rather than "היא": the chart names differ in gender and number (נתיבי ATS).
+  layerCoverage: { OpenFlightMaps: 'המפה מכסה כעשרים אזורים, רובם באירופה', israel: 'המפה מכסה את ישראל' },
   layerNoDataOverIsrael: 'אין נתונים מעל ישראל: OpenFlightMaps מכסה כעשרים אזורים, רובם באירופה. הזיזו את המפה לשם כדי להשתמש בה.',
   tbHandleTitle: 'גרור להזזה',
   tbBrandTag: '— מתכנן טיסות CVFR לישראל',
@@ -1593,7 +1608,7 @@ window.S = {
   offlineAreaDownload: function(n) { return '⬇ הורדת האזור שעל המסך (' + n.toLocaleString('en-US') + ' אריחים)'; },
   offlineAreaDownloadTitle: 'שמירת המפה לאזור שהמפה מציגה עכשיו',
   offlineAreaDetail: 'רמת פירוט',
-  offlineAreaLevel: function(z, n, size) { return 'עד תקריב ' + z + ' · ' + n.toLocaleString('en-US') + ' אריחים · ≈ ' + size; },
+  offlineAreaLevel: function(z, n, size) { return 'עד תקריב ' + z + ' · ' + n.toLocaleString('en-US') + ' אריחים · \u2066≈ ' + size + '\u2069'; },
   offlineAreaTooBig: function(n, max) { return n.toLocaleString('en-US') + ' אריחים על המסך: יש להתקרב לפחות מ־' + max.toLocaleString('en-US') + '.'; },
   offlineAreaDeleteConfirm: 'להסיר את האזור הזה מהמכשיר?',
   offlineAreaCovered: 'האזור הזה כבר הורד.',
@@ -1751,6 +1766,8 @@ window.S = {
   wpLabel: 'צד״ר',
   gpsNoTrack: 'לא הוקלט מסלול.',
   gpsError: 'שגיאת GPS: ',
+  alertChannelName: 'התראות טיסה',
+  alertChannelDescription: 'התראות בטיסה: קטע הבא, גובה, TOP, יציאה מהמסלול',
   watchAlertLegTitle: 'קטע הבא',
   watchAlertLegBody: function(wp, alt, hdg, time, freq) {
     const parts = [];

@@ -455,6 +455,14 @@
     return (typeof pad3 === 'function' ? pad3(r) : String(r)) + '\u00b0M';
   }
 
+  // "Herzliya  3.2 NM  358°M": the numbers are one Latin run inside a Hebrew name, so they are
+  // isolated (LRI..PDI) -- left to the bidi algorithm, Hebrew reordered them to "NM 358°M 3.2".
+  function nearestFieldText(near) {
+    const lang = (document.documentElement.lang || '').toLowerCase().startsWith('he') ? 'he' : 'en';
+    const name = near.af[lang] || near.af.en || near.af.name || '';
+    return name + '  \u2066' + near.dist.toFixed(1) + ' NM  ' + fmtBearing(near.brg) + '\u2069';
+  }
+
   function openHere(latlng) {
     // On the ground a held spot gets the same inspector as a known point -- satellite view,
     // VOR radial, nearest field, terrain, Start route here -- rather than a thinner sheet of
@@ -476,7 +484,7 @@
       state.selected = null;
       showInspector();
     }
-    const title = (typeof S === 'object' && S && S.deckHereTitle) || 'What is here';
+    const title = (typeof S === 'object' && S && S.deckHereTitle) || 'Point details';
     openSheet('here-point', title, (body) => {
       body.classList.add('deck-here');
       hereRow(body, (typeof S === 'object' && S && S.deckHereCoords) || 'Position',
@@ -486,10 +494,8 @@
       const near = nearestField(latlng);
       if (near) {
         // The name the pilot reads on this chart, in the language they are reading it in.
-        const lang = (document.documentElement.lang === 'he') ? 'he' : 'en';
-        const name = near.af[lang] || near.af.en || near.af.name || '';
         hereRow(body, (typeof S === 'object' && S && S.deckHereNearest) || 'Nearest field',
-          name + '  ' + near.dist.toFixed(1) + ' NM  ' + fmtBearing(near.brg));
+          nearestFieldText(near));
       }
       const terrain = (typeof terrainMaxAtLatLng === 'function')
         ? terrainMaxAtLatLng(latlng.lat, latlng.lng) : null;
@@ -548,14 +554,9 @@
   // waypoint.
   function addHere(latlng) {
     if (typeof state !== 'object' || !state) return;
-    const snapped = (typeof applyNavSnap === 'function') ? applyNavSnap(latlng, '') : latlng;
-    const next = { lat: (typeof r5 === 'function' ? r5(snapped.lat) : snapped.lat),
-                   lng: (typeof r5 === 'function' ? r5(snapped.lng) : snapped.lng),
-                   name: snapped.name || '' };
-    state.waypoints.push(next);
-    // syncLegs -> the save path -> recordUndoSnapshot: a point added this way is one undo
-    // step, exactly like a point added with the Add tool.
-    if (typeof syncLegs === 'function') syncLegs();
+    // The Add tool's own add (addRoutePoint, interact.js): the snap, the frequency changes and
+    // the published corridor, which this sheet used to leave out. One undo step, like a tap.
+    if (typeof addRoutePoint === 'function') addRoutePoint({ lat: latlng.lat, lng: latlng.lng });
     if (typeof draw === 'function') draw();
     closeSheet();
   }
@@ -583,9 +584,13 @@
     }
     const here = { lat: gpsOwn.lat, lng: gpsOwn.lng,
                    name: (typeof S === 'object' && S && S.deckHereNow) || 'NOW' };
-    const snapped = (typeof applyNavSnap === 'function') ? applyNavSnap(latlng, '') : latlng;
+    // A route waypoint or chart point brings its own name (Direct to "Bravo" keeps it); a
+    // held spot has none and takes the chart point it snaps to, as before.
+    const snapped = (typeof applyNavSnap === 'function') ? applyNavSnap(latlng, latlng.name || '') : latlng;
     state.waypoints = [here, { lat: snapped.lat, lng: snapped.lng, name: snapped.name || '' }];
     if (typeof syncLegs === 'function') syncLegs();
+    // A new route, so its frequency changes too -- as every other way of building one.
+    if (typeof seedCommChangeNotes === 'function') seedCommChangeNotes();
     if (typeof draw === 'function') draw();
     closeSheet();
   }
@@ -844,8 +849,10 @@
   NavAid.refreshMobileDeck = apply;
   // The coordinate inspector offers the same Direct to and reads the same nearest field.
   NavAid.deckDirectTo = directTo;
+  NavAid.deckAddHere = addHere;
   NavAid.deckNearestField = nearestField;
   NavAid.deckFmtBearing = fmtBearing;
+  NavAid.deckNearestFieldText = nearestFieldText;
   if (window.matchMedia) {
     const mq = window.matchMedia(NARROW);
     const onChange = () => apply();

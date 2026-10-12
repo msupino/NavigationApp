@@ -1392,9 +1392,8 @@ function appendAddToRouteButton(body, pt) {
   btn.disabled = !!already || locked;
   btn.onclick = () => {
     if (already || locked) return;
-    const prevTail = state.waypoints[state.waypoints.length - 1];
-    state.waypoints.push({ lat: r5(pt.lat), lng: r5(pt.lng), name: pt.name || '' });
-    syncLegs();
+    // The same add as a tap: snap, frequency changes, the corridor (addRoutePoint).
+    if (!addRoutePoint(pt)) return;
     // Nothing selected, so the panel closes with the press. It used to select the waypoint it
     // had just made, which swapped the small reference panel -- a field, a reporting point, a
     // coordinate -- for the full route-waypoint inspector: delete, rename, turning point, the
@@ -1405,9 +1404,6 @@ function appendAddToRouteButton(body, pt) {
     state.selected = opens ? { type: 'wp', index: state.waypoints.length - 1 } : null;
     draw();
     showInspector();
-    // Same corridor treatment as a map tap: adding by button must not produce a different
-    // route from adding by tap.
-    if (prevTail) autoRouteSpliceAfterAdd(prevTail, state.waypoints[state.waypoints.length - 1]);
   };
   body.appendChild(btn);
 }
@@ -1418,20 +1414,14 @@ function appendAddToRouteButton(body, pt) {
 // the facility belong, rather than on whichever waypoint happens to be selected.
 function appendVorAipInfo(body, v) {
   if (!v) return;
-  const info = document.createElement('div');
-  info.className = 'vor-aip-info';
-  const line = (k, t, cls) => {
+  // Ordinary inspector rows -- the same label column, font and spacing as Position and
+  // Frequency above them -- rather than a compact block of their own.
+  const line = (k, t) => {
     if (!t) return;
-    const d = document.createElement('div');
-    d.className = 'vor-aip-line' + (cls ? ' ' + cls : '');
-    const kk = document.createElement('span');
-    kk.className = 'vor-aip-key';
-    kk.textContent = k;
-    const vv = document.createElement('span');
-    vv.className = 'vor-aip-val';
-    vv.textContent = t;
-    d.append(kk, vv);
-    info.appendChild(d);
+    const row = textRow(k, t);
+    row.classList.add('vor-aip-row');
+    row.querySelector('.val').classList.add('vor-aip-val');
+    body.appendChild(row);
   };
   line(S.vorInfoType || 'Type', v.type || '');
   // No frequency here: the editable Frequency row above already shows it. The DME
@@ -1442,7 +1432,6 @@ function appendVorAipInfo(body, v) {
     v.coverageNm ? v.coverageNm + ' NM' : (S.vorInfoRangeNone || 'not published'));
   if (Number.isFinite(v.elevFt)) line(S.vorInfoElev || 'DME antenna', v.elevFt + ' ft');
   if (v.remarks && v.remarks !== 'Nil') line(S.vorInfoLimits || 'Limits', v.remarks);
-  if (info.childNodes.length) body.appendChild(info);
 }
 
 // Shared inspector-only VOR selector + "From <VOR>  R-xxx° / yy.y NM" readout.
@@ -3677,6 +3666,10 @@ function finalizeInspectorActions(body) {
     wrap.appendChild(b);
   }
   if (!narrow) for (const el of statuses) wrap.appendChild(el);
+  // More than six actions (a route waypoint that is also a frequency-change point) went to a
+  // fourth row of two on a phone, and the pinned block covered the rows above it. Three across
+  // keeps it to three rows (picked from screenshots of the options).
+  if (wrap.querySelectorAll('.insp-btn').length > 6) wrap.classList.add('insp-actions-many');
   body.appendChild(wrap);
 }
 
@@ -4098,6 +4091,7 @@ function showInspector() {
     title.value = referenceInspectorTitle(v, 'vor');
     title.placeholder = ''; title.readOnly = true; title.oninput = null;
     appendPointCoordinateRows(body, v);
+    appendPlaceRows(body, v);
     {
       const vdef = typeof freqClean === 'function' ? freqClean(v.freq) : String(v.freq || '');
       body.appendChild(freqEditRow(S.vorFreq || 'Frequency', {
@@ -4114,6 +4108,7 @@ function showInspector() {
     appendSatelliteSnippet(body, v, title.value);
     const useBtn = document.createElement('button');
     useBtn.className = 'insp-btn';
+    useBtn.id = 'insp-vor-use-ref';
     const isRef = vorRef === v.ident;
     useBtn.textContent = isRef ? (S.vorRefActive || '✓ Reference VOR (tap to clear)')
                                : (S.vorUseRef || 'Use as reference VOR');
@@ -4286,20 +4281,10 @@ function showInspector() {
     // A spot held on the chart lands here too, so it reads like a known point: position,
     // nearest field, terrain, satellite view, VOR radial, and the route buttons.
     const pt = { lat: state.selected.lat, lng: state.selected.lng };
-    title.value = state.selected.held ? (S.deckHereTitle || 'What is here') : (S.coordPointTitle || 'Coordinate');
+    title.value = state.selected.held ? (S.deckHereTitle || 'Point details') : (S.coordPointTitle || 'Coordinate');
     title.placeholder = ''; title.readOnly = true; title.oninput = null;
     appendPointCoordinateRows(body, pt);
-    const near = window.NavAid && NavAid.deckNearestField ? NavAid.deckNearestField(pt) : null;
-    if (near) {
-      const lang = (document.documentElement.lang || '').toLowerCase().startsWith('he') ? 'he' : 'en';
-      const name = near.af[lang] || near.af.en || near.af.name || '';
-      body.appendChild(textRow(S.deckHereNearest || 'Nearest field',
-        name + '  ' + near.dist.toFixed(1) + ' NM  ' + NavAid.deckFmtBearing(near.brg)));
-    }
-    const terrain = typeof terrainMaxAtLatLng === 'function' ? terrainMaxAtLatLng(pt.lat, pt.lng) : null;
-    if (Number.isFinite(terrain)) {
-      body.appendChild(textRow(S.deckHereTerrain || 'Highest terrain', Math.round(terrain) + ' ft'));
-    }
+    appendPlaceRows(body, pt);
     appendSatelliteSnippet(body, pt, title.value);
     appendVorRadialRow(body, pt.lat, pt.lng);
     appendDirectToButton(body, pt);
@@ -4318,10 +4303,12 @@ function showInspector() {
     title.value = referenceInspectorTitle(nw, 'navwp');
     title.placeholder = ''; title.readOnly = true; title.oninput = null;
     appendPointCoordinateRows(body, nw);
+    appendPlaceRows(body, nw);
     appendNavWaypointCommChangeInfo(body, nw.name);
     appendSatelliteSnippet(body, nw, title.value);
     appendVorRadialRow(body, nw.lat, nw.lng);
     appendReportingRow(body, nw.name);
+    appendDirectToButton(body, nw);
     appendAddToRouteButton(body, nw);
   } else {
     const wp = state.waypoints[state.selected.index];
@@ -4362,6 +4349,7 @@ function showInspector() {
     if (afInsp) {
       appendAirfieldDetailRows(body, afInsp, title.value);
     } else {
+      appendPlaceRows(body, wp);
       appendSatelliteSnippet(body, wp, title.value);
       appendVorRadialRow(body, wp.lat, wp.lng);
     }
@@ -4427,6 +4415,8 @@ function showInspector() {
       showInspector();
     };
     body.appendChild(hotspotBtn);
+    // As on a held spot or a chart point: fly straight there from where the aircraft is.
+    appendDirectToButton(body, wp);
     const del = document.createElement('button');
     del.className = 'insp-btn insp-btn-danger';
     del.id = 'insp-del-wp-btn';
@@ -4776,6 +4766,32 @@ function inputRow(label, value, onChange) {
   row.append(l, inp);
   return row;
 }
+// Nearest published field, as a spot held on the chart shows it -- on a chart point and a
+// route waypoint too ("add nearest field to known wp, like unknown ones").
+function appendNearestFieldRow(body, pt) {
+  // No cutoff near a field: a spot held on one reads "Herzliya 0.2 NM", which names it. (A
+  // route waypoint on a field has the airfield panel instead and never gets here.)
+  const near = window.NavAid && NavAid.deckNearestField ? NavAid.deckNearestField(pt) : null;
+  if (!near || !(NavAid.deckNearestFieldText)) return;
+  body.appendChild(textRow(S.deckHereNearest || 'Nearest field', NavAid.deckNearestFieldText(near)));
+}
+
+// Highest terrain in the grid square (~1.2 x 1 NM) holding the point -- the MSA grid.
+function appendHighestTerrainRow(body, pt) {
+  const terrain = typeof terrainMaxAtLatLng === 'function' ? terrainMaxAtLatLng(pt.lat, pt.lng) : null;
+  if (Number.isFinite(terrain)) {
+    body.appendChild(textRow(S.deckHereTerrain || 'Highest terrain', Math.round(terrain) + ' ft'));
+  }
+}
+
+// Where a point is, the same on every kind of point: nearest field, then highest terrain.
+// A held spot, a chart point, a route waypoint and a VOR station all read alike under
+// Position ("still not persistent" -- the known points had fewer rows than an unknown one).
+function appendPlaceRows(body, pt) {
+  appendNearestFieldRow(body, pt);
+  appendHighestTerrainRow(body, pt);
+}
+
 function textRow(label, value) {
   const row = document.createElement('div');
   row.className = 'row';
@@ -5247,6 +5263,40 @@ function coincidentWaypointIndices(hits) {
 // its inspector: that is how a loop is drawn, by pressing the point you want to come back to.
 // Only a press without movement -- a drag still repositions the waypoint, so you can nudge the
 // point you just placed without leaving the mode. Returns true when it consumed the release.
+// Every way of putting a point on the END of the route goes through here -- a tap in Add mode,
+// the inspector's "Add to route" (and so the right-click menu), the long-press sheet -- so
+// they all make the same route. They did not: the button and the sheet added the point and
+// nothing else, so LLHZ BAZRA DEROR built by button had no frequency change at DEROR, where
+// the same three taps had one (reported: "add wp with right click doesn't add freq changes").
+//   - a spot without a name of its own snaps to the published point under it, as a tap does;
+//   - the point the next leg would start from is not added again (a zero-length leg);
+//   - a leg already flown out and back is not flown a third time (toast);
+//   - the frequency changes are seeded, and the published corridor spliced in behind.
+// Returns the new waypoint, or null when nothing was added. Selection is the caller's.
+function addRoutePoint(pt, opts) {
+  const o = opts || {};
+  if (!pt || !Number.isFinite(pt.lat) || !Number.isFinite(pt.lng)) return null;
+  if (typeof routeEditLocked === 'function' && routeEditLocked()) return null;
+  const r = (!pt.name && o.snap !== false && typeof applyNavSnap === 'function')
+    ? applyNavSnap(pt, '') : pt;
+  const tail = state.waypoints[state.waypoints.length - 1];
+  if (tail && typeof sameMapPoint === 'function' && sameMapPoint(tail, r)) return null;
+  const next = { lat: r5(r.lat), lng: r5(r.lng), name: r.name || '' };
+  if (typeof routeAllowsNextPoint === 'function' && !routeAllowsNextPoint(next)) {
+    if (typeof showToast === 'function') showToast(S.trackFlownTwiceToast ||
+      'This leg is already flown out and back');
+    return null;
+  }
+  state.waypoints.push(next);
+  syncLegs();
+  if (typeof seedCommChangeNotes === 'function') seedCommChangeNotes();
+  // Auto-route: the published corridor between the old tail and the new point. Async (the
+  // graph loads lazily); the direct leg shows first and the corridor slots in when it resolves.
+  if (tail) autoRouteSpliceAfterAdd(tail, next);
+  return next;
+}
+window.addRoutePoint = addRoutePoint;
+
 // Splice the published corridor between the route's previous point and a just-added one.
 // Every add path goes through here -- the map tap, the inspector's "Add to route", and
 // extend-through -- because a pilot who adds a point by button expects the same route a
@@ -5768,29 +5818,8 @@ map.on('click', e => {
     if (typeof setMode === 'function') setMode('add');
   }
   if (state.mode === 'add') {
-    const r = applyNavSnap(e.latlng, '');
-    // Ignore the click when it lands on the point the next leg would start from --
-    // that, and only that, produces a duplicate at the same coords and a leg with zero
-    // distance. Any EARLIER waypoint is fair game: clicking the departure field again is how
-    // a local sortie is closed into a circular route, and a route may pass a point twice.
-    const tail = state.waypoints[state.waypoints.length - 1];
-    if (tail && sameMapPoint(tail, r)) {
-      return;
-    }
-    const tail0 = state.waypoints[state.waypoints.length - 1];
-    const next = { lat: r5(r.lat), lng: r5(r.lng), name: r.name };
-    if (typeof routeAllowsNextPoint === 'function' && !routeAllowsNextPoint(next)) {
-      if (typeof showToast === 'function') showToast(S.trackFlownTwiceToast ||
-        'This leg is already flown out and back');
-      return;
-    }
-    state.waypoints.push(next);
-    syncLegs();
-    if (typeof seedCommChangeNotes === 'function') seedCommChangeNotes();
-    // Auto-route: splice the published corridor between the old tail and the new point.
-    // Async by nature (the graph loads lazily); the direct leg shows first and the
-    // corridor points slot in when the chain resolves -- one draw, one undo state.
-    if (tail0) autoRouteSpliceAfterAdd(tail0, state.waypoints[state.waypoints.length - 1]);
+    // Snap, the zero-length and third-pass guards, frequency changes, corridor: addRoutePoint.
+    if (!addRoutePoint({ lat: e.latlng.lat, lng: e.latlng.lng })) return;
     state.selected = { type: 'wp', index: state.waypoints.length - 1 };
     // On phones the inspector is a near-full-screen panel that blankets the
     // map, so auto-opening it after every add-mode tap hides the chart while

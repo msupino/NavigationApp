@@ -230,14 +230,29 @@ dressMenus();
 // The waypoint panel's actions and the dialogs' action rows: same idea, keyed by the glyph the
 // label starts with (these are built afresh each time, by many branches).
 const GLYPH_ICONS = { '🗑': 'trash', '↻': 'reset', '🔥': 'hotspot', '⏱': 'timer', '📡': 'antenna',
-  '✈': 'plane', '+': 'plus', '📍': 'location', '⇄': 'reverse', '🧭': 'compass', '🔑': 'key',
-  '📋': 'list', '🔗': 'link', '💾': 'save', '📂': 'folder', '⬇': 'download', '⬆': 'upload', '🖨': 'print' };
-function dressByGlyph(btn) {
-  if (!btn || btn.querySelector(':scope > .mi-icon') || typeof navIconSvg !== 'function') return;
+  '✈': 'plane', '+': 'plus', '➕': 'plus', '＋': 'plus', '📍': 'location', '⇄': 'reverse', '🧭': 'compass',
+  '🔑': 'key', '📋': 'list', '🔗': 'link', '💾': 'save', '📂': 'folder', '⬇': 'download', '⬆': 'upload',
+  '🖨': 'print', '⊘': 'hide', '✓': 'check', '✔': 'check' };
+// Every button carries an icon ("every button should have an icon, new or existing"). The ones
+// whose label has no glyph to key on are named by their id or class instead.
+const BUTTON_ICONS = { 'insp-direct-to': 'direct', 'insp-add-to-route': 'plus', 'insp-vor-use-ref': 'compass',
+  'satellite-expand-hint': 'expand', 'insp-charts-btn': 'charts', 'add-freq-change-btn': 'antenna',
+  'hours-toggle': 'list' };
+function buttonIconName(btn) {
+  if (!btn) return '';
   const t = (btn.textContent || '').trim();
   const g = Object.keys(GLYPH_ICONS).find(k => t.startsWith(k));
-  if (!g) return;
-  MENU_ICONS[btn.id || (btn.id = 'gi-' + Math.random().toString(36).slice(2, 8))] = GLYPH_ICONS[g];
+  if (g) return GLYPH_ICONS[g];
+  if (btn.id && BUTTON_ICONS[btn.id]) return BUTTON_ICONS[btn.id];
+  for (const c of btn.classList || []) if (BUTTON_ICONS[c]) return BUTTON_ICONS[c];
+  return '';
+}
+window.navButtonIconName = buttonIconName;
+function dressByGlyph(btn) {
+  if (!btn || btn.querySelector(':scope > .mi-icon') || typeof navIconSvg !== 'function') return;
+  const name = buttonIconName(btn);
+  if (!name) return;
+  MENU_ICONS[btn.id || (btn.id = 'gi-' + Math.random().toString(36).slice(2, 8))] = name;
   dressMenuItem(btn);
 }
 window.dressByGlyph = dressByGlyph;
@@ -253,7 +268,7 @@ if (typeof MutationObserver === 'function') {
   });
   const scan = (root) => {
     if (!root.querySelectorAll) return;
-    root.querySelectorAll('.insp-btn, .modal-btns button').forEach(dressByGlyph);
+    root.querySelectorAll('.insp-btn, .modal-btns button, #insp-body button').forEach(dressByGlyph);
     linkRowLabels(root);
   };
   const ins = document.getElementById('insp-body');
@@ -357,6 +372,10 @@ const appUpdate = (function () {
   const ltr = (t) => '\u2066' + t + '\u2069';
   function paint(st, busy) {
     const version = (window.NavAid && NavAid.version) || '';
+    // A download under way, whether the automatic one on Wi-Fi or one asked for here: shown
+    // with its progress, and nothing to press (reported: it was not shown, and Download could
+    // start the same download again).
+    if (st && st.state === 'downloading') { busy = 'downloading'; pct = st.pct != null ? st.pct : pct; }
     let line = '', action = null;
     if (busy === 'checking') line = S.appUpdateChecking || 'Checking…';
     else if (busy === 'downloading') {
@@ -434,23 +453,13 @@ const appUpdate = (function () {
         : false;
       if (!ok) return;
     }
-    // The plugin reports progress as it goes ('download', { percent }): 26 MB on mobile data is
-    // long enough to wonder whether anything is happening.
+    // Progress comes from ota.js ('navaid-ota-download', below): it owns the download, the
+    // automatic one included -- 26 MB on mobile data is long enough to wonder.
     pct = null;
     paint(last || {}, 'downloading');
-    const updater = window.Capacitor && Capacitor.Plugins && Capacitor.Plugins.CapacitorUpdater;
-    let handle = null;
-    try {
-      if (updater && typeof updater.addListener === 'function') {
-        handle = await updater.addListener('download', (e) => {
-          const p = Math.max(0, Math.min(100, Math.round(Number(e && e.percent))));
-          if (Number.isFinite(p) && p !== pct) { pct = p; paint(last || {}, 'downloading'); }
-        });
-      }
-    } catch (e) { handle = null; }
     let r;
     try { r = await o.downloadNow({ manifest: last && last.manifest }); }
-    finally { try { if (handle && handle.remove) await handle.remove(); } catch (e) { /* gone */ } pct = null; }
+    finally { pct = null; }
     if (r && (r.updated || r.pending)) {
       last = { state: 'pending', version: r.version || '' }; paint(last);
       // Downloaded on request: offer the restart straight away rather than at the next start.
@@ -462,6 +471,12 @@ const appUpdate = (function () {
     if (r && r.reason && r.reason !== 'already running it' && typeof showToast === 'function') {
       showToast(typeof S.appUpdateFailed === 'function' ? S.appUpdateFailed(r.reason) : r.reason, { warn: true });
     }
+  });
+  // ota.js says when a download starts, moves on, and ends -- the automatic one on Wi-Fi too.
+  window.addEventListener('navaid-ota-download', (e) => {
+    const d = e && e.detail;
+    if (d) { last = { state: 'downloading', version: d.version, pct: d.pct }; if (!row.hidden) paint(last); }
+    else { pct = null; refresh(); }
   });
   return { refresh, paint };
 }());
@@ -658,12 +673,6 @@ function rebuildLayerPicker() {
     opt.value = name;
     opt.textContent = (S.layerLabels && S.layerLabels[name]) || name;
     if (map.hasLayer(layers[name])) opt.selected = true;
-    // Dimmed, never removed, where it has nothing to draw -- and never while it is the one
-    // showing, or the picker could not say what is on the map.
-    if (!opt.selected && typeof layerHasNoDataHere === 'function' && layerHasNoDataHere(name, map.getCenter())) {
-      opt.disabled = true;
-      opt.title = S.layerNoDataOverIsrael || '';
-    }
     layerSelect.appendChild(opt);
   }
   const active = (typeof currentLayerName === 'function') ? currentLayerName() : current;
@@ -674,15 +683,98 @@ function rebuildLayerPicker() {
   }
 }
 rebuildLayerPicker();
-// Over Israel or away from it decides whether open flightmaps has anything to draw, so the
-// picker follows the map. Only on a change of that answer: a rebuild per pan is a rebuild per
-// GPS fix in the air.
-let _layerNoDataKey = '';
+// A chart that has nothing to draw where the map is says so, whichever chart it is ("why not
+// notify for every layer? CVFR in Europe is missing"). open flightmaps covers about twenty
+// regions, mostly European; the Israeli charts cover Israel. Nothing is dimmed in the picker
+// for it any more ("un-dim it, it's stupid"). How a chart is empty differs, and it is read
+// from the chart itself, not from a list of regions:
+//   - open flightmaps answers every tile it has no data for with the same fully transparent
+//     PNG (it loads with crossOrigin, so its tiles can be read);
+//   - the Israeli tile charts have no tile there at all: our mirror answers 404;
+//   - the ATS sheet is one image with its own frame.
+// The world-wide layers (OpenStreetMap, Satellite, World) are never empty. A tile that failed
+// for any other reason -- no signal in the air -- is not "no data": then nothing is said.
+const LAYERS_EVERYWHERE = ['OpenStreetMap', 'Satellite', 'World'];
+// Where each chart does have data, for the message. A chart not listed is told without it.
+const LAYER_COVERAGE_KEY = { OpenFlightMaps: 'OpenFlightMaps', CVFR: 'israel', Navigation: 'israel',
+  'Low Alt': 'israel', Helicopters: 'israel', ATS: 'israel' };
+function tileIsBlank(img) {
+  const c = document.createElement('canvas');
+  c.width = c.height = 128;
+  const g = c.getContext('2d', { willReadFrequently: true });
+  g.drawImage(img, 0, 0, 128, 128);
+  const px = g.getImageData(0, 0, 128, 128).data;   // throws on a tile the canvas may not read
+  for (let i = 3; i < px.length; i += 4) if (px[i]) return false;
+  return true;
+}
+// Is there no tile at all here? Asked of our own mirror (the chart's exportUrl), which holds
+// the same coverage as wherever the live tiles come from and answers CORS, so its status can
+// be read. Only a 404 counts; anything else (offline, a server error) is "cannot tell".
+async function tileMissing(layer, coords) {
+  // Only our own mirror is asked -- never the third party a live tile came from -- and not
+  // while the device says it is offline: in the air every pan would be a request that fails.
+  const tpl = layer.options.exportUrl;
+  if (!tpl || (typeof navigator !== 'undefined' && navigator.onLine === false)) return null;
+  try {
+    const url = L.Util.template(tpl, Object.assign({ s: 'a', r: '' }, coords));
+    const res = await fetch(url, { method: 'HEAD', cache: 'no-store' });
+    return res.status === 404 ? true : (res.ok ? false : null);
+  } catch (e) { return null; }
+}
+// true: the chart draws nothing in view. false: it draws something. null: cannot tell.
+async function layerViewIsBlank(name) {
+  const layer = layers[name];
+  if (!layer || !map.hasLayer(layer) || LAYERS_EVERYWHERE.indexOf(name) !== -1) return null;
+  if (layer instanceof L.ImageOverlay) return !map.getBounds().intersects(layer.getBounds());
+  // A chart drawn only inside its own frame (the Israeli charts' bounds) asks for no tile at
+  // all outside it -- so no tile can say anything, and the frame answers by itself.
+  if (layer.options.bounds && !map.getBounds().intersects(L.latLngBounds(layer.options.bounds))) return true;
+  const tiles = Object.values(layer._tiles || {}).filter(t => t && t.current && t.el && t.loaded);
+  if (!tiles.length) return null;
+  const failed = [];
+  const errorSrc = layer.options.errorTileUrl;
+  for (const t of tiles) {
+    // A failed tile shows the layer's errorTileUrl (a transparent PNG): failed, not blank.
+    if (!(t.el.naturalWidth > 0) || (errorSrc && t.el.src === errorSrc)) { failed.push(t); continue; }
+    // Only a layer that loads its tiles crossOrigin (open flightmaps) can be read; any other
+    // loaded tile is a drawn chart tile. Reading one would throw -- on every move, in the air.
+    if (!layer.options.crossOrigin) return false;
+    try { if (!tileIsBlank(t.el)) return false; }
+    catch (e) { return false; }      // drawn, but not readable here: it is a chart tile
+  }
+  if (!failed.length) return true;   // every tile came back empty
+  return tileMissing(layer, failed[0].coords);
+}
+let _layerBlankTold = false;
+let _layerBlankSeq = 0;
+async function noteLayerBlankHere() {
+  const name = typeof currentLayerName === 'function' ? currentLayerName() : '';
+  const seq = ++_layerBlankSeq;
+  const blank = await layerViewIsBlank(name);
+  if (seq !== _layerBlankSeq || blank === null) return;   // a later look has taken over
+  // Once per arrival in an empty area, not once per pan: a pan is a GPS fix in the air.
+  if (blank && !_layerBlankTold && typeof showToast === 'function') {
+    const label = (S.layerLabels && S.layerLabels[name]) || name;
+    const where = S.layerCoverage && S.layerCoverage[LAYER_COVERAGE_KEY[name]];
+    showToast(typeof S.layerNoDataHere === 'function' ? S.layerNoDataHere(label, where)
+      : label + ' has no data here.');
+  }
+  _layerBlankTold = blank;
+}
+for (const name of Object.keys(layers)) {
+  if (LAYERS_EVERYWHERE.indexOf(name) !== -1) continue;
+  if (layers[name] instanceof L.ImageOverlay) continue;
+  layers[name].on('load', noteLayerBlankHere);
+}
+// A chart with a frame of its own -- the ATS sheet, the bounded tile charts -- loads no tile
+// outside it, so no 'load' says the view left it: every move asks.
+function layerHasFrame(name) {
+  const l = layers[name];
+  return !!l && (l instanceof L.ImageOverlay || !!(l.options && l.options.bounds));
+}
 map.on('moveend', () => {
-  const key = Object.keys(layers).filter(n => layerHasNoDataHere(n, map.getCenter())).join(',');
-  if (key === _layerNoDataKey) return;
-  _layerNoDataKey = key;
-  rebuildLayerPicker();
+  const name = typeof currentLayerName === 'function' ? currentLayerName() : '';
+  if (layerHasFrame(name)) noteLayerBlankHere();
 });
 // The three charts a route can be planned ON. Each carries its own route graph, its own
 // waypoints and its own reporting points, so a route drawn on one is a set of names the
@@ -731,6 +823,8 @@ layerSelect.onchange = () => {
   draw();                                // keep the route overlay on top
   try { localStorage.setItem(LAYER_KEY, layerSelect.value); }
   catch (e) { /* storage unavailable */ }
+  _layerBlankTold = false;                // a new choice is told afresh, once its tiles are in
+  if (layerHasFrame(layerSelect.value)) noteLayerBlankHere();
 };
 
 // The active base layer decides which data files feed the overlays. On a layer
@@ -12068,7 +12162,16 @@ armAndroidBackButton();
 
 // Preload the terrain grid so MSA / terrain clearance is ready when a
 // leg inspector opens. No-op (coverage:false) until a real DEM is bundled.
-if (typeof loadTerrain === "function") loadTerrain();
+// An inspector already open when it arrives -- restored after a reload, as a language switch
+// is -- is drawn again, or its Highest terrain / MSA rows stay missing until it is reopened.
+if (typeof loadTerrain === "function") {
+  loadTerrain().then(() => {
+    // Not under a pilot typing in it (a waypoint name): a rebuild would take the caret away.
+    const a = document.activeElement;
+    if (a && a.closest && a.closest('#inspector') && /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName)) return;
+    if (typeof refreshInspectorIfVisible === 'function') refreshInspectorIfVisible();
+  });
+}
 // CTR boundary points: the route clock starts there, not at the field.
 if (typeof loadCtrBoundaries === "function") loadCtrBoundaries();
 
