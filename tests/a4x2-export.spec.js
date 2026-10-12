@@ -129,19 +129,18 @@ test('Print in A4×2 opens one print window with both pages, and saves nothing',
     const o = out.getContext('2d');
     o.fillStyle = '#8899aa'; o.fillRect(0, 0, 1200, 850);
     window.pageOrient = 'landscape';
-    // A real frame as the print window, so its images load and the print fires.
-    const frame = document.createElement('iframe');
-    document.body.appendChild(frame);
+    // Printed from the app's hidden print frame: catch it as it is added.
     let doc = null, printed = 0;
-    window.open = () => {
-      doc = frame.contentDocument;
-      frame.contentWindow.print = () => { printed++; };
-      return frame.contentWindow;
-    };
+    new MutationObserver(() => {
+      const f = document.getElementById('navaid-print-frame');
+      if (f && !f.__stubbed) { f.__stubbed = true; doc = f.contentDocument; f.contentWindow.print = () => { printed++; }; }
+    }).observe(document.body, { childList: true });
     exportA4x2Tiles(out, 1200, 850, () => {
       setTimeout(() => {
-        const imgs = doc ? [...doc.querySelectorAll('img')] : [];
-        res({ imgs: imgs.length, css: doc ? doc.querySelector('style').textContent : '', printed });
+        const f = document.getElementById('navaid-print-frame');
+        const d = (f && f.contentDocument) || doc;
+        const imgs = d ? [...d.querySelectorAll('img')] : [];
+        res({ imgs: imgs.length, css: d ? d.querySelector('style').textContent : '', printed });
       }, 600);
     }, 'print');
   }));
