@@ -97,3 +97,16 @@ test('a spot held on a field still names it', async ({ page }) => {
   });
   expect(got).toMatch(/Herzliya\s+⁦?0\.\d NM/);
 });
+
+// Review: Direct to a named route waypoint dropped the name (it snapped with an empty one).
+test('Direct to a named route waypoint keeps its name', async ({ page }) => {
+  const names = await page.evaluate(async () => {
+    window.gpsOwn = { lat: 32.30, lng: 34.90 };
+    window.askYesNo = async () => true;
+    state.waypoints = [{ lat: 32.40, lng: 34.95, name: 'A' }, { lat: 32.62, lng: 35.31, name: 'Bravo' }];
+    state.legs = []; syncLegs(); draw();
+    await NavAid.deckDirectTo(state.waypoints[1]);
+    return state.waypoints.map(w => w.name);
+  });
+  expect(names[1]).toBe('Bravo');
+});
