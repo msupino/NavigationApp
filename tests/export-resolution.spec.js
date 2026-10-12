@@ -111,10 +111,10 @@ test('a progress panel counts the tiles and the seconds, and goes when the page 
   expect(seen.after).toBe(false);
 });
 
-// Review: Print opened its window when the page was ready, but a browser allows a window only
-// for a few seconds after the click -- a sharp A3 takes longer, and the print was blocked as a
-// pop-up. The window opens at the press ("Preparing the page"), and the page arrives in it.
-test('Print opens its window at the press, and the page arrives in that window', async ({ page }) => {
+// "Print opens a print menu, and the page in a new window -- can it be only the print menu?"
+// The page is printed from a hidden frame in the app: no new tab, and so no pop-up for a
+// browser to block after a long export.
+test('Print opens only the print dialog: no new window, the page printed from a hidden frame', async ({ page }) => {
   await page.route(u => u.hostname === 'navaid-tiles.supino.org', async (r) => {
     await new Promise(x => setTimeout(x, 30));
     await r.fulfill({ status: 404, body: '' });
@@ -123,19 +123,17 @@ test('Print opens its window at the press, and the page arrives in that window',
     window.refuse = () => {};
     setPage('A4');
     await new Promise(r => setTimeout(r, 200));
-    const frame = document.createElement('iframe');
-    document.body.appendChild(frame);
-    let opens = 0, printed = 0;
-    window.open = () => { opens++; frame.contentWindow.print = () => { printed++; }; return frame.contentWindow; };
+    let opens = 0, printed = 0, imgs = 0;
+    window.open = () => { opens++; return null; };
+    new MutationObserver(() => {
+      const f = document.getElementById('navaid-print-frame');
+      if (f && !f.__stubbed) { f.__stubbed = true; f.contentWindow.print = () => { printed++; imgs = f.contentDocument.querySelectorAll('img').length; }; }
+    }).observe(document.body, { childList: true });
     exportPNG('print');
-    const openedAtPress = opens;                       // before any tile has come back
-    const preparing = frame.contentDocument.body.textContent;
     for (let i = 0; i < 200 && !printed; i++) await new Promise(x => setTimeout(x, 100));
-    return { openedAtPress, opens, preparing, imgs: frame.contentDocument.querySelectorAll('img').length, printed };
+    return { opens, printed, imgs };
   });
-  expect(r.openedAtPress).toBe(1);
-  expect(r.preparing).toContain('Preparing the page');
-  expect(r.opens).toBe(1);                              // the same window, not a second one
-  expect(r.imgs).toBe(1);
+  expect(r.opens).toBe(0);
   expect(r.printed).toBe(1);
+  expect(r.imgs).toBe(1);
 });

@@ -389,14 +389,18 @@ test.describe('Export PNG options modal', () => {
       state.waypoints = wps; syncLegs(); draw();
     }, pairLLHZ_LLHA());
     // Capture what openPrintWindow would write to the popup.
-    const html = await page.evaluate(() => new Promise(resolve => {
-      let out = '';
-      const doc = { open() {}, close() {}, write(s) { out += s; }, querySelector: () => ({}), querySelectorAll: () => [{}] };
-      window.open = () => ({ document: doc, focus() {}, print() {} });
-      // A4 landscape paper.
-      openPrintWindow(new Blob([new Uint8Array([137, 80, 78, 71])], { type: 'image/png' }), 297, 210);
-      setTimeout(() => resolve(out), 30);
-    }));
+    // Printed from a hidden frame in the page (no new window): read the page it was given.
+    const html = await page.evaluate(async () => {
+      new MutationObserver(() => {
+        const f = document.getElementById('navaid-print-frame');
+        if (f && !f.__stubbed) { f.__stubbed = true; f.contentWindow.print = () => {}; }
+      }).observe(document.body, { childList: true });
+      const c = document.createElement('canvas'); c.width = 4; c.height = 3;
+      const png = await new Promise(r => c.toBlob(r, 'image/png'));
+      openPrintWindow(png, 297, 210);
+      const f = document.getElementById('navaid-print-frame');
+      return f ? f.contentDocument.documentElement.outerHTML : '';
+    });
     expect(html).toMatch(/@page\{size:297mm 210mm;margin:0\}/);
     expect(html).toMatch(/img\{width:297mm;height:210mm/);
 

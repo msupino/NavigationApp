@@ -2422,7 +2422,6 @@ window.S = Object.assign({
   deckHereTitle: 'Point details',
   exportBw: 'Optimized for a black-and-white printer',
   exportResolution: 'Image quality',
-  printPreparing: 'Preparing the page… it will appear here to print.',
   exportProgressTiles: function (done, total, secs) { return 'Fetching the map: ' + done + ' / ' + total + ' tiles · ' + secs + ' s'; },
   exportProgressCompose: function (secs) { return 'Composing the page… ' + secs + ' s'; },
   exportResLow: 'Low',
@@ -3365,7 +3364,6 @@ window.S = Object.assign({
   exportBtn: 'Export',
   printBtn: '🖨 Print',
   printBtnTitle: 'Open the print dialog at true physical size (A4/A3 1:250,000)',
-  errPopupBlocked: 'Allow pop-ups for this site to open the print view.',
 }, window.S || {});
 
 // Fill data-i18n / data-i18n-title / data-i18n-placeholder / data-i18n-aria
