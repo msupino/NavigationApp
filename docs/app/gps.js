@@ -2479,7 +2479,7 @@ function gpsSendWatchAlert(title, body, speech) {
         // What a paired watch shows beside the words: NavAid's own mark, not Android's grey
         // "i" (the plugin's fallback when no icon is named). An APK built before the drawable
         // existed finds no such resource and falls back to that "i" as before.
-        smallIcon: 'ic_stat_navaid', iconColor: '#4A90D9',
+        smallIcon: 'ic_stat_navaid', iconColor: tune('alertIconColor'),
         // One stack on the phone and the watch, not a column of separate cards.
         group: 'navaid-flight-alerts',
         schedule: { at: new Date(Date.now() + 100) } };

@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- Notification (status bar / watch) icon: a white aircraft on transparent, as Android
-     requires for a small icon -- it is tinted by the system. Shape: Material "flight" icon
+     requires for a small icon; the system tints it. Shape: Material "flight" icon
      (Apache License 2.0). Named by gpsSendWatchAlert (docs/app/gps.js). -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="24dp"
