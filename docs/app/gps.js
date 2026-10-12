@@ -2398,6 +2398,28 @@ function gpsRequestNotifyPermission() {
   return Promise.resolve();
 }
 var _watchAlertId = 1;
+// The alerts' own Android channel, "Flight alerts", at high importance: it pops up on the
+// phone and buzzes a paired watch, and the pilot can tune or silence it apart from anything
+// else NavAid ever posts (it shared the plugin's anonymous "Default" channel). Created once;
+// resolves to its id, or to null when the platform has no channels (iOS) or creating it
+// failed -- a notification naming a channel that does not exist is dropped by Android, so
+// then it goes out without one, on the default channel, as before.
+var _alertChannel = null;
+function gpsAlertChannel(nn) {
+  if (_alertChannel) return _alertChannel;
+  const id = 'flight-alerts';
+  _alertChannel = (nn && typeof nn.createChannel === 'function')
+    ? Promise.resolve(nn.createChannel({
+        id: id,
+        name: (window.S && S.alertChannelName) || 'Flight alerts',
+        description: (window.S && S.alertChannelDescription) || 'In-flight alerts: next leg, altitude, TOP, off route',
+        importance: 4,                    // high: heads-up on the phone, a buzz on the watch
+        visibility: 1,                    // public: readable on the lock screen
+        vibration: true,
+      })).then(function () { return id; }, function () { return null; })
+    : Promise.resolve(null);
+  return _alertChannel;
+}
 // An in-flight alert is about NOW: approaching a waypoint, overhead it, off plan. Ten
 // minutes later it is history, but Android keeps a notification in the shade until someone
 // swipes it -- so a two-hour sortie lands with a stack of stale calls to clear, and the one
@@ -2451,9 +2473,19 @@ function gpsSendWatchAlert(title, body, speech) {
   const nn = _nativeNotify();
   if (nn) {
     const id = _watchAlertId++;
-    nn.schedule({ notifications: [{ id: id, title: title, body: body,
-      autoCancel: true,                 // tapping it clears it, rather than leaving it up
-      schedule: { at: new Date(Date.now() + 100) } }] }).catch(function () {});
+    gpsAlertChannel(nn).then(function (channelId) {
+      const n = { id: id, title: title, body: body,
+        autoCancel: true,                 // tapping it clears it, rather than leaving it up
+        // What a paired watch shows beside the words: NavAid's own mark, not Android's grey
+        // "i" (the plugin's fallback when no icon is named). An APK built before the drawable
+        // existed finds no such resource and falls back to that "i" as before.
+        smallIcon: 'ic_stat_navaid', iconColor: tune('alertIconColor'),
+        // One stack on the phone and the watch, not a column of separate cards.
+        group: 'navaid-flight-alerts',
+        schedule: { at: new Date(Date.now() + 100) } };
+      if (channelId) n.channelId = channelId;
+      return nn.schedule({ notifications: [n] });
+    }).catch(function () {});
     gpsExpireNative(nn, id);
     return;
   }
