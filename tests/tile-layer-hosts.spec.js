@@ -143,7 +143,7 @@ test.describe('Base map tile hosts', () => {
 
     const result = await page.evaluate(async () => {
       const realCreateImageBitmap = window.createImageBitmap;
-      window.createImageBitmap = async () => ({});
+      window.createImageBitmap = async (_image) => ({});   // the real one's parameter, so callers elsewhere match it (CodeQL)
       try {
         const out = await fetchTileBitmap(layers.CVFR, { z: 9, x: 304, y: 205 });
         return { failed: out.failed, hasBitmap: !!out.bmp };
