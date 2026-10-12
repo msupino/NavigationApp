@@ -1429,6 +1429,8 @@ function appendVorAipInfo(body, v) {
     kk.textContent = k;
     const vv = document.createElement('span');
     vv.className = 'vor-aip-val';
+    // "40 NM" in a Hebrew panel: left RTL, it read "NM 40". Auto takes the value's own direction.
+    vv.dir = 'auto';
     vv.textContent = t;
     d.append(kk, vv);
     info.appendChild(d);
@@ -4289,13 +4291,7 @@ function showInspector() {
     title.value = state.selected.held ? (S.deckHereTitle || 'What is here') : (S.coordPointTitle || 'Coordinate');
     title.placeholder = ''; title.readOnly = true; title.oninput = null;
     appendPointCoordinateRows(body, pt);
-    const near = window.NavAid && NavAid.deckNearestField ? NavAid.deckNearestField(pt) : null;
-    if (near) {
-      const lang = (document.documentElement.lang || '').toLowerCase().startsWith('he') ? 'he' : 'en';
-      const name = near.af[lang] || near.af.en || near.af.name || '';
-      body.appendChild(textRow(S.deckHereNearest || 'Nearest field',
-        name + '  ' + near.dist.toFixed(1) + ' NM  ' + NavAid.deckFmtBearing(near.brg)));
-    }
+    appendNearestFieldRow(body, pt);
     const terrain = typeof terrainMaxAtLatLng === 'function' ? terrainMaxAtLatLng(pt.lat, pt.lng) : null;
     if (Number.isFinite(terrain)) {
       body.appendChild(textRow(S.deckHereTerrain || 'Highest terrain', Math.round(terrain) + ' ft'));
@@ -4318,6 +4314,7 @@ function showInspector() {
     title.value = referenceInspectorTitle(nw, 'navwp');
     title.placeholder = ''; title.readOnly = true; title.oninput = null;
     appendPointCoordinateRows(body, nw);
+    appendNearestFieldRow(body, nw);
     appendNavWaypointCommChangeInfo(body, nw.name);
     appendSatelliteSnippet(body, nw, title.value);
     appendVorRadialRow(body, nw.lat, nw.lng);
@@ -4362,6 +4359,7 @@ function showInspector() {
     if (afInsp) {
       appendAirfieldDetailRows(body, afInsp, title.value);
     } else {
+      appendNearestFieldRow(body, wp);
       appendSatelliteSnippet(body, wp, title.value);
       appendVorRadialRow(body, wp.lat, wp.lng);
     }
@@ -4776,6 +4774,15 @@ function inputRow(label, value, onChange) {
   row.append(l, inp);
   return row;
 }
+// Nearest published field, as a spot held on the chart shows it -- on a chart point and a
+// route waypoint too ("add nearest field to known wp, like unknown ones"). A point that IS a
+// field (within half a mile) has its own airfield panel and no row.
+function appendNearestFieldRow(body, pt) {
+  const near = window.NavAid && NavAid.deckNearestField ? NavAid.deckNearestField(pt) : null;
+  if (!near || near.dist < 0.5) return;
+  body.appendChild(textRow(S.deckHereNearest || 'Nearest field', NavAid.deckNearestFieldText(near)));
+}
+
 function textRow(label, value) {
   const row = document.createElement('div');
   row.className = 'row';
