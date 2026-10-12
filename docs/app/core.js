@@ -5714,9 +5714,13 @@ const FM_RENDER_BOUNDS = [
 // world map and the underlay beneath it.
 const TRANSPARENT_TILE_URL =
   'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNgYAAAAAMAASsJTYQAAAAASUVORK5CYII=';
+// How far in the map zooms, one value for every chart ("higher on all, they should all
+// match"): the 18 Satellite, OpenStreetMap and open flightmaps already allowed. A chart past
+// its own sharpest tiles (maxNativeZoom) is drawn from those, enlarged.
+const MAP_MAX_ZOOM = 18;
 const TILE = {
   minZoom: 6,
-  maxZoom: 16,
+  maxZoom: MAP_MAX_ZOOM,
   maxNativeZoom: 13,
   chartBounds: FM_BOUNDS,
   // A tiny inset avoids floating-point overlap with the unpublished neighbour tile.
@@ -5858,9 +5862,9 @@ const CHART_SPECS = {
   'Satellite': (pane) => L.tileLayer(
     'https://services.arcgisonline.com/ArcGIS/rest/services/' +
     'World_Imagery/MapServer/tile/{z}/{y}/{x}',
-    withPane({ minZoom: 6, maxZoom: 18, attribution: 'Imagery © Esri' }, pane)),
+    withPane({ minZoom: 6, maxZoom: MAP_MAX_ZOOM, attribution: 'Imagery © Esri' }, pane)),
   'OpenStreetMap': (pane) => L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
-    withPane({ minZoom: 4, maxZoom: 18, subdomains: 'abc',
+    withPane({ minZoom: 4, maxZoom: MAP_MAX_ZOOM, subdomains: 'abc',
       attribution: '© OpenStreetMap contributors' }, pane)),
   // open flightmaps' aeronautical chart: about twenty regions, mostly European (Greece, Italy,
   // Croatia...) -- and nothing over Israel, where its tiles come back empty. The aero tiles
@@ -5871,7 +5875,7 @@ const CHART_SPECS = {
     'https://nwy-tiles-api.prod.newaydata.com/tiles/{z}/{x}/{y}.png?path=latest/aero/latest',
     // crossOrigin: the map reads its tiles to tell an area with no data (every tile the same
     // transparent PNG) from one with -- layerViewIsBlank, ui.js. The server sends CORS for all.
-    withPane({ minZoom: 4, maxZoom: 18, maxNativeZoom: 12, corsOk: true, crossOrigin: 'anonymous',
+    withPane({ minZoom: 4, maxZoom: MAP_MAX_ZOOM, maxNativeZoom: 12, corsOk: true, crossOrigin: 'anonymous',
       attribution: '<a href="https://www.openflightmaps.org/" target="_blank" rel="noopener">© open flightmaps association</a>' }, pane)),
 };
 // The always-offline world map (world-offline.js) is drawn under every chart; as a chart of
@@ -5972,7 +5976,7 @@ const map = L.map('map', {
   center: _initialView.center,
   zoom: _initialView.zoom,
   minZoom: mapMinZoomFor(),
-  maxZoom: 15,
+  maxZoom: MAP_MAX_ZOOM,
   layers: [initialLayer],
   zoomControl: false,
   zoomAnimation: false,        // keep the canvas overlay in sync
@@ -6022,7 +6026,7 @@ function underlayLayer(name) {
   if (name === 'OpenStreetMap') {
     if (!_underlayCache[name]) {
       _underlayCache[name] = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
-        { pane: 'basemapUnderlay', minZoom: 4, maxZoom: 18, subdomains: 'abc',
+        { pane: 'basemapUnderlay', minZoom: 4, maxZoom: MAP_MAX_ZOOM, subdomains: 'abc',
           attribution: '© OpenStreetMap contributors' });
     }
   } else if (!_underlayCache[name]) {
