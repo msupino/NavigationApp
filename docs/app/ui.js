@@ -12068,7 +12068,11 @@ armAndroidBackButton();
 
 // Preload the terrain grid so MSA / terrain clearance is ready when a
 // leg inspector opens. No-op (coverage:false) until a real DEM is bundled.
-if (typeof loadTerrain === "function") loadTerrain();
+// An inspector already open when it arrives -- restored after a reload, as a language switch
+// is -- is drawn again, or its Highest terrain / MSA rows stay missing until it is reopened.
+if (typeof loadTerrain === "function") {
+  loadTerrain().then(() => { if (typeof refreshInspectorIfVisible === 'function') refreshInspectorIfVisible(); });
+}
 // CTR boundary points: the route clock starts there, not at the field.
 if (typeof loadCtrBoundaries === "function") loadCtrBoundaries();
 
