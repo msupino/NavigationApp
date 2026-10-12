@@ -145,7 +145,9 @@ exports.test = base.test.extend({
           // The marker header is how a test can prove nothing left the machine.
           return route.fulfill({
             status: 200, contentType: 'image/png', body: TRANSPARENT_PNG,
-            headers: { 'x-navaid-stub-tile': '1' },
+            // CORS as the real tile servers send it: a layer that reads its tiles (crossOrigin)
+            // still loads them.
+            headers: { 'x-navaid-stub-tile': '1', 'access-control-allow-origin': '*' },
           });
         }
       } catch (e) { /* relative URLs etc. */ }
