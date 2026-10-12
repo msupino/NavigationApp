@@ -28,6 +28,21 @@ function routeSnapshotScript() {
   };
 }
 
+// Pick a template the way a pilot does: From, then To, then Via where the pair has more than
+// one route (asked: "From and To in different inputs, with all existing couples").
+async function pickTemplate(page, id) {
+  const t = await page.evaluate(async (id) => {
+    const data = await (await fetch(S.routeTemplatesUrl)).json();
+    const x = data.templates.find(t => t.id === id);
+    return { from: x.waypoints[0], to: x.waypoints[x.waypoints.length - 1] };
+  }, id);
+  await page.locator('.route-template-from').selectOption(t.from);
+  await page.locator('.route-template-to').selectOption(t.to);
+  if (await page.locator('.route-template-via').isVisible()) {
+    await page.locator('.route-template-via').selectOption(id);
+  }
+}
+
 async function boot(page, lang = 'en') {
   await page.addInitScript(() => {
     try {
@@ -59,13 +74,36 @@ test.describe('route templates', () => {
     }
   });
 
-  test('templates are listed alphabetically by name in the modal', async ({ page }) => {
+  test('From and To are separate lists, in order, with only the pairs that exist', async ({ page }) => {
     await boot(page);
     await page.locator('.tb-section[data-sec="charts"] #route-templates').click();
     await expect(page.locator('.route-template-modal')).toBeVisible();
-    const names = await page.locator('.route-template-select option').allTextContents();
-    const sorted = [...names].sort((a, b) => a.localeCompare(b));
-    expect(names).toEqual(sorted);
+    const from = await page.locator('.route-template-from option').allTextContents();
+    expect(from).toEqual([...from].sort((a, b) => a.localeCompare(b)));
+    expect(from).toContain('Herzliya');
+    // From Herzliya: the destinations that have a route from there, in order.
+    await page.locator('.route-template-from').selectOption('LLHZ');
+    const to = await page.locator('.route-template-to option').allTextContents();
+    expect(to).toEqual([...to].sort((a, b) => a.localeCompare(b)));
+    expect(to).toEqual(['Beer Sheva', 'Haifa', 'Masada', 'Megiddo', 'Rosh Pina']);
+    await expect(page.locator('.route-template-via')).toBeHidden();   // one route each
+    // Rosh Pina to Haifa has two: Via appears, with both.
+    await page.locator('.route-template-from').selectOption('LLIB');
+    await page.locator('.route-template-to').selectOption('LLHA');
+    await expect(page.locator('.route-template-via')).toBeVisible();
+    expect(await page.locator('.route-template-via option').allTextContents())
+      .toEqual(['via the Galilee', 'via the valleys']);
+    // Every template is reachable through From / To / Via.
+    const all = await page.evaluate(async () => (await (await fetch(S.routeTemplatesUrl)).json()).templates.length);
+    let reachable = 0;
+    for (const f of await page.locator('.route-template-from option').evaluateAll(os => os.map(o => o.value))) {
+      await page.locator('.route-template-from').selectOption(f);
+      for (const t of await page.locator('.route-template-to option').evaluateAll(os => os.map(o => o.value))) {
+        await page.locator('.route-template-to').selectOption(t);
+        reachable += await page.locator('.route-template-via option').count();
+      }
+    }
+    expect(reachable).toBe(all);
   });
 
   test('loading a CVFR template on a non-matching layer warns instead of loading', async ({ page }) => {
@@ -140,8 +178,7 @@ test.describe('route templates', () => {
     await expect(button).toBeVisible();
     await button.click();
     await expect(page.locator('.route-template-modal')).toBeVisible();
-    // Templates are listed alphabetically by name, so select explicitly.
-    await page.locator('.route-template-select').selectOption('llhz-llha-coastal');
+    await pickTemplate(page, 'llhz-llha-coastal');
     await expect(page.locator('.route-template-speed')).toHaveValue('90');
     await page.locator('.route-template-speed').fill('115');
     await page.locator('.route-template-modal button', { hasText: 'Build route' }).click();
@@ -346,7 +383,7 @@ test.describe('route templates', () => {
     test(`user builds the ${templateCase.name} route template`, async ({ page }) => {
       await boot(page);
       await page.locator('#route-templates').click();
-      await page.locator('.route-template-select').selectOption(templateCase.id);
+      await pickTemplate(page, templateCase.id);
       await page.locator('.route-template-speed').fill('105');
       await page.locator('.route-template-modal button', { hasText: 'Build route' }).click();
       await expect(page.locator('.route-template-modal')).toHaveCount(0);

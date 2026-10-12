@@ -244,6 +244,8 @@
       "he": "חיפה לראש פינה",
       "description": "Northern CVFR route from Haifa to Rosh Pina via the Galilee.",
       "heDescription": "מסלול CVFR צפוני מחיפה לראש פינה דרך הגליל.",
+      "via": "via the Galilee",
+      "heVia": "דרך הגליל",
       "defaultSpeed": 90,
       "waypoints": [
         "LLHA",
@@ -263,6 +265,8 @@
       "he": "ראש פינה לחיפה",
       "description": "Northern CVFR route from Rosh Pina to Haifa via the Galilee.",
       "heDescription": "מסלול CVFR צפוני מראש פינה לחיפה דרך הגליל.",
+      "via": "via the Galilee",
+      "heVia": "דרך הגליל",
       "defaultSpeed": 90,
       "waypoints": [
         "LLIB",
@@ -358,6 +362,8 @@
       "he": "ראש פינה לחיפה (דרך העמקים)",
       "description": "Long CVFR route from Rosh Pina to Haifa via Tavor, Afula, Eiron and the coast.",
       "heDescription": "מסלול CVFR ארוך מראש פינה לחיפה דרך תבור, עפולה, עירון והחוף.",
+      "via": "via the valleys",
+      "heVia": "דרך העמקים",
       "defaultSpeed": 90,
       "waypoints": [
         "LLIB",
@@ -386,6 +392,8 @@
       "he": "חיפה לראש פינה (דרך העמקים)",
       "description": "Long CVFR route from Haifa via the coast, Eiron, Afula and Tavor to Rosh Pina.",
       "heDescription": "מסלול CVFR ארוך מחיפה דרך החוף, עירון, עפולה ותבור לראש פינה.",
+      "via": "via the valleys",
+      "heVia": "דרך העמקים",
       "defaultSpeed": 90,
       "waypoints": [
         "LLHA",

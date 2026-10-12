@@ -9502,3 +9502,6 @@ body.theme-light .ctx-sep { background: #dfe4ec; }
 #export-progress progress { width: 100%; height: 8px; accent-color: #ffd966; }
 .export-progress-label { font-variant-numeric: tabular-nums; }
 body.theme-light #export-progress { background: #fafcff; color: #1d2430; border-color: #cfd6e0; box-shadow: 0 6px 24px rgba(20, 30, 50, 0.18); }
+/* Via shows only for a pair with more than one route; the row's flex display would override
+   the hidden attribute. */
+.route-template-row[hidden] { display: none; }
