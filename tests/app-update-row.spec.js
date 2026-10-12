@@ -129,6 +129,19 @@ test('the automatic Wi-Fi download shows its progress, and Download does not sta
   await expect(row.locator('.app-update-progress')).toHaveAttribute('hidden', '');
 });
 
+// Review: the one-download guard came after several awaits, so two checks started together
+// (the one at start and Wi-Fi coming back) both got past them and both downloaded.
+test('two checks started together download once', async ({ page }) => {
+  await boot(page, { manifest: MANIFEST, network: 'wifi', running: '1.0-0000000' });
+  await page.evaluate(() => { window.__a = NavAid.ota.checkForUpdate(); window.__b = NavAid.ota.checkForUpdate(); });
+  await page.waitForFunction(() => typeof window.__ota.finish === 'function');
+  await page.evaluate(() => window.__ota.finish());
+  const [a, b] = await page.evaluate(() => Promise.all([window.__a, window.__b]));
+  expect(a.updated).toBe(true);
+  expect(b.updated).toBe(true);
+  expect(await page.evaluate(() => window.__ota.downloads)).toBe(1);
+});
+
 test('the web app has no such row', async ({ page }) => {
   await page.goto('?lang=en&nogist');
   await page.waitForFunction(() => window.NavAid && NavAid.appUpdate);
