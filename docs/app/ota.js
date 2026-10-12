@@ -208,18 +208,52 @@
         return { checked: true, updated: false, pending: true, version: manifest.version, reason: 'already downloaded' };
       }
     } catch (e) { /* nothing pending */ }
-    try {
-      const bundle = await p.download({
-        url: manifest.url, version: manifest.version, checksum: manifest.checksum,
-      });
-      if (!bundle || !bundle.id) return { checked: true, updated: false, reason: 'download failed' };
-      await armForColdStart(p, bundle.id);
-      return { checked: true, updated: true, version: manifest.version, id: bundle.id };
-    } catch (e) {
-      // A relay that is down, a half-written zip, a checksum that does not match: the app
-      // carries on with the bundle it has. An update is never worth a broken launch.
-      return { checked: true, updated: false, reason: (e && e.message) || 'download refused' };
-    }
+    // One download at a time. The automatic one on Wi-Fi runs in the background; pressing
+    // Download meanwhile joins it rather than fetching the same 26 MB a second time (reported:
+    // "it still allows me to trigger download" while one was already under way).
+    if (active && active.version === manifest.version) return active.promise;
+    const job = { version: manifest.version, pct: null, promise: null };
+    active = job;
+    // Set before anything is awaited, so a second caller always finds the promise to join.
+    job.promise = (async () => {
+      let handle = null;
+      try {
+        if (typeof p.addListener === 'function') {
+          handle = await p.addListener('download', (e) => {
+            const v = Math.max(0, Math.min(100, Math.round(Number(e && e.percent))));
+            if (Number.isFinite(v) && v !== job.pct) { job.pct = v; announce(); }
+          });
+        }
+      } catch (e) { handle = null; }
+      try {
+        const bundle = await p.download({
+          url: manifest.url, version: manifest.version, checksum: manifest.checksum,
+        });
+        if (!bundle || !bundle.id) return { checked: true, updated: false, reason: 'download failed' };
+        await armForColdStart(p, bundle.id);
+        return { checked: true, updated: true, version: manifest.version, id: bundle.id };
+      } catch (e) {
+        // A relay that is down, a half-written zip, a checksum that does not match: the app
+        // carries on with the bundle it has. An update is never worth a broken launch.
+        return { checked: true, updated: false, reason: (e && e.message) || 'download refused' };
+      } finally {
+        try { if (handle && handle.remove) await handle.remove(); } catch (e) { /* gone */ }
+        if (active === job) active = null;
+        announce();
+      }
+    })();
+    announce();
+    return job.promise;
+  }
+
+  // The download under way, automatic or asked for: its version and progress (0-100, or null
+  // before the plugin's first report). Settings shows it, and says so, instead of offering
+  // the same download again. Every change is announced as a 'navaid-ota-download' event.
+  let active = null;
+  function downloading() { return active ? { version: active.version, pct: active.pct } : null; }
+  function announce() {
+    try { window.dispatchEvent(new CustomEvent('navaid-ota-download', { detail: downloading() })); }
+    catch (e) { /* no CustomEvent: the row catches up on its next look */ }
   }
 
   // A `kill` delay is not an install at startup. The plugin loads the CURRENT bundle
@@ -298,6 +332,7 @@
     const o = opts || {};
     const p = o.plugin || plugin();
     if (!p || !embedded()) return { state: 'none' };
+    if (active) return { state: 'downloading', version: active.version, pct: active.pct };
     try {
       const next = typeof p.getNextBundle === 'function' ? await p.getNextBundle() : null;
       if (next && next.id && next.status !== 'error') {
@@ -436,7 +471,7 @@
   window.NavAid = window.NavAid || {};
   NavAid.ota = {
     notifyReady, checkForUpdate, readManifest, appIsUp, installPendingAtStartup, MANIFEST,
-    status, downloadNow, onUnmeteredConnection, sameBuild,
+    status, downloadNow, downloading, onUnmeteredConnection, sameBuild,
     restartNow, offerRestart, checkForNewApk, newerVersion,
   };
 

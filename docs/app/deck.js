@@ -554,14 +554,9 @@
   // waypoint.
   function addHere(latlng) {
     if (typeof state !== 'object' || !state) return;
-    const snapped = (typeof applyNavSnap === 'function') ? applyNavSnap(latlng, '') : latlng;
-    const next = { lat: (typeof r5 === 'function' ? r5(snapped.lat) : snapped.lat),
-                   lng: (typeof r5 === 'function' ? r5(snapped.lng) : snapped.lng),
-                   name: snapped.name || '' };
-    state.waypoints.push(next);
-    // syncLegs -> the save path -> recordUndoSnapshot: a point added this way is one undo
-    // step, exactly like a point added with the Add tool.
-    if (typeof syncLegs === 'function') syncLegs();
+    // The Add tool's own add (addRoutePoint, interact.js): the snap, the frequency changes and
+    // the published corridor, which this sheet used to leave out. One undo step, like a tap.
+    if (typeof addRoutePoint === 'function') addRoutePoint({ lat: latlng.lat, lng: latlng.lng });
     if (typeof draw === 'function') draw();
     closeSheet();
   }
@@ -594,6 +589,8 @@
     const snapped = (typeof applyNavSnap === 'function') ? applyNavSnap(latlng, latlng.name || '') : latlng;
     state.waypoints = [here, { lat: snapped.lat, lng: snapped.lng, name: snapped.name || '' }];
     if (typeof syncLegs === 'function') syncLegs();
+    // A new route, so its frequency changes too -- as every other way of building one.
+    if (typeof seedCommChangeNotes === 'function') seedCommChangeNotes();
     if (typeof draw === 'function') draw();
     closeSheet();
   }
@@ -852,6 +849,7 @@
   NavAid.refreshMobileDeck = apply;
   // The coordinate inspector offers the same Direct to and reads the same nearest field.
   NavAid.deckDirectTo = directTo;
+  NavAid.deckAddHere = addHere;
   NavAid.deckNearestField = nearestField;
   NavAid.deckFmtBearing = fmtBearing;
   NavAid.deckNearestFieldText = nearestFieldText;
