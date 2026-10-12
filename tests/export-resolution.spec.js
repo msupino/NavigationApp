@@ -10,19 +10,22 @@ const { test, expect } = require('./_setup');
 test.use({ viewport: { width: 1400, height: 900 } });
 test.setTimeout(90000);
 
-async function exportAt(page, size, bearing) {
-  return page.evaluate(async ([size, bearing]) => {
+async function exportAt(page, size, bearing, res) {
+  return page.evaluate(async ([size, bearing, res]) => {
+    if (res) localStorage.setItem('navaid.printRes', res);
+    let tiles = 0;
     window.refuse = () => {};                    // stub tiles do not decode; not what is measured
     let inFlight = 0, peak = 0;
     const realFetch = window.fetch;
     window.fetch = async (...a) => {
-      const tile = /navaid-tiles\.supino\.org/.test(String(a[0]));
-      if (tile) { inFlight++; peak = Math.max(peak, inFlight); }
+      let tile = false;
+      try { tile = new URL(String(a[0]), location.href).hostname === 'navaid-tiles.supino.org'; } catch (e) { /* not a URL */ }
+      if (tile) { tiles++; inFlight++; peak = Math.max(peak, inFlight); }
       try { return await realFetch(...a); } finally { if (tile) inFlight--; }
     };
     map.setView([32.3, 34.95], 10, { animate: false });
     if (bearing) map.setBearing(bearing);
-    if (size) setPage(size);
+    if (size && pageSize !== size) setPage(size);   // pressing the same size again turns the page off
     await new Promise(r => setTimeout(r, 300));
     const blob = await new Promise((resolve) => { window.saveFile = (b, _name) => resolve(b); exportPNG('save'); });
     window.fetch = realFetch;
@@ -35,8 +38,8 @@ async function exportAt(page, size, bearing) {
       if (type === 'IDAT') break;
       i += 12 + len;
     }
-    return { W: dv.getUint32(16), H: dv.getUint32(20), dpi: ppm && Math.round(ppm * 0.0254), peak };
-  }, [size, bearing]);
+    return { W: dv.getUint32(16), H: dv.getUint32(20), dpi: ppm && Math.round(ppm * 0.0254), peak, tiles };
+  }, [size, bearing, res]);
 }
 
 test.beforeEach(async ({ page }) => {
@@ -47,14 +50,37 @@ test.beforeEach(async ({ page }) => {
 
 for (const [size, bearing] of [['A4', 0], ['A3', 0], ['A4', 30]]) {
   test(size + (bearing ? ' on a rotated map' : '') + ' is printed from the sharpest tiles', async ({ page }) => {
-    const r = await exportAt(page, size, bearing);
+    const r = await exportAt(page, size, bearing, 'high');
     expect(r.dpi).toBeGreaterThanOrEqual(350);   // was ~197 for A3 and a rotated A4
     expect(r.peak).toBeLessThanOrEqual(16);       // a pool, not a thousand requests at once
   });
 }
 
-test('with no page chosen it is twice the screen, and says so', async ({ page }) => {
-  const r = await exportAt(page, null, 0);
+test('with no page chosen it is twice the screen at High, and says so', async ({ page }) => {
+  const r = await exportAt(page, null, 0, 'high');
   expect([r.W, r.H]).toEqual([2800, 1800]);
   expect(r.dpi).toBe(192);
+  const m = await exportAt(page, null, 0, 'medium');     // the default: 1.5x
+  expect([m.W, m.H]).toEqual([2100, 1350]);
+  expect(m.dpi).toBe(144);
+});
+
+// Asked: 'add a "resolution" slider, low, med, high, in print menu'.
+test('Low, Medium and High: about half, three quarters and all of the sharpest tiles', async ({ page }) => {
+  const high = await exportAt(page, 'A4', 0, 'high');
+  const medium = await exportAt(page, 'A4', 0, 'medium');
+  const low = await exportAt(page, 'A4', 0, 'low');
+  expect(high.dpi).toBeGreaterThanOrEqual(380);
+  expect(Math.abs(medium.dpi - high.dpi * 0.75)).toBeLessThan(8);
+  expect(Math.abs(low.dpi - high.dpi * 0.5)).toBeLessThan(8);
+  expect(low.tiles).toBeLessThan(high.tiles / 2);    // Low is drawn from a level coarser: quick
+});
+
+test('the Print dialog has the Resolution slider, remembered on this device', async ({ page }) => {
+  await page.evaluate(() => showExportModal());
+  const slider = page.locator('#export-res');
+  await expect(slider).toHaveValue('1');                 // Medium by default
+  await slider.fill('0');
+  expect(await page.evaluate(() => localStorage.getItem('navaid.printRes'))).toBe('low');
+  await expect(slider).toHaveAttribute('aria-valuetext', 'Low');
 });

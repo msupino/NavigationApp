@@ -5613,6 +5613,36 @@ function showExportModal() {
   opacityRow.appendChild(opResetBtn);
   body.appendChild(opacityRow);
 
+  // Resolution: Low / Medium / High (printRes, exportPNG).
+  const resRow = document.createElement('div');
+  resRow.style.cssText = 'display:flex;align-items:center;gap:6px;font-size:13px';
+  const resLbl = document.createElement('span');
+  resLbl.textContent = S.exportResolution || 'Resolution';
+  const resSlider = document.createElement('input');
+  resSlider.type = 'range';
+  resSlider.id = 'export-res';
+  resSlider.min = '0'; resSlider.max = '2'; resSlider.step = '1';
+  resSlider.value = String(PRINT_RES_STEPS.indexOf(printRes()));
+  resSlider.style.cssText = 'flex:1;height:16px;accent-color:#ffd966';
+  resSlider.setAttribute('aria-label', resLbl.textContent);
+  const resVal = document.createElement('span');
+  resVal.style.cssText = 'min-width:4.5em;text-align:end;font-size:12px';
+  const resName = (v) => ({ low: S.exportResLow || 'Low', medium: S.exportResMedium || 'Medium',
+    high: S.exportResHigh || 'High' })[v];
+  const showRes = () => {
+    const v = PRINT_RES_STEPS[Number(resSlider.value)] || 'high';
+    resVal.textContent = resName(v);
+    resSlider.setAttribute('aria-valuetext', resVal.textContent);
+    return v;
+  };
+  showRes();
+  resSlider.addEventListener('input', () => {
+    const v = showRes();
+    try { localStorage.setItem(PRINT_RES_KEY, v); } catch (e) { /* private */ }
+  });
+  resRow.append(resLbl, resSlider, resVal);
+  body.appendChild(resRow);
+
   // Black-and-white printer: the chart in light grey, the route black on white (exportPNG).
   // Remembered on this device -- it is about the printer here, not the pilot's other devices.
   const bwLabel = document.createElement('label');
@@ -6107,6 +6137,18 @@ function openPrintWindow(blob, paperWmm, paperHmm) {
   img.onerror = () => { URL.revokeObjectURL(url); };
   img.src = url;
 }
+// Resolution for the PNG and the print, a three-step slider in the dialog (device-local):
+// High draws from the chart's sharpest tiles (about 390 dpi at 1:250 000), Medium (the
+// default) at three quarters of that, Low at half -- from a level coarser, a quarter of the tiles, so it is quick.
+// With no page chosen the same steps are 2x, 1.5x and 1x the screen's pixels.
+const PRINT_RES_KEY = 'navaid.printRes';
+const PRINT_RES_STEPS = ['low', 'medium', 'high'];
+const PRINT_RES_SCALE = { low: 0.5, medium: 0.75, high: 1 };
+function printRes() {
+  try { const v = localStorage.getItem(PRINT_RES_KEY); return PRINT_RES_STEPS.indexOf(v) !== -1 ? v : 'medium'; }
+  catch (e) { return 'medium'; }
+}
+window.printRes = printRes;
 // "Black-and-white printer" in the Print dialog (device-local).
 const PRINT_BW_KEY = 'navaid.printBw';
 function printBwOn() {
@@ -6207,7 +6249,8 @@ function exportPNG(mode) {
   const MAX_TILES = 1200;
   // Output pixels per screen pixel, and the tile zoom they are drawn from.
   let z = framed ? nativeMax : Math.min(nativeMax, Math.max(7, Math.ceil(mapZoom + 1)));
-  let pps = framed ? Math.pow(2, z - mapZoom) : 2;
+  const resScale = PRINT_RES_SCALE[printRes()] || 1;
+  let pps = (framed ? Math.pow(2, z - mapZoom) : 2) * resScale;
   let bbNWP, bbSEP, Wbb, Hbb, k = 1;
   const measure = () => {
     bbNWP = map.project([bbNWll.lat, bbNWll.lng], z);
@@ -6216,7 +6259,7 @@ function exportPNG(mode) {
     Hbb = Math.round(bbSEP.y - bbNWP.y);
     return Math.ceil(Wbb / 256 + 1) * Math.ceil(Hbb / 256 + 1);
   };
-  while (z > 7 && measure() > MAX_TILES) { z--; if (framed) pps = Math.pow(2, z - mapZoom); }
+  while (z > 7 && measure() > MAX_TILES) { z--; if (framed) pps = Math.pow(2, z - mapZoom) * resScale; }
   measure();
   for (let guard = 0; guard < 8; guard++) {
     k = pps / Math.pow(2, z - mapZoom);              // the tile canvas's scale against zoom z
@@ -6227,7 +6270,7 @@ function exportPNG(mode) {
     pps *= f; k *= f;
     // Under half the tiles' own detail, a level coarser carries the same picture in a quarter
     // of the tiles.
-    if (k < 0.5 && z > 7) { z--; measure(); continue; }
+    if (k <= 0.5 + 1e-9 && z > 7) { z--; measure(); continue; }
     break;
   }
   // Whole-pixel tiles, so they lie edge to edge with no hairline between them.
