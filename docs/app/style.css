@@ -3126,6 +3126,16 @@ body.theme-light .shortcuts-help-keys kbd {
     flex: 1 1 46%;
     min-width: 46%;
   }
+  /* Three across: labels kept to two short lines, as the modal action row does -- smaller type,
+     tighter sides, the 44px touch minimum kept. */
+  #insp-body .insp-actions.insp-actions-many button {
+    flex: 1 1 30%;
+    min-width: 30%;
+    font-size: 12px;
+    padding: 4px 4px;
+    min-height: 44px;
+    line-height: 1.15;
+  }
   .row input[type="number"],
   .row input[type="text"] { padding: 8px 6px; font-size: 15px; }
   /* Flight-plan table is wider than a phone — scroll sideways instead of
@@ -6619,8 +6629,8 @@ body.ov-align-active { cursor: crosshair; }
    range / limits). Compact key-value lines under the radial readout. */
 .vor-aip-info { margin: 2px 0 6px; font-size: 12px; line-height: 1.35; }
 .vor-aip-line { display: flex; gap: 6px; padding: 1px 0; }
-.vor-aip-key { flex: 0 0 84px; color: #647184; }
-.vor-aip-val { flex: 1 1 auto; min-width: 0; word-break: break-word; }
+/* A station's published facts are ordinary rows; a long Limits remark wraps under its label. */
+.row.vor-aip-row .val { min-width: 0; word-break: break-word; text-align: end; }
 .vor-aip-warn { color: #b03636; font-weight: 600; }
 html[dir="rtl"] .vor-aip-line { flex-direction: row; }
 
