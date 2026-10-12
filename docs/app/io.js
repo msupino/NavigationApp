@@ -6034,7 +6034,11 @@ async function fetchTileBitmap(layer, coords, signal) {
 // A3 → two A4 landscape halves (horizontal cut). Halves abut exactly (no
 // overlap, so 1:250 000 is preserved); a dashed cut/tape guide marks the shared
 // edge and each page is labelled. Downloads two PNGs with A4 DPI metadata.
-function exportA4x2Tiles(out, W, H, done) {
+function exportA4x2Tiles(out, W, H, done, mode) {
+  // Print sends both pages to one print window, page 1 then page 2; Save downloads them as two
+  // files. (Print used to save the two files too: "png and print are the same?")
+  const printing = mode === 'print';
+  const pages = [];
   // pageOrient describes the assembled A3 sheet (the on-screen frame), same as
   // A3/A4: a landscape frame splits into two portrait A4 pages side-by-side
   // (vertical cut); a portrait frame splits into two landscape halves stacked
@@ -6049,7 +6053,13 @@ function exportA4x2Tiles(out, W, H, done) {
 
   let i = 0;
   (function nextTile() {
-    if (i >= tiles.length) { done(); return; }
+    if (i >= tiles.length) {
+      if (printing && pages.length) {
+        openPrintWindow(pages, portraitPages ? 210 : 297, portraitPages ? 297 : 210);
+      }
+      done();
+      return;
+    }
     const t = tiles[i++];
     const c = document.createElement('canvas');
     c.width = t.sw; c.height = t.sh;
@@ -6067,6 +6077,7 @@ function exportA4x2Tiles(out, W, H, done) {
     // where a fixed 22px label would print ~2 mm tall and be illegible.
     drawA4x2TileMarks(cx, t, tiles.length, ppmX / 1000);
     const dl = (blob) => {
+      if (printing) { pages.push(blob); nextTile(); return; }
       saveFile(blob, 'navigation-' + routeFileSlug() + '-A4x2-p' + t.n + 'of2-' + fileStamp() + '.png');
       setTimeout(nextTile, 400);   // stagger so the browser allows both downloads
     };
@@ -6119,23 +6130,31 @@ function drawA4x2TileMarks(cx, t, total, pxPerMm) {
 // an @page rule, then fire the print dialog — so it prints 1:1 regardless of the
 // printer's "fit to page" default (the only reliable way to hit the physical mm
 // sizes). Non-framed falls back to printing the image on the default page.
-function openPrintWindow(blob, paperWmm, paperHmm) {
-  const url = URL.createObjectURL(blob);
+// One image, or several -- the two halves of an A4x2 -- each a sheet of its own, printed once
+// they have all loaded.
+function openPrintWindow(blobs, paperWmm, paperHmm) {
+  const list = Array.isArray(blobs) ? blobs : [blobs];
+  const urls = list.map(b => URL.createObjectURL(b));
+  const free = () => urls.forEach(u => URL.revokeObjectURL(u));
   const w = window.open('', '_blank');
-  if (!w) { refuse(S.errPopupBlocked || 'Allow pop-ups to print.'); URL.revokeObjectURL(url); return; }
+  if (!w) { refuse(S.errPopupBlocked || 'Allow pop-ups to print.'); free(); return; }
   const sized = (paperWmm && paperHmm)
     ? `@page{size:${paperWmm}mm ${paperHmm}mm;margin:0}img{width:${paperWmm}mm;height:${paperHmm}mm;display:block}`
     : `@page{margin:0}img{max-width:100%;display:block}`;
   w.document.open();
   w.document.write('<!doctype html><html><head><meta charset="utf-8"><title>' +
     (S.printBtn || 'Print') + '</title><style>html,body{margin:0;padding:0}' + sized +
-    '</style></head><body><img alt=""></body></html>');
+    'img{break-after:page;page-break-after:always}img:last-child{break-after:auto;page-break-after:auto}' +
+    '</style></head><body>' + urls.map(() => '<img alt="">').join('') + '</body></html>');
   w.document.close();
-  const img = w.document.querySelector('img');
-  const go = () => { try { w.focus(); w.print(); } catch (e) {} setTimeout(() => URL.revokeObjectURL(url), 60000); };
-  img.onload = () => setTimeout(go, 60);
-  img.onerror = () => { URL.revokeObjectURL(url); };
-  img.src = url;
+  const imgs = [...w.document.querySelectorAll('img')];
+  let left = imgs.length;
+  const go = () => { try { w.focus(); w.print(); } catch (e) {} setTimeout(free, 60000); };
+  imgs.forEach((img, i) => {
+    img.onload = () => { if (--left === 0) setTimeout(go, 60); };
+    img.onerror = () => { free(); };
+    img.src = urls[i];
+  });
 }
 // Resolution for the PNG and the print, a three-step slider in the dialog (device-local):
 // High draws from the chart's sharpest tiles (about 390 dpi at 1:250 000), Medium (the
@@ -6494,7 +6513,7 @@ function exportPNG(mode) {
         NavAid.exporting = false;
         if (typeof NavAid._restoreExport === 'function') NavAid._restoreExport();
         if (failed > 0) refuse(S.errTilesFail(failed, jobs.length));
-      });
+      }, mode);
       return;
     }
 

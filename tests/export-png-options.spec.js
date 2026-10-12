@@ -391,7 +391,7 @@ test.describe('Export PNG options modal', () => {
     // Capture what openPrintWindow would write to the popup.
     const html = await page.evaluate(() => new Promise(resolve => {
       let out = '';
-      const doc = { open() {}, close() {}, write(s) { out += s; }, querySelector: () => ({}) };
+      const doc = { open() {}, close() {}, write(s) { out += s; }, querySelector: () => ({}), querySelectorAll: () => [{}] };
       window.open = () => ({ document: doc, focus() {}, print() {} });
       // A4 landscape paper.
       openPrintWindow(new Blob([new Uint8Array([137, 80, 78, 71])], { type: 'image/png' }), 297, 210);
