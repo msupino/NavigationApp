@@ -1202,7 +1202,36 @@ function navaidEvent(name) {
 }
 window.navaidEvent = navaidEvent;
 
+// Black-and-white printing ("can we behave the printed map for a black and white printer?"):
+// while an export draws with "Black-and-white printer" on, the route's colours are read from
+// this set instead -- fills white, ink, rings and arrows black, halos white, translucent fills
+// opaque -- so on a mono printer the route is black on white instead of greys that sink into
+// the chart. Set and cleared around the export's overlay draw only: the screen never sees it.
+const PRINT_BW_TUNES = {
+  inkColor: '#000000', kiteTextColor: '#000000', selectedColor: '#000000',
+  legKiteFillColor: '#ffffff', cumKiteFillColor: '#ffffff', legKiteHaloColor: '#000000',
+  // The way home stays told apart from the way out, in grey instead of pink.
+  returnKiteFillColor: '#dcdcdc', returnCumKiteFillColor: '#dcdcdc',
+  distanceBadgeFillColor: '#ffffff', waypointFillColor: '#ffffff', labelFillColor: '#ffffff',
+  waypointHotspotFillColor: '#b4b4b4', waypointHotspotRingColor: '#000000',
+  noteDefaultFillColor: '#ffffff', kiteNoteAlpha: 1,
+  commChangeRingColor: '#000000', commChangeDotColor: '#000000', commChangeArrowColor: '#000000',
+  commChangeArrowHaloColor: '#ffffff', commChangeArrowHaloAlpha: 1, commChangeSelectedColor: '#000000',
+  commChangeTextColor: '#000000', commChangeTextHaloColor: '#ffffff', commChangeTextHaloAlpha: 1,
+  airfieldFillColor: '#000000', airfieldCenterColor: '#ffffff', airfieldOutlineColor: '#000000',
+  navWaypointDotColor: '#ffffff', vorMarkerColor: '#000000', vorSelectedColor: '#000000',
+  vorRangeRingColor: '#000000', driftLineColor: '#000000', driftLineAlpha: 0.8,
+  overlayLabelHaloColor: '#ffffff', overlayLabelHaloAlpha: 1,
+  windArrowColor: '#000000', windArrowHaloColor: '#ffffff', windTextHaloColor: '#ffffff',
+  gpsTrackStartColor: '#000000', gpsTrackEndColor: '#000000', gpsBreadcrumbColor: '#000000',
+  exportBgColor: '#ffffff',
+  planCardHeaderBgColor: '#e6e6e6', planCardTotalBgColor: '#f0f0f0', planCardStripeBgColor: '#ebebeb',
+  planCardGridColor: '#000000', planCardTextColor: '#000000',
+};
+window.PRINT_BW_TUNES = PRINT_BW_TUNES;
 function tune(key) {
+  const po = NavAid.printOverride;
+  if (po && Object.prototype.hasOwnProperty.call(po, key)) return po[key];
   const spec = NavAid.tuningDefaults && NavAid.tuningDefaults[key];
   if (!spec) return 0;
   const v = NavAid.tuning[key];
@@ -2391,6 +2420,8 @@ window.S = Object.assign({
   deckNoRoute: 'No route',
   deckSheetGrip: 'Drag to resize, tap to change height',
   deckHereTitle: 'Point details',
+  exportBw: 'Optimized for a black-and-white printer',
+  exportBwTitle: 'The chart in light grey and the route black on white, so it reads on a printer without colour',
   ctxMenuLabel: 'Quick actions',
   ctxAddNoteHere: 'Add note here',
   ctxDistanceHere: 'Distance from the aircraft',

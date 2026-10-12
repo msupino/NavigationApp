@@ -158,6 +158,7 @@ const NOT_A_SYNCED_SETTING = [
   [/^navaid\.bundledChartsSeedFailed$/, 'a copy of the packed CVFR tiles that could not finish on this device (storage full) -- about this phone, not a setting'],
   [/^navaid\.bundledChartsSeeded$/, 'whether the CVFR tiles packed in this APK were copied into this device\'s chart store -- about this phone\'s storage, and syncing it would stop another device ever copying its own'],
   [/^navaid\.otaInstalling$/,   'one launch\'s attempt at installing a downloaded web bundle -- about this device\'s install, not a setting, and syncing it would stop another device ever trying that bundle'],
+  [/^navaid\.printBw$/,          'whether the printer HERE prints in colour -- about this device\'s printer, not the pilot'],
   [/^navaid\.measure$/,            'the measurement on screen comes back after a reload of THIS device'],
   [/^navaid\.brightness$/,         'screen brightness is this phone in this cockpit, not the pilot’s other devices'],
   [/^navaid\.altSource$/,          'whether THIS phone has a usable barometer is a fact about the phone'],

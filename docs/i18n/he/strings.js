@@ -936,6 +936,8 @@ window.S = {
   deckNoRoute: 'אין מסלול',
   deckSheetGrip: 'גררו לשינוי גובה, הקישו למעבר בין גבהים',
   deckHereTitle: 'מה יש כאן',
+  exportBw: 'מותאם למדפסת שחור-לבן',
+  exportBwTitle: 'המפה באפור בהיר והמסלול בשחור על לבן, כך שהוא קריא במדפסת ללא צבע',
   ctxMenuLabel: 'פעולות מהירות',
   ctxAddNoteHere: 'הוסף הערה כאן',
   ctxDistanceHere: 'מרחק מהמטוס',
