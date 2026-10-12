@@ -4991,7 +4991,10 @@ function showFlightPlan() {
     document.head.appendChild(pageStyle);
     document.body.classList.add('printing-plan');
     window.print();
-    setTimeout(cleanup, 4000);           // belt-and-braces for Safari
+    // Belt-and-braces for Safari -- but not while the Android app's print dialog is up: it
+    // prints after the dialog, and the plan's print layout has to be there when it does.
+    const later = () => (window.NavAidNativePrint && NavAidNativePrint.busy()) ? setTimeout(later, 1000) : cleanup();
+    setTimeout(later, 4000);
   };
   btns.appendChild(printBtn);
   const csvBtn = document.createElement('button');
@@ -6137,6 +6140,11 @@ function drawA4x2TileMarks(cx, t, total, pxPerMm) {
 // two halves of an A4x2 -- each a sheet of its own, printed once they have all loaded.
 function openPrintWindow(blobs, paperWmm, paperHmm) {
   const list = Array.isArray(blobs) ? blobs : [blobs];
+  // The Android app prints through its own plugin (native-print.js): no frame there prints.
+  if (window.NavAidNativePrint && NavAidNativePrint.available()) {
+    NavAidNativePrint.printImages(list, paperWmm, paperHmm);
+    return;
+  }
   const urls = list.map(b => URL.createObjectURL(b));
   const old = document.getElementById('navaid-print-frame');
   if (old) old.remove();
@@ -12086,10 +12094,15 @@ function showFplXcForm(opts) {
       catch (e) { /* storage unavailable */ }
     }
     document.body.classList.add('printing-xc');
+    // Back to the form once the print is done: afterprint (a browser raises it as print()
+    // returns; the Android app when its print dialog closes), with a fallback that waits out
+    // the app's dialog.
+    const restore = () => document.body.classList.remove('printing-xc');
+    window.addEventListener('afterprint', restore, { once: true });
     setTimeout(() => {
-      try { window.print(); } finally {
-        setTimeout(() => document.body.classList.remove('printing-xc'), 0);
-      }
+      window.print();
+      const later = () => (window.NavAidNativePrint && NavAidNativePrint.busy()) ? setTimeout(later, 1000) : restore();
+      setTimeout(later, 1000);
     }, 50);
   };
   const mailBtn = document.createElement('button');
