@@ -9337,18 +9337,25 @@ function magCenter() { return magnifierSize / 2; }
 // bearing 0 the matrix is the identity, so this is a no-op for the common
 // case. Falls back to `.leaflet-map-pane` (then identity) when the rotate
 // plugin isn't present.
+//
+// BOTH panes count: the rotate pane sits inside `.leaflet-map-pane`, and a pan is kept as the
+// map pane's translation until the next zoom resets it. Reading only the rotate pane left
+// every cloned tile off by that pan -- reported: "magnifying glass shows points in wrong
+// location", the waypoints (drawn in container space) correct, the imagery under them not.
 function _readMagPaneMatrix() {
-  const pane = document.querySelector('.leaflet-rotate-pane') ||
-               document.querySelector('.leaflet-map-pane');
-  const IDENTITY = 'matrix(1, 0, 0, 1, 0, 0)';
-  if (!pane) return { m: new DOMMatrixReadOnly(), css: IDENTITY };
-  const css = getComputedStyle(pane).transform;
-  if (!css || css === 'none') return { m: new DOMMatrixReadOnly(), css: IDENTITY };
-  try {
-    return { m: new DOMMatrixReadOnly(css), css };
-  } catch (e) {
-    return { m: new DOMMatrixReadOnly(), css: IDENTITY };
-  }
+  const matrixOf = (el) => {
+    if (!el) return new DOMMatrixReadOnly();
+    const css = getComputedStyle(el).transform;
+    if (!css || css === 'none') return new DOMMatrixReadOnly();
+    try { return new DOMMatrixReadOnly(css); } catch (e) { return new DOMMatrixReadOnly(); }
+  };
+  const mapPane = document.querySelector('.leaflet-map-pane');
+  const rotatePane = document.querySelector('.leaflet-rotate-pane');
+  // Outer to inner: the map pane's pan, then the rotate pane's bearing (when it is there).
+  const m = rotatePane && rotatePane !== mapPane
+    ? matrixOf(mapPane).multiply(matrixOf(rotatePane))
+    : matrixOf(mapPane);
+  return { m, css: m.toString() };
 }
 
 function showMagLoading() {
@@ -9367,7 +9374,10 @@ function createMagnifier() {
   mag.id = 'magnifier';
   mag.style.cssText = 'display:none;position:fixed;z-index:1000;width:' + magnifierSize +
     'px;height:' + magnifierSize + 'px;border-radius:50%;overflow:hidden;' +
-    'pointer-events:none;border:2px solid rgba(255,204,51,0.85);' +
+    // The ring is an outline, not a border: a border moved the content box (and the
+    // crosshair) 2 px off the box the lens is placed by, so the lens showed the map 2 px
+    // away from the cursor. An outline takes no room and follows the radius.
+    'pointer-events:none;outline:2px solid rgba(255,204,51,0.85);' +
     'box-shadow:0 0 20px rgba(0,0,0,0.6)';
   const content = document.createElement('div');
   content.id = 'mag-content';
@@ -9715,7 +9725,7 @@ function updateMagnifier(e) {
 function applyMagBorder() {
   const mag = document.getElementById('magnifier');
   if (!mag) return;
-  mag.style.borderColor = _magFixed ? 'rgba(102,255,102,0.9)' : 'rgba(255,204,51,0.85)';
+  mag.style.outlineColor = _magFixed ? 'rgba(102,255,102,0.9)' : 'rgba(255,204,51,0.85)';
 }
 
 function toggleMagnifier() {

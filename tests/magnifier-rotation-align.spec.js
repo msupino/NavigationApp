@@ -126,4 +126,35 @@ test.describe('Magnifier alignment under rotation', () => {
     expect(r.left).toBe('0px');
     expect(r.top).toBe('0px');
   });
+
+  // Reported: "magnifying glass shows points in wrong location". A pan is kept as the map
+  // pane's translation (until the next zoom resets it), and the lens read only the rotate
+  // pane's matrix -- so after a pan every cloned tile was off by the pan, while the
+  // waypoints (drawn in container space) were right. At 1x a cloned tile must sit exactly
+  // over the real one, after a pan and at a bearing.
+  for (const b of [0, 30]) test('after a pan, the lens tiles sit over the real tiles (bearing ' + b + ')', async ({ page }) => {
+    await boot(page);
+    const gap = await page.evaluate(async (b) => {
+      map.setBearing(b);
+      map.setView([32.0, 34.85], 13, { animate: false });
+      map.panBy([-420, 260], { animate: false });          // kept as a map-pane offset
+      await new Promise(r => setTimeout(r, 600));
+      const pan = getComputedStyle(document.querySelector('.leaflet-map-pane')).transform;
+      if (!magnifierOn) toggleMagnifier();
+      window.magnifierZoom = 1;
+      const mapRect = map.getContainer().getBoundingClientRect();
+      const cx = mapRect.left + mapRect.width / 2, cy = mapRect.top + mapRect.height / 2;
+      updateMagnifier({ clientX: cx, clientY: cy });      // the app's own cursor path
+      await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
+      // The real tile nearest the lens centre, and its clone in the lens.
+      const real = [...document.querySelectorAll('.leaflet-tile-pane img')].filter(i => i.src)
+        .map(i => ({ i, r: i.getBoundingClientRect() }))
+        .sort((p, q) => Math.hypot(p.r.left - cx, p.r.top - cy) - Math.hypot(q.r.left - cx, q.r.top - cy))[0];
+      const clone = [...document.querySelectorAll('#mag-content img')].find(i => i.src === real.i.src && !i.dataset.batch);
+      const c = clone.getBoundingClientRect();
+      return { pan, gap: Math.hypot(c.left - real.r.left, c.top - real.r.top) };
+    }, b);
+    expect(gap.pan).not.toBe('matrix(1, 0, 0, 1, 0, 0)');   // the pan really is on the map pane
+    expect(gap.gap).toBeLessThan(1.5);
+  });
 });
