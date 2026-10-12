@@ -668,49 +668,91 @@ function rebuildLayerPicker() {
   }
 }
 rebuildLayerPicker();
-// open flightmaps covers about twenty regions, mostly European; elsewhere (Israel, Spain, the
-// UK...) its server answers every tile with the same fully transparent PNG, so the layer
-// draws nothing at all. It used to be dimmed in the picker over Israel, which only puzzled
-// ("un-dim it, it's stupid" -- "not only over Israel"): it is always offered, and the map
-// says so instead, wherever the tiles in view come back empty. Read from the tiles, not from
-// a list of regions: no list to keep, and right wherever the coverage changes.
-const LAYERS_BLANK_WITHOUT_DATA = ['OpenFlightMaps'];
-// true: every tile in view loaded and is fully transparent. false: something is drawn.
-// null: cannot tell (nothing loaded yet, or a tile the canvas may not read).
-function layerViewIsBlank(name) {
-  const layer = layers[name];
-  if (!layer || !map.hasLayer(layer)) return null;
-  const tiles = Object.values(layer._tiles || {}).filter(t => t && t.current && t.el
-    && t.el.complete && t.el.naturalWidth > 0);
-  if (!tiles.length) return null;
+// A chart that has nothing to draw where the map is says so, whichever chart it is ("why not
+// notify for every layer? CVFR in Europe is missing"). open flightmaps covers about twenty
+// regions, mostly European; the Israeli charts cover Israel. Nothing is dimmed in the picker
+// for it any more ("un-dim it, it's stupid"). How a chart is empty differs, and it is read
+// from the chart itself, not from a list of regions:
+//   - open flightmaps answers every tile it has no data for with the same fully transparent
+//     PNG (it loads with crossOrigin, so its tiles can be read);
+//   - the Israeli tile charts have no tile there at all: our mirror answers 404;
+//   - the ATS sheet is one image with its own frame.
+// The world-wide layers (OpenStreetMap, Satellite, World) are never empty. A tile that failed
+// for any other reason -- no signal in the air -- is not "no data": then nothing is said.
+const LAYERS_EVERYWHERE = ['OpenStreetMap', 'Satellite', 'World'];
+function tileIsBlank(img) {
+  const c = document.createElement('canvas');
+  c.width = c.height = 128;
+  const g = c.getContext('2d', { willReadFrequently: true });
+  g.drawImage(img, 0, 0, 128, 128);
+  const px = g.getImageData(0, 0, 128, 128).data;   // throws on a tile the canvas may not read
+  for (let i = 3; i < px.length; i += 4) if (px[i]) return false;
+  return true;
+}
+// Is there no tile at all here? Asked of our own mirror (the chart's exportUrl), which holds
+// the same coverage as wherever the live tiles come from and answers CORS, so its status can
+// be read. Only a 404 counts; anything else (offline, a server error) is "cannot tell".
+async function tileMissing(layer, coords) {
+  const tpl = layer.options.exportUrl || (layer.options.corsOk ? layer._url : '');
+  if (!tpl) return null;
   try {
-    const c = document.createElement('canvas');
-    c.width = c.height = 128;
-    const g = c.getContext('2d', { willReadFrequently: true });
-    for (const t of tiles) {
-      g.clearRect(0, 0, 128, 128);
-      g.drawImage(t.el, 0, 0, 128, 128);
-      const px = g.getImageData(0, 0, 128, 128).data;
-      for (let i = 3; i < px.length; i += 4) if (px[i]) return false;
-    }
-    return true;
-  } catch (e) { return null; }          // a tile the canvas may not read: say nothing
+    const url = L.Util.template(tpl, Object.assign({ s: 'a', r: '' }, coords));
+    const res = await fetch(url, { method: 'HEAD', cache: 'no-store' });
+    return res.status === 404 ? true : (res.ok ? false : null);
+  } catch (e) { return null; }
+}
+// true: the chart draws nothing in view. false: it draws something. null: cannot tell.
+async function layerViewIsBlank(name) {
+  const layer = layers[name];
+  if (!layer || !map.hasLayer(layer) || LAYERS_EVERYWHERE.indexOf(name) !== -1) return null;
+  if (layer instanceof L.ImageOverlay) return !map.getBounds().intersects(layer.getBounds());
+  // A chart drawn only inside its own frame (the Israeli charts' bounds) asks for no tile at
+  // all outside it -- so no tile can say anything, and the frame answers by itself.
+  if (layer.options.bounds && !map.getBounds().intersects(L.latLngBounds(layer.options.bounds))) return true;
+  const tiles = Object.values(layer._tiles || {}).filter(t => t && t.current && t.el && t.loaded);
+  if (!tiles.length) return null;
+  const failed = [];
+  const errorSrc = layer.options.errorTileUrl;
+  for (const t of tiles) {
+    // A failed tile shows the layer's errorTileUrl (a transparent PNG): failed, not blank.
+    if (!(t.el.naturalWidth > 0) || (errorSrc && t.el.src === errorSrc)) { failed.push(t); continue; }
+    try { if (!tileIsBlank(t.el)) return false; }
+    catch (e) { return false; }      // drawn, but not readable here: it is a chart tile
+  }
+  if (!failed.length) return true;   // every tile came back empty
+  return tileMissing(layer, failed[0].coords);
 }
 let _layerBlankTold = false;
-function noteLayerBlankHere() {
+let _layerBlankSeq = 0;
+async function noteLayerBlankHere() {
   const name = typeof currentLayerName === 'function' ? currentLayerName() : '';
-  if (LAYERS_BLANK_WITHOUT_DATA.indexOf(name) === -1) { _layerBlankTold = false; return; }
-  const blank = layerViewIsBlank(name);
-  if (blank === null) return;
+  const seq = ++_layerBlankSeq;
+  const blank = await layerViewIsBlank(name);
+  if (seq !== _layerBlankSeq || blank === null) return;   // a later look has taken over
   // Once per arrival in an empty area, not once per pan: a pan is a GPS fix in the air.
   if (blank && !_layerBlankTold && typeof showToast === 'function') {
     const label = (S.layerLabels && S.layerLabels[name]) || name;
-    showToast(typeof S.layerNoDataHere === 'function' ? S.layerNoDataHere(label)
+    const where = S.layerCoverage && (S.layerCoverage[name] || S.layerCoverage.israel);
+    showToast(typeof S.layerNoDataHere === 'function' ? S.layerNoDataHere(label, where)
       : label + ' has no data here.');
   }
   _layerBlankTold = blank;
 }
-for (const name of LAYERS_BLANK_WITHOUT_DATA) if (layers[name]) layers[name].on('load', noteLayerBlankHere);
+for (const name of Object.keys(layers)) {
+  if (LAYERS_EVERYWHERE.indexOf(name) !== -1) continue;
+  if (layers[name] instanceof L.ImageOverlay) continue;
+  layers[name].on('load', noteLayerBlankHere);
+}
+// A chart with a frame of its own -- the ATS sheet, the bounded tile charts -- loads no tile
+// outside it, so no 'load' says the view left it: every move asks.
+function layerHasFrame(name) {
+  const l = layers[name];
+  return !!l && (l instanceof L.ImageOverlay || !!(l.options && l.options.bounds));
+}
+map.on('moveend', () => {
+  const name = typeof currentLayerName === 'function' ? currentLayerName() : '';
+  if (layerHasFrame(name)) noteLayerBlankHere();
+});
 // The three charts a route can be planned ON. Each carries its own route graph, its own
 // waypoints and its own reporting points, so a route drawn on one is a set of names the
 // other two do not have -- carrying it across silently leaves the pilot reading a plan
@@ -759,6 +801,7 @@ layerSelect.onchange = () => {
   try { localStorage.setItem(LAYER_KEY, layerSelect.value); }
   catch (e) { /* storage unavailable */ }
   _layerBlankTold = false;                // a new choice is told afresh, once its tiles are in
+  if (layerHasFrame(layerSelect.value)) noteLayerBlankHere();
 };
 
 // The active base layer decides which data files feed the overlays. On a layer

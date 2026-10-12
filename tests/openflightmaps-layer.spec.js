@@ -63,7 +63,7 @@ test('where its tiles draw something, nothing is said', async ({ page }) => {
   await choose(page, 'OpenFlightMaps');
   await loaded(page);
   await page.waitForTimeout(300);
-  expect((await toasts(page)).some(t => t.includes('no data here'))).toBe(false);
+  expect((await toasts(page)).some(t => t.includes('OpenFlightMaps has no data here'))).toBe(false);
 });
 
 test('choosing it draws the open flightmaps aero tiles, credited', async ({ page }) => {
@@ -109,4 +109,38 @@ test('Hebrew says it in Hebrew', async ({ page }) => {
   await choose(page, 'OpenFlightMaps');
   await loaded(page);
   await expect.poll(() => toasts(page)).toContainEqual(expect.stringContaining('אין נתונים כאן'));
+});
+
+// Asked: "why not notify for every layer if no data for this area? CVFR in Europe is missing".
+// The Israeli tile charts have no tile at all outside Israel: the mirror answers 404.
+const CHART_HOSTS = (url) => /(^|\.)flight-maps\.com$|^navaid-tiles\.supino\.org$|^127\.0\.0\.1$|^localhost$/.test(url.hostname)
+  && /\/(tiles\/cvfr|CVFR)\//.test(url.pathname);
+
+test('CVFR over Europe says it has no data there: it covers Israel', async ({ page }) => {
+  await boot(page);
+  await page.route(CHART_HOSTS, r => r.fulfill({ status: 404, body: '', headers: { 'access-control-allow-origin': '*' } }));
+  await panTo(page, 47.3, 11.4);
+  await choose(page, 'OpenStreetMap');
+  await choose(page, 'CVFR');
+  await expect.poll(() => toasts(page)).toContainEqual(expect.stringContaining('CVFR has no data here: it covers Israel'));
+});
+
+test('a chart that fails for want of a signal is not said to have no data', async ({ page }) => {
+  await boot(page);
+  await page.route(CHART_HOSTS, r => r.abort('internetdisconnected'));
+  await panTo(page, 32.1, 34.9);
+  await choose(page, 'OpenStreetMap');
+  await choose(page, 'CVFR');
+  await page.waitForTimeout(1500);
+  expect((await toasts(page)).some(t => t.includes('no data here'))).toBe(false);
+});
+
+test('the ATS sheet says so once the map is off its frame', async ({ page }) => {
+  await boot(page);
+  await panTo(page, 32.1, 34.9);
+  await choose(page, 'ATS');
+  await page.waitForTimeout(300);
+  expect((await toasts(page)).some(t => t.includes('no data here'))).toBe(false);
+  await panTo(page, 47.3, 11.4);
+  await expect.poll(() => toasts(page)).toContainEqual(expect.stringContaining('has no data here'));
 });
