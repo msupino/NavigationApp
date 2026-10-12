@@ -115,3 +115,40 @@ test('portrait orientation gives a tall frame and two WYSIWYG landscape tiles', 
   expect(cut.length).toBe(2);      // two wide halves, saved as-is
   expect(rotated.length).toBe(0);  // WYSIWYG: nothing gets rotated
 });
+
+// Asked: "png and print are the same?" -- they are, except that Print with A4×2 used to save the
+// two files instead of printing. It now opens one print window with both pages, page 1 then 2,
+// each an A4 sheet.
+test('Print in A4×2 opens one print window with both pages, and saves nothing', async ({ page }) => {
+  await boot(page);
+  const names = [];
+  page.on('download', dl => names.push(dl.suggestedFilename()));
+  const r = await page.evaluate(() => new Promise((res) => {
+    const out = document.createElement('canvas');
+    out.width = 1200; out.height = 850;
+    const o = out.getContext('2d');
+    o.fillStyle = '#8899aa'; o.fillRect(0, 0, 1200, 850);
+    window.pageOrient = 'landscape';
+    // A real frame as the print window, so its images load and the print fires.
+    const frame = document.createElement('iframe');
+    document.body.appendChild(frame);
+    let doc = null, printed = 0;
+    window.open = () => {
+      doc = frame.contentDocument;
+      frame.contentWindow.print = () => { printed++; };
+      return frame.contentWindow;
+    };
+    exportA4x2Tiles(out, 1200, 850, () => {
+      setTimeout(() => {
+        const imgs = doc ? [...doc.querySelectorAll('img')] : [];
+        res({ imgs: imgs.length, css: doc ? doc.querySelector('style').textContent : '', printed });
+      }, 600);
+    }, 'print');
+  }));
+  expect(r.imgs).toBe(2);
+  expect(r.css).toContain('@page{size:210mm 297mm');      // portrait A4 sheets
+  expect(r.css).toContain('page-break-after:always');
+  expect(r.printed).toBe(1);
+  await page.waitForTimeout(400);
+  expect(names).toEqual([]);
+});
