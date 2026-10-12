@@ -180,7 +180,24 @@
 
   // Downloaded, verified, and armed for the next COLD START -- never swapped under a pilot
   // who is using the map, and never on the way back from another app.
+  // One check at a time, too: the one-download guard below is reached only after several awaits
+  // (the connection, the chart copy, the manifest), so two checks started together -- the one at
+  // start and Wi-Fi coming back, or a press meanwhile -- both got past them and both downloaded.
+  // A check waits for the one before it, then finds its download under way and joins it.
+  // The lock is the CHECK only: it is let go the moment a download is under way (or the check
+  // ends without one), so the next caller joins the download rather than waiting it out.
+  let checking = null;
+  let checkDone = null;
   async function checkForUpdate(opts) {
+    while (checking) { try { await checking; } catch (e) { /* the earlier check's own business */ } }
+    let release;
+    checking = new Promise((r) => { release = r; });
+    const done = () => { if (checkDone === done) { checkDone = null; checking = null; release(); } };
+    checkDone = done;
+    try { return await checkForUpdateNow(opts); }
+    finally { done(); }
+  }
+  async function checkForUpdateNow(opts) {
     const o = opts || {};
     const p = o.plugin || plugin();
     if (!p || !embedded() || !featureOn()) return { checked: false, reason: 'not an embedded native build' };
@@ -211,9 +228,10 @@
     // One download at a time. The automatic one on Wi-Fi runs in the background; pressing
     // Download meanwhile joins it rather than fetching the same 26 MB a second time (reported:
     // "it still allows me to trigger download" while one was already under way).
-    if (active && active.version === manifest.version) return active.promise;
+    if (active && active.version === manifest.version) { if (checkDone) checkDone(); return active.promise; }
     const job = { version: manifest.version, pct: null, promise: null };
     active = job;
+    if (checkDone) checkDone();               // the download is registered: the next check may join it
     // Set before anything is awaited, so a second caller always finds the promise to join.
     job.promise = (async () => {
       let handle = null;

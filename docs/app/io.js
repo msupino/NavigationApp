@@ -6177,9 +6177,7 @@ window.printBwOn = printBwOn;
 // The chart for a mono printer: grey, and lightened, so it is a pale ground and the black route
 // over it reads. Canvas filters where the browser has them; otherwise the pixels, by hand.
 const PRINT_BW_CHART_FILTER = 'grayscale(1) brightness(1.2) contrast(0.7)';
-function printBwChart(ctx, img, w, h) {
-  if ('filter' in ctx) { ctx.filter = PRINT_BW_CHART_FILTER; ctx.drawImage(img, 0, 0); ctx.filter = 'none'; return; }
-  ctx.drawImage(img, 0, 0);
+function printBwPixels(ctx, w, h) {
   try {
     const d = ctx.getImageData(0, 0, w, h);
     const px = d.data;
@@ -6432,16 +6430,11 @@ function exportPNG(mode) {
         failed++;
       }
     }
-    let chart = tileCanvas;
-    if (bw) {
-      const g = document.createElement('canvas');
-      g.width = Wc; g.height = Hc;
-      const gc = g.getContext('2d');
-      gc.fillStyle = PRINT_BW_TUNES.exportBgColor;
-      gc.fillRect(0, 0, Wc, Hc);
-      printBwChart(gc, tileCanvas, Wc, Hc);
-      chart = g;
-    }
+    // Black and white: the grey filter is applied as the chart is drawn onto the page below, or
+    // -- where the browser has no canvas filter -- to these pixels in place. A third canvas the
+    // size of this one, as it was, is the one too many on a phone near its memory limit.
+    const filterOnDraw = bw && ('filter' in o);
+    if (bw && !filterOnDraw) printBwPixels(tc, Wc, Hc);
 
     // Draw the tile canvas onto the output, rotated by the map bearing so the
     // result matches the screen view.  The frame centre in tile-canvas space
@@ -6456,7 +6449,9 @@ function exportPNG(mode) {
     o.rotate(exportBearing * Math.PI / 180);
     o.translate(-fcx, -fcy);
     o.globalAlpha = (typeof mapOpacity === 'number') ? mapOpacity : 1;
-    o.drawImage(chart, 0, 0);
+    if (filterOnDraw) o.filter = PRINT_BW_CHART_FILTER;
+    o.drawImage(tileCanvas, 0, 0);
+    if (filterOnDraw) o.filter = 'none';
     o.restore();
 
     // Route overlay: screen coords already encode bearing, so the standard
