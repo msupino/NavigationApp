@@ -809,7 +809,7 @@ test.describe('native delivery (Capacitor LocalNotifications)', () => {
     await page.goto('?lang=en');
     await page.waitForFunction(() => typeof startLiveLocation === 'function' &&
       typeof gpsCheckLegAlerts === 'function');
-    const out = await page.evaluate(() => {
+    const out = await page.evaluate(async () => {
       state.waypoints = [{ lat: 32.0, lng: 34.0, name: 'ALPHA' }, { lat: 32.008, lng: 34.0, name: 'BRAVO' }];
       syncLegs();
       startLiveLocation();
@@ -818,6 +818,7 @@ test.describe('native delivery (Capacitor LocalNotifications)', () => {
       // manufactured scenario, not a real waypoint capture, so bypass it directly.
       window._gpsAlertConfirmed = true;
       window.__liveCb(window.__fix(31.9992, 34.0, { speedMs: 15.4 }));
+      await new Promise(r => setTimeout(r, 0));   // posted once the alert channel is known
       return { permAsked: window.__permAsked, scheduled: window.__scheduled.slice() };
     });
     expect(out.permAsked).toBe(1);
