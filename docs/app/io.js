@@ -6188,44 +6188,66 @@ function exportPNG(mode) {
   const bbSEll = { lat: Math.min(c0.lat, c1.lat, c2.lat, c3.lat),
                    lng: Math.max(c0.lng, c1.lng, c2.lng, c3.lng) };
 
-  // Choose a starting tile zoom. Framed exports (A3 / A4) target maximum
-  // print quality at the layer's max native zoom. Without a frame the export
-  // covers the entire viewport; rendering that at max native zoom can balloon
-  // into hundreds of tiles. Mirror the on-screen tile zoom instead so the
-  // export matches what the user sees and the tile count stays bounded by the
-  // viewport size.
+  // How sharp: a framed page (A4 / A3) wants the chart's sharpest tiles (maxNativeZoom), at
+  // 1:250 000 about 390 dpi on CVFR; with no page the screen's view, at twice its pixels.
+  //
+  // It used to stop at 300 tiles and drop a whole zoom level past that, which halved the
+  // resolution: A3, and an A4 on a rotated map (it needs a bigger square of map to cut the
+  // turned page from), came out at about 197 dpi -- reported: "what's the png dpi? seems not
+  // very good". The limit is the image now, not the tile count: the largest canvas this
+  // browser makes (Safari about 16.7 M pixels, others far more; kept to 48 M here for the
+  // memory of two of them), and when a page is larger than that the image is scaled down
+  // smoothly from the sharp tiles instead of a level coarser.
   const nativeMax = base.options.maxNativeZoom || base.options.maxZoom || 13;
-  const maxZ = framed
-    ? nativeMax
-    : Math.min(nativeMax, Math.max(7, Math.round(map.getZoom())));
-
-  // Zoom down until the bounding box fits in one canvas AND the parallel tile
-  // count stays bounded. The floor of 7 keeps even very large rotated frames
-  // under the cap.
-  const MAX_TILES = 300;
-  let z = maxZ, bbNWP, bbSEP, Wbb, Hbb;
-  for (z = maxZ; z >= 7; z--) {
+  const mapZoom = map.getZoom();
+  const ua = (typeof navigator !== 'undefined' && navigator.userAgent) || '';
+  const safari = /AppleWebKit/.test(ua) && !/Chrome|Chromium|Android/.test(ua);
+  const MAX_AREA = safari ? 16000000 : 48000000;   // pixels per canvas
+  const MAX_SIDE = 16384;
+  const MAX_TILES = 1200;
+  // Output pixels per screen pixel, and the tile zoom they are drawn from.
+  let z = framed ? nativeMax : Math.min(nativeMax, Math.max(7, Math.ceil(mapZoom + 1)));
+  let pps = framed ? Math.pow(2, z - mapZoom) : 2;
+  let bbNWP, bbSEP, Wbb, Hbb, k = 1;
+  const measure = () => {
     bbNWP = map.project([bbNWll.lat, bbNWll.lng], z);
     bbSEP = map.project([bbSEll.lat, bbSEll.lng], z);
     Wbb = Math.round(bbSEP.x - bbNWP.x);
     Hbb = Math.round(bbSEP.y - bbNWP.y);
-    const tiles = Math.ceil(Wbb / 256) * Math.ceil(Hbb / 256);
-    if (Wbb <= 10000 && Hbb <= 10000 && tiles <= MAX_TILES) break;
+    return Math.ceil(Wbb / 256 + 1) * Math.ceil(Hbb / 256 + 1);
+  };
+  while (z > 7 && measure() > MAX_TILES) { z--; if (framed) pps = Math.pow(2, z - mapZoom); }
+  measure();
+  for (let guard = 0; guard < 8; guard++) {
+    k = pps / Math.pow(2, z - mapZoom);              // the tile canvas's scale against zoom z
+    const f = Math.min(1,
+      Math.sqrt(MAX_AREA / Math.max(1, Wbb * k * Hbb * k)),
+      Math.sqrt(MAX_AREA / Math.max(1, fr.w * pps * fr.h * pps)),
+      MAX_SIDE / Math.max(1, Wbb * k, Hbb * k, fr.w * pps, fr.h * pps));
+    pps *= f; k *= f;
+    // Under half the tiles' own detail, a level coarser carries the same picture in a quarter
+    // of the tiles.
+    if (k < 0.5 && z > 7) { z--; measure(); continue; }
+    break;
   }
+  // Whole-pixel tiles, so they lie edge to edge with no hairline between them.
+  const ts = Math.max(1, Math.round(256 * k));
+  k = ts / 256;
+  pps = k * Math.pow(2, z - mapZoom);
 
-  // Output canvas: same physical size as the frame at the chosen tile zoom.
-  const tilePerScreen = Math.pow(2, z - map.getZoom());
-  const W = Math.round(fr.w * tilePerScreen);
-  const H = Math.round(fr.h * tilePerScreen);
+  // Output canvas: the frame at that resolution.
+  const W = Math.round(fr.w * pps);
+  const H = Math.round(fr.h * pps);
+  const Wc = Math.ceil(Wbb * k), Hc = Math.ceil(Hbb * k);
 
   // Intermediate canvas: north-up tile composite covering the bounding box.
   const tileCanvas = document.createElement('canvas');
-  tileCanvas.width  = Wbb;
-  tileCanvas.height = Hbb;
+  tileCanvas.width  = Wc;
+  tileCanvas.height = Hc;
   const tc = tileCanvas.getContext('2d');
   const bw = printBwOn();
   tc.fillStyle = bw ? PRINT_BW_TUNES.exportBgColor : tune('exportBgColor');
-  tc.fillRect(0, 0, Wbb, Hbb);
+  tc.fillRect(0, 0, Wc, Hc);
 
   const out = document.createElement('canvas');
   out.width  = W;
@@ -6268,29 +6290,39 @@ function exportPNG(mode) {
   for (let tx = txMin; tx <= txMax; tx++) {
     for (let ty = tyMin; ty <= tyMax; ty++) {
       const job = {
-        dx: Math.round(tx * 256 - bbNWP.x),
-        dy: Math.round(ty * 256 - bbNWP.y),
+        // Whole-pixel steps of ts from one fixed origin: neighbours meet exactly.
+        dx: tx * ts - Math.round(bbNWP.x * k),
+        dy: ty * ts - Math.round(bbNWP.y * k),
         bmp: null,
         failed: false,
       };
-      const ctrl = new AbortController();
-      const timer = setTimeout(() => ctrl.abort(), 20000);
-      job.done = fetchTileBitmap(base, { z, x: tx, y: ty }, ctrl.signal)
-        .then(result => {
-          job.bmp = result.bmp;
-          job.failed = result.failed;
-        })
-        .catch(() => { job.failed = true; })
-        .then(() => clearTimeout(timer));
+      const coords = { z, x: tx, y: ty };
+      // Fetched through the pool below, not all at once: a sharp A3 is up to ~1,000 tiles, and
+      // firing them together had a tenth time out while queued -- grey patches in the print.
+      // The 20 s clock starts when a tile's own request does; a failure is tried once more.
+      const fetchOnce = () => {
+        const ctrl = new AbortController();
+        const timer = setTimeout(() => ctrl.abort(), 20000);
+        return fetchTileBitmap(base, coords, ctrl.signal)
+          .then(result => { job.bmp = result.bmp; job.failed = result.failed; })
+          .catch(() => { job.failed = true; })
+          .then(() => clearTimeout(timer));
+      };
+      job.run = () => fetchOnce().then(() => (job.failed && !job.bmp ? fetchOnce() : null));
       jobs.push(job);
     }
   }
+  const POOL = 16;
+  let nextJob = 0;
+  const worker = () => (nextJob < jobs.length ? jobs[nextJob++].run().then(worker) : Promise.resolve());
+  const pool = Promise.all(Array.from({ length: Math.min(POOL, jobs.length) }, worker));
+  for (const j of jobs) j.done = pool;
 
   Promise.all(jobs.map(j => j.done)).then(() => {
     let failed = 0;
     for (const j of jobs) {
       if (j.bmp) {
-        try { tc.drawImage(j.bmp, j.dx, j.dy, 256, 256); }
+        try { tc.drawImage(j.bmp, j.dx, j.dy, ts, ts); }
         catch (e) { failed++; }
       } else if (j.failed) {
         failed++;
@@ -6299,11 +6331,11 @@ function exportPNG(mode) {
     let chart = tileCanvas;
     if (bw) {
       const g = document.createElement('canvas');
-      g.width = Wbb; g.height = Hbb;
+      g.width = Wc; g.height = Hc;
       const gc = g.getContext('2d');
       gc.fillStyle = PRINT_BW_TUNES.exportBgColor;
-      gc.fillRect(0, 0, Wbb, Hbb);
-      printBwChart(gc, tileCanvas, Wbb, Hbb);
+      gc.fillRect(0, 0, Wc, Hc);
+      printBwChart(gc, tileCanvas, Wc, Hc);
       chart = g;
     }
 
@@ -6313,8 +6345,8 @@ function exportPNG(mode) {
     // globalAlpha honours the Map-opacity slider so dim tiles on screen also
     // export dim; overlays drawn after restore() stay at full alpha.
     const fcP = map.project([frameCenterLL.lat, frameCenterLL.lng], z);
-    const fcx = fcP.x - bbNWP.x;
-    const fcy = fcP.y - bbNWP.y;
+    const fcx = fcP.x * k - Math.round(bbNWP.x * k);
+    const fcy = fcP.y * k - Math.round(bbNWP.y * k);
     o.save();
     o.translate(W / 2, H / 2);
     o.rotate(exportBearing * Math.PI / 180);
@@ -6409,7 +6441,12 @@ function exportPNG(mode) {
           deliver(new Blob([injectPngPhys(buf, ppmX, ppmY)], { type: 'image/png' }));
         }).catch(function () { deliver(b); });
       } else {
-        deliver(b);
+        // No page: the image is the screen at pps times its pixels, so it says so (96 dpi a CSS
+        // pixel) and prints at the size it was on screen instead of whatever a viewer guesses.
+        const ppm = Math.round(pps * 96 / 0.0254);
+        b.arrayBuffer().then(buf => {
+          deliver(new Blob([injectPngPhys(buf, ppm, ppm)], { type: 'image/png' }));
+        }).catch(function () { deliver(b); });
       }
       if (failed > 0) refuse(S.errTilesFail(failed, jobs.length));
     }, 'image/png');

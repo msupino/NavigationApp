@@ -486,7 +486,10 @@ test.describe('Export PNG options modal', () => {
       return ppmX;
     }
 
-    test('No page frame → no pHYs chunk', async ({ page }) => {
+    // No page: the image is the screen at twice its pixels, and says so -- 192 dpi (two device
+    // pixels a CSS pixel at 96) -- so it prints at the size it was on screen (it used to carry
+    // no pHYs at all, and a viewer guessed).
+    test('No page frame → pHYs at 192 DPI (twice the screen)', async ({ page }) => {
       await boot(page);
       await page.evaluate(wps => {
         state.waypoints = wps;
@@ -494,7 +497,7 @@ test.describe('Export PNG options modal', () => {
         pageSize = null;
       }, pairLLHZ_LLHA());
       const buf = await exportPng(page);
-      expect(readPng(buf)).toBeNull();
+      expect(Math.round(readPng(buf) * 0.0254)).toBe(192);
     });
 
     test('A4 portrait → pHYs embedded (~11811 ppm ≈ 300 DPI)', async ({ page }) => {
