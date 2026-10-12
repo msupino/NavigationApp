@@ -52,11 +52,12 @@ test.describe('Export PNG options modal', () => {
     await page.locator('.modal-back').waitFor();
     // Title.
     expect(await page.locator('.modal-title').textContent()).toBe('Export PNG');
-    // 5 checkboxes: Waypoint Names (on), Cumulative time (on), Nav WPs (off),
+    // 6 checkboxes: Waypoint Names (on), Cumulative time (on), Nav WPs (off),
     // Airfields (off), Place flight plan (off; enabled because a
-    // route is set — a page frame is not required).
+    // route is set — a page frame is not required), Black-and-white printer (off).
     const cbs = page.locator('.modal input[type="checkbox"]');
-    expect(await cbs.count()).toBe(5);
+    expect(await cbs.count()).toBe(6);
+    expect(await page.locator('#export-bw').isChecked()).toBe(false);
     expect(await cbs.nth(0).isChecked()).toBe(true);   // Waypoint Names default on
     expect(await cbs.nth(1).isChecked()).toBe(true);   // Cumulative time default on
     expect(await cbs.nth(2).isChecked()).toBe(false);  // Nav WPs
