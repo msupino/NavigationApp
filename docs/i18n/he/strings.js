@@ -1746,6 +1746,8 @@ window.S = {
   wpLabel: 'צד״ר',
   gpsNoTrack: 'לא הוקלט מסלול.',
   gpsError: 'שגיאת GPS: ',
+  alertChannelName: 'התראות טיסה',
+  alertChannelDescription: 'התראות בטיסה: קטע הבא, גובה, TOP, יציאה מהמסלול',
   watchAlertLegTitle: 'קטע הבא',
   watchAlertLegBody: function(wp, alt, hdg, time, freq) {
     const parts = [];

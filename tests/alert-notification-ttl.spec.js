@@ -17,6 +17,8 @@ async function boot(page, ttlSec) {
       window.__timers.push({ fn, ms });
       return realTimeout(() => {}, 0);      // never fire on their own; the test decides
     };
+    // setTimeout is held above, so "let the promises run" is a few microtask turns.
+    window.__settle = async () => { for (let i = 0; i < 10; i++) await Promise.resolve(); };
     window.__fireTimers = (minMs) => {
       const due = window.__timers.filter(t => (t.ms || 0) >= (minMs || 0));
       window.__timers = window.__timers.filter(t => due.indexOf(t) === -1);
@@ -48,8 +50,9 @@ const withNative = (page) => page.evaluate(() => {
 test('a native alert is withdrawn once its life is up', async ({ page }) => {
   await boot(page, 15);
   await withNative(page);
-  const out = await page.evaluate(() => {
+  const out = await page.evaluate(async () => {
     gpsSendWatchAlert('TOP', 'overhead BASAN');
+    await window.__settle();                    // posted once the alert channel is known
     const posted = window.__scheduled.map(n => ({ id: n.id, autoCancel: n.autoCancel }));
     const beforeFire = window.__cancelled.length;
     window.__fireTimers(15000);                 // the TTL timer comes due
@@ -64,9 +67,10 @@ test('a native alert is withdrawn once its life is up', async ({ page }) => {
 test('each alert withdraws its own, not the last one twice', async ({ page }) => {
   await boot(page, 15);
   await withNative(page);
-  const out = await page.evaluate(() => {
+  const out = await page.evaluate(async () => {
     gpsSendWatchAlert('Next leg', 'BASAN in 2 min');
     gpsSendWatchAlert('Altitude', '2400 ft, planned 2000 ft');
+    await window.__settle();
     window.__fireTimers(15000);
     return { posted: window.__scheduled.map(n => n.id), cancelled: window.__cancelled.map(n => n.id) };
   });
@@ -113,4 +117,38 @@ test('the web path closes the notification it opened', async ({ page }) => {
   expect(out.shown[0].tag).toMatch(/^navaid-alert-/);   // tagged so the SW path can find it
   expect(out.before).toBe(0);
   expect(out.closed).toEqual(['TOP']);
+});
+
+// For a paired watch (asked: how will the alerts look on a Pixel Watch). The alerts get
+// their own high-importance channel, NavAid's icon instead of Android's grey "i", and one
+// group so a burst of them stacks.
+test('alerts go to their own Flight alerts channel, with the NavAid icon, in one group', async ({ page }) => {
+  await boot(page, 15);
+  await withNative(page);
+  const out = await page.evaluate(async () => {
+    window.__channels = [];
+    Capacitor.Plugins.LocalNotifications.createChannel = (c) => { window.__channels.push(c); return Promise.resolve(); };
+    gpsSendWatchAlert('TOP', 'overhead BASAN');
+    gpsSendWatchAlert('Next leg', 'BASAN in 2 min');
+    await window.__settle();
+    return { channels: window.__channels, posted: window.__scheduled };
+  });
+  expect(out.channels.length).toBe(1);                // created once, not per alert
+  expect(out.channels[0]).toMatchObject({ id: 'flight-alerts', name: 'Flight alerts', importance: 4, visibility: 1 });
+  for (const n of out.posted) {
+    expect(n).toMatchObject({ channelId: 'flight-alerts', smallIcon: 'ic_stat_navaid', group: 'navaid-flight-alerts' });
+  }
+});
+
+test('a channel that cannot be created leaves the alert on the default channel, not dropped', async ({ page }) => {
+  await boot(page, 15);
+  await withNative(page);
+  const posted = await page.evaluate(async () => {
+    Capacitor.Plugins.LocalNotifications.createChannel = () => Promise.reject(new Error('no channels'));
+    gpsSendWatchAlert('TOP', 'overhead BASAN');
+    await window.__settle();
+    return window.__scheduled;
+  });
+  expect(posted.length).toBe(1);
+  expect(posted[0].channelId).toBeUndefined();        // Android drops a post to a missing channel
 });
