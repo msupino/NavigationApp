@@ -3388,6 +3388,14 @@ const NAV_ICONS = {
   hotspot: '<circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="3.5" fill="currentColor" fill-opacity=".35"/>',
   timer: '<circle cx="12" cy="13.5" r="7.5"/><path d="M12 13.5V9.5M9.5 3h5M12 3v3M18.5 6.5l1.5-1.5"/>',
   plus: '<path d="M12 5v14M5 12h14"/>',
+  // Straight to a point: a line from here to a target.
+  direct: '<circle cx="17.5" cy="6.5" r="2.5"/><path d="M4 20 15.5 8.5M9.5 8h6.5v6.5"/>',
+  // Not drawn (hide a kite / drift lines): an eye struck through.
+  hide: '<path d="M3 3l18 18"/><path d="M10.6 6.2A9.6 9.6 0 0 1 12 6c5 0 8.5 4.5 9.5 6-.5.8-1.6 2.3-3.2 3.6M6.4 7.9C4.6 9.2 3.2 11 2.5 12c1 1.5 4.5 6 9.5 6 1.6 0 3-.4 4.3-1.1"/><path d="M9.9 9.9a3 3 0 0 0 4.2 4.2"/>',
+  // A distance: a ruler.
+  ruler: '<path d="M3.5 16.5 16.5 3.5l4 4-13 13z"/><path d="m7 13 2 2M10 10l2 2M13 7l2 2"/>',
+  // A new point on a leg.
+  insert: '<path d="M3 19 9.6 14.4M14.4 9.6 21 5"/><circle cx="12" cy="12" r="3"/>',
   stop: '<rect x="6.5" y="6.5" width="11" height="11" rx="2" fill="currentColor" stroke="none"/>',
   language: '<circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.6 2.6 3.8 5.6 3.8 9s-1.2 6.4-3.8 9c-2.6-2.6-3.8-5.6-3.8-9S9.4 5.6 12 3z"/>',
 };

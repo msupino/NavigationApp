@@ -39,7 +39,16 @@
     b.type = 'button';
     b.className = 'ctx-item' + (it.danger ? ' ctx-danger' : '') + (it.pressed ? ' ctx-on' : '');
     b.setAttribute('role', 'menuitem');
-    b.textContent = it.label;
+    // An icon on every item, as on every button: the mirrored ones the same as their panel
+    // button, the menu's own named below.
+    if (it.icon && typeof navIconSvg === 'function') {
+      const ic = document.createElement('span');
+      ic.className = 'mi-icon';
+      ic.setAttribute('aria-hidden', 'true');
+      ic.innerHTML = navIconSvg(it.icon, 16);
+      b.appendChild(ic);
+    }
+    b.appendChild(document.createTextNode(it.label));
     if (it.pressed) b.setAttribute('aria-checked', 'true');
     if (typeof setButtonWhy === 'function') setButtonWhy(b, it.why || null);
     b.addEventListener('click', () => {
@@ -108,8 +117,9 @@
       // Words only: the panel draws its leading symbol (↻ 🔥 ⏱ 🗑 ➕) as an icon; a menu
       // reads as plain text.
       label: (btn.textContent || '').trim().replace(/^[^\p{L}\p{N}(]+/u, ''),
-      pressed: btn.getAttribute('aria-pressed') === 'true',
+      pressed: btn.getAttribute('aria-pressed') === 'true' || btn.classList.contains('insp-btn-on'),
       danger: btn.classList.contains('insp-btn-danger'),
+      icon: typeof navButtonIconName === 'function' ? navButtonIconName(btn) : '',
       why: dimmed ? (btn.dataset.why || btn.title || t('ctxUnavailable', 'Not available here')) : null,
       run: () => btn.click(),
     }, extra || {});
@@ -168,7 +178,7 @@
       if (typeof appendDirectToButton === 'function') appendDirectToButton(tmp, pt);
       const items = [...tmp.querySelectorAll('button')].map(b => mirror(b));
       items.push({
-        label: t('ctxAddNoteHere', 'Add note here'), why: lockWhy(),
+        label: t('ctxAddNoteHere', 'Add note here'), icon: 'addNote', why: lockWhy(),
         run: () => {
           state.notes.push({ lat: r5(latlng.lat), lng: r5(latlng.lng), text: S.noteDefault,
                              color: NOTE_DEFAULT_COLOR, shape: 'rect' });
@@ -177,12 +187,12 @@
         },
       });
       items.push({
-        label: t('deckHereTitle', 'What is here'),
+        label: t('deckHereTitle', 'What is here'), icon: 'location',
         run: () => select({ type: 'coord', lat: latlng.lat, lng: latlng.lng, held: true }),
       });
       const live = typeof measureLiveFrom === 'function' && measureLiveFrom();
       items.push({
-        label: t('ctxDistanceHere', 'Distance from the aircraft'),
+        label: t('ctxDistanceHere', 'Distance from the aircraft'), icon: 'ruler',
         why: live ? null : t('whyMeasureNoPosition', 'Measure works from your position: turn on Location'),
         run: () => {
           if (typeof measureToggle === 'function') measureToggle(true, true);
@@ -200,22 +210,22 @@
       const next = state.waypoints[i + 1];
       const wp = state.waypoints[i];
       extra.push({
-        label: t('ctxInsertAfter', 'Insert waypoint after'),
+        label: t('ctxInsertAfter', 'Insert waypoint after'), icon: 'insert',
         why: lockWhy() || (next ? null : t('ctxLastPoint', 'The last point has no leg after it')),
         run: () => splitLegAt(i, { lat: (wp.lat + next.lat) / 2, lng: (wp.lng + next.lng) / 2 }),
       });
       extra.push({
-        label: t('ctxRename', 'Rename'),
+        label: t('ctxRename', 'Rename'), icon: 'edit',
         run: () => focusInspectorField('.row input[type="text"]'),
       });
     } else if (target.type === 'leg') {
       extra.push({
-        label: t('ctxInsertHere', 'Insert waypoint here'), why: lockWhy(),
+        label: t('ctxInsertHere', 'Insert waypoint here'), icon: 'insert', why: lockWhy(),
         run: () => splitLegAt(target.index, latlng),
       });
     } else if (target.type === 'note') {
       // Delete is the note inspector's own button, mirrored below.
-      extra.push({ label: t('ctxEditNote', 'Edit text'), run: () => focusInspectorField('textarea') });
+      extra.push({ label: t('ctxEditNote', 'Edit text'), icon: 'edit', run: () => focusInspectorField('textarea') });
     }
     const title = (document.getElementById('insp-title') || {}).value || '';
     // Insert / rename first, then the inspector's own actions in its order, Delete last.

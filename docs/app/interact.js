@@ -4112,6 +4112,7 @@ function showInspector() {
     appendSatelliteSnippet(body, v, title.value);
     const useBtn = document.createElement('button');
     useBtn.className = 'insp-btn';
+    useBtn.id = 'insp-vor-use-ref';
     const isRef = vorRef === v.ident;
     useBtn.textContent = isRef ? (S.vorRefActive || '✓ Reference VOR (tap to clear)')
                                : (S.vorUseRef || 'Use as reference VOR');
