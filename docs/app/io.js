@@ -5613,6 +5613,36 @@ function showExportModal() {
   opacityRow.appendChild(opResetBtn);
   body.appendChild(opacityRow);
 
+  // Resolution: Low / Medium / High (printRes, exportPNG).
+  const resRow = document.createElement('div');
+  resRow.style.cssText = 'display:flex;align-items:center;gap:6px;font-size:13px';
+  const resLbl = document.createElement('span');
+  resLbl.textContent = S.exportResolution || 'Resolution';
+  const resSlider = document.createElement('input');
+  resSlider.type = 'range';
+  resSlider.id = 'export-res';
+  resSlider.min = '0'; resSlider.max = '2'; resSlider.step = '1';
+  resSlider.value = String(PRINT_RES_STEPS.indexOf(printRes()));
+  resSlider.style.cssText = 'flex:1;height:16px;accent-color:#ffd966';
+  resSlider.setAttribute('aria-label', resLbl.textContent);
+  const resVal = document.createElement('span');
+  resVal.style.cssText = 'min-width:4.5em;text-align:end;font-size:12px';
+  const resName = (v) => ({ low: S.exportResLow || 'Low', medium: S.exportResMedium || 'Medium',
+    high: S.exportResHigh || 'High' })[v];
+  const showRes = () => {
+    const v = PRINT_RES_STEPS[Number(resSlider.value)] || 'high';
+    resVal.textContent = resName(v);
+    resSlider.setAttribute('aria-valuetext', resVal.textContent);
+    return v;
+  };
+  showRes();
+  resSlider.addEventListener('input', () => {
+    const v = showRes();
+    try { localStorage.setItem(PRINT_RES_KEY, v); } catch (e) { /* private */ }
+  });
+  resRow.append(resLbl, resSlider, resVal);
+  body.appendChild(resRow);
+
   // Black-and-white printer: the chart in light grey, the route black on white (exportPNG).
   // Remembered on this device -- it is about the printer here, not the pilot's other devices.
   const bwLabel = document.createElement('label');
@@ -6004,7 +6034,11 @@ async function fetchTileBitmap(layer, coords, signal) {
 // A3 → two A4 landscape halves (horizontal cut). Halves abut exactly (no
 // overlap, so 1:250 000 is preserved); a dashed cut/tape guide marks the shared
 // edge and each page is labelled. Downloads two PNGs with A4 DPI metadata.
-function exportA4x2Tiles(out, W, H, done) {
+function exportA4x2Tiles(out, W, H, done, mode) {
+  // Print sends both pages to one print window, page 1 then page 2; Save downloads them as two
+  // files. (Print used to save the two files too: "png and print are the same?")
+  const printing = mode === 'print';
+  const pages = [];
   // pageOrient describes the assembled A3 sheet (the on-screen frame), same as
   // A3/A4: a landscape frame splits into two portrait A4 pages side-by-side
   // (vertical cut); a portrait frame splits into two landscape halves stacked
@@ -6019,7 +6053,13 @@ function exportA4x2Tiles(out, W, H, done) {
 
   let i = 0;
   (function nextTile() {
-    if (i >= tiles.length) { done(); return; }
+    if (i >= tiles.length) {
+      if (printing && pages.length) {
+        openPrintWindow(pages, portraitPages ? 210 : 297, portraitPages ? 297 : 210);
+      }
+      done();
+      return;
+    }
     const t = tiles[i++];
     const c = document.createElement('canvas');
     c.width = t.sw; c.height = t.sh;
@@ -6037,6 +6077,7 @@ function exportA4x2Tiles(out, W, H, done) {
     // where a fixed 22px label would print ~2 mm tall and be illegible.
     drawA4x2TileMarks(cx, t, tiles.length, ppmX / 1000);
     const dl = (blob) => {
+      if (printing) { pages.push(blob); nextTile(); return; }
       saveFile(blob, 'navigation-' + routeFileSlug() + '-A4x2-p' + t.n + 'of2-' + fileStamp() + '.png');
       setTimeout(nextTile, 400);   // stagger so the browser allows both downloads
     };
@@ -6089,24 +6130,44 @@ function drawA4x2TileMarks(cx, t, total, pxPerMm) {
 // an @page rule, then fire the print dialog — so it prints 1:1 regardless of the
 // printer's "fit to page" default (the only reliable way to hit the physical mm
 // sizes). Non-framed falls back to printing the image on the default page.
-function openPrintWindow(blob, paperWmm, paperHmm) {
-  const url = URL.createObjectURL(blob);
+// One image, or several -- the two halves of an A4x2 -- each a sheet of its own, printed once
+// they have all loaded.
+function openPrintWindow(blobs, paperWmm, paperHmm) {
+  const list = Array.isArray(blobs) ? blobs : [blobs];
+  const urls = list.map(b => URL.createObjectURL(b));
+  const free = () => urls.forEach(u => URL.revokeObjectURL(u));
   const w = window.open('', '_blank');
-  if (!w) { refuse(S.errPopupBlocked || 'Allow pop-ups to print.'); URL.revokeObjectURL(url); return; }
+  if (!w) { refuse(S.errPopupBlocked || 'Allow pop-ups to print.'); free(); return; }
   const sized = (paperWmm && paperHmm)
     ? `@page{size:${paperWmm}mm ${paperHmm}mm;margin:0}img{width:${paperWmm}mm;height:${paperHmm}mm;display:block}`
     : `@page{margin:0}img{max-width:100%;display:block}`;
   w.document.open();
   w.document.write('<!doctype html><html><head><meta charset="utf-8"><title>' +
     (S.printBtn || 'Print') + '</title><style>html,body{margin:0;padding:0}' + sized +
-    '</style></head><body><img alt=""></body></html>');
+    'img{break-after:page;page-break-after:always}img:last-child{break-after:auto;page-break-after:auto}' +
+    '</style></head><body>' + urls.map(() => '<img alt="">').join('') + '</body></html>');
   w.document.close();
-  const img = w.document.querySelector('img');
-  const go = () => { try { w.focus(); w.print(); } catch (e) {} setTimeout(() => URL.revokeObjectURL(url), 60000); };
-  img.onload = () => setTimeout(go, 60);
-  img.onerror = () => { URL.revokeObjectURL(url); };
-  img.src = url;
+  const imgs = [...w.document.querySelectorAll('img')];
+  let left = imgs.length;
+  const go = () => { try { w.focus(); w.print(); } catch (e) {} setTimeout(free, 60000); };
+  imgs.forEach((img, i) => {
+    img.onload = () => { if (--left === 0) setTimeout(go, 60); };
+    img.onerror = () => { free(); };
+    img.src = urls[i];
+  });
 }
+// Resolution for the PNG and the print, a three-step slider in the dialog (device-local):
+// High draws from the chart's sharpest tiles (about 390 dpi at 1:250 000), Medium (the
+// default) at three quarters of that, Low at half -- from a level coarser, a quarter of the tiles, so it is quick.
+// With no page chosen the same steps are 2x, 1.5x and 1x the screen's pixels.
+const PRINT_RES_KEY = 'navaid.printRes';
+const PRINT_RES_STEPS = ['low', 'medium', 'high'];
+const PRINT_RES_SCALE = { low: 0.5, medium: 0.75, high: 1 };
+function printRes() {
+  try { const v = localStorage.getItem(PRINT_RES_KEY); return PRINT_RES_STEPS.indexOf(v) !== -1 ? v : 'medium'; }
+  catch (e) { return 'medium'; }
+}
+window.printRes = printRes;
 // "Black-and-white printer" in the Print dialog (device-local).
 const PRINT_BW_KEY = 'navaid.printBw';
 function printBwOn() {
@@ -6130,6 +6191,42 @@ function printBwChart(ctx, img, w, h) {
     ctx.putImageData(d, 0, 0);
   } catch (e) { /* a tile the canvas may not read: printed as it is */ }
 }
+// Something to watch while a page is made ("show a timer running for export, let the user know
+// something is happening" -- "some progress bar"): a sharp A3 is a thousand tiles and half a
+// minute. A small panel at the foot of the screen with a bar for the tiles fetched, the count,
+// and the seconds running; then a "composing" step while the image is put together and saved.
+function exportProgress(total) {
+  const el = document.createElement('div');
+  el.id = 'export-progress';
+  el.setAttribute('role', 'status');
+  el.setAttribute('aria-live', 'polite');
+  const label = document.createElement('div');
+  label.className = 'export-progress-label';
+  const bar = document.createElement('progress');
+  bar.max = Math.max(1, total);
+  bar.value = 0;
+  el.append(label, bar);
+  document.body.appendChild(el);
+  const t0 = Date.now();
+  let done = 0, stage = 'tiles';
+  const secs = () => Math.floor((Date.now() - t0) / 1000);
+  const paint = () => {
+    label.textContent = stage === 'tiles'
+      ? (typeof S.exportProgressTiles === 'function' ? S.exportProgressTiles(done, total, secs())
+        : 'Fetching the map: ' + done + ' / ' + total + ' tiles · ' + secs() + ' s')
+      : (typeof S.exportProgressCompose === 'function' ? S.exportProgressCompose(secs())
+        : 'Composing the page… ' + secs() + ' s');
+    if (stage === 'tiles') bar.value = done; else bar.removeAttribute('value');   // indeterminate
+  };
+  paint();
+  const timer = setInterval(paint, 250);
+  return {
+    tile() { done++; },
+    compose() { stage = 'compose'; paint(); },
+    close() { clearInterval(timer); el.remove(); },
+  };
+}
+
 function exportPNG(mode) {
   // Export matches the screen view exactly, including map bearing.
   // Tiles are fetched north-up (axis-aligned) for a bounding box that covers
@@ -6188,44 +6285,70 @@ function exportPNG(mode) {
   const bbSEll = { lat: Math.min(c0.lat, c1.lat, c2.lat, c3.lat),
                    lng: Math.max(c0.lng, c1.lng, c2.lng, c3.lng) };
 
-  // Choose a starting tile zoom. Framed exports (A3 / A4) target maximum
-  // print quality at the layer's max native zoom. Without a frame the export
-  // covers the entire viewport; rendering that at max native zoom can balloon
-  // into hundreds of tiles. Mirror the on-screen tile zoom instead so the
-  // export matches what the user sees and the tile count stays bounded by the
-  // viewport size.
+  // How sharp: a framed page (A4 / A3) wants the chart's sharpest tiles (maxNativeZoom), at
+  // 1:250 000 about 390 dpi on CVFR; with no page the screen's view, at twice its pixels.
+  //
+  // It used to stop at 300 tiles and drop a whole zoom level past that, which halved the
+  // resolution: A3, and an A4 on a rotated map (it needs a bigger square of map to cut the
+  // turned page from), came out at about 197 dpi -- reported: "what's the png dpi? seems not
+  // very good". The limit is the image now, not the tile count: the largest canvas this
+  // browser makes (Safari about 16.7 M pixels, others far more; kept to 48 M here for the
+  // memory of two of them), and when a page is larger than that the image is scaled down
+  // smoothly from the sharp tiles instead of a level coarser.
   const nativeMax = base.options.maxNativeZoom || base.options.maxZoom || 13;
-  const maxZ = framed
-    ? nativeMax
-    : Math.min(nativeMax, Math.max(7, Math.round(map.getZoom())));
-
-  // Zoom down until the bounding box fits in one canvas AND the parallel tile
-  // count stays bounded. The floor of 7 keeps even very large rotated frames
-  // under the cap.
-  const MAX_TILES = 300;
-  let z = maxZ, bbNWP, bbSEP, Wbb, Hbb;
-  for (z = maxZ; z >= 7; z--) {
+  const mapZoom = map.getZoom();
+  const ua = (typeof navigator !== 'undefined' && navigator.userAgent) || '';
+  const safari = /AppleWebKit/.test(ua) && !/Chrome|Chromium|Android/.test(ua);
+  const android = /Android/.test(ua);
+  // Pixels per canvas: Safari's own ceiling; a phone's memory in the APK / Android (two canvases
+  // of 32 M is ~250 MB); more on a computer.
+  const MAX_AREA = safari ? 16000000 : android ? 32000000 : 48000000;
+  const MAX_SIDE = 16384;
+  const MAX_TILES = 1200;
+  // Output pixels per screen pixel, and the tile zoom they are drawn from.
+  let z = framed ? nativeMax : Math.min(nativeMax, Math.max(7, Math.ceil(mapZoom + 1)));
+  const resScale = PRINT_RES_SCALE[printRes()] || 1;
+  let pps = (framed ? Math.pow(2, z - mapZoom) : 2) * resScale;
+  let bbNWP, bbSEP, Wbb, Hbb, k = 1;
+  const measure = () => {
     bbNWP = map.project([bbNWll.lat, bbNWll.lng], z);
     bbSEP = map.project([bbSEll.lat, bbSEll.lng], z);
     Wbb = Math.round(bbSEP.x - bbNWP.x);
     Hbb = Math.round(bbSEP.y - bbNWP.y);
-    const tiles = Math.ceil(Wbb / 256) * Math.ceil(Hbb / 256);
-    if (Wbb <= 10000 && Hbb <= 10000 && tiles <= MAX_TILES) break;
+    return Math.ceil(Wbb / 256 + 1) * Math.ceil(Hbb / 256 + 1);
+  };
+  while (z > 7 && measure() > MAX_TILES) { z--; if (framed) pps = Math.pow(2, z - mapZoom) * resScale; }
+  measure();
+  for (let guard = 0; guard < 8; guard++) {
+    k = pps / Math.pow(2, z - mapZoom);              // the tile canvas's scale against zoom z
+    const f = Math.min(1,
+      Math.sqrt(MAX_AREA / Math.max(1, Wbb * k * Hbb * k)),
+      Math.sqrt(MAX_AREA / Math.max(1, fr.w * pps * fr.h * pps)),
+      MAX_SIDE / Math.max(1, Wbb * k, Hbb * k, fr.w * pps, fr.h * pps));
+    pps *= f; k *= f;
+    // Under half the tiles' own detail, a level coarser carries the same picture in a quarter
+    // of the tiles.
+    if (k <= 0.5 + 1e-9 && z > 7) { z--; measure(); continue; }
+    break;
   }
+  // Whole-pixel tiles, so they lie edge to edge with no hairline between them.
+  const ts = Math.max(1, Math.round(256 * k));
+  k = ts / 256;
+  pps = k * Math.pow(2, z - mapZoom);
 
-  // Output canvas: same physical size as the frame at the chosen tile zoom.
-  const tilePerScreen = Math.pow(2, z - map.getZoom());
-  const W = Math.round(fr.w * tilePerScreen);
-  const H = Math.round(fr.h * tilePerScreen);
+  // Output canvas: the frame at that resolution.
+  const W = Math.round(fr.w * pps);
+  const H = Math.round(fr.h * pps);
+  const Wc = Math.ceil(Wbb * k), Hc = Math.ceil(Hbb * k);
 
   // Intermediate canvas: north-up tile composite covering the bounding box.
   const tileCanvas = document.createElement('canvas');
-  tileCanvas.width  = Wbb;
-  tileCanvas.height = Hbb;
+  tileCanvas.width  = Wc;
+  tileCanvas.height = Hc;
   const tc = tileCanvas.getContext('2d');
   const bw = printBwOn();
   tc.fillStyle = bw ? PRINT_BW_TUNES.exportBgColor : tune('exportBgColor');
-  tc.fillRect(0, 0, Wbb, Hbb);
+  tc.fillRect(0, 0, Wc, Hc);
 
   const out = document.createElement('canvas');
   out.width  = W;
@@ -6268,29 +6391,42 @@ function exportPNG(mode) {
   for (let tx = txMin; tx <= txMax; tx++) {
     for (let ty = tyMin; ty <= tyMax; ty++) {
       const job = {
-        dx: Math.round(tx * 256 - bbNWP.x),
-        dy: Math.round(ty * 256 - bbNWP.y),
+        // Whole-pixel steps of ts from one fixed origin: neighbours meet exactly.
+        dx: tx * ts - Math.round(bbNWP.x * k),
+        dy: ty * ts - Math.round(bbNWP.y * k),
         bmp: null,
         failed: false,
       };
-      const ctrl = new AbortController();
-      const timer = setTimeout(() => ctrl.abort(), 20000);
-      job.done = fetchTileBitmap(base, { z, x: tx, y: ty }, ctrl.signal)
-        .then(result => {
-          job.bmp = result.bmp;
-          job.failed = result.failed;
-        })
-        .catch(() => { job.failed = true; })
-        .then(() => clearTimeout(timer));
+      const coords = { z, x: tx, y: ty };
+      // Fetched through the pool below, not all at once: a sharp A3 is up to ~1,000 tiles, and
+      // firing them together had a tenth time out while queued -- grey patches in the print.
+      // The 20 s clock starts when a tile's own request does; a failure is tried once more.
+      const fetchOnce = () => {
+        const ctrl = new AbortController();
+        const timer = setTimeout(() => ctrl.abort(), 20000);
+        return fetchTileBitmap(base, coords, ctrl.signal)
+          .then(result => { job.bmp = result.bmp; job.failed = result.failed; })
+          .catch(() => { job.failed = true; })
+          .then(() => clearTimeout(timer));
+      };
+      job.run = () => fetchOnce().then(() => (job.failed && !job.bmp ? fetchOnce() : null));
       jobs.push(job);
     }
   }
+  const progress = exportProgress(jobs.length);
+  for (const j of jobs) { const run = j.run; j.run = () => run().then(() => progress.tile()); }
+  const POOL = 16;
+  let nextJob = 0;
+  const worker = () => (nextJob < jobs.length ? jobs[nextJob++].run().then(worker) : Promise.resolve());
+  const pool = Promise.all(Array.from({ length: Math.min(POOL, jobs.length) }, worker));
+  for (const j of jobs) j.done = pool;
 
   Promise.all(jobs.map(j => j.done)).then(() => {
+    progress.compose();
     let failed = 0;
     for (const j of jobs) {
       if (j.bmp) {
-        try { tc.drawImage(j.bmp, j.dx, j.dy, 256, 256); }
+        try { tc.drawImage(j.bmp, j.dx, j.dy, ts, ts); }
         catch (e) { failed++; }
       } else if (j.failed) {
         failed++;
@@ -6299,11 +6435,11 @@ function exportPNG(mode) {
     let chart = tileCanvas;
     if (bw) {
       const g = document.createElement('canvas');
-      g.width = Wbb; g.height = Hbb;
+      g.width = Wc; g.height = Hc;
       const gc = g.getContext('2d');
       gc.fillStyle = PRINT_BW_TUNES.exportBgColor;
-      gc.fillRect(0, 0, Wbb, Hbb);
-      printBwChart(gc, tileCanvas, Wbb, Hbb);
+      gc.fillRect(0, 0, Wc, Hc);
+      printBwChart(gc, tileCanvas, Wc, Hc);
       chart = g;
     }
 
@@ -6313,8 +6449,8 @@ function exportPNG(mode) {
     // globalAlpha honours the Map-opacity slider so dim tiles on screen also
     // export dim; overlays drawn after restore() stay at full alpha.
     const fcP = map.project([frameCenterLL.lat, frameCenterLL.lng], z);
-    const fcx = fcP.x - bbNWP.x;
-    const fcy = fcP.y - bbNWP.y;
+    const fcx = fcP.x * k - Math.round(bbNWP.x * k);
+    const fcy = fcP.y * k - Math.round(bbNWP.y * k);
     o.save();
     o.translate(W / 2, H / 2);
     o.rotate(exportBearing * Math.PI / 180);
@@ -6370,17 +6506,19 @@ function exportPNG(mode) {
       // NavAid.exporting stays true until both tile downloads have fired,
       // so a second export can't start mid-tiling.
       exportA4x2Tiles(out, W, H, () => {
+        progress.close();
         btn.textContent = btnLabel;
         btn.disabled = false;
         unlockMap();
         NavAid.exporting = false;
         if (typeof NavAid._restoreExport === 'function') NavAid._restoreExport();
         if (failed > 0) refuse(S.errTilesFail(failed, jobs.length));
-      });
+      }, mode);
       return;
     }
 
     out.toBlob(b => {
+      progress.close();
       btn.textContent = btnLabel;
       btn.disabled = false;
       unlockMap();
@@ -6409,7 +6547,12 @@ function exportPNG(mode) {
           deliver(new Blob([injectPngPhys(buf, ppmX, ppmY)], { type: 'image/png' }));
         }).catch(function () { deliver(b); });
       } else {
-        deliver(b);
+        // No page: the image is the screen at pps times its pixels, so it says so (96 dpi a CSS
+        // pixel) and prints at the size it was on screen instead of whatever a viewer guesses.
+        const ppm = Math.round(pps * 96 / 0.0254);
+        b.arrayBuffer().then(buf => {
+          deliver(new Blob([injectPngPhys(buf, ppm, ppm)], { type: 'image/png' }));
+        }).catch(function () { deliver(b); });
       }
       if (failed > 0) refuse(S.errTilesFail(failed, jobs.length));
     }, 'image/png');
@@ -6418,6 +6561,7 @@ function exportPNG(mode) {
     // bitmap) would otherwise leave the button disabled forever. Restore
     // the UI so the user can retry, and surface the failure.
     console.warn('PNG export pipeline failed:', err);
+    progress.close();
     btn.textContent = btnLabel;
     btn.disabled = false;
     unlockMap();

@@ -391,7 +391,7 @@ test.describe('Export PNG options modal', () => {
     // Capture what openPrintWindow would write to the popup.
     const html = await page.evaluate(() => new Promise(resolve => {
       let out = '';
-      const doc = { open() {}, close() {}, write(s) { out += s; }, querySelector: () => ({}) };
+      const doc = { open() {}, close() {}, write(s) { out += s; }, querySelector: () => ({}), querySelectorAll: () => [{}] };
       window.open = () => ({ document: doc, focus() {}, print() {} });
       // A4 landscape paper.
       openPrintWindow(new Blob([new Uint8Array([137, 80, 78, 71])], { type: 'image/png' }), 297, 210);
@@ -486,7 +486,10 @@ test.describe('Export PNG options modal', () => {
       return ppmX;
     }
 
-    test('No page frame → no pHYs chunk', async ({ page }) => {
+    // No page: the image is the screen at 1.5x its pixels at the default Medium resolution,
+    // and says so -- 144 dpi (1.5 device pixels a CSS pixel at 96) -- so it prints at the size
+    // it was on screen (it used to carry no pHYs at all, and a viewer guessed).
+    test('No page frame → pHYs at 144 DPI (Medium: 1.5x the screen)', async ({ page }) => {
       await boot(page);
       await page.evaluate(wps => {
         state.waypoints = wps;
@@ -494,7 +497,7 @@ test.describe('Export PNG options modal', () => {
         pageSize = null;
       }, pairLLHZ_LLHA());
       const buf = await exportPng(page);
-      expect(readPng(buf)).toBeNull();
+      expect(Math.round(readPng(buf) * 0.0254)).toBe(144);
     });
 
     test('A4 portrait → pHYs embedded (~11811 ppm ≈ 300 DPI)', async ({ page }) => {
