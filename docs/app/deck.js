@@ -484,7 +484,7 @@
       state.selected = null;
       showInspector();
     }
-    const title = (typeof S === 'object' && S && S.deckHereTitle) || 'What is here';
+    const title = (typeof S === 'object' && S && S.deckHereTitle) || 'Point details';
     openSheet('here-point', title, (body) => {
       body.classList.add('deck-here');
       hereRow(body, (typeof S === 'object' && S && S.deckHereCoords) || 'Position',

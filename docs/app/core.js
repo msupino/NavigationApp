@@ -2390,7 +2390,7 @@ window.S = Object.assign({
   deckLabel: 'Primary',
   deckNoRoute: 'No route',
   deckSheetGrip: 'Drag to resize, tap to change height',
-  deckHereTitle: 'What is here',
+  deckHereTitle: 'Point details',
   ctxMenuLabel: 'Quick actions',
   ctxAddNoteHere: 'Add note here',
   ctxDistanceHere: 'Distance from the aircraft',

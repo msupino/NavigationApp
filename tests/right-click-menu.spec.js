@@ -3,7 +3,7 @@
 // small menu at the cursor with what can be done to whatever is under it. On a route point, a
 // leg, a chart point or a note it carries that item's own inspector actions (mirrored, so the
 // two cannot disagree), plus insert / rename / edit; on open map: add a waypoint or a note,
-// Direct to, what is here, distance from the aircraft. Dimmed, never hidden.
+// Direct to, point details, distance from the aircraft. Dimmed, never hidden.
 const { test, expect } = require('./_setup');
 
 test.use({ viewport: { width: 1300, height: 850 } });
@@ -34,11 +34,11 @@ const press = (page, text) => page.evaluate((text) => {
   b.click();
 }, text);
 
-test('on open map: add to the route, a note, Direct to, what is here, distance', async ({ page }) => {
+test('on open map: add to the route, a note, Direct to, point details, distance', async ({ page }) => {
   await boot(page);
   const r = await rightClick(page, [32.05, 35.25]);
   expect(r.prevented).toBe(true);                       // no browser menu
-  expect(r.items).toEqual(['Add to route', '~Direct to', 'Add note here', 'What is here',
+  expect(r.items).toEqual(['Add to route', '~Direct to', 'Add note here', 'Point details',
     '~Distance from the aircraft']);
   await press(page, 'Add note here');
   const notes = await page.evaluate(() => ({ n: state.notes.length, sel: state.selected && state.selected.type }));

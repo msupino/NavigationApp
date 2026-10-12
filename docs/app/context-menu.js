@@ -3,7 +3,7 @@
 
    Asked: "can we capture right click for quick edit actions?" A right-click opens a small menu
    at the cursor with what can be done to whatever is under it:
-     - open map: add a waypoint here (or start a route), add a note, Direct to, what is here,
+     - open map: add a waypoint here (or start a route), add a note, Direct to, point details,
        distance from the aircraft;
      - a route waypoint, a leg, a chart point (nav point, airfield, VOR) or a note: it is
        selected, as a click would, and the menu carries the actions of its own inspector, plus
@@ -14,7 +14,7 @@
    never disagree about what a point allows (the route lock, a missing GPS fix, a turn the
    geometry already settles). Dimmed, never hidden: a dimmed item says why when pressed.
 
-   A mouse only: on a touch screen a long press is already "what is here" (deck.js), and a
+   A mouse only: on a touch screen a long press already opens the point details (deck.js), and a
    browser's own long-press context menu is left to it. Shift + right-click opens the browser's
    own menu, for copying a link or inspecting the page. */
 (function () {
@@ -187,7 +187,7 @@
         },
       });
       items.push({
-        label: t('deckHereTitle', 'What is here'), icon: 'location',
+        label: t('deckHereTitle', 'Point details'), icon: 'location',
         run: () => select({ type: 'coord', lat: latlng.lat, lng: latlng.lng, held: true }),
       });
       const live = typeof measureLiveFrom === 'function' && measureLiveFrom();
@@ -236,7 +236,7 @@
 
   function onContextMenu(ev) {
     if (ev.shiftKey) return;                                // the browser's own menu
-    // A mouse only: a touch long press is deck.js's "what is here".
+    // A mouse only: a touch long press opens deck.js's point details.
     if (ev.sourceCapabilities && ev.sourceCapabilities.firesTouchEvents) return;
     if (window.matchMedia && !window.matchMedia('(pointer: fine)').matches) return;
     if (ev.target && ev.target.closest && ev.target.closest('.leaflet-control, #inspector')) return;
