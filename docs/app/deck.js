@@ -455,6 +455,14 @@
     return (typeof pad3 === 'function' ? pad3(r) : String(r)) + '\u00b0M';
   }
 
+  // "Herzliya  3.2 NM  358°M": the numbers are one Latin run inside a Hebrew name, so they are
+  // isolated (LRI..PDI) -- left to the bidi algorithm, Hebrew reordered them to "NM 358°M 3.2".
+  function nearestFieldText(near) {
+    const lang = (document.documentElement.lang || '').toLowerCase().startsWith('he') ? 'he' : 'en';
+    const name = near.af[lang] || near.af.en || near.af.name || '';
+    return name + '  \u2066' + near.dist.toFixed(1) + ' NM  ' + fmtBearing(near.brg) + '\u2069';
+  }
+
   function openHere(latlng) {
     // On the ground a held spot gets the same inspector as a known point -- satellite view,
     // VOR radial, nearest field, terrain, Start route here -- rather than a thinner sheet of
@@ -486,10 +494,8 @@
       const near = nearestField(latlng);
       if (near) {
         // The name the pilot reads on this chart, in the language they are reading it in.
-        const lang = (document.documentElement.lang === 'he') ? 'he' : 'en';
-        const name = near.af[lang] || near.af.en || near.af.name || '';
         hereRow(body, (typeof S === 'object' && S && S.deckHereNearest) || 'Nearest field',
-          name + '  ' + near.dist.toFixed(1) + ' NM  ' + fmtBearing(near.brg));
+          nearestFieldText(near));
       }
       const terrain = (typeof terrainMaxAtLatLng === 'function')
         ? terrainMaxAtLatLng(latlng.lat, latlng.lng) : null;
@@ -846,6 +852,7 @@
   NavAid.deckDirectTo = directTo;
   NavAid.deckNearestField = nearestField;
   NavAid.deckFmtBearing = fmtBearing;
+  NavAid.deckNearestFieldText = nearestFieldText;
   if (window.matchMedia) {
     const mq = window.matchMedia(NARROW);
     const onChange = () => apply();

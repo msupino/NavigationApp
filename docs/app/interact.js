@@ -1429,6 +1429,8 @@ function appendVorAipInfo(body, v) {
     kk.textContent = k;
     const vv = document.createElement('span');
     vv.className = 'vor-aip-val';
+    // "40 NM" in a Hebrew panel: left RTL, it read "NM 40". Auto takes the value's own direction.
+    vv.dir = 'auto';
     vv.textContent = t;
     d.append(kk, vv);
     info.appendChild(d);
@@ -4291,10 +4293,7 @@ function showInspector() {
     appendPointCoordinateRows(body, pt);
     const near = window.NavAid && NavAid.deckNearestField ? NavAid.deckNearestField(pt) : null;
     if (near) {
-      const lang = (document.documentElement.lang || '').toLowerCase().startsWith('he') ? 'he' : 'en';
-      const name = near.af[lang] || near.af.en || near.af.name || '';
-      body.appendChild(textRow(S.deckHereNearest || 'Nearest field',
-        name + '  ' + near.dist.toFixed(1) + ' NM  ' + NavAid.deckFmtBearing(near.brg)));
+      body.appendChild(textRow(S.deckHereNearest || 'Nearest field', NavAid.deckNearestFieldText(near)));
     }
     const terrain = typeof terrainMaxAtLatLng === 'function' ? terrainMaxAtLatLng(pt.lat, pt.lng) : null;
     if (Number.isFinite(terrain)) {

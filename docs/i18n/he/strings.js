@@ -885,7 +885,7 @@ window.S = {
   windEffect: 'עם רוח',
   windEffectTitle: 'כיוון מגנטי מתוקן-רוח, מהירות קרקע, זווית תיקון רוח, וזמן קטע.',
   windEffectText: function(hdg, gs, wca, time) {
-    return 'כיוון ' + hdg + '  GS ' + gs + '  WCA ' + wca + '  ' + time;
+    return 'כיוון ' + hdg + '  \u2066GS ' + gs + '\u2069  \u2066WCA ' + wca + '\u2069  ' + time;
   },
   windUnflyable: 'הרוח חזקה ממהירות האוויר',
   windResetTitle: 'נקה דריסת רוח (השתמש ברוח המסלול)',
@@ -1013,7 +1013,7 @@ window.S = {
   satelliteZoomOut: 'התרחק',
   satelliteResetCenter: 'מרכז מחדש על נקודת הדרך',
   gotoTitle: 'לחץ כדי לנווט לקואורדינטות',
-  gotoError: 'הקלד ספרות או הדבק קואורדינטה כמו 32°00\'17"N 34°43\'38"E',
+  gotoError: 'הקלד ספרות או הדבק קואורדינטה כמו \u206632°00\'17"N 34°43\'38"E\u2069',
   dialTitle: function(b) { return 'סיבוב מפה ' + b + '° — גרור לסיבוב, לחץ לצפון'; },
   rotateHeadingLabel: 'כיוון המפה (מעלות)',
   rotateDialLabel: 'חוגת סיבוב המפה (מעלות) — חצים מסובבים, Home לצפון למעלה',
@@ -1588,7 +1588,7 @@ window.S = {
   offlineAreaDownload: function(n) { return '⬇ הורדת האזור שעל המסך (' + n.toLocaleString('en-US') + ' אריחים)'; },
   offlineAreaDownloadTitle: 'שמירת המפה לאזור שהמפה מציגה עכשיו',
   offlineAreaDetail: 'רמת פירוט',
-  offlineAreaLevel: function(z, n, size) { return 'עד תקריב ' + z + ' · ' + n.toLocaleString('en-US') + ' אריחים · ≈ ' + size; },
+  offlineAreaLevel: function(z, n, size) { return 'עד תקריב ' + z + ' · ' + n.toLocaleString('en-US') + ' אריחים · \u2066≈ ' + size + '\u2069'; },
   offlineAreaTooBig: function(n, max) { return n.toLocaleString('en-US') + ' אריחים על המסך: יש להתקרב לפחות מ־' + max.toLocaleString('en-US') + '.'; },
   offlineAreaDeleteConfirm: 'להסיר את האזור הזה מהמכשיר?',
   offlineAreaCovered: 'האזור הזה כבר הורד.',
