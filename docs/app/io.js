@@ -1372,9 +1372,11 @@ function fplMailPreamble(res, o) {
   const arrT = fplArrivalLocal(depT, res.eetMinutes);
   const pts = Array.isArray(res.expandedPoints) ? res.expandedPoints.map(fplPointLabel) : [];
   const lines = [S.fplMailTitle, ''];
-  if (depT) lines.push(S.fplMailDeparture(dep, depT), '');
+  // Whether each end is an airfield: Hebrew names it as one ("משדה תימן", not "מתימן").
+  const isField = (code) => !!(typeof airfieldByIcao === 'function' && airfieldByIcao(code));
+  if (depT) lines.push(S.fplMailDeparture(dep, depT, isField(res.dep)), '');
   if (pts.length) lines.push(S.fplMailRoute(pts.join(' - ')), '');
-  if (arrT) lines.push(S.fplMailArrival(dest, arrT), '');
+  if (arrT) lines.push(S.fplMailArrival(dest, arrT, isField(res.dest)), '');
   return lines.join('\n') + '\n';
 }
 // --- parking request -----------------------------------------------------------------
@@ -4009,6 +4011,37 @@ function exportNavLog(scrollArea) {
 // <input> carrying the id and the HH:MM value (read and written through .value, 'change'
 // fired on it), so callers keep treating it as the one field. `allowEmpty` adds a blank
 // ("--") for "no departure set".
+// "The departure time has passed": set a new one (the default, focused), or open the filing
+// dialog anyway. Closing it does neither -- unlike a yes/no, where closing is an answer.
+function askDeparturePassed(clock, textOverride) {
+  return new Promise((resolve) => {
+    if (typeof createDraggableModal !== 'function') { resolve('set'); return; }
+    let answered = false;
+    const done = (v) => { if (!answered) { answered = true; resolve(v); } };
+    const modal = createDraggableModal(S.fplEtdPassedTitle || 'Departure time', 'modal follow-me-ask-modal fpl-etd-ask', () => done(null));
+    const text = document.createElement('p');
+    text.className = 'follow-me-ask-text';
+    text.textContent = textOverride
+      || (S.fplEtdPassedFirst ? S.fplEtdPassedFirst(clock) : 'The departure time (' + clock + ') has passed.');
+    const row = document.createElement('div');
+    row.className = 'follow-me-ask-actions';
+    const force = document.createElement('button');
+    force.type = 'button';
+    force.className = 'follow-me-ask-cancel fpl-etd-force';
+    force.textContent = S.fplOpenAnyway || 'Open anyway';
+    force.title = S.fplOpenAnywayTitle || '';
+    force.addEventListener('click', () => { done('force'); modal.close(); });
+    const set = document.createElement('button');
+    set.type = 'button';
+    set.className = 'follow-me-ask-ok fpl-etd-set';
+    set.textContent = S.fplSetNewTime || 'Set a new time';
+    set.addEventListener('click', () => { done('set'); modal.close(); });
+    row.append(force, set);
+    modal.box.append(text, row);
+    modal.show();
+    try { set.focus(); } catch (e) { /* not focusable yet */ }
+  });
+}
 function quarterTimePicker(id, value, opts) {
   const o = opts || {};
   const el = document.createElement('span');
@@ -4250,7 +4283,58 @@ function showFlightPlan() {
   const lastLightEl = document.createElement('div');
   lastLightEl.className = 'fp-last-light';
   lastLightEl.id = 'fp-last-light';
-  whenMenu.append(etdLbl, etdFields, zuluLbl, lastLightEl);
+  // The soonest departure a routes plan can be filed for: now plus the filing lead, rounded up
+  // to the quarter -- the same time the filing dialog proposes (fplDefaultWhen).
+  const etdSoon = document.createElement('button');
+  etdSoon.type = 'button';
+  etdSoon.className = 'fp-etd-soon';
+  etdSoon.id = 'fp-etd-soon';
+  const leadMin = typeof FPL_MIN_LEAD_MIN === 'function' ? FPL_MIN_LEAD_MIN() : 60;
+  etdSoon.textContent = S.fpEtdSoon ? S.fpEtdSoon(leadMin) : 'Now + ' + leadMin + ' min';
+  etdSoon.title = S.fpEtdSoonTitle || '';
+  etdSoon.onclick = () => {
+    const w = fplDefaultWhen();
+    if (typeof etdWrite === 'function') etdWrite(w.date, w.time);
+    showEtd(typeof etdRead === 'function' ? etdRead() : null, typeof etaZulu === 'function' && etaZulu());
+    refresh();
+  };
+  // How to close it, said: an X in the corner, as the app's other panels have; Escape and a tap
+  // outside close it too, as a popover does.
+  const whenClose = document.createElement('button');
+  whenClose.type = 'button';
+  whenClose.className = 'fp-when-close';
+  whenClose.textContent = '\u2715';
+  whenClose.setAttribute('aria-label', S.modalCloseTitle || 'Close');
+  whenClose.title = S.modalCloseTitle || 'Close';
+  whenClose.onclick = () => { whenWrap.open = false; try { whenSummary.focus(); } catch (e) { /* */ } };
+  const etdHead = document.createElement('div');
+  etdHead.className = 'fp-when-head';
+  etdHead.append(etdLbl, whenClose);
+  whenMenu.append(etdHead, etdFields, etdSoon, zuluLbl, lastLightEl);
+  // On window, capturing: it runs before the plan's own Escape (on document), so Escape closes
+  // the popover and only the popover.
+  // Both let go once the popover is no longer on the page: the plan can close with it open, and
+  // a listener left on window would swallow every later Escape in the app.
+  const dropWhenListeners = () => {
+    window.removeEventListener('keydown', onWhenKey, true);
+    document.removeEventListener('pointerdown', onWhenOutside, true);
+  };
+  const onWhenKey = (e) => {
+    if (!whenWrap.isConnected) { dropWhenListeners(); return; }
+    if (e.key === 'Escape' && whenWrap.open) { e.stopImmediatePropagation(); e.preventDefault(); whenWrap.open = false; try { whenSummary.focus(); } catch (er) { /* */ } }
+  };
+  const onWhenOutside = (e) => {
+    if (!whenWrap.isConnected) { dropWhenListeners(); return; }
+    if (whenWrap.open && !whenWrap.contains(e.target)) whenWrap.open = false;
+  };
+  whenWrap.addEventListener('toggle', () => {
+    if (whenWrap.open) {
+      window.addEventListener('keydown', onWhenKey, true);
+      document.addEventListener('pointerdown', onWhenOutside, true);
+    } else {
+      dropWhenListeners();
+    }
+  });
   whenWrap.appendChild(whenMenu);
   // Beside the popover, always in view: last light, amber with a moon when the arrival is after it.
   const lastLightShort = document.createElement('span');
@@ -4855,6 +4939,27 @@ function showFlightPlan() {
   // The departure's UTC, and the last-light line for the destination: sunset and the end of
   // civil twilight on the departure date, and the arrival against it. Shown without a
   // departure time too (for today, or the date picked) -- last light is worth knowing first.
+  // A clock in a label that must not change width when Times in UTC adds its Z: in local time an
+  // invisible Z holds the room, so the switch changes the text and nothing around it moves.
+  function setClockText(el, prefix, text, zulu) {
+    // One inline run: the button is a flex row with a gap, and a loose hidden Z became a flex
+    // item of its own, gap and all.
+    const run = document.createElement('span');
+    run.className = 'fp-clock-run';
+    run.textContent = prefix + text;
+    const m = !zulu ? /\d\d:\d\d/.exec(run.textContent) : null;
+    if (m) {
+      const ghost = document.createElement('span');
+      ghost.className = 'fp-z-ghost';
+      ghost.setAttribute('aria-hidden', 'true');
+      ghost.textContent = 'Z';
+      const rest = run.firstChild.splitText(m.index + 5);    // right after the clock
+      run.insertBefore(ghost, rest);
+    }
+    el.replaceChildren(run);
+  }
+  // The published-hours finding of the last refresh, for Submit to ask about ('' when none).
+  let hoursProblem = '';
   function refreshWhen(etd, dep, zulu, lastVisible, arrival, firstVisible) {
     // The filing dialog may have set the departure under the open panel.
     if (etd && document.activeElement !== etdDate && !etdPicker.el.contains(document.activeElement)) {
@@ -4866,7 +4971,7 @@ function showFlightPlan() {
     etdLbl.textContent = zulu ? (S.fpEtdTimeUtc || 'Departure time (UTC)') : (S.fpEtd || 'Departure (ETD)');
     etdPicker.el.setAttribute('aria-label', zulu ? (S.fpEtdTimeUtc || 'Departure time (UTC)')
       : (S.fpEtdTime || 'Departure time (local)'));
-    whenSummary.textContent = (S.fpEtdShort || 'ETD') + ' ' + (dep ? etaClock(dep, zulu) : '--:--');
+    setClockText(whenSummary, (S.fpEtdShort || 'ETD') + ' ', dep ? etaClock(dep, zulu) : '--:--', zulu);
     totEtaCell.textContent = arrival ? etaClock(arrival, zulu) : '--';
     const destIdx = lastVisible >= 0 ? lastVisible + 1 : state.waypoints.length - 1;
     const dest = state.waypoints[destIdx];
@@ -4882,26 +4987,43 @@ function showFlightPlan() {
     totEtaCell.classList.toggle('fp-eta-closed', closed);
     totEtaCell.title = closed && S.fpEtaClosedTitle ? S.fpEtaClosedTitle(name)
       : (late && S.fpEtaDarkTitle ? S.fpEtaDarkTitle(etaClock(ll.lastLight, zulu)) : '');
-    lastLightEl.classList.toggle('fp-last-light-late', late);
-    lastLightShort.classList.toggle('fp-last-light-late', late);
     // The departure field at the departure time too (Herzliya, for one, shuts to fixed wing
     // 14:00-16:00).
     const depIdx = Number.isInteger(firstVisible) ? firstVisible : 0;
     const depHrs = dep && typeof fieldHoursAt === 'function' ? fieldHoursAt(state.waypoints[depIdx], dep) : null;
     const depClosed = !!(depHrs && depHrs.state === 'closed');
     const depName = wpLabel(depIdx);
-    destClosedEl.textContent = [
+    hoursProblem = (depClosed || closed) ? [
       depClosed ? (S.fpDepClosed ? S.fpDepClosed(depName, depHrs.opens || '') : depName + ' is outside its published hours at the departure') : '',
       closed ? (S.fpDestClosed ? S.fpDestClosed(name, hrs.opens || '') : name + ' is outside its published hours at the arrival') : '',
-    ].filter(Boolean).join(' \u00b7 ');
+    ].filter(Boolean).join(' \u00b7 ') : '';
+    // One place per finding: this line, beside the departure, always in view. Red when a field
+    // is shut (the plan does not work); otherwise amber for a landing after last light. The
+    // popover below gives the times only, and the last leg's ETA carries the same mark as the
+    // total row -- they used to say it two and three times, and not always the same thing.
+    const nightOnly = late && !closed && !depClosed;
+    destClosedEl.classList.toggle('fp-finding-night', nightOnly);
+    destClosedEl.textContent = nightOnly ? (S.fpNightFinding || 'Arrival after last light \u2014 a night landing') : hoursProblem;
+    if (lastVisible >= 0 && etaCells[lastVisible]) {
+      const last = etaCells[lastVisible];
+      if (closed) {
+        last.classList.remove('fp-eta-night');
+        last.classList.add('fp-eta-closed');
+        last.title = totEtaCell.title;
+      } else {
+        last.classList.remove('fp-eta-closed');
+      }
+    }
     if (!ll) { lastLightEl.textContent = ''; lastLightShort.textContent = ''; return; }
     const text = (arrival && S.fpArrival ? S.fpArrival(etaClock(arrival, zulu)) + ' \u00b7 ' : '') +
       (S.fpLastLight
         ? S.fpLastLight(name, etaClock(ll.sunset, zulu), etaClock(ll.lastLight, zulu))
         : 'Last light at ' + name + ': ' + etaClock(ll.lastLight, zulu));
-    lastLightEl.textContent = late ? text + ' \u2014 ' + (S.fpLastLightLate || 'arrives after last light') : text;
-    lastLightShort.textContent = (S.fpLastLightShort ? S.fpLastLightShort(etaClock(ll.lastLight, zulu))
-      : 'Last light ' + etaClock(ll.lastLight, zulu)) + (late ? ' \u263e' : '');
+    // The detail: the times, nothing judged -- the finding is said once, in the line above.
+    lastLightEl.textContent = text;
+    const llShort = S.fpLastLightShort ? S.fpLastLightShort(etaClock(ll.lastLight, zulu))
+      : 'Last light ' + etaClock(ll.lastLight, zulu);
+    setClockText(lastLightShort, '', llShort, zulu);
     lastLightShort.title = lastLightEl.textContent;
   }
 
@@ -5280,7 +5402,40 @@ function showFlightPlan() {
   fplBtn.id = 'fpl-open';
   fplBtn.textContent = narrowRow ? (S.tbFplShort || '\u2708 FPL') : (S.tbFpl || 'Flight plan (FPL)');
   fplBtn.title = (typeof fplIsolate === 'function') ? fplIsolate(S.tbFplTitle || '') : (S.tbFplTitle || '');
-  fplBtn.onclick = () => showFplDialog();
+  // The plan is filed with the flight plan's own departure (the ETD above): without one, or
+  // with one that has passed, the filing dialog does not open -- the departure does, focused,
+  // with a line saying why. One place to set the time, so the two cannot disagree.
+  // A passed one asks first, with a way through: if the app's idea of "now" is wrong (the
+  // device clock, a time zone), a check that only refused would stop a legitimate plan.
+  // What was missed, shown on it: the departure button and its time pulse red three times
+  // (under 2 a second, well clear of the 3-a-second flash limit), beside the message that says
+  // why; with reduced motion, a steady red ring instead.
+  const flashDeparture = () => {
+    const els = [whenSummary, etdPicker.el];
+    for (const el of els) { el.classList.remove('fp-attn'); void el.offsetWidth; el.classList.add('fp-attn'); }
+    setTimeout(() => els.forEach(el => el.classList.remove('fp-attn')), 3000);
+  };
+  const openDeparture = (msg) => {
+    flashDeparture();
+    whenWrap.open = true;
+    const hour = whenWrap.querySelector('.qtime-h');
+    if (hour) { try { hour.focus({ preventScroll: false }); } catch (e) { hour.focus(); } }
+    if (msg && typeof showToast === 'function') showToast(msg);
+  };
+  fplBtn.onclick = async () => {
+    const etd = typeof etdRead === 'function' ? etdRead() : null;
+    const at = etd && typeof etdInstant === 'function' ? etdInstant(etd) : null;
+    if (!at) { openDeparture(S.fplEtdFirst || 'Set the departure time first — the plan is filed with it.'); return; }
+    const passed = at.getTime() <= Date.now();
+    // Outside an airfield's published hours (the red line beside the departure): the same
+    // question -- the published hours could be the thing that is wrong, or the day an exception.
+    if (!passed) refresh();
+    if (!passed && !hoursProblem) { showFplDialog(); return; }
+    const answer = await askDeparturePassed(etaClock(at, false),
+      passed ? '' : hoursProblem + '. ' + (S.fplHoursAsk || 'Set another time, or file it anyway?'));
+    if (answer === 'set') openDeparture('');
+    else if (answer === 'force') showFplDialog(passed ? { forcePast: true } : {});
+  };
   btns.appendChild(fplBtn);
   box.appendChild(btns);
   addModalCloseX(box, closeFlightPlan);
@@ -10811,7 +10966,8 @@ function fplErrText(code) {
   }
   return (typeof text === 'string' && text) ? text : key;
 }
-function showFplDialog() {
+function showFplDialog(opts) {
+  const dialogOpts = opts || {};
   const back = document.createElement('div');
   back.className = 'modal-back fpl-modal';
   const box = document.createElement('div');
@@ -10858,13 +11014,20 @@ function showFplDialog() {
   document.addEventListener('keydown', onEsc, true);
 
   const profile = fplProfileRead();
-  // The departure already planned on the flight-plan panel (#667), when it is not earlier
-  // than the soonest this dialog proposes; otherwise the usual default.
+  // The departure already planned on the flight-plan panel (#667), whenever it is still ahead
+  // -- even inside the filing lead, where the dialog's own lead warning says so. One that has
+  // already passed cannot be filed: the usual default is proposed instead, and a line under the
+  // field says why (it used to swap the time silently, which read as "the ETD was ignored").
   const when = fplDefaultWhen();
   const planned = typeof etdRead === 'function' ? etdRead() : null;
   const plannedAt = planned && typeof etdInstant === 'function' ? etdInstant(planned) : null;
-  const defaultAt = typeof etdInstant === 'function' ? etdInstant(when) : null;
-  const useEtd = !!(plannedAt && defaultAt && plannedAt >= defaultAt);
+  const etdAhead = !!(plannedAt && plannedAt.getTime() > Date.now());
+  // Opened with "Open anyway" on a departure the app believes has passed: that time, as set.
+  const useEtd = !!(plannedAt && (etdAhead || dialogOpts.forcePast));
+  // Sending a time the app believes has passed: allowed once the pilot says so, either from the
+  // question that opened this dialog or from the checkbox under the refusal.
+  let allowPast = !!dialogOpts.forcePast;
+  const etdPassed = !!(plannedAt && !useEtd);
   const state1 = useEtd ? { date: planned.date, time: planned.time } : { date: when.date, time: when.time };
 
   const row = (labelText, el) => {
@@ -11063,15 +11226,30 @@ function showFplDialog() {
     const timeBox = document.createElement('span');
     timeBox.className = 'fpl-time-box';
     timeBox.append(timePicker.el, utcHint);
+    // Said as the time is chosen, under the field, not only when Continue refuses it.
+    const pastNote = document.createElement('div');
+    pastNote.className = 'fpl-hint fpl-time-past';
+    pastNote.id = 'fpl-time-past';
+    pastNote.setAttribute('role', 'status');
+    pastNote.hidden = true;
     const syncWhen = () => {
       state1.date = dateEl.value;
       state1.time = timeEl.value;
       const utc = fplUtcFromLocal(state1.date, state1.time);
       utcHint.textContent = utc ? utc.eobt + 'Z' : '';
+      // Quiet once the pilot has chosen to send it anyway ("Open anyway").
+      const past = !!(utc && fplLeadMinutes(utc.when) < 0) && !dialogOpts.forcePast;
+      pastNote.hidden = !past;
+      pastNote.textContent = past ? fplErrText('errFplPast') : '';
+      timeBox.classList.toggle('fpl-input-missing', past);
+      const ids = (timeBox.getAttribute('aria-describedby') || '').split(' ').filter(x => x && x !== pastNote.id);
+      if (past) ids.push(pastNote.id);
+      if (ids.length) timeBox.setAttribute('aria-describedby', ids.join(' ')); else timeBox.removeAttribute('aria-describedby');
     };
     // A departure the pilot types here is the plan's departure too: the flight-plan panel's
     // ETAs and last-light check follow it.
     const typedWhen = () => {
+      if (passedNote) { passedNote.remove(); passedNote = null; timeBox.removeAttribute('aria-describedby'); }
       syncWhen();
       if (utcHint.textContent && typeof etdWrite === 'function') {
         etdWrite(state1.date, state1.time);
@@ -11080,7 +11258,46 @@ function showFplDialog() {
     };
     dateEl.onchange = typedWhen;
     timeEl.onchange = typedWhen;
-    body.append(row(S.fplDate || 'Date', dateEl), row(S.fplTime || 'Departure (local)', timeBox));
+    // The time and the lines about it share the field column, so a note sits under the field
+    // it explains, not under the labels.
+    const timeCol = document.createElement('div');
+    timeCol.className = 'fpl-time-col';
+    timeCol.append(timeBox, pastNote);
+    body.append(row(S.fplDate || 'Date', dateEl), row(S.fplTime || 'Departure (local)', timeCol));
+    // From the flight plan: shown, dimmed, not editable here -- it is changed in the plan's
+    // departure, so what is filed and what the plan's ETAs count from are one time. (Opened with
+    // no planned departure -- not from the plan's button -- the fields stay editable.)
+    if (useEtd) {
+      dateEl.disabled = true;
+      timePicker.el.querySelectorAll('select').forEach(sel => { sel.disabled = true; });
+      timeBox.classList.add('fpl-from-plan');
+      const fromPlan = document.createElement('div');
+      fromPlan.className = 'fpl-hint fpl-etd-from-plan';
+      fromPlan.id = 'fpl-etd-from-plan';
+      fromPlan.textContent = (S.fplEtdFromPlan || 'From the flight plan\u2019s departure (ETD) \u2014 change it there.')
+        + (etdAhead ? '' : ' ' + (S.fplEtdForced || 'It has passed by this device\u2019s clock; it is sent as you asked.'));
+      timeCol.appendChild(fromPlan);
+      timeBox.setAttribute('aria-describedby', fromPlan.id);
+      dateEl.setAttribute('aria-describedby', fromPlan.id);
+    }
+    // Under the field it is about, as information rather than an error, read with the field
+    // (aria-describedby), and gone once a time is chosen here.
+    let passedNote = null;
+    if (etdPassed) {
+      const d = new Date();
+      const todayIso = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' +
+        String(d.getDate()).padStart(2, '0');
+      // Today's departure by its time alone; another day's with the day (13/10 09:00).
+      const was = planned.date === todayIso ? planned.time
+        : planned.date.split('-').reverse().slice(0, 2).join('/') + ' ' + planned.time;
+      passedNote = document.createElement('div');
+      passedNote.className = 'fpl-hint fpl-etd-passed';
+      passedNote.id = 'fpl-etd-passed';
+      fplSetBidiText(passedNote, S.fplEtdPassed ? S.fplEtdPassed(was, state1.time)
+        : 'The planned departure (' + was + ') has passed \u2014 proposed ' + state1.time + '.');
+      pastNote.after(passedNote);
+      timeBox.setAttribute('aria-describedby', passedNote.id);
+    }
     syncWhen();
 
     // Call sign: the one field that changes most, so it leads and it is big.
@@ -11572,6 +11789,21 @@ function showFplDialog() {
       persons, replyTo };
     const errBox = document.createElement('div');
     errBox.className = 'fpl-errs';
+    // Under the "already passed" refusal: a checkbox to send it anyway, for when the app's idea
+    // of now is the thing that is wrong. Ticked, Continue goes ahead.
+    function addPastOverride() {
+      const lbl = document.createElement('label');
+      lbl.className = 'fpl-past-override';
+      const cb = document.createElement('input');
+      cb.type = 'checkbox';
+      cb.id = 'fpl-allow-past';
+      cb.checked = allowPast;
+      cb.onchange = () => { allowPast = cb.checked; };
+      const t = document.createElement('span');
+      t.textContent = S.fplAllowPast || 'Send anyway \u2014 I have checked the time';
+      lbl.append(cb, t);
+      errBox.appendChild(lbl);
+    }
     body.appendChild(errBox);
 
     const btns = document.createElement('div');
@@ -11607,15 +11839,27 @@ function showFplDialog() {
         // path honours the override too.
         if (fplBadFilingOverride(profile)) errsXc.push('errFplBadAddress');
         // ...the same date/time check, since the sheet prints both...
-        if (!fplUtcFromLocal(state1.date, state1.time)) errsXc.push('errFplEobt');
+        const utcXc = fplUtcFromLocal(state1.date, state1.time);
+        if (!utcXc) errsXc.push('errFplEobt');
+        else if (fplLeadMinutes(utcXc.when) < 0 && !allowPast) errsXc.push('errFplPast');
         // ...and the same field-to-field rule: a field in the middle is two plans.
         const midXc = fplMidRouteAirfields();
         if (midXc.length) errsXc.push({ code: 'errFplMidAirfield', names: midXc.slice() });
         if (errsXc.length) {
           showFieldErrors(errBox, errsXc, fieldEls);
+          if (errsXc.includes('errFplPast')) addPastOverride();
           return;
         }
         showFplXcForm({ dateLocal: state1.date, timeLocal: state1.time });
+        return;
+      }
+      // A departure that has already gone cannot be filed -- "now" or later can (inside the
+      // hour it is the lead warning's case: an update phoned or sent late). Checked here, where
+      // "now" is the pilot's clock, not in buildIcaoFpl, which only writes the message.
+      const utcNow = fplUtcFromLocal(state1.date, state1.time);
+      if (utcNow && fplLeadMinutes(utcNow.when) < 0 && !allowPast) {
+        showFieldErrors(errBox, ['errFplPast'], fieldEls);
+        addPastOverride();
         return;
       }
       const retData = returnRouteData();

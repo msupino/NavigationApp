@@ -10,6 +10,20 @@
 //   -E/0400 P/002)
 const { test, expect } = require('./_setup');
 
+// The plan's Submit button opens the filing dialog only with a departure that is still ahead
+// (the flight plan's ETD is the one filed). These specs are about the message, not the time:
+// tomorrow at 10:00, set the way a pilot sets it, unless a spec stores its own.
+test.beforeEach(async ({ page }) => {
+  await page.addInitScript(() => {
+    try {
+      if (localStorage.getItem('navaid.etd')) return;
+      const d = new Date(Date.now() + 24 * 3600000);
+      const p2 = (n) => String(n).padStart(2, '0');
+      localStorage.setItem('navaid.etd', JSON.stringify({ date: d.getFullYear() + '-' + p2(d.getMonth() + 1) + '-' + p2(d.getDate()), time: '10:00' }));
+    } catch (e) { /* storage off */ }
+  });
+});
+
 // The whole point of these cases is the local-clock-to-UTC conversion, so the browser
 // timezone is pinned: without it the suite asserted whatever the machine happened to be
 // (it passed on a laptop in Israel and failed on a UTC CI runner). Israel is UTC+3 in
