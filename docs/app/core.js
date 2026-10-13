@@ -1753,6 +1753,7 @@ window.S = Object.assign({
     return 'Last light at ' + name + ': ' + lastLight + ' (sunset ' + sunset + ')';
   },
   fpLastLightLate: 'arrives after last light: a night landing',
+  fpNightFinding: 'Arrival after last light \u2014 a night landing',
   startRouteHere: '➕ Start route here',
   addToRoute: '➕ Add to route',
   alreadyOnRoute: '✓ Already on the route',

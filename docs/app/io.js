@@ -4298,7 +4298,32 @@ function showFlightPlan() {
     showEtd(typeof etdRead === 'function' ? etdRead() : null, typeof etaZulu === 'function' && etaZulu());
     refresh();
   };
-  whenMenu.append(etdLbl, etdFields, etdSoon, zuluLbl, lastLightEl);
+  // How to close it, said: an X in the corner, as the app's other panels have; Escape and a tap
+  // outside close it too, as a popover does.
+  const whenClose = document.createElement('button');
+  whenClose.type = 'button';
+  whenClose.className = 'fp-when-close';
+  whenClose.textContent = '\u2715';
+  whenClose.setAttribute('aria-label', S.modalCloseTitle || 'Close');
+  whenClose.title = S.modalCloseTitle || 'Close';
+  whenClose.onclick = () => { whenWrap.open = false; try { whenSummary.focus(); } catch (e) { /* */ } };
+  const etdHead = document.createElement('div');
+  etdHead.className = 'fp-when-head';
+  etdHead.append(etdLbl, whenClose);
+  whenMenu.append(etdHead, etdFields, etdSoon, zuluLbl, lastLightEl);
+  const onWhenKey = (e) => {
+    if (e.key === 'Escape' && whenWrap.open) { e.stopPropagation(); e.preventDefault(); whenWrap.open = false; try { whenSummary.focus(); } catch (er) { /* */ } }
+  };
+  const onWhenOutside = (e) => { if (whenWrap.open && !whenWrap.contains(e.target)) whenWrap.open = false; };
+  whenWrap.addEventListener('toggle', () => {
+    if (whenWrap.open) {
+      document.addEventListener('keydown', onWhenKey, true);
+      document.addEventListener('pointerdown', onWhenOutside, true);
+    } else {
+      document.removeEventListener('keydown', onWhenKey, true);
+      document.removeEventListener('pointerdown', onWhenOutside, true);
+    }
+  });
   whenWrap.appendChild(whenMenu);
   // Beside the popover, always in view: last light, amber with a moon when the arrival is after it.
   const lastLightShort = document.createElement('span');
@@ -4932,8 +4957,6 @@ function showFlightPlan() {
     totEtaCell.classList.toggle('fp-eta-closed', closed);
     totEtaCell.title = closed && S.fpEtaClosedTitle ? S.fpEtaClosedTitle(name)
       : (late && S.fpEtaDarkTitle ? S.fpEtaDarkTitle(etaClock(ll.lastLight, zulu)) : '');
-    lastLightEl.classList.toggle('fp-last-light-late', late);
-    lastLightShort.classList.toggle('fp-last-light-late', late);
     // The departure field at the departure time too (Herzliya, for one, shuts to fixed wing
     // 14:00-16:00).
     const depIdx = Number.isInteger(firstVisible) ? firstVisible : 0;
@@ -4944,23 +4967,32 @@ function showFlightPlan() {
       depClosed ? (S.fpDepClosed ? S.fpDepClosed(depName, depHrs.opens || '') : depName + ' is outside its published hours at the departure') : '',
       closed ? (S.fpDestClosed ? S.fpDestClosed(name, hrs.opens || '') : name + ' is outside its published hours at the arrival') : '',
     ].filter(Boolean).join(' \u00b7 ') : '';
-    destClosedEl.textContent = [
-      depClosed ? (S.fpDepClosed ? S.fpDepClosed(depName, depHrs.opens || '') : depName + ' is outside its published hours at the departure') : '',
-      closed ? (S.fpDestClosed ? S.fpDestClosed(name, hrs.opens || '') : name + ' is outside its published hours at the arrival') : '',
-    ].filter(Boolean).join(' \u00b7 ');
+    // One place per finding: this line, beside the departure, always in view. Red when a field
+    // is shut (the plan does not work); otherwise amber for a landing after last light. The
+    // popover below gives the times only, and the last leg's ETA carries the same mark as the
+    // total row -- they used to say it two and three times, and not always the same thing.
+    const nightOnly = late && !closed && !depClosed;
+    destClosedEl.classList.toggle('fp-finding-night', nightOnly);
+    destClosedEl.textContent = nightOnly ? (S.fpNightFinding || 'Arrival after last light \u2014 a night landing') : hoursProblem;
+    if (lastVisible >= 0 && etaCells[lastVisible]) {
+      const last = etaCells[lastVisible];
+      if (closed) {
+        last.classList.remove('fp-eta-night');
+        last.classList.add('fp-eta-closed');
+        last.title = totEtaCell.title;
+      } else {
+        last.classList.remove('fp-eta-closed');
+      }
+    }
     if (!ll) { lastLightEl.textContent = ''; lastLightShort.textContent = ''; return; }
     const text = (arrival && S.fpArrival ? S.fpArrival(etaClock(arrival, zulu)) + ' \u00b7 ' : '') +
       (S.fpLastLight
         ? S.fpLastLight(name, etaClock(ll.sunset, zulu), etaClock(ll.lastLight, zulu))
         : 'Last light at ' + name + ': ' + etaClock(ll.lastLight, zulu));
-    // A field shut at the arrival outranks night: "a night landing" read as if landing there were
-    // the question, at a field that is not open (reported for Herzliya, which never is at night).
-    lastLightEl.classList.toggle('fp-last-light-closed', closed);
-    lastLightEl.textContent = closed
-      ? text + ' \u2014 ' + (S.fpDestClosed ? S.fpDestClosed(name, hrs.opens || '') : name + ' is outside its published hours at the arrival')
-      : (late ? text + ' \u2014 ' + (S.fpLastLightLate || 'arrives after last light') : text);
-    lastLightShort.textContent = (S.fpLastLightShort ? S.fpLastLightShort(etaClock(ll.lastLight, zulu))
-      : 'Last light ' + etaClock(ll.lastLight, zulu)) + (late ? ' \u263e' : '');
+    // The detail: the times, nothing judged -- the finding is said once, in the line above.
+    lastLightEl.textContent = text;
+    lastLightShort.textContent = S.fpLastLightShort ? S.fpLastLightShort(etaClock(ll.lastLight, zulu))
+      : 'Last light ' + etaClock(ll.lastLight, zulu);
     lastLightShort.title = lastLightEl.textContent;
   }
 

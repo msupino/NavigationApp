@@ -115,23 +115,26 @@ test('ETA is the departure plus the cumulative time, and is remembered', async (
 
 test('an arrival after last light is flagged, one before it is not', async ({ page }) => {
   await boot(page);
+  // Haifa (open until 22:00 on a Sunday) to a plain point with no published hours: night alone.
+  await page.evaluate(() => {
+    const ha = airfields.find(a => a.name === 'LLHA');
+    state.waypoints = [{ lat: ha.lat, lng: ha.lng, name: 'LLHA' }, { lat: ha.lat - 0.25, lng: ha.lng - 0.05, name: 'POINT' }];
+    syncLegs(); draw();
+  });
   await openFlightPlan(page);
   await setEtd(page, '2026-06-21', '10:00');
   await expect(etaCell(page)).not.toHaveClass(/fp-eta-night/);
-  await expect(page.locator('#fp-last-light')).not.toHaveClass(/fp-last-light-late/);
-  // Last light in Haifa that evening is about 20:20 local.
-  await setEtd(page, '2026-06-21', '20:15');
+  await expect(page.locator('#fp-dest-closed')).not.toHaveClass(/fp-finding-night/);
+  // Last light there that evening is about 20:20 local.
+  await setEtd(page, '2026-06-21', '20:30');
   await expect(etaCell(page)).toHaveClass(/fp-eta-night/);
   await expect(etaCell(page)).toHaveAttribute('title', /After last light.*night/);
-  await expect(page.locator('#fp-last-light')).toHaveClass(/fp-last-light-late/);
-  await expect(page.locator('#fp-last-light')).toContainText('arrives after last light');
-  // Night is a caution, not a closed field: Haifa is open until 22:00 on a Sunday.
-  await expect(page.locator('#fp-dest-closed')).not.toContainText('at the arrival');
+  // Said once, in the findings line beside the departure; the popover gives the times.
+  await expect(page.locator('#fp-dest-closed')).toHaveClass(/fp-finding-night/);
+  await expect(page.locator('#fp-dest-closed')).toContainText('after last light');
+  await expect(page.locator('#fp-last-light')).not.toContainText('after last light');
   await expect(page.locator('.flight-table tfoot td.fp-col-eta')).not.toHaveClass(/fp-eta-closed/);
-  // ...while Herzliya itself shuts at 19:30, so the departure is the red finding.
-  await expect(page.locator('#fp-dest-closed')).toContainText('at the departure');
-  await expect(page.locator('#fp-last-light-short')).toHaveClass(/fp-last-light-late/);
-  await expect(page.locator('details.fp-when summary')).toHaveText('ETD 20:15');
+  await expect(page.locator('details.fp-when summary')).toHaveText('ETD 20:30');
 });
 
 test('UTC toggle writes every clock with a Z', async ({ page }) => {
@@ -339,10 +342,11 @@ test('an arrival outside the destination\'s published hours is the red finding',
   await setEtd(page, '2026-06-21', '22:00');
   await expect(page.locator('#fp-dest-closed')).toContainText('outside its published hours');
   await expect(page.locator('.flight-table tfoot td.fp-col-eta')).toHaveClass(/fp-eta-closed/);
-  // The popover's sentence says so too, in red -- not "a night landing" at a shut field.
-  await expect(page.locator('#fp-last-light')).toHaveClass(/fp-last-light-closed/);
-  await expect(page.locator('#fp-last-light')).toContainText('outside its published hours at the arrival');
-  await expect(page.locator('#fp-last-light')).not.toContainText('night landing');
+  // Said once: not repeated in the popover, and no "night landing" at a shut field; the last
+  // leg's ETA carries the same mark as the total.
+  await expect(page.locator('#fp-last-light')).not.toContainText('outside its published hours');
+  await expect(page.locator('#fp-dest-closed')).not.toContainText('night landing');
+  await expect(page.locator('.flight-table tbody tr').last().locator('td.fp-col-eta')).toHaveClass(/fp-eta-closed/);
   // The morning: open, and in daylight -- nothing to say.
   await setEtd(page, '2026-06-21', '10:00');
   await expect(page.locator('#fp-dest-closed')).toHaveText('');
@@ -474,4 +478,21 @@ test('Hebrew mail names an airfield as one: "משדה תימן", never "מתימ
   expect(text).toContain('המראה משדה תימן');
   expect(text).toContain('נחיתה בשדה');
   expect(text).not.toContain('מתימן');
+});
+
+test('the departure popover closes by its X, by Escape and by a tap outside', async ({ page }) => {
+  await boot(page);
+  await openFlightPlan(page);
+  const when = page.locator('details.fp-when');
+  await openWhen(page);
+  await page.locator('.fp-when-close').click();
+  await expect(when).toHaveJSProperty('open', false);
+  await openWhen(page);
+  await page.keyboard.press('Escape');
+  await expect(when).toHaveJSProperty('open', false);
+  await expect(page.locator('.modal-back.flight-plan')).toBeVisible();     // Escape closed only the popover
+  await openWhen(page);
+  const tb = await page.locator('.modal-back.flight-plan .modal-title').boundingBox();
+  await page.mouse.click(tb.x + 10, tb.y + tb.height / 2);           // a tap on the panel, outside the popover
+  await expect(when).toHaveJSProperty('open', false);
 });

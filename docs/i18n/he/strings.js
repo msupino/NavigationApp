@@ -283,6 +283,7 @@ window.S = {
     return 'אור אחרון ב-\u2068' + name + '\u2069: \u2066' + lastLight + '\u2069 (שקיעה \u2066' + sunset + '\u2069)';
   },
   fpLastLightLate: 'הנחיתה אחרי האור האחרון: נחיתת לילה',
+  fpNightFinding: 'נחיתה אחרי האור האחרון \u2014 נחיתת לילה',
   startRouteHere: '➕ התחל מסלול כאן',
   addToRoute: '➕ הוסף למסלול',
   alreadyOnRoute: '✓ כבר במסלול',

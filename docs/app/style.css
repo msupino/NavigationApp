@@ -3886,6 +3886,17 @@ body.theme-light .route-library-row { border-color: #c6ccd6; }
   max-width: min(360px, calc(92vw - 28px));
 }
 .fp-when-label { font-weight: 600; }
+.fp-when-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; width: 100%; }
+.fp-when-close {
+  font: inherit; font-size: 15px; line-height: 1; cursor: pointer; color: inherit; opacity: 0.8;
+  background: transparent; border: 0; border-radius: 6px; min-width: 24px; min-height: 24px; padding: 2px 4px;
+}
+.fp-when-close:hover { opacity: 1; background: rgba(127, 127, 127, 0.18); }
+body.deck-on .fp-when-close { min-width: 30px; min-height: 30px; }
+/* The one findings line: amber with a moon for night, red with a warning sign for a shut field. */
+.fp-dest-closed.fp-finding-night { color: #ffcc80; }
+.fp-dest-closed.fp-finding-night::before { content: '\263E  '; }
+body.theme-light .fp-dest-closed.fp-finding-night { color: #8a5300; }
 /* Now + 60 min: the soonest filable departure, in one tap. */
 .fp-etd-soon {
   font: inherit; font-size: 13px; font-weight: 600; cursor: pointer;
