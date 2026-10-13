@@ -249,6 +249,23 @@ window.S = {
   routeLibraryGdriveError: 'הסנכרון נכשל',
   routeLibraryGdriveAutoSyncFailed: 'לא סונכרן ל-Drive — נשמר במכשיר הזה. סנכרנו מ"מסלולים שמורים" לניסיון נוסף.',
   fpTimeUnitsTitle: 'זמן טיסה, דק:שנ (לא שעת שעון)',
+  fpEtd: 'המראה (ETD)',
+  fpEtdShort: 'המראה',
+  fpLastLightShort: function (t) { return 'אור אחרון \u2066' + t + '\u2069'; },
+  fpEtdTitle: 'שעת ההמראה המתוכננת, בשעון מקומי. עמודת ה-ETA ובדיקת האור האחרון נספרות ממנה; טופס הגשת תוכנית הטיסה משתמש באותה שעה.',
+  fpEtdDate: 'תאריך ההמראה',
+  fpEtdTime: 'שעת ההמראה (מקומית)',
+  fpEtaZulu: 'שעות ב-UTC',
+  fpEtaZuluTitle: 'הצגת שעות ההגעה והאור האחרון ב-UTC ‏(Z) במקום בשעון מקומי',
+  fpEta: 'ETA',
+  fpEtaTitle: 'שעת השעון מעל נקודת היעד של הקטע: המראה + זמן מצטבר, במהירויות המתוכננות (ללא רוח)',
+  // Times and Latin names are LTR runs inside RTL text: each is isolated (LRI ... PDI).
+  fpEtaDarkTitle: function (lastLight) { return 'אחרי האור האחרון (\u2066' + lastLight + '\u2069)'; },
+  fpArrival: function (eta) { return 'הגעה \u2066' + eta + '\u2069'; },
+  fpLastLight: function (name, sunset, lastLight) {
+    return 'אור אחרון ב-\u2068' + name + '\u2069: \u2066' + lastLight + '\u2069 (שקיעה \u2066' + sunset + '\u2069)';
+  },
+  fpLastLightLate: 'הנחיתה אחרי האור האחרון',
   startRouteHere: '➕ התחל מסלול כאן',
   addToRoute: '➕ הוסף למסלול',
   alreadyOnRoute: '✓ כבר במסלול',

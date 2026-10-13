@@ -394,7 +394,7 @@ const GDRIVE_SETTINGS_KEYS = [
   // the other freq overrides, the nav-data source with the base layer, and the
   // cruise/climb numbers with the aircraft profile.
   'navaid.vorFreqOverrides', 'navaid.vorRef', 'navaid.navDataPrefix',
-  'navaid.defaultSpeed', 'navaid.profileVS', 'navaid.geTourSpeed',
+  'navaid.defaultSpeed', 'navaid.profileVS', 'navaid.geTourSpeed', 'navaid.etaZulu',
   'navaid.magVarAuto', 'navaid.magVarManual', 'navaid.pressureUnit',
   // The pilot/aircraft profile follows the user across devices when settings sync is
   // explicitly enabled. The filing destination (aisEmail) stays device-local because it

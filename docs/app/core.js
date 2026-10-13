@@ -1719,6 +1719,22 @@ window.S = Object.assign({
   routeLibraryGdriveError: 'Drive sync failed',
   routeLibraryGdriveAutoSyncFailed: 'Not synced to Drive — saved on this device. Sync from Saved routes to retry.',
   fpTimeUnitsTitle: 'Elapsed time, mm:ss (not a clock time)',
+  fpEtd: 'Departure (ETD)',
+  fpEtdShort: 'ETD',
+  fpLastLightShort: function (t) { return 'Last light ' + t; },
+  fpEtdTitle: 'Planned take-off time, local. The ETA column and the last-light check count from it; the flight-plan filing dialog uses the same departure.',
+  fpEtdDate: 'Departure date',
+  fpEtdTime: 'Departure time (local)',
+  fpEtaZulu: 'Times in UTC',
+  fpEtaZuluTitle: 'Show the ETAs and last light in UTC (Z) instead of local time',
+  fpEta: 'ETA',
+  fpEtaTitle: 'Clock time over the leg\u2019s To point: departure + cumulative time, at the planned speeds (no wind)',
+  fpEtaDarkTitle: function (lastLight) { return 'After last light (' + lastLight + ')'; },
+  fpArrival: function (eta) { return 'Arrival ' + eta; },
+  fpLastLight: function (name, sunset, lastLight) {
+    return 'Last light at ' + name + ': ' + lastLight + ' (sunset ' + sunset + ')';
+  },
+  fpLastLightLate: 'arrives after last light',
   startRouteHere: '➕ Start route here',
   addToRoute: '➕ Add to route',
   alreadyOnRoute: '✓ Already on the route',
@@ -5274,6 +5290,78 @@ function toHMS(hours) {
   m %= 60;
   if (h > 0) return h + ':' + String(m).padStart(2, '0') + ':' + String(s).padStart(2, '0');
   return m + ':' + String(s).padStart(2, '0');
+}
+
+// --- Departure time (ETD), clock-time ETAs and last light ---------------------------------
+// One departure for the whole app: the flight-plan panel's ETD field and the filing dialog's
+// departure both read and write this, so the ETAs on the plan are the ones the filed plan
+// implies. Local date + local clock, the way a pilot types them (the filing dialog converts
+// to UTC the same way, via the device's own time zone). Not synced across devices: it is a
+// fact about one flight, not a setting.
+const ETD_KEY = 'navaid.etd';
+const ETA_ZULU_KEY = 'navaid.etaZulu';
+const ETD_DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+const ETD_TIME_RE = /^([01]?[0-9]|2[0-3]):([0-5][0-9])$/;
+function etdRead() {
+  try {
+    const v = JSON.parse(localStorage.getItem(ETD_KEY) || 'null');
+    if (v && ETD_DATE_RE.test(String(v.date)) && ETD_TIME_RE.test(String(v.time))) {
+      return { date: String(v.date), time: String(v.time) };
+    }
+  } catch (e) { /* unreadable: no departure set */ }
+  return null;
+}
+// An empty or invalid time clears the departure: the ETA column goes back to "--" rather
+// than counting from a time nobody entered.
+function etdWrite(date, time) {
+  try {
+    if (ETD_DATE_RE.test(String(date)) && ETD_TIME_RE.test(String(time))) {
+      localStorage.setItem(ETD_KEY, JSON.stringify({ date: String(date), time: String(time) }));
+    } else {
+      localStorage.removeItem(ETD_KEY);
+    }
+  } catch (e) { /* private mode */ }
+}
+// The departure as an instant, or null.
+function etdInstant(etd) {
+  const e = etd === undefined ? etdRead() : etd;
+  if (!e) return null;
+  const d = ETD_DATE_RE.test(String(e.date)) ? String(e.date).split('-').map(Number) : null;
+  const t = ETD_TIME_RE.exec(String(e.time || ''));
+  if (!d || !t) return null;
+  const when = new Date(d[0], d[1] - 1, d[2], Number(t[1]), Number(t[2]), 0, 0);
+  return isNaN(when.getTime()) ? null : when;
+}
+function etaZulu() {
+  try { return localStorage.getItem(ETA_ZULU_KEY) === '1'; } catch (e) { return false; }
+}
+function setEtaZulu(on) {
+  try { localStorage.setItem(ETA_ZULU_KEY, on ? '1' : '0'); } catch (e) { /* private mode */ }
+}
+// A clock time, HH:MM local or HH:MMZ. The Z is the whole difference on the page, so it is
+// always written when the time is UTC.
+function etaClock(when, zulu) {
+  if (!(when instanceof Date) || isNaN(when.getTime())) return '';
+  const z = zulu === undefined ? etaZulu() : !!zulu;
+  const h = z ? when.getUTCHours() : when.getHours();
+  const m = z ? when.getUTCMinutes() : when.getMinutes();
+  return String(h).padStart(2, '0') + ':' + String(m).padStart(2, '0') + (z ? 'Z' : '');
+}
+// Sunset and last light (the end of evening civil twilight, sun 6 degrees below the horizon)
+// at a place, on a local calendar date, as instants. The same NOAA sunrise equation the
+// airfield opening hours use (airfield-hours.js), asked for UTC minutes so the result is
+// independent of any time zone. Null where the sun does not set (never at these latitudes).
+function lastLightAt(lat, lng, date) {
+  const AH = window.NavAid && window.NavAid.airfieldHours;
+  const sun = AH && AH._sunMinutes;
+  if (typeof sun !== 'function' || !Number.isFinite(lat) || !Number.isFinite(lng)) return null;
+  const d = ETD_DATE_RE.test(String(date)) ? String(date).split('-').map(Number) : null;
+  if (!d) return null;
+  const set = sun(d[0], d[1], d[2], lat, lng, -0.833, true, 0);
+  const dusk = sun(d[0], d[1], d[2], lat, lng, -6, true, 0);
+  if (set === null || dusk === null) return null;
+  const base = Date.UTC(d[0], d[1] - 1, d[2]);
+  return { sunset: new Date(base + set * 60000), lastLight: new Date(base + dusk * 60000) };
 }
 
 // --- vertical profile: top-of-climb / top-of-descent --------------------

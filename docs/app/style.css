@@ -2975,7 +2975,9 @@ body.theme-light .shortcuts-help-keys kbd {
   body.printing-plan .modal-btns,
   body.printing-plan .modal-close-x,
   body.printing-plan .fp-aircraft,
-  body.printing-plan .fp-columns { display: none !important; }
+  body.printing-plan .fp-columns,
+  body.printing-plan .fp-when { display: none !important; }
+  body.printing-plan .fp-last-light-short { color: #111 !important; }
   body.printing-plan .modal.wide .fp-scroll {
     display: block;
     overflow: visible;
@@ -3041,19 +3043,21 @@ body.theme-light .shortcuts-help-keys kbd {
   body.printing-plan .flight-table .fp-vor-col select {
     display: none !important;
   }
+  /* # From To Hdg Dist Speed Alt Time Fuel Cum.time Cum.fuel ETA Radial DME */
   body.printing-plan .flight-table th:nth-child(1) { width: 3%; }
   body.printing-plan .flight-table th:nth-child(2),
-  body.printing-plan .flight-table th:nth-child(3) { width: 10%; }
-  body.printing-plan .flight-table th:nth-child(4) { width: 7%; }
-  body.printing-plan .flight-table th:nth-child(5) { width: 7%; }
-  body.printing-plan .flight-table th:nth-child(6) { width: 8%; }
-  body.printing-plan .flight-table th:nth-child(7) { width: 7%; }
-  body.printing-plan .flight-table th:nth-child(8) { width: 7%; }
-  body.printing-plan .flight-table th:nth-child(9) { width: 8%; }
-  body.printing-plan .flight-table th:nth-child(10),
-  body.printing-plan .flight-table th:nth-child(11) { width: 8%; }
-  body.printing-plan .flight-table th:nth-child(12) { width: 9%; }
-  body.printing-plan .flight-table th:nth-child(13) { width: 7%; }
+  body.printing-plan .flight-table th:nth-child(3) { width: 9%; }
+  body.printing-plan .flight-table th:nth-child(4),
+  body.printing-plan .flight-table th:nth-child(5),
+  body.printing-plan .flight-table th:nth-child(6) { width: 6%; }
+  body.printing-plan .flight-table th:nth-child(7),
+  body.printing-plan .flight-table th:nth-child(8),
+  body.printing-plan .flight-table th:nth-child(9),
+  body.printing-plan .flight-table th:nth-child(11) { width: 7%; }
+  body.printing-plan .flight-table th:nth-child(10) { width: 8%; }
+  body.printing-plan .flight-table th:nth-child(12) { width: 6%; }
+  body.printing-plan .flight-table th:nth-child(13) { width: 9%; }
+  body.printing-plan .flight-table th:nth-child(14) { width: 6%; }
   body.printing-plan .fp-radial-val {
     white-space: normal;
   }
@@ -3850,6 +3854,73 @@ body.theme-light .route-library-row { border-color: #c6ccd6; }
   border-radius: 4px;
   padding: 2px 5px;
 }
+/* Columns, the departure popover (#667) and last light: one row. */
+.fp-tools {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 8px;
+  margin: 0 0 8px;
+}
+.fp-tools .fp-columns,
+.fp-tools .fp-when { margin: 0; }
+/* The popover hangs from the row, not from its own button: the button sits mid-row, and a
+   menu anchored there ran off the screen's edge on a phone in Hebrew. */
+.fp-tools { position: relative; }
+.fp-tools .fp-when { position: static; }
+.fp-columns-menu.fp-when-menu {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  min-width: 0;
+  width: max-content;
+  max-width: min(360px, calc(92vw - 28px));
+}
+.fp-when-label { font-weight: 600; }
+.fp-when-fields {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+.fp-when-fields input {
+  font: inherit;
+  font-size: 13px;
+  color: #e8e8e8;
+  background: #2f2b2b;
+  border: 1px solid #443f3f;
+  border-radius: 4px;
+  padding: 2px 5px;
+}
+.fp-eta-zulu {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.fp-etd-utc,
+.fp-last-light,
+.fp-last-light-short { font-variant-numeric: tabular-nums; }
+.fp-last-light {
+  color: #b9b3b3;
+  white-space: normal;
+}
+.fp-last-light:empty,
+.fp-last-light-short:empty { display: none; }
+.fp-last-light-short { font-size: 13px; color: #b9b3b3; }
+.fp-last-light.fp-last-light-late,
+.fp-last-light-short.fp-last-light-late,
+.flight-table td.fp-eta-dark { color: #ff8a80; font-weight: 600; }
+/* Not by colour alone: a mark beside a late time. Generated content, so the CSV (which reads
+   the cell text) still gets a plain clock. */
+.flight-table td.fp-eta-dark::after { content: ' \26A0'; }
+body.theme-light .fp-when-fields input { color: #1f252c; background: #fff; border-color: #b8c0cc; }
+body.theme-light .fp-last-light,
+body.theme-light .fp-last-light-short { color: #4a5360; }
+body.theme-light .fp-last-light.fp-last-light-late,
+body.theme-light .fp-last-light-short.fp-last-light-late,
+body.theme-light .flight-table td.fp-eta-dark { color: #b3261e; }
+body.deck-on .fp-when-fields input { min-height: 30px; font-size: 16px; }
 .modal.wide .fp-scroll {
   overflow: auto;
   flex: 1;
@@ -3881,14 +3952,16 @@ body.theme-light .route-library-row { border-color: #c6ccd6; }
 }
 .fp-profile-dir .fp-dir-arrow { flex: 1; text-align: center; letter-spacing: 1px; color: #7fa8d0; }
 .fp-profile-canvas { width: 100%; height: 104px; display: block; border-radius: 4px; }
-.fp-columns {
+.fp-columns,
+.fp-when {
   position: relative;
   align-self: flex-start;
   margin: 0 0 8px;
   font-size: 13px;
   color: #b9b3b3;
 }
-.fp-columns summary {
+.fp-columns summary,
+.fp-when summary {
   display: inline-flex;
   align-items: center;
   gap: 6px;
@@ -3901,13 +3974,16 @@ body.theme-light .route-library-row { border-color: #c6ccd6; }
   cursor: pointer;
   user-select: none;
 }
-.fp-columns summary::-webkit-details-marker { display: none; }
-.fp-columns summary::after {
+.fp-columns summary::-webkit-details-marker,
+.fp-when summary::-webkit-details-marker { display: none; }
+.fp-columns summary::after,
+.fp-when summary::after {
   content: '▾';
   font-size: 10px;
   color: #b9b3b3;
 }
-.fp-columns[open] summary {
+.fp-columns[open] summary,
+.fp-when[open] summary {
   border-color: #1d6fe0;
   background: #332f2f;
 }
@@ -5781,6 +5857,7 @@ body.theme-light .modal-row select,
 body.theme-light .fp-aircraft select,
 body.theme-light .fp-aircraft input,
 body.theme-light .fp-columns summary,
+body.theme-light .fp-when summary,
 body.theme-light .fp-columns-all,
 body.theme-light .plan-name,
 body.theme-light .plan-num,
@@ -6019,9 +6096,12 @@ body.theme-light .flight-table tbody tr:hover,
 body.theme-light .flight-table tfoot td {
   background: rgba(29, 111, 224, 0.07);
 }
-body.theme-light .fp-columns { color: #647184; }
-body.theme-light .fp-columns summary::after { color: #647184; }
-body.theme-light .fp-columns[open] summary {
+body.theme-light .fp-columns,
+body.theme-light .fp-when { color: #647184; }
+body.theme-light .fp-columns summary::after,
+body.theme-light .fp-when summary::after { color: #647184; }
+body.theme-light .fp-columns[open] summary,
+body.theme-light .fp-when[open] summary {
   background: #eef3f9;
   border-color: #1d6fe0;
 }
