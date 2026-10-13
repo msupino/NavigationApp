@@ -403,6 +403,7 @@ function startLiveLocation() {
   if (gpsLiveOn) return;
   if (!navigator.geolocation && !_bgGeo()) { refuse(S.gpsUnsupported || 'GPS is not available in this browser.'); return; }
   gpsLiveOn = true; _gpsLivePrev = null;
+  if (typeof clearPageFrameForLocation === 'function') clearPageFrameForLocation();
   gpsAcquireWakeLock();
   // A route unlocked by hand during the last session locks again for this one -- see
   // routeEditLocked() in ui.js.
@@ -1178,6 +1179,7 @@ function startGpsRecording() {
   if (gpsRecording) return;
   if (!navigator.geolocation && !_bgGeo()) { refuse(S.gpsUnsupported || 'GPS is not available in this browser.'); return; }
   gpsRecording = true;
+  if (typeof clearPageFrameForLocation === 'function') clearPageFrameForLocation();
   gpsStartCompass();
   _gpsUserMovedAt = 0;
   gpsWatchUserMapMoves();

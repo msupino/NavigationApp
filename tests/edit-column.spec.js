@@ -27,8 +27,8 @@ test('on a phone: route check, then the menu\'s four, top left, drawn icons', as
     };
   });
   expect(out.visible).toBe(true);
-  expect(out.ids).toEqual(['edit-col-check', 'edit-col-add', 'edit-col-note', 'edit-col-undo', 'edit-col-clear']);
-  expect(out.icons).toEqual(['routeCheck', 'addWp', 'addNote', 'undo', 'clearMap']);
+  expect(out.ids).toEqual(['edit-col-check', 'edit-col-add', 'edit-col-note', 'edit-col-undo', 'edit-col-clear', 'edit-col-fit']);
+  expect(out.icons).toEqual(['routeCheck', 'addWp', 'addNote', 'undo', 'clearMap', 'fitFrame']);
   expect(out.left).toBeLessThan(40);                 // the left edge, opposite the live column
   expect(out.top).toBeGreaterThanOrEqual(out.stripBottom);   // below the top strip, not under it
 });

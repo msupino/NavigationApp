@@ -962,6 +962,10 @@ const MAP_ICONS = {
   undo: '<path d="M9 14.5 4 9.5l5-5"/><path d="M4 9.5h10a5.5 5.5 0 0 1 0 11h-3.5"/>',
   clearMap: '<path d="M6.2 7.5 7.3 20h9.4l1.1-12.5" fill="currentColor" fill-opacity=".18"/>'
     + '<path d="M4 7.5h16M9.5 7.5V4.5h5v3M10.3 11v5.5M13.7 11v5.5"/>',
+  // Fit: the four corners of a frame, "[ ]" -- the page, or the route, brought to the screen.
+  fitFrame: '<rect x="8" y="8" width="8" height="8" rx="1" fill="currentColor" fill-opacity=".18" stroke="none"/>'
+    + '<path d="M4 9V5.5A1.5 1.5 0 0 1 5.5 4H9M15 4h3.5A1.5 1.5 0 0 1 20 5.5V9'
+    + 'M20 15v3.5a1.5 1.5 0 0 1-1.5 1.5H15M9 20H5.5A1.5 1.5 0 0 1 4 18.5V15"/>',
 };
 function setMapIcon(btn, name) {
   if (!btn || btn.dataset.icon === name) return;
@@ -1461,6 +1465,9 @@ editColCtrl.onAdd = function () {
     ['edit-col-note', 'addNote', 'tbAddNoteTitle', 'tbAddNote'],
     ['edit-col-undo', 'undo', 'tbUndoTitle', 'tbUndo'],
     ['edit-col-clear', 'clearMap', 'tbClearTitle', 'tbClear'],
+    // Last, under Clear map: the F key's fit, for a phone that has no F key. The selected page
+    // frame to the screen, or the route when no page is selected (fitToScreen).
+    ['edit-col-fit', 'fitFrame', 'tbFitTitle', 'tbFit'],
   ];
   // Handlers are attached HERE, on every build: Leaflet rebuilds a control when it moves corner
   // (placeEditColumn: top right on a Hebrew desktop), and buttons wired once by id after the
@@ -1471,6 +1478,7 @@ editColCtrl.onAdd = function () {
     'edit-col-note': () => setMode('note'),
     'edit-col-undo': () => document.getElementById('undo').click(),
     'edit-col-clear': () => document.getElementById('clear').click(),
+    'edit-col-fit': () => { if (typeof fitToScreen === 'function') fitToScreen(); },
   };
   for (const [id, icon, titleKey, nameKey] of items) {
     const b = document.createElement('button');
