@@ -6176,6 +6176,43 @@ const _initialView = (() => {
     L.DomUtil.setTransform(this._container, offset, scale);
   };
 }());
+// leaflet-rotate makes every vector renderer redraw on EVERY rotate event (rotate: _update): a
+// full resize and repaint of the canvas per frame of a turn. Profiled on a phone (CPU / 4):
+// a 90 degree turn of the dial took 12-14 s, nearly all of it long tasks, about 400 ms of canvas
+// resize per frame. The renderer sits in the rotated pane, so CSS already turns what it drew; it
+// only needs repainting for the corners a turn uncovers. So it repaints once the turn pauses
+// (400 ms), at most every 1.5 s during a long one, and at the end. (A plain throttle did not
+// help: one repaint outlasts any sensible gap on a phone, so every frame still repainted.) The
+// handlers are made once per renderer -- getEvents() is called again by map.off(), and a new
+// function there would never be removed.
+(function quietRendererRotate() {
+  if (!L.Renderer || !L.Renderer.prototype || typeof L.Renderer.prototype.getEvents !== 'function') return;
+  const orig = L.Renderer.prototype.getEvents;
+  // A phone draws a frame of a turn every 250-400 ms: a shorter settle fired between frames.
+  const SETTLE_MS = 400, MAX_GAP_MS = 1500;
+  L.Renderer.prototype.getEvents = function () {
+    const ev = orig.apply(this, arguments);
+    if (!ev || typeof ev.rotate !== 'function') return ev;
+    if (!this._navRotate) {
+      const self = this;
+      // `since`: when the current stretch of turning started (or last repainted mid-turn) -- the
+      // cap counts from there, so the first frame of a new turn does not repaint at once.
+      let since = 0, timer = null;
+      const run = () => { if (timer) clearTimeout(timer); timer = null; if (self._map) self._update(); };
+      this._navRotate = function () {
+        const now = Date.now();
+        if (!timer) since = now;
+        else if (now - since >= MAX_GAP_MS) { run(); since = now; }
+        if (timer) clearTimeout(timer);
+        timer = setTimeout(run, SETTLE_MS);
+      };
+      this._navRotateEnd = run;
+    }
+    ev.rotate = this._navRotate;
+    ev.rotateend = this._navRotateEnd;
+    return ev;
+  };
+}());
 const map = L.map('map', {
   center: _initialView.center,
   zoom: _initialView.zoom,

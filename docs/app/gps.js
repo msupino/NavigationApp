@@ -2047,7 +2047,10 @@ function gpsCheckLegAlerts() {
   //   - outside the field's published hours at the arrival: the plan does not work;
   //   - near or after last light: a caution -- night VFR is legal for some pilots, and some
   //     fields are open after dark -- said a margin early, while turning back is still by day.
-  if (_gpsAlertConfirmed && planSpeed && (!_gpsLastLightAlerted || !_gpsDestClosedAlerted)) {
+  // (window.__navaidNoDayAlerts: the test suite, whose other alert specs must not depend on the
+  // hour they happen to run at -- see tests/_setup.js.)
+  if (_gpsAlertConfirmed && planSpeed && (!_gpsLastLightAlerted || !_gpsDestClosedAlerted)
+      && !(typeof window !== 'undefined' && window.__navaidNoDayAlerts)) {
     const wps = state.waypoints;
     const dest = wps[wps.length - 1];
     const toGo = gpsDistanceToDestinationNm(gpsOwn, gpsAlertLegIndex);

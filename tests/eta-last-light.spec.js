@@ -217,6 +217,7 @@ test('with Times in UTC on, the departure is shown and typed in UTC', async ({ p
 // within the margin of it. Planned speed, like every in-flight alert.
 async function flyAt(page, localIso, nmOut) {
   return page.evaluate(([iso, out]) => {
+    window.__navaidNoDayAlerts = false;     // this spec is about them, at times it sets
     window.__alerts = [];
     window.gpsSendWatchAlert = (title, body, speech) => { window.__alerts.push({ title, body, speech }); };
     const dest = state.waypoints[state.waypoints.length - 1], start = state.waypoints[0];
@@ -263,6 +264,7 @@ test('in flight: a destination closed at the arrival is its own alert', async ({
   await boot(page);
   await page.evaluate(() => NavAid.airfieldHours.load());
   const alerts = await page.evaluate(() => {
+    window.__navaidNoDayAlerts = false;
     window.__alerts = [];
     window.gpsSendWatchAlert = (title, body, speech) => { window.__alerts.push({ title, body, speech }); };
     const dest = state.waypoints[state.waypoints.length - 1], start = state.waypoints[0];
