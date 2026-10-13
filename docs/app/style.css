@@ -3936,6 +3936,24 @@ body.theme-light .flight-table td.fp-eta-night { color: #8a5300; }
 body.theme-light .fp-dest-closed,
 body.theme-light .flight-table td.fp-eta-closed { color: #b3261e; }
 body.deck-on .fp-when-fields input { min-height: 30px; font-size: 16px; }
+/* Quarter-hour time: two lists, HH : MM. */
+.qtime { display: inline-flex; align-items: center; gap: 2px; font-variant-numeric: tabular-nums; }
+.qtime select {
+  font: inherit;
+  font-size: 13px;
+  color: #e8e8e8;
+  background: #2f2b2b;
+  border: 1px solid #443f3f;
+  border-radius: 4px;
+  padding: 2px 4px;
+  min-height: 24px;
+}
+.qtime-sep { font-weight: 600; }
+/* The filing dialog's fields are full width; the two lists are not. */
+.fpl-row .qtime select,
+.fpl-row-stacked .qtime select { width: auto; }
+body.theme-light .qtime select { color: #1f252c; background: #fff; border-color: #b8c0cc; }
+body.deck-on .qtime select { min-height: 30px; font-size: 16px; }
 .modal.wide .fp-scroll {
   overflow: auto;
   flex: 1;

@@ -3994,6 +3994,66 @@ function exportNavLog(scrollArea) {
   printHtmlPage(html);
 }
 
+// A departure time in quarter hours: an hour list and a minute list (00/15/30/45). A native
+// time input offers every minute -- Chrome's picker ignores `step`, Android's too -- and a
+// departure is planned to the quarter. Returns { el, input }: `el` to place, `input` a hidden
+// <input> carrying the id and the HH:MM value (read and written through .value, 'change'
+// fired on it), so callers keep treating it as the one field. `allowEmpty` adds a blank
+// ("--") for "no departure set".
+function quarterTimePicker(id, value, opts) {
+  const o = opts || {};
+  const el = document.createElement('span');
+  el.className = 'qtime';
+  el.dir = 'ltr';                        // HH : MM, in that order, in Hebrew too
+  const hour = document.createElement('select');
+  hour.className = 'qtime-h';
+  hour.setAttribute('aria-label', o.hourLabel || S.qtimeHour || 'Hour');
+  const min = document.createElement('select');
+  min.className = 'qtime-m';
+  min.setAttribute('aria-label', o.minuteLabel || S.qtimeMinute || 'Minutes');
+  const opt = (sel, v, text) => {
+    const x = document.createElement('option');
+    x.value = v; x.textContent = text; sel.appendChild(x);
+  };
+  if (o.allowEmpty) { opt(hour, '', '--'); opt(min, '', '--'); }
+  for (let h = 0; h < 24; h++) opt(hour, String(h).padStart(2, '0'), String(h).padStart(2, '0'));
+  for (const m of ['00', '15', '30', '45']) opt(min, m, m);
+  const sep = document.createElement('span');
+  sep.className = 'qtime-sep';
+  sep.textContent = ':';
+  sep.setAttribute('aria-hidden', 'true');
+  el.append(hour, sep, min);
+  const input = document.createElement('input');
+  input.type = 'hidden';
+  input.id = id;
+  if (o.label) el.setAttribute('aria-label', o.label);
+  el.setAttribute('role', 'group');
+  // The hidden input's own value is kept real (not only a getter), so anything reading the
+  // DOM -- a form, a test, the browser's devtools -- sees the time the lists show.
+  const native = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value');
+  const read = () => (hour.value && min.value) ? hour.value + ':' + min.value : '';
+  const write = (v) => {
+    const q = typeof etdQuarter === 'function' ? etdQuarter(v) : String(v || '');
+    const m = /^(\d{2}):(\d{2})$/.exec(q);
+    if (m) { hour.value = m[1]; min.value = m[2]; }
+    else if (o.allowEmpty) { hour.value = ''; min.value = ''; }
+    native.set.call(input, read());
+  };
+  Object.defineProperty(input, 'value', { get: read, set: write, configurable: true });
+  write(value);
+  const changed = (which) => {
+    // Picking an hour with no minutes yet means on the hour; clearing either clears both.
+    if (which === hour && hour.value && !min.value) min.value = '00';
+    if (!hour.value || !min.value) { hour.value = o.allowEmpty ? '' : hour.value; if (o.allowEmpty) min.value = ''; }
+    native.set.call(input, read());
+    input.dispatchEvent(new Event('change'));
+  };
+  hour.addEventListener('change', () => changed(hour));
+  min.addEventListener('change', () => changed(min));
+  el.appendChild(input);
+  return { el, input };
+}
+
 function showFlightPlan() {
   if (refreshFlightPlan) return;        // dedupe — modal already open
   if (state.legs.length === 0) { refuse(S.errNoLegs); return; }
@@ -4155,12 +4215,9 @@ function showFlightPlan() {
       String(d.getDate()).padStart(2, '0');
   })();
   etdDate.value = etdStored ? etdStored.date : todayIso;
-  const etdTime = document.createElement('input');
-  etdTime.type = 'time';
-  etdTime.id = 'fp-etd-time';
-  etdTime.step = '900';                  // quarter hours
-  etdTime.setAttribute('aria-label', S.fpEtdTime || 'Departure time (local)');
-  etdTime.value = etdStored ? etdStored.time : '';
+  const etdPicker = quarterTimePicker('fp-etd-time', etdStored ? etdStored.time : '',
+    { allowEmpty: true, label: S.fpEtdTime || 'Departure time (local)' });
+  const etdTime = etdPicker.input;
   const etdUtc = document.createElement('span');
   etdUtc.className = 'fp-etd-utc';
   etdUtc.dir = 'ltr';
@@ -4169,7 +4226,7 @@ function showFlightPlan() {
   etdLbl.textContent = S.fpEtd || 'Departure (ETD)';
   const etdFields = document.createElement('div');
   etdFields.className = 'fp-when-fields';
-  etdFields.append(etdDate, etdTime, etdUtc);
+  etdFields.append(etdDate, etdPicker.el, etdUtc);
   const zuluLbl = document.createElement('label');
   zuluLbl.className = 'fp-eta-zulu';
   zuluLbl.title = S.fpEtaZuluTitle || '';
@@ -4196,15 +4253,35 @@ function showFlightPlan() {
   destClosedEl.className = 'fp-dest-closed';
   destClosedEl.id = 'fp-dest-closed';
   destClosedEl.setAttribute('role', 'status');
+  // With "Times in UTC" on, the departure is shown and typed in UTC too -- the same clock as
+  // every ETA beside it. Stored local either way (the filing dialog's clock).
+  const pad2 = n => String(n).padStart(2, '0');
+  const isoDate = (d, z) => z
+    ? d.getUTCFullYear() + '-' + pad2(d.getUTCMonth() + 1) + '-' + pad2(d.getUTCDate())
+    : d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate());
+  const showEtd = (etd, zulu) => {
+    const when = etd && typeof etdInstant === 'function' ? etdInstant(etd) : null;
+    if (!when) { if (etd) { etdDate.value = etd.date; etdTime.value = etd.time; } return; }
+    etdDate.value = isoDate(when, zulu);
+    etdTime.value = zulu ? pad2(when.getUTCHours()) + ':' + pad2(when.getUTCMinutes()) : etd.time;
+  };
   const onEtd = () => {
-    if (etdTime.value && typeof etdQuarter === 'function') etdTime.value = etdQuarter(etdTime.value);
-    if (typeof etdWrite === 'function') etdWrite(etdDate.value, etdTime.value);
+    const zulu = typeof etaZulu === 'function' && etaZulu();
+    const m = /^(\d{2}):(\d{2})$/.exec(etdTime.value || '');
+    const d = /^(\d{4})-(\d{2})-(\d{2})$/.exec(etdDate.value || '');
+    if (zulu && m && d) {
+      const when = new Date(Date.UTC(+d[1], +d[2] - 1, +d[3], +m[1], +m[2]));
+      if (typeof etdWrite === 'function') etdWrite(isoDate(when, false), pad2(when.getHours()) + ':' + pad2(when.getMinutes()));
+    } else if (typeof etdWrite === 'function') {
+      etdWrite(etdDate.value, etdTime.value);
+    }
     refresh();
   };
   etdDate.onchange = onEtd;
   etdTime.onchange = onEtd;
   zuluCb.onchange = () => {
     if (typeof setEtaZulu === 'function') setEtaZulu(zuluCb.checked);
+    showEtd(typeof etdRead === 'function' ? etdRead() : null, zuluCb.checked);
     refresh();
   };
   // The opening hours arrive with their own file; the check fills in once it has.
@@ -4770,11 +4847,15 @@ function showFlightPlan() {
   // departure time too (for today, or the date picked) -- last light is worth knowing first.
   function refreshWhen(etd, dep, zulu, lastVisible, arrival, firstVisible) {
     // The filing dialog may have set the departure under the open panel.
-    if (etd && document.activeElement !== etdDate && document.activeElement !== etdTime) {
-      etdDate.value = etd.date;
-      etdTime.value = etd.time;
+    if (etd && document.activeElement !== etdDate && !etdPicker.el.contains(document.activeElement)) {
+      showEtd(etd, zulu);
     }
-    etdUtc.textContent = dep ? etaClock(dep, true) : '';   // the Z says UTC; an '=' flipped sides in Hebrew
+    // Beside the fields, the other clock: UTC while typing local, local while typing UTC.
+    etdUtc.textContent = dep ? (zulu ? (S.fpLocalShort ? S.fpLocalShort(etaClock(dep, false)) : etaClock(dep, false) + ' LT')
+      : etaClock(dep, true)) : '';   // the Z says UTC; an '=' flipped sides in Hebrew
+    etdLbl.textContent = zulu ? (S.fpEtdTimeUtc || 'Departure time (UTC)') : (S.fpEtd || 'Departure (ETD)');
+    etdPicker.el.setAttribute('aria-label', zulu ? (S.fpEtdTimeUtc || 'Departure time (UTC)')
+      : (S.fpEtdTime || 'Departure time (local)'));
     whenSummary.textContent = (S.fpEtdShort || 'ETD') + ' ' + (dep ? etaClock(dep, zulu) : '--:--');
     totEtaCell.textContent = arrival ? etaClock(arrival, zulu) : '--';
     const destIdx = lastVisible >= 0 ? lastVisible + 1 : state.waypoints.length - 1;
@@ -10957,16 +11038,17 @@ function showFplDialog() {
     // click. The UTC the message will actually carry is shown beside the time, since
     // that is the one thing a pilot cannot work out at a glance.
     const dateEl = input(state1.date, 'date');
-    const timeEl = input(state1.time, 'time');
+    // Quarter hours, as the proposed default already is (quarterTimePicker).
+    const timePicker = quarterTimePicker('fpl-time', state1.time,
+      { label: S.fplTime || 'Departure (local)' });
+    const timeEl = timePicker.input;
     dateEl.id = 'fpl-date';
-    timeEl.id = 'fpl-time';
-    timeEl.step = '900';                 // quarter hours, as the proposed default already is
     const utcHint = document.createElement('span');
     utcHint.className = 'fpl-inline-hint';
     utcHint.id = 'fpl-utc-hint';
     const timeBox = document.createElement('span');
     timeBox.className = 'fpl-time-box';
-    timeBox.append(timeEl, utcHint);
+    timeBox.append(timePicker.el, utcHint);
     const syncWhen = () => {
       state1.date = dateEl.value;
       state1.time = timeEl.value;
@@ -10976,7 +11058,6 @@ function showFplDialog() {
     // A departure the pilot types here is the plan's departure too: the flight-plan panel's
     // ETAs and last-light check follow it.
     const typedWhen = () => {
-      if (timeEl.value && typeof etdQuarter === 'function') timeEl.value = etdQuarter(timeEl.value);
       syncWhen();
       if (utcHint.textContent && typeof etdWrite === 'function') {
         etdWrite(state1.date, state1.time);

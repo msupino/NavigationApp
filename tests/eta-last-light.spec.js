@@ -49,8 +49,9 @@ async function setEtd(page, date, time) {
   await openWhen(page);
   await page.locator('#fp-etd-date').fill(date);
   await page.locator('#fp-etd-date').dispatchEvent('change');
-  await page.locator('#fp-etd-time').fill(time);
-  await page.locator('#fp-etd-time').dispatchEvent('change');
+  const [h, m] = time.split(':');
+  await page.locator('details.fp-when .qtime-h').selectOption(h);
+  await page.locator('details.fp-when .qtime-m').selectOption(m);
 }
 
 const etaCell = page => page.locator('.flight-table tbody tr').first().locator('td.fp-col-eta');
@@ -153,8 +154,8 @@ test('the filing dialog starts from the planned departure, and writes it back', 
   await page.evaluate(() => showFplDialog());
   await expect(page.locator('#fpl-time')).toHaveValue('09:45');
   await expect(page.locator('#fpl-date')).toHaveValue(iso);
-  await page.locator('#fpl-time').fill('10:30');
-  await page.locator('#fpl-time').dispatchEvent('change');
+  await page.locator('#fpl-time').locator('..').locator('.qtime-h').selectOption('10');
+  await page.locator('#fpl-time').locator('..').locator('.qtime-m').selectOption('30');
   expect(await page.evaluate(() => JSON.parse(localStorage.getItem('navaid.etd'))))
     .toEqual({ date: iso, time: '10:30' });
 });
@@ -181,15 +182,35 @@ test('Hebrew: last light reads with its times isolated', async ({ page }) => {
   expect(text).toMatch(/\u2066\d\d:\d\d\u2069/);
 });
 
-test('departure times are quarter hours: a typed minute snaps to the nearest quarter', async ({ page }) => {
-  await boot(page);
+test('departure times are quarter hours: the minute list is 00/15/30/45, an odd stored time snaps', async ({ page }) => {
+  await boot(page, { date: '2026-06-21', time: '10:08' });
   expect(await page.evaluate(() => [etdQuarter('10:07'), etdQuarter('10:08'), etdQuarter('23:53'), etdQuarter('00:00')]))
     .toEqual(['10:00', '10:15', '23:45', '00:00']);
   await openFlightPlan(page);
-  await expect(page.locator('#fp-etd-time')).toHaveAttribute('step', '900');
-  await setEtd(page, '2026-06-21', '10:08');
+  await openWhen(page);
+  expect(await page.locator('details.fp-when .qtime-m option').allTextContents()).toEqual(['--', '00', '15', '30', '45']);
   await expect(page.locator('#fp-etd-time')).toHaveValue('10:15');
-  expect(await page.evaluate(() => JSON.parse(localStorage.getItem('navaid.etd')).time)).toBe('10:15');
+  await setEtd(page, '2026-06-21', '10:45');
+  expect(await page.evaluate(() => JSON.parse(localStorage.getItem('navaid.etd')).time)).toBe('10:45');
+});
+
+test('with Times in UTC on, the departure is shown and typed in UTC', async ({ page }) => {
+  await boot(page);
+  await openFlightPlan(page);
+  await setEtd(page, '2026-06-21', '10:00');           // local, IDT = UTC+3
+  await page.locator('#fp-eta-zulu').check();
+  await expect(page.locator('#fp-etd-time')).toHaveValue('07:00');
+  await expect(page.locator('.fp-etd-utc')).toHaveText('10:00 local');
+  // Typed in UTC, stored local.
+  await page.locator('details.fp-when .qtime-h').selectOption('22');
+  await page.locator('details.fp-when .qtime-m').selectOption('15');
+  expect(await page.evaluate(() => JSON.parse(localStorage.getItem('navaid.etd'))))
+    .toEqual({ date: '2026-06-22', time: '01:15' });   // 22:15Z is 01:15 the next day here
+  await expect(page.locator('#fp-etd-date')).toHaveValue('2026-06-21');
+  // Off again: the local clock.
+  await page.locator('#fp-eta-zulu').uncheck();
+  await expect(page.locator('#fp-etd-time')).toHaveValue('01:15');
+  await expect(page.locator('#fp-etd-date')).toHaveValue('2026-06-22');
 });
 
 // In flight: one warning when the planned arrival is after last light at the destination, or
