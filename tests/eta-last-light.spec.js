@@ -116,14 +116,19 @@ test('an arrival after last light is flagged, one before it is not', async ({ pa
   await boot(page);
   await openFlightPlan(page);
   await setEtd(page, '2026-06-21', '10:00');
-  await expect(etaCell(page)).not.toHaveClass(/fp-eta-dark/);
+  await expect(etaCell(page)).not.toHaveClass(/fp-eta-night/);
   await expect(page.locator('#fp-last-light')).not.toHaveClass(/fp-last-light-late/);
   // Last light in Haifa that evening is about 20:20 local.
   await setEtd(page, '2026-06-21', '20:15');
-  await expect(etaCell(page)).toHaveClass(/fp-eta-dark/);
-  await expect(etaCell(page)).toHaveAttribute('title', /After last light/);
+  await expect(etaCell(page)).toHaveClass(/fp-eta-night/);
+  await expect(etaCell(page)).toHaveAttribute('title', /After last light.*night/);
   await expect(page.locator('#fp-last-light')).toHaveClass(/fp-last-light-late/);
   await expect(page.locator('#fp-last-light')).toContainText('arrives after last light');
+  // Night is a caution, not a closed field: Haifa is open until 22:00 on a Sunday.
+  await expect(page.locator('#fp-dest-closed')).not.toContainText('at the arrival');
+  await expect(page.locator('.flight-table tfoot td.fp-col-eta')).not.toHaveClass(/fp-eta-closed/);
+  // ...while Herzliya itself shuts at 19:30, so the departure is the red finding.
+  await expect(page.locator('#fp-dest-closed')).toContainText('at the departure');
   await expect(page.locator('#fp-last-light-short')).toHaveClass(/fp-last-light-late/);
   await expect(page.locator('details.fp-when summary')).toHaveText('ETD 20:15');
 });
@@ -174,4 +179,92 @@ test('Hebrew: last light reads with its times isolated', async ({ page }) => {
   const text = String(await page.locator('#fp-last-light').textContent());
   expect(text).toContain('אור אחרון');
   expect(text).toMatch(/\u2066\d\d:\d\d\u2069/);
+});
+
+test('departure times are quarter hours: a typed minute snaps to the nearest quarter', async ({ page }) => {
+  await boot(page);
+  expect(await page.evaluate(() => [etdQuarter('10:07'), etdQuarter('10:08'), etdQuarter('23:53'), etdQuarter('00:00')]))
+    .toEqual(['10:00', '10:15', '23:45', '00:00']);
+  await openFlightPlan(page);
+  await expect(page.locator('#fp-etd-time')).toHaveAttribute('step', '900');
+  await setEtd(page, '2026-06-21', '10:08');
+  await expect(page.locator('#fp-etd-time')).toHaveValue('10:15');
+  expect(await page.evaluate(() => JSON.parse(localStorage.getItem('navaid.etd')).time)).toBe('10:15');
+});
+
+// In flight: one warning when the planned arrival is after last light at the destination, or
+// within the margin of it. Planned speed, like every in-flight alert.
+async function flyAt(page, localIso, nmOut) {
+  return page.evaluate(([iso, out]) => {
+    window.__alerts = [];
+    window.gpsSendWatchAlert = (title, body, speech) => { window.__alerts.push({ title, body, speech }); };
+    const dest = state.waypoints[state.waypoints.length - 1], start = state.waypoints[0];
+    state.legs.forEach(l => { l.flightSpeed = 100; });
+    const f = 1 - (out / geo(start, dest).dist);
+    gpsOwn = { lat: start.lat + (dest.lat - start.lat) * f, lng: start.lng + (dest.lng - start.lng) * f,
+      hdg: 0, t: new Date(iso).getTime() };
+    gpsResetLegAlerts();
+    _gpsAlertConfirmed = true;
+    gpsCheckLegAlerts();
+    gpsCheckLegAlerts();                              // still inbound: must not repeat
+    return window.__alerts.filter(a => a.title === 'Last light');
+  }, [localIso, nmOut]);
+}
+
+test('in flight: an arrival near or after last light is warned once', async ({ page }) => {
+  await boot(page);
+  // Last light at Haifa on 21 June is about 20:21 local; 10 NM at 100 kt is 6 minutes.
+  const late = await flyAt(page, '2026-06-21T20:05:00', 10);
+  expect(late).toHaveLength(1);
+  expect(late[0].body).toMatch(/last light 20:\d\d · ETA 20:1\d/);
+  expect(late[0].speech).toMatch(/^Last light at .+Planned arrival 20:1\d\.$/);
+});
+
+test('in flight: a daytime arrival says nothing', async ({ page }) => {
+  await boot(page);
+  expect(await flyAt(page, '2026-06-21T12:00:00', 10)).toHaveLength(0);
+});
+
+test('an arrival outside the destination\'s published hours is the red finding', async ({ page }) => {
+  await boot(page);
+  await openFlightPlan(page);
+  await page.waitForFunction(() => NavAid.airfieldHours.entryFor('LLHA'));
+  // Sunday 21 June 2026: Haifa is open 08:00-22:00. Off at 22:00, landing about 22:2x.
+  await setEtd(page, '2026-06-21', '22:00');
+  await expect(page.locator('#fp-dest-closed')).toContainText('outside its published hours');
+  await expect(page.locator('.flight-table tfoot td.fp-col-eta')).toHaveClass(/fp-eta-closed/);
+  // The morning: open, and in daylight -- nothing to say.
+  await setEtd(page, '2026-06-21', '10:00');
+  await expect(page.locator('#fp-dest-closed')).toHaveText('');
+});
+
+test('in flight: a destination closed at the arrival is its own alert', async ({ page }) => {
+  await boot(page);
+  await page.evaluate(() => NavAid.airfieldHours.load());
+  const alerts = await page.evaluate(() => {
+    window.__alerts = [];
+    window.gpsSendWatchAlert = (title, body, speech) => { window.__alerts.push({ title, body, speech }); };
+    const dest = state.waypoints[state.waypoints.length - 1], start = state.waypoints[0];
+    state.legs.forEach(l => { l.flightSpeed = 100; });
+    const f = 1 - (10 / geo(start, dest).dist);
+    gpsOwn = { lat: start.lat + (dest.lat - start.lat) * f, lng: start.lng + (dest.lng - start.lng) * f,
+      hdg: 0, t: new Date('2026-06-21T21:58:00').getTime() };
+    gpsResetLegAlerts();
+    _gpsAlertConfirmed = true;
+    gpsCheckLegAlerts();
+    gpsCheckLegAlerts();
+    return window.__alerts.map(a => a.title);
+  });
+  expect(alerts.filter(t => t === 'Destination hours')).toHaveLength(1);
+  expect(alerts.filter(t => t === 'Last light')).toHaveLength(1);
+});
+
+test('the departure field at the departure time: Herzliya is shut to fixed wing 14:00-16:00', async ({ page }) => {
+  await boot(page);
+  await openFlightPlan(page);
+  await page.waitForFunction(() => NavAid.airfieldHours.entryFor('LLHZ'));
+  await setEtd(page, '2026-06-21', '14:30');
+  await expect(page.locator('#fp-dest-closed')).toContainText('at the departure');
+  await setEtd(page, '2026-06-21', '16:00');
+  await expect(page.locator('#fp-dest-closed')).not.toContainText('at the departure');
 });

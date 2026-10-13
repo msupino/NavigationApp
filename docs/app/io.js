@@ -3990,13 +3990,8 @@ function exportNavLog(scrollArea) {
     (freqs ? '<h2>' + esc(S.navLogFreqs || 'Frequencies') + '</h2><ul>' + freqs + '</ul>' : '') +
     '</body></html>';
 
-  const w = window.open('', '_blank');
-  if (!w) { refuse(S.navLogPopupBlocked || 'Allow pop-ups to export the nav log.'); return; }
-  w.document.open();
-  w.document.write(html);
-  w.document.close();
-  w.focus();
-  setTimeout(() => { try { w.print(); } catch (e) { /* user can print manually */ } }, 300);
+  // Straight to the print dialog: a tab of its own was one more thing to close afterwards.
+  printHtmlPage(html);
 }
 
 function showFlightPlan() {
@@ -4163,6 +4158,7 @@ function showFlightPlan() {
   const etdTime = document.createElement('input');
   etdTime.type = 'time';
   etdTime.id = 'fp-etd-time';
+  etdTime.step = '900';                  // quarter hours
   etdTime.setAttribute('aria-label', S.fpEtdTime || 'Departure time (local)');
   etdTime.value = etdStored ? etdStored.time : '';
   const etdUtc = document.createElement('span');
@@ -4195,7 +4191,13 @@ function showFlightPlan() {
   lastLightShort.className = 'fp-last-light-short';
   lastLightShort.id = 'fp-last-light-short';
   lastLightShort.setAttribute('role', 'status');
+  // The destination outside its published hours at the arrival: the one red finding here.
+  const destClosedEl = document.createElement('span');
+  destClosedEl.className = 'fp-dest-closed';
+  destClosedEl.id = 'fp-dest-closed';
+  destClosedEl.setAttribute('role', 'status');
   const onEtd = () => {
+    if (etdTime.value && typeof etdQuarter === 'function') etdTime.value = etdQuarter(etdTime.value);
     if (typeof etdWrite === 'function') etdWrite(etdDate.value, etdTime.value);
     refresh();
   };
@@ -4205,6 +4207,10 @@ function showFlightPlan() {
     if (typeof setEtaZulu === 'function') setEtaZulu(zuluCb.checked);
     refresh();
   };
+  // The opening hours arrive with their own file; the check fills in once it has.
+  if (window.NavAid && NavAid.airfieldHours) {
+    NavAid.airfieldHours.load().then(() => { if (box.isConnected) refresh(); });
+  }
 
   // Vertical profile strip — altitude vs distance with TOC/TOD.
   const profWrap = document.createElement('div');
@@ -4458,7 +4464,7 @@ function showFlightPlan() {
   // Columns, the departure popover and last light share one row.
   const fpTools = document.createElement('div');
   fpTools.className = 'fp-tools';
-  fpTools.append(colWrap, whenWrap, lastLightShort);
+  fpTools.append(colWrap, whenWrap, lastLightShort, destClosedEl);
   box.appendChild(fpTools);
 
   const scrollArea = document.createElement('div');
@@ -4762,7 +4768,7 @@ function showFlightPlan() {
   // The departure's UTC, and the last-light line for the destination: sunset and the end of
   // civil twilight on the departure date, and the arrival against it. Shown without a
   // departure time too (for today, or the date picked) -- last light is worth knowing first.
-  function refreshWhen(etd, dep, zulu, lastVisible, arrival) {
+  function refreshWhen(etd, dep, zulu, lastVisible, arrival, firstVisible) {
     // The filing dialog may have set the departure under the open panel.
     if (etd && document.activeElement !== etdDate && document.activeElement !== etdTime) {
       etdDate.value = etd.date;
@@ -4775,19 +4781,36 @@ function showFlightPlan() {
     const dest = state.waypoints[destIdx];
     const date = etd ? etd.date : etdDate.value;
     const ll = dest && typeof lastLightAt === 'function' ? lastLightAt(dest.lat, dest.lng, date) : null;
+    // Two different findings: after last light is night (a caution, amber), outside the
+    // field's published hours is a plan that does not work (red).
     const late = !!(ll && arrival && arrival > ll.lastLight);
-    totEtaCell.classList.toggle('fp-eta-dark', late);
+    const hrs = arrival && typeof hoursAtArrival === 'function' ? hoursAtArrival(dest, arrival) : null;
+    const closed = !!(hrs && hrs.state === 'closed');
+    const name = wpLabel(destIdx);
+    totEtaCell.classList.toggle('fp-eta-night', late && !closed);
+    totEtaCell.classList.toggle('fp-eta-closed', closed);
+    totEtaCell.title = closed && S.fpEtaClosedTitle ? S.fpEtaClosedTitle(name)
+      : (late && S.fpEtaDarkTitle ? S.fpEtaDarkTitle(etaClock(ll.lastLight, zulu)) : '');
     lastLightEl.classList.toggle('fp-last-light-late', late);
     lastLightShort.classList.toggle('fp-last-light-late', late);
+    // The departure field at the departure time too (Herzliya, for one, shuts to fixed wing
+    // 14:00-16:00).
+    const depIdx = Number.isInteger(firstVisible) ? firstVisible : 0;
+    const depHrs = dep && typeof hoursAtArrival === 'function' ? hoursAtArrival(state.waypoints[depIdx], dep) : null;
+    const depClosed = !!(depHrs && depHrs.state === 'closed');
+    const depName = wpLabel(depIdx);
+    destClosedEl.textContent = [
+      depClosed ? (S.fpDepClosed ? S.fpDepClosed(depName, depHrs.opens || '') : depName + ' is outside its published hours at the departure') : '',
+      closed ? (S.fpDestClosed ? S.fpDestClosed(name, hrs.opens || '') : name + ' is outside its published hours at the arrival') : '',
+    ].filter(Boolean).join(' \u00b7 ');
     if (!ll) { lastLightEl.textContent = ''; lastLightShort.textContent = ''; return; }
-    const name = wpLabel(destIdx);
     const text = (arrival && S.fpArrival ? S.fpArrival(etaClock(arrival, zulu)) + ' \u00b7 ' : '') +
       (S.fpLastLight
         ? S.fpLastLight(name, etaClock(ll.sunset, zulu), etaClock(ll.lastLight, zulu))
         : 'Last light at ' + name + ': ' + etaClock(ll.lastLight, zulu));
     lastLightEl.textContent = late ? text + ' \u2014 ' + (S.fpLastLightLate || 'arrives after last light') : text;
     lastLightShort.textContent = (S.fpLastLightShort ? S.fpLastLightShort(etaClock(ll.lastLight, zulu))
-      : 'Last light ' + etaClock(ll.lastLight, zulu)) + (late ? ' \u26a0' : '');
+      : 'Last light ' + etaClock(ll.lastLight, zulu)) + (late ? ' \u263e' : '');
     lastLightShort.title = lastLightEl.textContent;
   }
 
@@ -4856,7 +4879,7 @@ function showFlightPlan() {
       // flight that runs past midnight is past last light too, which this still says.
       const ll = eta && typeof lastLightAt === 'function' ? lastLightAt(B.lat, B.lng, etd.date) : null;
       const dark = !!(ll && eta > ll.lastLight);
-      etaCells[i].classList.toggle('fp-eta-dark', dark);
+      etaCells[i].classList.toggle('fp-eta-night', dark);
       etaCells[i].title = dark && S.fpEtaDarkTitle ? S.fpEtaDarkTitle(etaClock(ll.lastLight, zulu)) : '';
       if (eta) arrival = eta;
       cumFuelCells[i].textContent = ac ? tf.toFixed(1) : '--';
@@ -4882,7 +4905,7 @@ function showFlightPlan() {
     totFuelCell.textContent = ac ? tf.toFixed(1) : '--';
     totCumTimeCell.textContent = totTimeCell.textContent;
     totCumFuelCell.textContent = totFuelCell.textContent;
-    refreshWhen(etd, dep, zulu, lastVisible, arrival);
+    refreshWhen(etd, dep, zulu, lastVisible, arrival, firstVisible);
     // Keep the narrow-screen summary in step with the table it summarises.
     if (mobileSummary) {
       mobileSummary.textContent = (typeof S.fpMobileSummary === 'function')
@@ -6276,6 +6299,36 @@ function drawA4x2TileMarks(cx, t, total, pxPerMm) {
 // page in a new window; can it be only the print menu?"). A frame needs no pop-up permission
 // either, so a long export is never refused as a blocked pop-up. One image, or several -- the
 // two halves of an A4x2 -- each a sheet of its own, printed once they have all loaded.
+// A whole HTML document, printed without a tab: from a hidden frame in a browser, through the
+// app's print plugin in the APK (native-print.js). The nav log is the one caller.
+function printHtmlPage(html) {
+  if (window.NavAidNativePrint && NavAidNativePrint.available() &&
+      typeof NavAidNativePrint.printHtml === 'function') {
+    NavAidNativePrint.printHtml(html);
+    return;
+  }
+  const old = document.getElementById('navaid-print-frame');
+  if (old) old.remove();
+  const frame = document.createElement('iframe');
+  frame.id = 'navaid-print-frame';
+  frame.setAttribute('aria-hidden', 'true');
+  frame.tabIndex = -1;
+  frame.style.cssText = 'position:fixed;right:0;bottom:0;width:0;height:0;border:0;visibility:hidden';
+  document.body.appendChild(frame);
+  const doc = frame.contentDocument;
+  doc.open();
+  doc.write(html);
+  doc.close();
+  const w = frame.contentWindow;
+  let cleaned = false;
+  const cleanup = () => { if (!cleaned) { cleaned = true; frame.remove(); } };
+  // A beat for the fonts and layout, as the tab version had.
+  setTimeout(() => {
+    try { w.addEventListener('afterprint', () => setTimeout(cleanup, 500)); } catch (e) { /* */ }
+    try { w.focus(); w.print(); } catch (e) { /* */ }
+    setTimeout(cleanup, 120000);
+  }, 300);
+}
 function openPrintWindow(blobs, paperWmm, paperHmm) {
   const list = Array.isArray(blobs) ? blobs : [blobs];
   // The Android app prints through its own plugin (native-print.js): no frame there prints.
@@ -10907,6 +10960,7 @@ function showFplDialog() {
     const timeEl = input(state1.time, 'time');
     dateEl.id = 'fpl-date';
     timeEl.id = 'fpl-time';
+    timeEl.step = '900';                 // quarter hours, as the proposed default already is
     const utcHint = document.createElement('span');
     utcHint.className = 'fpl-inline-hint';
     utcHint.id = 'fpl-utc-hint';
@@ -10922,6 +10976,7 @@ function showFplDialog() {
     // A departure the pilot types here is the plan's departure too: the flight-plan panel's
     // ETAs and last-light check follow it.
     const typedWhen = () => {
+      if (timeEl.value && typeof etdQuarter === 'function') timeEl.value = etdQuarter(timeEl.value);
       syncWhen();
       if (utcHint.textContent && typeof etdWrite === 'function') {
         etdWrite(state1.date, state1.time);

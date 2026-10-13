@@ -2941,6 +2941,11 @@ body.theme-light .shortcuts-help-keys kbd {
   body.printing-plan #inspector,
   body.printing-plan #tuning-panel,
   body.printing-plan .leaflet-control-container { display: none !important; }
+  /* Everything that is not the plan: the phone's top strip (route, clocks, Comm fail), the
+     tab bar, the floating buttons -- a list of names missed those, so the page printed them.
+     The plan's backdrop is a child of body; anything else there is chrome. */
+  body.printing-plan > :not(.modal-back.flight-plan) { display: none !important; }
+  body.printing-plan .fp-route-file-row { display: none !important; }
   body.printing-plan .modal-back.flight-plan {
     display: block;
     position: static;
@@ -2977,7 +2982,8 @@ body.theme-light .shortcuts-help-keys kbd {
   body.printing-plan .fp-aircraft,
   body.printing-plan .fp-columns,
   body.printing-plan .fp-when { display: none !important; }
-  body.printing-plan .fp-last-light-short { color: #111 !important; }
+  body.printing-plan .fp-last-light-short,
+  body.printing-plan .fp-dest-closed { color: #111 !important; }
   body.printing-plan .modal.wide .fp-scroll {
     display: block;
     overflow: visible;
@@ -3908,18 +3914,27 @@ body.theme-light .route-library-row { border-color: #c6ccd6; }
 .fp-last-light:empty,
 .fp-last-light-short:empty { display: none; }
 .fp-last-light-short { font-size: 13px; color: #b9b3b3; }
+/* After last light: night, a caution (amber, a moon). Outside the destination's published
+   hours: the plan does not work (red, a warning sign). Never colour alone: each has its mark,
+   generated in the cells so the CSV still gets a plain clock. */
 .fp-last-light.fp-last-light-late,
 .fp-last-light-short.fp-last-light-late,
-.flight-table td.fp-eta-dark { color: #ff8a80; font-weight: 600; }
-/* Not by colour alone: a mark beside a late time. Generated content, so the CSV (which reads
-   the cell text) still gets a plain clock. */
-.flight-table td.fp-eta-dark::after { content: ' \26A0'; }
+.flight-table td.fp-eta-night { color: #ffcc80; font-weight: 600; }
+.flight-table td.fp-eta-night::after { content: ' \263E'; }
+.fp-dest-closed:empty { display: none; }
+.fp-dest-closed,
+.flight-table td.fp-eta-closed { color: #ff8a80; font-weight: 600; }
+.fp-dest-closed { font-size: 13px; }
+.fp-dest-closed::before { content: '\26A0  '; }
+.flight-table td.fp-eta-closed::after { content: ' \26A0'; }
 body.theme-light .fp-when-fields input { color: #1f252c; background: #fff; border-color: #b8c0cc; }
 body.theme-light .fp-last-light,
 body.theme-light .fp-last-light-short { color: #4a5360; }
 body.theme-light .fp-last-light.fp-last-light-late,
 body.theme-light .fp-last-light-short.fp-last-light-late,
-body.theme-light .flight-table td.fp-eta-dark { color: #b3261e; }
+body.theme-light .flight-table td.fp-eta-night { color: #8a5300; }
+body.theme-light .fp-dest-closed,
+body.theme-light .flight-table td.fp-eta-closed { color: #b3261e; }
 body.deck-on .fp-when-fields input { min-height: 30px; font-size: 16px; }
 .modal.wide .fp-scroll {
   overflow: auto;

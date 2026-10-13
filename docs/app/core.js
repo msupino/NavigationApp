@@ -78,6 +78,7 @@ NavAid.tuningDefaults = {
   // to have enough of it to tune, listen through a full cycle and copy the numbers before the
   // arrival gets busy, and that is a duration regardless of groundspeed.
   atisLeadSec: { value: 600, min: 60, max: 1800, step: 30, label: 'ATIS reminder lead (s)' },
+  lastLightMarginMin: { value: 15, min: 0, max: 60, step: 5, label: 'Last-light alert: warn when the planned arrival is this close to it, or after (min)' },
   atisMarkerColor: { value: '#1f6fd0', type: 'color', label: 'ATIS reminder marker colour' },
   atisMarkerRadiusPx: { value: 10, min: 3, max: 30, step: 1, label: 'ATIS reminder marker radius (px)' },
   atisMarkerFontPx: { value: 13, min: 8, max: 28, step: 1, label: 'ATIS reminder marker label (px)' },
@@ -1075,7 +1076,7 @@ NavAid.tuningDefaults = {
 // interaction (hit testing), tools (alt pairs, export), and finally the
 // global colour palette.
 NavAid.tuningGroups = [
-  { name: 'Navigation', keys: ['magVarAuto', 'magneticVariationDeg', 'msaBufferFt', 'altimetryCorrection', 'geoidUndulationFt', 'followResumeMs', 'followZoomFloor', 'followZoomCeiling', 'followZoomCtrFloor', 'followZoomCtrCeiling', 'gpsReadoutFontPx', 'gpsReadoutRefitPx', 'alertNotifyTtlSec', 'alertIconColor', 'altToleranceFt', 'altMaxAlertsPerLeg', 'legEtaLeadSec', 'atisLeadSec', 'atisMarkerColor', 'atisMarkerRadiusPx', 'atisMarkerFontPx', 'liveHeadingEndLabel', 'legCaptureNm', 'driftTrackErrorDeg', 'driftCheckSec', 'coneUnknownSec', 'gpsMaxAccuracyM', 'gpsMinMoveM', 'gpsGlide', 'gpsGlideMinKt', 'gpsGlideMaxHz', 'vorReadoutMaxNm', 'measureLineColor', 'measureDotFill', 'measureLabelBg', 'measureLabelText', 'gpsStaleSec', 'qnhMaxAgeMin', 'qnhMoveNm', 'compassMaxKt', 'compassFallback', 'headingUpMinDeltaDeg', 'crosshairSizePx', 'crosshairWidthPx', 'crosshairColor', 'crosshairHaloColor', 'crosshairAlpha'] },
+  { name: 'Navigation', keys: ['magVarAuto', 'magneticVariationDeg', 'msaBufferFt', 'altimetryCorrection', 'geoidUndulationFt', 'followResumeMs', 'followZoomFloor', 'followZoomCeiling', 'followZoomCtrFloor', 'followZoomCtrCeiling', 'gpsReadoutFontPx', 'gpsReadoutRefitPx', 'alertNotifyTtlSec', 'alertIconColor', 'altToleranceFt', 'altMaxAlertsPerLeg', 'legEtaLeadSec', 'atisLeadSec', 'lastLightMarginMin', 'atisMarkerColor', 'atisMarkerRadiusPx', 'atisMarkerFontPx', 'liveHeadingEndLabel', 'legCaptureNm', 'driftTrackErrorDeg', 'driftCheckSec', 'coneUnknownSec', 'gpsMaxAccuracyM', 'gpsMinMoveM', 'gpsGlide', 'gpsGlideMinKt', 'gpsGlideMaxHz', 'vorReadoutMaxNm', 'measureLineColor', 'measureDotFill', 'measureLabelBg', 'measureLabelText', 'gpsStaleSec', 'qnhMaxAgeMin', 'qnhMoveNm', 'compassMaxKt', 'compassFallback', 'headingUpMinDeltaDeg', 'crosshairSizePx', 'crosshairWidthPx', 'crosshairColor', 'crosshairHaloColor', 'crosshairAlpha'] },
   { name: 'Performance defaults', keys: ['profileClimbFpm', 'profileClimbKt', 'defaultGph', 'defaultTaxiGal'] },
   { name: 'Altitude inference', keys: ['legAltInferMaxHops', 'legAltInferMaxDistRatio', 'legAltInferMaxExtraNm'] },
   { name: 'Plan card', keys: ['planCardBaseRowPx', 'planCardGripPx', 'planCardBgColor', 'planCardHeaderBgColor', 'planCardTotalBgColor', 'planCardStripeBgColor', 'planCardGridColor', 'planCardTextColor', 'planCardGripColor', 'planCardGripLineColor'] },
@@ -1729,12 +1730,19 @@ window.S = Object.assign({
   fpEtaZuluTitle: 'Show the ETAs and last light in UTC (Z) instead of local time',
   fpEta: 'ETA',
   fpEtaTitle: 'Clock time over the leg\u2019s To point: departure + cumulative time, at the planned speeds (no wind)',
-  fpEtaDarkTitle: function (lastLight) { return 'After last light (' + lastLight + ')'; },
+  fpEtaDarkTitle: function (lastLight) { return 'After last light (' + lastLight + ') \u2014 night'; },
+  fpEtaClosedTitle: function (name) { return name + ' is outside its published hours at this time'; },
+  fpDepClosed: function (name, opens) {
+    return name + ' is outside its published hours at the departure' + (opens ? ' (opens ' + opens + ')' : '');
+  },
+  fpDestClosed: function (name, opens) {
+    return name + ' is outside its published hours at the arrival' + (opens ? ' (opens ' + opens + ')' : '');
+  },
   fpArrival: function (eta) { return 'Arrival ' + eta; },
   fpLastLight: function (name, sunset, lastLight) {
     return 'Last light at ' + name + ': ' + lastLight + ' (sunset ' + sunset + ')';
   },
-  fpLastLightLate: 'arrives after last light',
+  fpLastLightLate: 'arrives after last light: a night landing',
   startRouteHere: '➕ Start route here',
   addToRoute: '➕ Add to route',
   alreadyOnRoute: '✓ Already on the route',
@@ -2094,7 +2102,6 @@ window.S = Object.assign({
   navLogVor: 'Reference VOR',
   navLogDepFreqs: 'Departure frequencies',
   navLogArrFreqs: 'Arrival frequencies',
-  navLogPopupBlocked: 'Allow pop-ups to export the nav log.',
   fpFuel: 'Fuel',
   fpMsa: 'MSA (ft)',
   msaLowTitle: 'Planned altitude is below the minimum safe altitude for this leg',
@@ -3102,6 +3109,22 @@ window.S = Object.assign({
   tbGpsLiveTitle: 'Show your live position on the map (device GPS, no recording)',
   tbGpsLiveStop: 'Hide',
   // ATIS reminder: fires once, a set time out from the destination.
+  // Last light (#667): fires once per flight, when the planned arrival is after the end of
+  // civil twilight at the destination, or close to it. Clocks are local, HH:MM.
+  watchAlertLastLightTitle: 'Last light',
+  watchAlertLastLightBody: function (field, lastLight, eta) {
+    return field + ' last light ' + lastLight + ' \u00b7 ETA ' + eta;
+  },
+  speakAlertLastLight: function (field, lastLight, eta) {
+    return 'Last light at ' + field + ', ' + lastLight + '. Planned arrival ' + eta + '.';
+  },
+  watchAlertDestClosedTitle: 'Destination hours',
+  watchAlertDestClosedBody: function (field, eta, opens) {
+    return field + ' outside published hours at ' + eta + (opens ? ' \u00b7 opens ' + opens : '');
+  },
+  speakAlertDestClosed: function (field, eta) {
+    return field + ' is outside its published hours at your arrival, ' + eta + '.';
+  },
   watchAlertAtisTitle: 'ATIS',
   // Short on purpose: a notification is read at a glance in the cockpit, and the minutes were
   // the part nobody needed -- the alert only fires when it is time.
@@ -5331,6 +5354,29 @@ function etdInstant(etd) {
   if (!d || !t) return null;
   const when = new Date(d[0], d[1] - 1, d[2], Number(t[1]), Number(t[2]), 0, 0);
   return isNaN(when.getTime()) ? null : when;
+}
+// Departures are planned in quarter hours. The time inputs step by 15 minutes, but Android's
+// picker ignores the step, so whatever arrives is snapped to the nearest quarter here --
+// never across midnight (23:53 is 23:45, not tomorrow's 00:00).
+function etdQuarter(time) {
+  const t = ETD_TIME_RE.exec(String(time || ''));
+  if (!t) return String(time || '');
+  const q = Math.min(Math.round((Number(t[1]) * 60 + Number(t[2])) / 15) * 15, 23 * 60 + 45);
+  return String(Math.floor(q / 60)).padStart(2, '0') + ':' + String(q % 60).padStart(2, '0');
+}
+// The destination's published operating hours at an instant: { state: 'open' | 'closed',
+// until, opens, approx } from airfield-hours.js, or null when the field publishes none or the
+// rules cannot decide (holiday calendar, the edge of twilight). Night is a caution -- night VFR
+// is legal for some pilots, and some fields are open after dark -- but a field outside its
+// published hours at the arrival is a plan that does not work.
+function hoursAtArrival(wp, when) {
+  const AH = window.NavAid && window.NavAid.airfieldHours;
+  if (!AH || !wp || !(when instanceof Date) || typeof airfieldAtWaypoint !== 'function') return null;
+  const af = airfieldAtWaypoint(wp);
+  if (!af) return null;
+  const lookup = k => ((typeof airfields !== 'undefined' && airfields) || []).find(a => a.name === k) || null;
+  const st = AH.status(af.name, af, when, lookup);
+  return st && (st.state === 'open' || st.state === 'closed') ? st : null;
 }
 function etaZulu() {
   try { return localStorage.getItem(ETA_ZULU_KEY) === '1'; } catch (e) { return false; }
