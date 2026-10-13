@@ -366,6 +366,8 @@ window.S = {
   // --- end Waypoint terminology ---------------------------------------
 
   noteDefault: 'הערה',
+  noteInspTitle: 'הערה',
+  rpInspTitle: 'נקודת הזדהות',
   errLoadFile: 'לא ניתן לטעון קובץ: ',
   errStorageFull: 'השמירה האוטומטית נכשלה: אחסון הדפדפן מלא. ייצא את המסלול כדי לשמור אותו.',
   errInvalidRoute: function(msg) { return 'קובץ מסלול לא תקין: ' + msg; },
@@ -1277,6 +1279,7 @@ window.S = {
   shareCopied: 'קישור המסלול הועתק ללוח',
   errShareTooLong: 'המסלול ארוך מדי לקישור שיתוף (מקסימום 64 ציוני דרך). ייצא כ-JSON ושלח את הקובץ במקום.',
   tbFit: '⌖ התאם למסך (F)',
+  pageFrameOffForLocation: 'מסגרת הדף הוסרה בזמן שהמיקום מוצג — בחרו A4 / A3 שוב כדי להדפיס',
   tbFitTitle: 'התאם את הדף שנבחר לתצוגה, או את המסלול כשלא נבחר דף (F)',
   tbPlan: 'תכנית טיסה',
   tbPlanTitle: 'הצג תכנית טיסה',
