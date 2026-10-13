@@ -311,3 +311,15 @@ test('legs inside the departure CTR count towards the clock time', async ({ page
   // Arrival is later than departure + the boundary-started cumulative time.
   expect(Number(total.slice(3))).toBeGreaterThan(m + s / 60);
 });
+
+test('an odd stored departure is the quarter it shows, for the filing dialog too', async ({ page }) => {
+  const tomorrow = new Date(Date.now() + 36 * 3600000);
+  const iso = tomorrow.getFullYear() + '-' + String(tomorrow.getMonth() + 1).padStart(2, '0') + '-' +
+    String(tomorrow.getDate()).padStart(2, '0');
+  await boot(page, { date: iso, time: '09:47' });
+  expect(await page.evaluate(() => etdRead().time)).toBe('09:45');
+  await page.evaluate(() => showFplDialog());
+  await expect(page.locator('#fpl-time')).toHaveValue('09:45');
+  // What the dialog would file: the time it shows.
+  await expect(page.locator('#fpl-utc-hint')).toHaveText('0645Z');
+});

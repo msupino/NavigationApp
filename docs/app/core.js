@@ -5333,7 +5333,9 @@ function etdRead() {
   try {
     const v = JSON.parse(localStorage.getItem(ETD_KEY) || 'null');
     if (v && ETD_DATE_RE.test(String(v.date)) && ETD_TIME_RE.test(String(v.time))) {
-      return { date: String(v.date), time: String(v.time) };
+      // Snapped on the way out: a departure stored before the quarter-hour lists (10:08) is
+      // shown as 10:15, so every reader -- ETAs, the filing dialog -- must use 10:15 too.
+      return { date: String(v.date), time: etdQuarter(String(v.time)) };
     }
   } catch (e) { /* unreadable: no departure set */ }
   return null;

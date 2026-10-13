@@ -4042,9 +4042,9 @@ function quarterTimePicker(id, value, opts) {
   Object.defineProperty(input, 'value', { get: read, set: write, configurable: true });
   write(value);
   const changed = (which) => {
-    // Picking an hour with no minutes yet means on the hour; clearing either clears both.
+    // Picking an hour with no minutes yet means on the hour. A minute picked before an hour
+    // stays picked; the time is empty until both are set.
     if (which === hour && hour.value && !min.value) min.value = '00';
-    // A minute picked before an hour stays picked; the time is empty until both are set.
     native.set.call(input, read());
     input.dispatchEvent(new Event('change'));
   };
@@ -4243,12 +4243,13 @@ function showFlightPlan() {
   lastLightEl.id = 'fp-last-light';
   whenMenu.append(etdLbl, etdFields, zuluLbl, lastLightEl);
   whenWrap.appendChild(whenMenu);
-  // Beside the popover, always in view: last light, red when the arrival is after it.
+  // Beside the popover, always in view: last light, amber with a moon when the arrival is after it.
   const lastLightShort = document.createElement('span');
   lastLightShort.className = 'fp-last-light-short';
   lastLightShort.id = 'fp-last-light-short';
   lastLightShort.setAttribute('role', 'status');
-  // The destination outside its published hours at the arrival: the one red finding here.
+  // A field outside its published hours -- the departure at the ETD, the destination at the
+  // arrival: the one red finding here.
   const destClosedEl = document.createElement('span');
   destClosedEl.className = 'fp-dest-closed';
   destClosedEl.id = 'fp-dest-closed';
