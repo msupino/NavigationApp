@@ -429,3 +429,35 @@ test('a departure in the past is refused, and said as it is chosen', async ({ pa
   await page.locator('#fpl-date').dispatchEvent('change');
   await expect(page.locator('#fpl-time-past')).toBeHidden();
 });
+
+test('Now + 60 min sets the soonest filable departure', async ({ page }) => {
+  await boot(page);
+  await openFlightPlan(page);
+  await openWhen(page);
+  await page.locator('#fp-etd-soon').click();
+  const r = await page.evaluate(() => ({ etd: etdRead(), want: fplDefaultWhen() }));
+  expect(r.etd).toEqual({ date: r.want.date, time: r.want.time });
+  await expect(page.locator('#fp-etd-time')).toHaveValue(r.want.time);
+});
+
+test('Submit with no departure: the departure pulses red to show what was missed', async ({ page }) => {
+  await boot(page, null);
+  await openFlightPlan(page);
+  await page.locator('#fpl-open').click();
+  await expect(page.locator('details.fp-when summary')).toHaveClass(/fp-attn/);
+  await expect(page.locator('details.fp-when .qtime')).toHaveClass(/fp-attn/);
+});
+
+test('Submit with a field outside its published hours asks the same question', async ({ page }) => {
+  // Tomorrow 14:30 from Herzliya: shut to fixed wing 14:00-16:00 every day of the week.
+  await boot(page);
+  const etd = await page.evaluate(() => { const d = new Date(Date.now() + 24 * 3600000); const p2 = n => String(n).padStart(2, '0');
+    const e = { date: d.getFullYear() + '-' + p2(d.getMonth() + 1) + '-' + p2(d.getDate()), time: '14:30' }; localStorage.setItem('navaid.etd', JSON.stringify(e)); return e; });
+  await openFlightPlan(page);
+  await page.waitForFunction(() => NavAid.airfieldHours.entryFor('LLHZ'));
+  await page.locator('#fpl-open').click();
+  const ask = page.locator('.fpl-etd-ask');
+  await expect(ask).toContainText('outside its published hours at the departure');
+  await ask.locator('.fpl-etd-force').click();
+  await expect(page.locator('#fpl-time')).toHaveValue(etd.time);
+});
