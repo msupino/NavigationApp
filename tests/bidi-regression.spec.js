@@ -262,9 +262,10 @@ test.describe('Bidi / mixed-direction UI regressions', () => {
 
     await page.locator('#plan').click();
     await expect(page.locator('.modal-back.flight-plan .modal-title')).toHaveText('תכנית טיסה');
-    await expect(page.locator('.flight-table thead th').nth(4)).toHaveText('מרחק (מ״י)');
-    await expect(page.locator('.flight-table thead th').nth(11)).toHaveText('רדיאל');
-    await expect(page.locator('.flight-table thead th').nth(12)).toHaveText('DME');
+    // By column key, not position: a column added between them (ETA, #667) moved the indexes.
+    await expect(page.locator('.flight-table thead th[data-fp-col="dist"]').first()).toHaveText('מרחק (מ״י)');
+    await expect(page.locator('.flight-table thead th[data-fp-col="radial"]').first()).toHaveText('רדיאל');
+    await expect(page.locator('.flight-table thead th[data-fp-col="dme"]').first()).toHaveText('DME');
 
     await page.evaluate(() => showExportModal());
     await expect(page.locator('.modal-back:not(.flight-plan) .modal-title')).toHaveText('ייצוא PNG');

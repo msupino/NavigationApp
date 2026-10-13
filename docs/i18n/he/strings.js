@@ -249,6 +249,34 @@ window.S = {
   routeLibraryGdriveError: 'הסנכרון נכשל',
   routeLibraryGdriveAutoSyncFailed: 'לא סונכרן ל-Drive — נשמר במכשיר הזה. סנכרנו מ"מסלולים שמורים" לניסיון נוסף.',
   fpTimeUnitsTitle: 'זמן טיסה, דק:שנ (לא שעת שעון)',
+  fpEtd: 'המראה (ETD)',
+  fpEtdShort: 'המראה',
+  qtimeHour: 'שעה',
+  fpEtdTimeUtc: 'שעת ההמראה (UTC)',
+  fpLocalShort: function (t) { return '\u2066' + t + '\u2069 מקומי'; },
+  qtimeMinute: 'דקות',
+  fpLastLightShort: function (t) { return 'אור אחרון \u2066' + t + '\u2069'; },
+  fpEtdTitle: 'שעת ההמראה המתוכננת. עמודת ה-ETA ובדיקת האור האחרון נספרות ממנה; טופס הגשת תוכנית הטיסה משתמש באותה שעה.',
+  fpEtdDate: 'תאריך ההמראה',
+  fpEtdTime: 'שעת ההמראה (מקומית)',
+  fpEtaZulu: 'שעות ב-UTC',
+  fpEtaZuluTitle: 'הצגת שעות ההגעה והאור האחרון ב-UTC ‏(Z) במקום בשעון מקומי',
+  fpEta: 'ETA',
+  fpEtaTitle: 'שעת השעון מעל נקודת היעד של הקטע: המראה + זמן מצטבר, במהירויות המתוכננות (ללא רוח)',
+  // Times and Latin names are LTR runs inside RTL text: each is isolated (LRI ... PDI).
+  fpEtaDarkTitle: function (lastLight) { return 'אחרי האור האחרון (\u2066' + lastLight + '\u2069) \u2014 לילה'; },
+  fpEtaClosedTitle: function (name) { return '\u2068' + name + '\u2069 מחוץ לשעות הפעילות המפורסמות בשעה זו'; },
+  fpDepClosed: function (name, opens) {
+    return '\u2068' + name + '\u2069 מחוץ לשעות הפעילות המפורסמות בשעת ההמראה' + (opens ? ' (נפתח ב-\u2066' + opens + '\u2069)' : '');
+  },
+  fpDestClosed: function (name, opens) {
+    return '\u2068' + name + '\u2069 מחוץ לשעות הפעילות המפורסמות בשעת ההגעה' + (opens ? ' (נפתח ב-\u2066' + opens + '\u2069)' : '');
+  },
+  fpArrival: function (eta) { return 'הגעה \u2066' + eta + '\u2069'; },
+  fpLastLight: function (name, sunset, lastLight) {
+    return 'אור אחרון ב-\u2068' + name + '\u2069: \u2066' + lastLight + '\u2069 (שקיעה \u2066' + sunset + '\u2069)';
+  },
+  fpLastLightLate: 'הנחיתה אחרי האור האחרון: נחיתת לילה',
   startRouteHere: '➕ התחל מסלול כאן',
   addToRoute: '➕ הוסף למסלול',
   alreadyOnRoute: '✓ כבר במסלול',
@@ -616,7 +644,6 @@ window.S = {
   navLogVor: 'VOR ייחוס',
   navLogDepFreqs: 'תדרי שדה יציאה',
   navLogArrFreqs: 'תדרי שדה נחיתה',
-  navLogPopupBlocked: 'אפשר חלונות קופצים כדי לייצא את יומן הניווט.',
   fpFuel: 'דלק',
   fpMsa: 'גובה בטוח (ft)',
   msaLowTitle: 'הגובה המתוכנן נמוך מהגובה הבטוח המינימלי לקטע זה',
@@ -1749,6 +1776,23 @@ window.S = {
   tbGpsLive: 'מיקום',
   tbGpsLiveTitle: 'הצגת המיקום החי שלך על המפה (GPS, ללא הקלטה)',
   tbGpsLiveStop: 'הסתר',
+  watchAlertLastLightTitle: 'אור אחרון',
+  // The field name and each clock are isolated runs, so a Latin code or a time cannot pull the
+  // Hebrew words across them.
+  watchAlertLastLightBody: function (field, lastLight, eta) {
+    return 'אור אחרון ב-\u2068' + field + '\u2069 \u2066' + lastLight + '\u2069 \u00b7 הגעה \u2066' + eta + '\u2069';
+  },
+  speakAlertLastLight: function (field, lastLight, eta) {
+    return 'אור אחרון ב' + field + ', ' + lastLight + '. הגעה מתוכננת ' + eta + '.';
+  },
+  watchAlertDestClosedTitle: 'שעות שדה היעד',
+  watchAlertDestClosedBody: function (field, eta, opens) {
+    return '\u2068' + field + '\u2069 מחוץ לשעות הפעילות ב-\u2066' + eta + '\u2069' +
+      (opens ? ' \u00b7 נפתח ב-\u2066' + opens + '\u2069' : '');
+  },
+  speakAlertDestClosed: function (field, eta) {
+    return field + ' מחוץ לשעות הפעילות המפורסמות בשעת ההגעה, ' + eta + '.';
+  },
   watchAlertAtisTitle: 'ATIS',
   // Hebrew first, Latin tail: the old wording ended with "<n> דקות לפני" after a Latin run, and
   // a notification laid out left-to-right showed it as "דקות לפני 7" -- the number stranded at

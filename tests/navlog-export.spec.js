@@ -19,22 +19,19 @@ const ROUTE = {
   ],
 };
 
-// Capture what the new window is written with, instead of letting it open and print.
+// Capture the document the nav log prints, instead of letting it print. It prints from a hidden
+// frame (printHtmlPage), never a tab: window.open is a tripwire.
 async function stubPrintWindow(page) {
   await page.addInitScript(() => {
     window.__navlog = '';
     window.__printed = 0;
-    window.open = () => ({
-      document: {
-        open: () => {},          // the export calls document.open() before write()
-        write: (h) => { window.__navlog += h; },
-        close: () => {},
-        title: '',
-      },
-      focus: () => {},
-      print: () => { window.__printed += 1; },
-      close: () => {},
-    });
+    window.__tabs = 0;
+    window.open = () => { window.__tabs += 1; return null; };
+  });
+}
+async function stubPrintHtml(page) {
+  await page.evaluate(() => {
+    window.printHtmlPage = (h) => { window.__navlog += h; window.__printed += 1; };
   });
 }
 
@@ -42,6 +39,7 @@ async function planWithRoute(page) {
   await stubPrintWindow(page);
   await page.goto('?lang=en');
   await page.waitForFunction(() => typeof state !== 'undefined' && typeof showFlightPlan !== 'undefined');
+  await stubPrintHtml(page);
   await page.evaluate(r => {
     state.waypoints = r.waypoints.map(w => ({ lat: w.lat, lng: w.lng, name: w.name }));
     state.legs = r.legs.map(l => ({ ...l, inLabel: { a: 0, p: 0 }, outLabel: { a: 0, p: 0 } }));

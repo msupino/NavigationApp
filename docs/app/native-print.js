@@ -7,6 +7,7 @@
 
      - window.print() (the flight plan, the nav log, the planning form, the route mosaic) prints
        the app's own page with its print styles: NavAidPrint.printPage;
+     - the nav log (io.js printHtmlPage) hands over its own document: NavAidPrint.printHtml;
      - the map (io.js openPrintWindow) writes its image(s) to the app's cache and prints a page
        of them, one a sheet: NavAidPrint.printHtml.
 
@@ -76,11 +77,20 @@
     }
   }
 
+  // A document of the app's own making (the nav log), printed as it is.
+  async function printHtml(html) {
+    const p = plugin();
+    if (!p) return false;
+    busy = true;
+    try { await p.printHtml({ html: String(html), name: 'NavAid' }); return true; }
+    catch (e) { done(); return false; }
+  }
+
   const p = plugin();
   if (p) {
     try { p.addListener('printFinished', done); } catch (e) { /* no event: the fallback timers clear it */ }
     window.print = function () { printPage(); };
   }
 
-  window.NavAidNativePrint = { available, printPage, printImages, busy: () => busy };
+  window.NavAidNativePrint = { available, printPage, printImages, printHtml, busy: () => busy };
 }());
