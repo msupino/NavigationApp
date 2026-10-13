@@ -10858,13 +10858,15 @@ function showFplDialog() {
   document.addEventListener('keydown', onEsc, true);
 
   const profile = fplProfileRead();
-  // The departure already planned on the flight-plan panel (#667), when it is not earlier
-  // than the soonest this dialog proposes; otherwise the usual default.
+  // The departure already planned on the flight-plan panel (#667), whenever it is still ahead
+  // -- even inside the filing lead, where the dialog's own lead warning says so. One that has
+  // already passed cannot be filed: the usual default is proposed instead, and a line under the
+  // field says why (it used to swap the time silently, which read as "the ETD was ignored").
   const when = fplDefaultWhen();
   const planned = typeof etdRead === 'function' ? etdRead() : null;
   const plannedAt = planned && typeof etdInstant === 'function' ? etdInstant(planned) : null;
-  const defaultAt = typeof etdInstant === 'function' ? etdInstant(when) : null;
-  const useEtd = !!(plannedAt && defaultAt && plannedAt >= defaultAt);
+  const useEtd = !!(plannedAt && plannedAt.getTime() > Date.now());
+  const etdPassed = !!(plannedAt && !useEtd);
   const state1 = useEtd ? { date: planned.date, time: planned.time } : { date: when.date, time: when.time };
 
   const row = (labelText, el) => {
@@ -11072,6 +11074,7 @@ function showFplDialog() {
     // A departure the pilot types here is the plan's departure too: the flight-plan panel's
     // ETAs and last-light check follow it.
     const typedWhen = () => {
+      if (passedNote) { passedNote.remove(); timeBox.removeAttribute('aria-describedby'); passedNote = null; }
       syncWhen();
       if (utcHint.textContent && typeof etdWrite === 'function') {
         etdWrite(state1.date, state1.time);
@@ -11081,6 +11084,24 @@ function showFplDialog() {
     dateEl.onchange = typedWhen;
     timeEl.onchange = typedWhen;
     body.append(row(S.fplDate || 'Date', dateEl), row(S.fplTime || 'Departure (local)', timeBox));
+    // Under the field it is about, as information rather than an error, read with the field
+    // (aria-describedby), and gone once a time is chosen here.
+    let passedNote = null;
+    if (etdPassed) {
+      const d = new Date();
+      const todayIso = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' +
+        String(d.getDate()).padStart(2, '0');
+      // Today's departure by its time alone; another day's with the day (13/10 09:00).
+      const was = planned.date === todayIso ? planned.time
+        : planned.date.split('-').reverse().slice(0, 2).join('/') + ' ' + planned.time;
+      passedNote = document.createElement('div');
+      passedNote.className = 'fpl-hint fpl-etd-passed';
+      passedNote.id = 'fpl-etd-passed';
+      fplSetBidiText(passedNote, S.fplEtdPassed ? S.fplEtdPassed(was, state1.time)
+        : 'The planned departure (' + was + ') has passed \u2014 proposed ' + state1.time + '.');
+      body.appendChild(passedNote);
+      timeBox.setAttribute('aria-describedby', passedNote.id);
+    }
     syncWhen();
 
     // Call sign: the one field that changes most, so it leads and it is big.

@@ -2326,6 +2326,9 @@ window.S = Object.assign({
   fplMailRoute: (list) => 'Route: ' + list,
   fplMailArrival: (place, t) => 'Landing at ' + place + ' at ' + t,
   warnFplClosedCorridor: 'A corridor on this route may be closed or time-gated at the chosen departure time (secondary source) — no open alternative was published, so it is filed anyway. Verify with the NOTAMs.',
+  fplEtdPassed: function (planned, proposed) {
+    return 'The planned departure (' + planned + ') has passed \u2014 proposed ' + proposed + '. Change it here; the flight plan follows.';
+  },
   warnFplLead: 'Less than 60 minutes to departure — a routes plan is filed at least 60 min ahead, or phoned in.',
   warnFplMixedSpeed: 'The legs are not all at one speed; the first leg\'s speed is filed as cruise TAS.',
   errFplNeedRoute: 'Draw a route first — a flight plan needs a departure and a destination.',

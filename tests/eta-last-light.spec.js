@@ -160,10 +160,35 @@ test('the filing dialog starts from the planned departure, and writes it back', 
     .toEqual({ date: iso, time: '10:30' });
 });
 
-test('a departure in the past is not offered for filing', async ({ page }) => {
+test('a departure in the past is not offered for filing, and the dialog says why', async ({ page }) => {
   await boot(page, { date: '2020-01-01', time: '09:00' });
   await page.evaluate(() => showFplDialog());
   await expect(page.locator('#fpl-date')).not.toHaveValue('2020-01-01');
+  const note = page.locator('#fpl-etd-passed');
+  await expect(note).toContainText('01/01 09:00');
+  await expect(note).toContainText('has passed');
+  await expect(page.locator('.fpl-time-box')).toHaveAttribute('aria-describedby', 'fpl-etd-passed');
+  // Choosing a time here answers it.
+  await page.locator('#fpl-time').locator('..').locator('.qtime-m').selectOption('45');
+  await expect(note).toHaveCount(0);
+});
+
+test('a departure still ahead is the one offered, even inside the filing hour', async ({ page }) => {
+  await boot(page);
+  // 40 minutes ahead, in the page's own (Israel) time, rounded up to the quarter.
+  const etd = await page.evaluate(() => {
+    const soon = new Date(Date.now() + 40 * 60000);
+    const q = Math.ceil((soon.getHours() * 60 + soon.getMinutes()) / 15) * 15;
+    if (q >= 24 * 60) return null;
+    const p2 = n => String(n).padStart(2, '0');
+    const e = { date: soon.getFullYear() + '-' + p2(soon.getMonth() + 1) + '-' + p2(soon.getDate()), time: p2(Math.floor(q / 60)) + ':' + p2(q % 60) };
+    localStorage.setItem('navaid.etd', JSON.stringify(e));
+    return e;
+  });
+  test.skip(!etd, 'too close to midnight for a same-day quarter');
+  await page.evaluate(() => showFplDialog());
+  await expect(page.locator('#fpl-time')).toHaveValue(etd.time);
+  await expect(page.locator('#fpl-etd-passed')).toHaveCount(0);
 });
 
 test('Hebrew: last light reads with its times isolated', async ({ page }) => {
