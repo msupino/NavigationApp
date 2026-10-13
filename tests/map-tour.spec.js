@@ -83,3 +83,46 @@ test('the Edit step lights the edit buttons, not Route check above them', async 
   expect(r.top).toBeLessThanOrEqual(r.add.top);             // Add waypoint inside it
   expect(r.bottom).toBeGreaterThanOrEqual(r.clear.bottom);  // ...down to Clear map
 });
+
+// No new steps for new buttons: each joins the step beside it, lit with it.
+for (const [name, size, phoneLayout, lang] of [['phone', { width: 390, height: 844 }, true, 'en'], ['phone he', { width: 390, height: 844 }, true, 'he'], ['desktop', { width: 1280, height: 800 }, false, 'en']]) {
+  test(`new buttons ride along in existing steps, the count stays (${name})`, async ({ page }) => {
+    await boot(page, size, lang);
+    await expect(page.locator('#map-tour')).toBeVisible({ timeout: 10000 });
+    const out = await page.evaluate(async () => {
+      const keys = NavAid.tour.steps().map(s => s.k);
+      const res = { n: keys.length, keys, lit: {} };
+      for (let k = 0; k < keys.length; k++) {
+        const spot = document.querySelector('#map-tour .tour-spot');
+        const box = { l: parseFloat(spot.style.left), t: parseFloat(spot.style.top) };
+        box.r = box.l + parseFloat(spot.style.width); box.b = box.t + parseFloat(spot.style.height);
+        const inside = (sel) => { const e = document.querySelector(sel); if (!e || !e.getClientRects().length) return null;
+          const r = e.getBoundingClientRect(); return r.left >= box.l - 4 && r.right <= box.r + 4 && r.top >= box.t - 4 && r.bottom <= box.b + 4; };   // the spot stops just inside the screen edge
+        res.lit[keys[k]] = { fit: inside('#edit-col-fit'), zoom: inside('.leaflet-control-zoom'), lang: inside('.deck-strip-lang'),
+          plan: inside('.deck-btn-plan'), record: inside('.deck-btn-record'), legend: inside('.map-legend'), toolbar: inside('#toolbar'),
+          text: document.querySelector('#map-tour .tour-text').textContent };
+        document.querySelector('#map-tour .tour-next').click();
+        await new Promise(r => setTimeout(r, 50));
+      }
+      return res;
+    });
+    expect(out.n).toBeLessThanOrEqual(10);
+    expect(out.lit.Edit.fit).toBe(true);
+    expect(out.lit.Edit.text).toContain('[ ]');
+    if (phoneLayout) {
+      // The Menu spot is the three tabs, never the whole bar.
+      expect(out.lit.Menu.toolbar).toBe(null);
+      expect(out.lit.Menu.record).toBe(false);
+    }
+    expect(out.lit.Dial.zoom).toBe(true);
+    if (phoneLayout) {
+      expect(out.lit.Commfail.lang).toBe(true);
+      expect(out.lit.Menu.plan).toBe(true);
+      expect(out.lit.Menu.legend).toBe(false);          // named, not lit: it is at the bar's other end in Hebrew
+      expect(out.lit.Menu.text).toMatch(/Legend|מקרא/);
+    } else {
+      expect(out.lit.Menu.toolbar).toBe(true);           // the whole bar, not just the legend
+      expect(out.lit.Menu.text).toContain('simulator');
+    }
+  });
+}
