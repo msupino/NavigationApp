@@ -9108,6 +9108,12 @@ body.deck-on .zoom-readout {
 /* Icons in the waypoint panel's actions and the dialogs' action rows (ui.js dressByGlyph). */
 .insp-btn .mi-icon, .modal-btns .mi-icon { display: inline-grid; place-items: center; line-height: 0; vertical-align: -3px; margin-inline-end: 6px; }
 .insp-btn .mi-icon svg, .modal-btns .mi-icon svg { display: block; }
+/* The panel's text-link buttons (View N NOTAMs, Show the published hours, ...) carry the same
+   injected icon, which had no rule here: it sat raised above the text and apart from it. On the
+   text's own line, centred, a small gap, glyph a size down to match the 12px link. */
+.insp-notam-link, .hours-toggle { display: inline-flex; align-items: center; gap: 4px; }
+#insp-body button:not(.insp-btn) > .mi-icon { display: inline-grid; place-items: center; line-height: 0; margin: 0; flex: none; }
+#insp-body button:not(.insp-btn) > .mi-icon svg { display: block; width: 14px; height: 14px; }
 
 /* Contrast: the light theme's plan headers and V/S label, and the dark theme's row ✕, fell
    under 4.5:1. */

@@ -73,3 +73,22 @@ test('a default value still reads at 4.5:1 in the dark theme', async ({ page }) 
   });
   expect(ratio).toBeGreaterThanOrEqual(4.5);
 });
+
+test('a text-link button keeps its icon on the text line, beside it', async ({ page }) => {
+  await page.goto('?lang=he&nogist');
+  await page.waitForFunction(() => typeof showInspector === 'function' && Array.isArray(window.airfields) && airfields.length);
+  await page.evaluate(() => {
+    window.notams = [{ icao: 'LLBG', id: 'A1', text: 'x', from: '2020-01-01T00:00:00Z', to: '2099-01-01T00:00:00Z' }];
+    state.selected = { type: 'airfield', index: airfields.findIndex(a => a.name === 'LLBG') }; showInspector();
+  });
+  const link = page.locator('#insp-body .insp-notam-link');
+  await expect(link.locator('.mi-icon')).toHaveCount(1);
+  const g = await link.evaluate(b => {
+    const i = b.querySelector('.mi-icon').getBoundingClientRect();
+    const r = document.createRange(); const t = [...b.childNodes].find(n => n.nodeType === 3 && n.textContent.trim());
+    r.selectNodeContents(t); const tx = r.getBoundingClientRect();
+    return { dy: Math.abs((i.top + i.bottom) / 2 - (tx.top + tx.bottom) / 2), gap: Math.min(Math.abs(tx.left - i.right), Math.abs(i.left - tx.right)) };
+  });
+  expect(g.dy).toBeLessThanOrEqual(2);      // centred on the text, not raised above it
+  expect(g.gap).toBeLessThanOrEqual(8);     // beside it, not apart
+});
