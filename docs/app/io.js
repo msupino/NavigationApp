@@ -3574,6 +3574,15 @@ function setPage(size) {
   fitPageFrame();
   refreshPageButtons();
 }
+// A position on the map is flying, not printing: the A3/A4 frame comes off when Location or a
+// recording starts, as if its own button had been pressed again.
+function clearPageFrameForLocation() {
+  if (typeof pageSize === 'undefined' || !pageSize) return;
+  setPage(pageSize);
+  // Said, not silent: a frame that vanishes when Location starts looks like a fault.
+  if (typeof showToast === 'function') showToast(S.pageFrameOffForLocation || 'Page frame off while your position shows');
+}
+window.clearPageFrameForLocation = clearPageFrameForLocation;
 function toggleOrientation() {
   pageOrient = pageOrient === 'portrait' ? 'landscape' : 'portrait';
   try { localStorage.setItem('navaid.pageOrient', pageOrient); } catch (e) {}
