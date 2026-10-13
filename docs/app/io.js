@@ -4311,16 +4311,18 @@ function showFlightPlan() {
   etdHead.className = 'fp-when-head';
   etdHead.append(etdLbl, whenClose);
   whenMenu.append(etdHead, etdFields, etdSoon, zuluLbl, lastLightEl);
+  // On window, capturing: it runs before the plan's own Escape (on document), so Escape closes
+  // the popover and only the popover.
   const onWhenKey = (e) => {
-    if (e.key === 'Escape' && whenWrap.open) { e.stopPropagation(); e.preventDefault(); whenWrap.open = false; try { whenSummary.focus(); } catch (er) { /* */ } }
+    if (e.key === 'Escape' && whenWrap.open) { e.stopImmediatePropagation(); e.preventDefault(); whenWrap.open = false; try { whenSummary.focus(); } catch (er) { /* */ } }
   };
   const onWhenOutside = (e) => { if (whenWrap.open && !whenWrap.contains(e.target)) whenWrap.open = false; };
   whenWrap.addEventListener('toggle', () => {
     if (whenWrap.open) {
-      document.addEventListener('keydown', onWhenKey, true);
+      window.addEventListener('keydown', onWhenKey, true);
       document.addEventListener('pointerdown', onWhenOutside, true);
     } else {
-      document.removeEventListener('keydown', onWhenKey, true);
+      window.removeEventListener('keydown', onWhenKey, true);
       document.removeEventListener('pointerdown', onWhenOutside, true);
     }
   });
@@ -4928,6 +4930,25 @@ function showFlightPlan() {
   // The departure's UTC, and the last-light line for the destination: sunset and the end of
   // civil twilight on the departure date, and the arrival against it. Shown without a
   // departure time too (for today, or the date picked) -- last light is worth knowing first.
+  // A clock in a label that must not change width when Times in UTC adds its Z: in local time an
+  // invisible Z holds the room, so the switch changes the text and nothing around it moves.
+  function setClockText(el, prefix, text, zulu) {
+    // One inline run: the button is a flex row with a gap, and a loose hidden Z became a flex
+    // item of its own, gap and all.
+    const run = document.createElement('span');
+    run.className = 'fp-clock-run';
+    run.textContent = prefix + text;
+    const m = !zulu ? /\d\d:\d\d/.exec(run.textContent) : null;
+    if (m) {
+      const ghost = document.createElement('span');
+      ghost.className = 'fp-z-ghost';
+      ghost.setAttribute('aria-hidden', 'true');
+      ghost.textContent = 'Z';
+      const rest = run.firstChild.splitText(m.index + 5);    // right after the clock
+      run.insertBefore(ghost, rest);
+    }
+    el.replaceChildren(run);
+  }
   // The published-hours finding of the last refresh, for Submit to ask about ('' when none).
   let hoursProblem = '';
   function refreshWhen(etd, dep, zulu, lastVisible, arrival, firstVisible) {
@@ -4941,7 +4962,7 @@ function showFlightPlan() {
     etdLbl.textContent = zulu ? (S.fpEtdTimeUtc || 'Departure time (UTC)') : (S.fpEtd || 'Departure (ETD)');
     etdPicker.el.setAttribute('aria-label', zulu ? (S.fpEtdTimeUtc || 'Departure time (UTC)')
       : (S.fpEtdTime || 'Departure time (local)'));
-    whenSummary.textContent = (S.fpEtdShort || 'ETD') + ' ' + (dep ? etaClock(dep, zulu) : '--:--');
+    setClockText(whenSummary, (S.fpEtdShort || 'ETD') + ' ', dep ? etaClock(dep, zulu) : '--:--', zulu);
     totEtaCell.textContent = arrival ? etaClock(arrival, zulu) : '--';
     const destIdx = lastVisible >= 0 ? lastVisible + 1 : state.waypoints.length - 1;
     const dest = state.waypoints[destIdx];
@@ -4991,8 +5012,9 @@ function showFlightPlan() {
         : 'Last light at ' + name + ': ' + etaClock(ll.lastLight, zulu));
     // The detail: the times, nothing judged -- the finding is said once, in the line above.
     lastLightEl.textContent = text;
-    lastLightShort.textContent = S.fpLastLightShort ? S.fpLastLightShort(etaClock(ll.lastLight, zulu))
+    const llShort = S.fpLastLightShort ? S.fpLastLightShort(etaClock(ll.lastLight, zulu))
       : 'Last light ' + etaClock(ll.lastLight, zulu);
+    setClockText(lastLightShort, '', llShort, zulu);
     lastLightShort.title = lastLightEl.textContent;
   }
 

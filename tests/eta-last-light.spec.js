@@ -86,8 +86,8 @@ test('no departure: the ETA column says so and last light is still shown', async
   await expect(page.locator('#fp-last-light')).toContainText('Last light at');
   await expect(page.locator('#fp-last-light')).toContainText('sunset');
   // Closed, the popover's row still says the two things that matter.
-  await expect(page.locator('details.fp-when summary')).toHaveText('ETD --:--');
-  await expect(page.locator('#fp-last-light-short')).toHaveText(/^Last light \d\d:\d\d$/);
+  await expect(page.locator('details.fp-when summary')).toHaveText('ETD --:--', { useInnerText: true });
+  await expect(page.locator('#fp-last-light-short')).toHaveText(/^Last light \d\d:\d\d$/, { useInnerText: true });
 });
 
 test('ETA is the departure plus the cumulative time, and is remembered', async ({ page }) => {
@@ -134,7 +134,7 @@ test('an arrival after last light is flagged, one before it is not', async ({ pa
   await expect(page.locator('#fp-dest-closed')).toContainText('after last light');
   await expect(page.locator('#fp-last-light')).not.toContainText('after last light');
   await expect(page.locator('.flight-table tfoot td.fp-col-eta')).not.toHaveClass(/fp-eta-closed/);
-  await expect(page.locator('details.fp-when summary')).toHaveText('ETD 20:30');
+  await expect(page.locator('details.fp-when summary')).toHaveText('ETD 20:30', { useInnerText: true });
 });
 
 test('UTC toggle writes every clock with a Z', async ({ page }) => {
@@ -495,4 +495,26 @@ test('the departure popover closes by its X, by Escape and by a tap outside', as
   const tb = await page.locator('.modal-back.flight-plan .modal-title').boundingBox();
   await page.mouse.click(tb.x + 10, tb.y + tb.height / 2);           // a tap on the panel, outside the popover
   await expect(when).toHaveJSProperty('open', false);
+});
+
+// Times in UTC adds a Z to every clock; the room for it is kept in local time, so the switch
+// changes the text and moves nothing (it re-flowed the table and the row above it).
+for (const [lang, vp] of [['he',{width:1280,height:900}],['en',{width:390,height:844}]])
+test('the UTC switch moves nothing (' + lang + ')', async ({ page }) => {
+  await page.setViewportSize(vp);
+  await page.addInitScript(() => localStorage.setItem('navaid.etd', JSON.stringify({ date: '2026-06-21', time: '10:00' })));
+  await page.goto('?lang=' + lang + '&nogist');
+  await page.waitForFunction(() => typeof showFlightPlan === 'function' && Array.isArray(airfields) && airfields.length);
+  await page.evaluate(() => { const a=airfields.find(x=>x.name==='LLHZ'), b=airfields.find(x=>x.name==='LLHA');
+    state.waypoints=[{lat:a.lat,lng:a.lng,name:'LLHZ'},{lat:32.5,lng:35.0,name:'MID'},{lat:b.lat,lng:b.lng,name:'LLHA'}]; syncLegs(); draw(); showFlightPlan();
+    const all = document.querySelector('.fp-columns-all'); if (all) all.click(); });
+  await page.waitForTimeout(500);
+  const geo = () => page.evaluate(() => [...document.querySelectorAll('.flight-table thead th, details.fp-when summary, #fp-last-light-short, .fp-tools')].map(e => { const r = e.getBoundingClientRect(); return [Math.round(r.left), Math.round(r.top), Math.round(r.width), Math.round(r.height)]; }));
+  const before = await geo();
+  await page.locator('details.fp-when summary').click();
+  await page.locator('#fp-eta-zulu').check();
+  await page.locator('.fp-when-close').click();
+  await page.waitForTimeout(300);
+  const after = await geo();
+  expect(after).toEqual(before);
 });

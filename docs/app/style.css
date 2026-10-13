@@ -3938,6 +3938,13 @@ details.fp-when summary.fp-attn { border-color: #e5484d; }
 .fp-etd-utc,
 .fp-last-light,
 .fp-last-light-short { font-variant-numeric: tabular-nums; }
+/* Times in UTC adds a Z to every clock: the room for it is kept in local time too, so the
+   switch changes the text and nothing moves (it re-flowed the table and the row above it). */
+.flight-table th.fp-col-eta,
+.flight-table td.fp-col-eta { min-width: 9.5ch; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.fp-when summary { font-variant-numeric: tabular-nums; }
+.fp-z-ghost { visibility: hidden; }
+.fp-etd-utc { display: inline-block; min-width: 9ch; }
 .fp-last-light {
   color: #b9b3b3;
   white-space: normal;
