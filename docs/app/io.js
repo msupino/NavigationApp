@@ -1372,9 +1372,11 @@ function fplMailPreamble(res, o) {
   const arrT = fplArrivalLocal(depT, res.eetMinutes);
   const pts = Array.isArray(res.expandedPoints) ? res.expandedPoints.map(fplPointLabel) : [];
   const lines = [S.fplMailTitle, ''];
-  if (depT) lines.push(S.fplMailDeparture(dep, depT), '');
+  // Whether each end is an airfield: Hebrew names it as one ("משדה תימן", not "מתימן").
+  const isField = (code) => !!(typeof airfieldByIcao === 'function' && airfieldByIcao(code));
+  if (depT) lines.push(S.fplMailDeparture(dep, depT, isField(res.dep)), '');
   if (pts.length) lines.push(S.fplMailRoute(pts.join(' - ')), '');
-  if (arrT) lines.push(S.fplMailArrival(dest, arrT), '');
+  if (arrT) lines.push(S.fplMailArrival(dest, arrT, isField(res.dest)), '');
   return lines.join('\n') + '\n';
 }
 // --- parking request -----------------------------------------------------------------
@@ -4951,7 +4953,12 @@ function showFlightPlan() {
       (S.fpLastLight
         ? S.fpLastLight(name, etaClock(ll.sunset, zulu), etaClock(ll.lastLight, zulu))
         : 'Last light at ' + name + ': ' + etaClock(ll.lastLight, zulu));
-    lastLightEl.textContent = late ? text + ' \u2014 ' + (S.fpLastLightLate || 'arrives after last light') : text;
+    // A field shut at the arrival outranks night: "a night landing" read as if landing there were
+    // the question, at a field that is not open (reported for Herzliya, which never is at night).
+    lastLightEl.classList.toggle('fp-last-light-closed', closed);
+    lastLightEl.textContent = closed
+      ? text + ' \u2014 ' + (S.fpDestClosed ? S.fpDestClosed(name, hrs.opens || '') : name + ' is outside its published hours at the arrival')
+      : (late ? text + ' \u2014 ' + (S.fpLastLightLate || 'arrives after last light') : text);
     lastLightShort.textContent = (S.fpLastLightShort ? S.fpLastLightShort(etaClock(ll.lastLight, zulu))
       : 'Last light ' + etaClock(ll.lastLight, zulu)) + (late ? ' \u263e' : '');
     lastLightShort.title = lastLightEl.textContent;

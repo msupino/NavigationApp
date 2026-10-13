@@ -854,9 +854,10 @@ window.S = {
   freqNotamRowTitle: (id, published) => 'נוטאם ' + id
     + (published ? ' \u00b7 AIP ' + published : ' \u00b7 לא מפורסם ב-AIP'),
   fplMailTitle: 'תכנית טיסה בנתיבי התובלה הנמוכים',
-  fplMailDeparture: (place, t) => 'המראה מ' + place + ' ב ' + t + ' זמן מקומי',
+  // "מתימן" reads as "from Yemen": an airfield is named as one ("משדה תימן").
+  fplMailDeparture: (place, t, isField) => 'המראה ' + (isField ? 'משדה ' : 'מ') + place + ' ב ' + t + ' זמן מקומי',
   fplMailRoute: (list) => 'נתיב: ' + list,
-  fplMailArrival: (place, t) => 'נחיתה ב' + place + ' ב ' + t,
+  fplMailArrival: (place, t, isField) => 'נחיתה ' + (isField ? 'בשדה ' : 'ב') + place + ' ב ' + t,
   warnFplClosedCorridor: 'ייתכן שנתיב במסלול סגור או מוגבל בשעות במועד ההמראה שנבחר (מקור משני) — לא פורסמה חלופה פתוחה, ולכן הוא מוגש בכל זאת. יש לוודא מול הנוטאמים.',
   fplEtdFirst: 'קודם קבעו שעת המראה \u2014 התכנית מוגשת איתה.',
   fplEtdPassedFirst: function (t) { return 'שעת ההמראה (\u2066' + t + '\u2069) כבר עברה \u2014 קבעו שעה חדשה ואז הגישו.'; },

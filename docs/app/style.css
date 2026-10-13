@@ -3942,6 +3942,8 @@ details.fp-when summary.fp-attn { border-color: #e5484d; }
 .flight-table td.fp-eta-night { color: #ffcc80; font-weight: 600; }
 .flight-table td.fp-eta-night::after { content: ' \263E'; }
 .fp-dest-closed:empty { display: none; }
+.fp-last-light.fp-last-light-closed { color: #ff8a80; font-weight: 600; }
+body.theme-light .fp-last-light.fp-last-light-closed { color: #b3261e; }
 .fp-dest-closed,
 .flight-table td.fp-eta-closed { color: #ff8a80; font-weight: 600; }
 .fp-dest-closed { font-size: 13px; }

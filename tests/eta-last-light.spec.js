@@ -339,6 +339,10 @@ test('an arrival outside the destination\'s published hours is the red finding',
   await setEtd(page, '2026-06-21', '22:00');
   await expect(page.locator('#fp-dest-closed')).toContainText('outside its published hours');
   await expect(page.locator('.flight-table tfoot td.fp-col-eta')).toHaveClass(/fp-eta-closed/);
+  // The popover's sentence says so too, in red -- not "a night landing" at a shut field.
+  await expect(page.locator('#fp-last-light')).toHaveClass(/fp-last-light-closed/);
+  await expect(page.locator('#fp-last-light')).toContainText('outside its published hours at the arrival');
+  await expect(page.locator('#fp-last-light')).not.toContainText('night landing');
   // The morning: open, and in daylight -- nothing to say.
   await setEtd(page, '2026-06-21', '10:00');
   await expect(page.locator('#fp-dest-closed')).toHaveText('');
@@ -460,4 +464,14 @@ test('Submit with a field outside its published hours asks the same question', a
   await expect(ask).toContainText('outside its published hours at the departure');
   await ask.locator('.fpl-etd-force').click();
   await expect(page.locator('#fpl-time')).toHaveValue(etd.time);
+});
+
+test('Hebrew mail names an airfield as one: "משדה תימן", never "מתימן" (Yemen)', async ({ page }) => {
+  await boot(page);
+  await page.goto('?lang=he&nogist');
+  await page.waitForFunction(() => typeof fplMailPreamble === 'function' && typeof airfieldByIcao === 'function' && airfieldByIcao('LLBS'));
+  const text = await page.evaluate(() => fplMailPreamble({ dep: 'LLBS', dest: 'LLHZ', eetMinutes: 45 }, { depTimeLocal: '10:00' }));
+  expect(text).toContain('המראה משדה תימן');
+  expect(text).toContain('נחיתה בשדה');
+  expect(text).not.toContain('מתימן');
 });
