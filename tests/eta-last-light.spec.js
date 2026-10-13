@@ -350,3 +350,23 @@ test('an odd stored departure is the quarter it shows, for the filing dialog too
   // What the dialog would file: the time it shows.
   await expect(page.locator('#fpl-utc-hint')).toHaveText('0645Z');
 });
+
+test('a departure in the past is refused, and said as it is chosen', async ({ page }) => {
+  await boot(page);
+  // The dialog: choosing a time that has gone shows the line under it at once.
+  await page.evaluate(() => showFplDialog());
+  await expect(page.locator('#fpl-time-past')).toBeHidden();
+  await page.locator('#fpl-date').fill('2020-01-01');
+  await page.locator('#fpl-date').dispatchEvent('change');
+  await expect(page.locator('#fpl-time-past')).toBeVisible();
+  await expect(page.locator('#fpl-time-past')).toContainText('already passed');
+  await expect(page.locator('.fpl-time-box')).toHaveAttribute('aria-describedby', /fpl-time-past/);
+  // Continue refuses it, with the same words, instead of only warning "less than 60 minutes".
+  await page.getByRole('button', { name: 'Continue' }).click();
+  await expect(page.locator('.fpl-errs')).toContainText('already passed');
+  // Back to a later day: gone.
+  const tomorrow = await page.evaluate(() => { const d = new Date(Date.now() + 36 * 3600000); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); });
+  await page.locator('#fpl-date').fill(tomorrow);
+  await page.locator('#fpl-date').dispatchEvent('change');
+  await expect(page.locator('#fpl-time-past')).toBeHidden();
+});

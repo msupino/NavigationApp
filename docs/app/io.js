@@ -11065,16 +11065,29 @@ function showFplDialog() {
     const timeBox = document.createElement('span');
     timeBox.className = 'fpl-time-box';
     timeBox.append(timePicker.el, utcHint);
+    // Said as the time is chosen, under the field, not only when Continue refuses it.
+    const pastNote = document.createElement('div');
+    pastNote.className = 'fpl-hint fpl-time-past';
+    pastNote.id = 'fpl-time-past';
+    pastNote.setAttribute('role', 'status');
+    pastNote.hidden = true;
     const syncWhen = () => {
       state1.date = dateEl.value;
       state1.time = timeEl.value;
       const utc = fplUtcFromLocal(state1.date, state1.time);
       utcHint.textContent = utc ? utc.eobt + 'Z' : '';
+      const past = !!(utc && fplLeadMinutes(utc.when) < 0);
+      pastNote.hidden = !past;
+      pastNote.textContent = past ? fplErrText('errFplPast') : '';
+      timeBox.classList.toggle('fpl-input-missing', past);
+      const ids = (timeBox.getAttribute('aria-describedby') || '').split(' ').filter(x => x && x !== pastNote.id);
+      if (past) ids.push(pastNote.id);
+      if (ids.length) timeBox.setAttribute('aria-describedby', ids.join(' ')); else timeBox.removeAttribute('aria-describedby');
     };
     // A departure the pilot types here is the plan's departure too: the flight-plan panel's
     // ETAs and last-light check follow it.
     const typedWhen = () => {
-      if (passedNote) { passedNote.remove(); timeBox.removeAttribute('aria-describedby'); passedNote = null; }
+      if (passedNote) { passedNote.remove(); passedNote = null; timeBox.removeAttribute('aria-describedby'); }
       syncWhen();
       if (utcHint.textContent && typeof etdWrite === 'function') {
         etdWrite(state1.date, state1.time);
@@ -11083,7 +11096,7 @@ function showFplDialog() {
     };
     dateEl.onchange = typedWhen;
     timeEl.onchange = typedWhen;
-    body.append(row(S.fplDate || 'Date', dateEl), row(S.fplTime || 'Departure (local)', timeBox));
+    body.append(row(S.fplDate || 'Date', dateEl), row(S.fplTime || 'Departure (local)', timeBox), pastNote);
     // Under the field it is about, as information rather than an error, read with the field
     // (aria-describedby), and gone once a time is chosen here.
     let passedNote = null;
@@ -11099,7 +11112,7 @@ function showFplDialog() {
       passedNote.id = 'fpl-etd-passed';
       fplSetBidiText(passedNote, S.fplEtdPassed ? S.fplEtdPassed(was, state1.time)
         : 'The planned departure (' + was + ') has passed \u2014 proposed ' + state1.time + '.');
-      body.appendChild(passedNote);
+      pastNote.after(passedNote);
       timeBox.setAttribute('aria-describedby', passedNote.id);
     }
     syncWhen();
@@ -11628,7 +11641,9 @@ function showFplDialog() {
         // path honours the override too.
         if (fplBadFilingOverride(profile)) errsXc.push('errFplBadAddress');
         // ...the same date/time check, since the sheet prints both...
-        if (!fplUtcFromLocal(state1.date, state1.time)) errsXc.push('errFplEobt');
+        const utcXc = fplUtcFromLocal(state1.date, state1.time);
+        if (!utcXc) errsXc.push('errFplEobt');
+        else if (fplLeadMinutes(utcXc.when) < 0) errsXc.push('errFplPast');
         // ...and the same field-to-field rule: a field in the middle is two plans.
         const midXc = fplMidRouteAirfields();
         if (midXc.length) errsXc.push({ code: 'errFplMidAirfield', names: midXc.slice() });
@@ -11637,6 +11652,14 @@ function showFplDialog() {
           return;
         }
         showFplXcForm({ dateLocal: state1.date, timeLocal: state1.time });
+        return;
+      }
+      // A departure that has already gone cannot be filed -- "now" or later can (inside the
+      // hour it is the lead warning's case: an update phoned or sent late). Checked here, where
+      // "now" is the pilot's clock, not in buildIcaoFpl, which only writes the message.
+      const utcNow = fplUtcFromLocal(state1.date, state1.time);
+      if (utcNow && fplLeadMinutes(utcNow.when) < 0) {
+        showFieldErrors(errBox, ['errFplPast'], fieldEls);
         return;
       }
       const retData = returnRouteData();

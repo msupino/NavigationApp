@@ -2386,6 +2386,7 @@ window.S = Object.assign({
     + 'this route ends. Both routes keep their own nav log and exports \u2014 they are joined '
     + 'only in the filed plan.',
   errFplEobt: 'Enter a valid date and departure time.',
+  errFplPast: 'This departure time has already passed \u2014 choose a later one.',
   errFplEndurance: 'Pick how much fuel is on board.',
   errFplLatinOnly: 'Write the pilot name and license in Latin letters — the flight-plan message cannot carry Hebrew.',
   errFplProfile: 'Fill in the aircraft and pilot details first.',
