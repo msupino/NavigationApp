@@ -17,7 +17,7 @@ async function boot(page, size, lang = 'en') {
   await page.waitForFunction(() => window.NavAid && NavAid.tour && typeof map !== 'undefined');
 }
 
-for (const [name, size, lang] of [['phone', { width: 390, height: 844 }, 'he'], ['desktop', { width: 1280, height: 800 }, 'en']]) {
+for (const [name, size, lang] of [['phone', { width: 390, height: 844 }, 'he'], ['short phone', { width: 360, height: 640 }, 'en'], ['desktop', { width: 1280, height: 800 }, 'en']]) {
   test(`plays once on first launch and walks the controls (${name})`, async ({ page }) => {
     // Every step clicked through, then a reload and a fixed 3 s wait: past 15 s once the tour
     // grew a Route check step.
@@ -126,3 +126,21 @@ for (const [name, size, phoneLayout, lang] of [['phone', { width: 390, height: 8
     }
   });
 }
+
+// A tall spotlight on a short phone: the edit column on 360x640 left no side with room for the
+// bubble AND the arrow's gap, and the bubble landed on top of the column it was explaining.
+test('short phone: the Edit bubble sits beside the column, not on it', async ({ page }) => {
+  await boot(page, { width: 360, height: 640 }, 'en');
+  await expect(page.locator('#map-tour')).toBeVisible({ timeout: 10000 });
+  await page.locator('#map-tour .tour-next').click();             // Check -> Edit
+  await expect(page.locator('#map-tour .tour-title')).toHaveText('Edit the route');
+  await page.waitForTimeout(700);                                 // let the bubble settle
+  const g = await page.evaluate(() => {
+    const b = document.querySelector('#map-tour .tour-bubble').getBoundingClientRect();
+    const c = document.querySelector('.edit-col-ctrl').getBoundingClientRect();
+    return { overlap: b.left < c.right && b.right > c.left && b.top < c.bottom && b.bottom > c.top,
+      inside: b.top >= 0 && b.bottom <= innerHeight };
+  });
+  expect(g.overlap).toBe(false);
+  expect(g.inside).toBe(true);
+});
