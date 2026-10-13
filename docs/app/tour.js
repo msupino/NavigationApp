@@ -16,14 +16,21 @@
     { sel: ['#edit-col-check'], k: 'Check' },
     // The edit buttons only: Route check sits in the same column but had its own step, and a
     // spotlight round the whole column read as if checking were an edit too.
-    { sel: ['.edit-col-ctrl'], k: 'Edit', group: ['#edit-col-add', '#edit-col-note', '#edit-col-undo', '#edit-col-clear'] },
+    // Fit closes the column, under Clear map.
+    { sel: ['.edit-col-ctrl'], k: 'Edit', group: ['#edit-col-add', '#edit-col-note', '#edit-col-undo', '#edit-col-clear', '#edit-col-fit'] },
     { sel: ['#measure-btn'], k: 'Measure' },
     { sel: ['#edit-lock'], k: 'Lock' },
-    { sel: ['.rotate-ctrl', '#rotate-dial'], k: 'Dial' },
+    // No new steps for new buttons (ten is already plenty): a control joins the step it sits
+    // beside, lit together. Zoom and the credits are the same column as the dial.
+    { sel: ['.rotate-ctrl', '#rotate-dial'], k: 'Dial', group: ['.rotate-ctrl', '.leaflet-control-zoom', '.attrib-toggle'] },
     { sel: ['.deck-btn-here', '#gps-live'], k: 'Location' },
     { sel: ['.deck-btn-record', '#gps-record'], k: 'Record' },
-    { sel: ['.deck-strip-commfail', '#commfail-btn'], k: 'Commfail' },
-    { sel: ['.deck-btn-menu', '#toolbar'], k: 'Menu' },
+    // On a phone the language button shares the strip with Comm fail.
+    { sel: ['.deck-strip-commfail', '#commfail-btn'], k: 'Commfail', group: ['.deck-strip-lang', '.deck-strip-commfail'] },
+    // On a phone, the tabs beside Menu (Map, Plan) -- not the legend: in Hebrew it sits at the
+    // other end of the bar, and the union lit the whole bar, Location and Record too. The text
+    // names it. On a desktop the whole bar is lit already, and its text names what is in it.
+    { sel: ['.deck-btn-menu', '#toolbar'], k: 'Menu', phoneGroup: ['.deck-btn-map', '.deck-btn-menu', '.deck-btn-plan'] },
     { sel: ['#search-overlay:not(.hidden) input', '#search-overlay:not(.hidden)'], k: 'Search', only: 'desktop' },
     { sel: null, k: 'Hold', only: 'phone' },
   ];
@@ -68,7 +75,9 @@
 
   // The box to light: the target's own, or the union of a step's `group` that is on screen.
   function rectOf(step, el) {
-    const parts = (step.group || []).map((s) => document.querySelector(s)).filter(visible);
+    // phoneGroup: lit together on a phone only -- on a desktop the target alone (the whole bar).
+    const g = (phone() && step.phoneGroup) || step.group || [];
+    const parts = g.map((s) => document.querySelector(s)).filter(visible);
     if (!parts.length) return el.getBoundingClientRect();
     const rs = parts.map((p) => p.getBoundingClientRect());
     const left = Math.min(...rs.map((r) => r.left)), top = Math.min(...rs.map((r) => r.top));
@@ -102,10 +111,17 @@
     const sl = Math.max(2, r.left - pad), st = Math.max(2, r.top - pad);
     const sr = Math.min(vw - 2, r.right + pad), sb = Math.min(vh - 2, r.bottom + pad);
     Object.assign(spot.style, { left: sl + 'px', top: st + 'px', width: (sr - sl) + 'px', height: (sb - st) + 'px' });
-    // The bubble goes on the side with the most room, a gap away for the arrow to show.
+    // The bubble goes on a side it FITS on, a gap away for the arrow to show; of those, the one
+    // with the most room. Picking by room alone put it on the right of the edit column on a
+    // 360px phone -- 300px free, 346px needed -- and the clamp pulled it back over the column.
     const gap = 46;
     const room = { below: vh - r.bottom, above: r.top, right: vw - r.right, left: r.left };
-    const side = Object.keys(room).sort((a, b) => room[b] - room[a])[0];
+    const need = { below: bh + gap + m, above: bh + gap + m, right: bw + gap + m, left: bw + gap + m };
+    const byRoom = Object.keys(room).sort((a, b) => room[b] - room[a]);
+    // Nowhere fits (a tall group on a short phone): the side short by the LEAST, where the clamp
+    // below tucks the bubble against the control instead of over it.
+    const side = byRoom.find((s) => room[s] >= need[s])
+      || Object.keys(room).sort((a, b) => (room[b] - need[b]) - (room[a] - need[a]))[0];
     let x, y;
     if (side === 'below' || side === 'above') {
       x = r.left + r.width / 2 - bw / 2;
@@ -136,7 +152,9 @@
   function render() {
     const step = list[i];
     root.querySelector('.tour-title').textContent = str('tour' + step.k + 'Title', step.k);
-    root.querySelector('.tour-text').textContent = str('tour' + step.k + 'Text', '');
+    // A step may say it differently on a phone and a desktop (tour<K>TextPhone / ...Desk).
+    const base = str('tour' + step.k + 'Text', '');
+    root.querySelector('.tour-text').textContent = str('tour' + step.k + 'Text' + (phone() ? 'Phone' : 'Desk'), base);
     root.querySelector('.tour-count').textContent = (i + 1) + ' / ' + list.length;
     const back = root.querySelector('.tour-back'), next = root.querySelector('.tour-next');
     back.disabled = i === 0;
