@@ -3990,13 +3990,68 @@ function exportNavLog(scrollArea) {
     (freqs ? '<h2>' + esc(S.navLogFreqs || 'Frequencies') + '</h2><ul>' + freqs + '</ul>' : '') +
     '</body></html>';
 
-  const w = window.open('', '_blank');
-  if (!w) { refuse(S.navLogPopupBlocked || 'Allow pop-ups to export the nav log.'); return; }
-  w.document.open();
-  w.document.write(html);
-  w.document.close();
-  w.focus();
-  setTimeout(() => { try { w.print(); } catch (e) { /* user can print manually */ } }, 300);
+  // Straight to the print dialog: a tab of its own was one more thing to close afterwards.
+  printHtmlPage(html);
+}
+
+// A departure time in quarter hours: an hour list and a minute list (00/15/30/45). A native
+// time input offers every minute -- Chrome's picker ignores `step`, Android's too -- and a
+// departure is planned to the quarter. Returns { el, input }: `el` to place, `input` a hidden
+// <input> carrying the id and the HH:MM value (read and written through .value, 'change'
+// fired on it), so callers keep treating it as the one field. `allowEmpty` adds a blank
+// ("--") for "no departure set".
+function quarterTimePicker(id, value, opts) {
+  const o = opts || {};
+  const el = document.createElement('span');
+  el.className = 'qtime';
+  el.dir = 'ltr';                        // HH : MM, in that order, in Hebrew too
+  const hour = document.createElement('select');
+  hour.className = 'qtime-h';
+  hour.setAttribute('aria-label', o.hourLabel || S.qtimeHour || 'Hour');
+  const min = document.createElement('select');
+  min.className = 'qtime-m';
+  min.setAttribute('aria-label', o.minuteLabel || S.qtimeMinute || 'Minutes');
+  const opt = (sel, v, text) => {
+    const x = document.createElement('option');
+    x.value = v; x.textContent = text; sel.appendChild(x);
+  };
+  if (o.allowEmpty) { opt(hour, '', '--'); opt(min, '', '--'); }
+  for (let h = 0; h < 24; h++) opt(hour, String(h).padStart(2, '0'), String(h).padStart(2, '0'));
+  for (const m of ['00', '15', '30', '45']) opt(min, m, m);
+  const sep = document.createElement('span');
+  sep.className = 'qtime-sep';
+  sep.textContent = ':';
+  sep.setAttribute('aria-hidden', 'true');
+  el.append(hour, sep, min);
+  const input = document.createElement('input');
+  input.type = 'hidden';
+  input.id = id;
+  if (o.label) el.setAttribute('aria-label', o.label);
+  el.setAttribute('role', 'group');
+  // The hidden input's own value is kept real (not only a getter), so anything reading the
+  // DOM -- a form, a test, the browser's devtools -- sees the time the lists show.
+  const native = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value');
+  const read = () => (hour.value && min.value) ? hour.value + ':' + min.value : '';
+  const write = (v) => {
+    const q = typeof etdQuarter === 'function' ? etdQuarter(v) : String(v || '');
+    const m = /^(\d{2}):(\d{2})$/.exec(q);
+    if (m) { hour.value = m[1]; min.value = m[2]; }
+    else if (o.allowEmpty) { hour.value = ''; min.value = ''; }
+    native.set.call(input, read());
+  };
+  Object.defineProperty(input, 'value', { get: read, set: write, configurable: true });
+  write(value);
+  const changed = (which) => {
+    // Picking an hour with no minutes yet means on the hour. A minute picked before an hour
+    // stays picked; the time is empty until both are set.
+    if (which === hour && hour.value && !min.value) min.value = '00';
+    native.set.call(input, read());
+    input.dispatchEvent(new Event('change'));
+  };
+  hour.addEventListener('change', () => changed(hour));
+  min.addEventListener('change', () => changed(min));
+  el.appendChild(input);
+  return { el, input };
 }
 
 function showFlightPlan() {
@@ -4136,6 +4191,105 @@ function showFlightPlan() {
   }
   box.appendChild(fpAircraft);
 
+  // Departure time (#667): the ETA column and the last-light check count from it. The same
+  // stored departure the filing dialog uses (etdRead/etdWrite in core.js), typed in local
+  // time like there, with the UTC beside it. A popover beside Columns, like Columns: on a
+  // phone the plan only just fits the chart space, and two more rows pushed it past it.
+  // What it says when closed -- the departure, and last light with the arrival against it --
+  // takes no row of its own.
+  const whenWrap = document.createElement('details');
+  whenWrap.className = 'fp-when';
+  const whenSummary = document.createElement('summary');
+  whenSummary.title = S.fpEtdTitle || '';
+  whenWrap.appendChild(whenSummary);
+  const whenMenu = document.createElement('div');
+  whenMenu.className = 'fp-columns-menu fp-when-menu';
+  const etdStored = typeof etdRead === 'function' ? etdRead() : null;
+  const etdDate = document.createElement('input');
+  etdDate.type = 'date';
+  etdDate.id = 'fp-etd-date';
+  etdDate.setAttribute('aria-label', S.fpEtdDate || 'Departure date');
+  const todayIso = (() => {
+    const d = new Date();
+    return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' +
+      String(d.getDate()).padStart(2, '0');
+  })();
+  etdDate.value = etdStored ? etdStored.date : todayIso;
+  const etdPicker = quarterTimePicker('fp-etd-time', etdStored ? etdStored.time : '',
+    { allowEmpty: true, label: S.fpEtdTime || 'Departure time (local)' });
+  const etdTime = etdPicker.input;
+  const etdUtc = document.createElement('span');
+  etdUtc.className = 'fp-etd-utc';
+  etdUtc.dir = 'ltr';
+  const etdLbl = document.createElement('div');
+  etdLbl.className = 'fp-when-label';
+  etdLbl.textContent = S.fpEtd || 'Departure (ETD)';
+  const etdFields = document.createElement('div');
+  etdFields.className = 'fp-when-fields';
+  etdFields.append(etdDate, etdPicker.el, etdUtc);
+  const zuluLbl = document.createElement('label');
+  zuluLbl.className = 'fp-eta-zulu';
+  zuluLbl.title = S.fpEtaZuluTitle || '';
+  const zuluCb = document.createElement('input');
+  zuluCb.type = 'checkbox';
+  zuluCb.id = 'fp-eta-zulu';
+  zuluCb.checked = typeof etaZulu === 'function' && etaZulu();
+  const zuluTxt = document.createElement('span');
+  zuluTxt.textContent = S.fpEtaZulu || 'Times in UTC';
+  zuluLbl.append(zuluCb, zuluTxt);
+  // The whole sentence -- place, sunset, last light, and the arrival against it.
+  const lastLightEl = document.createElement('div');
+  lastLightEl.className = 'fp-last-light';
+  lastLightEl.id = 'fp-last-light';
+  whenMenu.append(etdLbl, etdFields, zuluLbl, lastLightEl);
+  whenWrap.appendChild(whenMenu);
+  // Beside the popover, always in view: last light, amber with a moon when the arrival is after it.
+  const lastLightShort = document.createElement('span');
+  lastLightShort.className = 'fp-last-light-short';
+  lastLightShort.id = 'fp-last-light-short';
+  lastLightShort.setAttribute('role', 'status');
+  // A field outside its published hours -- the departure at the ETD, the destination at the
+  // arrival: the one red finding here.
+  const destClosedEl = document.createElement('span');
+  destClosedEl.className = 'fp-dest-closed';
+  destClosedEl.id = 'fp-dest-closed';
+  destClosedEl.setAttribute('role', 'status');
+  // With "Times in UTC" on, the departure is shown and typed in UTC too -- the same clock as
+  // every ETA beside it. Stored local either way (the filing dialog's clock).
+  const pad2 = n => String(n).padStart(2, '0');
+  const isoDate = (d, z) => z
+    ? d.getUTCFullYear() + '-' + pad2(d.getUTCMonth() + 1) + '-' + pad2(d.getUTCDate())
+    : d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate());
+  const showEtd = (etd, zulu) => {
+    const when = etd && typeof etdInstant === 'function' ? etdInstant(etd) : null;
+    if (!when) { if (etd) { etdDate.value = etd.date; etdTime.value = etd.time; } return; }
+    etdDate.value = isoDate(when, zulu);
+    etdTime.value = zulu ? pad2(when.getUTCHours()) + ':' + pad2(when.getUTCMinutes()) : etd.time;
+  };
+  const onEtd = () => {
+    const zulu = typeof etaZulu === 'function' && etaZulu();
+    const m = /^(\d{2}):(\d{2})$/.exec(etdTime.value || '');
+    const d = /^(\d{4})-(\d{2})-(\d{2})$/.exec(etdDate.value || '');
+    if (zulu && m && d) {
+      const when = new Date(Date.UTC(+d[1], +d[2] - 1, +d[3], +m[1], +m[2]));
+      if (typeof etdWrite === 'function') etdWrite(isoDate(when, false), pad2(when.getHours()) + ':' + pad2(when.getMinutes()));
+    } else if (typeof etdWrite === 'function') {
+      etdWrite(etdDate.value, etdTime.value);
+    }
+    refresh();
+  };
+  etdDate.onchange = onEtd;
+  etdTime.onchange = onEtd;
+  zuluCb.onchange = () => {
+    if (typeof setEtaZulu === 'function') setEtaZulu(zuluCb.checked);
+    showEtd(typeof etdRead === 'function' ? etdRead() : null, zuluCb.checked);
+    refresh();
+  };
+  // The opening hours arrive with their own file; the check fills in once it has.
+  if (window.NavAid && NavAid.airfieldHours) {
+    NavAid.airfieldHours.load().then(() => { if (box.isConnected) refresh(); });
+  }
+
   // Vertical profile strip — altitude vs distance with TOC/TOD.
   const profWrap = document.createElement('div');
   profWrap.className = 'fp-profile';
@@ -4261,6 +4415,9 @@ function showFlightPlan() {
     { key: 'fuel', label: baseHeaders[8] || 'Fuel (gal)', display: dispHeaders[8] || 'Fuel (gal)' },
     { key: 'cumTime', label: baseHeaders[9] || 'Cum. time', display: dispHeaders[9] || 'Cum. time' },
     { key: 'cumFuel', label: baseHeaders[10] || 'Cum. fuel', display: dispHeaders[10] || 'Cum. fuel' },
+    // Clock time over the leg's To point: departure + cumulative time (#667). After the
+    // cumulative pair, so the CSV's leading columns keep their names and their order.
+    { key: 'eta', label: S.fpEta || 'ETA', display: S.fpEta || 'ETA' },
     { key: 'radial', label: baseHeaders[11] || 'Radial', display: dispHeaders[11] || 'Radial', className: 'fp-vor-col' },
     { key: 'dme', label: baseHeaders[12] || 'DME', display: dispHeaders[12] || 'DME', className: 'fp-vor-col' },
   ];
@@ -4290,7 +4447,7 @@ function showFlightPlan() {
     // is one tap away in the Columns menu, and the totals line above the table always
     // carries distance/ETE/fuel. The full table is 874px wide, so on a 375px phone the
     // columns you actually fly by started off-screen behind a sideways scroll.
-    ? ['from', 'dist', 'speed', 'fuel', 'cumTime', 'cumFuel', 'radial', 'dme', 'freq']
+    ? ['from', 'dist', 'speed', 'fuel', 'cumTime', 'eta', 'cumFuel', 'radial', 'dme', 'freq']
     : [];
   let savedFpColumns = fpDefaultHiddenColumns;
   try {
@@ -4382,7 +4539,11 @@ function showFlightPlan() {
     syncFpColumnVisibility();
   };
   colWrap.appendChild(colMenu);
-  box.appendChild(colWrap);
+  // Columns, the departure popover and last light share one row.
+  const fpTools = document.createElement('div');
+  fpTools.className = 'fp-tools';
+  fpTools.append(colWrap, whenWrap, lastLightShort, destClosedEl);
+  box.appendChild(fpTools);
 
   const scrollArea = document.createElement('div');
   scrollArea.className = 'fp-scroll';
@@ -4401,6 +4562,7 @@ function showFlightPlan() {
       if (col.key === 'time' || col.key === 'cumTime') {
         th.title = S.fpTimeUnitsTitle || 'Elapsed time, mm:ss (not a clock time)';
       }
+      if (col.key === 'eta') th.title = S.fpEtaTitle || '';
       trEl.appendChild(markFpColumn(th, col.key));
     });
   };
@@ -4457,6 +4619,7 @@ function showFlightPlan() {
   const timeCells = [];                 // leg index -> time cell
   const fuelCells = [];                 // leg index -> fuel (gal) cell
   const cumTimeCells = [];              // leg index -> cumulative time (H:M:S)
+  const etaCells = [];                  // leg index -> clock time over the To point
   const cumFuelCells = [];            // leg index -> cumulative fuel (gal)
   const radialCells = [];              // leg index -> VOR radial cell (To wp)
   const dmeCells = [];                 // leg index -> VOR DME cell (To wp)
@@ -4520,7 +4683,7 @@ function showFlightPlan() {
       sel.value = (state.legs[leg] && state.legs[leg].vorRef) || '';
     }
   }
-  let totDistCell, totTimeCell, totFuelCell, totCumTimeCell, totCumFuelCell;
+  let totDistCell, totTimeCell, totFuelCell, totCumTimeCell, totCumFuelCell, totEtaCell;
   for (let i = 0; i < state.legs.length; i++) {
     const A = state.waypoints[i], B = state.waypoints[i + 1];
     const leg = state.legs[i];
@@ -4586,6 +4749,10 @@ function showFlightPlan() {
     const cumFuelCell = planCell('');
     cumFuelCells[i] = cumFuelCell;
     tr.appendChild(fpCell('cumFuel', cumFuelCell));
+    const etaCell = planCell('');
+    etaCell.dir = 'ltr';
+    etaCells[i] = etaCell;
+    tr.appendChild(fpCell('eta', etaCell));
     const radial = radialCellWithPicker(i);
     radialCells[i] = radial.val;
     tr.appendChild(fpCell('radial', radial.td));
@@ -4666,12 +4833,68 @@ function showFlightPlan() {
   trF.appendChild(fpCell('cumTime', totCumTimeCell));
   totCumFuelCell = planCell('');
   trF.appendChild(fpCell('cumFuel', totCumFuelCell));
+  totEtaCell = planCell('');
+  totEtaCell.dir = 'ltr';
+  trF.appendChild(fpCell('eta', totEtaCell));
   const totRadial = planCell(''); totRadial.classList.add('fp-vor-col'); trF.appendChild(fpCell('radial', totRadial));
   const totDme = planCell(''); totDme.classList.add('fp-vor-col'); trF.appendChild(fpCell('dme', totDme));
   if (freqActive) { const tf2 = planCell(''); tf2.classList.add('fp-freq-col'); trF.appendChild(fpCell('freq', tf2)); }
   trF.appendChild(fpCell('delete', planCell('')));        // Delete column (empty)
   tfoot.appendChild(trF);
   table.appendChild(tfoot);
+
+  // The departure's UTC, and the last-light line for the destination: sunset and the end of
+  // civil twilight on the departure date, and the arrival against it. Shown without a
+  // departure time too (for today, or the date picked) -- last light is worth knowing first.
+  function refreshWhen(etd, dep, zulu, lastVisible, arrival, firstVisible) {
+    // The filing dialog may have set the departure under the open panel.
+    if (etd && document.activeElement !== etdDate && !etdPicker.el.contains(document.activeElement)) {
+      showEtd(etd, zulu);
+    }
+    // Beside the fields, the other clock: UTC while typing local, local while typing UTC.
+    etdUtc.textContent = dep ? (zulu ? (S.fpLocalShort ? S.fpLocalShort(etaClock(dep, false)) : etaClock(dep, false) + ' LT')
+      : etaClock(dep, true)) : '';   // the Z says UTC; an '=' flipped sides in Hebrew
+    etdLbl.textContent = zulu ? (S.fpEtdTimeUtc || 'Departure time (UTC)') : (S.fpEtd || 'Departure (ETD)');
+    etdPicker.el.setAttribute('aria-label', zulu ? (S.fpEtdTimeUtc || 'Departure time (UTC)')
+      : (S.fpEtdTime || 'Departure time (local)'));
+    whenSummary.textContent = (S.fpEtdShort || 'ETD') + ' ' + (dep ? etaClock(dep, zulu) : '--:--');
+    totEtaCell.textContent = arrival ? etaClock(arrival, zulu) : '--';
+    const destIdx = lastVisible >= 0 ? lastVisible + 1 : state.waypoints.length - 1;
+    const dest = state.waypoints[destIdx];
+    const date = etd ? etd.date : etdDate.value;
+    const ll = dest && typeof lastLightAt === 'function' ? lastLightAt(dest.lat, dest.lng, date) : null;
+    // Two different findings: after last light is night (a caution, amber), outside the
+    // field's published hours is a plan that does not work (red).
+    const late = !!(ll && arrival && arrival > ll.lastLight);
+    const hrs = arrival && typeof fieldHoursAt === 'function' ? fieldHoursAt(dest, arrival) : null;
+    const closed = !!(hrs && hrs.state === 'closed');
+    const name = wpLabel(destIdx);
+    totEtaCell.classList.toggle('fp-eta-night', late && !closed);
+    totEtaCell.classList.toggle('fp-eta-closed', closed);
+    totEtaCell.title = closed && S.fpEtaClosedTitle ? S.fpEtaClosedTitle(name)
+      : (late && S.fpEtaDarkTitle ? S.fpEtaDarkTitle(etaClock(ll.lastLight, zulu)) : '');
+    lastLightEl.classList.toggle('fp-last-light-late', late);
+    lastLightShort.classList.toggle('fp-last-light-late', late);
+    // The departure field at the departure time too (Herzliya, for one, shuts to fixed wing
+    // 14:00-16:00).
+    const depIdx = Number.isInteger(firstVisible) ? firstVisible : 0;
+    const depHrs = dep && typeof fieldHoursAt === 'function' ? fieldHoursAt(state.waypoints[depIdx], dep) : null;
+    const depClosed = !!(depHrs && depHrs.state === 'closed');
+    const depName = wpLabel(depIdx);
+    destClosedEl.textContent = [
+      depClosed ? (S.fpDepClosed ? S.fpDepClosed(depName, depHrs.opens || '') : depName + ' is outside its published hours at the departure') : '',
+      closed ? (S.fpDestClosed ? S.fpDestClosed(name, hrs.opens || '') : name + ' is outside its published hours at the arrival') : '',
+    ].filter(Boolean).join(' \u00b7 ');
+    if (!ll) { lastLightEl.textContent = ''; lastLightShort.textContent = ''; return; }
+    const text = (arrival && S.fpArrival ? S.fpArrival(etaClock(arrival, zulu)) + ' \u00b7 ' : '') +
+      (S.fpLastLight
+        ? S.fpLastLight(name, etaClock(ll.sunset, zulu), etaClock(ll.lastLight, zulu))
+        : 'Last light at ' + name + ': ' + etaClock(ll.lastLight, zulu));
+    lastLightEl.textContent = late ? text + ' \u2014 ' + (S.fpLastLightLate || 'arrives after last light') : text;
+    lastLightShort.textContent = (S.fpLastLightShort ? S.fpLastLightShort(etaClock(ll.lastLight, zulu))
+      : 'Last light ' + etaClock(ll.lastLight, zulu)) + (late ? ' \u263e' : '');
+    lastLightShort.title = lastLightEl.textContent;
+  }
 
   function refresh() {
     // Hide the Radial / DME columns when neither a global reference VOR nor
@@ -4690,6 +4913,10 @@ function showFlightPlan() {
     const prof = typeof routeProfile === 'function' ? routeProfile(ac) : null;
     if (typeof drawProfileStripIfOpen === 'function') drawProfileStripIfOpen();
     let visibleSeq = 0;
+    const etd = typeof etdRead === 'function' ? etdRead() : null;
+    const dep = etd && typeof etdInstant === 'function' ? etdInstant(etd) : null;
+    const zulu = typeof etaZulu === 'function' && etaZulu();
+    let lastVisible = -1, arrival = null, clockH = 0;
     for (let i = 0; i < state.legs.length; i++) {
       const visible = typeof legDirVisible !== 'function' || legDirVisible(i);
       if (legRows[i]) legRows[i].hidden = !visible;
@@ -4727,6 +4954,20 @@ function showFlightPlan() {
         fuelCells[i].title = '';
       }
       cumTimeCells[i].textContent = preClock ? '---' : (th > 0 ? toHMS(th) : '--');
+      lastVisible = i;
+      // A clock time counts every leg from take-off, the ones inside the departure CTR too:
+      // the cumulative column starts at the boundary by design, and an ETA (and the night
+      // and opening-hours checks on it) that skipped those minutes came out early.
+      clockH += dur;
+      const eta = dep ? new Date(dep.getTime() + clockH * 3600000) : null;
+      etaCells[i].textContent = eta ? etaClock(eta, zulu) : '--';
+      // After last light at the point itself, for the departure's own date: a VFR day
+      // flight that runs past midnight is past last light too, which this still says.
+      const ll = eta && typeof lastLightAt === 'function' ? lastLightAt(B.lat, B.lng, etd.date) : null;
+      const dark = !!(ll && eta > ll.lastLight);
+      etaCells[i].classList.toggle('fp-eta-night', dark);
+      etaCells[i].title = dark && S.fpEtaDarkTitle ? S.fpEtaDarkTitle(etaClock(ll.lastLight, zulu)) : '';
+      if (eta) arrival = eta;
       cumFuelCells[i].textContent = ac ? tf.toFixed(1) : '--';
       cumFuelCells[i].title = '';
       if (speedInputs[i] && document.activeElement !== speedInputs[i])
@@ -4750,11 +4991,14 @@ function showFlightPlan() {
     totFuelCell.textContent = ac ? tf.toFixed(1) : '--';
     totCumTimeCell.textContent = totTimeCell.textContent;
     totCumFuelCell.textContent = totFuelCell.textContent;
+    refreshWhen(etd, dep, zulu, lastVisible, arrival, firstVisible);
     // Keep the narrow-screen summary in step with the table it summarises.
     if (mobileSummary) {
       mobileSummary.textContent = (typeof S.fpMobileSummary === 'function')
         ? S.fpMobileSummary(visibleIndexes.length, td.toFixed(1),
             th > 0 ? toHMS(th) : '--', ac ? tf.toFixed(1) : '--')
+          // The arrival clock, where the ETA column starts hidden.
+          + (arrival && S.fpArrival ? ' \u00b7 ' + S.fpArrival(etaClock(arrival, zulu)) : '')
         : '';
     }
     if (freqActive) {
@@ -4861,6 +5105,8 @@ function showFlightPlan() {
       const cumFuelCell = planCell('');
       rCumFuelCells[i] = cumFuelCell;
       tr.appendChild(fpCell('cumFuel', cumFuelCell));
+      // The return is a flight of its own, with no departure time here: no ETA.
+      tr.appendChild(fpCell('eta', planCell('')));
       const radial = radialCellWithPicker(ri);
       rRadialCells[i] = radial.val;
       tr.appendChild(fpCell('radial', radial.td));
@@ -4899,6 +5145,7 @@ function showFlightPlan() {
     rtrF.appendChild(fpCell('cumTime', rTotCumTimeCell));
     rTotCumFuelCell = planCell('');
     rtrF.appendChild(fpCell('cumFuel', rTotCumFuelCell));
+    rtrF.appendChild(fpCell('eta', planCell('')));
     const rTotRadial = planCell(''); rTotRadial.classList.add('fp-vor-col'); rtrF.appendChild(fpCell('radial', rTotRadial));
     const rTotDme = planCell(''); rTotDme.classList.add('fp-vor-col'); rtrF.appendChild(fpCell('dme', rTotDme));
     if (freqActive) { const rtf = planCell(''); rtf.classList.add('fp-freq-col'); rtrF.appendChild(fpCell('freq', rtf)); }
@@ -6138,6 +6385,36 @@ function drawA4x2TileMarks(cx, t, total, pxPerMm) {
 // page in a new window; can it be only the print menu?"). A frame needs no pop-up permission
 // either, so a long export is never refused as a blocked pop-up. One image, or several -- the
 // two halves of an A4x2 -- each a sheet of its own, printed once they have all loaded.
+// A whole HTML document, printed without a tab: from a hidden frame in a browser, through the
+// app's print plugin in the APK (native-print.js). The nav log is the one caller.
+function printHtmlPage(html) {
+  if (window.NavAidNativePrint && NavAidNativePrint.available() &&
+      typeof NavAidNativePrint.printHtml === 'function') {
+    NavAidNativePrint.printHtml(html);
+    return;
+  }
+  const old = document.getElementById('navaid-print-frame');
+  if (old) old.remove();
+  const frame = document.createElement('iframe');
+  frame.id = 'navaid-print-frame';
+  frame.setAttribute('aria-hidden', 'true');
+  frame.tabIndex = -1;
+  frame.style.cssText = 'position:fixed;right:0;bottom:0;width:0;height:0;border:0;visibility:hidden';
+  document.body.appendChild(frame);
+  const doc = frame.contentDocument;
+  doc.open();
+  doc.write(html);
+  doc.close();
+  const w = frame.contentWindow;
+  let cleaned = false;
+  const cleanup = () => { if (!cleaned) { cleaned = true; frame.remove(); } };
+  // A beat for the fonts and layout, as the tab version had.
+  setTimeout(() => {
+    try { w.addEventListener('afterprint', () => setTimeout(cleanup, 500)); } catch (e) { /* */ }
+    try { w.focus(); w.print(); } catch (e) { /* */ }
+    setTimeout(cleanup, 120000);
+  }, 300);
+}
 function openPrintWindow(blobs, paperWmm, paperHmm) {
   const list = Array.isArray(blobs) ? blobs : [blobs];
   // The Android app prints through its own plugin (native-print.js): no frame there prints.
@@ -10572,8 +10849,14 @@ function showFplDialog() {
   document.addEventListener('keydown', onEsc, true);
 
   const profile = fplProfileRead();
+  // The departure already planned on the flight-plan panel (#667), when it is not earlier
+  // than the soonest this dialog proposes; otherwise the usual default.
   const when = fplDefaultWhen();
-  const state1 = { date: when.date, time: when.time };
+  const planned = typeof etdRead === 'function' ? etdRead() : null;
+  const plannedAt = planned && typeof etdInstant === 'function' ? etdInstant(planned) : null;
+  const defaultAt = typeof etdInstant === 'function' ? etdInstant(when) : null;
+  const useEtd = !!(plannedAt && defaultAt && plannedAt >= defaultAt);
+  const state1 = useEtd ? { date: planned.date, time: planned.time } : { date: when.date, time: when.time };
 
   const row = (labelText, el) => {
     const wrap = document.createElement('label');
@@ -10760,23 +11043,34 @@ function showFplDialog() {
     // click. The UTC the message will actually carry is shown beside the time, since
     // that is the one thing a pilot cannot work out at a glance.
     const dateEl = input(state1.date, 'date');
-    const timeEl = input(state1.time, 'time');
+    // Quarter hours, as the proposed default already is (quarterTimePicker).
+    const timePicker = quarterTimePicker('fpl-time', state1.time,
+      { label: S.fplTime || 'Departure (local)' });
+    const timeEl = timePicker.input;
     dateEl.id = 'fpl-date';
-    timeEl.id = 'fpl-time';
     const utcHint = document.createElement('span');
     utcHint.className = 'fpl-inline-hint';
     utcHint.id = 'fpl-utc-hint';
     const timeBox = document.createElement('span');
     timeBox.className = 'fpl-time-box';
-    timeBox.append(timeEl, utcHint);
+    timeBox.append(timePicker.el, utcHint);
     const syncWhen = () => {
       state1.date = dateEl.value;
       state1.time = timeEl.value;
       const utc = fplUtcFromLocal(state1.date, state1.time);
       utcHint.textContent = utc ? utc.eobt + 'Z' : '';
     };
-    dateEl.onchange = syncWhen;
-    timeEl.onchange = syncWhen;
+    // A departure the pilot types here is the plan's departure too: the flight-plan panel's
+    // ETAs and last-light check follow it.
+    const typedWhen = () => {
+      syncWhen();
+      if (utcHint.textContent && typeof etdWrite === 'function') {
+        etdWrite(state1.date, state1.time);
+        if (typeof refreshFlightPlan === 'function') refreshFlightPlan();
+      }
+    };
+    dateEl.onchange = typedWhen;
+    timeEl.onchange = typedWhen;
     body.append(row(S.fplDate || 'Date', dateEl), row(S.fplTime || 'Departure (local)', timeBox));
     syncWhen();
 
