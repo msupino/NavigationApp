@@ -4313,17 +4313,26 @@ function showFlightPlan() {
   whenMenu.append(etdHead, etdFields, etdSoon, zuluLbl, lastLightEl);
   // On window, capturing: it runs before the plan's own Escape (on document), so Escape closes
   // the popover and only the popover.
+  // Both let go once the popover is no longer on the page: the plan can close with it open, and
+  // a listener left on window would swallow every later Escape in the app.
+  const dropWhenListeners = () => {
+    window.removeEventListener('keydown', onWhenKey, true);
+    document.removeEventListener('pointerdown', onWhenOutside, true);
+  };
   const onWhenKey = (e) => {
+    if (!whenWrap.isConnected) { dropWhenListeners(); return; }
     if (e.key === 'Escape' && whenWrap.open) { e.stopImmediatePropagation(); e.preventDefault(); whenWrap.open = false; try { whenSummary.focus(); } catch (er) { /* */ } }
   };
-  const onWhenOutside = (e) => { if (whenWrap.open && !whenWrap.contains(e.target)) whenWrap.open = false; };
+  const onWhenOutside = (e) => {
+    if (!whenWrap.isConnected) { dropWhenListeners(); return; }
+    if (whenWrap.open && !whenWrap.contains(e.target)) whenWrap.open = false;
+  };
   whenWrap.addEventListener('toggle', () => {
     if (whenWrap.open) {
       window.addEventListener('keydown', onWhenKey, true);
       document.addEventListener('pointerdown', onWhenOutside, true);
     } else {
-      window.removeEventListener('keydown', onWhenKey, true);
-      document.removeEventListener('pointerdown', onWhenOutside, true);
+      dropWhenListeners();
     }
   });
   whenWrap.appendChild(whenMenu);

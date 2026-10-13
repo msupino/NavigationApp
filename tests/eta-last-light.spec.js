@@ -518,3 +518,45 @@ test('the UTC switch moves nothing (' + lang + ')', async ({ page }) => {
   const after = await geo();
   expect(after).toEqual(before);
 });
+
+test('closing the plan with the departure popover open leaves Escape working', async ({ page }) => {
+  await boot(page);
+  await openFlightPlan(page);
+  await openWhen(page);
+  await page.evaluate(() => closeFlightPlan());
+  // Escape still reaches the app: a modal opened now closes with it.
+  await page.evaluate(() => showFlightPlan());
+  await page.locator('.modal-back.flight-plan').waitFor();
+  await page.keyboard.press('Escape');
+  await expect(page.locator('.modal-back.flight-plan')).toHaveCount(0);
+});
+
+// Local and Zulu agree everywhere: the plan's UTC hint, its ETAs in UTC mode, the filing dialog
+// and the filed EOBT. Israel is UTC+3 in summer and UTC+2 in winter.
+for (const [season, date, local, zulu] of [['summer', '2027-06-21', '10:00', '07:00'], ['winter', '2027-01-12', '10:00', '08:00']]) {
+  test('local and Zulu agree (' + season + ')', async ({ page }) => {
+    await boot(page, { date, time: local });
+    await openFlightPlan(page);
+    await openWhen(page);
+    await expect(page.locator('.fp-etd-utc')).toHaveText(zulu + 'Z');
+    // ETAs: the same instant, in either clock.
+    const localEta = String(await etaCell(page).textContent());
+    await page.locator('#fp-eta-zulu').check();
+    const zuluEta = String(await etaCell(page).textContent());
+    const mins = t => Number(t.slice(0, 2)) * 60 + Number(t.slice(3, 5));
+    const diff = (mins(localEta) - mins(zuluEta) + 1440) % 1440;
+    expect(diff).toBe(season === 'summer' ? 180 : 120);
+    expect(zuluEta.endsWith('Z')).toBe(true);
+    // The departure shown in UTC mode is the Zulu time, the hint beside it the local one.
+    await expect(page.locator('#fp-etd-time')).toHaveValue(zulu);
+    await expect(page.locator('.fp-etd-utc')).toHaveText(local + ' local');
+    await page.locator('#fp-eta-zulu').uncheck();
+    await page.locator('.fp-when-close').click();
+    // Filed: the dialog shows the local time and the UTC it will carry, and the message has it.
+    await page.locator('#fpl-open').click();
+    await expect(page.locator('#fpl-time')).toHaveValue(local);
+    await expect(page.locator('#fpl-utc-hint')).toHaveText(zulu.replace(':', '') + 'Z');
+    const eobt = await page.evaluate(([d, t]) => fplUtcFromLocal(d, t).eobt, [date, local]);
+    expect(eobt).toBe(zulu.replace(':', ''));
+  });
+}
