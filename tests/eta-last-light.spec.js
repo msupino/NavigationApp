@@ -289,3 +289,25 @@ test('the departure field at the departure time: Herzliya is shut to fixed wing 
   await setEtd(page, '2026-06-21', '16:00');
   await expect(page.locator('#fp-dest-closed')).not.toContainText('at the departure');
 });
+
+test('legs inside the departure CTR count towards the clock time', async ({ page }) => {
+  await boot(page);
+  const ctr = await page.evaluate(() => {
+    const hz = airfields.find(a => a.name === 'LLHZ'), ha = airfields.find(a => a.name === 'LLHA');
+    state.waypoints = [{ lat: hz.lat, lng: hz.lng, name: 'LLHZ' },
+      { lat: hz.lat + 0.03, lng: hz.lng + 0.01, name: 'BAZRA' }, { lat: ha.lat, lng: ha.lng, name: 'LLHA' }];
+    syncLegs(); draw();
+    return typeof legInsideCtr === 'function' && legInsideCtr(0);
+  });
+  test.skip(!ctr, 'no CTR leg in this dataset');
+  await openFlightPlan(page);
+  await setEtd(page, '2026-06-21', '10:00');
+  const first = page.locator('.flight-table tbody tr').first().locator('td.fp-col-eta');
+  // The cumulative column says "---" for it; the clock does not stop.
+  await expect(first).toHaveText(/^10:0\d$/);
+  const total = String(await page.locator('.flight-table tfoot td.fp-col-eta').first().textContent());
+  const cum = String(await page.locator('.flight-table tfoot td.fp-col-cumTime').first().textContent());
+  const [m, s] = cum.split(':').map(Number);
+  // Arrival is later than departure + the boundary-started cumulative time.
+  expect(Number(total.slice(3))).toBeGreaterThan(m + s / 60);
+});

@@ -2059,9 +2059,9 @@ function gpsCheckLegAlerts() {
       const spoken = label === code && code ? gpsSpokenPlace(code, lang) : label;
       // Local clocks: what the pilot's watch and the published tables say.
       const etaC = typeof etaClock === 'function' ? etaClock(eta, false) : '';
-      if (!_gpsDestClosedAlerted && typeof hoursAtArrival === 'function') {
+      if (!_gpsDestClosedAlerted && typeof fieldHoursAt === 'function') {
         if (window.NavAid && NavAid.airfieldHours) NavAid.airfieldHours.load();
-        const hrs = hoursAtArrival(dest, eta);
+        const hrs = fieldHoursAt(dest, eta);
         if (hrs && hrs.state === 'closed') {
           _gpsDestClosedAlerted = true;
           gpsSendWatchAlert((S && S.watchAlertDestClosedTitle) || 'Destination hours',

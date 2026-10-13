@@ -4044,7 +4044,7 @@ function quarterTimePicker(id, value, opts) {
   const changed = (which) => {
     // Picking an hour with no minutes yet means on the hour; clearing either clears both.
     if (which === hour && hour.value && !min.value) min.value = '00';
-    if (!hour.value || !min.value) { hour.value = o.allowEmpty ? '' : hour.value; if (o.allowEmpty) min.value = ''; }
+    // A minute picked before an hour stays picked; the time is empty until both are set.
     native.set.call(input, read());
     input.dispatchEvent(new Event('change'));
   };
@@ -4865,7 +4865,7 @@ function showFlightPlan() {
     // Two different findings: after last light is night (a caution, amber), outside the
     // field's published hours is a plan that does not work (red).
     const late = !!(ll && arrival && arrival > ll.lastLight);
-    const hrs = arrival && typeof hoursAtArrival === 'function' ? hoursAtArrival(dest, arrival) : null;
+    const hrs = arrival && typeof fieldHoursAt === 'function' ? fieldHoursAt(dest, arrival) : null;
     const closed = !!(hrs && hrs.state === 'closed');
     const name = wpLabel(destIdx);
     totEtaCell.classList.toggle('fp-eta-night', late && !closed);
@@ -4877,7 +4877,7 @@ function showFlightPlan() {
     // The departure field at the departure time too (Herzliya, for one, shuts to fixed wing
     // 14:00-16:00).
     const depIdx = Number.isInteger(firstVisible) ? firstVisible : 0;
-    const depHrs = dep && typeof hoursAtArrival === 'function' ? hoursAtArrival(state.waypoints[depIdx], dep) : null;
+    const depHrs = dep && typeof fieldHoursAt === 'function' ? fieldHoursAt(state.waypoints[depIdx], dep) : null;
     const depClosed = !!(depHrs && depHrs.state === 'closed');
     const depName = wpLabel(depIdx);
     destClosedEl.textContent = [
@@ -4915,7 +4915,7 @@ function showFlightPlan() {
     const etd = typeof etdRead === 'function' ? etdRead() : null;
     const dep = etd && typeof etdInstant === 'function' ? etdInstant(etd) : null;
     const zulu = typeof etaZulu === 'function' && etaZulu();
-    let lastVisible = -1, arrival = null;
+    let lastVisible = -1, arrival = null, clockH = 0;
     for (let i = 0; i < state.legs.length; i++) {
       const visible = typeof legDirVisible !== 'function' || legDirVisible(i);
       if (legRows[i]) legRows[i].hidden = !visible;
@@ -4954,8 +4954,12 @@ function showFlightPlan() {
       }
       cumTimeCells[i].textContent = preClock ? '---' : (th > 0 ? toHMS(th) : '--');
       lastVisible = i;
-      const eta = dep && !preClock ? new Date(dep.getTime() + th * 3600000) : null;
-      etaCells[i].textContent = preClock ? '---' : (eta ? etaClock(eta, zulu) : '--');
+      // A clock time counts every leg from take-off, the ones inside the departure CTR too:
+      // the cumulative column starts at the boundary by design, and an ETA (and the night
+      // and opening-hours checks on it) that skipped those minutes came out early.
+      clockH += dur;
+      const eta = dep ? new Date(dep.getTime() + clockH * 3600000) : null;
+      etaCells[i].textContent = eta ? etaClock(eta, zulu) : '--';
       // After last light at the point itself, for the departure's own date: a VFR day
       // flight that runs past midnight is past last light too, which this still says.
       const ll = eta && typeof lastLightAt === 'function' ? lastLightAt(B.lat, B.lng, etd.date) : null;

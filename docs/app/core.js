@@ -1727,7 +1727,7 @@ window.S = Object.assign({
   fpLocalShort: function (t) { return t + ' local'; },
   qtimeMinute: 'Minutes',
   fpLastLightShort: function (t) { return 'Last light ' + t; },
-  fpEtdTitle: 'Planned take-off time, local. The ETA column and the last-light check count from it; the flight-plan filing dialog uses the same departure.',
+  fpEtdTitle: 'Planned take-off time. The ETA column and the last-light check count from it; the flight-plan filing dialog uses the same departure.',
   fpEtdDate: 'Departure date',
   fpEtdTime: 'Departure time (local)',
   fpEtaZulu: 'Times in UTC',
@@ -5359,8 +5359,8 @@ function etdInstant(etd) {
   const when = new Date(d[0], d[1] - 1, d[2], Number(t[1]), Number(t[2]), 0, 0);
   return isNaN(when.getTime()) ? null : when;
 }
-// Departures are planned in quarter hours. The time inputs step by 15 minutes, but Android's
-// picker ignores the step, so whatever arrives is snapped to the nearest quarter here --
+// Departures are planned in quarter hours (quarterTimePicker offers 00/15/30/45). A time from
+// anywhere else -- an older stored departure -- is snapped to the nearest quarter here,
 // never across midnight (23:53 is 23:45, not tomorrow's 00:00).
 function etdQuarter(time) {
   const t = ETD_TIME_RE.exec(String(time || ''));
@@ -5368,12 +5368,13 @@ function etdQuarter(time) {
   const q = Math.min(Math.round((Number(t[1]) * 60 + Number(t[2])) / 15) * 15, 23 * 60 + 45);
   return String(Math.floor(q / 60)).padStart(2, '0') + ':' + String(q % 60).padStart(2, '0');
 }
-// The destination's published operating hours at an instant: { state: 'open' | 'closed',
+// A field's published operating hours at an instant (the departure at the ETD, the destination
+// at the arrival): { state: 'open' | 'closed',
 // until, opens, approx } from airfield-hours.js, or null when the field publishes none or the
 // rules cannot decide (holiday calendar, the edge of twilight). Night is a caution -- night VFR
 // is legal for some pilots, and some fields are open after dark -- but a field outside its
 // published hours at the arrival is a plan that does not work.
-function hoursAtArrival(wp, when) {
+function fieldHoursAt(wp, when) {
   const AH = window.NavAid && window.NavAid.airfieldHours;
   if (!AH || !wp || !(when instanceof Date) || typeof airfieldAtWaypoint !== 'function') return null;
   const af = airfieldAtWaypoint(wp);
