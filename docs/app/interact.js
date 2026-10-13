@@ -4032,7 +4032,8 @@ function showInspector() {
         typeof navName === 'function' ? navName(wpName) : wpName));
       appendFreqEdit(body, note);
     } else {
-      title.value = '';
+      // Every other kind of point names itself in the header; a note's header was blank.
+      title.value = note.rp ? (S.rpInspTitle || 'Identification point') : (S.noteInspTitle || 'Note');
       title.placeholder = '';
       title.readOnly = true;
       title.oninput = null;
@@ -4109,6 +4110,9 @@ function showInspector() {
     }
     appendVorAipInfo(body, v);
     appendSatelliteSnippet(body, v, title.value);
+    // A VOR is a point to fly to like any other: the same two actions as a reporting point.
+    appendDirectToButton(body, v);
+    appendAddToRouteButton(body, v);
     const useBtn = document.createElement('button');
     useBtn.className = 'insp-btn';
     useBtn.id = 'insp-vor-use-ref';
@@ -4135,6 +4139,8 @@ function showInspector() {
     title.placeholder = ''; title.readOnly = true; title.oninput = null;
     appendPointCoordinateRows(body, af);
     appendAirfieldDetailRows(body, af, title.value);
+    // The same pair every point-to-fly-to has (reporting points, map points, VORs).
+    appendDirectToButton(body, af);
     appendAddToRouteButton(body, af);
   } else if (state.selected.type === 'airspace') {
     // One area of controlled or restricted airspace, from the AIP. Everything here is a

@@ -1826,6 +1826,8 @@ window.S = Object.assign({
   // --- end English UI copy (waypoint-related keys above) --------------
 
   noteDefault: 'Note',
+  noteInspTitle: 'Note',
+  rpInspTitle: 'Identification point',
   errLoadFile: 'Could not load file: ',
   errStorageFull: 'Auto-save failed: browser storage is full. Export your route to keep it.',
   errInvalidRoute: function(msg) { return 'Invalid route file: ' + msg; },

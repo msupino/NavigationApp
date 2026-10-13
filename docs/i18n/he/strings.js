@@ -366,6 +366,8 @@ window.S = {
   // --- end Waypoint terminology ---------------------------------------
 
   noteDefault: 'הערה',
+  noteInspTitle: 'הערה',
+  rpInspTitle: 'נקודת הזדהות',
   errLoadFile: 'לא ניתן לטעון קובץ: ',
   errStorageFull: 'השמירה האוטומטית נכשלה: אחסון הדפדפן מלא. ייצא את המסלול כדי לשמור אותו.',
   errInvalidRoute: function(msg) { return 'קובץ מסלול לא תקין: ' + msg; },
