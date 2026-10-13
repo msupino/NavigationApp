@@ -856,6 +856,15 @@ window.S = {
   fplMailRoute: (list) => 'נתיב: ' + list,
   fplMailArrival: (place, t) => 'נחיתה ב' + place + ' ב ' + t,
   warnFplClosedCorridor: 'ייתכן שנתיב במסלול סגור או מוגבל בשעות במועד ההמראה שנבחר (מקור משני) — לא פורסמה חלופה פתוחה, ולכן הוא מוגש בכל זאת. יש לוודא מול הנוטאמים.',
+  fplEtdFirst: 'קודם קבעו שעת המראה \u2014 התכנית מוגשת איתה.',
+  fplEtdPassedFirst: function (t) { return 'שעת ההמראה (\u2066' + t + '\u2069) כבר עברה \u2014 קבעו שעה חדשה ואז הגישו.'; },
+  fplEtdPassedTitle: 'שעת המראה',
+  fplSetNewTime: 'קביעת שעה חדשה',
+  fplOpenAnyway: 'לפתוח בכל זאת',
+  fplOpenAnywayTitle: 'אם השעון של המכשיר הוא שטועה: להגיש את השעה כפי שנקבעה',
+  fplEtdForced: 'לפי שעון המכשיר היא כבר עברה; היא תוגש כפי שביקשתם.',
+  fplAllowPast: 'לשלוח בכל זאת \u2014 בדקתי את השעה',
+  fplEtdFromPlan: 'משעת ההמראה בתכנית הטיסה (ETD) \u2014 שנו אותה שם.',
   fplEtdPassed: function (planned, proposed) {
     return 'שעת ההמראה המתוכננת (\u2066' + planned + '\u2069) כבר עברה \u2014 הוצעה \u2066' + proposed + '\u2069. שנו אותה כאן; תכנית הטיסה תתעדכן.';
   },

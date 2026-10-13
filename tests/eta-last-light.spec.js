@@ -145,8 +145,7 @@ test('UTC toggle writes every clock with a Z', async ({ page }) => {
   expect(await page.evaluate(() => localStorage.getItem('navaid.etaZulu'))).toBe('1');
 });
 
-test('the filing dialog starts from the planned departure, and writes it back', async ({ page }) => {
-  // A departure tomorrow, comfortably beyond the filing lead.
+test('the filing dialog shows the planned departure, read-only, and says where to change it', async ({ page }) => {
   const tomorrow = new Date(Date.now() + 36 * 3600000);
   const iso = tomorrow.getFullYear() + '-' + String(tomorrow.getMonth() + 1).padStart(2, '0') + '-' +
     String(tomorrow.getDate()).padStart(2, '0');
@@ -154,10 +153,70 @@ test('the filing dialog starts from the planned departure, and writes it back', 
   await page.evaluate(() => showFplDialog());
   await expect(page.locator('#fpl-time')).toHaveValue('09:45');
   await expect(page.locator('#fpl-date')).toHaveValue(iso);
-  await page.locator('#fpl-time').locator('..').locator('.qtime-h').selectOption('10');
-  await page.locator('#fpl-time').locator('..').locator('.qtime-m').selectOption('30');
-  expect(await page.evaluate(() => JSON.parse(localStorage.getItem('navaid.etd'))))
-    .toEqual({ date: iso, time: '10:30' });
+  await expect(page.locator('#fpl-date')).toBeDisabled();
+  await expect(page.locator('.fpl-time-box .qtime-h')).toBeDisabled();
+  await expect(page.locator('.fpl-time-box .qtime-m')).toBeDisabled();
+  await expect(page.locator('#fpl-etd-from-plan')).toContainText('change it there');
+  await expect(page.locator('.fpl-time-box')).toHaveAttribute('aria-describedby', /fpl-etd-from-plan/);
+});
+
+// The plan's Submit button: the filing dialog opens only with a departure still ahead.
+test('Submit with no departure set opens the departure, not the filing dialog', async ({ page }) => {
+  await boot(page, null);
+  await openFlightPlan(page);
+  await page.locator('#fpl-open').click();
+  await expect(page.locator('#fpl-date')).toHaveCount(0);           // no filing dialog
+  await expect(page.locator('details.fp-when')).toHaveJSProperty('open', true);
+  await expect(page.locator('details.fp-when .qtime-h')).toBeFocused();
+  await expect(page.locator('body')).toContainText('Set the departure time first');
+});
+
+test('Submit with a passed departure asks: set a new time (the default) ...', async ({ page }) => {
+  await boot(page, { date: '2020-01-01', time: '09:00' });
+  await openFlightPlan(page);
+  await page.locator('#fpl-open').click();
+  const ask = page.locator('.fpl-etd-ask');
+  await expect(ask).toContainText('has passed');
+  await expect(ask.locator('.fpl-etd-set')).toBeFocused();
+  await ask.locator('.fpl-etd-set').click();
+  await expect(page.locator('#fpl-date')).toHaveCount(0);
+  await expect(page.locator('details.fp-when')).toHaveJSProperty('open', true);
+  await expect(page.locator('details.fp-when .qtime-h')).toBeFocused();
+});
+
+test('... or open anyway: the time as set, and Continue is not refused for it', async ({ page }) => {
+  await boot(page, { date: '2020-01-01', time: '09:00' });
+  await openFlightPlan(page);
+  await page.locator('#fpl-open').click();
+  await page.locator('.fpl-etd-ask .fpl-etd-force').click();
+  await expect(page.locator('#fpl-time')).toHaveValue('09:00');
+  await expect(page.locator('#fpl-date')).toHaveValue('2020-01-01');
+  await expect(page.locator('#fpl-etd-from-plan')).toContainText('sent as you asked');
+  await expect(page.locator('#fpl-time-past')).toBeHidden();
+  await page.getByRole('button', { name: 'Continue' }).click();
+  await expect(page.locator('.fpl-errs')).not.toContainText('already passed');
+});
+
+test('the "already passed" refusal has a checkbox to send it anyway', async ({ page }) => {
+  await boot(page);
+  await page.evaluate(() => showFplDialog());                          // no plan departure: editable
+  await page.locator('#fpl-date').fill('2020-01-01');
+  await page.locator('#fpl-date').dispatchEvent('change');
+  await page.getByRole('button', { name: 'Continue' }).click();
+  await expect(page.locator('.fpl-errs')).toContainText('already passed');
+  await page.locator('#fpl-allow-past').check();
+  await page.getByRole('button', { name: 'Continue' }).click();
+  await expect(page.locator('.fpl-errs')).not.toContainText('already passed');
+});
+
+test('Submit with a departure still ahead opens the filing dialog with it', async ({ page }) => {
+  const tomorrow = new Date(Date.now() + 36 * 3600000);
+  const iso = tomorrow.getFullYear() + '-' + String(tomorrow.getMonth() + 1).padStart(2, '0') + '-' +
+    String(tomorrow.getDate()).padStart(2, '0');
+  await boot(page, { date: iso, time: '11:30' });
+  await openFlightPlan(page);
+  await page.locator('#fpl-open').click();
+  await expect(page.locator('#fpl-time')).toHaveValue('11:30');
 });
 
 test('a departure in the past is not offered for filing, and the dialog says why', async ({ page }) => {

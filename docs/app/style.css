@@ -3951,6 +3951,12 @@ body.deck-on .fp-when-fields input { min-height: 30px; font-size: 16px; }
   min-height: 24px;
 }
 .qtime-sep { font-weight: 600; }
+/* Under the "already passed" refusal: send it anyway. */
+.fpl-past-override { display: flex; align-items: center; gap: 8px; margin-top: 6px; font-weight: 600; cursor: pointer; }
+.fpl-past-override input { width: 18px; height: 18px; flex: none; }
+/* Taken from the flight plan in the filing dialog: dimmed and not editable, never hidden. */
+.qtime select:disabled,
+.fpl-row input:disabled { opacity: 0.6; cursor: not-allowed; }
 /* The filing dialog's fields are full width; the two lists are not. */
 .fpl-row .qtime select,
 .fpl-row-stacked .qtime select { width: auto; }

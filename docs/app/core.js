@@ -2326,6 +2326,15 @@ window.S = Object.assign({
   fplMailRoute: (list) => 'Route: ' + list,
   fplMailArrival: (place, t) => 'Landing at ' + place + ' at ' + t,
   warnFplClosedCorridor: 'A corridor on this route may be closed or time-gated at the chosen departure time (secondary source) — no open alternative was published, so it is filed anyway. Verify with the NOTAMs.',
+  fplEtdFirst: 'Set the departure time first \u2014 the plan is filed with it.',
+  fplEtdPassedFirst: function (t) { return 'The departure time (' + t + ') has passed \u2014 set a new one, then submit.'; },
+  fplEtdPassedTitle: 'Departure time',
+  fplSetNewTime: 'Set a new time',
+  fplOpenAnyway: 'Open anyway',
+  fplOpenAnywayTitle: 'If this device\u2019s clock is what is wrong: file the time as it is set',
+  fplEtdForced: 'It has passed by this device\u2019s clock; it is sent as you asked.',
+  fplAllowPast: 'Send anyway \u2014 I have checked the time',
+  fplEtdFromPlan: 'From the flight plan\u2019s departure (ETD) \u2014 change it there.',
   fplEtdPassed: function (planned, proposed) {
     return 'The planned departure (' + planned + ') has passed \u2014 proposed ' + proposed + '. Change it here; the flight plan follows.';
   },
