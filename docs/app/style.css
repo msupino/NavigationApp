@@ -3886,6 +3886,35 @@ body.theme-light .route-library-row { border-color: #c6ccd6; }
   max-width: min(360px, calc(92vw - 28px));
 }
 .fp-when-label { font-weight: 600; }
+.fp-when-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; width: 100%; }
+.fp-when-close {
+  font: inherit; font-size: 15px; line-height: 1; cursor: pointer; color: inherit; opacity: 0.8;
+  background: transparent; border: 0; border-radius: 6px; min-width: 24px; min-height: 24px; padding: 2px 4px;
+}
+.fp-when-close:hover { opacity: 1; background: rgba(127, 127, 127, 0.18); }
+body.deck-on .fp-when-close { min-width: 30px; min-height: 30px; }
+/* The one findings line: amber with a moon for night, red with a warning sign for a shut field. */
+.fp-dest-closed.fp-finding-night { color: #ffcc80; }
+.fp-dest-closed.fp-finding-night::before { content: '\263E  '; }
+body.theme-light .fp-dest-closed.fp-finding-night { color: #8a5300; }
+/* Now + 60 min: the soonest filable departure, in one tap. */
+.fp-etd-soon {
+  font: inherit; font-size: 13px; font-weight: 600; cursor: pointer;
+  color: #9fd0ff; background: transparent; border: 1px solid #4a5a72; border-radius: 6px;
+  padding: 4px 10px; min-height: 30px;
+}
+.fp-etd-soon:hover { background: rgba(29, 111, 224, 0.15); }
+body.theme-light .fp-etd-soon { color: #1d5fbf; border-color: #9fb3cf; }
+/* Submit found no departure (or a passed one): what was missed pulses red three times. */
+@keyframes fp-attn-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(229, 72, 77, 0); }
+  50% { box-shadow: 0 0 0 4px rgba(229, 72, 77, 0.9); }
+}
+.fp-attn { animation: fp-attn-pulse 0.6s ease-in-out 3; border-radius: 6px; }
+details.fp-when summary.fp-attn { border-color: #e5484d; }
+@media (prefers-reduced-motion: reduce) {
+  .fp-attn { animation: none; box-shadow: 0 0 0 3px #e5484d; }
+}
 .fp-when-fields {
   display: flex;
   flex-wrap: wrap;
@@ -3909,6 +3938,13 @@ body.theme-light .route-library-row { border-color: #c6ccd6; }
 .fp-etd-utc,
 .fp-last-light,
 .fp-last-light-short { font-variant-numeric: tabular-nums; }
+/* Times in UTC adds a Z to every clock: the room for it is kept in local time too, so the
+   switch changes the text and nothing moves (it re-flowed the table and the row above it). */
+.flight-table th.fp-col-eta,
+.flight-table td.fp-col-eta { min-width: 9.5ch; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.fp-when summary { font-variant-numeric: tabular-nums; }
+.fp-z-ghost { visibility: hidden; }
+.fp-etd-utc { display: inline-block; min-width: 9ch; }
 .fp-last-light {
   color: #b9b3b3;
   white-space: normal;
@@ -3924,6 +3960,8 @@ body.theme-light .route-library-row { border-color: #c6ccd6; }
 .flight-table td.fp-eta-night { color: #ffcc80; font-weight: 600; }
 .flight-table td.fp-eta-night::after { content: ' \263E'; }
 .fp-dest-closed:empty { display: none; }
+.fp-last-light.fp-last-light-closed { color: #ff8a80; font-weight: 600; }
+body.theme-light .fp-last-light.fp-last-light-closed { color: #b3261e; }
 .fp-dest-closed,
 .flight-table td.fp-eta-closed { color: #ff8a80; font-weight: 600; }
 .fp-dest-closed { font-size: 13px; }
@@ -3951,6 +3989,23 @@ body.deck-on .fp-when-fields input { min-height: 30px; font-size: 16px; }
   min-height: 24px;
 }
 .qtime-sep { font-weight: 600; }
+/* Under the "already passed" refusal: send it anyway -- the error line's own size. */
+.fpl-past-override { display: flex; align-items: center; gap: 8px; margin-top: 6px; font-size: 13px; font-weight: 600; cursor: pointer; }
+/* The time field and its notes in one column: a note sits under the field it explains. */
+.fpl-time-col { display: flex; flex-direction: column; align-items: stretch; gap: 4px; min-width: 0; }
+.fpl-time-col .fpl-hint { margin: 0; }
+/* The outline of a past time hugs the time, not the column. */
+.fpl-time-col .fpl-time-box { align-self: flex-start; }
+/* With notes under the time the row grows: its label stays level with the time, not mid-row. */
+.fpl-row:has(.fpl-time-col) { align-items: start; }
+.fpl-row:has(.fpl-time-col) > span:first-child { padding-top: 7px; }
+/* The departure question: centred like the app's other questions, buttons under the text. */
+.fpl-etd-ask .follow-me-ask-text { text-align: center; }
+.fpl-etd-ask .follow-me-ask-actions { justify-content: center; }
+.fpl-past-override input { width: 18px; height: 18px; flex: none; }
+/* Taken from the flight plan in the filing dialog: dimmed and not editable, never hidden. */
+.qtime select:disabled,
+.fpl-row input:disabled { opacity: 0.6; cursor: not-allowed; }
 /* The filing dialog's fields are full width; the two lists are not. */
 .fpl-row .qtime select,
 .fpl-row-stacked .qtime select { width: auto; }
