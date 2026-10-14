@@ -7453,6 +7453,14 @@
         "distanceNm": 5.2,
         "chartDistanceNm": 5.2,
         "status": "reviewed"
+      },
+      {
+        "to": "PELEG",
+        "inboundAltitude": 2000,
+        "outboundAltitude": 1500,
+        "distanceNm": 3.41,
+        "status": "reviewed",
+        "source": "maintainer: published CVFR chart, SHARO->PELEG 2000 / PELEG->SHARO 1500"
       }
     ],
     "ZALMN": [
@@ -9402,6 +9410,14 @@
           "maxGap": 9,
           "samples": 65
         }
+      },
+      {
+        "to": "SHARO",
+        "inboundAltitude": 1500,
+        "outboundAltitude": 2000,
+        "distanceNm": 3.41,
+        "status": "reviewed",
+        "source": "maintainer: published CVFR chart, SHARO->PELEG 2000 / PELEG->SHARO 1500"
       }
     ],
     "ROKCH": [

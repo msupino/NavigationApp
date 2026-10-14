@@ -256,7 +256,8 @@ test('the data census matches what the maintainer last signed off', () => {
     // +1 segment: EITAN <-> AFULA, 3000 eastbound / 2500 westbound. Published on the
     // chart and missing from the graph; found with the ?graphlegs=1 review overlay.
     // commChange 52 -> 51: ZASHD is not a frequency-change point on the CVFR chart (reported, #2598).
-    cvfr: { layerNodes: 172, activeNodes: 170, segments: 272, commChange: 51, unknown: 6 },
+    // +1 segment: SHARO <-> PELEG, 2000 westbound (SHARO -> PELEG) / 1500 eastbound (PELEG -> SHARO).
+    cvfr: { layerNodes: 172, activeNodes: 170, segments: 273, commChange: 51, unknown: 6 },
     heli: { layerNodes: 209, activeNodes: 209, segments: 85, commChange: 0, unknown: 38 },
     // +9 nodes / +12 segments / +12 unknowns: GORAL, TAALL, MACHR and the six airstrips
     // from the second capture (#1485) -- the first census update under the new mechanism.
@@ -301,6 +302,9 @@ test('the safety-critical rows read exactly what the chart says', () => {
   expect(edge('KNTRY', 'HTZUK').blocked).toBe(true);
   // Herzliya's one-way departure corridor: out via SFAIM at 1200, never back.
   expect(edge('LLHZ', 'SFAIM')).toMatchObject({ inboundAltitude: 1200, oneWay: true });
+  // Sharon junction <-> Peleg: 2000 towards Peleg, 1500 back (maintainer, from the chart).
+  expect(edge('SHARO', 'PELEG')).toMatchObject({ inboundAltitude: 2000, outboundAltitude: 1500, status: 'reviewed' });
+  expect(edge('PELEG', 'SHARO')).toMatchObject({ inboundAltitude: 1500, outboundAltitude: 2000, status: 'reviewed' });
   // A comm-change node keeps its call signs.
   expect(g.nodes.BASAN.commChange).toBe(true);
   expect(g.nodes.BASAN.callSigns).toContain('PLUTO_EAST');
