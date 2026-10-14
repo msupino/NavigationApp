@@ -934,6 +934,7 @@ window.S = {
 
   speedKt: 'מהירות (קשר)',
   legDirection: 'כיוון',
+  legDistance: 'אורך קטע',
   windFromDeg: 'רוח מ-(°)',
   windSpeedKt: 'מהירות רוח (קשר)',
   windEffect: 'עם רוח',

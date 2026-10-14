@@ -3854,11 +3854,13 @@ function showInspector() {
       propagateAlt(idx, 'flightSpeed', v, oldVal);
       draw(); refreshWindFx();
     }));
-    // Leg magnetic heading (read-only) — sits between speed and altitude.
+    // Leg magnetic heading and length (read-only) — together, between speed and altitude: the two
+    // facts of the line itself, the length to one decimal as the flight plan's Dist column has it.
     const _dirA = state.waypoints[idx], _dirB = state.waypoints[idx + 1];
     if (_dirA && _dirB) {
-      body.appendChild(textRow(S.legDirection || 'Direction',
-        pad3(toMagnetic(geo(_dirA, _dirB).brg)) + '°'));
+      const _g = geo(_dirA, _dirB);
+      body.appendChild(textRow(S.legDirection || 'Direction', pad3(toMagnetic(_g.brg)) + '°'));
+      body.appendChild(textRow(S.legDistance || 'Leg length', _g.dist.toFixed(1) + ' NM'));
     }
     // Reset-to-known: the charted altitude from the route graph. Read from
     // the pristine ORIGIN map (legAltitudeOriginForLeg), not the live lookup —
