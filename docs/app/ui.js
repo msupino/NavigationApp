@@ -195,7 +195,9 @@ const MENU_ICONS = {
   load: 'upload', 'route-library': 'folder', share: 'link', fly: 'plane', 'follow-me-new': 'key',
   'clear-store': 'trash', 'print-fit-screen': 'fit', 'print-fit': 'expand', print: 'print',
 };
-const LEADING_GLYPHS = /^[\s\u2190-\u2BFF\u2600-\u27BF\uFE0F\u200D\p{Extended_Pictographic}]+/u;
+// "+" and the full-width "＋" too: both are mapped to the plus icon (GLYPH_ICONS), and a label
+// that kept its own plus showed two ("+ + Add identification-point marker").
+const LEADING_GLYPHS = /^[\s+\uFF0B\u2190-\u2BFF\u2600-\u27BF\uFE0F\u200D\p{Extended_Pictographic}]+/u;
 let menuDressing = false;
 function dressMenuItem(btn) {
   const spec = MENU_ICONS[btn.id];
@@ -235,7 +237,7 @@ const GLYPH_ICONS = { '🗑': 'trash', '↻': 'reset', '🔥': 'hotspot', '⏱':
   '🖨': 'print', '⊘': 'hide', '✓': 'check', '✔': 'check' };
 // Every button carries an icon ("every button should have an icon, new or existing"). The ones
 // whose label has no glyph to key on are named by their id or class instead.
-const BUTTON_ICONS = { 'insp-direct-to': 'direct', 'insp-add-to-route': 'plus', 'insp-vor-use-ref': 'compass',
+const BUTTON_ICONS = { 'insp-direct-to': 'direct', 'insp-add-to-route': 'plus', 'insp-add-rp': 'plus', 'insp-vor-use-ref': 'compass',
   'satellite-expand-hint': 'expand', 'insp-charts-btn': 'charts', 'add-freq-change-btn': 'antenna',
   'hours-toggle': 'list' };
 function buttonIconName(btn) {

@@ -3847,18 +3847,57 @@ function showInspector() {
     // 110 on a leg walks it down the legs still at the old value and stops at the
     // first intentional change. Editing leg by leg was the only place that did NOT
     // propagate, so the two editors disagreed about the same number.
+    // Set once the Time · fuel row exists (below); speed and altitude edits refresh it.
+    let refreshLegTime = () => {};
     body.appendChild(numberRow(S.speedKt, leg.flightSpeed, v => {
       if (!(v > 0)) return;
       const oldVal = leg.flightSpeed;
       leg.flightSpeed = v;
       propagateAlt(idx, 'flightSpeed', v, oldVal);
-      draw(); refreshWindFx();
+      draw(); refreshWindFx(); refreshLegTime();
     }));
-    // Leg magnetic heading (read-only) — sits between speed and altitude.
+    // Leg magnetic heading and length (read-only) — together, between speed and altitude: the two
+    // facts of the line itself, the length to one decimal as the flight plan's Dist column has it.
     const _dirA = state.waypoints[idx], _dirB = state.waypoints[idx + 1];
     if (_dirA && _dirB) {
-      body.appendChild(textRow(S.legDirection || 'Direction',
-        pad3(toMagnetic(geo(_dirA, _dirB).brg)) + '°'));
+      const _g = geo(_dirA, _dirB);
+      // Magnetic, what the compass flies, and true, what the chart's protractor reads: a line each.
+      body.appendChild(textRow(S.legDirection || 'Magnetic track', pad3(toMagnetic(_g.brg)) + '°M'));
+      body.appendChild(textRow(S.legTrueTrack || 'True track', pad3(((Math.round(_g.brg) % 360) + 360) % 360) + '°T'));
+      body.appendChild(textRow(S.legDistance || 'Leg length', _g.dist.toFixed(1) + ' NM'));
+      // Time and fuel for this leg, worked out exactly as the flight plan's Time and Fuel columns
+      // are (the climb/descent profile, a leg inside the departure CTR off the clock, the taxi
+      // allowance on the first leg, marked *), so the two never disagree.
+      const timeRow = textRow(S.legTimeFuel || 'Time \u00b7 fuel', '');
+      timeRow.classList.add('leg-time-fuel');
+      body.appendChild(timeRow);
+      refreshLegTime = () => {
+        const val = timeRow.querySelector('.val');
+        if (!val) return;
+        // The aircraft profile as the flight plan uses it: stored, or the tuning defaults.
+        if (typeof aircraft !== 'undefined' && !aircraft && typeof loadAircraft === 'function') loadAircraft();
+        const ac = (typeof aircraft !== 'undefined' && aircraft)
+          || { gph: Number(tune('defaultGph')) || 0, taxiGal: Number(tune('defaultTaxiGal')) || 0 };
+        const prof = typeof routeProfile === 'function' ? routeProfile(ac) : null;
+        const pl = prof && prof.legs && prof.legs[idx];
+        const dur = pl ? pl.timeH : (leg.flightSpeed > 0 ? _g.dist / leg.flightSpeed : 0);
+        const preClock = typeof legInsideCtr === 'function' && legInsideCtr(idx);
+        const time = preClock ? '---' : (dur > 0 ? toHMS(dur) : '--');
+        let fuel = '--', taxiMark = '';
+        if (ac && ac.gph > 0) {
+          let f = pl ? pl.fuel : dur * ac.gph;
+          const visible = typeof legDirVisibleIndexes === 'function' ? legDirVisibleIndexes() : state.legs.map((_, k) => k);
+          const first = visible.length ? visible[0] : 0;
+          const taxi = idx === first && ac.taxiGal && typeof isAirport === 'function' && isAirport(state.waypoints[first]) ? ac.taxiGal : 0;
+          if (taxi) { f += taxi; taxiMark = ' *'; }
+          fuel = f.toFixed(1);
+          timeRow.title = taxi && typeof S.fpTaxiTip === 'function' ? S.fpTaxiTip(taxi) : '';
+        }
+        const unit = S.legFuelUnit || 'gal';
+        // Each figure isolated, so in Hebrew the time stays first and the unit stays with the fuel.
+        val.textContent = '\u2066' + time + '\u2069 \u00b7 \u2066' + fuel + taxiMark + '\u2069 ' + unit;
+      };
+      refreshLegTime();
     }
     // Reset-to-known: the charted altitude from the route graph. Read from
     // the pristine ORIGIN map (legAltitudeOriginForLeg), not the live lookup —
@@ -3889,7 +3928,7 @@ function showInspector() {
       const oldVal = leg.inboundAltitude;
       leg.inboundAltitude = Number.isFinite(v) ? Math.round(v) : NaN;
       propagateAlt(idx, 'inboundAltitude', leg.inboundAltitude, oldVal);
-      draw(); refreshMsa();
+      draw(); refreshMsa(); refreshLegTime();
     }, { allowUnknown: true, placeholder: legAltitudePlaceholder(leg, 'inboundAltitude'),
          undoValue: knownIn, live: true,
          defaultValue: knownIn, mutedWhenDefault: true, emptyRestoresDefault: true }));
@@ -3897,7 +3936,7 @@ function showInspector() {
       const oldVal = leg.outboundAltitude;
       leg.outboundAltitude = Number.isFinite(v) ? Math.round(v) : NaN;
       propagateAlt(idx, 'outboundAltitude', leg.outboundAltitude, oldVal);
-      draw(); refreshMsa();
+      draw(); refreshMsa(); refreshLegTime();
     }, { allowUnknown: true, placeholder: legAltitudePlaceholder(leg, 'outboundAltitude'),
          undoValue: knownOut, live: true,
          defaultValue: knownOut, mutedWhenDefault: true, emptyRestoresDefault: true }));
@@ -4014,6 +4053,7 @@ function showInspector() {
     // auto time from the leg start). CAAI נקי הזדהות.
     const addRp = document.createElement('button');
     addRp.className = 'insp-btn';
+    addRp.id = 'insp-add-rp';   // its plus icon comes from BUTTON_ICONS, not a glyph in the label
     addRp.textContent = S.addReportPoint || 'Add identification-point marker';
     addRp.onclick = () => { addReportPointToLeg(idx); showInspector(); };
     body.appendChild(addRp);
