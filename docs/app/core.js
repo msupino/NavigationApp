@@ -2413,7 +2413,7 @@ window.S = Object.assign({
   legTitle: function(n) { return 'Leg ' + n; },
   legArrow: '→',                       // direction arrow in leg inspector title (LTR)
   speedKt: 'Speed (kt)',
-  legDirection: 'Direction',
+  legDirection: 'Magnetic track',
   legTrueTrack: 'True track',
   legDistance: 'Leg length',
   legTimeFuel: 'Time \u00b7 fuel',

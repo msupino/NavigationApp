@@ -933,7 +933,7 @@ window.S = {
   legArrow: '←',
 
   speedKt: 'מהירות (קשר)',
-  legDirection: 'כיוון',
+  legDirection: 'כיוון מגנטי',
   legTrueTrack: 'כיוון אמיתי',
   legDistance: 'אורך קטע',
   legTimeFuel: 'זמן \u00b7 דלק',

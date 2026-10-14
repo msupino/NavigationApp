@@ -15,8 +15,8 @@ for (const lang of ['en', 'he']) {
     });
     const labels = await page.locator('#insp-body .row > label').allTextContents();
     const label = lang === 'he' ? 'אורך קטע' : 'Leg length';
-    const dirLabel = lang === 'he' ? 'כיוון' : 'Direction';
-    // Direction (magnetic), True track, then the length.
+    const dirLabel = lang === 'he' ? 'כיוון מגנטי' : 'Magnetic track';
+    // Magnetic track, True track, then the length.
     const trueLabel = lang === 'he' ? 'כיוון אמיתי' : 'True track';
     expect(labels.indexOf(trueLabel)).toBe(labels.indexOf(dirLabel) + 1);
     expect(labels.indexOf(label)).toBe(labels.indexOf(dirLabel) + 2);

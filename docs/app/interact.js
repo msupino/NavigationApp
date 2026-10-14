@@ -3862,7 +3862,7 @@ function showInspector() {
     if (_dirA && _dirB) {
       const _g = geo(_dirA, _dirB);
       // Magnetic, what the compass flies, and true, what the chart's protractor reads: a line each.
-      body.appendChild(textRow(S.legDirection || 'Direction', pad3(toMagnetic(_g.brg)) + '°M'));
+      body.appendChild(textRow(S.legDirection || 'Magnetic track', pad3(toMagnetic(_g.brg)) + '°M'));
       body.appendChild(textRow(S.legTrueTrack || 'True track', pad3(((Math.round(_g.brg) % 360) + 360) % 360) + '°T'));
       body.appendChild(textRow(S.legDistance || 'Leg length', _g.dist.toFixed(1) + ' NM'));
       // Time and fuel for this leg, worked out exactly as the flight plan's Time and Fuel columns
