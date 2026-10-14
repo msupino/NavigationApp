@@ -934,7 +934,10 @@ window.S = {
 
   speedKt: 'מהירות (קשר)',
   legDirection: 'כיוון',
+  legTrueTrack: 'כיוון אמיתי',
   legDistance: 'אורך קטע',
+  legTimeFuel: 'זמן \u00b7 דלק',
+  legFuelUnit: 'גלון',
   windFromDeg: 'רוח מ-(°)',
   windSpeedKt: 'מהירות רוח (קשר)',
   windEffect: 'עם רוח',

@@ -2414,7 +2414,10 @@ window.S = Object.assign({
   legArrow: '→',                       // direction arrow in leg inspector title (LTR)
   speedKt: 'Speed (kt)',
   legDirection: 'Direction',
+  legTrueTrack: 'True track',
   legDistance: 'Leg length',
+  legTimeFuel: 'Time \u00b7 fuel',
+  legFuelUnit: 'gal',
   windFromDeg: 'Wind from (°)',
   windSpeedKt: 'Wind speed (kt)',
   windEffect: 'With wind',
