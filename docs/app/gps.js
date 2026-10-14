@@ -403,6 +403,7 @@ function startLiveLocation() {
   if (gpsLiveOn) return;
   if (!navigator.geolocation && !_bgGeo()) { refuse(S.gpsUnsupported || 'GPS is not available in this browser.'); return; }
   gpsLiveOn = true; _gpsLivePrev = null;
+  if (typeof clearPageFrameForLocation === 'function') clearPageFrameForLocation();
   gpsAcquireWakeLock();
   // A route unlocked by hand during the last session locks again for this one -- see
   // routeEditLocked() in ui.js.
@@ -1178,6 +1179,7 @@ function startGpsRecording() {
   if (gpsRecording) return;
   if (!navigator.geolocation && !_bgGeo()) { refuse(S.gpsUnsupported || 'GPS is not available in this browser.'); return; }
   gpsRecording = true;
+  if (typeof clearPageFrameForLocation === 'function') clearPageFrameForLocation();
   gpsStartCompass();
   _gpsUserMovedAt = 0;
   gpsWatchUserMapMoves();
@@ -1599,6 +1601,12 @@ var _gpsAlertConfirmed = false;
 // The ATIS reminder fires once per arrival: a hold, a go-around or a lap of the circuit must
 // not repeat it, and it is reset with the rest of the alert state when tracking restarts.
 var _gpsAtisAlerted = false;
+// The last-light warning (#667), once per flight like the ATIS reminder.
+var _gpsLastLightAlerted = false;
+var _gpsDestClosedAlerted = false;
+function gpsLastLightMarginMin() {
+  return (typeof tune === 'function') ? tune('lastLightMarginMin') : 15;
+}
 
 // Called whenever tracking (re)starts, so a pointer left over from a previous flight or
 // route can't silently suppress real alerts on this one. Plain reset to leg 0 -- correct
@@ -1611,6 +1619,8 @@ function gpsResetLegAlerts() {
   _gpsAlertAltCount = 0;
   _gpsAlertConfirmed = false;
   _gpsAtisAlerted = false;
+  _gpsLastLightAlerted = false;
+  _gpsDestClosedAlerted = false;
   _gpsTopCapturePoint = null;
   _gpsLastTopAt = 0;
   // Cone/off-route state belongs to the same episode: a fresh session must not inherit a
@@ -2028,6 +2038,55 @@ function gpsCheckLegAlerts() {
           (S && S.speakAlertAtis)
             ? S.speakAlertAtis(spokenField, gpsSpokenFreq(atis.freq, lang))
             : null);
+      }
+    }
+  }
+
+  // The arrival, at the planned speed like every alert here (#667), against the destination's
+  // published hours and against last light. Two findings, each said once per flight:
+  //   - outside the field's published hours at the arrival: the plan does not work;
+  //   - near or after last light: a caution -- night VFR is legal for some pilots, and some
+  //     fields are open after dark -- said a margin early, while turning back is still by day.
+  // (window.__navaidNoDayAlerts: the test suite, whose other alert specs must not depend on the
+  // hour they happen to run at -- see tests/_setup.js.)
+  if (_gpsAlertConfirmed && planSpeed && (!_gpsLastLightAlerted || !_gpsDestClosedAlerted)
+      && !(typeof window !== 'undefined' && window.__navaidNoDayAlerts)) {
+    const wps = state.waypoints;
+    const dest = wps[wps.length - 1];
+    const toGo = gpsDistanceToDestinationNm(gpsOwn, gpsAlertLegIndex);
+    if (dest && Number.isFinite(toGo)) {
+      const now = new Date(Number.isFinite(gpsOwn.t) ? gpsOwn.t : Date.now());
+      const eta = new Date(now.getTime() + (toGo / planSpeed) * 3600000);
+      const lang = (typeof window !== 'undefined' && window.__navLang) || 'en';
+      const af = typeof airfieldAtWaypoint === 'function' ? airfieldAtWaypoint(dest) : null;
+      const code = (af && af.name) || dest.name || '';
+      const label = af ? ((lang === 'he' ? (af.he || af.en) : (af.en || af.he)) || code) : code;
+      const spoken = label === code && code ? gpsSpokenPlace(code, lang) : label;
+      // Local clocks: what the pilot's watch and the published tables say.
+      const etaC = typeof etaClock === 'function' ? etaClock(eta, false) : '';
+      if (!_gpsDestClosedAlerted && typeof fieldHoursAt === 'function') {
+        if (window.NavAid && NavAid.airfieldHours) NavAid.airfieldHours.load();
+        const hrs = fieldHoursAt(dest, eta);
+        if (hrs && hrs.state === 'closed') {
+          _gpsDestClosedAlerted = true;
+          gpsSendWatchAlert((S && S.watchAlertDestClosedTitle) || 'Destination hours',
+            (S && S.watchAlertDestClosedBody) ? S.watchAlertDestClosedBody(label, etaC, hrs.opens || '')
+              : (label + ' outside published hours at ' + etaC),
+            (S && S.speakAlertDestClosed) ? S.speakAlertDestClosed(spoken, etaC) : null);
+        }
+      }
+      if (!_gpsLastLightAlerted && typeof lastLightAt === 'function') {
+        const day = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0') + '-' +
+          String(now.getDate()).padStart(2, '0');
+        const ll = lastLightAt(dest.lat, dest.lng, day);
+        if (ll && eta.getTime() > ll.lastLight.getTime() - gpsLastLightMarginMin() * 60000) {
+          _gpsLastLightAlerted = true;
+          const llClock = etaClock(ll.lastLight, false);
+          gpsSendWatchAlert((S && S.watchAlertLastLightTitle) || 'Last light',
+            (S && S.watchAlertLastLightBody) ? S.watchAlertLastLightBody(label, llClock, etaC)
+              : (label + ' last light ' + llClock + ' ETA ' + etaC),
+            (S && S.speakAlertLastLight) ? S.speakAlertLastLight(spoken, llClock, etaC) : null);
+        }
       }
     }
   }

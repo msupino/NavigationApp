@@ -78,6 +78,7 @@ NavAid.tuningDefaults = {
   // to have enough of it to tune, listen through a full cycle and copy the numbers before the
   // arrival gets busy, and that is a duration regardless of groundspeed.
   atisLeadSec: { value: 600, min: 60, max: 1800, step: 30, label: 'ATIS reminder lead (s)' },
+  lastLightMarginMin: { value: 15, min: 0, max: 60, step: 5, label: 'Last-light alert: warn when the planned arrival is this close to it, or after (min)' },
   atisMarkerColor: { value: '#1f6fd0', type: 'color', label: 'ATIS reminder marker colour' },
   atisMarkerRadiusPx: { value: 10, min: 3, max: 30, step: 1, label: 'ATIS reminder marker radius (px)' },
   atisMarkerFontPx: { value: 13, min: 8, max: 28, step: 1, label: 'ATIS reminder marker label (px)' },
@@ -1075,7 +1076,7 @@ NavAid.tuningDefaults = {
 // interaction (hit testing), tools (alt pairs, export), and finally the
 // global colour palette.
 NavAid.tuningGroups = [
-  { name: 'Navigation', keys: ['magVarAuto', 'magneticVariationDeg', 'msaBufferFt', 'altimetryCorrection', 'geoidUndulationFt', 'followResumeMs', 'followZoomFloor', 'followZoomCeiling', 'followZoomCtrFloor', 'followZoomCtrCeiling', 'gpsReadoutFontPx', 'gpsReadoutRefitPx', 'alertNotifyTtlSec', 'alertIconColor', 'altToleranceFt', 'altMaxAlertsPerLeg', 'legEtaLeadSec', 'atisLeadSec', 'atisMarkerColor', 'atisMarkerRadiusPx', 'atisMarkerFontPx', 'liveHeadingEndLabel', 'legCaptureNm', 'driftTrackErrorDeg', 'driftCheckSec', 'coneUnknownSec', 'gpsMaxAccuracyM', 'gpsMinMoveM', 'gpsGlide', 'gpsGlideMinKt', 'gpsGlideMaxHz', 'vorReadoutMaxNm', 'measureLineColor', 'measureDotFill', 'measureLabelBg', 'measureLabelText', 'gpsStaleSec', 'qnhMaxAgeMin', 'qnhMoveNm', 'compassMaxKt', 'compassFallback', 'headingUpMinDeltaDeg', 'crosshairSizePx', 'crosshairWidthPx', 'crosshairColor', 'crosshairHaloColor', 'crosshairAlpha'] },
+  { name: 'Navigation', keys: ['magVarAuto', 'magneticVariationDeg', 'msaBufferFt', 'altimetryCorrection', 'geoidUndulationFt', 'followResumeMs', 'followZoomFloor', 'followZoomCeiling', 'followZoomCtrFloor', 'followZoomCtrCeiling', 'gpsReadoutFontPx', 'gpsReadoutRefitPx', 'alertNotifyTtlSec', 'alertIconColor', 'altToleranceFt', 'altMaxAlertsPerLeg', 'legEtaLeadSec', 'atisLeadSec', 'lastLightMarginMin', 'atisMarkerColor', 'atisMarkerRadiusPx', 'atisMarkerFontPx', 'liveHeadingEndLabel', 'legCaptureNm', 'driftTrackErrorDeg', 'driftCheckSec', 'coneUnknownSec', 'gpsMaxAccuracyM', 'gpsMinMoveM', 'gpsGlide', 'gpsGlideMinKt', 'gpsGlideMaxHz', 'vorReadoutMaxNm', 'measureLineColor', 'measureDotFill', 'measureLabelBg', 'measureLabelText', 'gpsStaleSec', 'qnhMaxAgeMin', 'qnhMoveNm', 'compassMaxKt', 'compassFallback', 'headingUpMinDeltaDeg', 'crosshairSizePx', 'crosshairWidthPx', 'crosshairColor', 'crosshairHaloColor', 'crosshairAlpha'] },
   { name: 'Performance defaults', keys: ['profileClimbFpm', 'profileClimbKt', 'defaultGph', 'defaultTaxiGal'] },
   { name: 'Altitude inference', keys: ['legAltInferMaxHops', 'legAltInferMaxDistRatio', 'legAltInferMaxExtraNm'] },
   { name: 'Plan card', keys: ['planCardBaseRowPx', 'planCardGripPx', 'planCardBgColor', 'planCardHeaderBgColor', 'planCardTotalBgColor', 'planCardStripeBgColor', 'planCardGridColor', 'planCardTextColor', 'planCardGripColor', 'planCardGripLineColor'] },
@@ -1202,7 +1203,36 @@ function navaidEvent(name) {
 }
 window.navaidEvent = navaidEvent;
 
+// Black-and-white printing ("can we behave the printed map for a black and white printer?"):
+// while an export draws with "Black-and-white printer" on, the route's colours are read from
+// this set instead -- fills white, ink, rings and arrows black, halos white, translucent fills
+// opaque -- so on a mono printer the route is black on white instead of greys that sink into
+// the chart. Set and cleared around the export's overlay draw only: the screen never sees it.
+const PRINT_BW_TUNES = {
+  inkColor: '#000000', kiteTextColor: '#000000', selectedColor: '#000000',
+  legKiteFillColor: '#ffffff', cumKiteFillColor: '#ffffff', legKiteHaloColor: '#000000',
+  // The way home stays told apart from the way out, in grey instead of pink.
+  returnKiteFillColor: '#dcdcdc', returnCumKiteFillColor: '#dcdcdc',
+  distanceBadgeFillColor: '#ffffff', waypointFillColor: '#ffffff', labelFillColor: '#ffffff',
+  waypointHotspotFillColor: '#b4b4b4', waypointHotspotRingColor: '#000000',
+  noteDefaultFillColor: '#ffffff', kiteNoteAlpha: 1,
+  commChangeRingColor: '#000000', commChangeDotColor: '#000000', commChangeArrowColor: '#000000',
+  commChangeArrowHaloColor: '#ffffff', commChangeArrowHaloAlpha: 1, commChangeSelectedColor: '#000000',
+  commChangeTextColor: '#000000', commChangeTextHaloColor: '#ffffff', commChangeTextHaloAlpha: 1,
+  airfieldFillColor: '#000000', airfieldCenterColor: '#ffffff', airfieldOutlineColor: '#000000',
+  navWaypointDotColor: '#ffffff', vorMarkerColor: '#000000', vorSelectedColor: '#000000',
+  vorRangeRingColor: '#000000', driftLineColor: '#000000', driftLineAlpha: 0.8,
+  overlayLabelHaloColor: '#ffffff', overlayLabelHaloAlpha: 1,
+  windArrowColor: '#000000', windArrowHaloColor: '#ffffff', windTextHaloColor: '#ffffff',
+  gpsTrackStartColor: '#000000', gpsTrackEndColor: '#000000', gpsBreadcrumbColor: '#000000',
+  exportBgColor: '#ffffff',
+  planCardHeaderBgColor: '#e6e6e6', planCardTotalBgColor: '#f0f0f0', planCardStripeBgColor: '#ebebeb',
+  planCardGridColor: '#000000', planCardTextColor: '#000000',
+};
+window.PRINT_BW_TUNES = PRINT_BW_TUNES;
 function tune(key) {
+  const po = NavAid.printOverride;
+  if (po && Object.prototype.hasOwnProperty.call(po, key)) return po[key];
   const spec = NavAid.tuningDefaults && NavAid.tuningDefaults[key];
   if (!spec) return 0;
   const v = NavAid.tuning[key];
@@ -1448,7 +1478,7 @@ window.S = Object.assign({
   airfieldsUrl: 'data/airfields.json?v=43',  // resolved relative to index.html (docs/)
   airfieldHoursUrl: 'data/airfield-hours.json?v=1',  // published hours (airfield-hours.js)
   airfieldLabelField: 'en',            // which locale label to show on the overlay
-  routeTemplatesUrl: 'data/route-templates.json?v=2', // ready-made route templates
+  routeTemplatesUrl: 'data/route-templates.json?v=3', // ready-made route templates
   vorUrl: 'data/vor.json?v=2',              // Israeli VOR/DME stations
 
   // --- English UI copy (default locale) -------------------------------
@@ -1586,21 +1616,25 @@ window.S = Object.assign({
   tourCheckTitle: 'Check the route',
   tourCheckText: 'Airspace, NOTAMs, SIGMET/AIRMET and ceiling against the route, at the time you plan to fly it. Dimmed until there is a route.',
   tourEditTitle: 'Edit the route',
-  tourEditText: 'Add a waypoint, add a note, undo, clear the map. The lit button shows what is armed; tap it again to stop.',
+  tourEditText: 'Add a waypoint or a note, undo, clear the map; [ ] fits the page or the route to the screen. Tap a lit button again to stop.',
   tourMeasureTitle: 'Measure',
   tourMeasureText: 'With your position showing, tap the ruler, then a point: distance, bearing and time from the aircraft. Nothing is added to the route.',
   tourLockTitle: 'Edit lock',
   tourLockText: 'Shut, nothing on the route can move. It locks by itself while your position is showing.',
-  tourDialTitle: 'Turn the chart',
-  tourDialText: 'Drag to turn the chart, tap to step 0 / 90 / 180 / 270. The red needle points north.',
+  tourDialTitle: 'Turn and zoom the chart',
+  tourDialText: 'Drag the dial to turn the chart, tap it to turn by 90°; the red needle points north. + and − zoom.',
+  tourDialTextPhone: 'Drag the dial to turn the chart, tap it to turn by 90°; the red needle points north. + and − zoom; ⓘ shows the chart credits.',
   tourLocationTitle: 'Your position',
   tourLocationText: 'Shows the aircraft on the map, with speed, altitude and track at the top.',
   tourRecordTitle: 'Record',
   tourRecordText: 'Records the flight as a track you can show again and export.',
   tourCommfailTitle: 'Comm fail',
-  tourCommfailText: 'Lost the radio? Routes you to the nearest field with a published procedure, with a squawk reminder and the tower phone number.',
+  tourCommfailText: 'Lost the radio? A route to the nearest field with a published procedure, with the squawk and the tower\u2019s phone.',
+  tourCommfailTextPhone: 'Lost the radio? A route to the nearest field with a published procedure, with the squawk and the tower\u2019s phone. Beside it: the language.',
   tourMenuTitle: 'Menu',
   tourMenuText: 'Charts, extra layers (NOTAM, weather, airspace), the flight plan, and settings.',
+  tourMenuTextPhone: 'Menu: charts, layers (NOTAM, weather, airspace) and settings. Plan: the flight plan. The Legend in the corner explains the symbols.',
+  tourMenuTextDesk: 'Save, My routes, the menus and the flight plan; then language, shortcuts (?), more links and the simulator. At the bottom: the Legend and the time slider.',
   tourSearchTitle: 'Find',
   tourSearchText: 'Type a waypoint or airfield, or several codes (LLHZ BAZRA DEROR) to build a route.',
   tourHoldTitle: 'Press and hold the map',
@@ -1695,6 +1729,36 @@ window.S = Object.assign({
   routeLibraryGdriveError: 'Drive sync failed',
   routeLibraryGdriveAutoSyncFailed: 'Not synced to Drive — saved on this device. Sync from Saved routes to retry.',
   fpTimeUnitsTitle: 'Elapsed time, mm:ss (not a clock time)',
+  fpEtd: 'Departure (ETD)',
+  fpEtdShort: 'ETD',
+  fpEtdSoon: function (n) { return 'Now + ' + n + ' min'; },
+  fpEtdSoonTitle: 'The soonest a routes plan can be filed for: now plus the filing lead, to the next quarter hour',
+  qtimeHour: 'Hour',
+  fpEtdTimeUtc: 'Departure time (UTC)',
+  fpLocalShort: function (t) { return t + ' local'; },
+  qtimeMinute: 'Minutes',
+  fpLastLightShort: function (t) { return 'Last light ' + t; },
+  fpEtdTitle: 'Planned take-off time. The ETA column and the last-light check count from it; the flight-plan filing dialog uses the same departure.',
+  fpEtdDate: 'Departure date',
+  fpEtdTime: 'Departure time (local)',
+  fpEtaZulu: 'Times in UTC',
+  fpEtaZuluTitle: 'Show the ETAs and last light in UTC (Z) instead of local time',
+  fpEta: 'ETA',
+  fpEtaTitle: 'Clock time over the leg\u2019s To point: departure + cumulative time, at the planned speeds (no wind)',
+  fpEtaDarkTitle: function (lastLight) { return 'After last light (' + lastLight + ') \u2014 night'; },
+  fpEtaClosedTitle: function (name) { return name + ' is outside its published hours at this time'; },
+  fpDepClosed: function (name, opens) {
+    return name + ' is outside its published hours at the departure' + (opens ? ' (opens ' + opens + ')' : '');
+  },
+  fpDestClosed: function (name, opens) {
+    return name + ' is outside its published hours at the arrival' + (opens ? ' (opens ' + opens + ')' : '');
+  },
+  fpArrival: function (eta) { return 'Arrival ' + eta; },
+  fpLastLight: function (name, sunset, lastLight) {
+    return 'Last light at ' + name + ': ' + lastLight + ' (sunset ' + sunset + ')';
+  },
+  fpLastLightLate: 'arrives after last light: a night landing',
+  fpNightFinding: 'Arrival after last light \u2014 a night landing',
   startRouteHere: '➕ Start route here',
   addToRoute: '➕ Add to route',
   alreadyOnRoute: '✓ Already on the route',
@@ -1731,6 +1795,9 @@ window.S = Object.assign({
   routeLibraryGdriveRaced: 'Another device changed this while syncing — nothing was overwritten. Sync again.',
   routeTemplatesTitle: 'Route templates',
   routeTemplateRoute: 'Route',
+  routeTemplateFrom: 'From',
+  routeTemplateTo: 'To',
+  routeTemplateVia: 'Via',
   routeTemplateSpeed: 'Speed (kt)',
   routeTemplateApply: 'Build route',
   routeTemplateEmpty: 'No route templates available',
@@ -1755,7 +1822,7 @@ window.S = Object.assign({
   tbResetAllWpNamesTitle: 'Set each name to its nearest reference, or clear when off-grid',
   resetAllWpNamesConfirm: 'Reset all waypoint names to their nearest reference codes, or clear when off-grid (sequence placeholders)?',
   resetLegMarkers: '↻ Reset marker position',       // inspector leg button — reset label offsets
-  addReportPoint: '＋ Add identification-point marker',  // inspector leg button — drop a נקי הזדהות oval on the leg
+  addReportPoint: 'Add identification-point marker',  // inspector leg button — drop a נקי הזדהות oval on the leg
   resetLegMarkersTitle: 'Reset marker position',
   hideLegKite: '⊘ Hide kite',                  // inspector leg button — hide this leg's nav kite
   showLegKite: '◉ Show kite',
@@ -1771,6 +1838,8 @@ window.S = Object.assign({
   // --- end English UI copy (waypoint-related keys above) --------------
 
   noteDefault: 'Note',
+  noteInspTitle: 'Note',
+  rpInspTitle: 'Identification point',
   errLoadFile: 'Could not load file: ',
   errStorageFull: 'Auto-save failed: browser storage is full. Export your route to keep it.',
   errInvalidRoute: function(msg) { return 'Invalid route file: ' + msg; },
@@ -2051,7 +2120,6 @@ window.S = Object.assign({
   navLogVor: 'Reference VOR',
   navLogDepFreqs: 'Departure frequencies',
   navLogArrFreqs: 'Arrival frequencies',
-  navLogPopupBlocked: 'Allow pop-ups to export the nav log.',
   fpFuel: 'Fuel',
   fpMsa: 'MSA (ft)',
   msaLowTitle: 'Planned altitude is below the minimum safe altitude for this leg',
@@ -2266,6 +2334,19 @@ window.S = Object.assign({
   fplMailRoute: (list) => 'Route: ' + list,
   fplMailArrival: (place, t) => 'Landing at ' + place + ' at ' + t,
   warnFplClosedCorridor: 'A corridor on this route may be closed or time-gated at the chosen departure time (secondary source) — no open alternative was published, so it is filed anyway. Verify with the NOTAMs.',
+  fplEtdFirst: 'Set the departure time first \u2014 the plan is filed with it.',
+  fplEtdPassedFirst: function (t) { return 'The departure time (' + t + ') has passed \u2014 set a new one, then submit.'; },
+  fplEtdPassedTitle: 'Departure time',
+  fplHoursAsk: 'Set another time, or file it anyway?',
+  fplSetNewTime: 'Set a new time',
+  fplOpenAnyway: 'Open anyway',
+  fplOpenAnywayTitle: 'If this device\u2019s clock is what is wrong: file the time as it is set',
+  fplEtdForced: 'It has passed by this device\u2019s clock; it is sent as you asked.',
+  fplAllowPast: 'Send anyway \u2014 I have checked the time',
+  fplEtdFromPlan: 'From the flight plan\u2019s departure (ETD) \u2014 change it there.',
+  fplEtdPassed: function (planned, proposed) {
+    return 'The planned departure (' + planned + ') has passed \u2014 proposed ' + proposed + '. Change it here; the flight plan follows.';
+  },
   warnFplLead: 'Less than 60 minutes to departure — a routes plan is filed at least 60 min ahead, or phoned in.',
   warnFplMixedSpeed: 'The legs are not all at one speed; the first leg\'s speed is filed as cruise TAS.',
   errFplNeedRoute: 'Draw a route first — a flight plan needs a departure and a destination.',
@@ -2323,6 +2404,7 @@ window.S = Object.assign({
     + 'this route ends. Both routes keep their own nav log and exports \u2014 they are joined '
     + 'only in the filed plan.',
   errFplEobt: 'Enter a valid date and departure time.',
+  errFplPast: 'This departure time has already passed \u2014 choose a later one.',
   errFplEndurance: 'Pick how much fuel is on board.',
   errFplLatinOnly: 'Write the pilot name and license in Latin letters — the flight-plan message cannot carry Hebrew.',
   errFplProfile: 'Fill in the aircraft and pilot details first.',
@@ -2336,7 +2418,11 @@ window.S = Object.assign({
   legTitle: function(n) { return 'Leg ' + n; },
   legArrow: '→',                       // direction arrow in leg inspector title (LTR)
   speedKt: 'Speed (kt)',
-  legDirection: 'Direction',
+  legDirection: 'Magnetic track',
+  legTrueTrack: 'True track',
+  legDistance: 'Leg length',
+  legTimeFuel: 'Time \u00b7 fuel',
+  legFuelUnit: 'gal',
   windFromDeg: 'Wind from (°)',
   windSpeedKt: 'Wind speed (kt)',
   windEffect: 'With wind',
@@ -2396,6 +2482,14 @@ window.S = Object.assign({
   deckNoRoute: 'No route',
   deckSheetGrip: 'Drag to resize, tap to change height',
   deckHereTitle: 'Point details',
+  exportBw: 'Optimized for a black-and-white printer',
+  exportResolution: 'Image quality',
+  exportProgressTiles: function (done, total, secs) { return 'Fetching the map: ' + done + ' / ' + total + ' tiles · ' + secs + ' s'; },
+  exportProgressCompose: function (secs) { return 'Composing the page… ' + secs + ' s'; },
+  exportResLow: 'Low',
+  exportResMedium: 'Medium',
+  exportResHigh: 'High',
+  exportBwTitle: 'The chart in light grey and the route black on white, so it reads on a printer without colour',
   ctxMenuLabel: 'Quick actions',
   ctxAddNoteHere: 'Add note here',
   ctxDistanceHere: 'Distance from the aircraft',
@@ -2710,6 +2804,7 @@ window.S = Object.assign({
   shareCopied: 'Route link copied to clipboard',
   errShareTooLong: 'Route is too long for a share link (max 64 waypoints). Export as JSON and send the file instead.',
   tbFit: '⌖ Fit to screen (F)',
+  pageFrameOffForLocation: 'Page frame off while your position shows — pick A4 / A3 again to print',
   tbFitTitle: 'Fit the selected page to view, or fit the route when no page is selected (F)',
   tbPlan: 'Flight plan',
   tbPlanTitle: 'Show flight plan table',
@@ -3051,6 +3146,22 @@ window.S = Object.assign({
   tbGpsLiveTitle: 'Show your live position on the map (device GPS, no recording)',
   tbGpsLiveStop: 'Hide',
   // ATIS reminder: fires once, a set time out from the destination.
+  // Last light (#667): fires once per flight, when the planned arrival is after the end of
+  // civil twilight at the destination, or close to it. Clocks are local, HH:MM.
+  watchAlertLastLightTitle: 'Last light',
+  watchAlertLastLightBody: function (field, lastLight, eta) {
+    return field + ' last light ' + lastLight + ' \u00b7 ETA ' + eta;
+  },
+  speakAlertLastLight: function (field, lastLight, eta) {
+    return 'Last light at ' + field + ', ' + lastLight + '. Planned arrival ' + eta + '.';
+  },
+  watchAlertDestClosedTitle: 'Destination hours',
+  watchAlertDestClosedBody: function (field, eta, opens) {
+    return field + ' outside published hours at ' + eta + (opens ? ' \u00b7 opens ' + opens : '');
+  },
+  speakAlertDestClosed: function (field, eta) {
+    return field + ' is outside its published hours at your arrival, ' + eta + '.';
+  },
   watchAlertAtisTitle: 'ATIS',
   // Short on purpose: a notification is read at a glance in the cockpit, and the minutes were
   // the part nobody needed -- the alert only fires when it is time.
@@ -3332,7 +3443,6 @@ window.S = Object.assign({
   exportBtn: 'Export',
   printBtn: '🖨 Print',
   printBtnTitle: 'Open the print dialog at true physical size (A4/A3 1:250,000)',
-  errPopupBlocked: 'Allow pop-ups for this site to open the print view.',
 }, window.S || {});
 
 // Fill data-i18n / data-i18n-title / data-i18n-placeholder / data-i18n-aria
@@ -5242,6 +5352,104 @@ function toHMS(hours) {
   return m + ':' + String(s).padStart(2, '0');
 }
 
+// --- Departure time (ETD), clock-time ETAs and last light ---------------------------------
+// One departure for the whole app: the flight-plan panel's ETD field and the filing dialog's
+// departure both read and write this, so the ETAs on the plan are the ones the filed plan
+// implies. Local date + local clock, the way a pilot types them (the filing dialog converts
+// to UTC the same way, via the device's own time zone). Not synced across devices: it is a
+// fact about one flight, not a setting.
+const ETD_KEY = 'navaid.etd';
+const ETA_ZULU_KEY = 'navaid.etaZulu';
+const ETD_DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+const ETD_TIME_RE = /^([01]?[0-9]|2[0-3]):([0-5][0-9])$/;
+function etdRead() {
+  try {
+    const v = JSON.parse(localStorage.getItem(ETD_KEY) || 'null');
+    if (v && ETD_DATE_RE.test(String(v.date)) && ETD_TIME_RE.test(String(v.time))) {
+      // Snapped on the way out: a departure stored before the quarter-hour lists (10:08) is
+      // shown as 10:15, so every reader -- ETAs, the filing dialog -- must use 10:15 too.
+      return { date: String(v.date), time: etdQuarter(String(v.time)) };
+    }
+  } catch (e) { /* unreadable: no departure set */ }
+  return null;
+}
+// An empty or invalid time clears the departure: the ETA column goes back to "--" rather
+// than counting from a time nobody entered.
+function etdWrite(date, time) {
+  try {
+    if (ETD_DATE_RE.test(String(date)) && ETD_TIME_RE.test(String(time))) {
+      localStorage.setItem(ETD_KEY, JSON.stringify({ date: String(date), time: String(time) }));
+    } else {
+      localStorage.removeItem(ETD_KEY);
+    }
+  } catch (e) { /* private mode */ }
+}
+// The departure as an instant, or null.
+function etdInstant(etd) {
+  const e = etd === undefined ? etdRead() : etd;
+  if (!e) return null;
+  const d = ETD_DATE_RE.test(String(e.date)) ? String(e.date).split('-').map(Number) : null;
+  const t = ETD_TIME_RE.exec(String(e.time || ''));
+  if (!d || !t) return null;
+  const when = new Date(d[0], d[1] - 1, d[2], Number(t[1]), Number(t[2]), 0, 0);
+  return isNaN(when.getTime()) ? null : when;
+}
+// Departures are planned in quarter hours (quarterTimePicker offers 00/15/30/45). A time from
+// anywhere else -- an older stored departure -- is snapped to the nearest quarter here,
+// never across midnight (23:53 is 23:45, not tomorrow's 00:00).
+function etdQuarter(time) {
+  const t = ETD_TIME_RE.exec(String(time || ''));
+  if (!t) return String(time || '');
+  const q = Math.min(Math.round((Number(t[1]) * 60 + Number(t[2])) / 15) * 15, 23 * 60 + 45);
+  return String(Math.floor(q / 60)).padStart(2, '0') + ':' + String(q % 60).padStart(2, '0');
+}
+// A field's published operating hours at an instant (the departure at the ETD, the destination
+// at the arrival): { state: 'open' | 'closed',
+// until, opens, approx } from airfield-hours.js, or null when the field publishes none or the
+// rules cannot decide (holiday calendar, the edge of twilight). Night is a caution -- night VFR
+// is legal for some pilots, and some fields are open after dark -- but a field outside its
+// published hours at the arrival is a plan that does not work.
+function fieldHoursAt(wp, when) {
+  const AH = window.NavAid && window.NavAid.airfieldHours;
+  if (!AH || !wp || !(when instanceof Date) || typeof airfieldAtWaypoint !== 'function') return null;
+  const af = airfieldAtWaypoint(wp);
+  if (!af) return null;
+  const lookup = k => ((typeof airfields !== 'undefined' && airfields) || []).find(a => a.name === k) || null;
+  const st = AH.status(af.name, af, when, lookup);
+  return st && (st.state === 'open' || st.state === 'closed') ? st : null;
+}
+function etaZulu() {
+  try { return localStorage.getItem(ETA_ZULU_KEY) === '1'; } catch (e) { return false; }
+}
+function setEtaZulu(on) {
+  try { localStorage.setItem(ETA_ZULU_KEY, on ? '1' : '0'); } catch (e) { /* private mode */ }
+}
+// A clock time, HH:MM local or HH:MMZ. The Z is the whole difference on the page, so it is
+// always written when the time is UTC.
+function etaClock(when, zulu) {
+  if (!(when instanceof Date) || isNaN(when.getTime())) return '';
+  const z = zulu === undefined ? etaZulu() : !!zulu;
+  const h = z ? when.getUTCHours() : when.getHours();
+  const m = z ? when.getUTCMinutes() : when.getMinutes();
+  return String(h).padStart(2, '0') + ':' + String(m).padStart(2, '0') + (z ? 'Z' : '');
+}
+// Sunset and last light (the end of evening civil twilight, sun 6 degrees below the horizon)
+// at a place, on a local calendar date, as instants. The same NOAA sunrise equation the
+// airfield opening hours use (airfield-hours.js), asked for UTC minutes so the result is
+// independent of any time zone. Null where the sun does not set (never at these latitudes).
+function lastLightAt(lat, lng, date) {
+  const AH = window.NavAid && window.NavAid.airfieldHours;
+  const sun = AH && AH._sunMinutes;
+  if (typeof sun !== 'function' || !Number.isFinite(lat) || !Number.isFinite(lng)) return null;
+  const d = ETD_DATE_RE.test(String(date)) ? String(date).split('-').map(Number) : null;
+  if (!d) return null;
+  const set = sun(d[0], d[1], d[2], lat, lng, -0.833, true, 0);
+  const dusk = sun(d[0], d[1], d[2], lat, lng, -6, true, 0);
+  if (set === null || dusk === null) return null;
+  const base = Date.UTC(d[0], d[1] - 1, d[2]);
+  return { sunset: new Date(base + set * 60000), lastLight: new Date(base + dusk * 60000) };
+}
+
 // --- vertical profile: top-of-climb / top-of-descent --------------------
 // Default GA climb/descent performance (C172-ish) lives in the tune registry.
 // Field elevation at route endpoint waypoint i (airfield elev_ft) or null.
@@ -5992,6 +6200,43 @@ const _initialView = (() => {
     const offset = this._bounds.min.add(this._originAtUpdate).multiplyBy(scale)
       .subtract(m._getNewPixelOrigin(center, zoom));
     L.DomUtil.setTransform(this._container, offset, scale);
+  };
+}());
+// leaflet-rotate makes every vector renderer redraw on EVERY rotate event (rotate: _update): a
+// full resize and repaint of the canvas per frame of a turn. Profiled on a phone (CPU / 4):
+// a 90 degree turn of the dial took 12-14 s, nearly all of it long tasks, about 400 ms of canvas
+// resize per frame. The renderer sits in the rotated pane, so CSS already turns what it drew; it
+// only needs repainting for the corners a turn uncovers. So it repaints once the turn pauses
+// (400 ms), at most every 1.5 s during a long one, and at the end. (A plain throttle did not
+// help: one repaint outlasts any sensible gap on a phone, so every frame still repainted.) The
+// handlers are made once per renderer -- getEvents() is called again by map.off(), and a new
+// function there would never be removed.
+(function quietRendererRotate() {
+  if (!L.Renderer || !L.Renderer.prototype || typeof L.Renderer.prototype.getEvents !== 'function') return;
+  const orig = L.Renderer.prototype.getEvents;
+  // A phone draws a frame of a turn every 250-400 ms: a shorter settle fired between frames.
+  const SETTLE_MS = 400, MAX_GAP_MS = 1500;
+  L.Renderer.prototype.getEvents = function () {
+    const ev = orig.apply(this, arguments);
+    if (!ev || typeof ev.rotate !== 'function') return ev;
+    if (!this._navRotate) {
+      const self = this;
+      // `since`: when the current stretch of turning started (or last repainted mid-turn) -- the
+      // cap counts from there, so the first frame of a new turn does not repaint at once.
+      let since = 0, timer = null;
+      const run = () => { if (timer) clearTimeout(timer); timer = null; if (self._map) self._update(); };
+      this._navRotate = function () {
+        const now = Date.now();
+        if (!timer) since = now;
+        else if (now - since >= MAX_GAP_MS) { run(); since = now; }
+        if (timer) clearTimeout(timer);
+        timer = setTimeout(run, SETTLE_MS);
+      };
+      this._navRotateEnd = run;
+    }
+    ev.rotate = this._navRotate;
+    ev.rotateend = this._navRotateEnd;
+    return ev;
   };
 }());
 const map = L.map('map', {

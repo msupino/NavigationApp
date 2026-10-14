@@ -180,14 +180,21 @@
     const z = map.getZoom();
     const maxRank = z <= 3 ? 2 : z <= 4 ? 3 : z <= 5 ? 4 : z <= 6 ? 5 : 10;
     const maxCity = z <= 3 ? 0 : z <= 4 ? 1 : z <= 5 ? 3 : z <= 6 ? 4 : 10;
-    const turn = -(map.getBearing ? map.getBearing() : 0);
+    turnLabels();
     for (const l of labels) {
       const show = l.city ? l.rank <= maxCity : l.rank <= maxRank;
       l.el.style.display = show ? '' : 'none';
       if (!show) continue;
       const p = map.latLngToLayerPoint(l.at);
-      l.el.style.transform = 'translate3d(' + p.x + 'px,' + p.y + 'px,0) rotate(' + turn + 'deg)';
+      l.el.style.transform = 'translate3d(' + p.x + 'px,' + p.y + 'px,0) rotate(var(--world-turn, 0deg))';
     }
+  }
+  // A turn of the map moves no label inside the turning pane -- only their counter-turn changes,
+  // and that is one variable on the pane. It used to rewrite every label's transform on every
+  // frame of a turn (a steady share of the rotate profile on a phone).
+  function turnLabels() {
+    const turn = -(map.getBearing ? map.getBearing() : 0);
+    map.getPane(LABEL_PANE).style.setProperty('--world-turn', turn + 'deg');
   }
 
   async function load() {
@@ -240,7 +247,8 @@
       rings = out;
       renderer._redraw();                 // draw now, not on the next pan
       // Layer points change on a zoom or a view reset, and the counter-turn with the bearing.
-      map.on('zoomend viewreset rotate', refreshLabels);
+      map.on('zoomend viewreset', refreshLabels);
+      map.on('rotate', turnLabels);
       refreshLabels();
       return true;
     })().catch(e => { loaded = null; console.warn('world map unavailable:', e); return false; });

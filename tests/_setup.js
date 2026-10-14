@@ -180,6 +180,10 @@ exports.test = base.test.extend({
     });
     // The first-launch map tour would cover every spec's screen; tests/map-tour.spec.js opts in.
     await context.addInitScript(() => { window.__navaidNoTour = true; });
+    // The in-flight last-light and destination-hours alerts (gps.js) read the real clock: run in
+    // the evening, every alert spec counting notifications got one more. They are off for the
+    // suite; tests/eta-last-light.spec.js, which sets its own times, opts back in.
+    await context.addInitScript(() => { window.__navaidNoDayAlerts = true; });
     // The suite runs on the built-in defaults, as it did before the gist was bundled
     // (data/gist-snapshot.js): the snapshot changes whenever the gist does, and a test must
     // not. tests/gist-snapshot.spec.js opts back in.

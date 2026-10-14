@@ -1372,9 +1372,11 @@ function fplMailPreamble(res, o) {
   const arrT = fplArrivalLocal(depT, res.eetMinutes);
   const pts = Array.isArray(res.expandedPoints) ? res.expandedPoints.map(fplPointLabel) : [];
   const lines = [S.fplMailTitle, ''];
-  if (depT) lines.push(S.fplMailDeparture(dep, depT), '');
+  // Whether each end is an airfield: Hebrew names it as one ("משדה תימן", not "מתימן").
+  const isField = (code) => !!(typeof airfieldByIcao === 'function' && airfieldByIcao(code));
+  if (depT) lines.push(S.fplMailDeparture(dep, depT, isField(res.dep)), '');
   if (pts.length) lines.push(S.fplMailRoute(pts.join(' - ')), '');
-  if (arrT) lines.push(S.fplMailArrival(dest, arrT), '');
+  if (arrT) lines.push(S.fplMailArrival(dest, arrT, isField(res.dest)), '');
   return lines.join('\n') + '\n';
 }
 // --- parking request -----------------------------------------------------------------
@@ -3574,6 +3576,15 @@ function setPage(size) {
   fitPageFrame();
   refreshPageButtons();
 }
+// A position on the map is flying, not printing: the A3/A4 frame comes off when Location or a
+// recording starts, as if its own button had been pressed again.
+function clearPageFrameForLocation() {
+  if (typeof pageSize === 'undefined' || !pageSize) return;
+  setPage(pageSize);
+  // Said, not silent: a frame that vanishes when Location starts looks like a fault.
+  if (typeof showToast === 'function') showToast(S.pageFrameOffForLocation || 'Page frame off while your position shows');
+}
+window.clearPageFrameForLocation = clearPageFrameForLocation;
 function toggleOrientation() {
   pageOrient = pageOrient === 'portrait' ? 'landscape' : 'portrait';
   try { localStorage.setItem('navaid.pageOrient', pageOrient); } catch (e) {}
@@ -3990,13 +4001,99 @@ function exportNavLog(scrollArea) {
     (freqs ? '<h2>' + esc(S.navLogFreqs || 'Frequencies') + '</h2><ul>' + freqs + '</ul>' : '') +
     '</body></html>';
 
-  const w = window.open('', '_blank');
-  if (!w) { refuse(S.navLogPopupBlocked || 'Allow pop-ups to export the nav log.'); return; }
-  w.document.open();
-  w.document.write(html);
-  w.document.close();
-  w.focus();
-  setTimeout(() => { try { w.print(); } catch (e) { /* user can print manually */ } }, 300);
+  // Straight to the print dialog: a tab of its own was one more thing to close afterwards.
+  printHtmlPage(html);
+}
+
+// A departure time in quarter hours: an hour list and a minute list (00/15/30/45). A native
+// time input offers every minute -- Chrome's picker ignores `step`, Android's too -- and a
+// departure is planned to the quarter. Returns { el, input }: `el` to place, `input` a hidden
+// <input> carrying the id and the HH:MM value (read and written through .value, 'change'
+// fired on it), so callers keep treating it as the one field. `allowEmpty` adds a blank
+// ("--") for "no departure set".
+// "The departure time has passed": set a new one (the default, focused), or open the filing
+// dialog anyway. Closing it does neither -- unlike a yes/no, where closing is an answer.
+function askDeparturePassed(clock, textOverride) {
+  return new Promise((resolve) => {
+    if (typeof createDraggableModal !== 'function') { resolve('set'); return; }
+    let answered = false;
+    const done = (v) => { if (!answered) { answered = true; resolve(v); } };
+    const modal = createDraggableModal(S.fplEtdPassedTitle || 'Departure time', 'modal follow-me-ask-modal fpl-etd-ask', () => done(null));
+    const text = document.createElement('p');
+    text.className = 'follow-me-ask-text';
+    text.textContent = textOverride
+      || (S.fplEtdPassedFirst ? S.fplEtdPassedFirst(clock) : 'The departure time (' + clock + ') has passed.');
+    const row = document.createElement('div');
+    row.className = 'follow-me-ask-actions';
+    const force = document.createElement('button');
+    force.type = 'button';
+    force.className = 'follow-me-ask-cancel fpl-etd-force';
+    force.textContent = S.fplOpenAnyway || 'Open anyway';
+    force.title = S.fplOpenAnywayTitle || '';
+    force.addEventListener('click', () => { done('force'); modal.close(); });
+    const set = document.createElement('button');
+    set.type = 'button';
+    set.className = 'follow-me-ask-ok fpl-etd-set';
+    set.textContent = S.fplSetNewTime || 'Set a new time';
+    set.addEventListener('click', () => { done('set'); modal.close(); });
+    row.append(force, set);
+    modal.box.append(text, row);
+    modal.show();
+    try { set.focus(); } catch (e) { /* not focusable yet */ }
+  });
+}
+function quarterTimePicker(id, value, opts) {
+  const o = opts || {};
+  const el = document.createElement('span');
+  el.className = 'qtime';
+  el.dir = 'ltr';                        // HH : MM, in that order, in Hebrew too
+  const hour = document.createElement('select');
+  hour.className = 'qtime-h';
+  hour.setAttribute('aria-label', o.hourLabel || S.qtimeHour || 'Hour');
+  const min = document.createElement('select');
+  min.className = 'qtime-m';
+  min.setAttribute('aria-label', o.minuteLabel || S.qtimeMinute || 'Minutes');
+  const opt = (sel, v, text) => {
+    const x = document.createElement('option');
+    x.value = v; x.textContent = text; sel.appendChild(x);
+  };
+  if (o.allowEmpty) { opt(hour, '', '--'); opt(min, '', '--'); }
+  for (let h = 0; h < 24; h++) opt(hour, String(h).padStart(2, '0'), String(h).padStart(2, '0'));
+  for (const m of ['00', '15', '30', '45']) opt(min, m, m);
+  const sep = document.createElement('span');
+  sep.className = 'qtime-sep';
+  sep.textContent = ':';
+  sep.setAttribute('aria-hidden', 'true');
+  el.append(hour, sep, min);
+  const input = document.createElement('input');
+  input.type = 'hidden';
+  input.id = id;
+  if (o.label) el.setAttribute('aria-label', o.label);
+  el.setAttribute('role', 'group');
+  // The hidden input's own value is kept real (not only a getter), so anything reading the
+  // DOM -- a form, a test, the browser's devtools -- sees the time the lists show.
+  const native = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value');
+  const read = () => (hour.value && min.value) ? hour.value + ':' + min.value : '';
+  const write = (v) => {
+    const q = typeof etdQuarter === 'function' ? etdQuarter(v) : String(v || '');
+    const m = /^(\d{2}):(\d{2})$/.exec(q);
+    if (m) { hour.value = m[1]; min.value = m[2]; }
+    else if (o.allowEmpty) { hour.value = ''; min.value = ''; }
+    native.set.call(input, read());
+  };
+  Object.defineProperty(input, 'value', { get: read, set: write, configurable: true });
+  write(value);
+  const changed = (which) => {
+    // Picking an hour with no minutes yet means on the hour. A minute picked before an hour
+    // stays picked; the time is empty until both are set.
+    if (which === hour && hour.value && !min.value) min.value = '00';
+    native.set.call(input, read());
+    input.dispatchEvent(new Event('change'));
+  };
+  hour.addEventListener('change', () => changed(hour));
+  min.addEventListener('change', () => changed(min));
+  el.appendChild(input);
+  return { el, input };
 }
 
 function showFlightPlan() {
@@ -4136,6 +4233,156 @@ function showFlightPlan() {
   }
   box.appendChild(fpAircraft);
 
+  // Departure time (#667): the ETA column and the last-light check count from it. The same
+  // stored departure the filing dialog uses (etdRead/etdWrite in core.js), typed in local
+  // time like there, with the UTC beside it. A popover beside Columns, like Columns: on a
+  // phone the plan only just fits the chart space, and two more rows pushed it past it.
+  // What it says when closed -- the departure, and last light with the arrival against it --
+  // takes no row of its own.
+  const whenWrap = document.createElement('details');
+  whenWrap.className = 'fp-when';
+  const whenSummary = document.createElement('summary');
+  whenSummary.title = S.fpEtdTitle || '';
+  whenWrap.appendChild(whenSummary);
+  const whenMenu = document.createElement('div');
+  whenMenu.className = 'fp-columns-menu fp-when-menu';
+  const etdStored = typeof etdRead === 'function' ? etdRead() : null;
+  const etdDate = document.createElement('input');
+  etdDate.type = 'date';
+  etdDate.id = 'fp-etd-date';
+  etdDate.setAttribute('aria-label', S.fpEtdDate || 'Departure date');
+  const todayIso = (() => {
+    const d = new Date();
+    return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' +
+      String(d.getDate()).padStart(2, '0');
+  })();
+  etdDate.value = etdStored ? etdStored.date : todayIso;
+  const etdPicker = quarterTimePicker('fp-etd-time', etdStored ? etdStored.time : '',
+    { allowEmpty: true, label: S.fpEtdTime || 'Departure time (local)' });
+  const etdTime = etdPicker.input;
+  const etdUtc = document.createElement('span');
+  etdUtc.className = 'fp-etd-utc';
+  etdUtc.dir = 'ltr';
+  const etdLbl = document.createElement('div');
+  etdLbl.className = 'fp-when-label';
+  etdLbl.textContent = S.fpEtd || 'Departure (ETD)';
+  const etdFields = document.createElement('div');
+  etdFields.className = 'fp-when-fields';
+  etdFields.append(etdDate, etdPicker.el, etdUtc);
+  const zuluLbl = document.createElement('label');
+  zuluLbl.className = 'fp-eta-zulu';
+  zuluLbl.title = S.fpEtaZuluTitle || '';
+  const zuluCb = document.createElement('input');
+  zuluCb.type = 'checkbox';
+  zuluCb.id = 'fp-eta-zulu';
+  zuluCb.checked = typeof etaZulu === 'function' && etaZulu();
+  const zuluTxt = document.createElement('span');
+  zuluTxt.textContent = S.fpEtaZulu || 'Times in UTC';
+  zuluLbl.append(zuluCb, zuluTxt);
+  // The whole sentence -- place, sunset, last light, and the arrival against it.
+  const lastLightEl = document.createElement('div');
+  lastLightEl.className = 'fp-last-light';
+  lastLightEl.id = 'fp-last-light';
+  // The soonest departure a routes plan can be filed for: now plus the filing lead, rounded up
+  // to the quarter -- the same time the filing dialog proposes (fplDefaultWhen).
+  const etdSoon = document.createElement('button');
+  etdSoon.type = 'button';
+  etdSoon.className = 'fp-etd-soon';
+  etdSoon.id = 'fp-etd-soon';
+  const leadMin = typeof FPL_MIN_LEAD_MIN === 'function' ? FPL_MIN_LEAD_MIN() : 60;
+  etdSoon.textContent = S.fpEtdSoon ? S.fpEtdSoon(leadMin) : 'Now + ' + leadMin + ' min';
+  etdSoon.title = S.fpEtdSoonTitle || '';
+  etdSoon.onclick = () => {
+    const w = fplDefaultWhen();
+    if (typeof etdWrite === 'function') etdWrite(w.date, w.time);
+    showEtd(typeof etdRead === 'function' ? etdRead() : null, typeof etaZulu === 'function' && etaZulu());
+    refresh();
+  };
+  // How to close it, said: an X in the corner, as the app's other panels have; Escape and a tap
+  // outside close it too, as a popover does.
+  const whenClose = document.createElement('button');
+  whenClose.type = 'button';
+  whenClose.className = 'fp-when-close';
+  whenClose.textContent = '\u2715';
+  whenClose.setAttribute('aria-label', S.modalCloseTitle || 'Close');
+  whenClose.title = S.modalCloseTitle || 'Close';
+  whenClose.onclick = () => { whenWrap.open = false; try { whenSummary.focus(); } catch (e) { /* */ } };
+  const etdHead = document.createElement('div');
+  etdHead.className = 'fp-when-head';
+  etdHead.append(etdLbl, whenClose);
+  whenMenu.append(etdHead, etdFields, etdSoon, zuluLbl, lastLightEl);
+  // On window, capturing: it runs before the plan's own Escape (on document), so Escape closes
+  // the popover and only the popover.
+  // Both let go once the popover is no longer on the page: the plan can close with it open, and
+  // a listener left on window would swallow every later Escape in the app.
+  const dropWhenListeners = () => {
+    window.removeEventListener('keydown', onWhenKey, true);
+    document.removeEventListener('pointerdown', onWhenOutside, true);
+  };
+  const onWhenKey = (e) => {
+    if (!whenWrap.isConnected) { dropWhenListeners(); return; }
+    if (e.key === 'Escape' && whenWrap.open) { e.stopImmediatePropagation(); e.preventDefault(); whenWrap.open = false; try { whenSummary.focus(); } catch (er) { /* */ } }
+  };
+  const onWhenOutside = (e) => {
+    if (!whenWrap.isConnected) { dropWhenListeners(); return; }
+    if (whenWrap.open && !whenWrap.contains(e.target)) whenWrap.open = false;
+  };
+  whenWrap.addEventListener('toggle', () => {
+    if (whenWrap.open) {
+      window.addEventListener('keydown', onWhenKey, true);
+      document.addEventListener('pointerdown', onWhenOutside, true);
+    } else {
+      dropWhenListeners();
+    }
+  });
+  whenWrap.appendChild(whenMenu);
+  // Beside the popover, always in view: last light, amber with a moon when the arrival is after it.
+  const lastLightShort = document.createElement('span');
+  lastLightShort.className = 'fp-last-light-short';
+  lastLightShort.id = 'fp-last-light-short';
+  lastLightShort.setAttribute('role', 'status');
+  // A field outside its published hours -- the departure at the ETD, the destination at the
+  // arrival: the one red finding here.
+  const destClosedEl = document.createElement('span');
+  destClosedEl.className = 'fp-dest-closed';
+  destClosedEl.id = 'fp-dest-closed';
+  destClosedEl.setAttribute('role', 'status');
+  // With "Times in UTC" on, the departure is shown and typed in UTC too -- the same clock as
+  // every ETA beside it. Stored local either way (the filing dialog's clock).
+  const pad2 = n => String(n).padStart(2, '0');
+  const isoDate = (d, z) => z
+    ? d.getUTCFullYear() + '-' + pad2(d.getUTCMonth() + 1) + '-' + pad2(d.getUTCDate())
+    : d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate());
+  const showEtd = (etd, zulu) => {
+    const when = etd && typeof etdInstant === 'function' ? etdInstant(etd) : null;
+    if (!when) { if (etd) { etdDate.value = etd.date; etdTime.value = etd.time; } return; }
+    etdDate.value = isoDate(when, zulu);
+    etdTime.value = zulu ? pad2(when.getUTCHours()) + ':' + pad2(when.getUTCMinutes()) : etd.time;
+  };
+  const onEtd = () => {
+    const zulu = typeof etaZulu === 'function' && etaZulu();
+    const m = /^(\d{2}):(\d{2})$/.exec(etdTime.value || '');
+    const d = /^(\d{4})-(\d{2})-(\d{2})$/.exec(etdDate.value || '');
+    if (zulu && m && d) {
+      const when = new Date(Date.UTC(+d[1], +d[2] - 1, +d[3], +m[1], +m[2]));
+      if (typeof etdWrite === 'function') etdWrite(isoDate(when, false), pad2(when.getHours()) + ':' + pad2(when.getMinutes()));
+    } else if (typeof etdWrite === 'function') {
+      etdWrite(etdDate.value, etdTime.value);
+    }
+    refresh();
+  };
+  etdDate.onchange = onEtd;
+  etdTime.onchange = onEtd;
+  zuluCb.onchange = () => {
+    if (typeof setEtaZulu === 'function') setEtaZulu(zuluCb.checked);
+    showEtd(typeof etdRead === 'function' ? etdRead() : null, zuluCb.checked);
+    refresh();
+  };
+  // The opening hours arrive with their own file; the check fills in once it has.
+  if (window.NavAid && NavAid.airfieldHours) {
+    NavAid.airfieldHours.load().then(() => { if (box.isConnected) refresh(); });
+  }
+
   // Vertical profile strip — altitude vs distance with TOC/TOD.
   const profWrap = document.createElement('div');
   profWrap.className = 'fp-profile';
@@ -4261,6 +4508,9 @@ function showFlightPlan() {
     { key: 'fuel', label: baseHeaders[8] || 'Fuel (gal)', display: dispHeaders[8] || 'Fuel (gal)' },
     { key: 'cumTime', label: baseHeaders[9] || 'Cum. time', display: dispHeaders[9] || 'Cum. time' },
     { key: 'cumFuel', label: baseHeaders[10] || 'Cum. fuel', display: dispHeaders[10] || 'Cum. fuel' },
+    // Clock time over the leg's To point: departure + cumulative time (#667). After the
+    // cumulative pair, so the CSV's leading columns keep their names and their order.
+    { key: 'eta', label: S.fpEta || 'ETA', display: S.fpEta || 'ETA' },
     { key: 'radial', label: baseHeaders[11] || 'Radial', display: dispHeaders[11] || 'Radial', className: 'fp-vor-col' },
     { key: 'dme', label: baseHeaders[12] || 'DME', display: dispHeaders[12] || 'DME', className: 'fp-vor-col' },
   ];
@@ -4290,7 +4540,7 @@ function showFlightPlan() {
     // is one tap away in the Columns menu, and the totals line above the table always
     // carries distance/ETE/fuel. The full table is 874px wide, so on a 375px phone the
     // columns you actually fly by started off-screen behind a sideways scroll.
-    ? ['from', 'dist', 'speed', 'fuel', 'cumTime', 'cumFuel', 'radial', 'dme', 'freq']
+    ? ['from', 'dist', 'speed', 'fuel', 'cumTime', 'eta', 'cumFuel', 'radial', 'dme', 'freq']
     : [];
   let savedFpColumns = fpDefaultHiddenColumns;
   try {
@@ -4382,7 +4632,11 @@ function showFlightPlan() {
     syncFpColumnVisibility();
   };
   colWrap.appendChild(colMenu);
-  box.appendChild(colWrap);
+  // Columns, the departure popover and last light share one row.
+  const fpTools = document.createElement('div');
+  fpTools.className = 'fp-tools';
+  fpTools.append(colWrap, whenWrap, lastLightShort, destClosedEl);
+  box.appendChild(fpTools);
 
   const scrollArea = document.createElement('div');
   scrollArea.className = 'fp-scroll';
@@ -4401,6 +4655,7 @@ function showFlightPlan() {
       if (col.key === 'time' || col.key === 'cumTime') {
         th.title = S.fpTimeUnitsTitle || 'Elapsed time, mm:ss (not a clock time)';
       }
+      if (col.key === 'eta') th.title = S.fpEtaTitle || '';
       trEl.appendChild(markFpColumn(th, col.key));
     });
   };
@@ -4457,6 +4712,7 @@ function showFlightPlan() {
   const timeCells = [];                 // leg index -> time cell
   const fuelCells = [];                 // leg index -> fuel (gal) cell
   const cumTimeCells = [];              // leg index -> cumulative time (H:M:S)
+  const etaCells = [];                  // leg index -> clock time over the To point
   const cumFuelCells = [];            // leg index -> cumulative fuel (gal)
   const radialCells = [];              // leg index -> VOR radial cell (To wp)
   const dmeCells = [];                 // leg index -> VOR DME cell (To wp)
@@ -4520,7 +4776,7 @@ function showFlightPlan() {
       sel.value = (state.legs[leg] && state.legs[leg].vorRef) || '';
     }
   }
-  let totDistCell, totTimeCell, totFuelCell, totCumTimeCell, totCumFuelCell;
+  let totDistCell, totTimeCell, totFuelCell, totCumTimeCell, totCumFuelCell, totEtaCell;
   for (let i = 0; i < state.legs.length; i++) {
     const A = state.waypoints[i], B = state.waypoints[i + 1];
     const leg = state.legs[i];
@@ -4586,6 +4842,10 @@ function showFlightPlan() {
     const cumFuelCell = planCell('');
     cumFuelCells[i] = cumFuelCell;
     tr.appendChild(fpCell('cumFuel', cumFuelCell));
+    const etaCell = planCell('');
+    etaCell.dir = 'ltr';
+    etaCells[i] = etaCell;
+    tr.appendChild(fpCell('eta', etaCell));
     const radial = radialCellWithPicker(i);
     radialCells[i] = radial.val;
     tr.appendChild(fpCell('radial', radial.td));
@@ -4666,12 +4926,106 @@ function showFlightPlan() {
   trF.appendChild(fpCell('cumTime', totCumTimeCell));
   totCumFuelCell = planCell('');
   trF.appendChild(fpCell('cumFuel', totCumFuelCell));
+  totEtaCell = planCell('');
+  totEtaCell.dir = 'ltr';
+  trF.appendChild(fpCell('eta', totEtaCell));
   const totRadial = planCell(''); totRadial.classList.add('fp-vor-col'); trF.appendChild(fpCell('radial', totRadial));
   const totDme = planCell(''); totDme.classList.add('fp-vor-col'); trF.appendChild(fpCell('dme', totDme));
   if (freqActive) { const tf2 = planCell(''); tf2.classList.add('fp-freq-col'); trF.appendChild(fpCell('freq', tf2)); }
   trF.appendChild(fpCell('delete', planCell('')));        // Delete column (empty)
   tfoot.appendChild(trF);
   table.appendChild(tfoot);
+
+  // The departure's UTC, and the last-light line for the destination: sunset and the end of
+  // civil twilight on the departure date, and the arrival against it. Shown without a
+  // departure time too (for today, or the date picked) -- last light is worth knowing first.
+  // A clock in a label that must not change width when Times in UTC adds its Z: in local time an
+  // invisible Z holds the room, so the switch changes the text and nothing around it moves.
+  function setClockText(el, prefix, text, zulu) {
+    // One inline run: the button is a flex row with a gap, and a loose hidden Z became a flex
+    // item of its own, gap and all.
+    const run = document.createElement('span');
+    run.className = 'fp-clock-run';
+    run.textContent = prefix + text;
+    const m = !zulu ? /\d\d:\d\d/.exec(run.textContent) : null;
+    if (m) {
+      const ghost = document.createElement('span');
+      ghost.className = 'fp-z-ghost';
+      ghost.setAttribute('aria-hidden', 'true');
+      ghost.textContent = 'Z';
+      const rest = run.firstChild.splitText(m.index + 5);    // right after the clock
+      run.insertBefore(ghost, rest);
+    }
+    el.replaceChildren(run);
+  }
+  // The published-hours finding of the last refresh, for Submit to ask about ('' when none).
+  let hoursProblem = '';
+  function refreshWhen(etd, dep, zulu, lastVisible, arrival, firstVisible) {
+    // The filing dialog may have set the departure under the open panel.
+    if (etd && document.activeElement !== etdDate && !etdPicker.el.contains(document.activeElement)) {
+      showEtd(etd, zulu);
+    }
+    // Beside the fields, the other clock: UTC while typing local, local while typing UTC.
+    etdUtc.textContent = dep ? (zulu ? (S.fpLocalShort ? S.fpLocalShort(etaClock(dep, false)) : etaClock(dep, false) + ' LT')
+      : etaClock(dep, true)) : '';   // the Z says UTC; an '=' flipped sides in Hebrew
+    etdLbl.textContent = zulu ? (S.fpEtdTimeUtc || 'Departure time (UTC)') : (S.fpEtd || 'Departure (ETD)');
+    etdPicker.el.setAttribute('aria-label', zulu ? (S.fpEtdTimeUtc || 'Departure time (UTC)')
+      : (S.fpEtdTime || 'Departure time (local)'));
+    setClockText(whenSummary, (S.fpEtdShort || 'ETD') + ' ', dep ? etaClock(dep, zulu) : '--:--', zulu);
+    totEtaCell.textContent = arrival ? etaClock(arrival, zulu) : '--';
+    const destIdx = lastVisible >= 0 ? lastVisible + 1 : state.waypoints.length - 1;
+    const dest = state.waypoints[destIdx];
+    const date = etd ? etd.date : etdDate.value;
+    const ll = dest && typeof lastLightAt === 'function' ? lastLightAt(dest.lat, dest.lng, date) : null;
+    // Two different findings: after last light is night (a caution, amber), outside the
+    // field's published hours is a plan that does not work (red).
+    const late = !!(ll && arrival && arrival > ll.lastLight);
+    const hrs = arrival && typeof fieldHoursAt === 'function' ? fieldHoursAt(dest, arrival) : null;
+    const closed = !!(hrs && hrs.state === 'closed');
+    const name = wpLabel(destIdx);
+    totEtaCell.classList.toggle('fp-eta-night', late && !closed);
+    totEtaCell.classList.toggle('fp-eta-closed', closed);
+    totEtaCell.title = closed && S.fpEtaClosedTitle ? S.fpEtaClosedTitle(name)
+      : (late && S.fpEtaDarkTitle ? S.fpEtaDarkTitle(etaClock(ll.lastLight, zulu)) : '');
+    // The departure field at the departure time too (Herzliya, for one, shuts to fixed wing
+    // 14:00-16:00).
+    const depIdx = Number.isInteger(firstVisible) ? firstVisible : 0;
+    const depHrs = dep && typeof fieldHoursAt === 'function' ? fieldHoursAt(state.waypoints[depIdx], dep) : null;
+    const depClosed = !!(depHrs && depHrs.state === 'closed');
+    const depName = wpLabel(depIdx);
+    hoursProblem = (depClosed || closed) ? [
+      depClosed ? (S.fpDepClosed ? S.fpDepClosed(depName, depHrs.opens || '') : depName + ' is outside its published hours at the departure') : '',
+      closed ? (S.fpDestClosed ? S.fpDestClosed(name, hrs.opens || '') : name + ' is outside its published hours at the arrival') : '',
+    ].filter(Boolean).join(' \u00b7 ') : '';
+    // One place per finding: this line, beside the departure, always in view. Red when a field
+    // is shut (the plan does not work); otherwise amber for a landing after last light. The
+    // popover below gives the times only, and the last leg's ETA carries the same mark as the
+    // total row -- they used to say it two and three times, and not always the same thing.
+    const nightOnly = late && !closed && !depClosed;
+    destClosedEl.classList.toggle('fp-finding-night', nightOnly);
+    destClosedEl.textContent = nightOnly ? (S.fpNightFinding || 'Arrival after last light \u2014 a night landing') : hoursProblem;
+    if (lastVisible >= 0 && etaCells[lastVisible]) {
+      const last = etaCells[lastVisible];
+      if (closed) {
+        last.classList.remove('fp-eta-night');
+        last.classList.add('fp-eta-closed');
+        last.title = totEtaCell.title;
+      } else {
+        last.classList.remove('fp-eta-closed');
+      }
+    }
+    if (!ll) { lastLightEl.textContent = ''; lastLightShort.textContent = ''; return; }
+    const text = (arrival && S.fpArrival ? S.fpArrival(etaClock(arrival, zulu)) + ' \u00b7 ' : '') +
+      (S.fpLastLight
+        ? S.fpLastLight(name, etaClock(ll.sunset, zulu), etaClock(ll.lastLight, zulu))
+        : 'Last light at ' + name + ': ' + etaClock(ll.lastLight, zulu));
+    // The detail: the times, nothing judged -- the finding is said once, in the line above.
+    lastLightEl.textContent = text;
+    const llShort = S.fpLastLightShort ? S.fpLastLightShort(etaClock(ll.lastLight, zulu))
+      : 'Last light ' + etaClock(ll.lastLight, zulu);
+    setClockText(lastLightShort, '', llShort, zulu);
+    lastLightShort.title = lastLightEl.textContent;
+  }
 
   function refresh() {
     // Hide the Radial / DME columns when neither a global reference VOR nor
@@ -4690,6 +5044,10 @@ function showFlightPlan() {
     const prof = typeof routeProfile === 'function' ? routeProfile(ac) : null;
     if (typeof drawProfileStripIfOpen === 'function') drawProfileStripIfOpen();
     let visibleSeq = 0;
+    const etd = typeof etdRead === 'function' ? etdRead() : null;
+    const dep = etd && typeof etdInstant === 'function' ? etdInstant(etd) : null;
+    const zulu = typeof etaZulu === 'function' && etaZulu();
+    let lastVisible = -1, arrival = null, clockH = 0;
     for (let i = 0; i < state.legs.length; i++) {
       const visible = typeof legDirVisible !== 'function' || legDirVisible(i);
       if (legRows[i]) legRows[i].hidden = !visible;
@@ -4727,6 +5085,20 @@ function showFlightPlan() {
         fuelCells[i].title = '';
       }
       cumTimeCells[i].textContent = preClock ? '---' : (th > 0 ? toHMS(th) : '--');
+      lastVisible = i;
+      // A clock time counts every leg from take-off, the ones inside the departure CTR too:
+      // the cumulative column starts at the boundary by design, and an ETA (and the night
+      // and opening-hours checks on it) that skipped those minutes came out early.
+      clockH += dur;
+      const eta = dep ? new Date(dep.getTime() + clockH * 3600000) : null;
+      etaCells[i].textContent = eta ? etaClock(eta, zulu) : '--';
+      // After last light at the point itself, for the departure's own date: a VFR day
+      // flight that runs past midnight is past last light too, which this still says.
+      const ll = eta && typeof lastLightAt === 'function' ? lastLightAt(B.lat, B.lng, etd.date) : null;
+      const dark = !!(ll && eta > ll.lastLight);
+      etaCells[i].classList.toggle('fp-eta-night', dark);
+      etaCells[i].title = dark && S.fpEtaDarkTitle ? S.fpEtaDarkTitle(etaClock(ll.lastLight, zulu)) : '';
+      if (eta) arrival = eta;
       cumFuelCells[i].textContent = ac ? tf.toFixed(1) : '--';
       cumFuelCells[i].title = '';
       if (speedInputs[i] && document.activeElement !== speedInputs[i])
@@ -4750,11 +5122,14 @@ function showFlightPlan() {
     totFuelCell.textContent = ac ? tf.toFixed(1) : '--';
     totCumTimeCell.textContent = totTimeCell.textContent;
     totCumFuelCell.textContent = totFuelCell.textContent;
+    refreshWhen(etd, dep, zulu, lastVisible, arrival, firstVisible);
     // Keep the narrow-screen summary in step with the table it summarises.
     if (mobileSummary) {
       mobileSummary.textContent = (typeof S.fpMobileSummary === 'function')
         ? S.fpMobileSummary(visibleIndexes.length, td.toFixed(1),
             th > 0 ? toHMS(th) : '--', ac ? tf.toFixed(1) : '--')
+          // The arrival clock, where the ETA column starts hidden.
+          + (arrival && S.fpArrival ? ' \u00b7 ' + S.fpArrival(etaClock(arrival, zulu)) : '')
         : '';
     }
     if (freqActive) {
@@ -4861,6 +5236,8 @@ function showFlightPlan() {
       const cumFuelCell = planCell('');
       rCumFuelCells[i] = cumFuelCell;
       tr.appendChild(fpCell('cumFuel', cumFuelCell));
+      // The return is a flight of its own, with no departure time here: no ETA.
+      tr.appendChild(fpCell('eta', planCell('')));
       const radial = radialCellWithPicker(ri);
       rRadialCells[i] = radial.val;
       tr.appendChild(fpCell('radial', radial.td));
@@ -4899,6 +5276,7 @@ function showFlightPlan() {
     rtrF.appendChild(fpCell('cumTime', rTotCumTimeCell));
     rTotCumFuelCell = planCell('');
     rtrF.appendChild(fpCell('cumFuel', rTotCumFuelCell));
+    rtrF.appendChild(fpCell('eta', planCell('')));
     const rTotRadial = planCell(''); rTotRadial.classList.add('fp-vor-col'); rtrF.appendChild(fpCell('radial', rTotRadial));
     const rTotDme = planCell(''); rTotDme.classList.add('fp-vor-col'); rtrF.appendChild(fpCell('dme', rTotDme));
     if (freqActive) { const rtf = planCell(''); rtf.classList.add('fp-freq-col'); rtrF.appendChild(fpCell('freq', rtf)); }
@@ -4991,7 +5369,10 @@ function showFlightPlan() {
     document.head.appendChild(pageStyle);
     document.body.classList.add('printing-plan');
     window.print();
-    setTimeout(cleanup, 4000);           // belt-and-braces for Safari
+    // Belt-and-braces for Safari -- but not while the Android app's print dialog is up: it
+    // prints after the dialog, and the plan's print layout has to be there when it does.
+    const later = () => (window.NavAidNativePrint && NavAidNativePrint.busy()) ? setTimeout(later, 1000) : cleanup();
+    setTimeout(later, 4000);
   };
   btns.appendChild(printBtn);
   const csvBtn = document.createElement('button');
@@ -5021,7 +5402,40 @@ function showFlightPlan() {
   fplBtn.id = 'fpl-open';
   fplBtn.textContent = narrowRow ? (S.tbFplShort || '\u2708 FPL') : (S.tbFpl || 'Flight plan (FPL)');
   fplBtn.title = (typeof fplIsolate === 'function') ? fplIsolate(S.tbFplTitle || '') : (S.tbFplTitle || '');
-  fplBtn.onclick = () => showFplDialog();
+  // The plan is filed with the flight plan's own departure (the ETD above): without one, or
+  // with one that has passed, the filing dialog does not open -- the departure does, focused,
+  // with a line saying why. One place to set the time, so the two cannot disagree.
+  // A passed one asks first, with a way through: if the app's idea of "now" is wrong (the
+  // device clock, a time zone), a check that only refused would stop a legitimate plan.
+  // What was missed, shown on it: the departure button and its time pulse red three times
+  // (under 2 a second, well clear of the 3-a-second flash limit), beside the message that says
+  // why; with reduced motion, a steady red ring instead.
+  const flashDeparture = () => {
+    const els = [whenSummary, etdPicker.el];
+    for (const el of els) { el.classList.remove('fp-attn'); void el.offsetWidth; el.classList.add('fp-attn'); }
+    setTimeout(() => els.forEach(el => el.classList.remove('fp-attn')), 3000);
+  };
+  const openDeparture = (msg) => {
+    flashDeparture();
+    whenWrap.open = true;
+    const hour = whenWrap.querySelector('.qtime-h');
+    if (hour) { try { hour.focus({ preventScroll: false }); } catch (e) { hour.focus(); } }
+    if (msg && typeof showToast === 'function') showToast(msg);
+  };
+  fplBtn.onclick = async () => {
+    const etd = typeof etdRead === 'function' ? etdRead() : null;
+    const at = etd && typeof etdInstant === 'function' ? etdInstant(etd) : null;
+    if (!at) { openDeparture(S.fplEtdFirst || 'Set the departure time first — the plan is filed with it.'); return; }
+    const passed = at.getTime() <= Date.now();
+    // Outside an airfield's published hours (the red line beside the departure): the same
+    // question -- the published hours could be the thing that is wrong, or the day an exception.
+    if (!passed) refresh();
+    if (!passed && !hoursProblem) { showFplDialog(); return; }
+    const answer = await askDeparturePassed(etaClock(at, false),
+      passed ? '' : hoursProblem + '. ' + (S.fplHoursAsk || 'Set another time, or file it anyway?'));
+    if (answer === 'set') openDeparture('');
+    else if (answer === 'force') showFplDialog(passed ? { forcePast: true } : {});
+  };
   btns.appendChild(fplBtn);
   box.appendChild(btns);
   addModalCloseX(box, closeFlightPlan);
@@ -5613,6 +6027,52 @@ function showExportModal() {
   opacityRow.appendChild(opResetBtn);
   body.appendChild(opacityRow);
 
+  // Resolution: Low / Medium / High (printRes, exportPNG).
+  const resRow = document.createElement('div');
+  resRow.style.cssText = 'display:flex;align-items:center;gap:6px;font-size:13px';
+  const resLbl = document.createElement('span');
+  resLbl.textContent = S.exportResolution || 'Resolution';
+  const resSlider = document.createElement('input');
+  resSlider.type = 'range';
+  resSlider.id = 'export-res';
+  resSlider.min = '0'; resSlider.max = '2'; resSlider.step = '1';
+  resSlider.value = String(PRINT_RES_STEPS.indexOf(printRes()));
+  resSlider.style.cssText = 'flex:1;height:16px;accent-color:#ffd966';
+  resSlider.setAttribute('aria-label', resLbl.textContent);
+  const resVal = document.createElement('span');
+  resVal.style.cssText = 'min-width:4.5em;text-align:end;font-size:12px';
+  const resName = (v) => ({ low: S.exportResLow || 'Low', medium: S.exportResMedium || 'Medium',
+    high: S.exportResHigh || 'High' })[v];
+  const showRes = () => {
+    const v = PRINT_RES_STEPS[Number(resSlider.value)] || 'high';
+    resVal.textContent = resName(v);
+    resSlider.setAttribute('aria-valuetext', resVal.textContent);
+    return v;
+  };
+  showRes();
+  resSlider.addEventListener('input', () => {
+    const v = showRes();
+    try { localStorage.setItem(PRINT_RES_KEY, v); } catch (e) { /* private */ }
+  });
+  resRow.append(resLbl, resSlider, resVal);
+  body.appendChild(resRow);
+
+  // Black-and-white printer: the chart in light grey, the route black on white (exportPNG).
+  // Remembered on this device -- it is about the printer here, not the pilot's other devices.
+  const bwLabel = document.createElement('label');
+  bwLabel.style.cssText = 'display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer';
+  bwLabel.title = S.exportBwTitle || '';
+  const bwCb = document.createElement('input');
+  bwCb.type = 'checkbox';
+  bwCb.id = 'export-bw';
+  bwCb.checked = printBwOn();
+  bwCb.addEventListener('change', () => {
+    try { localStorage.setItem(PRINT_BW_KEY, bwCb.checked ? '1' : '0'); } catch (e) { /* private */ }
+  });
+  bwLabel.appendChild(bwCb);
+  bwLabel.appendChild(document.createTextNode(S.exportBw || 'Optimized for a black-and-white printer'));
+  body.appendChild(bwLabel);
+
   // Page-size warning — red + blinking, and kept live (updateExportPageWarn is
   // called from refreshPageButtons, so toggling A3/A4 while this panel is open
   // shows/hides it immediately).
@@ -5988,7 +6448,11 @@ async function fetchTileBitmap(layer, coords, signal) {
 // A3 → two A4 landscape halves (horizontal cut). Halves abut exactly (no
 // overlap, so 1:250 000 is preserved); a dashed cut/tape guide marks the shared
 // edge and each page is labelled. Downloads two PNGs with A4 DPI metadata.
-function exportA4x2Tiles(out, W, H, done) {
+function exportA4x2Tiles(out, W, H, done, mode) {
+  // Print sends both pages to one print window, page 1 then page 2; Save downloads them as two
+  // files. (Print used to save the two files too: "png and print are the same?")
+  const printing = mode === 'print';
+  const pages = [];
   // pageOrient describes the assembled A3 sheet (the on-screen frame), same as
   // A3/A4: a landscape frame splits into two portrait A4 pages side-by-side
   // (vertical cut); a portrait frame splits into two landscape halves stacked
@@ -6003,7 +6467,13 @@ function exportA4x2Tiles(out, W, H, done) {
 
   let i = 0;
   (function nextTile() {
-    if (i >= tiles.length) { done(); return; }
+    if (i >= tiles.length) {
+      if (printing && pages.length) {
+        openPrintWindow(pages, portraitPages ? 210 : 297, portraitPages ? 297 : 210);
+      }
+      done();
+      return;
+    }
     const t = tiles[i++];
     const c = document.createElement('canvas');
     c.width = t.sw; c.height = t.sh;
@@ -6021,6 +6491,7 @@ function exportA4x2Tiles(out, W, H, done) {
     // where a fixed 22px label would print ~2 mm tall and be illegible.
     drawA4x2TileMarks(cx, t, tiles.length, ppmX / 1000);
     const dl = (blob) => {
+      if (printing) { pages.push(blob); nextTile(); return; }
       saveFile(blob, 'navigation-' + routeFileSlug() + '-A4x2-p' + t.n + 'of2-' + fileStamp() + '.png');
       setTimeout(nextTile, 400);   // stagger so the browser allows both downloads
     };
@@ -6073,24 +6544,158 @@ function drawA4x2TileMarks(cx, t, total, pxPerMm) {
 // an @page rule, then fire the print dialog — so it prints 1:1 regardless of the
 // printer's "fit to page" default (the only reliable way to hit the physical mm
 // sizes). Non-framed falls back to printing the image on the default page.
-function openPrintWindow(blob, paperWmm, paperHmm) {
-  const url = URL.createObjectURL(blob);
-  const w = window.open('', '_blank');
-  if (!w) { refuse(S.errPopupBlocked || 'Allow pop-ups to print.'); URL.revokeObjectURL(url); return; }
+// The page is printed from a hidden frame inside the app: the print dialog opens, and nothing
+// else -- it used to open a new tab with the image as well ("print opens a print menu, and the
+// page in a new window; can it be only the print menu?"). A frame needs no pop-up permission
+// either, so a long export is never refused as a blocked pop-up. One image, or several -- the
+// two halves of an A4x2 -- each a sheet of its own, printed once they have all loaded.
+// A whole HTML document, printed without a tab: from a hidden frame in a browser, through the
+// app's print plugin in the APK (native-print.js). The nav log is the one caller.
+function printHtmlPage(html) {
+  if (window.NavAidNativePrint && NavAidNativePrint.available() &&
+      typeof NavAidNativePrint.printHtml === 'function') {
+    NavAidNativePrint.printHtml(html);
+    return;
+  }
+  const old = document.getElementById('navaid-print-frame');
+  if (old) old.remove();
+  const frame = document.createElement('iframe');
+  frame.id = 'navaid-print-frame';
+  frame.setAttribute('aria-hidden', 'true');
+  frame.tabIndex = -1;
+  frame.style.cssText = 'position:fixed;right:0;bottom:0;width:0;height:0;border:0;visibility:hidden';
+  document.body.appendChild(frame);
+  const doc = frame.contentDocument;
+  doc.open();
+  doc.write(html);
+  doc.close();
+  const w = frame.contentWindow;
+  let cleaned = false;
+  const cleanup = () => { if (!cleaned) { cleaned = true; frame.remove(); } };
+  // A beat for the fonts and layout, as the tab version had.
+  setTimeout(() => {
+    try { w.addEventListener('afterprint', () => setTimeout(cleanup, 500)); } catch (e) { /* */ }
+    try { w.focus(); w.print(); } catch (e) { /* */ }
+    setTimeout(cleanup, 120000);
+  }, 300);
+}
+function openPrintWindow(blobs, paperWmm, paperHmm) {
+  const list = Array.isArray(blobs) ? blobs : [blobs];
+  // The Android app prints through its own plugin (native-print.js): no frame there prints.
+  if (window.NavAidNativePrint && NavAidNativePrint.available()) {
+    NavAidNativePrint.printImages(list, paperWmm, paperHmm);
+    return;
+  }
+  const urls = list.map(b => URL.createObjectURL(b));
+  const old = document.getElementById('navaid-print-frame');
+  if (old) old.remove();
+  const frame = document.createElement('iframe');
+  frame.id = 'navaid-print-frame';
+  frame.setAttribute('aria-hidden', 'true');
+  frame.tabIndex = -1;
+  // Out of sight but laid out (display:none would print a blank page in some browsers).
+  frame.style.cssText = 'position:fixed;right:0;bottom:0;width:0;height:0;border:0;visibility:hidden';
+  document.body.appendChild(frame);
+  let cleaned = false;
+  const cleanup = () => {
+    if (cleaned) return;
+    cleaned = true;
+    urls.forEach(u => URL.revokeObjectURL(u));
+    frame.remove();
+  };
   const sized = (paperWmm && paperHmm)
     ? `@page{size:${paperWmm}mm ${paperHmm}mm;margin:0}img{width:${paperWmm}mm;height:${paperHmm}mm;display:block}`
     : `@page{margin:0}img{max-width:100%;display:block}`;
-  w.document.open();
-  w.document.write('<!doctype html><html><head><meta charset="utf-8"><title>' +
+  const doc = frame.contentDocument;
+  doc.open();
+  doc.write('<!doctype html><html><head><meta charset="utf-8"><title>' +
     (S.printBtn || 'Print') + '</title><style>html,body{margin:0;padding:0}' + sized +
-    '</style></head><body><img alt=""></body></html>');
-  w.document.close();
-  const img = w.document.querySelector('img');
-  const go = () => { try { w.focus(); w.print(); } catch (e) {} setTimeout(() => URL.revokeObjectURL(url), 60000); };
-  img.onload = () => setTimeout(go, 60);
-  img.onerror = () => { URL.revokeObjectURL(url); };
-  img.src = url;
+    'img{break-after:page;page-break-after:always}img:last-child{break-after:auto;page-break-after:auto}' +
+    '</style></head><body>' + urls.map(() => '<img alt="">').join('') + '</body></html>');
+  doc.close();
+  const w = frame.contentWindow;
+  const imgs = [...doc.querySelectorAll('img')];
+  let left = imgs.length;
+  const go = () => {
+    try { w.addEventListener('afterprint', () => setTimeout(cleanup, 500)); } catch (e) { /* */ }
+    try { w.focus(); w.print(); } catch (e) { /* */ }
+    setTimeout(cleanup, 120000);        // a print dialog left open, or a browser without afterprint
+  };
+  imgs.forEach((img, i) => {
+    img.onload = () => { if (--left === 0) setTimeout(go, 60); };
+    img.onerror = () => { cleanup(); };
+    img.src = urls[i];
+  });
 }
+// Resolution for the PNG and the print, a three-step slider in the dialog (device-local):
+// High draws from the chart's sharpest tiles (about 390 dpi at 1:250 000), Medium (the
+// default) at three quarters of that, Low at half -- from a level coarser, a quarter of the tiles, so it is quick.
+// With no page chosen the same steps are 2x, 1.5x and 1x the screen's pixels.
+const PRINT_RES_KEY = 'navaid.printRes';
+const PRINT_RES_STEPS = ['low', 'medium', 'high'];
+const PRINT_RES_SCALE = { low: 0.5, medium: 0.75, high: 1 };
+function printRes() {
+  try { const v = localStorage.getItem(PRINT_RES_KEY); return PRINT_RES_STEPS.indexOf(v) !== -1 ? v : 'medium'; }
+  catch (e) { return 'medium'; }
+}
+window.printRes = printRes;
+// "Black-and-white printer" in the Print dialog (device-local).
+const PRINT_BW_KEY = 'navaid.printBw';
+function printBwOn() {
+  try { return localStorage.getItem(PRINT_BW_KEY) === '1'; } catch (e) { return false; }
+}
+window.printBwOn = printBwOn;
+// The chart for a mono printer: grey, and lightened, so it is a pale ground and the black route
+// over it reads. Canvas filters where the browser has them; otherwise the pixels, by hand.
+const PRINT_BW_CHART_FILTER = 'grayscale(1) brightness(1.2) contrast(0.7)';
+function printBwPixels(ctx, w, h) {
+  try {
+    const d = ctx.getImageData(0, 0, w, h);
+    const px = d.data;
+    for (let i = 0; i < px.length; i += 4) {
+      const y = 0.299 * px[i] + 0.587 * px[i + 1] + 0.114 * px[i + 2];
+      const v = 255 - (255 - y) * 0.6;            // lighter: a pale ground, not a dark one
+      px[i] = px[i + 1] = px[i + 2] = v;
+    }
+    ctx.putImageData(d, 0, 0);
+  } catch (e) { /* a tile the canvas may not read: printed as it is */ }
+}
+// Something to watch while a page is made ("show a timer running for export, let the user know
+// something is happening" -- "some progress bar"): a sharp A3 is a thousand tiles and half a
+// minute. A small panel at the foot of the screen with a bar for the tiles fetched, the count,
+// and the seconds running; then a "composing" step while the image is put together and saved.
+function exportProgress(total) {
+  const el = document.createElement('div');
+  el.id = 'export-progress';
+  el.setAttribute('role', 'status');
+  el.setAttribute('aria-live', 'polite');
+  const label = document.createElement('div');
+  label.className = 'export-progress-label';
+  const bar = document.createElement('progress');
+  bar.max = Math.max(1, total);
+  bar.value = 0;
+  el.append(label, bar);
+  document.body.appendChild(el);
+  const t0 = Date.now();
+  let done = 0, stage = 'tiles';
+  const secs = () => Math.floor((Date.now() - t0) / 1000);
+  const paint = () => {
+    label.textContent = stage === 'tiles'
+      ? (typeof S.exportProgressTiles === 'function' ? S.exportProgressTiles(done, total, secs())
+        : 'Fetching the map: ' + done + ' / ' + total + ' tiles · ' + secs() + ' s')
+      : (typeof S.exportProgressCompose === 'function' ? S.exportProgressCompose(secs())
+        : 'Composing the page… ' + secs() + ' s');
+    if (stage === 'tiles') bar.value = done; else bar.removeAttribute('value');   // indeterminate
+  };
+  paint();
+  const timer = setInterval(paint, 250);
+  return {
+    tile() { done++; },
+    compose() { stage = 'compose'; paint(); },
+    close() { clearInterval(timer); el.remove(); },
+  };
+}
+
 function exportPNG(mode) {
   // Export matches the screen view exactly, including map bearing.
   // Tiles are fetched north-up (axis-aligned) for a bounding box that covers
@@ -6149,49 +6754,76 @@ function exportPNG(mode) {
   const bbSEll = { lat: Math.min(c0.lat, c1.lat, c2.lat, c3.lat),
                    lng: Math.max(c0.lng, c1.lng, c2.lng, c3.lng) };
 
-  // Choose a starting tile zoom. Framed exports (A3 / A4) target maximum
-  // print quality at the layer's max native zoom. Without a frame the export
-  // covers the entire viewport; rendering that at max native zoom can balloon
-  // into hundreds of tiles. Mirror the on-screen tile zoom instead so the
-  // export matches what the user sees and the tile count stays bounded by the
-  // viewport size.
+  // How sharp: a framed page (A4 / A3) wants the chart's sharpest tiles (maxNativeZoom), at
+  // 1:250 000 about 390 dpi on CVFR; with no page the screen's view, at twice its pixels.
+  //
+  // It used to stop at 300 tiles and drop a whole zoom level past that, which halved the
+  // resolution: A3, and an A4 on a rotated map (it needs a bigger square of map to cut the
+  // turned page from), came out at about 197 dpi -- reported: "what's the png dpi? seems not
+  // very good". The limit is the image now, not the tile count: the largest canvas this
+  // browser makes (Safari about 16.7 M pixels, others far more; kept to 48 M here for the
+  // memory of two of them), and when a page is larger than that the image is scaled down
+  // smoothly from the sharp tiles instead of a level coarser.
   const nativeMax = base.options.maxNativeZoom || base.options.maxZoom || 13;
-  const maxZ = framed
-    ? nativeMax
-    : Math.min(nativeMax, Math.max(7, Math.round(map.getZoom())));
-
-  // Zoom down until the bounding box fits in one canvas AND the parallel tile
-  // count stays bounded. The floor of 7 keeps even very large rotated frames
-  // under the cap.
-  const MAX_TILES = 300;
-  let z = maxZ, bbNWP, bbSEP, Wbb, Hbb;
-  for (z = maxZ; z >= 7; z--) {
+  const mapZoom = map.getZoom();
+  const ua = (typeof navigator !== 'undefined' && navigator.userAgent) || '';
+  const safari = /AppleWebKit/.test(ua) && !/Chrome|Chromium|Android/.test(ua);
+  const android = /Android/.test(ua);
+  // Pixels per canvas: Safari's own ceiling; a phone's memory in the APK / Android (two canvases
+  // of 32 M is ~250 MB); more on a computer.
+  const MAX_AREA = safari ? 16000000 : android ? 32000000 : 48000000;
+  const MAX_SIDE = 16384;
+  const MAX_TILES = 1200;
+  // Output pixels per screen pixel, and the tile zoom they are drawn from.
+  let z = framed ? nativeMax : Math.min(nativeMax, Math.max(7, Math.ceil(mapZoom + 1)));
+  const resScale = PRINT_RES_SCALE[printRes()] || 1;
+  let pps = (framed ? Math.pow(2, z - mapZoom) : 2) * resScale;
+  let bbNWP, bbSEP, Wbb, Hbb, k = 1;
+  const measure = () => {
     bbNWP = map.project([bbNWll.lat, bbNWll.lng], z);
     bbSEP = map.project([bbSEll.lat, bbSEll.lng], z);
     Wbb = Math.round(bbSEP.x - bbNWP.x);
     Hbb = Math.round(bbSEP.y - bbNWP.y);
-    const tiles = Math.ceil(Wbb / 256) * Math.ceil(Hbb / 256);
-    if (Wbb <= 10000 && Hbb <= 10000 && tiles <= MAX_TILES) break;
+    return Math.ceil(Wbb / 256 + 1) * Math.ceil(Hbb / 256 + 1);
+  };
+  while (z > 7 && measure() > MAX_TILES) { z--; if (framed) pps = Math.pow(2, z - mapZoom) * resScale; }
+  measure();
+  for (let guard = 0; guard < 8; guard++) {
+    k = pps / Math.pow(2, z - mapZoom);              // the tile canvas's scale against zoom z
+    const f = Math.min(1,
+      Math.sqrt(MAX_AREA / Math.max(1, Wbb * k * Hbb * k)),
+      Math.sqrt(MAX_AREA / Math.max(1, fr.w * pps * fr.h * pps)),
+      MAX_SIDE / Math.max(1, Wbb * k, Hbb * k, fr.w * pps, fr.h * pps));
+    pps *= f; k *= f;
+    // Under half the tiles' own detail, a level coarser carries the same picture in a quarter
+    // of the tiles.
+    if (k <= 0.5 + 1e-9 && z > 7) { z--; measure(); continue; }
+    break;
   }
+  // Whole-pixel tiles, so they lie edge to edge with no hairline between them.
+  const ts = Math.max(1, Math.round(256 * k));
+  k = ts / 256;
+  pps = k * Math.pow(2, z - mapZoom);
 
-  // Output canvas: same physical size as the frame at the chosen tile zoom.
-  const tilePerScreen = Math.pow(2, z - map.getZoom());
-  const W = Math.round(fr.w * tilePerScreen);
-  const H = Math.round(fr.h * tilePerScreen);
+  // Output canvas: the frame at that resolution.
+  const W = Math.round(fr.w * pps);
+  const H = Math.round(fr.h * pps);
+  const Wc = Math.ceil(Wbb * k), Hc = Math.ceil(Hbb * k);
 
   // Intermediate canvas: north-up tile composite covering the bounding box.
   const tileCanvas = document.createElement('canvas');
-  tileCanvas.width  = Wbb;
-  tileCanvas.height = Hbb;
+  tileCanvas.width  = Wc;
+  tileCanvas.height = Hc;
   const tc = tileCanvas.getContext('2d');
-  tc.fillStyle = tune('exportBgColor');
-  tc.fillRect(0, 0, Wbb, Hbb);
+  const bw = printBwOn();
+  tc.fillStyle = bw ? PRINT_BW_TUNES.exportBgColor : tune('exportBgColor');
+  tc.fillRect(0, 0, Wc, Hc);
 
   const out = document.createElement('canvas');
   out.width  = W;
   out.height = H;
   const o = out.getContext('2d');
-  o.fillStyle = tune('exportBgColor');
+  o.fillStyle = bw ? PRINT_BW_TUNES.exportBgColor : tune('exportBgColor');
   o.fillRect(0, 0, W, H);
 
   const btn = document.getElementById('print');
@@ -6228,34 +6860,52 @@ function exportPNG(mode) {
   for (let tx = txMin; tx <= txMax; tx++) {
     for (let ty = tyMin; ty <= tyMax; ty++) {
       const job = {
-        dx: Math.round(tx * 256 - bbNWP.x),
-        dy: Math.round(ty * 256 - bbNWP.y),
+        // Whole-pixel steps of ts from one fixed origin: neighbours meet exactly.
+        dx: tx * ts - Math.round(bbNWP.x * k),
+        dy: ty * ts - Math.round(bbNWP.y * k),
         bmp: null,
         failed: false,
       };
-      const ctrl = new AbortController();
-      const timer = setTimeout(() => ctrl.abort(), 20000);
-      job.done = fetchTileBitmap(base, { z, x: tx, y: ty }, ctrl.signal)
-        .then(result => {
-          job.bmp = result.bmp;
-          job.failed = result.failed;
-        })
-        .catch(() => { job.failed = true; })
-        .then(() => clearTimeout(timer));
+      const coords = { z, x: tx, y: ty };
+      // Fetched through the pool below, not all at once: a sharp A3 is up to ~1,000 tiles, and
+      // firing them together had a tenth time out while queued -- grey patches in the print.
+      // The 20 s clock starts when a tile's own request does; a failure is tried once more.
+      const fetchOnce = () => {
+        const ctrl = new AbortController();
+        const timer = setTimeout(() => ctrl.abort(), 20000);
+        return fetchTileBitmap(base, coords, ctrl.signal)
+          .then(result => { job.bmp = result.bmp; job.failed = result.failed; })
+          .catch(() => { job.failed = true; })
+          .then(() => clearTimeout(timer));
+      };
+      job.run = () => fetchOnce().then(() => (job.failed && !job.bmp ? fetchOnce() : null));
       jobs.push(job);
     }
   }
+  const progress = exportProgress(jobs.length);
+  for (const j of jobs) { const run = j.run; j.run = () => run().then(() => progress.tile()); }
+  const POOL = 16;
+  let nextJob = 0;
+  const worker = () => (nextJob < jobs.length ? jobs[nextJob++].run().then(worker) : Promise.resolve());
+  const pool = Promise.all(Array.from({ length: Math.min(POOL, jobs.length) }, worker));
+  for (const j of jobs) j.done = pool;
 
   Promise.all(jobs.map(j => j.done)).then(() => {
+    progress.compose();
     let failed = 0;
     for (const j of jobs) {
       if (j.bmp) {
-        try { tc.drawImage(j.bmp, j.dx, j.dy, 256, 256); }
+        try { tc.drawImage(j.bmp, j.dx, j.dy, ts, ts); }
         catch (e) { failed++; }
       } else if (j.failed) {
         failed++;
       }
     }
+    // Black and white: the grey filter is applied as the chart is drawn onto the page below, or
+    // -- where the browser has no canvas filter -- to these pixels in place. A third canvas the
+    // size of this one, as it was, is the one too many on a phone near its memory limit.
+    const filterOnDraw = bw && ('filter' in o);
+    if (bw && !filterOnDraw) printBwPixels(tc, Wc, Hc);
 
     // Draw the tile canvas onto the output, rotated by the map bearing so the
     // result matches the screen view.  The frame centre in tile-canvas space
@@ -6263,14 +6913,16 @@ function exportPNG(mode) {
     // globalAlpha honours the Map-opacity slider so dim tiles on screen also
     // export dim; overlays drawn after restore() stay at full alpha.
     const fcP = map.project([frameCenterLL.lat, frameCenterLL.lng], z);
-    const fcx = fcP.x - bbNWP.x;
-    const fcy = fcP.y - bbNWP.y;
+    const fcx = fcP.x * k - Math.round(bbNWP.x * k);
+    const fcy = fcP.y * k - Math.round(bbNWP.y * k);
     o.save();
     o.translate(W / 2, H / 2);
     o.rotate(exportBearing * Math.PI / 180);
     o.translate(-fcx, -fcy);
     o.globalAlpha = (typeof mapOpacity === 'number') ? mapOpacity : 1;
+    if (filterOnDraw) o.filter = PRINT_BW_CHART_FILTER;
     o.drawImage(tileCanvas, 0, 0);
+    if (filterOnDraw) o.filter = 'none';
     o.restore();
 
     // Route overlay: screen coords already encode bearing, so the standard
@@ -6278,6 +6930,10 @@ function exportPNG(mode) {
     const s = W / fr.w;
     const prevOctx = octx;
     octx = o;
+    // The route in black and white, for this draw only: synchronous, so the screen's own
+    // redraws never see it.
+    const prevOverride = NavAid.printOverride;
+    if (bw) NavAid.printOverride = PRINT_BW_TUNES;
     // Symbols size themselves geographically (printPxPerMm, = 250/metresPerPixel
     // at 1:250,000), identical on screen and here — so the export is a faithful
     // scaled copy of what you arranged on screen and lands at the intended
@@ -6305,6 +6961,7 @@ function exportPNG(mode) {
       o.restore();
     } finally {
       octx = prevOctx;
+      NavAid.printOverride = prevOverride;
     }
 
     // A4×2: the frame is A3-sized — slice it into two A4 tiles at the same
@@ -6315,17 +6972,19 @@ function exportPNG(mode) {
       // NavAid.exporting stays true until both tile downloads have fired,
       // so a second export can't start mid-tiling.
       exportA4x2Tiles(out, W, H, () => {
+        progress.close();
         btn.textContent = btnLabel;
         btn.disabled = false;
         unlockMap();
         NavAid.exporting = false;
         if (typeof NavAid._restoreExport === 'function') NavAid._restoreExport();
         if (failed > 0) refuse(S.errTilesFail(failed, jobs.length));
-      });
+      }, mode);
       return;
     }
 
     out.toBlob(b => {
+      progress.close();
       btn.textContent = btnLabel;
       btn.disabled = false;
       unlockMap();
@@ -6354,7 +7013,12 @@ function exportPNG(mode) {
           deliver(new Blob([injectPngPhys(buf, ppmX, ppmY)], { type: 'image/png' }));
         }).catch(function () { deliver(b); });
       } else {
-        deliver(b);
+        // No page: the image is the screen at pps times its pixels, so it says so (96 dpi a CSS
+        // pixel) and prints at the size it was on screen instead of whatever a viewer guesses.
+        const ppm = Math.round(pps * 96 / 0.0254);
+        b.arrayBuffer().then(buf => {
+          deliver(new Blob([injectPngPhys(buf, ppm, ppm)], { type: 'image/png' }));
+        }).catch(function () { deliver(b); });
       }
       if (failed > 0) refuse(S.errTilesFail(failed, jobs.length));
     }, 'image/png');
@@ -6363,6 +7027,7 @@ function exportPNG(mode) {
     // bitmap) would otherwise leave the button disabled forever. Restore
     // the UI so the user can retry, and surface the failure.
     console.warn('PNG export pipeline failed:', err);
+    progress.close();
     btn.textContent = btnLabel;
     btn.disabled = false;
     unlockMap();
@@ -10301,7 +10966,8 @@ function fplErrText(code) {
   }
   return (typeof text === 'string' && text) ? text : key;
 }
-function showFplDialog() {
+function showFplDialog(opts) {
+  const dialogOpts = opts || {};
   const back = document.createElement('div');
   back.className = 'modal-back fpl-modal';
   const box = document.createElement('div');
@@ -10348,8 +11014,21 @@ function showFplDialog() {
   document.addEventListener('keydown', onEsc, true);
 
   const profile = fplProfileRead();
+  // The departure already planned on the flight-plan panel (#667), whenever it is still ahead
+  // -- even inside the filing lead, where the dialog's own lead warning says so. One that has
+  // already passed cannot be filed: the usual default is proposed instead, and a line under the
+  // field says why (it used to swap the time silently, which read as "the ETD was ignored").
   const when = fplDefaultWhen();
-  const state1 = { date: when.date, time: when.time };
+  const planned = typeof etdRead === 'function' ? etdRead() : null;
+  const plannedAt = planned && typeof etdInstant === 'function' ? etdInstant(planned) : null;
+  const etdAhead = !!(plannedAt && plannedAt.getTime() > Date.now());
+  // Opened with "Open anyway" on a departure the app believes has passed: that time, as set.
+  const useEtd = !!(plannedAt && (etdAhead || dialogOpts.forcePast));
+  // Sending a time the app believes has passed: allowed once the pilot says so, either from the
+  // question that opened this dialog or from the checkbox under the refusal.
+  let allowPast = !!dialogOpts.forcePast;
+  const etdPassed = !!(plannedAt && !useEtd);
+  const state1 = useEtd ? { date: planned.date, time: planned.time } : { date: when.date, time: when.time };
 
   const row = (labelText, el) => {
     const wrap = document.createElement('label');
@@ -10536,24 +11215,89 @@ function showFplDialog() {
     // click. The UTC the message will actually carry is shown beside the time, since
     // that is the one thing a pilot cannot work out at a glance.
     const dateEl = input(state1.date, 'date');
-    const timeEl = input(state1.time, 'time');
+    // Quarter hours, as the proposed default already is (quarterTimePicker).
+    const timePicker = quarterTimePicker('fpl-time', state1.time,
+      { label: S.fplTime || 'Departure (local)' });
+    const timeEl = timePicker.input;
     dateEl.id = 'fpl-date';
-    timeEl.id = 'fpl-time';
     const utcHint = document.createElement('span');
     utcHint.className = 'fpl-inline-hint';
     utcHint.id = 'fpl-utc-hint';
     const timeBox = document.createElement('span');
     timeBox.className = 'fpl-time-box';
-    timeBox.append(timeEl, utcHint);
+    timeBox.append(timePicker.el, utcHint);
+    // Said as the time is chosen, under the field, not only when Continue refuses it.
+    const pastNote = document.createElement('div');
+    pastNote.className = 'fpl-hint fpl-time-past';
+    pastNote.id = 'fpl-time-past';
+    pastNote.setAttribute('role', 'status');
+    pastNote.hidden = true;
     const syncWhen = () => {
       state1.date = dateEl.value;
       state1.time = timeEl.value;
       const utc = fplUtcFromLocal(state1.date, state1.time);
       utcHint.textContent = utc ? utc.eobt + 'Z' : '';
+      // Quiet once the pilot has chosen to send it anyway ("Open anyway").
+      const past = !!(utc && fplLeadMinutes(utc.when) < 0) && !dialogOpts.forcePast;
+      pastNote.hidden = !past;
+      pastNote.textContent = past ? fplErrText('errFplPast') : '';
+      timeBox.classList.toggle('fpl-input-missing', past);
+      const ids = (timeBox.getAttribute('aria-describedby') || '').split(' ').filter(x => x && x !== pastNote.id);
+      if (past) ids.push(pastNote.id);
+      if (ids.length) timeBox.setAttribute('aria-describedby', ids.join(' ')); else timeBox.removeAttribute('aria-describedby');
     };
-    dateEl.onchange = syncWhen;
-    timeEl.onchange = syncWhen;
-    body.append(row(S.fplDate || 'Date', dateEl), row(S.fplTime || 'Departure (local)', timeBox));
+    // A departure the pilot types here is the plan's departure too: the flight-plan panel's
+    // ETAs and last-light check follow it.
+    const typedWhen = () => {
+      if (passedNote) { passedNote.remove(); passedNote = null; timeBox.removeAttribute('aria-describedby'); }
+      syncWhen();
+      if (utcHint.textContent && typeof etdWrite === 'function') {
+        etdWrite(state1.date, state1.time);
+        if (typeof refreshFlightPlan === 'function') refreshFlightPlan();
+      }
+    };
+    dateEl.onchange = typedWhen;
+    timeEl.onchange = typedWhen;
+    // The time and the lines about it share the field column, so a note sits under the field
+    // it explains, not under the labels.
+    const timeCol = document.createElement('div');
+    timeCol.className = 'fpl-time-col';
+    timeCol.append(timeBox, pastNote);
+    body.append(row(S.fplDate || 'Date', dateEl), row(S.fplTime || 'Departure (local)', timeCol));
+    // From the flight plan: shown, dimmed, not editable here -- it is changed in the plan's
+    // departure, so what is filed and what the plan's ETAs count from are one time. (Opened with
+    // no planned departure -- not from the plan's button -- the fields stay editable.)
+    if (useEtd) {
+      dateEl.disabled = true;
+      timePicker.el.querySelectorAll('select').forEach(sel => { sel.disabled = true; });
+      timeBox.classList.add('fpl-from-plan');
+      const fromPlan = document.createElement('div');
+      fromPlan.className = 'fpl-hint fpl-etd-from-plan';
+      fromPlan.id = 'fpl-etd-from-plan';
+      fromPlan.textContent = (S.fplEtdFromPlan || 'From the flight plan\u2019s departure (ETD) \u2014 change it there.')
+        + (etdAhead ? '' : ' ' + (S.fplEtdForced || 'It has passed by this device\u2019s clock; it is sent as you asked.'));
+      timeCol.appendChild(fromPlan);
+      timeBox.setAttribute('aria-describedby', fromPlan.id);
+      dateEl.setAttribute('aria-describedby', fromPlan.id);
+    }
+    // Under the field it is about, as information rather than an error, read with the field
+    // (aria-describedby), and gone once a time is chosen here.
+    let passedNote = null;
+    if (etdPassed) {
+      const d = new Date();
+      const todayIso = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' +
+        String(d.getDate()).padStart(2, '0');
+      // Today's departure by its time alone; another day's with the day (13/10 09:00).
+      const was = planned.date === todayIso ? planned.time
+        : planned.date.split('-').reverse().slice(0, 2).join('/') + ' ' + planned.time;
+      passedNote = document.createElement('div');
+      passedNote.className = 'fpl-hint fpl-etd-passed';
+      passedNote.id = 'fpl-etd-passed';
+      fplSetBidiText(passedNote, S.fplEtdPassed ? S.fplEtdPassed(was, state1.time)
+        : 'The planned departure (' + was + ') has passed \u2014 proposed ' + state1.time + '.');
+      pastNote.after(passedNote);
+      timeBox.setAttribute('aria-describedby', passedNote.id);
+    }
     syncWhen();
 
     // Call sign: the one field that changes most, so it leads and it is big.
@@ -11045,6 +11789,21 @@ function showFplDialog() {
       persons, replyTo };
     const errBox = document.createElement('div');
     errBox.className = 'fpl-errs';
+    // Under the "already passed" refusal: a checkbox to send it anyway, for when the app's idea
+    // of now is the thing that is wrong. Ticked, Continue goes ahead.
+    function addPastOverride() {
+      const lbl = document.createElement('label');
+      lbl.className = 'fpl-past-override';
+      const cb = document.createElement('input');
+      cb.type = 'checkbox';
+      cb.id = 'fpl-allow-past';
+      cb.checked = allowPast;
+      cb.onchange = () => { allowPast = cb.checked; };
+      const t = document.createElement('span');
+      t.textContent = S.fplAllowPast || 'Send anyway \u2014 I have checked the time';
+      lbl.append(cb, t);
+      errBox.appendChild(lbl);
+    }
     body.appendChild(errBox);
 
     const btns = document.createElement('div');
@@ -11080,15 +11839,27 @@ function showFplDialog() {
         // path honours the override too.
         if (fplBadFilingOverride(profile)) errsXc.push('errFplBadAddress');
         // ...the same date/time check, since the sheet prints both...
-        if (!fplUtcFromLocal(state1.date, state1.time)) errsXc.push('errFplEobt');
+        const utcXc = fplUtcFromLocal(state1.date, state1.time);
+        if (!utcXc) errsXc.push('errFplEobt');
+        else if (fplLeadMinutes(utcXc.when) < 0 && !allowPast) errsXc.push('errFplPast');
         // ...and the same field-to-field rule: a field in the middle is two plans.
         const midXc = fplMidRouteAirfields();
         if (midXc.length) errsXc.push({ code: 'errFplMidAirfield', names: midXc.slice() });
         if (errsXc.length) {
           showFieldErrors(errBox, errsXc, fieldEls);
+          if (errsXc.includes('errFplPast')) addPastOverride();
           return;
         }
         showFplXcForm({ dateLocal: state1.date, timeLocal: state1.time });
+        return;
+      }
+      // A departure that has already gone cannot be filed -- "now" or later can (inside the
+      // hour it is the lead warning's case: an update phoned or sent late). Checked here, where
+      // "now" is the pilot's clock, not in buildIcaoFpl, which only writes the message.
+      const utcNow = fplUtcFromLocal(state1.date, state1.time);
+      if (utcNow && fplLeadMinutes(utcNow.when) < 0 && !allowPast) {
+        showFieldErrors(errBox, ['errFplPast'], fieldEls);
+        addPastOverride();
         return;
       }
       const retData = returnRouteData();
@@ -11870,10 +12641,15 @@ function showFplXcForm(opts) {
       catch (e) { /* storage unavailable */ }
     }
     document.body.classList.add('printing-xc');
+    // Back to the form once the print is done: afterprint (a browser raises it as print()
+    // returns; the Android app when its print dialog closes), with a fallback that waits out
+    // the app's dialog.
+    const restore = () => document.body.classList.remove('printing-xc');
+    window.addEventListener('afterprint', restore, { once: true });
     setTimeout(() => {
-      try { window.print(); } finally {
-        setTimeout(() => document.body.classList.remove('printing-xc'), 0);
-      }
+      window.print();
+      const later = () => (window.NavAidNativePrint && NavAidNativePrint.busy()) ? setTimeout(later, 1000) : restore();
+      setTimeout(later, 1000);
     }, 50);
   };
   const mailBtn = document.createElement('button');

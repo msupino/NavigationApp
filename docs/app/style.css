@@ -2269,27 +2269,29 @@ body.theme-light .wind-fetch-status.windfield-loading { color: #1f252c; }
    middle ("רשימת (53) NOTAM"). Isolated, it reads "רשימת NOTAM (53)". */
 .layer-count { opacity: 0.65; font-variant-numeric: tabular-nums; unicode-bidi: isolate; }
 .navtoggle-disabled input { pointer-events: none; }
+/* A value the app supplies (not the pilot's own) reads lighter and italic -- but still at 4.5:1
+   (WCAG AA): #8a8480 on the dark field was 3.8:1, #9aa1ab on white 2.6:1. */
 .row input.is-default,
 .charts-alt-input.is-default,
 .charts-freq-input.is-default {
-  color: #8a8480;
+  color: #aaa39f;
   font-style: italic;
 }
 .row input.is-default::placeholder,
 .charts-alt-input.is-default::placeholder,
 .charts-freq-input.is-default::placeholder {
-  color: #8a8480;
+  color: #aaa39f;
   opacity: 1;
 }
 body.theme-light .row input.is-default,
 body.theme-light .charts-alt-input.is-default,
 body.theme-light .charts-freq-input.is-default {
-  color: #9aa1ab;
+  color: #6b7380;
 }
 body.theme-light .row input.is-default::placeholder,
 body.theme-light .charts-alt-input.is-default::placeholder,
 body.theme-light .charts-freq-input.is-default::placeholder {
-  color: #9aa1ab;
+  color: #6b7380;
   opacity: 1;
 }
 .row-reset {
@@ -2941,6 +2943,11 @@ body.theme-light .shortcuts-help-keys kbd {
   body.printing-plan #inspector,
   body.printing-plan #tuning-panel,
   body.printing-plan .leaflet-control-container { display: none !important; }
+  /* Everything that is not the plan: the phone's top strip (route, clocks, Comm fail), the
+     tab bar, the floating buttons -- a list of names missed those, so the page printed them.
+     The plan's backdrop is a child of body; anything else there is chrome. */
+  body.printing-plan > :not(.modal-back.flight-plan) { display: none !important; }
+  body.printing-plan .fp-route-file-row { display: none !important; }
   body.printing-plan .modal-back.flight-plan {
     display: block;
     position: static;
@@ -2975,7 +2982,10 @@ body.theme-light .shortcuts-help-keys kbd {
   body.printing-plan .modal-btns,
   body.printing-plan .modal-close-x,
   body.printing-plan .fp-aircraft,
-  body.printing-plan .fp-columns { display: none !important; }
+  body.printing-plan .fp-columns,
+  body.printing-plan .fp-when { display: none !important; }
+  body.printing-plan .fp-last-light-short,
+  body.printing-plan .fp-dest-closed { color: #111 !important; }
   body.printing-plan .modal.wide .fp-scroll {
     display: block;
     overflow: visible;
@@ -3041,19 +3051,21 @@ body.theme-light .shortcuts-help-keys kbd {
   body.printing-plan .flight-table .fp-vor-col select {
     display: none !important;
   }
+  /* # From To Hdg Dist Speed Alt Time Fuel Cum.time Cum.fuel ETA Radial DME */
   body.printing-plan .flight-table th:nth-child(1) { width: 3%; }
   body.printing-plan .flight-table th:nth-child(2),
-  body.printing-plan .flight-table th:nth-child(3) { width: 10%; }
-  body.printing-plan .flight-table th:nth-child(4) { width: 7%; }
-  body.printing-plan .flight-table th:nth-child(5) { width: 7%; }
-  body.printing-plan .flight-table th:nth-child(6) { width: 8%; }
-  body.printing-plan .flight-table th:nth-child(7) { width: 7%; }
-  body.printing-plan .flight-table th:nth-child(8) { width: 7%; }
-  body.printing-plan .flight-table th:nth-child(9) { width: 8%; }
-  body.printing-plan .flight-table th:nth-child(10),
-  body.printing-plan .flight-table th:nth-child(11) { width: 8%; }
-  body.printing-plan .flight-table th:nth-child(12) { width: 9%; }
-  body.printing-plan .flight-table th:nth-child(13) { width: 7%; }
+  body.printing-plan .flight-table th:nth-child(3) { width: 9%; }
+  body.printing-plan .flight-table th:nth-child(4),
+  body.printing-plan .flight-table th:nth-child(5),
+  body.printing-plan .flight-table th:nth-child(6) { width: 6%; }
+  body.printing-plan .flight-table th:nth-child(7),
+  body.printing-plan .flight-table th:nth-child(8),
+  body.printing-plan .flight-table th:nth-child(9),
+  body.printing-plan .flight-table th:nth-child(11) { width: 7%; }
+  body.printing-plan .flight-table th:nth-child(10) { width: 8%; }
+  body.printing-plan .flight-table th:nth-child(12) { width: 6%; }
+  body.printing-plan .flight-table th:nth-child(13) { width: 9%; }
+  body.printing-plan .flight-table th:nth-child(14) { width: 6%; }
   body.printing-plan .fp-radial-val {
     white-space: normal;
   }
@@ -3850,6 +3862,155 @@ body.theme-light .route-library-row { border-color: #c6ccd6; }
   border-radius: 4px;
   padding: 2px 5px;
 }
+/* Columns, the departure popover (#667) and last light: one row. */
+.fp-tools {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 8px;
+  margin: 0 0 8px;
+}
+.fp-tools .fp-columns,
+.fp-tools .fp-when { margin: 0; }
+/* The popover hangs from the row, not from its own button: the button sits mid-row, and a
+   menu anchored there ran off the screen's edge on a phone in Hebrew. */
+.fp-tools { position: relative; }
+.fp-tools .fp-when { position: static; }
+.fp-columns-menu.fp-when-menu {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  min-width: 0;
+  width: max-content;
+  max-width: min(360px, calc(92vw - 28px));
+}
+.fp-when-label { font-weight: 600; }
+.fp-when-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; width: 100%; }
+.fp-when-close {
+  font: inherit; font-size: 15px; line-height: 1; cursor: pointer; color: inherit; opacity: 0.8;
+  background: transparent; border: 0; border-radius: 6px; min-width: 24px; min-height: 24px; padding: 2px 4px;
+}
+.fp-when-close:hover { opacity: 1; background: rgba(127, 127, 127, 0.18); }
+body.deck-on .fp-when-close { min-width: 30px; min-height: 30px; }
+/* The one findings line: amber with a moon for night, red with a warning sign for a shut field. */
+.fp-dest-closed.fp-finding-night { color: #ffcc80; }
+.fp-dest-closed.fp-finding-night::before { content: '\263E  '; }
+body.theme-light .fp-dest-closed.fp-finding-night { color: #8a5300; }
+/* Now + 60 min: the soonest filable departure, in one tap. */
+.fp-etd-soon {
+  font: inherit; font-size: 13px; font-weight: 600; cursor: pointer;
+  color: #9fd0ff; background: transparent; border: 1px solid #4a5a72; border-radius: 6px;
+  padding: 4px 10px; min-height: 30px;
+}
+.fp-etd-soon:hover { background: rgba(29, 111, 224, 0.15); }
+body.theme-light .fp-etd-soon { color: #1d5fbf; border-color: #9fb3cf; }
+/* Submit found no departure (or a passed one): what was missed pulses red three times. */
+@keyframes fp-attn-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(229, 72, 77, 0); }
+  50% { box-shadow: 0 0 0 4px rgba(229, 72, 77, 0.9); }
+}
+.fp-attn { animation: fp-attn-pulse 0.6s ease-in-out 3; border-radius: 6px; }
+details.fp-when summary.fp-attn { border-color: #e5484d; }
+@media (prefers-reduced-motion: reduce) {
+  .fp-attn { animation: none; box-shadow: 0 0 0 3px #e5484d; }
+}
+.fp-when-fields {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+.fp-when-fields input {
+  font: inherit;
+  font-size: 13px;
+  color: #e8e8e8;
+  background: #2f2b2b;
+  border: 1px solid #443f3f;
+  border-radius: 4px;
+  padding: 2px 5px;
+}
+.fp-eta-zulu {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.fp-etd-utc,
+.fp-last-light,
+.fp-last-light-short { font-variant-numeric: tabular-nums; }
+/* Times in UTC adds a Z to every clock: the room for it is kept in local time too, so the
+   switch changes the text and nothing moves (it re-flowed the table and the row above it). */
+.flight-table th.fp-col-eta,
+.flight-table td.fp-col-eta { min-width: 9.5ch; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.fp-when summary { font-variant-numeric: tabular-nums; }
+.fp-z-ghost { visibility: hidden; }
+.fp-etd-utc { display: inline-block; min-width: 9ch; }
+.fp-last-light {
+  color: #b9b3b3;
+  white-space: normal;
+}
+.fp-last-light:empty,
+.fp-last-light-short:empty { display: none; }
+.fp-last-light-short { font-size: 13px; color: #b9b3b3; }
+/* After last light: night, a caution (amber, a moon). Outside the destination's published
+   hours: the plan does not work (red, a warning sign). Never colour alone: each has its mark,
+   generated in the cells so the CSV still gets a plain clock. */
+.fp-last-light.fp-last-light-late,
+.fp-last-light-short.fp-last-light-late,
+.flight-table td.fp-eta-night { color: #ffcc80; font-weight: 600; }
+.flight-table td.fp-eta-night::after { content: ' \263E'; }
+.fp-dest-closed:empty { display: none; }
+.fp-last-light.fp-last-light-closed { color: #ff8a80; font-weight: 600; }
+body.theme-light .fp-last-light.fp-last-light-closed { color: #b3261e; }
+.fp-dest-closed,
+.flight-table td.fp-eta-closed { color: #ff8a80; font-weight: 600; }
+.fp-dest-closed { font-size: 13px; }
+.fp-dest-closed::before { content: '\26A0  '; }
+.flight-table td.fp-eta-closed::after { content: ' \26A0'; }
+body.theme-light .fp-when-fields input { color: #1f252c; background: #fff; border-color: #b8c0cc; }
+body.theme-light .fp-last-light,
+body.theme-light .fp-last-light-short { color: #4a5360; }
+body.theme-light .fp-last-light.fp-last-light-late,
+body.theme-light .fp-last-light-short.fp-last-light-late,
+body.theme-light .flight-table td.fp-eta-night { color: #8a5300; }
+body.theme-light .fp-dest-closed,
+body.theme-light .flight-table td.fp-eta-closed { color: #b3261e; }
+body.deck-on .fp-when-fields input { min-height: 30px; font-size: 16px; }
+/* Quarter-hour time: two lists, HH : MM. */
+.qtime { display: inline-flex; align-items: center; gap: 2px; font-variant-numeric: tabular-nums; }
+.qtime select {
+  font: inherit;
+  font-size: 13px;
+  color: #e8e8e8;
+  background: #2f2b2b;
+  border: 1px solid #443f3f;
+  border-radius: 4px;
+  padding: 2px 4px;
+  min-height: 24px;
+}
+.qtime-sep { font-weight: 600; }
+/* Under the "already passed" refusal: send it anyway -- the error line's own size. */
+.fpl-past-override { display: flex; align-items: center; gap: 8px; margin-top: 6px; font-size: 13px; font-weight: 600; cursor: pointer; }
+/* The time field and its notes in one column: a note sits under the field it explains. */
+.fpl-time-col { display: flex; flex-direction: column; align-items: stretch; gap: 4px; min-width: 0; }
+.fpl-time-col .fpl-hint { margin: 0; }
+/* The outline of a past time hugs the time, not the column. */
+.fpl-time-col .fpl-time-box { align-self: flex-start; }
+/* With notes under the time the row grows: its label stays level with the time, not mid-row. */
+.fpl-row:has(.fpl-time-col) { align-items: start; }
+.fpl-row:has(.fpl-time-col) > span:first-child { padding-top: 7px; }
+/* The departure question: centred like the app's other questions, buttons under the text. */
+.fpl-etd-ask .follow-me-ask-text { text-align: center; }
+.fpl-etd-ask .follow-me-ask-actions { justify-content: center; }
+.fpl-past-override input { width: 18px; height: 18px; flex: none; }
+/* Taken from the flight plan in the filing dialog: dimmed and not editable, never hidden. */
+.qtime select:disabled,
+.fpl-row input:disabled { opacity: 0.6; cursor: not-allowed; }
+/* The filing dialog's fields are full width; the two lists are not. */
+.fpl-row .qtime select,
+.fpl-row-stacked .qtime select { width: auto; }
+body.theme-light .qtime select { color: #1f252c; background: #fff; border-color: #b8c0cc; }
+body.deck-on .qtime select { min-height: 30px; font-size: 16px; }
 .modal.wide .fp-scroll {
   overflow: auto;
   flex: 1;
@@ -3881,14 +4042,16 @@ body.theme-light .route-library-row { border-color: #c6ccd6; }
 }
 .fp-profile-dir .fp-dir-arrow { flex: 1; text-align: center; letter-spacing: 1px; color: #7fa8d0; }
 .fp-profile-canvas { width: 100%; height: 104px; display: block; border-radius: 4px; }
-.fp-columns {
+.fp-columns,
+.fp-when {
   position: relative;
   align-self: flex-start;
   margin: 0 0 8px;
   font-size: 13px;
   color: #b9b3b3;
 }
-.fp-columns summary {
+.fp-columns summary,
+.fp-when summary {
   display: inline-flex;
   align-items: center;
   gap: 6px;
@@ -3901,13 +4064,16 @@ body.theme-light .route-library-row { border-color: #c6ccd6; }
   cursor: pointer;
   user-select: none;
 }
-.fp-columns summary::-webkit-details-marker { display: none; }
-.fp-columns summary::after {
+.fp-columns summary::-webkit-details-marker,
+.fp-when summary::-webkit-details-marker { display: none; }
+.fp-columns summary::after,
+.fp-when summary::after {
   content: '▾';
   font-size: 10px;
   color: #b9b3b3;
 }
-.fp-columns[open] summary {
+.fp-columns[open] summary,
+.fp-when[open] summary {
   border-color: #1d6fe0;
   background: #332f2f;
 }
@@ -4894,6 +5060,23 @@ body.theme-light .airspace-now.is-active { color: #b3261e; }
   background: none; border: none; cursor: pointer; padding: 0 2px;
 }
 .wx-refresh:disabled { opacity: 0.5; cursor: default; }
+/* Inline icon controls in the inspector (refresh, read aloud, the ↻ resets beside a slider or a
+   field) and its sliders: at least the web's 24px target (WCAG 2.2), 30px on a phone like the
+   panel's fields. They measured 20x18, 20x23 and a 16px-tall slider. */
+#inspector .wx-refresh,
+#inspector .wx-speak,
+#inspector .slider-reset {
+  display: inline-flex; align-items: center; justify-content: center;
+  min-width: 24px; min-height: 24px;
+}
+#inspector input[type="range"] { min-height: 24px; }
+body.deck-on #inspector .wx-refresh,
+body.deck-on #inspector .wx-speak,
+body.deck-on #inspector .slider-reset,
+body.deck-on #inspector input[type="range"] { min-height: 30px; }
+body.deck-on #inspector .wx-refresh,
+body.deck-on #inspector .wx-speak,
+body.deck-on #inspector .slider-reset { min-width: 30px; }
 /* Per-report read-aloud button, beside each METAR/TAF label. Same chrome-less treatment as
    the refresh control -- without a rule it rendered as a native light UA button inside the
    dark panel -- and the same dimmed disabled state (dim, never hide) when no speech engine. */
@@ -5781,6 +5964,7 @@ body.theme-light .modal-row select,
 body.theme-light .fp-aircraft select,
 body.theme-light .fp-aircraft input,
 body.theme-light .fp-columns summary,
+body.theme-light .fp-when summary,
 body.theme-light .fp-columns-all,
 body.theme-light .plan-name,
 body.theme-light .plan-num,
@@ -6019,9 +6203,12 @@ body.theme-light .flight-table tbody tr:hover,
 body.theme-light .flight-table tfoot td {
   background: rgba(29, 111, 224, 0.07);
 }
-body.theme-light .fp-columns { color: #647184; }
-body.theme-light .fp-columns summary::after { color: #647184; }
-body.theme-light .fp-columns[open] summary {
+body.theme-light .fp-columns,
+body.theme-light .fp-when { color: #647184; }
+body.theme-light .fp-columns summary::after,
+body.theme-light .fp-when summary::after { color: #647184; }
+body.theme-light .fp-columns[open] summary,
+body.theme-light .fp-when[open] summary {
   background: #eef3f9;
   border-color: #1d6fe0;
 }
@@ -8976,6 +9163,12 @@ body.deck-on .zoom-readout {
 /* Icons in the waypoint panel's actions and the dialogs' action rows (ui.js dressByGlyph). */
 .insp-btn .mi-icon, .modal-btns .mi-icon { display: inline-grid; place-items: center; line-height: 0; vertical-align: -3px; margin-inline-end: 6px; }
 .insp-btn .mi-icon svg, .modal-btns .mi-icon svg { display: block; }
+/* The panel's text-link buttons (View N NOTAMs, Show the published hours, ...) carry the same
+   injected icon, which had no rule here: it sat raised above the text and apart from it. On the
+   text's own line, centred, a small gap, glyph a size down to match the 12px link. */
+.insp-notam-link, .hours-toggle { display: inline-flex; align-items: center; gap: 4px; }
+#insp-body button:not(.insp-btn) > .mi-icon { display: inline-grid; place-items: center; line-height: 0; margin: 0; flex: none; }
+#insp-body button:not(.insp-btn) > .mi-icon svg { display: block; width: 14px; height: 14px; }
 
 /* Contrast: the light theme's plan headers and V/S label, and the dark theme's row ✕, fell
    under 4.5:1. */
@@ -9477,3 +9670,46 @@ body.theme-light .ctx-title { color: #5b6575; border-bottom-color: #dfe4ec; }
 body.theme-light .ctx-item:hover, body.theme-light .ctx-item:focus-visible { background: #e9eef6; }
 body.theme-light .ctx-item.ctx-danger { color: #b03636; }
 body.theme-light .ctx-sep { background: #dfe4ec; }
+
+/* Export progress (io.js exportProgress): tiles fetched and the seconds running, at the foot of
+   the screen above everything, until the page is saved. */
+#export-progress {
+  position: fixed;
+  left: 50%;
+  bottom: calc(24px + env(safe-area-inset-bottom, 0px));
+  transform: translateX(-50%);
+  z-index: 3500;
+  min-width: 260px;
+  max-width: calc(100vw - 32px);
+  padding: 10px 14px;
+  background: #2b2727;
+  color: #eee;
+  border: 1px solid #4a4444;
+  border-radius: 8px;
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.45);
+  font-size: 13px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+#export-progress progress { width: 100%; height: 8px; accent-color: #ffd966; }
+.export-progress-label { font-variant-numeric: tabular-nums; }
+body.theme-light #export-progress { background: #fafcff; color: #1d2430; border-color: #cfd6e0; box-shadow: 0 6px 24px rgba(20, 30, 50, 0.18); }
+/* Two rows side by side (From | To, Via | Speed), each a small label over its field: four
+   stacked rows took too much room. */
+.route-template-pair {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 10px;
+}
+.route-template-pair .route-template-row {
+  grid-template-columns: minmax(0, 1fr);
+  gap: 3px;
+}
+.route-template-pair .route-template-row > span { font-size: 12px; }
+.route-template-row select:disabled { opacity: 0.5; cursor: not-allowed; }   /* one route: nothing to choose */
+/* A phone: fields a finger can hit (44 px, the touch-target minimum). */
+@media (max-width: 680px) {
+  .route-template-row select,
+  .route-template-row input { min-height: 44px; font-size: 15px; }
+}

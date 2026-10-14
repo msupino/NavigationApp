@@ -52,11 +52,12 @@ test.describe('Export PNG options modal', () => {
     await page.locator('.modal-back').waitFor();
     // Title.
     expect(await page.locator('.modal-title').textContent()).toBe('Export PNG');
-    // 5 checkboxes: Waypoint Names (on), Cumulative time (on), Nav WPs (off),
+    // 6 checkboxes: Waypoint Names (on), Cumulative time (on), Nav WPs (off),
     // Airfields (off), Place flight plan (off; enabled because a
-    // route is set — a page frame is not required).
+    // route is set — a page frame is not required), Black-and-white printer (off).
     const cbs = page.locator('.modal input[type="checkbox"]');
-    expect(await cbs.count()).toBe(5);
+    expect(await cbs.count()).toBe(6);
+    expect(await page.locator('#export-bw').isChecked()).toBe(false);
     expect(await cbs.nth(0).isChecked()).toBe(true);   // Waypoint Names default on
     expect(await cbs.nth(1).isChecked()).toBe(true);   // Cumulative time default on
     expect(await cbs.nth(2).isChecked()).toBe(false);  // Nav WPs
@@ -388,14 +389,18 @@ test.describe('Export PNG options modal', () => {
       state.waypoints = wps; syncLegs(); draw();
     }, pairLLHZ_LLHA());
     // Capture what openPrintWindow would write to the popup.
-    const html = await page.evaluate(() => new Promise(resolve => {
-      let out = '';
-      const doc = { open() {}, close() {}, write(s) { out += s; }, querySelector: () => ({}) };
-      window.open = () => ({ document: doc, focus() {}, print() {} });
-      // A4 landscape paper.
-      openPrintWindow(new Blob([new Uint8Array([137, 80, 78, 71])], { type: 'image/png' }), 297, 210);
-      setTimeout(() => resolve(out), 30);
-    }));
+    // Printed from a hidden frame in the page (no new window): read the page it was given.
+    const html = await page.evaluate(async () => {
+      new MutationObserver(() => {
+        const f = document.getElementById('navaid-print-frame');
+        if (f && !f.__stubbed) { f.__stubbed = true; f.contentWindow.print = () => {}; }
+      }).observe(document.body, { childList: true });
+      const c = document.createElement('canvas'); c.width = 4; c.height = 3;
+      const png = await new Promise(r => c.toBlob(r, 'image/png'));
+      openPrintWindow(png, 297, 210);
+      const f = document.getElementById('navaid-print-frame');
+      return f ? f.contentDocument.documentElement.outerHTML : '';
+    });
     expect(html).toMatch(/@page\{size:297mm 210mm;margin:0\}/);
     expect(html).toMatch(/img\{width:297mm;height:210mm/);
 
@@ -485,7 +490,10 @@ test.describe('Export PNG options modal', () => {
       return ppmX;
     }
 
-    test('No page frame → no pHYs chunk', async ({ page }) => {
+    // No page: the image is the screen at 1.5x its pixels at the default Medium resolution,
+    // and says so -- 144 dpi (1.5 device pixels a CSS pixel at 96) -- so it prints at the size
+    // it was on screen (it used to carry no pHYs at all, and a viewer guessed).
+    test('No page frame → pHYs at 144 DPI (Medium: 1.5x the screen)', async ({ page }) => {
       await boot(page);
       await page.evaluate(wps => {
         state.waypoints = wps;
@@ -493,7 +501,7 @@ test.describe('Export PNG options modal', () => {
         pageSize = null;
       }, pairLLHZ_LLHA());
       const buf = await exportPng(page);
-      expect(readPng(buf)).toBeNull();
+      expect(Math.round(readPng(buf) * 0.0254)).toBe(144);
     });
 
     test('A4 portrait → pHYs embedded (~11811 ppm ≈ 300 DPI)', async ({ page }) => {

@@ -12,16 +12,23 @@ async function boot(page) {
   await page.waitForFunction(() => typeof state !== 'undefined' && typeof showFlightPlan === 'function');
 }
 
+// The nav log prints from a hidden frame now, not a tab of its own: capture the document it
+// prints, and lay it out on a page of its own to read it the way the printer would.
 async function openNavLog(page, context) {
-  const [popup] = await Promise.all([
-    context.waitForEvent('page'),
-    page.evaluate(() => {
-      const b = [...document.querySelectorAll('.modal-btns button')]
-        .find(x => /Nav log/i.test(x.textContent));
-      b.click();
-    }),
-  ]);
-  await popup.waitForLoadState('domcontentloaded');
+  let tabs = 0;
+  context.on('page', () => { tabs += 1; });
+  await page.evaluate(() => {
+    window.__navlogHtml = null;
+    window.printHtmlPage = (h) => { window.__navlogHtml = h; };
+    const b = [...document.querySelectorAll('.modal-btns button')]
+      .find(x => /Nav log/i.test(x.textContent));
+    b.click();
+  });
+  await page.waitForFunction(() => window.__navlogHtml);
+  const html = await page.evaluate(() => window.__navlogHtml);
+  expect(tabs).toBe(0);
+  const popup = await context.newPage();
+  await popup.setContent(html);
   return popup;
 }
 

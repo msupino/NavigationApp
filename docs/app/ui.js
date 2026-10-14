@@ -195,7 +195,9 @@ const MENU_ICONS = {
   load: 'upload', 'route-library': 'folder', share: 'link', fly: 'plane', 'follow-me-new': 'key',
   'clear-store': 'trash', 'print-fit-screen': 'fit', 'print-fit': 'expand', print: 'print',
 };
-const LEADING_GLYPHS = /^[\s\u2190-\u2BFF\u2600-\u27BF\uFE0F\u200D\p{Extended_Pictographic}]+/u;
+// "+" and the full-width "＋" too: both are mapped to the plus icon (GLYPH_ICONS), and a label
+// that kept its own plus showed two ("+ + Add identification-point marker").
+const LEADING_GLYPHS = /^[\s+\uFF0B\u2190-\u2BFF\u2600-\u27BF\uFE0F\u200D\p{Extended_Pictographic}]+/u;
 let menuDressing = false;
 function dressMenuItem(btn) {
   const spec = MENU_ICONS[btn.id];
@@ -235,7 +237,7 @@ const GLYPH_ICONS = { '🗑': 'trash', '↻': 'reset', '🔥': 'hotspot', '⏱':
   '🖨': 'print', '⊘': 'hide', '✓': 'check', '✔': 'check' };
 // Every button carries an icon ("every button should have an icon, new or existing"). The ones
 // whose label has no glyph to key on are named by their id or class instead.
-const BUTTON_ICONS = { 'insp-direct-to': 'direct', 'insp-add-to-route': 'plus', 'insp-vor-use-ref': 'compass',
+const BUTTON_ICONS = { 'insp-direct-to': 'direct', 'insp-add-to-route': 'plus', 'insp-add-rp': 'plus', 'insp-vor-use-ref': 'compass',
   'satellite-expand-hint': 'expand', 'insp-charts-btn': 'charts', 'add-freq-change-btn': 'antenna',
   'hours-toggle': 'list' };
 function buttonIconName(btn) {
@@ -962,6 +964,10 @@ const MAP_ICONS = {
   undo: '<path d="M9 14.5 4 9.5l5-5"/><path d="M4 9.5h10a5.5 5.5 0 0 1 0 11h-3.5"/>',
   clearMap: '<path d="M6.2 7.5 7.3 20h9.4l1.1-12.5" fill="currentColor" fill-opacity=".18"/>'
     + '<path d="M4 7.5h16M9.5 7.5V4.5h5v3M10.3 11v5.5M13.7 11v5.5"/>',
+  // Fit: the four corners of a frame, "[ ]" -- the page, or the route, brought to the screen.
+  fitFrame: '<rect x="8" y="8" width="8" height="8" rx="1" fill="currentColor" fill-opacity=".18" stroke="none"/>'
+    + '<path d="M4 9V5.5A1.5 1.5 0 0 1 5.5 4H9M15 4h3.5A1.5 1.5 0 0 1 20 5.5V9'
+    + 'M20 15v3.5a1.5 1.5 0 0 1-1.5 1.5H15M9 20H5.5A1.5 1.5 0 0 1 4 18.5V15"/>',
 };
 function setMapIcon(btn, name) {
   if (!btn || btn.dataset.icon === name) return;
@@ -1461,6 +1467,9 @@ editColCtrl.onAdd = function () {
     ['edit-col-note', 'addNote', 'tbAddNoteTitle', 'tbAddNote'],
     ['edit-col-undo', 'undo', 'tbUndoTitle', 'tbUndo'],
     ['edit-col-clear', 'clearMap', 'tbClearTitle', 'tbClear'],
+    // Last, under Clear map: the F key's fit, for a phone that has no F key. The selected page
+    // frame to the screen, or the route when no page is selected (fitToScreen).
+    ['edit-col-fit', 'fitFrame', 'tbFitTitle', 'tbFit'],
   ];
   // Handlers are attached HERE, on every build: Leaflet rebuilds a control when it moves corner
   // (placeEditColumn: top right on a Hebrew desktop), and buttons wired once by id after the
@@ -1471,6 +1480,7 @@ editColCtrl.onAdd = function () {
     'edit-col-note': () => setMode('note'),
     'edit-col-undo': () => document.getElementById('undo').click(),
     'edit-col-clear': () => document.getElementById('clear').click(),
+    'edit-col-fit': () => { if (typeof fitToScreen === 'function') fitToScreen(); },
   };
   for (const [id, icon, titleKey, nameKey] of items) {
     const b = document.createElement('button');
@@ -3032,7 +3042,10 @@ function showRouteTemplatesModal() {
   modal.box.appendChild(body);
   modal.show();
 
-  loadRouteTemplates().then(templates => {
+  // The fields' names, in the language on screen, come from the airfields list.
+  Promise.all([loadRouteTemplates(),
+    typeof loadAirfields === 'function' ? loadAirfields().catch(() => null) : null,
+  ]).then(([templates]) => {
     body.innerHTML = '';
     if (!templates.length) {
       const empty = document.createElement('p');
@@ -3042,19 +3055,89 @@ function showRouteTemplatesModal() {
       return;
     }
 
-    const routeRow = document.createElement('label');
-    routeRow.className = 'route-template-row';
-    const routeLabel = document.createElement('span');
-    routeLabel.textContent = S.routeTemplateRoute || 'Route';
-    const select = document.createElement('select');
-    select.className = 'route-template-select';
-    for (const template of templates) {
-      const option = document.createElement('option');
-      option.value = template.id;
-      option.textContent = routeTemplateLabel(template);
-      select.appendChild(option);
+    // From, then To -- only the destinations that have a route from there -- and Via where a
+    // pair has more than one (Rosh Pina - Haifa: by the Galilee or by Hadera). One long
+    // list of "X to Y" was too crowded to find a route in (asked: "maybe From and To in
+    // different inputs, with all existing couples"). Each list in the language's own order.
+    const lang = (window.__navLang || document.documentElement.lang || '').toLowerCase().slice(0, 2);
+    const ends = (t) => ({ from: t.waypoints[0], to: t.waypoints[t.waypoints.length - 1] });
+    // A place by the name the templates call it ("Herzliya to Haifa", "הרצליה לחיפה") -- the
+    // familiar one, "Masada" rather than the airfield's "Bar Yehuda (Masada)" -- and failing
+    // that the airfield's own name, or its code.
+    const placeNames = {};
+    for (const t of templates) {
+      const e = ends(t);
+      const label = routeTemplateLabel(t).replace(/\s*\([^)]*\)\s*$/, '');
+      const parts = lang === 'he' ? label.split(/ ל(?=\S)/) : label.split(/ to /);
+      if (parts.length === 2) {
+        if (!placeNames[e.from]) placeNames[e.from] = parts[0].trim();
+        if (!placeNames[e.to]) placeNames[e.to] = parts[1].trim();
+      }
     }
-    routeRow.append(routeLabel, select);
+    const fieldName = (code) => {
+      if (placeNames[code]) return placeNames[code];
+      const af = Array.isArray(window.airfields) ? airfields.find(a => a && a.name === code) : null;
+      return (af && (lang === 'he' ? af.he : af.en)) || code;
+    };
+    const viaName = (t) => (lang === 'he' ? t.heVia : t.via) ||
+      ((routeTemplateLabel(t).match(/\(([^)]+)\)\s*$/) || [])[1]) || routeTemplateLabel(t);
+    const byName = (a, b) => a.label.localeCompare(b.label, lang || undefined);
+    const row = (labelText, cls) => {
+      const r = document.createElement('label');
+      r.className = 'route-template-row';
+      const l = document.createElement('span');
+      l.textContent = labelText;
+      const sel = document.createElement('select');
+      sel.className = 'route-template-select ' + cls;
+      r.append(l, sel);
+      return { row: r, sel };
+    };
+    const fill = (sel, items, keep) => {
+      sel.innerHTML = '';
+      for (const it of items) {
+        const o = document.createElement('option');
+        o.value = it.value; o.textContent = it.label;
+        sel.appendChild(o);
+      }
+      if (keep && items.some(it => it.value === keep)) sel.value = keep;
+    };
+    const from = row(S.routeTemplateFrom || 'From', 'route-template-from');
+    const to = row(S.routeTemplateTo || 'To', 'route-template-to');
+    const via = row(S.routeTemplateVia || 'Via', 'route-template-via');
+    const origins = [...new Set(templates.map(t => ends(t).from))]
+      .map(c => ({ value: c, label: fieldName(c) })).sort(byName);
+    const pairTemplates = () => templates.filter(t => ends(t).from === from.sel.value && ends(t).to === to.sel.value);
+    const refreshTo = () => {
+      const dests = [...new Set(templates.filter(t => ends(t).from === from.sel.value).map(t => ends(t).to))]
+        .map(c => ({ value: c, label: fieldName(c) })).sort(byName);
+      fill(to.sel, dests, to.sel.value);
+      refreshVia();
+    };
+    const refreshVia = () => {
+      const pair = pairTemplates().map(t => ({ value: t.id, label: viaName(t) })).sort(byName);
+      // Always there, dimmed where the pair has one route: then there is nothing to choose, and
+      // no name to give it -- "along the coast" for the only route was a judgement, not a fact.
+      if (pair.length < 2) pair.forEach(p => { p.label = '—'; });
+      fill(via.sel, pair, via.sel.value);
+      via.sel.disabled = pair.length < 2;
+    };
+    fill(from.sel, origins);
+    refreshTo();
+    // The whole set, as the template id: what Build route and the details below read.
+    const select = { get value() { return via.sel.value || (pairTemplates()[0] || {}).id; },
+      focus() { from.sel.focus(); }, addEventListener(ev, fn) {
+        from.sel.addEventListener(ev, fn); to.sel.addEventListener(ev, fn); via.sel.addEventListener(ev, fn);
+      } };
+    from.sel.addEventListener('change', refreshTo);
+    to.sel.addEventListener('change', refreshVia);
+    // Two to a row: From beside To, Via beside Speed -- four rows stacked took too much room.
+    const pairRow = (...rows) => {
+      const r = document.createElement('div');
+      r.className = 'route-template-pair';
+      r.append(...rows);
+      return r;
+    };
+    const routeRow = pairRow(from.row, to.row);
 
     const speedRow = document.createElement('label');
     speedRow.className = 'route-template-row';
@@ -3113,7 +3196,7 @@ function showRouteTemplatesModal() {
       }
     };
 
-    body.append(routeRow, speedRow, path, desc, btns);
+    body.append(routeRow, pairRow(via.row, speedRow), path, desc, btns);
     select.focus();
   }).catch(e => {
     body.innerHTML = '';

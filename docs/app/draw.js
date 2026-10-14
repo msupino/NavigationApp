@@ -6310,7 +6310,8 @@ function drawNotes() {
       : state.selected &&
         state.selected.type === 'note' &&
         state.selected.index === i);
-    const color = n.color || tune('noteDefaultFillColor') || NOTE_DEFAULT_COLOR;
+    // A black-and-white print draws every note white, whatever colour it was given on screen.
+    const color = (NavAid.printOverride ? null : n.color) || tune('noteDefaultFillColor') || NOTE_DEFAULT_COLOR;
     if (n.cc) {
       if (!commCalloutDragging(i)) drawCommCallout(n, selected);
       continue;

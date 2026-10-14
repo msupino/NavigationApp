@@ -448,7 +448,10 @@
     follow(true);
     save();
     try {
-      map.fitBounds(L.latLngBounds(state.waypoints.map(w => [w.lat, w.lng])).pad(0.2));
+      // The route-fit limit, as every other fit: near the field the two points are close, and
+      // with the map going to z18 an unlimited fit landed on rooftops.
+      map.fitBounds(L.latLngBounds(state.waypoints.map(w => [w.lat, w.lng])).pad(0.2),
+        typeof fitOpts === 'function' ? fitOpts('fitRoutePaddingPx', 'fitRouteMaxZoom') : {});
     } catch (e) { /* a map with no size yet: the route is drawn, the view just stays put */ }
     active.card = showCard(opts, graph, fromGps);
     return active.card;

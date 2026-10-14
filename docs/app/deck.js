@@ -687,7 +687,24 @@
     if (/^\d{1,4}:\d{2}$/.test(chunk)) return 2;           // elapsed mm:ss -- 125:30 on a long flight
     return 99;                                          // kt, ft, heading: the instrument
   }
+  // Called on every map move (sync), and the fit below reads layout over and over: on a phone
+  // it was a steady share of every pan (fitStripVals + getClientRects in the profile). The same
+  // text in the same width fits the same way -- skip it.
+  // The width comes from a ResizeObserver, not a read: reading clientWidth here forced a layout
+  // on every move, which was most of what this cost.
+  let fittedKey = '', lastSubKey = null, stripWidth = -1, observed = null;
+  const stripRO = typeof ResizeObserver === 'function' ? new ResizeObserver(() => { stripWidth = -1; }) : null;
   function fitStripVals(full) {
+    // The strip is rebuilt when the deck is (a layout change): watch whichever one is current.
+    if (strip !== observed) {
+      if (stripRO) { stripRO.disconnect(); stripRO.observe(strip); }
+      observed = strip; stripWidth = -1; fittedKey = ''; lastSubKey = null;
+    }
+    if (stripWidth < 0 || !stripRO) stripWidth = strip.clientWidth;
+    // The route title shares the line, so it is part of what decides the fit.
+    const key = full + '|' + stripWidth + '|' + (stripLeg ? stripLeg.textContent : '');
+    if (key === fittedKey) return;
+    fittedKey = key;
     stripVals.textContent = full;
     stripVals.style.fontSize = '';
     if (!strip.clientWidth) return;
@@ -729,20 +746,25 @@
     // -- in Hebrew it is "+2ש 09:00Z" -- and pouring both into one left-to-right text node
     // let the bidi algorithm reorder them into "+209:00 · שZ", which is not a time at all.
     const parts = [txt('zulu-clock'), txt('map-time-read')].filter(Boolean);
-    stripSub.replaceChildren();
-    parts.forEach((text, i) => {
-      if (i) {
-        const sep = document.createElement('span');
-        sep.className = 'deck-strip-sep';
-        sep.setAttribute('aria-hidden', 'true');
-        sep.textContent = '·';
-        stripSub.appendChild(sep);
-      }
-      const piece = document.createElement('bdi');
-      piece.dir = 'auto';
-      piece.textContent = text;
-      stripSub.appendChild(piece);
-    });
+    // Rebuilt only when it changes: it is rebuilt from scratch, on every map move.
+    const subKey = parts.join('\u0000');
+    if (subKey !== lastSubKey) {
+      lastSubKey = subKey;
+      stripSub.replaceChildren();
+      parts.forEach((text, i) => {
+        if (i) {
+          const sep = document.createElement('span');
+          sep.className = 'deck-strip-sep';
+          sep.setAttribute('aria-hidden', 'true');
+          sep.textContent = '·';
+          stripSub.appendChild(sep);
+        }
+        const piece = document.createElement('bdi');
+        piece.dir = 'auto';
+        piece.textContent = text;
+        stripSub.appendChild(piece);
+      });
+    }
     stripSub.hidden = !parts.length;
     const live = typeof gpsPositionLive === 'function' && gpsPositionLive();
     strip.classList.toggle('deck-strip-live', !!live);

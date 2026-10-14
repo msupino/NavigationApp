@@ -145,21 +145,25 @@ window.S = {
   tourCheckTitle: 'בדיקת המסלול',
   tourCheckText: 'מרחב אווירי, NOTAM, SIGMET/AIRMET ובסיס עננים מול המסלול, בשעה שבה אתם מתכננים לטוס. מעומעם עד שיש מסלול.',
   tourEditTitle: 'עריכת המסלול',
-  tourEditText: 'הוספת נקודת ציון, הוספת הערה, ביטול, ניקוי המפה. הכפתור הדולק מראה מה פעיל; הקשה נוספת עליו עוצרת.',
+  tourEditText: 'הוספת נקודת ציון או הערה, ביטול, ניקוי המפה; [ ] מתאים למסך את הדף או את המסלול. הקשה נוספת על כפתור דולק עוצרת.',
   tourMeasureTitle: 'מדידה',
   tourMeasureText: 'כשהמיקום מוצג, הקישו על הסרגל ואז על נקודה: מרחק, כיוון וזמן מהמטוס. שום דבר לא נוסף למסלול.',
   tourLockTitle: 'נעילת עריכה',
   tourLockText: 'סגור — שום דבר במסלול לא זז. ננעל מעצמו כשמוצג מיקום.',
-  tourDialTitle: 'סיבוב המפה',
-  tourDialText: 'גררו כדי לסובב את המפה, הקישו לקפיצות של 0 / 90 / 180 / 270. המחט האדומה מצביעה צפונה.',
+  tourDialTitle: 'סיבוב והגדלת המפה',
+  tourDialText: 'גררו את החוגה כדי לסובב את המפה, הקישו עליה לסיבוב של 90°; המחט האדומה מצביעה צפונה. + ו-− מגדילים ומקטינים.',
+  tourDialTextPhone: 'גררו את החוגה כדי לסובב את המפה, הקישו עליה לסיבוב של 90°; המחט האדומה מצביעה צפונה. + ו-− מגדילים ומקטינים; ⓘ מציג את קרדיט המפות.',
   tourLocationTitle: 'המיקום שלכם',
   tourLocationText: 'מציג את המטוס על המפה, עם מהירות, גובה וכיוון למעלה.',
   tourRecordTitle: 'הקלטה',
   tourRecordText: 'מקליט את הטיסה כמסלול שאפשר להציג שוב ולייצא.',
   tourCommfailTitle: 'תקלת קשר',
-  tourCommfailText: 'אבד הקשר? מנתב לשדה הקרוב שיש לו נוהל מפורסם, עם תזכורת לסקווק ומספר הטלפון של המגדל.',
+  tourCommfailText: 'אבד הקשר? מסלול לשדה הקרוב שיש לו נוהל מפורסם, עם הסקווק ומספר הטלפון של המגדל.',
+  tourCommfailTextPhone: 'אבד הקשר? מסלול לשדה הקרוב שיש לו נוהל מפורסם, עם הסקווק ומספר הטלפון של המגדל. לידו: החלפת שפה.',
   tourMenuTitle: 'תפריט',
   tourMenuText: 'דפיות, שכבות נוספות (NOTAM, מזג אוויר, מרחבי אוויר), תכנית הטיסה וההגדרות.',
+  tourMenuTextPhone: 'תפריט: דפיות, שכבות (NOTAM, מזג אוויר, מרחבי אוויר) והגדרות. תכנית: תכנית הטיסה. המקרא בפינה מסביר את הסמלים.',
+  tourMenuTextDesk: 'שמירה, המסלולים שלי, התפריטים ותכנית הטיסה; ואז שפה, קיצורי מקלדת (?), קישורים נוספים וסימולטור. בתחתית: המקרא ומחוון הזמן.',
   tourSearchTitle: 'חיפוש',
   tourSearchText: 'הקלידו נקודת ציון או שדה, או כמה קודים (LLHZ BAZRA DEROR) כדי לבנות מסלול.',
   tourHoldTitle: 'לחיצה ארוכה על המפה',
@@ -254,6 +258,37 @@ window.S = {
   routeLibraryGdriveError: 'הסנכרון נכשל',
   routeLibraryGdriveAutoSyncFailed: 'לא סונכרן ל-Drive — נשמר במכשיר הזה. סנכרנו מ"מסלולים שמורים" לניסיון נוסף.',
   fpTimeUnitsTitle: 'זמן טיסה, דק:שנ (לא שעת שעון)',
+  fpEtd: 'המראה (ETD)',
+  fpEtdShort: 'המראה',
+  fpEtdSoon: function (n) { return 'עכשיו + ' + n + ' דק\u05f3'; },
+  fpEtdSoonTitle: 'המוקדם ביותר שאפשר להגיש לו תכנית בנתיבים: עכשיו ועוד זמן ההגשה המינימלי, לרבע השעה הבא',
+  qtimeHour: 'שעה',
+  fpEtdTimeUtc: 'שעת ההמראה (UTC)',
+  fpLocalShort: function (t) { return '\u2066' + t + '\u2069 מקומי'; },
+  qtimeMinute: 'דקות',
+  fpLastLightShort: function (t) { return 'אור אחרון \u2066' + t + '\u2069'; },
+  fpEtdTitle: 'שעת ההמראה המתוכננת. עמודת ה-ETA ובדיקת האור האחרון נספרות ממנה; טופס הגשת תוכנית הטיסה משתמש באותה שעה.',
+  fpEtdDate: 'תאריך ההמראה',
+  fpEtdTime: 'שעת ההמראה (מקומית)',
+  fpEtaZulu: 'שעות ב-UTC',
+  fpEtaZuluTitle: 'הצגת שעות ההגעה והאור האחרון ב-UTC ‏(Z) במקום בשעון מקומי',
+  fpEta: 'ETA',
+  fpEtaTitle: 'שעת השעון מעל נקודת היעד של הקטע: המראה + זמן מצטבר, במהירויות המתוכננות (ללא רוח)',
+  // Times and Latin names are LTR runs inside RTL text: each is isolated (LRI ... PDI).
+  fpEtaDarkTitle: function (lastLight) { return 'אחרי האור האחרון (\u2066' + lastLight + '\u2069) \u2014 לילה'; },
+  fpEtaClosedTitle: function (name) { return '\u2068' + name + '\u2069 מחוץ לשעות הפעילות המפורסמות בשעה זו'; },
+  fpDepClosed: function (name, opens) {
+    return '\u2068' + name + '\u2069 מחוץ לשעות הפעילות המפורסמות בשעת ההמראה' + (opens ? ' (נפתח ב-\u2066' + opens + '\u2069)' : '');
+  },
+  fpDestClosed: function (name, opens) {
+    return '\u2068' + name + '\u2069 מחוץ לשעות הפעילות המפורסמות בשעת ההגעה' + (opens ? ' (נפתח ב-\u2066' + opens + '\u2069)' : '');
+  },
+  fpArrival: function (eta) { return 'הגעה \u2066' + eta + '\u2069'; },
+  fpLastLight: function (name, sunset, lastLight) {
+    return 'אור אחרון ב-\u2068' + name + '\u2069: \u2066' + lastLight + '\u2069 (שקיעה \u2066' + sunset + '\u2069)';
+  },
+  fpLastLightLate: 'הנחיתה אחרי האור האחרון: נחיתת לילה',
+  fpNightFinding: 'נחיתה אחרי האור האחרון \u2014 נחיתת לילה',
   startRouteHere: '➕ התחל מסלול כאן',
   addToRoute: '➕ הוסף למסלול',
   alreadyOnRoute: '✓ כבר במסלול',
@@ -296,6 +331,9 @@ window.S = {
   routeLibraryGdriveRaced: 'מכשיר אחר שינה את זה במהלך הסנכרון — שום דבר לא נדרס. סנכרנו שוב.',
   routeTemplatesTitle: 'תבניות מסלול',
   routeTemplateRoute: 'מסלול',
+  routeTemplateFrom: 'מוצא',
+  routeTemplateTo: 'יעד',
+  routeTemplateVia: 'דרך',
   routeTemplateSpeed: 'מהירות (קשר)',
   routeTemplateApply: 'בנה מסלול',
   routeTemplateEmpty: 'אין תבניות מסלול זמינות',
@@ -320,7 +358,7 @@ window.S = {
   tbResetAllWpNamesTitle: 'הגדר כל שם לפי ייחוס או נקה כשאין ייחוס סמוך',
   resetAllWpNamesConfirm: 'לאפס את כל שמות ציוני הדרך לפי נקודות ייחוס, או לנקות כשאין ייחוס סמוך?',
   resetLegMarkers: '↻ אפס מיקום סמן',                // כפתור איפוס מיקום סמן הקטע בחלונית
-  addReportPoint: '＋ הוסף נקודת הזדהות',             // כפתור בחלונית הקטע — הצב סמן נקי הזדהות על הקטע
+  addReportPoint: 'הוסף נקודת הזדהות',             // כפתור בחלונית הקטע — הצב סמן נקי הזדהות על הקטע
   resetLegMarkersTitle: 'איפוס מיקום סמן הקטע',
   hideLegKite: '⊘ הסתר חץ ניווט',                 // כפתור בחלונית הקטע — הסתרת חץ הניווט של הקטע
   showLegKite: '◉ הצג חץ ניווט',
@@ -340,6 +378,8 @@ window.S = {
   // --- end Waypoint terminology ---------------------------------------
 
   noteDefault: 'הערה',
+  noteInspTitle: 'הערה',
+  rpInspTitle: 'נקודת הזדהות',
   errLoadFile: 'לא ניתן לטעון קובץ: ',
   errStorageFull: 'השמירה האוטומטית נכשלה: אחסון הדפדפן מלא. ייצא את המסלול כדי לשמור אותו.',
   errInvalidRoute: function(msg) { return 'קובץ מסלול לא תקין: ' + msg; },
@@ -618,7 +658,6 @@ window.S = {
   navLogVor: 'VOR ייחוס',
   navLogDepFreqs: 'תדרי שדה יציאה',
   navLogArrFreqs: 'תדרי שדה נחיתה',
-  navLogPopupBlocked: 'אפשר חלונות קופצים כדי לייצא את יומן הניווט.',
   fpFuel: 'דלק',
   fpMsa: 'גובה בטוח (ft)',
   msaLowTitle: 'הגובה המתוכנן נמוך מהגובה הבטוח המינימלי לקטע זה',
@@ -821,10 +860,24 @@ window.S = {
   freqNotamRowTitle: (id, published) => 'נוטאם ' + id
     + (published ? ' \u00b7 AIP ' + published : ' \u00b7 לא מפורסם ב-AIP'),
   fplMailTitle: 'תכנית טיסה בנתיבי התובלה הנמוכים',
-  fplMailDeparture: (place, t) => 'המראה מ' + place + ' ב ' + t + ' זמן מקומי',
+  // "מתימן" reads as "from Yemen": an airfield is named as one ("משדה תימן").
+  fplMailDeparture: (place, t, isField) => 'המראה ' + (isField ? 'משדה ' : 'מ') + place + ' ב ' + t + ' זמן מקומי',
   fplMailRoute: (list) => 'נתיב: ' + list,
-  fplMailArrival: (place, t) => 'נחיתה ב' + place + ' ב ' + t,
+  fplMailArrival: (place, t, isField) => 'נחיתה ' + (isField ? 'בשדה ' : 'ב') + place + ' ב ' + t,
   warnFplClosedCorridor: 'ייתכן שנתיב במסלול סגור או מוגבל בשעות במועד ההמראה שנבחר (מקור משני) — לא פורסמה חלופה פתוחה, ולכן הוא מוגש בכל זאת. יש לוודא מול הנוטאמים.',
+  fplEtdFirst: 'קודם קבעו שעת המראה \u2014 התכנית מוגשת איתה.',
+  fplEtdPassedFirst: function (t) { return 'שעת ההמראה (\u2066' + t + '\u2069) כבר עברה \u2014 קבעו שעה חדשה ואז הגישו.'; },
+  fplEtdPassedTitle: 'שעת המראה',
+  fplHoursAsk: 'לקבוע שעה אחרת, או להגיש בכל זאת?',
+  fplSetNewTime: 'קביעת שעה חדשה',
+  fplOpenAnyway: 'לפתוח בכל זאת',
+  fplOpenAnywayTitle: 'אם השעון של המכשיר הוא שטועה: להגיש את השעה כפי שנקבעה',
+  fplEtdForced: 'לפי שעון המכשיר היא כבר עברה; היא תוגש כפי שביקשתם.',
+  fplAllowPast: 'לשלוח בכל זאת \u2014 בדקתי את השעה',
+  fplEtdFromPlan: 'משעת ההמראה בתכנית הטיסה (ETD) \u2014 שנו אותה שם.',
+  fplEtdPassed: function (planned, proposed) {
+    return 'שעת ההמראה המתוכננת (\u2066' + planned + '\u2069) כבר עברה \u2014 הוצעה \u2066' + proposed + '\u2069. שנו אותה כאן; תכנית הטיסה תתעדכן.';
+  },
   warnFplLead: 'פחות מ־60 דקות להמראה — תוכנית בנתיבים מוגשת לפחות 60 דקות מראש, או בטלפון.',
   warnFplMixedSpeed: 'הרגליים אינן באותה מהירות; מהירות הרגל הראשונה תוגש כמהירות שיוט.',
   errFplNeedRoute: 'שרטט מסלול תחילה — תוכנית טיסה צריכה שדה מוצא ושדה יעד.',
@@ -870,6 +923,7 @@ window.S = {
   fplReturnAtFieldHint: 'המסלול נוחת בשדה, ולכן הוא תוכנית טיסה בפני עצמה — טיסת חזרה משם היא תוכנית נפרדת.',
   fplReturnRouteTip: 'לטיסת הלוך ושוב: המסלול השמור שבו חוזרים. עליו להתחיל במקום שבו מסתיים מסלול זה. לכל מסלול נשארים יומן הניווט והייצוא שלו — הם מחוברים רק בתוכנית המוגשת.',
   errFplEobt: 'הזן תאריך ושעת המראה תקפים.',
+  errFplPast: 'שעת ההמראה הזו כבר עברה \u2014 בחרו שעה מאוחרת יותר.',
   errFplEndurance: 'בחר את כמות הדלק בכלי הטיס.',
   errFplLatinOnly: 'רשום את שם הטייס ומספר הרישיון באותיות לטיניות — הודעת תוכנית הטיסה אינה יכולה לשאת עברית.',
   errFplProfile: 'מלא תחילה את פרטי כלי הטיס והטייס.',
@@ -884,7 +938,11 @@ window.S = {
   legArrow: '←',
 
   speedKt: 'מהירות (קשר)',
-  legDirection: 'כיוון',
+  legDirection: 'כיוון מגנטי',
+  legTrueTrack: 'כיוון אמיתי',
+  legDistance: 'אורך קטע',
+  legTimeFuel: 'זמן \u00b7 דלק',
+  legFuelUnit: 'גלון',
   windFromDeg: 'רוח מ-(°)',
   windSpeedKt: 'מהירות רוח (קשר)',
   windEffect: 'עם רוח',
@@ -941,6 +999,15 @@ window.S = {
   deckNoRoute: 'אין מסלול',
   deckSheetGrip: 'גררו לשינוי גובה, הקישו למעבר בין גבהים',
   deckHereTitle: 'מה יש כאן',
+  exportBw: 'מותאם למדפסת שחור-לבן',
+  exportResolution: 'איכות תמונה',
+  // "X מתוך Y" rather than "X / Y": two numbers around a slash in a Hebrew line read in either order.
+  exportProgressTiles: function (done, total, secs) { return 'טוען את המפה: ' + done + ' מתוך ' + total + ' אריחים · ' + secs + ' שניות'; },
+  exportProgressCompose: function (secs) { return 'מרכיב את הדף… ' + secs + ' שניות'; },
+  exportResLow: 'נמוכה',
+  exportResMedium: 'בינונית',
+  exportResHigh: 'גבוהה',
+  exportBwTitle: 'המפה באפור בהיר והמסלול בשחור על לבן, כך שהוא קריא במדפסת ללא צבע',
   ctxMenuLabel: 'פעולות מהירות',
   ctxAddNoteHere: 'הוסף הערה כאן',
   ctxDistanceHere: 'מרחק מהמטוס',
@@ -1243,6 +1310,7 @@ window.S = {
   shareCopied: 'קישור המסלול הועתק ללוח',
   errShareTooLong: 'המסלול ארוך מדי לקישור שיתוף (מקסימום 64 ציוני דרך). ייצא כ-JSON ושלח את הקובץ במקום.',
   tbFit: '⌖ התאם למסך (F)',
+  pageFrameOffForLocation: 'מסגרת הדף הוסרה בזמן שהמיקום מוצג — בחרו A4 / A3 שוב כדי להדפיס',
   tbFitTitle: 'התאם את הדף שנבחר לתצוגה, או את המסלול כשלא נבחר דף (F)',
   tbPlan: 'תכנית טיסה',
   tbPlanTitle: 'הצג תכנית טיסה',
@@ -1716,7 +1784,6 @@ window.S = {
   exportBtn: 'ייצא',
   printBtn: '🖨 הדפס',
   printBtnTitle: 'פתח את תיבת ההדפסה בגודל פיזי אמיתי (A4/A3 1:250,000)',
-  errPopupBlocked: 'אפשר חלונות קופצים לאתר כדי לפתוח את תצוגת ההדפסה.',
 
   // --- Magnifying glass ------------------------------------------------
   tbMagnifier: '🔍 זכוכית מגדלת (M)',
@@ -1743,6 +1810,23 @@ window.S = {
   tbGpsLive: 'מיקום',
   tbGpsLiveTitle: 'הצגת המיקום החי שלך על המפה (GPS, ללא הקלטה)',
   tbGpsLiveStop: 'הסתר',
+  watchAlertLastLightTitle: 'אור אחרון',
+  // The field name and each clock are isolated runs, so a Latin code or a time cannot pull the
+  // Hebrew words across them.
+  watchAlertLastLightBody: function (field, lastLight, eta) {
+    return 'אור אחרון ב-\u2068' + field + '\u2069 \u2066' + lastLight + '\u2069 \u00b7 הגעה \u2066' + eta + '\u2069';
+  },
+  speakAlertLastLight: function (field, lastLight, eta) {
+    return 'אור אחרון ב' + field + ', ' + lastLight + '. הגעה מתוכננת ' + eta + '.';
+  },
+  watchAlertDestClosedTitle: 'שעות שדה היעד',
+  watchAlertDestClosedBody: function (field, eta, opens) {
+    return '\u2068' + field + '\u2069 מחוץ לשעות הפעילות ב-\u2066' + eta + '\u2069' +
+      (opens ? ' \u00b7 נפתח ב-\u2066' + opens + '\u2069' : '');
+  },
+  speakAlertDestClosed: function (field, eta) {
+    return field + ' מחוץ לשעות הפעילות המפורסמות בשעת ההגעה, ' + eta + '.';
+  },
   watchAlertAtisTitle: 'ATIS',
   // Hebrew first, Latin tail: the old wording ended with "<n> דקות לפני" after a Latin run, and
   // a notification laid out left-to-right showed it as "דקות לפני 7" -- the number stranded at
