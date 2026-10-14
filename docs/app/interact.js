@@ -4053,6 +4053,7 @@ function showInspector() {
     // auto time from the leg start). CAAI נקי הזדהות.
     const addRp = document.createElement('button');
     addRp.className = 'insp-btn';
+    addRp.id = 'insp-add-rp';   // its plus icon comes from BUTTON_ICONS, not a glyph in the label
     addRp.textContent = S.addReportPoint || 'Add identification-point marker';
     addRp.onclick = () => { addReportPointToLeg(idx); showInspector(); };
     body.appendChild(addRp);

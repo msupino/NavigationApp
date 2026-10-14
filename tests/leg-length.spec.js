@@ -30,17 +30,23 @@ for (const lang of ['en', 'he']) {
   });
 }
 
-test('a button with a plus glyph shows one plus: the icon, not the glyph too', async ({ page }) => {
-  await page.goto('?lang=en&nogist');
-  await page.waitForFunction(() => typeof showInspector === 'function' && typeof syncLegs === 'function');
-  await page.evaluate(() => {
-    state.waypoints = [{ lat: 32.18, lng: 34.83, name: 'A' }, { lat: 32.5, lng: 35.0, name: 'B' }];
-    syncLegs(); draw(); state.selected = { type: 'leg', index: 0 }; showInspector();
+for (const [lang, text] of [['en', 'Add identification-point marker'], ['he', 'הוסף נקודת הזדהות']]) {
+  test(lang + ': the identification-point button shows one plus: the icon, not a glyph in the label too', async ({ page }) => {
+    await page.goto('?lang=' + lang + '&nogist');
+    await page.waitForFunction(() => typeof showInspector === 'function' && typeof syncLegs === 'function');
+    await page.evaluate(() => {
+      state.waypoints = [{ lat: 32.18, lng: 34.83, name: 'A' }, { lat: 32.5, lng: 35.0, name: 'B' }];
+      syncLegs(); draw(); state.selected = { type: 'leg', index: 0 }; showInspector();
+    });
+    const btn = page.locator('#insp-add-rp');
+    await expect(btn.locator('.mi-icon')).toHaveCount(1);
+    await expect(btn.locator('.mi-icon')).toHaveAttribute('data-icon', 'plus');
+    // The label itself carries no plus (+, ＋ or ➕): the string had one, the icon is another.
+    const label = await btn.evaluate(b => [...b.childNodes].filter(n => n.nodeType === 3).map(n => n.nodeValue).join('').trim());
+    expect(label).toBe(text);
+    expect(label).not.toMatch(/[+\uFF0B\u2795]/);
   });
-  const btn = page.locator('#insp-body button', { hasText: 'identification-point' });
-  await expect(btn.locator('.mi-icon')).toHaveCount(1);
-  expect((await btn.innerText()).trim()).toMatch(/^Add identification-point marker$/);
-});
+}
 
 test('time and fuel for the leg match the flight plan, and follow a speed edit', async ({ page }) => {
   await page.goto('?lang=en&nogist');

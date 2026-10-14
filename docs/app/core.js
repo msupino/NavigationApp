@@ -1817,7 +1817,7 @@ window.S = Object.assign({
   tbResetAllWpNamesTitle: 'Set each name to its nearest reference, or clear when off-grid',
   resetAllWpNamesConfirm: 'Reset all waypoint names to their nearest reference codes, or clear when off-grid (sequence placeholders)?',
   resetLegMarkers: '↻ Reset marker position',       // inspector leg button — reset label offsets
-  addReportPoint: '＋ Add identification-point marker',  // inspector leg button — drop a נקי הזדהות oval on the leg
+  addReportPoint: 'Add identification-point marker',  // inspector leg button — drop a נקי הזדהות oval on the leg
   resetLegMarkersTitle: 'Reset marker position',
   hideLegKite: '⊘ Hide kite',                  // inspector leg button — hide this leg's nav kite
   showLegKite: '◉ Show kite',

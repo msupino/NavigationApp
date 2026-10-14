@@ -168,10 +168,10 @@ test('the leg inspector shows the same magnetic direction as the plan', async ({
     state.selected = { type: 'leg', index: 0 };
     showInspector();
     // The leg inspector is built from div rows, not a table — '#insp-body tr' matched
-    // nothing, which is the second reason this spec never passed. Find the Direction row by
+    // nothing, which is the second reason this spec never passed. Find the Magnetic track row by
     // its own label rather than by guessing at units.
     const rows = Array.from(document.querySelectorAll('#insp-body .row, #insp-body > div'));
-    const row = rows.find(r => /^Direction/.test(r.textContent.replace(/\s+/g, ' ').trim()));
+    const row = rows.find(r => /^Magnetic track/.test(r.textContent.replace(/\s+/g, ' ').trim()));
     return row ? row.textContent.replace(/\s+/g, ' ').trim() : null;
   });
   expect(shown, 'no direction row in the leg inspector').not.toBeNull();
