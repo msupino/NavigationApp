@@ -353,7 +353,7 @@ window.S = {
   tbResetAllWpNamesTitle: 'הגדר כל שם לפי ייחוס או נקה כשאין ייחוס סמוך',
   resetAllWpNamesConfirm: 'לאפס את כל שמות ציוני הדרך לפי נקודות ייחוס, או לנקות כשאין ייחוס סמוך?',
   resetLegMarkers: '↻ אפס מיקום סמן',                // כפתור איפוס מיקום סמן הקטע בחלונית
-  addReportPoint: '＋ הוסף נקודת הזדהות',             // כפתור בחלונית הקטע — הצב סמן נקי הזדהות על הקטע
+  addReportPoint: 'הוסף נקודת הזדהות',             // כפתור בחלונית הקטע — הצב סמן נקי הזדהות על הקטע
   resetLegMarkersTitle: 'איפוס מיקום סמן הקטע',
   hideLegKite: '⊘ הסתר חץ ניווט',                 // כפתור בחלונית הקטע — הסתרת חץ הניווט של הקטע
   showLegKite: '◉ הצג חץ ניווט',
@@ -933,7 +933,11 @@ window.S = {
   legArrow: '←',
 
   speedKt: 'מהירות (קשר)',
-  legDirection: 'כיוון',
+  legDirection: 'כיוון מגנטי',
+  legTrueTrack: 'כיוון אמיתי',
+  legDistance: 'אורך קטע',
+  legTimeFuel: 'זמן \u00b7 דלק',
+  legFuelUnit: 'גלון',
   windFromDeg: 'רוח מ-(°)',
   windSpeedKt: 'מהירות רוח (קשר)',
   windEffect: 'עם רוח',

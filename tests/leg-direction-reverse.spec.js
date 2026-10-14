@@ -33,13 +33,13 @@ test.describe('Leg inspector direction + reverse', () => {
       showInspector();
     });
 
-    const dir = page.locator('#insp-body .row').filter({ hasText: 'Direction' });
+    const dir = page.locator('#insp-body .row').filter({ hasText: 'Magnetic track' });
     await expect(dir).toHaveCount(1);
     await expect(dir).toContainText(/\d{3}°/);
 
     const labels = await page.locator('#insp-body .row').allTextContents();
     const iSpeed = labels.findIndex(t => /Speed/.test(t));
-    const iDir = labels.findIndex(t => /Direction/.test(t));
+    const iDir = labels.findIndex(t => /Magnetic track/.test(t));
     const iAlt = labels.findIndex(t => /Inbound alt/i.test(t));
     expect(iSpeed).toBeGreaterThanOrEqual(0);
     expect(iDir).toBeGreaterThan(iSpeed);
