@@ -5781,10 +5781,36 @@ body.deck-on #search-overlay { top: calc(var(--navaid-deck-strip-h, 46px) + 8px)
 .search-ex:hover, .search-ex:focus-visible { background: #3a3535; }
 .search-ex code {
   flex-shrink: 0;
-  font-size: 12px;
+  /* The app's own face, not monospace: a monospace font spaced Hebrew out letter by letter. */
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
   color: #8fc1ff;
+  background: none;
   unicode-bidi: isolate;            /* a Hebrew name in an English row, and the reverse */
 }
+/* The search card follows the light theme; its examples have to as well (reported: a dark
+   list inside the light card). Same palette as the light results list. */
+body.theme-light #search-help {
+  color: #647184;
+  border-color: #c6ccd6;
+}
+body.theme-light #search-help:hover,
+body.theme-light #search-help[aria-expanded="true"] {
+  color: #111820;
+  background: rgba(29, 111, 224, 0.08);
+}
+body.theme-light #search-examples {
+  background: #fff;
+  border-color: #c6ccd6;
+  box-shadow: 0 8px 20px rgba(31, 37, 44, 0.18);
+}
+body.theme-light .search-ex-intro,
+body.theme-light .search-ex-more { color: #647184; }
+body.theme-light .search-ex { color: #1f252c; }
+body.theme-light .search-ex:hover,
+body.theme-light .search-ex:focus-visible { background: rgba(29, 111, 224, 0.08); }
+body.theme-light .search-ex code { color: #1d6fe0; }
 #search-overlay #wp-search-results {
   /* Override the toolbar-era absolute positioning (see #wp-search-results
      above): inside the fixed overlay it must flow below the input as a
