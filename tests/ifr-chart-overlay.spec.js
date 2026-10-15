@@ -327,12 +327,15 @@ test('the sheet\'s printed positions become chart points', async ({ page }) => {
     sel.dispatchEvent(new Event('change', { bubbles: true }));
     await new Promise(r => setTimeout(r, 400));
     const added = navWP.filter(w => w._plate);
+    const sheet = airfields.find(a => a.name === 'LLIB').ifr_overlays
+      .find(o => /VOR approach/.test(o.code));
     return { before, names: added.map(w => w.name), tag: added[0] && added[0]._plate,
-             sample: added.find(w => w.name === 'ROP') };
+             sample: sheet.points.find(w => w.name === 'ROP') };
   });
-  expect(out.names).toEqual(expect.arrayContaining(['ETROG', 'GIMIK', 'ROP', 'DALIT']));
+  expect(out.names).toEqual(expect.arrayContaining(['ETROG', 'GIMIK', 'DALIT']));
   expect(out.tag).toMatch(/LLIB/);
-  // The CAA's own digits: ROP is printed at 32°58'57.1"N 035°34'22.0"E on that sheet.
+  // The CAA's own digits: ROP is printed at 32°58'57.1"N 035°34'22.0"E on that sheet. It is
+  // read off the sheet, but not added as a waypoint: it is the VOR (see below).
   expect(out.sample.lat).toBeCloseTo(32 + 58 / 60 + 57.1 / 3600, 4);
   expect(out.sample.lng).toBeCloseTo(35 + 34 / 60 + 22.0 / 3600, 4);
 });
@@ -389,7 +392,8 @@ test('the LLHZ departure sheet gives up all of its points', async ({ page }) => 
     const pts = navWP.filter(w => w._plate);
     return { names: pts.map(w => w.name),
              benqo: pts.find(w => w.name === 'BENQO'),
-             nat: pts.find(w => w.name === 'NAT') };
+             nat: airfields.find(a => a.name === 'LLHZ').ifr_overlays
+               .flatMap(o => o.points || []).find(w => w.name === 'NAT') };
   });
   expect(out.names).toEqual(expect.arrayContaining(['BENQO', 'YENON', 'DIVLA']));
   // BENQO is printed at 32°23'29"N 34°45'48"E on that sheet.
@@ -417,4 +421,28 @@ test('a designation belongs to one position', async ({ page }) => {
   });
   // A label between two boxes used to win both, and that sheet drew two BENQOs.
   expect(dupes).toEqual([]);
+});
+
+// Reported: with an LLIB sheet showing, tapping ROP offered "ROP · VOR station" and "ROP ·
+// navigation waypoint" -- the sheet's printed ROP added as a waypoint on top of the station.
+// A sheet point that is a VOR stays the VOR, on every sheet (ROP, BGN and NAT are printed).
+test('a sheet point that is a VOR is not added again as a waypoint', async ({ page }) => {
+  await boot(page);
+  await on(page);
+  const dupes = await page.evaluate(async () => {
+    await new Promise(r => setTimeout(r, 300));
+    if (typeof loadVors === 'function') await loadVors();
+    const idents = new Set((window.vors || []).map(v => v.ident));
+    const sel = document.getElementById('ifr-sheet');
+    const out = [];
+    for (const o of Array.from(sel.options)) {
+      sel.value = o.value;
+      sel.dispatchEvent(new Event('change', { bubbles: true }));
+      await new Promise(r => setTimeout(r, 60));
+      for (const w of navWP.filter(w => w._plate)) if (idents.has(w.name)) out.push(o.value + ' ' + w.name);
+    }
+    return { out, vors: idents.size };
+  });
+  expect(dupes.vors).toBeGreaterThan(0);
+  expect(dupes.out).toEqual([]);
 });

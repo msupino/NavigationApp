@@ -8665,6 +8665,10 @@ function applyIfrPoints(chosen) {
     // A point the chart dataset already carries stays the dataset's: same name, same place,
     // and its comm-change and report status come with it.
     if (navWP.some(w => w && w.name === p.name)) continue;
+    // ...and so does one that is a VOR: ROP, BGN and NAT are printed on their sheets with the
+    // station's own position, and a second "ROP" drawn as a waypoint on top of the station
+    // gave a tap two identical choices (reported). The station is already tappable.
+    if (typeof vors !== 'undefined' && Array.isArray(vors) && vors.some(v => v && v.ident === p.name)) continue;
     navWP.push({ lat: p.lat, lng: p.lng, name: p.name, en: p.name,
                  _plate: (chosen.icao + ' ' + chosen.sheet.code) });
   }
