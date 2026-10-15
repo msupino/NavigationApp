@@ -26,16 +26,20 @@ whose hash is not in the index is not what the CAA serves now.
 Usage:
     python3 scripts/aip-drift.py                 # human report, exit 1 if anything drifted
     python3 scripts/aip-drift.py --json out.json # machine-readable, for a workflow
+
+Exit codes: 0 everything matches, 1 drift, 2 the index could not be read (drift unknown).
 """
 import hashlib
 import json
+import os
 import re
 import sys
 import urllib.request
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-INDEX_URL = 'https://apiaip.azurewebsites.net/getJson'
+# Overridable only so a test can point it at a closed local port; the workflow never sets it.
+INDEX_URL = os.environ.get('AIP_INDEX_URL', 'https://apiaip.azurewebsites.net/getJson')
 UA = 'NavAid/1.0 (+https://navaid.supino.org) aip-drift'
 WATCHED = [ROOT / 'docs' / 'byop', ROOT / 'docs' / 'byop-enr']
 DERIVED_MAP = ROOT / 'docs' / 'data' / 'plate-derived.json'
@@ -182,7 +186,16 @@ def selftest():
 def main():
     if '--selftest' in sys.argv:
         return selftest()
-    idx = fetch_index()
+    try:
+        idx = fetch_index()
+    except Exception as e:
+        # Not drift: we could not ask. An uncaught exception exits 1, which is also the drift
+        # code, so a CAA outage (4 timeouts on 14 Oct 2026) opened the drift issue with an
+        # empty report (#2656). Say so on stdout, where the workflow's report is read from,
+        # and exit with a code of its own.
+        print('AIP index unreachable (%s: %s) -- drift unknown, nothing compared'
+              % (type(e).__name__, e))
+        return 2
     current = index_files(idx)
     derived = derived_sources()
     named = plate_names()
@@ -254,7 +267,8 @@ def main():
         }, ensure_ascii=False, indent=1) + '\n', encoding='utf-8')
         print('wrote %s' % out)
 
-    # Exit 1 on drift so a workflow can act on it, and 0 when everything matches.
+    # Exit 1 on drift so a workflow can act on it, and 0 when everything matches (2, above,
+    # when the index could not be read).
     return 1 if drifted or hours_amended else 0
 
 
