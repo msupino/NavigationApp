@@ -944,6 +944,7 @@ window.S = {
   legArrow: '←',
 
   speedKt: 'מהירות (קשר)',
+  speedResetDefault: 'חזרה למהירות ברירת המחדל',
   legDirection: 'כיוון מגנטי',
   legTrueTrack: 'כיוון אמיתי',
   legDistance: 'אורך קטע',

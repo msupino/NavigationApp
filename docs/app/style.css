@@ -2190,6 +2190,16 @@ body.theme-light .resize-grip {
   padding: 4px 6px;
 }
 .row select { cursor: pointer; }
+/* The label takes the slack, so a field and its ↻ sit together at the end of the row and every
+   field in a panel lines up -- with space-between a three-part row floated its field to the
+   middle (reported). */
+.row > label { margin-inline-end: auto; }
+.row > label + input, .row > label + select { margin-inline-start: 8px; }
+.row > .row-reset { margin-left: 0; margin-inline-start: 4px; }
+/* Speed and altitude: five digits plus the spinner, not the panel's full field width. Rows
+   with no ↻ keep a gap the size of one, so their field lines up with the fields that have it. */
+.row input[type="number"].row-num-narrow { width: 78px; }
+.row > input.row-num-narrow:last-child { margin-inline-end: 30px; }
 .vor-radial-row {
   justify-content: flex-start;
   gap: 10px;

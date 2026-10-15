@@ -2426,6 +2426,7 @@ window.S = Object.assign({
   legTitle: function(n) { return 'Leg ' + n; },
   legArrow: '→',                       // direction arrow in leg inspector title (LTR)
   speedKt: 'Speed (kt)',
+  speedResetDefault: 'Reset to default speed',
   legDirection: 'Magnetic track',
   legTrueTrack: 'True track',
   legDistance: 'Leg length',
