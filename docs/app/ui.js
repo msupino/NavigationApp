@@ -4157,15 +4157,32 @@ function parseSearchLatLng(text) {
 }
 window.parseSearchLatLng = parseSearchLatLng;
 
+// Does a phrase with spaces in it name ONE point? Hebrew names often do -- צומת השרון -- and
+// a phrase that is a name is a search for it, not a route of its words. Without this, Enter on
+// "צומת השרון" refused with "unknown navigation waypoint: צומת" (reported).
+function searchPhraseMatches(phrase) {
+  const p = String(phrase || '').trim();
+  if (!/\s/.test(p)) return false;
+  const up = p.toUpperCase();
+  const has = (s) => s != null && String(s).toUpperCase().indexOf(up) >= 0;
+  const lists = [
+    typeof navWP !== 'undefined' ? navWP : null,
+    typeof airfields !== 'undefined' ? airfields : null,
+    typeof vors !== 'undefined' ? vors : null,
+  ];
+  return lists.some(l => Array.isArray(l) && l.some(w => w && (has(w.he) || has(w.en) || has(w.name))));
+}
+window.searchPhraseMatches = searchPhraseMatches;
+
 function runSearch() {
-  // Use the raw value (not trimmed) so a trailing space — meaning "I just
-  // accepted the previous token, waiting to type the next one" — suppresses
-  // the dropdown instead of re-running a stale single-token query.
-  const rawAll = wpSearch.value;
-  const trailingSpace = /\s$/.test(rawAll);
-  const qRaw = rawAll.trim();
-  const multi = /\s/.test(qRaw) || trailingSpace;
-  const lastToken = trailingSpace ? '' : (multi ? (qRaw.split(/\s+/).pop() || '') : qRaw);
+  // Leading and trailing spaces mean nothing. A trailing one used to mean "token accepted"
+  // and closed the dropdown -- but a phone keyboard's autocomplete and dictation add a space
+  // after every word, so "SHARO " showed nothing and Enter had nothing to take (reported).
+  const qRaw = wpSearch.value.trim();
+  let multi = /\s/.test(qRaw);
+  let lastToken = multi ? (qRaw.split(/\s+/).pop() || '') : qRaw;
+  // A name with spaces in it is searched whole, as one query (see searchPhraseMatches).
+  if (multi && searchPhraseMatches(qRaw)) { multi = false; lastToken = qRaw; }
   if (multi && !lastToken) { closeSearch(); return; }
   // A coordinate is read whole -- it has spaces in it, and the token logic below would see
   // "N32 30 E035 00" as a route of four waypoints.
@@ -4402,10 +4419,11 @@ wpSearch.addEventListener('keydown', e => {
       if (hit) hit.click();
       return;
     }
-    // Only treat as a route-build when there are ≥ 2 actual tokens.
+    // Only treat as a route-build when there are ≥ 2 actual tokens -- and they are not one
+    // name with spaces in it (searchPhraseMatches), which takes its first hit like any name.
     // A single token with trailing whitespace must still let Enter pick
     // the highlighted dropdown suggestion.
-    if (raw.split(/\s+/).filter(Boolean).length >= 2) {
+    if (raw.split(/\s+/).filter(Boolean).length >= 2 && !searchPhraseMatches(raw)) {
       e.preventDefault();
       buildRouteFromQuery(raw);
       return;

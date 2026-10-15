@@ -104,3 +104,29 @@ for (const q of ['32.18 34.83', 'N32 10 48 E034 50 04']) {
     await expect(page.locator('.search-flash-ring')).toHaveCount(1);
   });
 }
+
+// Reported: Enter on a Hebrew name with a space in it -- צומת השרון -- refused with "unknown
+// navigation waypoint: צומת": the words were read as a route. A phrase that names one point is
+// searched whole. The trailing space a phone keyboard adds changes nothing.
+for (const q of ['צומת השרון', 'צומת השרון ']) {
+  test('Enter on the name "' + q + '" finds the point, it does not build a route', async ({ page }) => {
+    await boot(page);
+    await page.evaluate(() => {
+      state.waypoints = []; syncLegs(); map.setZoom(8, { animate: false });
+      window.__refused = [];
+      const real = window.refuse;
+      window.refuse = (m) => { window.__refused.push(String(m)); if (typeof real === 'function') real(m); };
+    });
+    await page.locator('#wp-search').fill(q);
+    await expect(page.locator('.wp-search-item').first()).toBeVisible();
+    await page.locator('#wp-search').press('Enter');
+    await expect.poll(() => page.evaluate(() => map.getZoom())).toBeGreaterThanOrEqual(12);
+    const r = await page.evaluate(() => ({ wps: state.waypoints.length, refused: window.__refused,
+      c: map.getCenter() }));
+    expect(r.wps).toBe(0);
+    expect(r.refused).toEqual([]);
+    // SHARO, Sharon junction.
+    expect(r.c.lat).toBeCloseTo(32.323, 1);
+    expect(r.c.lng).toBeCloseTo(34.904, 1);
+  });
+}
