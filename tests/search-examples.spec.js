@@ -38,15 +38,16 @@ test('"?" opens tappable examples of everything the search reads', async ({ page
   await expect(page.locator('#search-examples')).toBeHidden();
 });
 
-test('every example is submitted: tapping it does what Enter would', async ({ page }) => {
-  // Reported: an example only filled the box. It is submitted now -- a name goes to its first
-  // hit, a coordinate to the point, the route example builds the route.
-  await boot(page);
-  for (let k = 0; k < 8; k++) {
+// Reported: an example only filled the box. It is submitted now -- a name goes to its first hit,
+// a coordinate to the point, the route example builds the route. One test per example: each
+// flies the map and may open a panel, so eight in one test ran past the timeout and left a
+// panel over the next tap.
+for (let k = 0; k < 8; k++) {
+  test('example ' + (k + 1) + ' is submitted: tapping it does what Enter would', async ({ page }) => {
+    await boot(page);
     await page.evaluate(() => {
       state.waypoints = []; syncLegs(); state.selected = null;
       map.setZoom(8, { animate: false });       // far out, so "flew to it" is visible as zoom 12+
-      revealSearchOverlay();
     });
     await page.locator('#search-help').click();
     const row = page.locator('#search-examples .search-ex').nth(k);
@@ -63,8 +64,8 @@ test('every example is submitted: tapping it does what Enter would', async ({ pa
       await expect.poll(() => page.evaluate(() => map.getZoom() >= 12
         && document.getElementById('wp-search-results').classList.contains('hidden')), example).toBe(true);
     }
-  }
-});
+  });
+}
 
 test('typing puts the examples away', async ({ page }) => {
   await boot(page);
