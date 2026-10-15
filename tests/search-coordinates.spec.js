@@ -200,7 +200,7 @@ for (const c of [
     const seen = await page.evaluate(({ list, key }) => ({
       type: state.selected && state.selected.type,
       id: state.selected && window[list][state.selected.index][key],
-    }), c);
+    }), { list: c.list, key: c.key });
     expect(seen).toEqual({ type: c.type, id: c.want });
   });
 }
