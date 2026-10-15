@@ -11,8 +11,10 @@ async function boot(page, lang) {
   await page.waitForFunction(() => Array.isArray(window.navWP) && window.navWP.length > 0);
   await page.evaluate(() => loadAirfields && loadAirfields());
   await page.waitForFunction(() => Array.isArray(window.airfields) && window.airfields.length > 0);
-  await page.locator('#search-trigger').click();
-  await page.locator('#wp-search').waitFor();
+  // Opened the way the app opens it: on a desktop the search is docked and the toolbar
+  // button that would open it is not on screen to click.
+  await page.evaluate(() => revealSearchOverlay());
+  await expect(page.locator('#wp-search')).toBeVisible();
   // VORs are pulled in when the search opens.
   await page.waitForFunction(() => Array.isArray(window.vors) && window.vors.length > 0);
 }
