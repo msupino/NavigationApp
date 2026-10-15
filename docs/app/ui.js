@@ -5049,7 +5049,11 @@ function routeFileDirty(entry) {
     const c = routeFileCache.entryJson;
     const key = entry.id + '|' + entry.savedAt;
     if (!c.has(key)) c.set(key, JSON.stringify(entry.data));
-    return JSON.stringify(serializeRoute()) !== c.get(key);
+    if (JSON.stringify(serializeRoute()) !== c.get(key)) return true;
+    // The planning form is saved with the route, so an edit there is an unsaved change too --
+    // otherwise Save answered "saved" to a new met table and it never reached Drive.
+    const nl = (typeof routeLibraryNavLog === 'function') ? routeLibraryNavLog() : null;
+    return JSON.stringify(entry.navlog || null) !== JSON.stringify(nl);
   } catch (e) { return true; }
 }
 
