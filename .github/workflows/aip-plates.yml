@@ -104,6 +104,15 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
+          # 0 = all current, 1 = drift. Anything else (2 = index unreachable, or a crash)
+          # means we could not tell: fail the run, and leave the issue as it was -- an outage
+          # is not drift, and once opened the issue with an empty report (#2656).
+          case "${{ steps.drift.outputs.drifted }}" in
+            0|1) ;;
+            *) echo "::error::drift check could not run (exit ${{ steps.drift.outputs.drifted }}); issue left untouched"
+               cat /tmp/drift.txt
+               exit 1 ;;
+          esac
           TITLE='AIP snapshots have drifted from the published charts'
           NUM=$(gh issue list --state open --search "$TITLE in:title" --json number,title \
                  -q '.[] | select(.title == "'"$TITLE"'") | .number' | head -1)
