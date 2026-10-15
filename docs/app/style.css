@@ -5732,6 +5732,85 @@ body.deck-on #search-overlay { top: calc(var(--navaid-deck-strip-h, 46px) + 8px)
   cursor: pointer;
 }
 #search-close:hover { background: #443f3f; color: #fff; }
+/* "?" beside the box: the same quiet button as the ✕, lit while its examples are open. */
+#search-help {
+  width: 28px;
+  height: 28px;
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1;
+  color: #b9b3b3;
+  background: transparent;
+  border: 1px solid #443f3f;
+  border-radius: 50%;
+  cursor: pointer;
+}
+#search-help:hover, #search-help[aria-expanded="true"] { background: #443f3f; color: #fff; }
+#search-examples {
+  flex-basis: 100%;
+  max-height: 60vh;
+  overflow-y: auto;
+  padding: 4px 0;
+  background: rgba(30, 26, 26, 0.97);
+  border: 1px solid #443f3f;
+  border-radius: 4px;
+}
+#search-examples[hidden] { display: none; }
+.search-ex-intro, .search-ex-more {
+  padding: 4px 10px;
+  font-size: 11px;
+  line-height: 1.35;
+  color: #9a9a9a;
+}
+.search-ex {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 10px;
+  width: 100%;
+  min-height: 34px;                 /* a finger-sized row on a phone */
+  padding: 6px 10px;
+  font: inherit;
+  font-size: 13px;
+  text-align: start;
+  color: #d8d4d4;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+}
+.search-ex:hover, .search-ex:focus-visible { background: #3a3535; }
+.search-ex code {
+  flex-shrink: 0;
+  /* The app's own face, not monospace: a monospace font spaced Hebrew out letter by letter. */
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  color: #8fc1ff;
+  background: none;
+  unicode-bidi: isolate;            /* a Hebrew name in an English row, and the reverse */
+}
+/* The search card follows the light theme; its examples have to as well (reported: a dark
+   list inside the light card). Same palette as the light results list. */
+body.theme-light #search-help {
+  color: #647184;
+  border-color: #c6ccd6;
+}
+body.theme-light #search-help:hover,
+body.theme-light #search-help[aria-expanded="true"] {
+  color: #111820;
+  background: rgba(29, 111, 224, 0.08);
+}
+body.theme-light #search-examples {
+  background: #fff;
+  border-color: #c6ccd6;
+  box-shadow: 0 8px 20px rgba(31, 37, 44, 0.18);
+}
+body.theme-light .search-ex-intro,
+body.theme-light .search-ex-more { color: #647184; }
+body.theme-light .search-ex { color: #1f252c; }
+body.theme-light .search-ex:hover,
+body.theme-light .search-ex:focus-visible { background: rgba(29, 111, 224, 0.08); }
+body.theme-light .search-ex code { color: #1d6fe0; }
 #search-overlay #wp-search-results {
   /* Override the toolbar-era absolute positioning (see #wp-search-results
      above): inside the fixed overlay it must flow below the input as a
@@ -7813,10 +7892,10 @@ html[dir="rtl"] body.theme-light #toolbar .navtoggle select {
   position: absolute;
   inset: 0;
   border-radius: 50%;
-  border: var(--flash-width, 2px) solid var(--flash-color, #ffb020);
-  background: rgba(var(--flash-rgb, 255, 176, 32), var(--flash-fill, .10));
+  border: var(--flash-width, 2px) solid var(--flash-color, #ff2a2a);
+  background: rgba(var(--flash-rgb, 255, 42, 42), var(--flash-fill, .10));
   box-shadow: 0 0 0 1px rgba(0, 0, 0, .45),
-              0 0 8px 1px rgba(var(--flash-rgb, 255, 176, 32), .35);
+              0 0 8px 1px rgba(var(--flash-rgb, 255, 42, 42), .35);
   animation: search-flash-hold var(--flash-ms, 3500ms) ease-out 1 both;
 }
 /* ...and the moving part: three expanding pulses off the same centre. */
@@ -7826,7 +7905,7 @@ html[dir="rtl"] body.theme-light #toolbar .navtoggle select {
   position: absolute;
   inset: -3px;
   border-radius: 50%;
-  border: var(--flash-width, 2px) solid var(--flash-color, #ffb020);
+  border: var(--flash-width, 2px) solid var(--flash-color, #ff2a2a);
   animation: search-flash-pulse calc(var(--flash-ms, 3500ms) / 2.5) ease-out
              var(--flash-pulses, 2) both;
 }
@@ -7836,7 +7915,7 @@ html[dir="rtl"] body.theme-light #toolbar .navtoggle select {
    menu is honoured in both themes rather than silently overridden in one. */
 body.theme-light .search-flash-ring {
   box-shadow: 0 0 0 1px rgba(255, 255, 255, .8),
-              0 0 8px 1px rgba(var(--flash-rgb, 210, 105, 10), .3);
+              0 0 8px 1px rgba(var(--flash-rgb, 200, 20, 20), .3);
 }
 /* Pulses off: the steady ring alone. */
 .search-flash-nopulse .search-flash-ring::before,
@@ -7852,9 +7931,21 @@ body.theme-light .search-flash-ring {
   0%   { transform: scale(1);   opacity: .7; }
   100% { transform: scale(1.7); opacity: 0; }
 }
+/* The go-to dot left on a looked-up coordinate: a few blinks to catch the eye, then steady --
+   it stays as the mark of the point. SVG path, so the blink is on its opacity and stroke. */
+.goto-marker {
+  animation: goto-marker-blink 0.6s ease-in-out 5;
+  transform-box: fill-box;
+  transform-origin: center;
+}
+@keyframes goto-marker-blink {
+  0%, 100% { opacity: 1; stroke-width: 2px; transform: scale(1); }
+  50%      { opacity: 0.15; stroke-width: 6px; transform: scale(1.6); }
+}
 /* A pilot who has asked for less motion gets the steady ring only -- still obvious, no
    expanding pulses. */
 @media (prefers-reduced-motion: reduce) {
+  .goto-marker { animation: none; }
   .search-flash-ring::before, .search-flash-ring::after { display: none; }
   .search-flash-ring { animation: search-flash-hold var(--flash-ms, 3500ms) linear 1 both; }
 }

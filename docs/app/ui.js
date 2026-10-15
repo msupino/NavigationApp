@@ -2393,6 +2393,9 @@ function dropGotoMarker(lat, lng) {
     fillColor: tune('gotoMarkerFillColor'), fillOpacity: tune('gotoMarkerFillAlpha'),
     interactive: false, className: 'goto-marker',
   }).addTo(map);
+  // A 7 px dot on a busy chart was easy to miss (reported): it blinks a few times (CSS) and the
+  // same pulsing ring a name search gets marks it while it does. The dot stays afterwards.
+  if (typeof flashMapPoint === 'function') flashMapPoint(lat, lng);
 }
 // A genuine map click (drop waypoint, pan, etc.) dismisses the temp marker.
 map.on('click', clearGotoMarker);
@@ -2642,13 +2645,13 @@ function flashMapPoint(lat, lng) {
   // from it so the two can never disagree.
   const T = (k, fb) => { const v = (typeof tune === 'function') ? tune(k) : undefined;
     return (v === undefined || v === null || v === '') ? fb : v; };
-  const hex = String(T('searchFlashColor', '#ffb020')).trim();
+  const hex = String(T('searchFlashColor', '#ff2a2a')).trim();
   // The fill is derived from the ring colour so the two cannot disagree. A malformed value
   // from the gist falls back rather than producing an invalid rgba() that would drop the
   // fill silently.
   const rgb = /^#?[0-9a-f]{6}$/i.test(hex)
     ? hex.replace('#', '').match(/../g).map(h => parseInt(h, 16)).join(', ')
-    : '255, 176, 32';
+    : '255, 42, 42';
   const el = _searchFlashEl.getElement();
   el.style.setProperty('--flash-size', px * 2 + 'px');
   el.style.setProperty('--flash-ms', ms + 'ms');
@@ -4154,15 +4157,32 @@ function parseSearchLatLng(text) {
 }
 window.parseSearchLatLng = parseSearchLatLng;
 
+// Does a phrase with spaces in it name ONE point? Hebrew names often do -- צומת השרון -- and
+// a phrase that is a name is a search for it, not a route of its words. Without this, Enter on
+// "צומת השרון" refused with "unknown navigation waypoint: צומת" (reported).
+function searchPhraseMatches(phrase) {
+  const p = String(phrase || '').trim();
+  if (!/\s/.test(p)) return false;
+  const up = p.toUpperCase();
+  const has = (s) => s != null && String(s).toUpperCase().indexOf(up) >= 0;
+  const lists = [
+    typeof navWP !== 'undefined' ? navWP : null,
+    typeof airfields !== 'undefined' ? airfields : null,
+    typeof vors !== 'undefined' ? vors : null,
+  ];
+  return lists.some(l => Array.isArray(l) && l.some(w => w && (has(w.he) || has(w.en) || has(w.name))));
+}
+window.searchPhraseMatches = searchPhraseMatches;
+
 function runSearch() {
-  // Use the raw value (not trimmed) so a trailing space — meaning "I just
-  // accepted the previous token, waiting to type the next one" — suppresses
-  // the dropdown instead of re-running a stale single-token query.
-  const rawAll = wpSearch.value;
-  const trailingSpace = /\s$/.test(rawAll);
-  const qRaw = rawAll.trim();
-  const multi = /\s/.test(qRaw) || trailingSpace;
-  const lastToken = trailingSpace ? '' : (multi ? (qRaw.split(/\s+/).pop() || '') : qRaw);
+  // Leading and trailing spaces mean nothing. A trailing one used to mean "token accepted"
+  // and closed the dropdown -- but a phone keyboard's autocomplete and dictation add a space
+  // after every word, so "SHARO " showed nothing and Enter had nothing to take (reported).
+  const qRaw = wpSearch.value.trim();
+  let multi = /\s/.test(qRaw);
+  let lastToken = multi ? (qRaw.split(/\s+/).pop() || '') : qRaw;
+  // A name with spaces in it is searched whole, as one query (see searchPhraseMatches).
+  if (multi && searchPhraseMatches(qRaw)) { multi = false; lastToken = qRaw; }
   if (multi && !lastToken) { closeSearch(); return; }
   // A coordinate is read whole -- it has spaces in it, and the token logic below would see
   // "N32 30 E035 00" as a route of four waypoints.
@@ -4283,6 +4303,9 @@ function runSearch() {
     }
     item.textContent = alt && alt !== primary ? primary + ' / ' + alt : primary;
     item.onclick = () => {
+      // Going somewhere else: the red dot a coordinate left behind is no longer the answer, and
+      // left on the map it read as the place just searched (reported).
+      if (!multi || !h.src.routable) clearGotoMarker();
       if (h.kind === 'notam') {
         closeSearch();
         if (typeof notamMappable === 'function' && notamMappable(w)) {
@@ -4332,17 +4355,22 @@ function runSearch() {
       }
       map.setView([w.lat, w.lng], Math.max(map.getZoom(), 12));
       flashMapPoint(w.lat, w.lng);
-      // An airfield found by name opens its panel, the way a bubble and a typed coordinate
-      // already do. Everything a pilot searches a field FOR is in there -- its frequencies, its
-      // plates, the wind and the density altitude -- and flying the map to a triangle leaves
-      // them to find it again with a tap they have just made with the keyboard.
-      //
-      // Only a field: a nav waypoint, a VOR or a note is a point on the chart whose own label
-      // says what it is, and the flash is the answer to "where is it".
-      if (h.kind === 'af' && Array.isArray(airfields)) {
-        const index = airfields.indexOf(w);
+      // A point found by name opens its inspector, the way a bubble and a typed coordinate
+      // already do: an airfield's frequencies, plates and wind; a VOR's frequency and ident; a
+      // reporting point's altitude and code; your own route point or note, ready to edit.
+      // Flying the map to it and stopping there left them to find it again with a tap they had
+      // just made with the keyboard (reported for VORs and airfields).
+      const inspectAs = {
+        af: ['airfield', typeof airfields !== 'undefined' ? airfields : null],
+        vor: ['vor', typeof vors !== 'undefined' ? vors : null],
+        wp: ['navwp', typeof navWP !== 'undefined' ? navWP : null],
+        routewp: ['wp', state.waypoints],
+        note: ['note', state.notes],
+      }[h.kind];
+      if (inspectAs && Array.isArray(inspectAs[1])) {
+        const index = inspectAs[1].indexOf(w);
         if (index >= 0) {
-          state.selected = { type: 'airfield', index };
+          state.selected = { type: inspectAs[0], index };
           if (typeof showInspector === 'function') showInspector();
           if (typeof draw === 'function') draw();
         }
@@ -4389,10 +4417,21 @@ wpSearch.addEventListener('focus', () => { if (wpSearch.value.trim()) runSearch(
 wpSearch.addEventListener('keydown', e => {
   if (e.key === 'Enter') {
     const raw = wpSearch.value.trim();
-    // Only treat as a route-build when there are ≥ 2 actual tokens.
+    // A coordinate has spaces in it too, and was read here as a route: Enter on "32.18 34.83"
+    // tried to build one from waypoints named 32.18 and 34.83 (reported). runSearch reads a
+    // coordinate whole before anything else; Enter does the same and goes to it.
+    if (parseSearchLatLng(raw)) {
+      e.preventDefault();
+      if (!wpResults.querySelector('.wp-search-coord')) runSearch();
+      const hit = wpResults.querySelector('.wp-search-coord');
+      if (hit) hit.click();
+      return;
+    }
+    // Only treat as a route-build when there are ≥ 2 actual tokens -- and they are not one
+    // name with spaces in it (searchPhraseMatches), which takes its first hit like any name.
     // A single token with trailing whitespace must still let Enter pick
     // the highlighted dropdown suggestion.
-    if (raw.split(/\s+/).filter(Boolean).length >= 2) {
+    if (raw.split(/\s+/).filter(Boolean).length >= 2 && !searchPhraseMatches(raw)) {
       e.preventDefault();
       buildRouteFromQuery(raw);
       return;
@@ -4430,6 +4469,7 @@ function showSearchOverlay() {
 }
 function hideSearchOverlay() {
   searchOverlay.classList.add('hidden');
+  setSearchExamples(false);
   closeSearch();
   wpSearch.value = '';
   // Docked, dismissal is a preference rather than a one-off: the panel is part
@@ -4449,6 +4489,73 @@ function escapeSearch() {
 }
 document.getElementById('search-trigger').onclick = revealSearchOverlay;
 document.getElementById('search-close').onclick = hideSearchOverlay;
+// "?" beside the box: what the search understands, as examples to tap. It reads like a name
+// search, but it also builds a route from codes and reads coordinates in three notations, and
+// the only thing that said so was a tip that retires after the first search (reported).
+// Every example is real data, so tapping one shows what a hit looks like.
+const SEARCH_EXAMPLES = [
+  ['searchExWaypoint', 'SHARO'],
+  ['searchExAirfield', 'LLHZ'],
+  ['searchExHebrew', 'הרצליה'],
+  ['searchExVor', 'NAT'],
+  ['searchExRoute', 'LLHZ BAZRA DEROR'],
+  ['searchExDecimal', '32.18 34.83'],
+  ['searchExDms', 'N32 10 48 E034 50 04'],
+  ['searchExPacked', '3211N03450E'],
+];
+// Looked up on each call, not held in consts: hideSearchOverlay can run before this part of
+// the file has, and a const read that early throws.
+function setSearchExamples(open) {
+  const searchHelpBtn = document.getElementById('search-help');
+  const searchExamples = document.getElementById('search-examples');
+  if (!searchHelpBtn || !searchExamples) return;
+  searchExamples.hidden = !open;
+  searchHelpBtn.setAttribute('aria-expanded', open ? 'true' : 'false');
+  // The one-line route tip says what the route example already shows: two lines of repeat
+  // above the list on a phone. Out of the way while the list is open; back as it was after.
+  const tip = document.getElementById('wp-search-hint');
+  if (tip) tip.classList.toggle('hidden', open || searchTipDone());
+  if (!open) return;
+  searchExamples.innerHTML = '';
+  const intro = document.createElement('div');
+  intro.className = 'search-ex-intro';
+  intro.textContent = S.searchExIntro || 'Tap an example to try it:';
+  searchExamples.appendChild(intro);
+  for (const [key, example] of SEARCH_EXAMPLES) {
+    const row = document.createElement('button');
+    row.type = 'button';
+    row.className = 'search-ex';
+    const what = document.createElement('span');
+    what.className = 'search-ex-what';
+    what.textContent = S[key] || key;
+    const code = document.createElement('code');
+    code.dir = 'auto';                       // a Hebrew name in an English list, and the reverse
+    code.textContent = example;
+    row.append(what, code);
+    row.onclick = () => {
+      setSearchExamples(false);
+      wpSearch.value = example;
+      runSearch();
+      // An example is submitted, not just typed in (reported): exactly what Enter does with it --
+      // a name goes to its first hit, a coordinate to the point, a route is built (after asking,
+      // when it would replace one on the map).
+      wpSearch.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+    };
+    searchExamples.appendChild(row);
+  }
+  const more = document.createElement('div');
+  more.className = 'search-ex-more';
+  more.textContent = S.searchExMore || '';
+  searchExamples.appendChild(more);
+}
+(function wireSearchHelp() {
+  const btn = document.getElementById('search-help');
+  const box = document.getElementById('search-examples');
+  if (!btn || !box) return;
+  btn.onclick = () => setSearchExamples(box.hidden);
+  // Typing is the answer to the question: the examples make way for real results.
+  wpSearch.addEventListener('input', () => { if (!box.hidden) setSearchExamples(false); });
+}());
 // Clearing the box is not closing the search: on a phone the overlay lives at the top of the
 // menu sheet, where the only ✕ in reach puts the whole menu away -- so emptying a mistyped
 // waypoint meant thirteen backspaces or losing the sheet. Shown only when there is something to

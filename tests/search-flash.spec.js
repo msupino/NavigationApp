@@ -147,7 +147,24 @@ test('a malformed colour falls back instead of breaking the fill', async ({ page
   });
   // An invalid value must not produce an invalid rgba() -- that drops the fill with no
   // error, which looks like "the tunable does nothing".
-  expect(r.bad).toBe('rgba(255, 176, 32, 0.1)');
+  expect(r.bad).toBe('rgba(255, 42, 42, 0.1)');       // the default, red
   expect(r.noHash).toBe('rgba(255, 176, 32, 0.1)');    // '#' optional
   expect(r.spaced).toBe('rgba(34, 170, 255, 0.1)');    // surrounding space tolerated
+});
+
+// Reported: amber blinked into the yellow of the chart -- NAT, and anything sitting on the
+// yellow terrain tint, could barely be told from its background. Every locate flash is red:
+// the search ring, the NOTAM outline and the LSA area picked from its list.
+test('the locate flashes are red, not amber or yellow', async ({ page }) => {
+  await boot(page);
+  const r = await page.evaluate(() => {
+    flashMapPoint(32.18, 34.83);
+    const ring = document.querySelector('.search-flash-ring');
+    return { search: tune('searchFlashColor'), notam: tune('notamFlashColor'),
+             lsa: tune('lsaHighlightColor'), border: ring && getComputedStyle(ring).borderTopColor };
+  });
+  expect(r.search.toLowerCase()).toBe('#ff2a2a');
+  expect(r.notam.toLowerCase()).toBe('#ff2a2a');
+  expect(r.lsa.toLowerCase()).toBe('#ff2a2a');
+  expect(r.border).toBe('rgb(255, 42, 42)');
 });
