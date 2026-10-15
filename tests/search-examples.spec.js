@@ -96,5 +96,10 @@ for (const q of ['32.18 34.83', 'N32 10 48 E034 50 04']) {
     expect(sel.wps).toBe(0);
     expect(sel.lat).toBeCloseTo(32.18, 2);
     expect(sel.lng).toBeCloseTo(34.83, 1);
+    // Reported: the red dot left there was easy to miss. It blinks, and the search ring pulses
+    // round it while it does.
+    await expect(page.locator('.goto-marker')).toHaveCount(1);
+    expect(await page.locator('.goto-marker').evaluate(e => getComputedStyle(e).animationName)).toBe('goto-marker-blink');
+    await expect(page.locator('.search-flash-ring')).toHaveCount(1);
   });
 }

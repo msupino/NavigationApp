@@ -7931,9 +7931,21 @@ body.theme-light .search-flash-ring {
   0%   { transform: scale(1);   opacity: .7; }
   100% { transform: scale(1.7); opacity: 0; }
 }
+/* The go-to dot left on a looked-up coordinate: a few blinks to catch the eye, then steady --
+   it stays as the mark of the point. SVG path, so the blink is on its opacity and stroke. */
+.goto-marker {
+  animation: goto-marker-blink 0.6s ease-in-out 5;
+  transform-box: fill-box;
+  transform-origin: center;
+}
+@keyframes goto-marker-blink {
+  0%, 100% { opacity: 1; stroke-width: 2px; transform: scale(1); }
+  50%      { opacity: 0.15; stroke-width: 6px; transform: scale(1.6); }
+}
 /* A pilot who has asked for less motion gets the steady ring only -- still obvious, no
    expanding pulses. */
 @media (prefers-reduced-motion: reduce) {
+  .goto-marker { animation: none; }
   .search-flash-ring::before, .search-flash-ring::after { display: none; }
   .search-flash-ring { animation: search-flash-hold var(--flash-ms, 3500ms) linear 1 both; }
 }

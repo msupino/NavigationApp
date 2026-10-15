@@ -2393,6 +2393,9 @@ function dropGotoMarker(lat, lng) {
     fillColor: tune('gotoMarkerFillColor'), fillOpacity: tune('gotoMarkerFillAlpha'),
     interactive: false, className: 'goto-marker',
   }).addTo(map);
+  // A 7 px dot on a busy chart was easy to miss (reported): it blinks a few times (CSS) and the
+  // same pulsing ring a name search gets marks it while it does. The dot stays afterwards.
+  if (typeof flashMapPoint === 'function') flashMapPoint(lat, lng);
 }
 // A genuine map click (drop waypoint, pan, etc.) dismisses the temp marker.
 map.on('click', clearGotoMarker);
