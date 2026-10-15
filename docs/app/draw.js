@@ -3768,6 +3768,14 @@ async function loadVors() {
       elevFt: v.elevFt, coverageNm: v.coverageNm, remarks: v.remarks,
       dmeOnly: v.dmeOnly === true,
     }));
+    // An instrument sheet drawn before the stations arrived added its printed VORs as plate
+    // waypoints (applyIfrPoints could not tell them apart yet). Now it can: drop them.
+    if (Array.isArray(window.navWP)) {
+      const idents = new Set(vors.map(v => v.ident));
+      for (let i = navWP.length - 1; i >= 0; i--) {
+        if (navWP[i] && navWP[i]._plate && idents.has(navWP[i].name)) navWP.splice(i, 1);
+      }
+    }
     return vors;
   } catch (e) {
     console.warn('Failed to load VORs:', e);

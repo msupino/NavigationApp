@@ -37,6 +37,8 @@ test-results/
 playwright-report/
 blob-report/
 playwright/.cache/
-.claude/
+# Local Claude Code state stays out; repo skills (.claude/skills/) are tracked.
+.claude/*
+!.claude/skills/
 # Release artefacts: the OTA zip is uploaded, never committed (mobile/scripts/build-ota.mjs).
 build/

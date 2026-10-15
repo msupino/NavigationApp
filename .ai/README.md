@@ -19,6 +19,8 @@ and which local conventions matter.
    - `.ai/ui-patterns.md` - inspector, charts, RTL/LTR, modals, map gestures.
    - `.ai/testing.md` - local checks, Playwright suites, CI/e2e behavior.
    - `.ai/checklists.md` - change-specific checklists before commit/PR.
+   - `.claude/skills/ui-ux-pro-max/` - vendored UI/UX review skill (guideline search
+     with `--domain ux`); see its `VENDORED.md` for how it applies to NavAid.
 
 ## Project Snapshot
 

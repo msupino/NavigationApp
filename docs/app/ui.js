@@ -8665,6 +8665,10 @@ function applyIfrPoints(chosen) {
     // A point the chart dataset already carries stays the dataset's: same name, same place,
     // and its comm-change and report status come with it.
     if (navWP.some(w => w && w.name === p.name)) continue;
+    // ...and so does one that is a VOR: ROP, BGN and NAT are printed on their sheets with the
+    // station's own position, and a second "ROP" drawn as a waypoint on top of the station
+    // gave a tap two identical choices (reported). The station is already tappable.
+    if (typeof vors !== 'undefined' && Array.isArray(vors) && vors.some(v => v && v.ident === p.name)) continue;
     navWP.push({ lat: p.lat, lng: p.lng, name: p.name, en: p.name,
                  _plate: (chosen.icao + ' ' + chosen.sheet.code) });
   }
@@ -9817,6 +9821,97 @@ function plateMapLayer(filename) {
   } };
 }
 window.plateMapLayer = plateMapLayer;
+
+// The plate layers one airfield has, offered in its inspector (asked for: "in the inspector of
+// an airfield, allow adding the extra layers which are available for it"). Only the kinds that
+// field actually publishes are listed, and its instrument sheets one by one. The plate layers
+// are one-at-a-time (see the mutual-exclusion wiring below), so this is a single choice, and it
+// drives the same hidden switches the toolbar picker does -- one implementation of loading,
+// persistence and the on-map close button, not two.
+const AF_LAYER_TYPES = [
+  ['circuit-cb', 'circuit_overlay', 'plateTypeCircuit'],
+  ['training-cb', 'training_overlay', 'plateTypeTraining'],
+  ['cvfr-cb', 'cvfr_overlay', 'plateTypeCvfr'],
+  ['heli-cb', 'heli_overlay', 'plateTypeHeli'],
+  ['commfail-cb', 'commfail_overlay', 'plateTypeCommfail'],
+  ['adc-cb', 'adc_overlay', 'plateTypeAdc'],
+];
+function airfieldLayers(af) {
+  const out = [];
+  if (!af) return out;
+  for (const [cbId, key, label] of AF_LAYER_TYPES) {
+    if (af[key]) out.push({ value: cbId, label: S[label] || key });
+  }
+  for (const sheet of (Array.isArray(af.ifr_overlays) ? af.ifr_overlays : [])) {
+    if (!sheet || !sheet.png) continue;
+    out.push({ value: 'ifr|' + af.name + '|' + sheet.png,
+               label: (S.inspLayerIfr || 'Instrument') + ': ' + (sheet.code || sheet.png),
+               title: sheet.title || '' });
+  }
+  return out;
+}
+// Which of this field's layers is on the map now ('' when none of them is). A layer that is
+// on for another field only -- the airfield filter names a different one -- is not this
+// field's, and reads as off here.
+function airfieldLayerShown(af) {
+  if (!af) return '';
+  for (const [cbId, key] of AF_LAYER_TYPES) {
+    const box = document.getElementById(cbId);
+    if (box && box.checked && af[key] && plateAirfieldAllowed(af.name)) return cbId;
+  }
+  const ifr = document.getElementById('ifr-cb');
+  if (ifr && ifr.checked) {
+    const chosen = ifrChosen();
+    if (chosen && chosen.icao === af.name) return 'ifr|' + ifrKeyOf(chosen);
+  }
+  return '';
+}
+function showAirfieldLayer(af, value) {
+  if (!af) return;
+  const setBox = (id, on) => {
+    const box = document.getElementById(id);
+    if (!box || box.checked === on) return;
+    box.checked = on;
+    box.dispatchEvent(new Event('change', { bubbles: true }));
+  };
+  if (!value) {
+    const cur = airfieldLayerShown(af);
+    if (cur) setBox(cur.indexOf('ifr|') === 0 ? 'ifr-cb' : cur, false);
+    return;
+  }
+  if (value.indexOf('ifr|') === 0) {
+    const key = value.slice(4);
+    const ifr = document.getElementById('ifr-cb');
+    if (ifr && ifr.checked) setIfrSheet(key, { move: true });
+    else { setIfrSheet(key); setBox('ifr-cb', true); }
+    if (typeof window.refreshIfrSheets === 'function') window.refreshIfrSheets();
+    return;
+  }
+  // This field's sheet, not every field's: the airfield filter goes to this field, the way
+  // "show on map" from its charts already does (plateMapLayer).
+  const filter = document.getElementById('plate-airfield');
+  if (filter && filter.value !== af.name) {
+    filter.value = af.name;
+    filter.dispatchEvent(new Event('change', { bubbles: true }));
+  }
+  setBox(value, true);
+}
+window.airfieldLayers = airfieldLayers;
+window.airfieldLayerShown = airfieldLayerShown;
+window.showAirfieldLayer = showAirfieldLayer;
+// The inspector's choice follows the map: a layer closed from its ✕, from the toolbar, or
+// replaced by another plate reads as such in the open panel, not as still showing.
+function syncAirfieldLayerSelect() {
+  const sel = document.getElementById('insp-af-layer');
+  if (!sel || !Array.isArray(window.airfields)) return;
+  const af = airfields.find(a => a.name === sel.dataset.icao);
+  if (af) sel.value = airfieldLayerShown(af);
+}
+for (const id of ['circuit-cb', 'training-cb', 'cvfr-cb', 'heli-cb', 'commfail-cb', 'adc-cb',
+                  'ifr-cb', 'ifr-sheet', 'plate-airfield']) {
+  const el = document.getElementById(id);
+  if (el) el.addEventListener('change', syncAirfieldLayerSelect);
+}
 
 // Public NavAid pilots: everyone who ticked Public when sharing (followme.js publicPilots).
 // Remembered on this device; the frame goes when the gist switches public sharing off.
