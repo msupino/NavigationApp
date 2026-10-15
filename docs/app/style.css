@@ -2190,6 +2190,9 @@ body.theme-light .resize-grip {
   padding: 4px 6px;
 }
 .row select { cursor: pointer; }
+/* The airfield's map-layer choice names layers in words ("Communication-failure joining"):
+   sized to its longest choice, not the 110px number-field width, which clipped them. */
+.row select.airfield-layers { width: auto; min-width: 0; max-width: 65%; flex: 0 1 auto; }
 /* The label takes the slack, so a field and its ↻ sit together at the end of the row and every
    field in a panel lines up -- with space-between a three-part row floated its field to the
    middle (reported). */

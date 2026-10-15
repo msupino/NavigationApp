@@ -92,3 +92,27 @@ test('Hebrew: the row and its choices are in Hebrew', async ({ page }) => {
   await expect(row.locator('option').first()).toHaveText('ללא');
   await expect(row.locator('option[value="cvfr-cb"]')).toHaveText('נתיבי כניסה/יציאה CVFR');
 });
+
+// The panel follows the map: closing the layer anywhere else -- its ✕, the toolbar -- reads as
+// off here, rather than the choice still naming a sheet that is gone.
+test('closing the layer elsewhere shows None in the open panel', async ({ page }) => {
+  await boot(page);
+  await inspect(page, 'LLHZ');
+  await page.locator('#insp-af-layer').selectOption('circuit-cb');
+  await expect.poll(() => page.evaluate(() => document.getElementById('circuit-cb').checked)).toBe(true);
+  await page.evaluate(() => {
+    const cb = document.getElementById('circuit-cb');
+    cb.checked = false;
+    cb.dispatchEvent(new Event('change', { bubbles: true }));
+  });
+  await expect(page.locator('#insp-af-layer')).toHaveValue('');
+});
+
+// Reviewed with the ui-ux-pro-max checklist (compact label overflow): the choice names layers in
+// words, and the 110px width the number fields use clipped them.
+test('the choice is wide enough for the layer names', async ({ page }) => {
+  await boot(page);
+  await inspect(page, 'LLHZ');
+  const w = await page.locator('#insp-af-layer').evaluate(e => e.getBoundingClientRect().width);
+  expect(w).toBeGreaterThan(130);
+});

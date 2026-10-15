@@ -2993,6 +2993,7 @@ function appendAirfieldLayers(body, af) {
   lbl.textContent = S.inspLayers || 'Map layer';
   const sel = document.createElement('select');
   sel.className = 'airfield-layers';
+  sel.dataset.icao = af.name;
   lbl.htmlFor = sel.id = 'insp-af-layer';
   const none = document.createElement('option');
   none.value = '';

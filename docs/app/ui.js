@@ -9895,6 +9895,19 @@ function showAirfieldLayer(af, value) {
 window.airfieldLayers = airfieldLayers;
 window.airfieldLayerShown = airfieldLayerShown;
 window.showAirfieldLayer = showAirfieldLayer;
+// The inspector's choice follows the map: a layer closed from its ✕, from the toolbar, or
+// replaced by another plate reads as such in the open panel, not as still showing.
+function syncAirfieldLayerSelect() {
+  const sel = document.getElementById('insp-af-layer');
+  if (!sel || !Array.isArray(window.airfields)) return;
+  const af = airfields.find(a => a.name === sel.dataset.icao);
+  if (af) sel.value = airfieldLayerShown(af);
+}
+for (const id of ['circuit-cb', 'training-cb', 'cvfr-cb', 'heli-cb', 'commfail-cb', 'adc-cb',
+                  'ifr-cb', 'ifr-sheet', 'plate-airfield']) {
+  const el = document.getElementById(id);
+  if (el) el.addEventListener('change', syncAirfieldLayerSelect);
+}
 
 // Public NavAid pilots: everyone who ticked Public when sharing (followme.js publicPilots).
 // Remembered on this device; the frame goes when the gist switches public sharing off.
