@@ -782,6 +782,11 @@ as a machine-readable registry.
   its default-off **Include not yet active** checkbox and access to the full
   feed, including when the selected airfield currently has no active entry. The
   choice is transient and adds no `localStorage` key.
+- The airfield inspector's **Map layer** row offers only the plate layers that field
+  publishes (circuit, training, CVFR, helicopter, comm-failure, aerodrome chart, and each
+  placeable instrument sheet) as one choice, since plate layers are one at a time. It drives
+  the same hidden `*-cb` switches as the toolbar picker and points the "Show plates for"
+  filter at that field, so it adds no `localStorage` key of its own.
 - The NOTAM sheet orders its current result for flight planning: notices whose
   explicit map geometry intersects the planned route first, then departure and
   destination airfield notices, FIR-wide (`LLLL`) notices, and other airfields.

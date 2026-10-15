@@ -2980,6 +2980,38 @@ function appendAirfieldPlates(body, af) {
   body.appendChild(row);
 }
 
+// The map layers this field publishes -- circuit, CVFR routes, aerodrome chart, its instrument
+// sheets -- as one choice, beside its charts. Choosing one draws this field's sheet; "None"
+// takes it off. Absent for a field with nothing to lay on the map.
+function appendAirfieldLayers(body, af) {
+  if (typeof airfieldLayers !== 'function') return;
+  const opts = airfieldLayers(af);
+  if (!opts.length) return;
+  const row = document.createElement('div');
+  row.className = 'row airfield-layers-row';
+  const lbl = document.createElement('label');
+  lbl.textContent = S.inspLayers || 'Map layer';
+  const sel = document.createElement('select');
+  sel.className = 'airfield-layers';
+  lbl.htmlFor = sel.id = 'insp-af-layer';
+  const none = document.createElement('option');
+  none.value = '';
+  none.textContent = S.inspLayerNone || 'None';
+  sel.appendChild(none);
+  for (const o of opts) {
+    const opt = document.createElement('option');
+    opt.value = o.value;
+    opt.textContent = o.label;
+    if (o.title) opt.title = o.title;
+    sel.appendChild(opt);
+  }
+  sel.value = airfieldLayerShown(af);
+  sel.onchange = () => showAirfieldLayer(af, sel.value);
+  row.appendChild(lbl);
+  row.appendChild(sel);
+  body.appendChild(row);
+}
+
 function appendAirfieldRunways(body, af) {
   if (!af || !Array.isArray(af.runways) || !af.runways.length) return;
   const row = document.createElement('div');
@@ -3210,6 +3242,7 @@ function appendAirfieldDetailRows(body, af, label) {
   appendVorRadialRow(body, af.lat, af.lng);
   appendAirfieldNotams(body, af);
   appendAirfieldPlates(body, af);
+  appendAirfieldLayers(body, af);
 }
 
 // The AIP's published operating hours, with a verdict for right now. The verdict says

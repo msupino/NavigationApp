@@ -9818,6 +9818,84 @@ function plateMapLayer(filename) {
 }
 window.plateMapLayer = plateMapLayer;
 
+// The plate layers one airfield has, offered in its inspector (asked for: "in the inspector of
+// an airfield, allow adding the extra layers which are available for it"). Only the kinds that
+// field actually publishes are listed, and its instrument sheets one by one. The plate layers
+// are one-at-a-time (see the mutual-exclusion wiring below), so this is a single choice, and it
+// drives the same hidden switches the toolbar picker does -- one implementation of loading,
+// persistence and the on-map close button, not two.
+const AF_LAYER_TYPES = [
+  ['circuit-cb', 'circuit_overlay', 'plateTypeCircuit'],
+  ['training-cb', 'training_overlay', 'plateTypeTraining'],
+  ['cvfr-cb', 'cvfr_overlay', 'plateTypeCvfr'],
+  ['heli-cb', 'heli_overlay', 'plateTypeHeli'],
+  ['commfail-cb', 'commfail_overlay', 'plateTypeCommfail'],
+  ['adc-cb', 'adc_overlay', 'plateTypeAdc'],
+];
+function airfieldLayers(af) {
+  const out = [];
+  if (!af) return out;
+  for (const [cbId, key, label] of AF_LAYER_TYPES) {
+    if (af[key]) out.push({ value: cbId, label: S[label] || key });
+  }
+  for (const sheet of (Array.isArray(af.ifr_overlays) ? af.ifr_overlays : [])) {
+    if (!sheet || !sheet.png) continue;
+    out.push({ value: 'ifr|' + af.name + '|' + sheet.png,
+               label: (S.inspLayerIfr || 'Instrument') + ': ' + (sheet.code || sheet.png),
+               title: sheet.title || '' });
+  }
+  return out;
+}
+// Which of this field's layers is on the map now ('' when none of them is). A layer that is
+// on for another field only -- the airfield filter names a different one -- is not this
+// field's, and reads as off here.
+function airfieldLayerShown(af) {
+  if (!af) return '';
+  for (const [cbId, key] of AF_LAYER_TYPES) {
+    const box = document.getElementById(cbId);
+    if (box && box.checked && af[key] && plateAirfieldAllowed(af.name)) return cbId;
+  }
+  const ifr = document.getElementById('ifr-cb');
+  if (ifr && ifr.checked) {
+    const chosen = ifrChosen();
+    if (chosen && chosen.icao === af.name) return 'ifr|' + ifrKeyOf(chosen);
+  }
+  return '';
+}
+function showAirfieldLayer(af, value) {
+  if (!af) return;
+  const setBox = (id, on) => {
+    const box = document.getElementById(id);
+    if (!box || box.checked === on) return;
+    box.checked = on;
+    box.dispatchEvent(new Event('change', { bubbles: true }));
+  };
+  if (!value) {
+    const cur = airfieldLayerShown(af);
+    if (cur) setBox(cur.indexOf('ifr|') === 0 ? 'ifr-cb' : cur, false);
+    return;
+  }
+  if (value.indexOf('ifr|') === 0) {
+    const key = value.slice(4);
+    const ifr = document.getElementById('ifr-cb');
+    if (ifr && ifr.checked) setIfrSheet(key, { move: true });
+    else { setIfrSheet(key); setBox('ifr-cb', true); }
+    if (typeof window.refreshIfrSheets === 'function') window.refreshIfrSheets();
+    return;
+  }
+  // This field's sheet, not every field's: the airfield filter goes to this field, the way
+  // "show on map" from its charts already does (plateMapLayer).
+  const filter = document.getElementById('plate-airfield');
+  if (filter && filter.value !== af.name) {
+    filter.value = af.name;
+    filter.dispatchEvent(new Event('change', { bubbles: true }));
+  }
+  setBox(value, true);
+}
+window.airfieldLayers = airfieldLayers;
+window.airfieldLayerShown = airfieldLayerShown;
+window.showAirfieldLayer = showAirfieldLayer;
+
 // Public NavAid pilots: everyone who ticked Public when sharing (followme.js publicPilots).
 // Remembered on this device; the frame goes when the gist switches public sharing off.
 (function () {
