@@ -128,6 +128,12 @@ no modal factory). In tests, answer with `answerAppDialogs(page, true|false|'tex
 read toasts with `captureToasts(page)` (`tests/_setup.js`); a click handler that asks is async,
 so wait for its effect rather than reading state straight after `click()`.
 
+Focusing a text field when a panel opens raises the phone keyboard over that panel. Use
+`focusForTyping(el, { select?, typingIsThePoint? })` (ui.js), not `el.focus()`: on a touch-only
+device (`(hover: none) and (pointer: coarse)`) it leaves the field for a tap, unless the dialog
+exists to be typed into (rename, codes, search), which passes `typingIsThePoint: true`.
+`tests/mobile-keyboard-focus.spec.js` covers Saved routes and the assistant.
+
 ## RTL / LTR Guardrails
 
 Regression-prone text:
