@@ -4303,6 +4303,9 @@ function runSearch() {
     }
     item.textContent = alt && alt !== primary ? primary + ' / ' + alt : primary;
     item.onclick = () => {
+      // Going somewhere else: the red dot a coordinate left behind is no longer the answer, and
+      // left on the map it read as the place just searched (reported).
+      if (!multi || !h.src.routable) clearGotoMarker();
       if (h.kind === 'notam') {
         closeSearch();
         if (typeof notamMappable === 'function' && notamMappable(w)) {

@@ -342,3 +342,24 @@ test.describe('what the Add to route button leaves behind', () => {
     expect(await page.evaluate(() => state.selected.type)).toBe('wp');
   });
 });
+
+// Reported: the red dot a coordinate search leaves stayed on the map after searching somewhere
+// else, and read as the place just found.
+test('searching a name after a coordinate takes the red dot away', async ({ page }) => {
+  await boot(page);
+  await page.waitForFunction(() => Array.isArray(window.airfields) && airfields.length > 0);
+  await page.evaluate(() => showSearchOverlay());
+  await page.locator('#wp-search').fill('32.5 35.0');
+  await page.locator('#wp-search').press('Enter');
+  await expect.poll(() => page.evaluate(() => hasGotoMarker())).toBe(true);
+  await page.evaluate(() => {
+    showSearchOverlay();
+    const box = document.getElementById('wp-search');
+    box.value = 'LLHZ';
+    box.dispatchEvent(new Event('input', { bubbles: true }));
+  });
+  await page.locator('.wp-search-item').first().click();
+  await expect(page.locator('#inspector')).toBeVisible();
+  expect(await page.evaluate(() => hasGotoMarker())).toBe(false);
+  await expect(page.locator('.goto-marker')).toHaveCount(0);
+});
