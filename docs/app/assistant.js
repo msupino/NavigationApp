@@ -1115,7 +1115,10 @@
       restorePanelSize();  // apply saved size first so the position clamp uses real dims
       restorePanelPos();   // apply the saved drag position (needs the panel visible for sizing)
       if (!hasKey()) settingsEl.classList.remove('hidden');
-      if (inputEl) inputEl.focus();
+      // No keyboard on a phone until the input is tapped: it would cover the chat just opened.
+      if (inputEl) {
+        if (typeof focusForTyping === 'function') focusForTyping(inputEl); else inputEl.focus();
+      }
     }
   }
 

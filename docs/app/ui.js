@@ -2346,6 +2346,22 @@ function showCenterCoord() {
 // with nothing on screen saying so. A thin crosshair marks the spot the numbers belong to,
 // so panning the map under it reads coordinates the way a chart ruler would. Touch only --
 // with a pointer, the pointer already is the marker.
+// Focus a text field only where that does not cost the screen. On a touch-only device focusing an
+// input raises the on-screen keyboard, which covers the panel just opened -- reported on Saved
+// routes, where the list being opened to was hidden under a keyboard nobody asked for. There the
+// field waits for a tap. A dialog that exists to be typed into (rename, a code, search) passes
+// { typingIsThePoint: true } and focuses everywhere. Same touch test as the toolbar: a coarse
+// pointer that cannot hover, never a user-agent sniff.
+function touchOnlyDevice() {
+  return typeof matchMedia === 'function' && matchMedia('(hover: none) and (pointer: coarse)').matches;
+}
+function focusForTyping(el, opts) {
+  const o = opts || {};
+  if (!el || (!o.typingIsThePoint && touchOnlyDevice())) return false;
+  try { el.focus(); if (o.select && typeof el.select === 'function') el.select(); } catch (e) { return false; }
+  return true;
+}
+window.focusForTyping = focusForTyping;
 function coarsePointerOnly() {
   return typeof matchMedia === 'function' &&
     (matchMedia('(pointer: coarse)').matches || matchMedia('(max-width: 680px)').matches);
@@ -3591,7 +3607,9 @@ function showRouteLibraryModal(focusSave) {
   // type over it immediately.
   if (focusSave) {
     if (typeof defaultSavedRouteName === 'function') nameInput.value = defaultSavedRouteName();
-    setTimeout(() => { try { nameInput.focus(); nameInput.select(); } catch (e) { /* */ } }, 0);
+    // The suggested name is already filled in: on a phone one tap on Save is enough, and the
+    // keyboard comes up only if the pilot taps the name to change it.
+    setTimeout(() => focusForTyping(nameInput, { select: true }), 0);
     // An unnamed end point is named by the nearest chart point -- which needs the chart points.
     // With their overlays off they may never have loaded: load them, and suggest again if the
     // pilot has not typed over the first suggestion meanwhile.
@@ -4036,7 +4054,7 @@ function showRouteLibraryModal(focusSave) {
   render();
   // Let a background auto-sync refresh this list while it's open.
   window.refreshRouteLibrary = render;
-  nameInput.focus();
+  focusForTyping(nameInput);
 }
 
 function restoreOpenChartModal() {
