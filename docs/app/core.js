@@ -244,7 +244,7 @@ NavAid.tuningDefaults = {
   notamFlashColor: { value: '#ff2a2a', type: 'color', label: 'NOTAM locate flash color' },
   notamBadgeTextColor: { value: '#ffffff', type: 'color', label: 'NOTAM badge text color' },
   notamBadgeFontPx: { value: 11, min: 6, max: 24, step: 1, label: 'NOTAM badge font size (px)' },
-  lsaHighlightColor: { value: '#ffcc33', type: 'color', label: 'LSA locate highlight color' },
+  lsaHighlightColor: { value: '#ff2a2a', type: 'color', label: 'LSA locate highlight color' },
   lsaWeekendColor: { value: '#2b2b2b', type: 'color', label: 'LSA weekend outline color' },
   lsaAlwaysColor: { value: '#3c8f3c', type: 'color', label: 'LSA always-active outline color' },
   lsaLabelColor: { value: '#222222', type: 'color', label: 'LSA label ink color' },

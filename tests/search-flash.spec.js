@@ -153,16 +153,18 @@ test('a malformed colour falls back instead of breaking the fill', async ({ page
 });
 
 // Reported: amber blinked into the yellow of the chart -- NAT, and anything sitting on the
-// yellow terrain tint, could barely be told from its background. Both locate flashes are red.
+// yellow terrain tint, could barely be told from its background. Every locate flash is red:
+// the search ring, the NOTAM outline and the LSA area picked from its list.
 test('the locate flashes are red, not amber or yellow', async ({ page }) => {
   await boot(page);
   const r = await page.evaluate(() => {
     flashMapPoint(32.18, 34.83);
     const ring = document.querySelector('.search-flash-ring');
     return { search: tune('searchFlashColor'), notam: tune('notamFlashColor'),
-             border: ring && getComputedStyle(ring).borderTopColor };
+             lsa: tune('lsaHighlightColor'), border: ring && getComputedStyle(ring).borderTopColor };
   });
   expect(r.search.toLowerCase()).toBe('#ff2a2a');
   expect(r.notam.toLowerCase()).toBe('#ff2a2a');
+  expect(r.lsa.toLowerCase()).toBe('#ff2a2a');
   expect(r.border).toBe('rgb(255, 42, 42)');
 });

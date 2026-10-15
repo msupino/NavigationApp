@@ -3238,8 +3238,9 @@ function drawAreas() {
     const wknd = a.active === 'weekend';      // the chart legend's tan class
     // Official legend colours: always = green outline + pale-green fill (in force
     // every day); weekend = black outline + tan fill (Fri–Sat only). The locate
-    // highlight overrides both with amber.
-    octx.fillStyle = hl ? 'rgba(255,204,51,0.22)' : (wknd ? 'rgba(201,178,138,0.35)' : 'rgba(60,160,60,0.15)');
+    // highlight overrides both with the locate red every search highlight uses (it was amber,
+    // which vanished on the yellow chart -- reported). The fill follows the tuned colour.
+    octx.fillStyle = hl ? colorWithAlpha(tune('lsaHighlightColor'), 0.22) : (wknd ? 'rgba(201,178,138,0.35)' : 'rgba(60,160,60,0.15)');
     octx.strokeStyle = hl ? tune('lsaHighlightColor')
       : (wknd ? tune('lsaWeekendColor') : tune('lsaAlwaysColor'));
     octx.lineWidth = hl ? tune('lsaHighlightWidthPx') : tune('lsaLineWidthPx');
