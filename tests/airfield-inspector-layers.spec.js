@@ -134,7 +134,11 @@ test('NOTAMs, charts and layers share one layout', async ({ page }) => {
     const rows = g ? Array.from(g.children).map(x => x.className) : [];
     const charts = g && g.querySelector('.insp-charts-btn');
     const notam = g && g.querySelector('.notam-insp-row label');
-    const notamLink = g && g.querySelector('.insp-notam-link');
+    // A NOTAM-style link to compare against: the field may have no NOTAMs loaded in the
+    // suite, and then its row shows N/A with no link at all.
+    const notamLink = document.createElement('button');
+    notamLink.className = 'insp-notam-link';
+    if (g) g.appendChild(notamLink);
     const layerLabel = g && g.querySelector('.airfield-layers-row label');
     const font = (el) => el && getComputedStyle(el).fontSize;
     return {
@@ -143,6 +147,7 @@ test('NOTAMs, charts and layers share one layout', async ({ page }) => {
       chartsIsLink: !!charts && !!notamLink && getComputedStyle(charts).color === getComputedStyle(notamLink).color
         && getComputedStyle(charts).textDecorationLine === 'underline'
         && !charts.classList.contains('insp-notam-link'),
+      _cleanup: notamLink.remove(),
       chartsText: charts && charts.textContent.trim(),
       chartsIcon: !!(charts && charts.querySelector('.mi-icon svg')),
       labelsMatch: !!notam && font(notam) === font(layerLabel),
