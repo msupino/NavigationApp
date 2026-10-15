@@ -879,7 +879,12 @@ as a machine-readable registry.
 - `navaid.routes` — saved-route library entries and tombstones. An entry
   may carry `kind: 'gps'` plus a raw `track[]` (the recorded GPS
   breadcrumb: `{lat,lng,t,alt?,acc?}`); loading applies the simplified
-  waypoint route, the raw track is retained for fidelity.
+  waypoint route, the raw track is retained for fidelity. A route entry may
+  also carry `navlog` beside `data`: the planning form as typed for that
+  route (only typed fields, `NavAid.navLog.forRoute()`), so the met table and
+  deviation card travel with the route through Drive. Opening the entry puts
+  it back (`applyFromRoute`); `navaid.navlog` itself stays device-local.
+  A form edit counts as an unsaved change to the route (`routeFileDirty`).
 - `navaid.syncSettings` — `'1'` when the opt-in "Sync settings too" box (route
   library → Drive) is enabled. Device-local; itself never synced.
 - `navaid.settingsSyncedAt` / `navaid.settingsSnapshot` — bookkeeping for the
