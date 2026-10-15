@@ -139,7 +139,8 @@ test('NOTAMs, charts and layers share one layout', async ({ page }) => {
     return {
       rows,
       chartsIsLink: !!charts && charts.classList.contains('insp-notam-link'),
-      chartsText: charts && charts.textContent,
+      chartsText: charts && charts.textContent.trim(),
+      chartsIcon: !!(charts && charts.querySelector('.mi-icon svg')),
       labelsMatch: !!notam && font(notam) === font(layerLabel),
       none: document.querySelector('#insp-af-layer option').textContent,
       vorNone: (document.querySelector('.insp-vor-ref option') || {}).textContent,
@@ -147,7 +148,10 @@ test('NOTAMs, charts and layers share one layout', async ({ page }) => {
   });
   expect(r.rows).toEqual(['row notam-insp-row', 'row plates-row', 'row airfield-layers-row']);
   expect(r.chartsIsLink).toBe(true);
-  expect(r.chartsText).toMatch(/^📄 הצג \d+$/);
+  // The app dresses a button's leading glyph as an SVG icon (ui.js dressByGlyph), so the
+  // link reads "הצג 13" behind the charts icon, not the raw emoji.
+  expect(r.chartsText).toMatch(/^הצג \d+$/);
+  expect(r.chartsIcon).toBe(true);
   expect(r.labelsMatch).toBe(true);
   // The empty choice reads like the reference-VOR one above it.
   expect(r.none).toBe(r.vorNone);
