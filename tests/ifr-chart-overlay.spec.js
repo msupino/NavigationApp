@@ -366,7 +366,13 @@ test('the points leave with the sheet', async ({ page }) => {
   await boot(page);
   await on(page);
   const gone = await page.evaluate(async () => {
-    await new Promise(r => setTimeout(r, 300));
+    // A sheet with fixes of its own: the first one on offer (LLBG LOC 12) prints only BGN,
+    // which is the VOR and is not added as a waypoint.
+    const sel = document.getElementById('ifr-sheet');
+    const llib = Array.from(sel.options).find(o => o.textContent.includes('VOR approach'));
+    sel.value = llib.value;
+    sel.dispatchEvent(new Event('change', { bubbles: true }));
+    await new Promise(r => setTimeout(r, 400));
     const during = navWP.filter(w => w._plate).length;
     document.getElementById('ifr-cb').click();          // off
     await new Promise(r => setTimeout(r, 300));
