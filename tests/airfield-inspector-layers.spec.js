@@ -88,7 +88,7 @@ test('Hebrew: the row and its choices are in Hebrew', async ({ page }) => {
   await boot(page, 'he');
   await inspect(page, 'LLHZ');
   const row = page.locator('.airfield-layers-row');
-  await expect(row.locator('label')).toHaveText('שכבת מפה');
+  await expect(row.locator('label')).toHaveText('שכבות שדה');
   await expect(row.locator('option').first()).toHaveText('ללא');
   await expect(row.locator('option[value="cvfr-cb"]')).toHaveText('נתיבי כניסה/יציאה CVFR');
 });

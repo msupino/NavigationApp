@@ -1489,7 +1489,7 @@ window.S = {
   resetFreqAuto: 'שחזר אות קריאה ותדר לפי המסלול',
   plates: 'דפיות',
   inspOpenCharts: '🗺️ דפיות שדה',
-  inspLayers: 'שכבת מפה',
+  inspLayers: 'שכבות שדה',
   inspLayerNone: 'ללא',
   inspLayerIfr: 'מכשירים',
   inspOpenChartsTitle: 'פתח את שדה התעופה הזה בחלון הדפיות',
