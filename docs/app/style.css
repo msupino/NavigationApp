@@ -4272,6 +4272,12 @@ body.deck-on .qtime select { min-height: 30px; font-size: 16px; }
    not a button of its own design (reported). */
 .airfield-refs { margin-top: 12px; border-top: 1px solid #3a3636; padding-top: 10px; }
 body.theme-light .airfield-refs { border-top-color: #d5dbe3; }
+/* The links are the row's control, so they are sized as one: 24px is the WCAG 2.2 target
+   size the inline 12px link fell short of (ui-ux-pro-max review), and on a phone they match
+   the 30px of the layer choice beside them. The old charts button was 36px; a link must not
+   be harder to hit than the button it replaced. */
+.airfield-refs .insp-notam-link { min-height: 24px; }
+body.deck-on .airfield-refs .insp-notam-link { min-height: 30px; }
 
 /* Airport charts: two screens rather than twenty accordions. Screen one is a grid of fields,
    screen two is one field's plates. Every target here is thumb-sized -- this is read on a

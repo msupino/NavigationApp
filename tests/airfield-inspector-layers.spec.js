@@ -152,3 +152,15 @@ test('NOTAMs, charts and layers share one layout', async ({ page }) => {
   // The empty choice reads like the reference-VOR one above it.
   expect(r.none).toBe(r.vorNone);
 });
+
+// ui-ux-pro-max review: the links are this group's controls, and an inline 12px link is about
+// 16px tall -- below the 24px WCAG 2.2 target size, and well below the 36px button the charts
+// entry used to be.
+test('the group\'s links are at least the WCAG target size', async ({ page }) => {
+  await boot(page);
+  await inspect(page, 'LLHZ');
+  const hs = await page.locator('#insp-body .airfield-refs .insp-notam-link')
+    .evaluateAll(els => els.map(e => e.getBoundingClientRect().height));
+  expect(hs.length).toBeGreaterThan(0);
+  for (const h of hs) expect(h).toBeGreaterThanOrEqual(24);
+});
