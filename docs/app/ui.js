@@ -4352,17 +4352,22 @@ function runSearch() {
       }
       map.setView([w.lat, w.lng], Math.max(map.getZoom(), 12));
       flashMapPoint(w.lat, w.lng);
-      // An airfield found by name opens its panel, the way a bubble and a typed coordinate
-      // already do. Everything a pilot searches a field FOR is in there -- its frequencies, its
-      // plates, the wind and the density altitude -- and flying the map to a triangle leaves
-      // them to find it again with a tap they have just made with the keyboard.
-      //
-      // Only a field: a nav waypoint, a VOR or a note is a point on the chart whose own label
-      // says what it is, and the flash is the answer to "where is it".
-      if (h.kind === 'af' && Array.isArray(airfields)) {
-        const index = airfields.indexOf(w);
+      // A point found by name opens its inspector, the way a bubble and a typed coordinate
+      // already do: an airfield's frequencies, plates and wind; a VOR's frequency and ident; a
+      // reporting point's altitude and code; your own route point or note, ready to edit.
+      // Flying the map to it and stopping there left them to find it again with a tap they had
+      // just made with the keyboard (reported for VORs and airfields).
+      const inspectAs = {
+        af: ['airfield', typeof airfields !== 'undefined' ? airfields : null],
+        vor: ['vor', typeof vors !== 'undefined' ? vors : null],
+        wp: ['navwp', typeof navWP !== 'undefined' ? navWP : null],
+        routewp: ['wp', state.waypoints],
+        note: ['note', state.notes],
+      }[h.kind];
+      if (inspectAs && Array.isArray(inspectAs[1])) {
+        const index = inspectAs[1].indexOf(w);
         if (index >= 0) {
-          state.selected = { type: 'airfield', index };
+          state.selected = { type: inspectAs[0], index };
           if (typeof showInspector === 'function') showInspector();
           if (typeof draw === 'function') draw();
         }

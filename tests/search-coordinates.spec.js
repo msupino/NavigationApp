@@ -180,20 +180,44 @@ test('a searched airfield opens its inspector', async ({ page }) => {
   expect(seen.centred).toBeCloseTo(32.18, 1);
 });
 
-// A nav waypoint is a point on the chart whose own label says what it is: the flash answers
-// "where is it", and opening a panel over the map would be answering a question nobody asked.
-test('a searched nav waypoint still just flies there', async ({ page }) => {
+// Reported: searching a point that has an inspector should open it -- a VOR, a reporting point,
+// a point on your own route -- not only fly the map there and leave the tap still to make.
+for (const c of [
+  { q: 'BAZRA', type: 'navwp', list: 'navWP', key: 'name', want: 'BAZRA', wait: () => Array.isArray(window.navWP) && navWP.length > 0 },
+  { q: 'ZFR', type: 'vor', list: 'vors', key: 'ident', want: 'ZFR', wait: () => Array.isArray(window.vors) && vors.length > 0 },
+]) {
+  test('a searched ' + c.type + ' opens its inspector', async ({ page }) => {
+    await boot(page);
+    await page.evaluate(() => { showSearchOverlay(); if (typeof loadNavWaypoints === 'function') loadNavWaypoints(); });
+    await page.waitForFunction(c.wait);
+    await page.evaluate((q) => {
+      const box = document.getElementById('wp-search');
+      box.value = q;
+      box.dispatchEvent(new Event('input', { bubbles: true }));
+    }, c.q);
+    await page.locator('.wp-search-item').first().click();
+    await expect(page.locator('#inspector')).toBeVisible();
+    const seen = await page.evaluate(({ list, key }) => ({
+      type: state.selected && state.selected.type,
+      id: state.selected && window[list][state.selected.index][key],
+    }), c);
+    expect(seen).toEqual({ type: c.type, id: c.want });
+  });
+}
+
+test('a searched point on your own route opens its inspector', async ({ page }) => {
   await boot(page);
-  await page.waitForFunction(() => Array.isArray(window.navWP) && navWP.length > 0);
   await page.evaluate(() => {
+    state.waypoints = [{ lat: 32.18, lng: 34.83, name: 'ALPHA' }, { lat: 32.5, lng: 35.0, name: 'BRAVOX' }];
+    syncLegs();
     showSearchOverlay();
     const box = document.getElementById('wp-search');
-    box.value = 'BAZRA';
+    box.value = 'BRAVOX';
     box.dispatchEvent(new Event('input', { bubbles: true }));
   });
   await page.locator('.wp-search-item').first().click();
-  expect(await page.evaluate(() => state.selected)).toBeNull();
-  await expect(page.locator('#inspector')).toBeHidden();
+  await expect(page.locator('#inspector')).toBeVisible();
+  expect(await page.evaluate(() => state.selected)).toMatchObject({ type: 'wp', index: 1 });
 });
 
 // Route building is not looking something up: the token is replaced and nothing flies or opens.
