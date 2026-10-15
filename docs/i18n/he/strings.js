@@ -81,7 +81,7 @@ window.S = {
   searchExWaypoint: 'נקודת דיווח',
   searchExAirfield: 'שדה תעופה (קוד ICAO או שם)',
   searchExHebrew: 'שם בעברית',
-  searchExVor: 'VOR / DME',
+  searchExVor: 'תחנת VOR / DME',
   searchExRoute: 'מסלול: קודים מופרדים ברווח, ואז Enter',
   searchExDecimal: 'קואורדינטות, עשרוני',
   searchExDms: 'קואורדינטות, מעלות דקות שניות',
