@@ -89,7 +89,7 @@ test('Hebrew: the row and its choices are in Hebrew', async ({ page }) => {
   await inspect(page, 'LLHZ');
   const row = page.locator('.airfield-layers-row');
   await expect(row.locator('label')).toHaveText('שכבות שדה');
-  await expect(row.locator('option').first()).toHaveText('ללא');
+  await expect(row.locator('option').first()).toHaveText('— ללא —');
   await expect(row.locator('option[value="cvfr-cb"]')).toHaveText('נתיבי כניסה/יציאה CVFR');
 });
 
@@ -121,4 +121,34 @@ test('English: the row is labelled Airfield layer', async ({ page }) => {
   await boot(page);
   await inspect(page, 'LLHZ');
   await expect(page.locator('.airfield-layers-row label')).toHaveText('Airfield layer');
+});
+
+// Reported: the NOTAM row, the charts entry and the layer row were three designs -- a link, a
+// big button under its own divider, a dropdown with its own placeholder. One group now: each a
+// label with its control at the end, the charts one a link like the NOTAM one.
+test('NOTAMs, charts and layers share one layout', async ({ page }) => {
+  await boot(page, 'he');
+  await inspect(page, 'LLHZ');
+  const r = await page.evaluate(() => {
+    const g = document.querySelector('#insp-body .airfield-refs');
+    const rows = g ? Array.from(g.children).map(x => x.className) : [];
+    const charts = g && g.querySelector('.insp-charts-btn');
+    const notam = g && g.querySelector('.notam-insp-row label');
+    const layerLabel = g && g.querySelector('.airfield-layers-row label');
+    const font = (el) => el && getComputedStyle(el).fontSize;
+    return {
+      rows,
+      chartsIsLink: !!charts && charts.classList.contains('insp-notam-link'),
+      chartsText: charts && charts.textContent,
+      labelsMatch: !!notam && font(notam) === font(layerLabel),
+      none: document.querySelector('#insp-af-layer option').textContent,
+      vorNone: (document.querySelector('.insp-vor-ref option') || {}).textContent,
+    };
+  });
+  expect(r.rows).toEqual(['row notam-insp-row', 'row plates-row', 'row airfield-layers-row']);
+  expect(r.chartsIsLink).toBe(true);
+  expect(r.chartsText).toMatch(/^📄 הצג \d+$/);
+  expect(r.labelsMatch).toBe(true);
+  // The empty choice reads like the reference-VOR one above it.
+  expect(r.none).toBe(r.vorNone);
 });
