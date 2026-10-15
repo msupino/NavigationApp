@@ -12,12 +12,13 @@
   const SEEN_KEY = 'navaid.tourSeen';
   // Each step: the first VISIBLE match of `sel` is the target; `only` limits it to a layout.
   const STEPS = [
-    // Route check heads the edit column: its own step, before the edit buttons it checks.
-    { sel: ['#edit-col-check'], k: 'Check' },
-    // The edit buttons only: Route check sits in the same column but had its own step, and a
-    // spotlight round the whole column read as if checking were an edit too.
-    // Fit closes the column, under Clear map.
+    // Build the route first, then check it. Route check heads the edit column on screen, but as
+    // the tour's opening step it explained checking a route nobody had drawn yet (reported).
+    // The edit buttons only: Route check sits in the same column, and a spotlight round the
+    // whole column read as if checking were an edit too. Fit closes the column, under Clear map.
     { sel: ['.edit-col-ctrl'], k: 'Edit', group: ['#edit-col-add', '#edit-col-note', '#edit-col-undo', '#edit-col-clear', '#edit-col-fit'] },
+    // Its own step, right after the buttons that make the route it checks.
+    { sel: ['#edit-col-check'], k: 'Check' },
     { sel: ['#measure-btn'], k: 'Measure' },
     { sel: ['#edit-lock'], k: 'Lock' },
     // No new steps for new buttons (ten is already plenty): a control joins the step it sits
