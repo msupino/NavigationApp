@@ -2990,7 +2990,7 @@ function appendAirfieldLayers(body, af) {
   const row = document.createElement('div');
   row.className = 'row airfield-layers-row';
   const lbl = document.createElement('label');
-  lbl.textContent = S.inspLayers || 'Map layer';
+  lbl.textContent = S.inspLayers || 'Airfield layer';
   const sel = document.createElement('select');
   sel.className = 'airfield-layers';
   sel.dataset.icao = af.name;

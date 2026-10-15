@@ -116,3 +116,9 @@ test('the choice is wide enough for the layer names', async ({ page }) => {
   const w = await page.locator('#insp-af-layer').evaluate(e => e.getBoundingClientRect().width);
   expect(w).toBeGreaterThan(130);
 });
+
+test('English: the row is labelled Airfield layer', async ({ page }) => {
+  await boot(page);
+  await inspect(page, 'LLHZ');
+  await expect(page.locator('.airfield-layers-row label')).toHaveText('Airfield layer');
+});

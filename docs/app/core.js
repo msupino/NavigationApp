@@ -2987,7 +2987,7 @@ window.S = Object.assign({
   resetFreqAuto: 'Reset call sign and frequency to Auto',
   plates: 'Charts',
   inspOpenCharts: '🗺️ Airport charts',
-  inspLayers: 'Map layer',
+  inspLayers: 'Airfield layer',
   inspLayerNone: 'None',
   inspLayerIfr: 'Instrument',
   inspOpenChartsTitle: 'Open this airfield in the Charts window',

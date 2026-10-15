@@ -782,7 +782,7 @@ as a machine-readable registry.
   its default-off **Include not yet active** checkbox and access to the full
   feed, including when the selected airfield currently has no active entry. The
   choice is transient and adds no `localStorage` key.
-- The airfield inspector's **Map layer** row offers only the plate layers that field
+- The airfield inspector's **Airfield layer** row offers only the plate layers that field
   publishes (circuit, training, CVFR, helicopter, comm-failure, aerodrome chart, and each
   placeable instrument sheet) as one choice, since plate layers are one at a time. It drives
   the same hidden `*-cb` switches as the toolbar picker and points the "Show plates for"
