@@ -47,8 +47,14 @@ test('every example is real: tapping it puts it in the box and finds something',
     await row.click();
     await expect(page.locator('#search-examples')).toBeHidden();
     await expect(page.locator('#wp-search')).toHaveValue(example);
-    await expect(page.locator('#wp-search-results .wp-search-item').first(), example).toBeVisible();
-    await page.evaluate(() => { wpSearch.value = ''; closeSearch(); });
+    // A coordinate goes straight there (one answer); anything else lists its hits to pick from.
+    const isCoord = await page.evaluate((q) => !!parseSearchLatLng(q), example);
+    if (isCoord) {
+      await expect.poll(() => page.evaluate(() => state.selected && state.selected.type), example).toBe('coord');
+    } else {
+      await expect(page.locator('#wp-search-results .wp-search-item').first(), example).toBeVisible();
+    }
+    await page.evaluate(() => { wpSearch.value = ''; closeSearch(); state.selected = null; });
   }
 });
 
@@ -67,3 +73,20 @@ test('Hebrew: the button and the examples are labelled in Hebrew', async ({ page
   await expect(page.locator('#search-examples')).toContainText('נקודת דיווח');
   await expect(page.locator('#search-examples')).toContainText('הרצליה');
 });
+
+// Reported: "32.18 34.83" and "N32 10 48 E034 50 04" did not work. Both have spaces, and Enter read
+// any two tokens as a route to build -- waypoints named "32.18" and "34.83". A coordinate is read
+// whole first, the way the dropdown already read it.
+for (const q of ['32.18 34.83', 'N32 10 48 E034 50 04']) {
+  test('Enter on "' + q + '" goes to the coordinate, it does not build a route', async ({ page }) => {
+    await boot(page);
+    await page.evaluate(() => { state.waypoints = []; syncLegs(); });
+    await page.locator('#wp-search').fill(q);
+    await page.locator('#wp-search').press('Enter');
+    await expect.poll(() => page.evaluate(() => state.selected && state.selected.type)).toBe('coord');
+    const sel = await page.evaluate(() => ({ lat: state.selected.lat, lng: state.selected.lng, wps: state.waypoints.length }));
+    expect(sel.wps).toBe(0);
+    expect(sel.lat).toBeCloseTo(32.18, 2);
+    expect(sel.lng).toBeCloseTo(34.83, 1);
+  });
+}

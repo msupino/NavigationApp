@@ -4389,6 +4389,16 @@ wpSearch.addEventListener('focus', () => { if (wpSearch.value.trim()) runSearch(
 wpSearch.addEventListener('keydown', e => {
   if (e.key === 'Enter') {
     const raw = wpSearch.value.trim();
+    // A coordinate has spaces in it too, and was read here as a route: Enter on "32.18 34.83"
+    // tried to build one from waypoints named 32.18 and 34.83 (reported). runSearch reads a
+    // coordinate whole before anything else; Enter does the same and goes to it.
+    if (parseSearchLatLng(raw)) {
+      e.preventDefault();
+      if (!wpResults.querySelector('.wp-search-coord')) runSearch();
+      const hit = wpResults.querySelector('.wp-search-coord');
+      if (hit) hit.click();
+      return;
+    }
     // Only treat as a route-build when there are ≥ 2 actual tokens.
     // A single token with trailing whitespace must still let Enter pick
     // the highlighted dropdown suggestion.
@@ -4497,6 +4507,9 @@ function setSearchExamples(open) {
       setSearchExamples(false);
       wpSearch.value = example;
       runSearch();
+      // A coordinate has one answer: go there, the way Enter does, rather than leave a row to tap.
+      const coordHit = wpResults.querySelector('.wp-search-coord');
+      if (coordHit) { coordHit.click(); return; }
       if (typeof focusForTyping === 'function') focusForTyping(wpSearch); else wpSearch.focus();
     };
     searchExamples.appendChild(row);
