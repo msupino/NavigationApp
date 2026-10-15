@@ -4430,6 +4430,7 @@ function showSearchOverlay() {
 }
 function hideSearchOverlay() {
   searchOverlay.classList.add('hidden');
+  setSearchExamples(false);
   closeSearch();
   wpSearch.value = '';
   // Docked, dismissal is a preference rather than a one-off: the panel is part
@@ -4449,6 +4450,66 @@ function escapeSearch() {
 }
 document.getElementById('search-trigger').onclick = revealSearchOverlay;
 document.getElementById('search-close').onclick = hideSearchOverlay;
+// "?" beside the box: what the search understands, as examples to tap. It reads like a name
+// search, but it also builds a route from codes and reads coordinates in three notations, and
+// the only thing that said so was a tip that retires after the first search (reported).
+// Every example is real data, so tapping one shows what a hit looks like.
+const SEARCH_EXAMPLES = [
+  ['searchExWaypoint', 'SHARO'],
+  ['searchExAirfield', 'LLHZ'],
+  ['searchExHebrew', 'הרצליה'],
+  ['searchExVor', 'NAT'],
+  ['searchExRoute', 'LLHZ BAZRA DEROR'],
+  ['searchExDecimal', '32.18 34.83'],
+  ['searchExDms', 'N32 10 48 E034 50 04'],
+  ['searchExPacked', '3211N03450E'],
+];
+// Looked up on each call, not held in consts: hideSearchOverlay can run before this part of
+// the file has, and a const read that early throws.
+function setSearchExamples(open) {
+  const searchHelpBtn = document.getElementById('search-help');
+  const searchExamples = document.getElementById('search-examples');
+  if (!searchHelpBtn || !searchExamples) return;
+  searchExamples.hidden = !open;
+  searchHelpBtn.setAttribute('aria-expanded', open ? 'true' : 'false');
+  if (!open) return;
+  searchExamples.innerHTML = '';
+  const intro = document.createElement('div');
+  intro.className = 'search-ex-intro';
+  intro.textContent = S.searchExIntro || 'Tap an example to try it:';
+  searchExamples.appendChild(intro);
+  for (const [key, example] of SEARCH_EXAMPLES) {
+    const row = document.createElement('button');
+    row.type = 'button';
+    row.className = 'search-ex';
+    const what = document.createElement('span');
+    what.className = 'search-ex-what';
+    what.textContent = S[key] || key;
+    const code = document.createElement('code');
+    code.dir = 'auto';                       // a Hebrew name in an English list, and the reverse
+    code.textContent = example;
+    row.append(what, code);
+    row.onclick = () => {
+      setSearchExamples(false);
+      wpSearch.value = example;
+      runSearch();
+      if (typeof focusForTyping === 'function') focusForTyping(wpSearch); else wpSearch.focus();
+    };
+    searchExamples.appendChild(row);
+  }
+  const more = document.createElement('div');
+  more.className = 'search-ex-more';
+  more.textContent = S.searchExMore || '';
+  searchExamples.appendChild(more);
+}
+(function wireSearchHelp() {
+  const btn = document.getElementById('search-help');
+  const box = document.getElementById('search-examples');
+  if (!btn || !box) return;
+  btn.onclick = () => setSearchExamples(box.hidden);
+  // Typing is the answer to the question: the examples make way for real results.
+  wpSearch.addEventListener('input', () => { if (!box.hidden) setSearchExamples(false); });
+}());
 // Clearing the box is not closing the search: on a phone the overlay lives at the top of the
 // menu sheet, where the only ✕ in reach puts the whole menu away -- so emptying a mistyped
 // waypoint meant thirteen backspaces or losing the sheet. Shown only when there is something to
