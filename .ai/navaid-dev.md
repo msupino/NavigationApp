@@ -787,6 +787,9 @@ as a machine-readable registry.
   placeable instrument sheet) as one choice, since plate layers are one at a time. It drives
   the same hidden `*-cb` switches as the toolbar picker and points the "Show plates for"
   filter at that field, so it adds no `localStorage` key of its own.
+- The airfield inspector groups NOTAMs, Airport charts and Airfield layer under one divider
+  (`.airfield-refs`), each a label with its control at the end; the charts entry is a link
+  like the NOTAM one (`.insp-notam-link.insp-charts-btn`), not a separate button design.
 - The NOTAM sheet orders its current result for flight planning: notices whose
   explicit map geometry intersects the planned route first, then departure and
   destination airfield notices, FIR-wide (`LLLL`) notices, and other airfields.

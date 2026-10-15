@@ -89,7 +89,7 @@ test('Hebrew: the row and its choices are in Hebrew', async ({ page }) => {
   await inspect(page, 'LLHZ');
   const row = page.locator('.airfield-layers-row');
   await expect(row.locator('label')).toHaveText('שכבות שדה');
-  await expect(row.locator('option').first()).toHaveText('ללא');
+  await expect(row.locator('option').first()).toHaveText('— ללא —');
   await expect(row.locator('option[value="cvfr-cb"]')).toHaveText('נתיבי כניסה/יציאה CVFR');
 });
 
@@ -121,4 +121,59 @@ test('English: the row is labelled Airfield layer', async ({ page }) => {
   await boot(page);
   await inspect(page, 'LLHZ');
   await expect(page.locator('.airfield-layers-row label')).toHaveText('Airfield layer');
+});
+
+// Reported: the NOTAM row, the charts entry and the layer row were three designs -- a link, a
+// big button under its own divider, a dropdown with its own placeholder. One group now: each a
+// label with its control at the end, the charts one a link like the NOTAM one.
+test('NOTAMs, charts and layers share one layout', async ({ page }) => {
+  await boot(page, 'he');
+  await inspect(page, 'LLHZ');
+  const r = await page.evaluate(() => {
+    const g = document.querySelector('#insp-body .airfield-refs');
+    const rows = g ? Array.from(g.children).map(x => x.className) : [];
+    const charts = g && g.querySelector('.insp-charts-btn');
+    const notam = g && g.querySelector('.notam-insp-row label');
+    // A NOTAM-style link to compare against: the field may have no NOTAMs loaded in the
+    // suite, and then its row shows N/A with no link at all.
+    const notamLink = document.createElement('button');
+    notamLink.className = 'insp-notam-link';
+    if (g) g.appendChild(notamLink);
+    const layerLabel = g && g.querySelector('.airfield-layers-row label');
+    const font = (el) => el && getComputedStyle(el).fontSize;
+    return {
+      rows,
+      // Looks like the NOTAM link (same colour and underline), without sharing its class.
+      chartsIsLink: !!charts && !!notamLink && getComputedStyle(charts).color === getComputedStyle(notamLink).color
+        && getComputedStyle(charts).textDecorationLine === 'underline'
+        && !charts.classList.contains('insp-notam-link'),
+      _cleanup: notamLink.remove(),
+      chartsText: charts && charts.textContent.trim(),
+      chartsIcon: !!(charts && charts.querySelector('.mi-icon svg')),
+      labelsMatch: !!notam && font(notam) === font(layerLabel),
+      none: document.querySelector('#insp-af-layer option').textContent,
+      vorNone: (document.querySelector('.insp-vor-ref option') || {}).textContent,
+    };
+  });
+  expect(r.rows).toEqual(['row notam-insp-row', 'row plates-row', 'row airfield-layers-row']);
+  expect(r.chartsIsLink).toBe(true);
+  // The app dresses a button's leading glyph as an SVG icon (ui.js dressByGlyph), so the
+  // link reads "הצג 13" behind the charts icon, not the raw emoji.
+  expect(r.chartsText).toMatch(/^הצג \d+$/);
+  expect(r.chartsIcon).toBe(true);
+  expect(r.labelsMatch).toBe(true);
+  // The empty choice reads like the reference-VOR one above it.
+  expect(r.none).toBe(r.vorNone);
+});
+
+// ui-ux-pro-max review: the links are this group's controls, and an inline 12px link is about
+// 16px tall -- below the 24px WCAG 2.2 target size, and well below the 36px button the charts
+// entry used to be.
+test('the group\'s links are at least the WCAG target size', async ({ page }) => {
+  await boot(page);
+  await inspect(page, 'LLHZ');
+  const hs = await page.locator('#insp-body .airfield-refs :is(.insp-notam-link, .insp-charts-btn)')
+    .evaluateAll(els => els.map(e => e.getBoundingClientRect().height));
+  expect(hs.length).toBeGreaterThan(0);
+  for (const h of hs) expect(h).toBeGreaterThanOrEqual(24);
 });

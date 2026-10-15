@@ -2968,15 +2968,24 @@ function showNotamBadgeModal(entries) {
 
 function appendAirfieldPlates(body, af) {
   if (!af || !Array.isArray(af.plates) || !af.plates.length) return;
+  // A row like the NOTAM one above it: label, then a link that says how many there are.
   const row = document.createElement('div');
-  row.className = 'row plates-section';
+  row.className = 'row plates-row';
+  const lbl = document.createElement('label');
+  lbl.textContent = S.inspChartsLabel || 'Airport charts';
+  const val = document.createElement('span');
+  val.className = 'val';
   const btn = document.createElement('button');
   btn.type = 'button';
+  // Its own class only: the NOTAM link's class is how the NOTAM row is found (notam-layer
+  // specs), so the shared look comes from the stylesheet, not a shared class.
   btn.className = 'insp-charts-btn';
-  btn.textContent = S.inspOpenCharts || '🗺️ Airport charts';
+  const n = af.plates.length;
+  btn.textContent = S.inspChartsView ? S.inspChartsView(n) : ('View ' + n);
   btn.title = S.inspOpenChartsTitle || '';
   btn.onclick = () => { if (typeof showChartsModal === 'function') showChartsModal(af.name); };
-  row.appendChild(btn);
+  val.appendChild(btn);
+  row.append(lbl, val);
   body.appendChild(row);
 }
 
@@ -3241,9 +3250,15 @@ function appendAirfieldDetailRows(body, af, label) {
   appendAirfieldRunways(body, af);
   appendSatelliteSnippet(body, af, label || airfieldInspectorTitle(af));
   appendVorRadialRow(body, af.lat, af.lng);
-  appendAirfieldNotams(body, af);
-  appendAirfieldPlates(body, af);
-  appendAirfieldLayers(body, af);
+  // NOTAMs, charts and map layers are the three things the field publishes, and they read as
+  // one group: a label, and its control at the end of the row. They were three designs --
+  // a link, a big button under its own divider, a dropdown -- side by side (reported).
+  const refs = document.createElement('div');
+  refs.className = 'airfield-refs';
+  appendAirfieldNotams(refs, af);
+  appendAirfieldPlates(refs, af);
+  appendAirfieldLayers(refs, af);
+  if (refs.childNodes.length) body.appendChild(refs);
 }
 
 // The AIP's published operating hours, with a verdict for right now. The verdict says

@@ -4267,27 +4267,17 @@ body.deck-on .qtime select { min-height: 30px; font-size: 16px; }
 .plate-annex-empty { background: transparent; border-color: transparent; }
 .plate-row-title { flex: 1 1 auto; line-height: 1.3; }
 .plate-row-amd { flex: 0 0 auto; font-size: 11px; color: #9aa4b0; font-variant-numeric: tabular-nums; }
-/* The inspector's "Airport charts" button. It had no rule of its own, so it rendered as a
-   default browser button -- white with dark text -- which in dark mode looked like a light-mode
-   control dropped into the panel. */
-.insp-charts-btn {
-  font: inherit;
-  font-size: 13px;
-  min-height: 36px;
-  padding: 7px 12px;
-  color: #cfe4ff;
-  background: #24303f;
-  border: 1px solid #35506f;
-  border-radius: 6px;
-  cursor: pointer;
-}
-.insp-charts-btn:hover, .insp-charts-btn:focus-visible { background: #2d3d52; border-color: #1d6fe0; }
-body.theme-light .insp-charts-btn {
-  color: #16406e;
-  background: #dbe8fb;
-  border-color: #9dbde8;
-}
-body.theme-light .insp-charts-btn:hover, body.theme-light .insp-charts-btn:focus-visible { background: #cbdcf7; }
+/* The airfield's NOTAMs, charts and map layers: one group under one divider, each a label
+   with its control at the end -- the charts entry is a link like the NOTAM one beside it,
+   not a button of its own design (reported). */
+.airfield-refs { margin-top: 12px; border-top: 1px solid #3a3636; padding-top: 10px; }
+body.theme-light .airfield-refs { border-top-color: #d5dbe3; }
+/* The links are the row's control, so they are sized as one: 24px is the WCAG 2.2 target
+   size the inline 12px link fell short of (ui-ux-pro-max review), and on a phone they match
+   the 30px of the layer choice beside them. The old charts button was 36px; a link must not
+   be harder to hit than the button it replaced. */
+.airfield-refs :is(.insp-notam-link, .insp-charts-btn) { min-height: 24px; }
+body.deck-on .airfield-refs :is(.insp-notam-link, .insp-charts-btn) { min-height: 30px; }
 
 /* Airport charts: two screens rather than twenty accordions. Screen one is a grid of fields,
    screen two is one field's plates. Every target here is thumb-sized -- this is read on a
@@ -5018,7 +5008,7 @@ body.theme-light .map-time-now { background: rgba(255, 255, 255, 0.95); }
   opacity: 0.7;
   margin-block-start: 2px;
 }
-.insp-notam-link {
+.insp-notam-link, .insp-charts-btn {
   font: inherit;
   font-size: 12px;
   color: #6fb0ff;
@@ -5028,8 +5018,8 @@ body.theme-light .map-time-now { background: rgba(255, 255, 255, 0.95); }
   cursor: pointer;
   text-decoration: underline;
 }
-.insp-notam-link:hover { color: #9cc8ff; }
-body.theme-light .insp-notam-link { color: #1d6fe0; }
+.insp-notam-link:hover, .insp-charts-btn:hover { color: #9cc8ff; }
+body.theme-light .insp-notam-link, body.theme-light .insp-charts-btn { color: #1d6fe0; }
 /* Airfield METAR/TAF (#670) */
 .wx-section { margin: 8px 0 2px; border-top: 1px solid #3a3636; padding-top: 6px; }
 /* A titled group of inspector rows (Communication). Same rule and spacing as the weather
@@ -9270,7 +9260,7 @@ body.deck-on .zoom-readout {
 /* The panel's text-link buttons (View N NOTAMs, Show the published hours, ...) carry the same
    injected icon, which had no rule here: it sat raised above the text and apart from it. On the
    text's own line, centred, a small gap, glyph a size down to match the 12px link. */
-.insp-notam-link, .hours-toggle { display: inline-flex; align-items: center; gap: 4px; }
+.insp-notam-link, .insp-charts-btn, .hours-toggle { display: inline-flex; align-items: center; gap: 4px; }
 #insp-body button:not(.insp-btn) > .mi-icon { display: inline-grid; place-items: center; line-height: 0; margin: 0; flex: none; }
 #insp-body button:not(.insp-btn) > .mi-icon svg { display: block; width: 14px; height: 14px; }
 
