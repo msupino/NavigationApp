@@ -38,23 +38,31 @@ test('"?" opens tappable examples of everything the search reads', async ({ page
   await expect(page.locator('#search-examples')).toBeHidden();
 });
 
-test('every example is real: tapping it puts it in the box and finds something', async ({ page }) => {
+test('every example is submitted: tapping it does what Enter would', async ({ page }) => {
+  // Reported: an example only filled the box. It is submitted now -- a name goes to its first
+  // hit, a coordinate to the point, the route example builds the route.
   await boot(page);
   for (let k = 0; k < 8; k++) {
+    await page.evaluate(() => {
+      state.waypoints = []; syncLegs(); state.selected = null;
+      map.setZoom(8, { animate: false });       // far out, so "flew to it" is visible as zoom 12+
+      revealSearchOverlay();
+    });
     await page.locator('#search-help').click();
     const row = page.locator('#search-examples .search-ex').nth(k);
     const example = await row.locator('code').innerText();
     await row.click();
     await expect(page.locator('#search-examples')).toBeHidden();
-    await expect(page.locator('#wp-search')).toHaveValue(example);
-    // A coordinate goes straight there (one answer); anything else lists its hits to pick from.
-    const isCoord = await page.evaluate((q) => !!parseSearchLatLng(q), example);
-    if (isCoord) {
+    const kind = await page.evaluate((q) => parseSearchLatLng(q) ? 'coord' : (/\s/.test(q) ? 'route' : 'name'), example);
+    if (kind === 'route') {
+      await expect.poll(() => page.evaluate(() => state.waypoints.length), example).toBe(example.split(/\s+/).length);
+    } else if (kind === 'coord') {
       await expect.poll(() => page.evaluate(() => state.selected && state.selected.type), example).toBe('coord');
     } else {
-      await expect(page.locator('#wp-search-results .wp-search-item').first(), example).toBeVisible();
+      // The first hit was taken: the map flew to it (zoom 12 or closer) and the dropdown is gone.
+      await expect.poll(() => page.evaluate(() => map.getZoom() >= 12
+        && document.getElementById('wp-search-results').classList.contains('hidden')), example).toBe(true);
     }
-    await page.evaluate(() => { wpSearch.value = ''; closeSearch(); state.selected = null; });
   }
 });
 

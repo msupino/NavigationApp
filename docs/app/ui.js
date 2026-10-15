@@ -4507,10 +4507,10 @@ function setSearchExamples(open) {
       setSearchExamples(false);
       wpSearch.value = example;
       runSearch();
-      // A coordinate has one answer: go there, the way Enter does, rather than leave a row to tap.
-      const coordHit = wpResults.querySelector('.wp-search-coord');
-      if (coordHit) { coordHit.click(); return; }
-      if (typeof focusForTyping === 'function') focusForTyping(wpSearch); else wpSearch.focus();
+      // An example is submitted, not just typed in (reported): exactly what Enter does with it --
+      // a name goes to its first hit, a coordinate to the point, a route is built (after asking,
+      // when it would replace one on the map).
+      wpSearch.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
     };
     searchExamples.appendChild(row);
   }
