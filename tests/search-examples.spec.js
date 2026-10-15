@@ -30,6 +30,8 @@ test('"?" opens tappable examples of everything the search reads', async ({ page
   for (const s of ['Reporting point', 'Airfield', 'VOR', 'route', 'decimal', 'degrees minutes seconds', 'flight-plan', 'NOTAM']) {
     expect(text).toContain(s);
   }
+  // The route tip repeats the route example: out of the way while the list is open.
+  await expect(page.locator('#wp-search-hint')).toBeHidden();
   await help.click();
   await expect(page.locator('#search-examples')).toBeHidden();
 });

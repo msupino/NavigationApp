@@ -4472,6 +4472,10 @@ function setSearchExamples(open) {
   if (!searchHelpBtn || !searchExamples) return;
   searchExamples.hidden = !open;
   searchHelpBtn.setAttribute('aria-expanded', open ? 'true' : 'false');
+  // The one-line route tip says what the route example already shows: two lines of repeat
+  // above the list on a phone. Out of the way while the list is open; back as it was after.
+  const tip = document.getElementById('wp-search-hint');
+  if (tip) tip.classList.toggle('hidden', open || searchTipDone());
   if (!open) return;
   searchExamples.innerHTML = '';
   const intro = document.createElement('div');
