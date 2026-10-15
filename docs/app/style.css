@@ -7892,10 +7892,10 @@ html[dir="rtl"] body.theme-light #toolbar .navtoggle select {
   position: absolute;
   inset: 0;
   border-radius: 50%;
-  border: var(--flash-width, 2px) solid var(--flash-color, #ffb020);
-  background: rgba(var(--flash-rgb, 255, 176, 32), var(--flash-fill, .10));
+  border: var(--flash-width, 2px) solid var(--flash-color, #ff2a2a);
+  background: rgba(var(--flash-rgb, 255, 42, 42), var(--flash-fill, .10));
   box-shadow: 0 0 0 1px rgba(0, 0, 0, .45),
-              0 0 8px 1px rgba(var(--flash-rgb, 255, 176, 32), .35);
+              0 0 8px 1px rgba(var(--flash-rgb, 255, 42, 42), .35);
   animation: search-flash-hold var(--flash-ms, 3500ms) ease-out 1 both;
 }
 /* ...and the moving part: three expanding pulses off the same centre. */
@@ -7905,7 +7905,7 @@ html[dir="rtl"] body.theme-light #toolbar .navtoggle select {
   position: absolute;
   inset: -3px;
   border-radius: 50%;
-  border: var(--flash-width, 2px) solid var(--flash-color, #ffb020);
+  border: var(--flash-width, 2px) solid var(--flash-color, #ff2a2a);
   animation: search-flash-pulse calc(var(--flash-ms, 3500ms) / 2.5) ease-out
              var(--flash-pulses, 2) both;
 }
@@ -7915,7 +7915,7 @@ html[dir="rtl"] body.theme-light #toolbar .navtoggle select {
    menu is honoured in both themes rather than silently overridden in one. */
 body.theme-light .search-flash-ring {
   box-shadow: 0 0 0 1px rgba(255, 255, 255, .8),
-              0 0 8px 1px rgba(var(--flash-rgb, 210, 105, 10), .3);
+              0 0 8px 1px rgba(var(--flash-rgb, 200, 20, 20), .3);
 }
 /* Pulses off: the steady ring alone. */
 .search-flash-nopulse .search-flash-ring::before,

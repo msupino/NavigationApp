@@ -220,7 +220,8 @@ NavAid.tuningDefaults = {
     label: 'Search: how long the result flashes (ms, 0 = off)' },
   searchFlashRadiusPx: { value: 30, min: 8, max: 80, step: 2,
     label: 'Search: flash ring size (px)' },
-  searchFlashColor: { value: '#ffb020', type: 'color', label: 'Search: flash ring colour' },
+  // Red, not amber: amber blinked into the yellow of the chart it sits on (reported).
+  searchFlashColor: { value: '#ff2a2a', type: 'color', label: 'Search: flash ring colour' },
   searchFlashWidthPx: { value: 2, min: 1, max: 8, step: 1,
     label: 'Search: flash ring thickness (px)' },
   searchFlashFillAlpha: { value: 0.10, min: 0, max: 0.6, step: 0.02,
@@ -240,7 +241,7 @@ NavAid.tuningDefaults = {
   liveHeadingTickHaloColor: { value: '#000000', type: 'color', label: 'Heading tick label halo color' },
   liveHeadingTickHaloAlpha: { value: 0.8, min: 0, max: 1, step: 0.05, label: 'Heading tick label halo opacity (0-1)' },
   liveHeadingTickHaloWidthPx: { value: 3, min: 0, max: 10, step: 0.5, label: 'Heading tick label halo width (px)' },
-  notamFlashColor: { value: '#ffd400', type: 'color', label: 'NOTAM locate flash color' },
+  notamFlashColor: { value: '#ff2a2a', type: 'color', label: 'NOTAM locate flash color' },
   notamBadgeTextColor: { value: '#ffffff', type: 'color', label: 'NOTAM badge text color' },
   notamBadgeFontPx: { value: 11, min: 6, max: 24, step: 1, label: 'NOTAM badge font size (px)' },
   lsaHighlightColor: { value: '#ffcc33', type: 'color', label: 'LSA locate highlight color' },
