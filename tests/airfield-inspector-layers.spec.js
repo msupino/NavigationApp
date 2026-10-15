@@ -134,11 +134,15 @@ test('NOTAMs, charts and layers share one layout', async ({ page }) => {
     const rows = g ? Array.from(g.children).map(x => x.className) : [];
     const charts = g && g.querySelector('.insp-charts-btn');
     const notam = g && g.querySelector('.notam-insp-row label');
+    const notamLink = g && g.querySelector('.insp-notam-link');
     const layerLabel = g && g.querySelector('.airfield-layers-row label');
     const font = (el) => el && getComputedStyle(el).fontSize;
     return {
       rows,
-      chartsIsLink: !!charts && charts.classList.contains('insp-notam-link'),
+      // Looks like the NOTAM link (same colour and underline), without sharing its class.
+      chartsIsLink: !!charts && !!notamLink && getComputedStyle(charts).color === getComputedStyle(notamLink).color
+        && getComputedStyle(charts).textDecorationLine === 'underline'
+        && !charts.classList.contains('insp-notam-link'),
       chartsText: charts && charts.textContent.trim(),
       chartsIcon: !!(charts && charts.querySelector('.mi-icon svg')),
       labelsMatch: !!notam && font(notam) === font(layerLabel),
@@ -163,7 +167,7 @@ test('NOTAMs, charts and layers share one layout', async ({ page }) => {
 test('the group\'s links are at least the WCAG target size', async ({ page }) => {
   await boot(page);
   await inspect(page, 'LLHZ');
-  const hs = await page.locator('#insp-body .airfield-refs .insp-notam-link')
+  const hs = await page.locator('#insp-body .airfield-refs :is(.insp-notam-link, .insp-charts-btn)')
     .evaluateAll(els => els.map(e => e.getBoundingClientRect().height));
   expect(hs.length).toBeGreaterThan(0);
   for (const h of hs) expect(h).toBeGreaterThanOrEqual(24);

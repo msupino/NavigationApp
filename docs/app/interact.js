@@ -2977,7 +2977,9 @@ function appendAirfieldPlates(body, af) {
   val.className = 'val';
   const btn = document.createElement('button');
   btn.type = 'button';
-  btn.className = 'insp-notam-link insp-charts-btn';
+  // Its own class only: the NOTAM link's class is how the NOTAM row is found (notam-layer
+  // specs), so the shared look comes from the stylesheet, not a shared class.
+  btn.className = 'insp-charts-btn';
   const n = af.plates.length;
   btn.textContent = S.inspChartsView ? S.inspChartsView(n) : ('View ' + n);
   btn.title = S.inspOpenChartsTitle || '';
