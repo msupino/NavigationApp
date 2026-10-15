@@ -3849,13 +3849,28 @@ function showInspector() {
     // propagate, so the two editors disagreed about the same number.
     // Set once the Time · fuel row exists (below); speed and altitude edits refresh it.
     let refreshLegTime = () => {};
+    // ↻ puts the leg back on the Default speed setting -- the value AND the tracking, so a later
+    // change to Default speed carries it again -- the way the altitude ↻ restores the chart's.
+    const defaultKt = (typeof _defaultLegSpeedKt === 'function') ? _defaultLegSpeedKt() : 90;
     body.appendChild(numberRow(S.speedKt, leg.flightSpeed, v => {
       if (!(v > 0)) return;
       const oldVal = leg.flightSpeed;
       leg.flightSpeed = v;
       propagateAlt(idx, 'flightSpeed', v, oldVal);
       draw(); refreshWindFx(); refreshLegTime();
-    }));
+    }, { narrow: true, undoValue: defaultKt, defaultValue: defaultKt,
+         undoTitle: S.speedResetDefault || 'Reset to default speed',
+         // The legs a typed speed carried forward go back with it, and track the default again.
+         onUndo: () => {
+           const oldVal = leg.flightSpeed;
+           for (let j = idx; j < state.legs.length; j++) {
+             const l = state.legs[j];
+             if (j > idx && l.flightSpeed !== oldVal) break;
+             l.flightSpeed = defaultKt;
+             l._legSpeedAuto = 1;
+           }
+           draw(); refreshWindFx(); refreshLegTime();
+         } }));
     // Leg magnetic heading and length (read-only) — together, between speed and altitude: the two
     // facts of the line itself, the length to one decimal as the flight plan's Dist column has it.
     const _dirA = state.waypoints[idx], _dirB = state.waypoints[idx + 1];
@@ -3930,7 +3945,7 @@ function showInspector() {
       propagateAlt(idx, 'inboundAltitude', leg.inboundAltitude, oldVal);
       draw(); refreshMsa(); refreshLegTime();
     }, { allowUnknown: true, placeholder: legAltitudePlaceholder(leg, 'inboundAltitude'),
-         undoValue: knownIn, live: true,
+         undoValue: knownIn, live: true, narrow: true,
          defaultValue: knownIn, mutedWhenDefault: true, emptyRestoresDefault: true }));
     body.appendChild(numberRow(S.outboundAlt, leg.outboundAltitude, v => {
       const oldVal = leg.outboundAltitude;
@@ -3938,7 +3953,7 @@ function showInspector() {
       propagateAlt(idx, 'outboundAltitude', leg.outboundAltitude, oldVal);
       draw(); refreshMsa(); refreshLegTime();
     }, { allowUnknown: true, placeholder: legAltitudePlaceholder(leg, 'outboundAltitude'),
-         undoValue: knownOut, live: true,
+         undoValue: knownOut, live: true, narrow: true,
          defaultValue: knownOut, mutedWhenDefault: true, emptyRestoresDefault: true }));
     if (window.showMsa &&
         typeof terrainHasCoverage === 'function' && terrainHasCoverage() &&
@@ -4732,6 +4747,9 @@ function numberRow(label, value, onChange, opts = {}) {
   inp.type = 'number';
   inp.value = altitudeInputValue(value);
   if (opts.placeholder) inp.placeholder = opts.placeholder;
+  // Five digits is the most a speed or an altitude holds: the field is sized to that, not to
+  // the panel (reported: altitude boxes twice the width of what goes in them).
+  if (opts.narrow) inp.classList.add('row-num-narrow');
   // Endless 0–359 spinner wrap (attached first so it cleans the value before
   // the commit handler below reads it).
   if (opts.wrapStep) wrapDirectionInput(inp);
@@ -4797,7 +4815,8 @@ function numberRow(label, value, onChange, opts = {}) {
     btn.onclick = () => {
       inp.value = altitudeInputValue(opts.undoValue);
       updateDefaultStyle();                       // restored value → re-dim if it's the default
-      onChange(opts.undoValue);
+      // A reset can mean more than the number (the speed goes back to tracking the default).
+      if (typeof opts.onUndo === 'function') opts.onUndo(); else onChange(opts.undoValue);
     };
     row.appendChild(btn);
   }
