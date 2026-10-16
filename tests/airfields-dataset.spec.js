@@ -618,6 +618,21 @@ test('every field with a CVFR route plate has a CVFR overlay', async () => {
   expect(missing).toEqual([]);
 });
 
+test('LLHA CVFR overlay uses the reviewed Annex Gimel chart and its graticule', async () => {
+  const llha = loadData().airfields.find(f => f.name === 'LLHA');
+  // Annex Gimel is the green CVFR entry/exit chart. Annex Daled has nearly the
+  // same coverage but depicts the magenta low-altitude routes; bounds alone
+  // cannot detect that substitution. Pin the visually reviewed crop as well.
+  const chart = fs.readFileSync(path.join(__dirname, '..', 'docs', 'cvfr-img', llha.cvfr_overlay.png));
+  expect(require('crypto').createHash('sha256').update(chart).digest('hex')).toBe(
+    '4c3ee21ed506f9a9eedfd33442ac3711e321feefb8372acc0ca89fdca9692199');
+  expect(llha.cvfr_overlay).toEqual({
+    png: 'LLHA_cvfr.png',
+    sw: [32.65085, 34.93241],
+    ne: [32.96524, 35.20341],
+  });
+});
+
 test('LLRS CVFR overlay keeps its reviewed rotated anchors', async () => {
   const fs = require('fs');
   const path = require('path');

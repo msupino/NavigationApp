@@ -156,6 +156,13 @@ python3 scripts/build_terrain.py /path/to/hgt --out docs/data/terrain.json
 
 ## BYOP PDFs
 
+Haifa's CVFR overlay (`cvfr-img/LLHA_cvfr.png`) is cropped from
+`byop/LLHA_airport_Annex Gimel.pdf` (CVFR entry/exit routes), not Annex Daled
+(low-altitude entry/exit routes). Regenerate it with
+`python3 scripts/georef-plate.py "docs/byop/LLHA_airport_Annex Gimel.pdf" LLHA --write`.
+Update its `cvfr_overlay` bounds from that chart's graticule and review the
+green CVFR routes before updating the asset fingerprint in `airfields-dataset.spec.js`.
+
 `docs/byop/` is intentionally public and stable. Deploy keeps one production
 copy and staging resolves plates against that shared root URL.
 
