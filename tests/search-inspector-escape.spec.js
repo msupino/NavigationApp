@@ -22,6 +22,15 @@ async function scrollInspector(page, delta) {
   await expect(page.locator('#inspector')).toHaveAttribute('data-wheel-received', '1');
 }
 
+async function controlGestureTime(page) {
+  // Runner latency must not turn a continuous gesture into a real 250 ms quiet gap.
+  await page.evaluate(() => {
+    let gestureTime = performance.now();
+    Object.defineProperty(performance, 'now', { configurable: true, value: () => gestureTime });
+    window.advanceInspectorGesture = ms => { gestureTime += ms; };
+  });
+}
+
 for (const lang of ['en', 'he']) {
   for (const delta of [-600, 600]) {
     test(`Escape closes LLHA after keyboard search and inspector scroll: ${lang}, ${delta}`, async ({ page }) => {
@@ -67,12 +76,7 @@ for (const lang of ['en', 'he']) {
       await page.waitForFunction(() => !map._animatingZoom && !map._panAnim?._inProgress);
       const zoom = await page.evaluate(() => map.getZoom());
       await page.locator('#insp-body').hover({ position: { x: 100, y: 70 } });
-      // Runner latency must not turn a continuous gesture into a real 250 ms quiet gap.
-      await page.evaluate(() => {
-        let gestureTime = performance.now();
-        Object.defineProperty(performance, 'now', { configurable: true, value: () => gestureTime });
-        window.advanceInspectorGesture = ms => { gestureTime += ms; };
-      });
+      await controlGestureTime(page);
       await scrollInspector(page, delta);
       await page.keyboard.press('Escape');
       await expect(page.locator('#inspector')).toBeHidden();
@@ -100,16 +104,17 @@ for (const closeBy of ['Escape', 'button']) {
       showInspector();
     });
     await page.locator('#insp-body').hover({position: {x: 100, y: 70}});
+    await controlGestureTime(page);
     await scrollInspector(page, 120);
     const zoom = await page.evaluate(() => map.getZoom());
     if (closeBy === 'Escape') await page.keyboard.press('Escape');
     else await page.locator('#insp-close').click();
     await expect(page.locator('#inspector')).toBeHidden();
-    await page.mouse.wheel(0, 60);
+    await wheelSample(page, 60);
     await page.waitForTimeout(100);
     expect(await page.evaluate(() => map.getZoom())).toBe(zoom);
     await page.mouse.move(500, 400);
-    await page.mouse.wheel(0, 120);
+    await wheelSample(page, 120);
     await expect.poll(() => page.evaluate(() => map.getZoom())).not.toBe(zoom);
   });
 }
