@@ -2773,7 +2773,8 @@ async function buildRouteFromQuery(raw) {
   syncLegs();
   if (typeof seedCommChangeNotes === 'function') seedCommChangeNotes();
   wpSearch.value = '';
-  hideSearchOverlay();
+  if (searchDocked()) closeSearch();
+  else hideSearchOverlay();
   showInspector();
   fitView();
   // Auto-route applies to a search-built route too: typing "LLHZ RIDNG" is the same

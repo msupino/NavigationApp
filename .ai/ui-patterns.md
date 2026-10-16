@@ -72,6 +72,10 @@ Patterns:
 
 ## Route And Leg UI
 
+Creating a route from typed waypoint codes clears the search query and results.
+The docked desktop search stays open and does not save a dismissal preference;
+the summoned mobile search closes after successful route creation.
+
 Route leg markers are called kites in code/comments. They store offsets in
 leg-relative coordinates.
 
