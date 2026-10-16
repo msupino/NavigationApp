@@ -170,7 +170,12 @@ commit on `main`, `dev`, or an unrelated feature branch by mistake.
     route-wide drift lines are on; `showDrift: 1` shows it when route-wide
     drift lines are off. `hideDrift` wins if both legacy flags are present.
   - `state.notes[i]` = `{lat, lng, text, color, shape}` — free-text
-    annotation boxes; `shape` is `'rect'` or `'oval'`.
+    annotation boxes; `shape` is `'rect'`, `'oval'` or `'arrow'`. Arrow notes
+    share `traceArrowBox()` with cumulative-time markers; the pointer uses the
+    cumulative arrow's height/triangle-length tunables and extends beyond the
+    rectangular text body. Existing `rot`, `size`, colour, persistence and
+    print/export drawing apply. Hit-testing excludes the arrowhead's empty
+    corners in the note's rotated frame.
   - `state.mode` = `'add' | 'note' | null` (null = inspect);
     `state.selected` = `{type:'wp'|'leg'|'note', index}` or `null`.
   - Top-level globals: `showReturn`, `showMidLeg`, `showCumTime`,

@@ -2569,6 +2569,7 @@ window.S = Object.assign({
   shape: 'Shape',
   shapeRect: 'Rectangle',
   shapeOval: 'Oval',
+  shapeArrow: 'Arrow',
   color: 'Color',
   noteSize: 'Size',
   noteRotation: 'Rotation',
