@@ -1,5 +1,14 @@
 const { test, expect } = require('./_setup');
 
+async function scrollInspector(page, delta) {
+  await page.locator('#inspector').evaluate(el => {
+    el.dataset.wheelReceived = '0';
+    el.addEventListener('wheel', () => { el.dataset.wheelReceived = '1'; }, { once: true });
+  });
+  await page.mouse.wheel(0, delta);
+  await expect(page.locator('#inspector')).toHaveAttribute('data-wheel-received', '1');
+}
+
 for (const lang of ['en', 'he']) {
   for (const delta of [-600, 600]) {
     test(`Escape closes LLHA after keyboard search and inspector scroll: ${lang}, ${delta}`, async ({ page }) => {
@@ -16,7 +25,7 @@ for (const lang of ['en', 'he']) {
       await page.waitForFunction(() => !map._animatingZoom && !map._panAnim?._inProgress);
       const zoom = await page.evaluate(() => map.getZoom());
       await page.locator('#insp-body').hover({ position: { x: 100, y: 70 } });
-      await page.mouse.wheel(0, delta);
+      await scrollInspector(page, delta);
       await search.press('Escape');
       await expect(page.locator('#inspector')).toBeHidden();
       expect(await page.evaluate(() => state.selected)).toBeNull();
@@ -45,7 +54,7 @@ for (const lang of ['en', 'he']) {
       await page.waitForFunction(() => !map._animatingZoom && !map._panAnim?._inProgress);
       const zoom = await page.evaluate(() => map.getZoom());
       await page.locator('#insp-body').hover({ position: { x: 100, y: 70 } });
-      await page.mouse.wheel(0, delta);
+      await scrollInspector(page, delta);
       await page.keyboard.press('Escape');
       await expect(page.locator('#inspector')).toBeHidden();
       // A trackpad's remaining samples hit the newly exposed map at the same pointer position.
@@ -72,7 +81,7 @@ for (const closeBy of ['Escape', 'button']) {
       showInspector();
     });
     await page.locator('#insp-body').hover({position: {x: 100, y: 70}});
-    await page.mouse.wheel(0, 120);
+    await scrollInspector(page, 120);
     const zoom = await page.evaluate(() => map.getZoom());
     if (closeBy === 'Escape') await page.keyboard.press('Escape');
     else await page.locator('#insp-close').click();
