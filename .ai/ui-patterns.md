@@ -72,6 +72,13 @@ Patterns:
 
 ## Route And Leg UI
 
+Creating a route from typed waypoint codes clears the search query and results.
+The docked desktop search stays open and does not save a dismissal preference;
+the summoned mobile search closes after successful route creation.
+Escape clears the query, results, and examples without closing the search bar
+on either layout, even when the query is already empty. The × button dismisses
+it explicitly; only that dismissal updates the docked visibility preference.
+
 Route leg markers are called kites in code/comments. They store offsets in
 leg-relative coordinates.
 
