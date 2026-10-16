@@ -1,0 +1,19 @@
+{
+  "source": "Haifa Annex Gimel CVFR chart, cropped to 780 x 1073 pixels; centres of the printed reporting-point triangles",
+  "width": 780,
+  "height": 1073,
+  "landmarks": [
+    { "name": "SMRAT", "x": 453.5, "y": 51 },
+    { "name": "AAKKO", "x": 471.5, "y": 164 },
+    { "name": "AHIUD", "x": 719.5, "y": 181 },
+    { "name": "DUGIT", "x": 350, "y": 392 },
+    { "name": "KRYON", "x": 458, "y": 422 },
+    { "name": "AFFEK", "x": 570, "y": 427 },
+    { "name": "GALIM", "x": 147.5, "y": 435 },
+    { "name": "DAROM", "x": 41, "y": 591 },
+    { "name": "GILAM", "x": 585, "y": 495 },
+    { "name": "EVLYM", "x": 640, "y": 486 },
+    { "name": "HASID", "x": 432, "y": 750 },
+    { "name": "BOREN", "x": 126, "y": 866 }
+  ]
+}
