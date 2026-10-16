@@ -618,6 +618,45 @@ test('every field with a CVFR route plate has a CVFR overlay', async () => {
   expect(missing).toEqual([]);
 });
 
+test('LLHA CVFR overlay uses the reviewed Annex Gimel chart and waypoint alignment', async () => {
+  const llha = loadData().airfields.find(f => f.name === 'LLHA');
+  // Annex Gimel is the green CVFR entry/exit chart. Annex Daled has nearly the
+  // same coverage but depicts the magenta low-altitude routes; bounds alone
+  // cannot detect that substitution. Pin the visually reviewed crop as well.
+  const chart = fs.readFileSync(path.join(__dirname, '..', 'docs', 'cvfr-img', llha.cvfr_overlay.png));
+  expect(require('crypto').createHash('sha256').update(chart).digest('hex')).toBe(
+    '4c3ee21ed506f9a9eedfd33442ac3711e321feefb8372acc0ca89fdca9692199');
+  expect(llha.cvfr_overlay).toEqual({
+    png: 'LLHA_cvfr.png',
+    tl: [32.96889, 34.93244],
+    tr: [32.96465, 35.20381],
+    bl: [32.65523, 34.92551],
+  });
+});
+
+test('LLHA printed waypoint symbols align with the map coordinates', async () => {
+  const { width, height, landmarks } = require('./fixtures/llha-cvfr-landmarks.json');
+  const graph = require('../docs/data/cvfr-route-graph.json');
+  const overlay = loadData().airfields.find(f => f.name === 'LLHA').cvfr_overlay;
+  const mercatorY = lat => Math.log(Math.tan(Math.PI / 4 + lat * Math.PI / 360));
+  const project = ([lat, lng]) => [lng * Math.PI / 180, mercatorY(lat)];
+  // Leaflet's rotated image uses an affine transform in projected map pixels.
+  // Check the printed triangle centres, independent of the fitting algorithm.
+  const tl = project(overlay.tl || [overlay.ne[0], overlay.sw[1]]);
+  const tr = project(overlay.tr || overlay.ne);
+  const bl = project(overlay.bl || overlay.sw);
+  for (const point of landmarks) {
+    const x = point.x / width, y = point.y / height;
+    const position = tl.map((v, i) => v + (tr[i] - v) * x + (bl[i] - v) * y);
+    const lat = (2 * Math.atan(Math.exp(position[1])) - Math.PI / 2) * 180 / Math.PI;
+    const lng = position[0] * 180 / Math.PI;
+    const waypoint = graph.nodes[point.name];
+    const errorNm = Math.hypot((lat - waypoint.lat) * 60,
+      (lng - waypoint.lng) * 60 * Math.cos(lat * Math.PI / 180));
+    expect(errorNm, `${point.name} chart symbol offset (NM)`).toBeLessThan(0.07);
+  }
+});
+
 test('LLRS CVFR overlay keeps its reviewed rotated anchors', async () => {
   const fs = require('fs');
   const path = require('path');
