@@ -5745,6 +5745,18 @@ function flushKites() {
   _kiteQueue = [];
   for (const [fn, args] of queued) fn(...args);
 }
+// Shared outline for cumulative-time markers and arrow-shaped text notes.
+// Coordinates are centred on the full shape, with the point on the right.
+function traceArrowBox(ctx, width, height, headLength) {
+  const junction = width / 2 - headLength;
+  ctx.beginPath();
+  ctx.moveTo(-width / 2, -height / 2);
+  ctx.lineTo(junction, -height / 2);
+  ctx.lineTo(width / 2, 0);
+  ctx.lineTo(junction, height / 2);
+  ctx.lineTo(-width / 2, height / 2);
+  ctx.closePath();
+}
 function drawCumTimeArrow(cx, cy, flightAng, cumTime, accent, fill, sc) {
   sc = sc ?? 1;
   // Fixed GROUND size — cumKitePrintHeightMm tall at the 1:250,000 scale (× the
@@ -5765,14 +5777,7 @@ function drawCumTimeArrow(cx, cy, flightAng, cumTime, accent, fill, sc) {
   octx.save();
   octx.translate(cx, cy);
   octx.rotate(flightAng);
-  const xb = L / 2 - Lt;                // rectangle/triangle junction
-  octx.beginPath();
-  octx.moveTo(-L / 2, -W / 2);          // top-left of rectangle
-  octx.lineTo(xb,     -W / 2);
-  octx.lineTo( L / 2,  0);              // → tip pointing toward B waypoint
-  octx.lineTo(xb,      W / 2);
-  octx.lineTo(-L / 2,  W / 2);          // bottom-left of rectangle
-  octx.closePath();
+  traceArrowBox(octx, L, W, Lt);
   octx.fillStyle = fill;
   octx.fill();
   octx.lineWidth = tune('cumKiteBorderPx') * sc;
@@ -6075,7 +6080,12 @@ function noteRect(i) {
   // Before the map is ready (no ppm) grow the ellipse by √2 so it bounds the
   // text; with the ground-sized box it already matches the rectangle.
   if (oval && !ppm) { w *= Math.SQRT2; h *= Math.SQRT2; }
-  return { x: s.x - w / 2, y: s.y - h / 2, w, h, lines, oval };
+  // Reserve a full rectangular text body, then add a pointer with the same
+  // proportions as the cumulative-time arrow. Both use the same outline.
+  const arrowHead = !n.rp && n.shape === 'arrow'
+    ? h * tune('cumKiteTriangleLenPx') / tune('cumKiteHeightPx') : 0;
+  w += arrowHead;
+  return { x: s.x - w / 2, y: s.y - h / 2, w, h, lines, oval, arrowHead };
 }
 
 function commCalloutTextMetrics(lines) {
@@ -6351,7 +6361,11 @@ function drawNotes() {
     octx.save();
     octx.translate(cx0, cy0);
     if (ang) octx.rotate(ang);
-    if (r.oval) {
+    if (r.arrowHead) {
+      traceArrowBox(octx, r.w, r.h, r.arrowHead);
+      octx.fill();
+      octx.stroke();
+    } else if (r.oval) {
       octx.beginPath();
       octx.ellipse(0, 0, r.w / 2, r.h / 2, 0, 0, Math.PI * 2);
       octx.fill();
@@ -6368,7 +6382,7 @@ function drawNotes() {
     const y0 = -(r.lines.length * lineH) / 2;
     for (let j = 0; j < r.lines.length; j++) {
       const ly = y0 + lineH / 2 + j * lineH;
-      octx.fillText(r.lines[j], 0, ly);
+      octx.fillText(r.lines[j], -(r.arrowHead || 0) / 2, ly);
       // CAAI: the planned time on an identification point is underlined. It is
       // the first line of a report-point oval.
       if (n.rp && j === 0 && r.lines[j]) {

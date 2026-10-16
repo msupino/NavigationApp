@@ -1085,6 +1085,7 @@ window.S = {
   shape: 'צורה',
   shapeRect: 'מלבן',
   shapeOval: 'אליפסה',
+  shapeArrow: 'חץ',
   color: 'צבע',
   noteSize: 'גודל',
   noteRotation: 'סיבוב',

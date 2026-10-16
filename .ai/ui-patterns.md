@@ -72,6 +72,12 @@ Patterns:
 
 ## Route And Leg UI
 
+Free-text notes offer Rectangle, Oval and Arrow in their inspector. Arrow is the
+cumulative-time marker's pointed box, with text centred in its rectangular
+body. The existing Rotation and Size controls set its direction and scale;
+colour and print/export follow the ordinary note path. Identification-point
+notes remain fixed ovals and frequency-change callouts retain their own editor.
+
 Route leg markers are called kites in code/comments. They store offsets in
 leg-relative coordinates.
 

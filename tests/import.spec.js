@@ -137,7 +137,7 @@ test.describe('Route import rejection', () => {
       notes: [{ lat: 32.5, lng: 35.0, text: 'X', color: '#fff', shape: 'triangle' }],
     };
     const msg = await uploadAndCapture(page, JSON.stringify(bad));
-    expect(msg).toMatch(/notes\[0\]\.shape.*"rect" or "oval"/);
+    expect(msg).toMatch(/notes\[0\]\.shape.*"rect", "oval" or "arrow"/);
   });
 
   test('NaN lat: rejected (validator forbids non-finite numbers)', async ({ page }) => {
