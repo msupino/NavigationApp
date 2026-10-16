@@ -4440,9 +4440,8 @@ wpSearch.addEventListener('keydown', e => {
     const first = wpResults.querySelector('.wp-search-item');
     if (first) first.click();
   } else if (e.key === 'Escape') {
-    // Escape clears search without dismissing its bar. Stop it here so the
-    // document-level shortcut does not also handle this input keypress.
-    e.stopPropagation();
+    // Keyboard-opened inspectors still own Escape while focus remains in search.
+    if (!state.selected) e.stopPropagation();
     escapeSearch();
   }
 });

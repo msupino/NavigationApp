@@ -1,0 +1,57 @@
+From 3f11edeb39e50f1e6927be16efd88c0e9209543a Mon Sep 17 00:00:00 2001
+From: Marco Supino <marco@supino.org>
+Date: Fri, 16 Oct 2026 21:32:58 +0300
+Subject: [PATCH] Clarify search Escape and inspector dismissal
+
+---
+ Keyboard-and-Touch-he.md | 4 ++--
+ Keyboard-and-Touch.md    | 4 ++--
+ 2 files changed, 4 insertions(+), 4 deletions(-)
+
+diff --git a/Keyboard-and-Touch-he.md b/Keyboard-and-Touch-he.md
+index aecbdf4..74681a5 100644
+--- a/Keyboard-and-Touch-he.md
++++ b/Keyboard-and-Touch-he.md
+@@ -58,7 +58,7 @@ NavAid הוא בעיקר אפליקציית **מפה** — רוב האינטרא
+ 
+ | מקש | פעולה |
+ | --- | --- |
+-| **Ctrl-F / Cmd-F** | פתיחת חיפוש נקודות נתיב VFR |
++| **Ctrl-F / Cmd-F** | פתיחת חיפוש נקודות והעברת המיקוד אליו. במחשב החיפוש נשאר מתחת לסרגל הכלים וניתן לגרירה; בטלפון הוא נפתח לפי בקשה. Esc מנקה את השאילתה, התוצאות והדוגמאות אך אינו מסתיר את שורת החיפוש, גם כשהיא ריקה. רק ✕ מסתיר אותה. אם Enter פתח חלונית מידע של נקודה, Esc סוגר גם אותה — אפילו אחרי גלילה כשהמיקוד נשאר בחיפוש. |
+ | **?** | פתיחת **דף קיצורי המקלדת** המובנה (זמין גם דרך כפתור **Shortcuts** בכותרת התחתונה של סרגל הכלים) |
+ | **Ctrl-Z / Cmd-Z** | ביטול העריכה, ההזזה או המחיקה האחרונה |
+ | **M** | הפעלה/כיבוי של זכוכית המגדלת (תצוגה מוגדלת ליד הסמן) |
+@@ -69,7 +69,7 @@ NavAid הוא בעיקר אפליקציית **מפה** — רוב האינטרא
+ | **C** | ניקוי המפה |
+ | **R** | היפוך כיוון המסלול |
+ | **B** | הצגת/הסתרת מסלול חזור (שני כיוונים). **כבוי כברירת מחדל** — היכולת מושבתת, ולכן המקש אינו עושה דבר ואינו מופיע בדף המקשים שבאפליקציה עד שמפעילים את <span dir="ltr"><code>featureShowReturn</code></span>. |
+-| **Esc** | סגירת חלון חיפוש / חלון; ביטול בחירה; יציאה ממצבי הוספה |
++| **Esc** | ניקוי החיפוש בלי להסתירו; סגירת חלונית מידע או חלון; ביטול בחירה; יציאה ממצבי הוספה |
+ | **D** | מחיקת נקודת ציון או הערה שנבחרו (לא מוחק קריאת תדר לבדה) |
+ | **X** | מחיקת קריאת שינוי תדר בנקודת הציון שנבחרה |
+ | **Z** | הוספת קריאת שינוי תדר לנקודת ציון מתאימה |
+diff --git a/Keyboard-and-Touch.md b/Keyboard-and-Touch.md
+index badaab4..a7b3664 100644
+--- a/Keyboard-and-Touch.md
++++ b/Keyboard-and-Touch.md
+@@ -52,7 +52,7 @@ Touch parity matches mouse for selection, dragging, pan, zoom, and toolbar contr
+ 
+ | Key | Action |
+ | --- | --- |
+-| **Ctrl-F / Cmd-F** | Reveal the nav-WP search and put the caret in it. Hijacks the browser's native find-in-page — the map has no text to find anyway. On a desktop the search is a **permanent panel** under the menu bar (left in English, right in Hebrew) that you can drag anywhere; Ctrl-F never dismisses it, since pressing it while already in the box means "search". Dismiss with the ✕, or Escape twice — the first Escape clears the query, and only a press with nothing left to clear puts the panel away. The choice is remembered (`navaid.searchShown`). On a phone there is no room for a standing panel, so it stays the centred overlay Ctrl-F / the 🔍 button summons. |
++| **Ctrl-F / Cmd-F** | Reveal the nav-WP search and put the caret in it. On a desktop the search is a draggable panel under the menu bar (left in English, right in Hebrew); on a phone it is a summoned overlay. Escape clears the query, results and examples but keeps the search bar visible, even when already empty. Only ✕ dismisses the bar. If Enter opened a point's inspector, Escape also closes that inspector, even after scrolling it while focus remains in search. |
+ | **?** | Open the in-app **keyboard-shortcuts cheat-sheet** (also reachable via the **Shortcuts** button in the toolbar footer). |
+ | **Ctrl-Z / Cmd-Z** | Undo the last edit, move, or delete. |
+ | **M** | Toggle the magnifying-glass loupe (zoomed view at the cursor). |
+@@ -63,7 +63,7 @@ Touch parity matches mouse for selection, dragging, pan, zoom, and toolbar contr
+ | **C** | Clear the map (all waypoints and notes). |
+ | **R** | Reverse route direction. |
+ | **B** | Toggle show return path (both directions). **Off by default** — the feature ships disabled, so this key does nothing and is not listed in the in-app cheat-sheet until `featureShowReturn` is turned on. |
+-| **Esc** | Close the search overlay / modal; clear current selection / inspector; leave **Add** modes. |
++| **Esc** | Clear search without hiding its bar; close a modal or the current selection's inspector; leave **Add** modes. |
+ | **D** | Delete the selected waypoint or note (never deletes a frequency-change callout alone). |
+ | **X** | Delete the frequency-change callout on the selected waypoint. |
+ | **Z** | Add a frequency-change callout to the selected comm-change waypoint. |
+-- 
+2.33.0
+
