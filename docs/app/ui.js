@@ -2773,7 +2773,8 @@ async function buildRouteFromQuery(raw) {
   syncLegs();
   if (typeof seedCommChangeNotes === 'function') seedCommChangeNotes();
   wpSearch.value = '';
-  hideSearchOverlay();
+  if (searchDocked()) closeSearch();
+  else hideSearchOverlay();
   showInspector();
   fitView();
   // Auto-route applies to a search-built route too: typing "LLHZ RIDNG" is the same
@@ -4439,15 +4440,13 @@ wpSearch.addEventListener('keydown', e => {
     const first = wpResults.querySelector('.wp-search-item');
     if (first) first.click();
   } else if (e.key === 'Escape') {
-    // Route through escapeSearch, not straight to hide: docked, the first
-    // Escape clears the query and only a second one puts the panel away.
-    // Stop it here — the document-level handler runs the same function, and
-    // letting it bubble applied both steps to one keypress.
+    // Escape clears search without dismissing its bar. Stop it here so the
+    // document-level shortcut does not also handle this input keypress.
     e.stopPropagation();
     escapeSearch();
   }
 });
-// Floating search overlay — Ctrl/Cmd-F opens it, Escape or ✕ closes it. The
+// Floating search overlay — Ctrl/Cmd-F opens it, ✕ closes it, Escape clears it. The
 // search input moved out of the toolbar Build section so it no longer
 // requires the section to be expanded.
 const searchOverlay = document.getElementById('search-overlay');
@@ -4476,16 +4475,12 @@ function hideSearchOverlay() {
   // of the desktop furniture, so whether it is up must survive a reload.
   if (searchDocked()) setSearchDockShown(false);
 }
-// Escape while docked clears the query first and only dismisses the panel on a
-// second press with nothing left to clear — so the common case (wrong search
-// term) does not cost the panel.
+// Escape clears the query/results but never dismisses the search bar or writes
+// its visibility preference. Explicit dismissal belongs to the close button.
 function escapeSearch() {
-  if (searchDocked() && wpSearch.value) {
-    closeSearch();
-    wpSearch.value = '';
-    return;
-  }
-  hideSearchOverlay();
+  closeSearch();
+  wpSearch.value = '';
+  setSearchExamples(false);
 }
 document.getElementById('search-trigger').onclick = revealSearchOverlay;
 document.getElementById('search-close').onclick = hideSearchOverlay;
@@ -4577,8 +4572,8 @@ function setSearchExamples(open) {
 
 // Ctrl/Cmd-F and the toolbar button always bring the panel up and put the caret
 // in it — never dismiss it, since Ctrl-F pressed while already in the search box
-// means "search", not "put the search away". Dismissal is the ✕, or Escape with
-// nothing left to clear. Docked, whether it is up is remembered under
+// means "search", not "put the search away". Dismissal is the ✕. Docked,
+// whether it is up is remembered under
 // navaid.searchShown; mobile keeps its summoned overlay.
 const SEARCH_SHOWN_KEY = 'navaid.searchShown';
 function searchDockShown() {
