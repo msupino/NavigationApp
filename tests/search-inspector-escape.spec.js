@@ -1,5 +1,18 @@
 const { test, expect } = require('./_setup');
 
+test.beforeEach(async ({ page }) => {
+  await page.addInitScript(() => {
+    window.inspectorWheelSamples = 0;
+    window.addEventListener('wheel', () => window.inspectorWheelSamples++, { capture: true });
+  });
+});
+
+async function wheelSample(page, delta) {
+  const samples = await page.evaluate(() => window.inspectorWheelSamples);
+  await page.mouse.wheel(0, delta);
+  await expect.poll(() => page.evaluate(() => window.inspectorWheelSamples)).toBeGreaterThan(samples);
+}
+
 async function scrollInspector(page, delta) {
   await page.locator('#inspector').evaluate(el => {
     el.dataset.wheelReceived = '0';
@@ -54,18 +67,24 @@ for (const lang of ['en', 'he']) {
       await page.waitForFunction(() => !map._animatingZoom && !map._panAnim?._inProgress);
       const zoom = await page.evaluate(() => map.getZoom());
       await page.locator('#insp-body').hover({ position: { x: 100, y: 70 } });
+      // Runner latency must not turn a continuous gesture into a real 250 ms quiet gap.
+      await page.evaluate(() => {
+        let gestureTime = performance.now();
+        Object.defineProperty(performance, 'now', { configurable: true, value: () => gestureTime });
+        window.advanceInspectorGesture = ms => { gestureTime += ms; };
+      });
       await scrollInspector(page, delta);
       await page.keyboard.press('Escape');
       await expect(page.locator('#inspector')).toBeHidden();
       // A trackpad's remaining samples hit the newly exposed map at the same pointer position.
       for (let i = 0; i < 5; i++) {
-        await page.mouse.wheel(0, delta / 2);
-        await page.waitForTimeout(70);
+        await page.evaluate(() => window.advanceInspectorGesture(70));
+        await wheelSample(page, delta / 2);
       }
       await page.waitForTimeout(150);
       expect(await page.evaluate(() => map.getZoom())).toBe(zoom);
-      await page.waitForTimeout(400);
-      await page.mouse.wheel(0, delta);
+      await page.evaluate(() => window.advanceInspectorGesture(400));
+      await wheelSample(page, delta);
       await expect.poll(() => page.evaluate(() => map.getZoom())).not.toBe(zoom);
     });
   }
