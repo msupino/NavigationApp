@@ -37,7 +37,10 @@ function hitNote(px, py) {
       const dy = qy / (r.h / 2);
       if (dx * dx + dy * dy <= 1) return i;
     } else if (Math.abs(qx) <= r.w / 2 && Math.abs(qy) <= r.h / 2) {
-      return i;
+      // The pointed end narrows toward its tip; its empty corners are map,
+      // not a draggable part of the note. qx/qy already account for rotation.
+      if (!r.arrowHead || qx <= r.w / 2 - r.arrowHead ||
+          Math.abs(qy) <= (r.w / 2 - qx) * r.h / (2 * r.arrowHead)) return i;
     }
   }
   return -1;
@@ -4149,7 +4152,7 @@ function showInspector() {
       // omitted; only the label + colour apply.
       if (!note.rp) {
         body.appendChild(selectRow(S.shape, note.shape || 'rect',
-          [['rect', S.shapeRect], ['oval', S.shapeOval]], v => {
+          [['rect', S.shapeRect], ['oval', S.shapeOval], ['arrow', S.shapeArrow]], v => {
             note.shape = v; draw();
           }));
       }
@@ -6673,4 +6676,3 @@ function fitToScreen() {
   }
   fitView();
 }
-

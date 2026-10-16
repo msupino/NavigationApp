@@ -472,7 +472,7 @@ function _vKind(value) {
 }
 // Push an error onto `errs` if `obj[key]` is missing or wrong-typed.
 // `type` is one of: 'number' | 'string' | 'object' | 'array' | 'shape'.
-// 'number' rejects NaN/Infinity; 'shape' allows exactly 'rect' | 'oval'.
+// 'number' rejects NaN/Infinity; 'shape' allows 'rect' | 'oval' | 'arrow'.
 function _v(obj, key, type, path, errs) {
   if (!obj || typeof obj !== 'object' || !(key in obj)) {
     errs.push(path + '.' + key + ': missing');
@@ -501,8 +501,8 @@ function _v(obj, key, type, path, errs) {
       return false;
     }
   } else if (type === 'shape') {
-    if (v !== 'rect' && v !== 'oval') {
-      errs.push(path + '.' + key + ': expected "rect" or "oval", got ' +
+    if (v !== 'rect' && v !== 'oval' && v !== 'arrow') {
+      errs.push(path + '.' + key + ': expected "rect", "oval" or "arrow", got ' +
                 JSON.stringify(v));
       return false;
     }

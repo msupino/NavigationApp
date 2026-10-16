@@ -72,6 +72,12 @@ Patterns:
 
 ## Route And Leg UI
 
+Free-text notes offer Rectangle, Oval and Arrow in their inspector. Arrow is the
+cumulative-time marker's pointed box, with text centred in its rectangular
+body. The existing Rotation and Size controls set its direction and scale;
+colour and print/export follow the ordinary note path. Identification-point
+notes remain fixed ovals and frequency-change callouts retain their own editor.
+
 Creating a route from typed waypoint codes clears the search query and results.
 The docked desktop search stays open and does not save a dismissal preference;
 the summoned mobile search closes after successful route creation.
