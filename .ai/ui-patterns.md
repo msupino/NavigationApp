@@ -87,6 +87,10 @@ it explicitly; only that dismissal updates the docked visibility preference.
 If a search result opened an inspector while focus stayed in the search input,
 Escape also reaches the inspector dismissal handler. Scrolling the inspector
 does not transfer keyboard focus back from search.
+When the inspector closes during a wheel gesture, trailing samples over the
+newly exposed map are consumed until a 250 ms quiet gap. A deliberate pointer
+move or press on the map starts a new interaction immediately; wheel zoom is
+never disabled globally.
 
 Route leg markers are called kites in code/comments. They store offsets in
 leg-relative coordinates.

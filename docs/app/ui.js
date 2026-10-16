@@ -11083,6 +11083,33 @@ function clampInspToViewport() {
   });
 })();
 
+(function keepInspectorWheelGesture() {
+  const insp = document.getElementById('inspector');
+  const mapEl = document.getElementById('map');
+  let lastWheel = -Infinity;
+  let pointerX = 0, pointerY = 0;
+  // Closing the sheet exposes the map to the same trackpad gesture's remaining samples.
+  window.addEventListener('wheel', e => {
+    const now = performance.now();
+    if (insp.contains(e.target)) {
+      lastWheel = now;
+      pointerX = e.clientX; pointerY = e.clientY;
+    } else if (insp.classList.contains('hidden') && mapEl.contains(e.target) && now - lastWheel < 250) {
+      lastWheel = now;
+      e.preventDefault();
+      e.stopImmediatePropagation();
+    }
+  }, { capture: true, passive: false });
+  window.addEventListener('pointermove', e => {
+    if (insp.classList.contains('hidden') && mapEl.contains(e.target) &&
+        Math.hypot(e.clientX - pointerX, e.clientY - pointerY) > 8) lastWheel = -Infinity;
+    pointerX = e.clientX; pointerY = e.clientY;
+  }, { capture: true, passive: true });
+  window.addEventListener('pointerdown', e => {
+    if (mapEl.contains(e.target)) lastWheel = -Infinity;
+  }, { capture: true, passive: true });
+})();
+
 document.getElementById('insp-close').onclick = () => {
   state.selected = null;
   showInspector(); draw();
