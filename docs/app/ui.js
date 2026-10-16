@@ -4440,9 +4440,8 @@ wpSearch.addEventListener('keydown', e => {
     const first = wpResults.querySelector('.wp-search-item');
     if (first) first.click();
   } else if (e.key === 'Escape') {
-    // Escape clears search without dismissing its bar. Stop it here so the
-    // document-level shortcut does not also handle this input keypress.
-    e.stopPropagation();
+    // Keyboard-opened inspectors still own Escape while focus remains in search.
+    if (!state.selected) e.stopPropagation();
     escapeSearch();
   }
 });
@@ -11082,6 +11081,33 @@ function clampInspToViewport() {
     get() { return d.get.call(this); },
     set(v) { d.set.call(this, v); this.title = v == null ? '' : String(v); },
   });
+})();
+
+(function keepInspectorWheelGesture() {
+  const insp = document.getElementById('inspector');
+  const mapEl = document.getElementById('map');
+  let lastWheel = -Infinity;
+  let pointerX = 0, pointerY = 0;
+  // Closing the sheet exposes the map to the same trackpad gesture's remaining samples.
+  window.addEventListener('wheel', e => {
+    const now = performance.now();
+    if (insp.contains(e.target)) {
+      lastWheel = now;
+      pointerX = e.clientX; pointerY = e.clientY;
+    } else if (insp.classList.contains('hidden') && mapEl.contains(e.target) && now - lastWheel < 250) {
+      lastWheel = now;
+      e.preventDefault();
+      e.stopImmediatePropagation();
+    }
+  }, { capture: true, passive: false });
+  window.addEventListener('pointermove', e => {
+    if (insp.classList.contains('hidden') && mapEl.contains(e.target) &&
+        Math.hypot(e.clientX - pointerX, e.clientY - pointerY) > 8) lastWheel = -Infinity;
+    pointerX = e.clientX; pointerY = e.clientY;
+  }, { capture: true, passive: true });
+  window.addEventListener('pointerdown', e => {
+    if (mapEl.contains(e.target)) lastWheel = -Infinity;
+  }, { capture: true, passive: true });
 })();
 
 document.getElementById('insp-close').onclick = () => {

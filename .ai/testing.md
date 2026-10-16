@@ -43,6 +43,14 @@ BASE_URL=http://127.0.0.1:8000 npm test
 
 Stop the server before finishing.
 
+Wheel commands return before the browser necessarily delivers the event. Tests
+that dismiss a panel during scrolling must observe its first `wheel` event
+before closing it; otherwise they may start a map gesture instead of testing
+the continuation of an inspector gesture (`search-inspector-escape.spec.js`).
+Tests of the 250 ms wheel-gesture quiet gap control `performance.now()` and
+wait for delivery of every wheel sample. Real waits on a busy runner can exceed
+the gap and correctly start a new map gesture instead of continuing the old one.
+
 ## Suite Map
 
 Use this map to choose focused coverage:
