@@ -156,6 +156,34 @@ python3 scripts/build_terrain.py /path/to/hgt --out docs/data/terrain.json
 
 ## BYOP PDFs
 
+Haifa's CVFR overlay (`cvfr-img/LLHA_cvfr.png`) is cropped from
+`byop/LLHA_airport_Annex Gimel.pdf` (CVFR entry/exit routes), not Annex Daled
+(low-altitude entry/exit routes). Regenerate it with
+`python3 scripts/georef-plate.py "docs/byop/LLHA_airport_Annex Gimel.pdf" LLHA --write`.
+Review the green CVFR routes before updating the asset fingerprint in
+`airfields-dataset.spec.js`. The shipped placement uses three rotated corners,
+fitted to 12 printed waypoint-symbol centres in
+`tests/fixtures/llha-cvfr-landmarks.json` against the canonical CVFR graph
+coordinates. A reflected similarity fit (`georef_landmarks` in
+`scripts/georef-plate.py`) preserves the image's proportions and turns it about
+1.06 degrees; do not replace those corners with the automatic north-up
+graticule box. The regression checks the actual Leaflet projected placement
+against every measured symbol (within 0.07 NM).
+
+To recalculate the placement after reviewing a source/waypoint change:
+
+```python
+import importlib.util, json
+spec = importlib.util.spec_from_file_location('georef', 'scripts/georef-plate.py')
+georef = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(georef)
+nodes = json.load(open('docs/data/cvfr-route-graph.json'))['nodes']
+anchors = json.load(open('tests/fixtures/llha-cvfr-landmarks.json'))['landmarks']
+marks = [(nodes[p['name']]['lat'], nodes[p['name']]['lng'], p['x'], p['y'])
+         for p in anchors]
+print(georef.georef_landmarks('docs/cvfr-img/LLHA_cvfr.png', marks, None))
+```
+
 `docs/byop/` is intentionally public and stable. Deploy keeps one production
 copy and staging resolves plates against that shared root URL.
 
