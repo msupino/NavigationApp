@@ -1,6 +1,6 @@
 // @ts-check
 // Coverage for the floating search overlay (#194): Ctrl/Cmd-F entry, the
-// toolbar trigger button, ✕ + Escape close, click-outside, result list
+// toolbar trigger button, ✕ close, Escape clear, click-outside, result list
 // rendering, and click-to-jump behaviour.
 const { test, expect } = require('./_setup');
 
@@ -60,13 +60,16 @@ test.describe('Floating search overlay (#194)', () => {
     await expect(page.locator('#search-overlay')).not.toHaveClass(/hidden/);
   });
 
-  test('Escape closes the overlay and clears the input', async ({ page }) => {
+  test('Escape clears mobile search without closing the bar, even when empty', async ({ page }) => {
     await bootMobile(page);
     await page.evaluate(() => showSearchOverlay());
     await page.locator('#wp-search').fill('LLBG');
     await page.keyboard.press('Escape');
-    await expect(page.locator('#search-overlay')).toHaveClass(/hidden/);
+    await expect(page.locator('#search-overlay')).not.toHaveClass(/hidden/);
     expect(await page.locator('#wp-search').inputValue()).toBe('');
+    await expect(page.locator('#wp-search-results')).toHaveClass(/hidden/);
+    await page.keyboard.press('Escape');
+    await expect(page.locator('#search-overlay')).not.toHaveClass(/hidden/);
   });
 
   test('✕ close button hides the overlay', async ({ page }) => {

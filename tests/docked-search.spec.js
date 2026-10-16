@@ -91,7 +91,7 @@ test('crossing the breakpoint docks and undocks', async ({ page }) => {
   expect((await geom(page)).hidden).toBe(false);
 });
 
-test('Escape clears the query first, and only dismisses on a second press', async ({ page }) => {
+test('Escape clears desktop search but only the close button dismisses it', async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 800 });
   await page.goto('?lang=en&nogist');
   await page.waitForFunction(() => typeof searchDocked === 'function');
@@ -101,7 +101,13 @@ test('Escape clears the query first, and only dismisses on a second press', asyn
   await expect(page.locator('#wp-search')).toHaveValue('');
   expect((await geom(page)).hidden).toBe(false);   // query gone, panel stays
   await page.keyboard.press('Escape');
-  expect((await geom(page)).hidden).toBe(true);    // nothing left to clear -> dismissed
+  expect((await geom(page)).hidden).toBe(false);
+  await page.locator('#wp-search').blur();
+  await page.keyboard.press('Escape');
+  expect((await geom(page)).hidden).toBe(false);  // global Escape also leaves it open
+  expect(await page.evaluate(() => localStorage.getItem('navaid.searchShown'))).toBeNull();
+  await page.click('#search-close');
+  expect((await geom(page)).hidden).toBe(true);
 });
 
 test('Ctrl-F always reveals and focuses, never dismisses', async ({ page }) => {
