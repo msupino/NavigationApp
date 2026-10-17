@@ -63,7 +63,7 @@ jobs:
                 // Radware block page returns 200, so it's caught by the text
                 // checks at the call sites instead.
                 status: 200,
-                text: execFileSync('curl', ['-sS', '-f', '-m', '30', '-A', UA, '-b', JAR, '-c', JAR,
+                text: execFileSync('curl', ['-sS','-k', '-f', '-m', '30', '-A', UA, '-b', JAR, '-c', JAR,
                   '-H', 'Referer: ' + BASE + '/maiNotam.aspx',
                   '-H', 'Accept: text/html,application/xhtml+xml', url],
                   { encoding: 'utf8', maxBuffer: 20 * 1024 * 1024 }),
