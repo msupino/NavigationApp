@@ -4343,14 +4343,12 @@ function showFlightPlan() {
     if (!whenWrap.isConnected) { dropWhenListeners(); return; }
     if (whenWrap.open && !whenWrap.contains(e.target)) whenWrap.open = false;
   };
-  whenWrap.addEventListener('toggle', () => {
-    if (whenWrap.open) {
-      window.addEventListener('keydown', onWhenKey, true);
-      document.addEventListener('pointerdown', onWhenOutside, true);
-    } else {
-      dropWhenListeners();
-    }
-  });
+  // Registered once, for as long as the popover is on the page: each acts only while it is
+  // open. Adding them on 'toggle' and dropping them on its close lost the Escape after an X
+  // and a quick reopen -- toggle events are queued, and the close's arrived after the reopen,
+  // so the plan's own Escape closed the whole plan.
+  window.addEventListener('keydown', onWhenKey, true);
+  document.addEventListener('pointerdown', onWhenOutside, true);
   whenWrap.appendChild(whenMenu);
   // Beside the popover, always in view: last light, amber with a moon when the arrival is after it.
   const lastLightShort = document.createElement('span');

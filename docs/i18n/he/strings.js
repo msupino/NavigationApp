@@ -1136,7 +1136,7 @@ window.S = {
   bleGpsFailed: 'GPS בבלוטות׳: החיבור נכשל',
   bleGpsLost: 'GPS בבלוטות׳ התנתק: חוזרים ל-GPS של הטלפון',
   whyBleGpsApp: 'GPS בבלוטות׳ עובד באפליקציית האנדרואיד',
-  whyBleGpsIos: 'GPS בבלוטות׳ עדיין לא זמין באייפון ובאייפד',
+  whyBleGpsIos: 'GPS בבלוטות׳ דורש את הגרסה העדכנית של האפליקציה',
   gpsStatusSearching: 'GPS: מחפש לוויינים…',
   gpsStatusNoFix: function (s) { return 'GPS: אין מיקום כבר ' + s + ' שנ׳'; },
   gpsStatusTitle: 'איכות המיקום — הקישו לפרטים',

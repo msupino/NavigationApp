@@ -2620,7 +2620,7 @@ window.S = Object.assign({
   bleGpsFailed: 'Bluetooth GPS: could not connect',
   bleGpsLost: 'Bluetooth GPS disconnected: using the phone\u2019s GPS',
   whyBleGpsApp: 'Bluetooth GPS works in the Android app',
-  whyBleGpsIos: 'Bluetooth GPS is not available on iPhone and iPad yet',
+  whyBleGpsIos: 'Bluetooth GPS needs the latest version of the app',
   gpsStatusSearching: 'GPS: searching for satellites…',
   gpsStatusNoFix: function (s) { return 'GPS: no fix for ' + s + ' s'; },
   gpsStatusTitle: 'Position quality — tap for details',
