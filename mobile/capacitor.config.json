@@ -11,7 +11,14 @@
       "@capacitor/local-notifications",
       "@capgo/capacitor-social-login",
       "@capgo/capacitor-updater",
-      "@capacitor/network"
+      "@capacitor/network",
+      "@capacitor-community/bluetooth-le",
+      "@capacitor-community/keep-awake",
+      "@capacitor-community/screen-brightness",
+      "@capacitor/app",
+      "@capacitor/device",
+      "@capacitor/haptics",
+      "@capacitor/status-bar"
     ]
   },
   "plugins": {
