@@ -1627,7 +1627,7 @@ window.S = Object.assign({
   tbTourReplay: 'Show the tour',
   tourNext: 'Next', tourBack: 'Back', tourSkip: 'Skip', tourDone: 'Done',
   tourCheckTitle: 'Check the route',
-  tourCheckText: 'Airspace, NOTAMs, SIGMET/AIRMET and ceiling against the route, at the time you plan to fly it. Dimmed until there is a route.',
+  tourCheckText: 'Airspace, NOTAMs, SIGMET/AIRMET and ceiling against the route, at the time you plan to fly it. Dimmed until there is a route. Above it, Layers switches the chart and its overlays.',
   tourEditTitle: 'Edit the route',
   tourEditText: 'Add a waypoint or a note, undo, clear the map; [ ] fits the page or the route to the screen. Tap a lit button again to stop.',
   tourMeasureTitle: 'Measure',
