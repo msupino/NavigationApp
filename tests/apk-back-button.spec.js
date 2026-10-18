@@ -224,3 +224,39 @@ test('Back with the phone Menu open closes the menu, and does not offer to quit'
   // Nothing left open now: the next press is the one that asks.
   expect(await page.evaluate(() => backButtonStep())).toBe(false);
 });
+
+test('Back closes the ETD popover before the flight plan, then the plan', async ({ page }) => {
+  await page.goto('?lang=en&nogist');
+  await page.waitForFunction(() => typeof backButtonStep === 'function' && typeof showFlightPlan === 'function');
+  await page.evaluate(() => { state.waypoints = [{ lat: 32.1, lng: 34.8, name: 'A' }, { lat: 32.3, lng: 34.9, name: 'B' }]; syncLegs(); draw(); showFlightPlan(); });
+  await page.locator('details.fp-when summary').click();
+  expect(await page.evaluate(() => backButtonStep())).toBe(true);
+  expect(await page.locator('details.fp-when[open]').count()).toBe(0);
+  await expect(page.locator('.modal-back.flight-plan')).toHaveCount(1);
+  expect(await page.evaluate(() => backButtonStep())).toBe(true);
+  await expect(page.locator('.modal-back.flight-plan')).toHaveCount(0);
+});
+
+test('Back leaves the measure tool and closes the More menu instead of asking to quit', async ({ page }) => {
+  await page.goto('?lang=en&nogist');
+  await page.waitForFunction(() => typeof backButtonStep === 'function' && typeof measureToggle === 'function');
+  await page.evaluate(() => { const m = document.getElementById('footer-more-menu'); if (m) m.hidden = false; });
+  if (await page.locator('#footer-more-menu').count()) {
+    expect(await page.evaluate(() => backButtonStep())).toBe(true);
+    expect(await page.evaluate(() => document.getElementById('footer-more-menu').hidden)).toBe(true);
+  }
+  await page.evaluate(() => { measureToggle(true); });
+  if (await page.evaluate(() => measureOn())) {
+    expect(await page.evaluate(() => backButtonStep())).toBe(true);
+    expect(await page.evaluate(() => measureOn())).toBe(false);
+  }
+});
+
+test('Back ends the tour', async ({ page }) => {
+  await page.goto('?lang=en&nogist');
+  await page.waitForFunction(() => typeof backButtonStep === 'function' && window.NavAid && NavAid.tour);
+  await page.evaluate(() => NavAid.tour.start());
+  await expect(page.locator('#map-tour')).toHaveCount(1);
+  expect(await page.evaluate(() => backButtonStep())).toBe(true);
+  await expect(page.locator('#map-tour')).toHaveCount(0);
+});

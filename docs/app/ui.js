@@ -12364,6 +12364,12 @@ function checkApkForUpdate(opts) {
 function backButtonStep() {
   // Innermost first, the way the pilot stacked them: a plate over the charts list over the
   // map. Each returns true when it consumed the press.
+  const shown = (el) => !!(el && !el.classList.contains('hidden') && !el.hidden && el.getClientRects().length);
+  // The tour sits over everything: Back ends it, as its own Skip does.
+  if (document.getElementById('map-tour') && window.NavAid && NavAid.tour) { NavAid.tour.close(); return true; }
+  // A popover inside a panel closes before the panel (the flight plan's departure / Columns).
+  const pop = document.querySelector('details.fp-when[open], details.fp-columns[open]');
+  if (pop) { pop.open = false; return true; }
   const modals = Array.from(document.querySelectorAll('.modal-back'));
   const top = modals.reverse().find(el => !el.hidden &&
     getComputedStyle(el).display !== 'none' && getComputedStyle(el).visibility !== 'hidden');
@@ -12376,6 +12382,13 @@ function backButtonStep() {
     closeFlightPlan();
     return true;
   }
+  // Windows that are not .modal-back backdrops: the simulator, the assistant, the More menu.
+  const sim = document.getElementById('sim-modal');
+  if (shown(sim)) { const x = document.getElementById('sim-modal-close'); if (x) x.click(); else sim.classList.add('hidden'); return true; }
+  const ai = document.querySelector('.assistant-panel');
+  if (shown(ai)) { const fab = document.querySelector('.assistant-fab'); if (fab) fab.click(); else ai.classList.add('hidden'); return true; }
+  const more = document.getElementById('footer-more-menu');
+  if (more && !more.hidden) { more.hidden = true; return true; }
   const insp = document.getElementById('inspector');
   if (insp && !insp.classList.contains('hidden')) {
     state.selected = null;
@@ -12383,6 +12396,14 @@ function backButtonStep() {
     if (typeof draw === 'function') draw();
     return true;
   }
+  // The measure tool, like add / note: a map tool to leave before leaving the app.
+  if (typeof measureOn === 'function' && measureOn() && typeof measureToggle === 'function') {
+    measureToggle(false);
+    return true;
+  }
+  // The search results list under the search bar (the bar itself stays).
+  const results = document.getElementById('wp-results');
+  if (shown(results) && typeof closeSearch === 'function') { closeSearch(); return true; }
   if (typeof state !== 'undefined' && (state.mode === 'add' || state.mode === 'note')) {
     setMode(null);
     if (typeof draw === 'function') draw();
