@@ -179,5 +179,5 @@ test('iOS app: the dimmed Bluetooth GPS button does not point to Android', async
   await expect(btn).toHaveAttribute('aria-disabled', 'true');
   const why = await btn.getAttribute('data-why');
   expect(why).not.toMatch(/Android/i);
-  expect(why).toMatch(/iPhone and iPad/);
+  expect(why).toMatch(/latest version of the app/);
 });

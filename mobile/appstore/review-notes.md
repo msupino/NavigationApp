@@ -24,11 +24,13 @@ pilot's own routes in their own Google Drive; it creates no NavAid account and u
    from public aviation feeds.
 
 **Location**
-Foreground only ("While Using the App"). It draws the aircraft on the chart and records a
-track when the pilot starts a recording. There is no background location on iOS in this
-build. Position sharing uploads only when the pilot starts a "Follow me" share, which publishes an
-end-to-end encrypted position to a link the pilot chooses to send; the key travels only in
-the link's fragment and is never sent to the relay.
+"While Using the App" only. It draws the aircraft on the chart and records the flight track.
+While the pilot has a recording or the live position on, it keeps running with the screen
+locked (background mode "location", with the blue location indicator), so a track is not lost
+when the phone is put away in flight; turning the position off stops it. Position sharing
+uploads only when the pilot starts a "Follow me" share, which publishes an end-to-end
+encrypted position to a link the pilot chooses to send; the key travels only in the link's
+fragment and is never sent to the relay.
 
 **Data**
 Charts are published by the Israeli CAA and hosted for the app. Weather comes from public
@@ -48,9 +50,9 @@ Files leave the app through the native share sheet. The native simulator discove
 can connect to a compatible X-Plane bridge on the same Wi-Fi network.
 
 **Native features**
-GPS position and track recording, the barometer (CoreMotion), offline chart storage, spoken and
-local-notification in-flight alerts, the native share sheet for exports, and Wi-Fi discovery of a
-flight-simulator bridge.
+GPS position and track recording (also with the screen locked), the barometer (CoreMotion), offline chart storage, spoken and
+local-notification in-flight alerts, the native share sheet for exports, the system print sheet, Bluetooth GPS receivers, ADS-B
+traffic from a Wi-Fi receiver (GDL90), and Wi-Fi discovery of a flight-simulator bridge.
 
 **Content rights**
 CVFR and AIP chart material is published by the Civil Aviation Authority of Israel.
