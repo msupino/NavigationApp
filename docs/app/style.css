@@ -2205,7 +2205,10 @@ body.theme-light .resize-grip {
 .row > input.row-num-narrow:last-child { margin-inline-end: 30px; }
 .vor-radial-row {
   justify-content: flex-start;
-  gap: 10px;
+  /* "VOR Reference" + picker + readout outgrow a default-width inspector: the controls
+     then take a line of their own, at the far edge, instead of pushing the readout out. */
+  flex-wrap: wrap;
+  gap: 4px 10px;
 }
 .vor-radial-row label {
   flex: 0 0 auto;
