@@ -14,18 +14,14 @@ sign-in. Optional Google Drive sync requires connecting a Google account.
    times.
 3. Tap **Plan** (bottom bar) for the navigation log: headings, ETE, fuel and a terrain
    profile.
-4. Tap **Location** to show your position on the chart. Location and track recording ask
-   for location permission when enabled. Declining leaves everything else
-   working.
-5. **Menu → Extra layers** turns on NOTAM, airspace, weather and traffic. These are fetched
-   from public aviation feeds.
-
-**Location**
-Foreground only ("While Using the App"). It draws the aircraft on the chart and records a
-track when the pilot starts a recording. There is no background location on iOS in this
-build. Position sharing uploads only when the pilot starts a "Follow me" share, which publishes an
-end-to-end encrypted position to a link the pilot chooses to send; the key travels only in
-the link's fragment and is never sent to the relay.
+4. Tap **Location**
+"While Using the App" only. It draws the aircraft on the chart and records the flight track.
+While the pilot has a recording or the live position on, it keeps running with the screen
+locked (background mode "location", with the blue location indicator), so a track is not lost
+when the phone is put away in flight; turning the position off stops it. Position sharing
+uploads only when the pilot starts a "Follow me" share, which publishes an end-to-end
+encrypted position to a link the pilot chooses to send; the key travels only in the link's
+fragment and is never sent to the relay.
 
 **Data**
 Charts are published by the Israeli CAA and hosted for the app. Weather comes from public

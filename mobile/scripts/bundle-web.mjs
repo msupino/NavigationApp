@@ -81,6 +81,13 @@ export function remoteConfig() {
         '@capgo/capacitor-social-login',
         '@capgo/capacitor-updater',
         '@capacitor/network',
+        '@capacitor-community/bluetooth-le',
+        '@capacitor-community/keep-awake',
+        '@capacitor-community/screen-brightness',
+        '@capacitor/app',
+        '@capacitor/device',
+        '@capacitor/haptics',
+        '@capacitor/status-bar',
       ],
     },
     // The updater is installed in both modes -- one plugin graph, one thing to get wrong --
