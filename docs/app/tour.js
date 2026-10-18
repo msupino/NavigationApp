@@ -18,7 +18,8 @@
     // whole column read as if checking were an edit too. Fit closes the column, under Clear map.
     { sel: ['.edit-col-ctrl'], k: 'Edit', group: ['#edit-col-add', '#edit-col-note', '#edit-col-undo', '#edit-col-clear', '#edit-col-fit'] },
     // Its own step, right after the buttons that make the route it checks.
-    { sel: ['#edit-col-check'], k: 'Check' },
+    // The Layers button above it joins this step, lit with it.
+    { sel: ['#edit-col-check'], k: 'Check', group: ['#edit-col-layers', '#edit-col-check'] },
     { sel: ['#measure-btn'], k: 'Measure' },
     { sel: ['#edit-lock'], k: 'Lock' },
     // No new steps for new buttons (ten is already plenty): a control joins the step it sits
@@ -95,7 +96,8 @@
     const arrow = root.querySelector('.tour-arrow');
     const vw = innerWidth, vh = innerHeight, m = 12;
     bubble.style.left = bubble.style.top = '0px';
-    const bw = bubble.offsetWidth, bh = bubble.offsetHeight;
+    bubble.style.width = '';
+    let bw = bubble.offsetWidth, bh = bubble.offsetHeight;
     if (!el) {
       // A step about the map itself: no hole, the bubble in the middle.
       spot.hidden = true; arrow.hidden = true;
@@ -121,15 +123,29 @@
     const byRoom = Object.keys(room).sort((a, b) => room[b] - room[a]);
     // Nowhere fits (a tall group on a short phone): the side short by the LEAST, where the clamp
     // below tucks the bubble against the control instead of over it.
-    const side = byRoom.find((s) => room[s] >= need[s])
-      || Object.keys(room).sort((a, b) => (room[b] - need[b]) - (room[a] - need[a]))[0];
+    let side = byRoom.find((s) => room[s] >= need[s]);
+    if (!side) {
+      // Nowhere fits as it is. A side column (the edit column on a short phone) has the map
+      // beside it: the bubble narrows to the room there, close to the column, rather than being
+      // clamped back over the very buttons it is about.
+      const sideways = room.right >= room.left ? 'right' : 'left';
+      const narrow = room[sideways] - 14 - m;
+      if (narrow >= 220) {
+        bubble.style.width = Math.floor(narrow) + 'px';
+        bw = bubble.offsetWidth; bh = bubble.offsetHeight;
+        need[sideways] = bw + 14 + m;
+        if (bh + 2 * m <= vh) side = sideways;
+      }
+    }
+    side = side || Object.keys(room).sort((a, b) => (room[b] - need[b]) - (room[a] - need[a]))[0];
+    const sideGap = room[side] >= bw + gap + m ? gap : 14;
     let x, y;
     if (side === 'below' || side === 'above') {
       x = r.left + r.width / 2 - bw / 2;
       y = side === 'below' ? r.bottom + gap : r.top - gap - bh;
     } else {
       y = r.top + r.height / 2 - bh / 2;
-      x = side === 'right' ? r.right + gap : r.left - gap - bw;
+      x = side === 'right' ? r.right + sideGap : r.left - sideGap - bw;
     }
     x = Math.max(m, Math.min(vw - bw - m, x));
     y = Math.max(m, Math.min(vh - bh - m, y));
