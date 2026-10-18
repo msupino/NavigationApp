@@ -26,6 +26,15 @@ layers, airfield plates, and live aviation feeds require a connection. Plates re
 Online aviation data refreshes on its own. The app's own JavaScript is frozen in the binary
 -- unless a web bundle is published, below.
 
+## From GitHub (no Mac)
+
+`.github/workflows/ios-testflight.yml` does all of the above on a macOS runner: embed,
+archive with automatic signing, verify, and upload to App Store Connect. Run it from
+Actions -> **iOS TestFlight** -> Run workflow, with the marketing version. The build number is
+the run number. It needs four repository secrets, listed at the top of the workflow
+(an App Store Connect API key with the App Manager role, and the team ID), and the app
+record for `org.supino.navaid` created in App Store Connect first.
+
 ## Updating the web app without a submission
 
 App Review guideline 2.5.2 permits updating the *interpreted* code a WebView runs -- HTML,
