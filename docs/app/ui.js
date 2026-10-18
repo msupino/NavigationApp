@@ -1512,7 +1512,7 @@ editColCtrl.addTo(map);
 // select, each layer's checkbox -- so the gist, the APK-only rules and each layer's own loading
 // stay in one place, and the popover reads them again each time it opens. A layer the gist has
 // taken away is not offered; one this device cannot show is dimmed, saying why.
-const QUICK_LAYERS = ['notam-cb', 'airspace-cb', 'sigmet-cb', 'airmet-cb', 'show-wind-cb', 'traffic-cb', 'plate-enabled-cb'];
+const QUICK_LAYERS = ['notam-cb', 'airspace-cb', 'sigmet-cb', 'airmet-cb', 'show-wind-cb', 'surface-wx-cb', 'traffic-cb', 'plate-enabled-cb'];
 function quickLayersOpen() { return !!document.getElementById('quick-layers'); }
 function closeQuickLayers() {
   const p = document.getElementById('quick-layers');
@@ -7376,11 +7376,144 @@ if (windDepartSlider) {
   if (cb.checked) enable();
 }());
 
+// The surface weather layer lives in app/surface-wx.js; this is its switch and its field
+// picker. One batched fetch on switch-on; the shared slider re-samples what was fetched.
+(function surfaceWxControl() {
+  const cb = document.getElementById('surface-wx-cb');
+  if (!cb) return;
+  const statusEl = document.getElementById('surface-wx-status');
+  const timeSlider = document.getElementById('surface-wx-time');
+  const fieldsEl = document.getElementById('surface-wx-controls');
+  const legendEl = document.getElementById('surface-wx-legend');
+  const KEY = 'navaid.surfaceWx';
+  const sw = () => (window.NavAid && window.NavAid.surfaceWx) || null;
+  const featureOn = () => typeof tune !== 'function' || tune('featureSurfaceWx') !== false;
+  const NAMES = {
+    spread: ['swxFieldSpread', 'Dew point spread'], dew: ['swxFieldDew', 'Dew point'],
+    temp: ['swxFieldTemp', 'Temperature'], msl: ['swxFieldMsl', 'Sea-level pressure'],
+    base: ['swxFieldBase', 'Cloud base (estimate)'],
+  };
+  const LEGEND = {
+    spread: ['swxLegendSpread', 'Red: spread 2 °C or less, fog and low cloud likely · amber: 4 °C or less'],
+    base: ['swxLegendBase', 'Red: 1,000 ft or lower · amber: 2,000 ft or lower · (T − Td) × 400 ft, an estimate'],
+    dew: ['swxLegendDew', 'Dew point at 2 m, °C'], temp: ['swxLegendTemp', 'Temperature at 2 m, °C'],
+    msl: ['swxLegendMsl', 'Isobars every 2 hPa · H high, L low'],
+  };
+  function say(msg, loading) {
+    if (!statusEl) return;
+    statusEl.classList.toggle('windfield-loading', !!loading);
+    statusEl.style.display = msg ? '' : 'none';
+    statusEl.textContent = msg || '';
+  }
+  // On the map itself, what it shows and for when: the field, the hour, the unit.
+  let chip = null;
+  function updateChip() {
+    const a = sw();
+    const text = a && cb.checked ? a.caption() : '';
+    if (!text) { if (chip) { chip.remove(); chip = null; } return; }
+    if (!chip) {
+      chip = document.createElement('div');
+      chip.id = 'surface-wx-chip';
+      chip.className = 'swx-chip';
+      chip.setAttribute('role', 'status');
+      const host = (typeof map !== 'undefined' && map.getContainer) ? map.getContainer() : document.body;
+      host.appendChild(chip);
+    }
+    chip.textContent = text;
+  }
+  function legend() {
+    const a = sw();
+    const f = a ? a.field() : 'spread';
+    if (legendEl) {
+      legendEl.hidden = !cb.checked;
+      legendEl.textContent = cb.checked ? (S[LEGEND[f][0]] || LEGEND[f][1]) : '';
+    }
+    if (fieldsEl) fieldsEl.hidden = !cb.checked;
+    updateChip();
+  }
+  // The field picker: one of five, as radio buttons in the menu's own style.
+  function buildFields() {
+    if (!fieldsEl) return;
+    const a = sw();
+    let cur = a ? a.field() : null;
+    if (!cur) { try { cur = localStorage.getItem('navaid.surfaceWxField'); } catch (e) { /* storage blocked */ } }
+    cur = NAMES[cur] ? cur : 'spread';
+    fieldsEl.textContent = '';
+    for (const f of Object.keys(NAMES)) {
+      const l = document.createElement('label');
+      l.className = 'navtoggle swx-field';
+      const r = document.createElement('input');
+      r.type = 'radio'; r.name = 'surface-wx-field'; r.value = f; r.checked = f === cur;
+      r.addEventListener('change', () => {
+        // Looked up now, not when the picker was built: ui.js runs before surface-wx.js loads.
+        const m = sw();
+        if (!r.checked || !m) return;
+        m.setField(f);
+        legend();
+        if (typeof draw === 'function') draw();
+      });
+      const s = document.createElement('span');
+      s.textContent = S[NAMES[f][0]] || NAMES[f][1];
+      l.append(r, ' ', s);
+      fieldsEl.appendChild(l);
+    }
+  }
+  function refreshFeature() {
+    const on = featureOn();
+    const row = cb.closest('label');
+    if (row) row.hidden = !on;
+    if (!on) {
+      window.showSurfaceWx = false; cb.checked = false; say('');
+      if (sw()) sw().clear();
+      legend();
+      if (typeof draw === 'function') draw();
+    }
+  }
+  NavAid.refreshSurfaceWxFeature = refreshFeature;
+  let busy = false, gen = 0;
+  async function enable() {
+    const a = sw();
+    if (!a) { say(S.swxErr || 'Surface weather unavailable'); cb.checked = false; return; }
+    busy = true;
+    const mine = ++gen;
+    say(S.swxLoading || 'Loading surface weather…', true);
+    let ok = false;
+    try { ok = await a.enable(); } catch (e) { ok = false; }
+    busy = false;
+    if (mine !== gen || !cb.checked) return;      // superseded, or switched off meanwhile
+    say(ok ? '' : (S.swxErr || 'Surface weather unavailable'));
+    if (!ok) { cb.checked = false; window.showSurfaceWx = false; }
+    legend();
+  }
+  cb.onchange = () => {
+    gen++;
+    window.showSurfaceWx = cb.checked;
+    try { localStorage.setItem(KEY, cb.checked ? '1' : '0'); } catch (e) { /* storage blocked */ }
+    if (cb.checked) { if (!busy) enable(); } else say('');
+    legend();
+    if (typeof draw === 'function') draw();
+  };
+  // Driven by the shared look-ahead: re-sample what was fetched, say the new hour, redraw.
+  if (timeSlider) {
+    timeSlider.addEventListener('input', () => {
+      if (!window.showSurfaceWx) return;
+      legend();
+      if (typeof draw === 'function') draw();
+    });
+  }
+  buildFields();
+  refreshFeature();
+  try { if (lsGet(KEY) === '1' && featureOn()) cb.checked = true; } catch (e) { /* storage blocked */ }
+  window.showSurfaceWx = !!cb.checked;
+  legend();
+  if (cb.checked) enable();
+}());
+
 // --- Unified look-ahead time slider (drives NOTAM + wind-depart + windfield + airfield wind) ---
 (function () {
   const master = document.getElementById('lookahead-time');
   const masterVal = document.getElementById('lookahead-time-val');
-  const fixed = ['notam-time', 'wind-depart', 'windfield-time', 'airfield-wind-time'].map(id => document.getElementById(id));
+  const fixed = ['notam-time', 'wind-depart', 'windfield-time', 'airfield-wind-time', 'surface-wx-time'].map(id => document.getElementById(id));
   // The density-altitude slider is built fresh inside each airfield inspector and destroyed
   // with it, so it cannot be looked up once at boot like the others. Collected at each sync
   // instead: a mirror that exists right now is a mirror that gets the value, and one that
@@ -13142,7 +13275,7 @@ const NavWxTime = (function () {
   };
   // Which layers actually answer to a clock. Plates, airspace and terrain do not, so with
   // only those up the control has nothing to move and says so by going quiet.
-  const TIMED = ['notam-cb', 'airmet-cb', 'show-wind-cb', 'windfield-cb', 'airfield-wind-cb',
+  const TIMED = ['notam-cb', 'airmet-cb', 'show-wind-cb', 'windfield-cb', 'airfield-wind-cb', 'surface-wx-cb',
                  'ims-pwx-cb', 'sigwx-ov-cb'];
   const anyTimedLayer = () => TIMED.some(id => {
     const cb = document.getElementById(id);
@@ -14510,6 +14643,7 @@ NavAid.defaultVisibilityMap = [
   ['show-wind-cb', 'navaid.showWind', 'defaultShowWind'],
   ['windfield-cb', 'navaid.windField', 'defaultWindField'],
   ['airfield-wind-cb', 'navaid.airfieldWind', 'defaultAirfieldWind'],
+  ['surface-wx-cb', 'navaid.surfaceWx', 'defaultSurfaceWx'],
   ['ims-pwx-cb', 'navaid.imsPwx', 'defaultImsPwx'],
   ['sigwx-ov-cb', 'navaid.sigwxOv', 'defaultSigwxOv'],
   ['lsa-cb', 'navaid.showLsaBubbles', 'defaultShowLsaBubbles'],

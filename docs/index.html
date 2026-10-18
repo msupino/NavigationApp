@@ -635,6 +635,17 @@
             <div id="airfield-wind-status" class="wind-fetch-status" style="display:none"></div>
             <div id="airfield-wind-legend" class="af-wind-legend" hidden></div>
           </div>
+          <!-- Surface weather on a grid: dew point spread, dew point, temperature, sea-level
+               pressure or cloud base, one at a time, at the look-ahead time above. -->
+          <div class="tb-group-box">
+            <label class="navtoggle" data-i18n-title="tbSurfaceWxTitle">
+              <input type="checkbox" id="surface-wx-cb"> <span data-i18n="tbSurfaceWx"></span>
+            </label>
+            <input type="range" id="surface-wx-time" min="0" max="24" step="1" value="0" hidden>
+            <div id="surface-wx-controls" class="swx-fields" role="radiogroup" data-i18n-aria="tbSurfaceWxShow" hidden></div>
+            <div id="surface-wx-status" class="wind-fetch-status" style="display:none"></div>
+            <div id="surface-wx-legend" class="af-wind-legend swx-legend" hidden></div>
+          </div>
         </div>
         <div class="tb-layer-frame">
         <div class="tb-frame-title" data-i18n="tbGrpWxCharts"></div>
@@ -1341,6 +1352,7 @@
         'app/followme.js' + v,
         'app/density-altitude.js' + v,
         'app/airfield-wind.js' + v,
+        'app/surface-wx.js' + v,
         'app/airfield-hours.js' + v,
         'app/editor.js' + v,
         'app/assistant.js' + v,

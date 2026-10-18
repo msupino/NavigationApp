@@ -733,6 +733,7 @@ NavAid.tuningDefaults = {
   afWindModelLabelAlpha: { value: 0.75, min: 0.2, max: 1, step: 0.05, label: 'Airfield wind forecast label opacity' },
   afWindObsMaxAgeMin: { value: 0, min: 0, max: 360, step: 5, label: 'Airfield wind: reported wind counts as current for (min, 0 = follow the weather setting)' },
   featureAirfieldWind: { value: true, type: 'bool', label: 'Feature: airfield surface-wind barbs' },
+  featureSurfaceWx: { value: true, type: 'bool', label: 'Feature: surface weather grid (dew point, temperature, MSL pressure, cloud base)' },
   featureMapClock: { value: true, type: 'bool', label: 'Feature: the look-ahead clock on the map' },
   // routecheck.js gates the whole feature on this. It was read from the first commit and
   // never registered, so tune() answered undefined: the guard reads `!== false`, so the
@@ -1014,6 +1015,7 @@ NavAid.tuningDefaults = {
   defaultShowWind: { value: false, type: 'bool', label: 'Default: show wind' },
   defaultWindField: { value: false, type: 'bool', label: 'Default: show wind field' },
   defaultAirfieldWind: { value: false, type: 'bool', label: 'Default: show airfield wind' },
+  defaultSurfaceWx: { value: false, type: 'bool', label: 'Default: show surface weather' },
   defaultImsPwx: { value: false, type: 'bool', label: 'Default: show IMS PWX overlay' },
   defaultSigwxOv: { value: false, type: 'bool', label: 'Default: show SIGWX overlay' },
   defaultShowLsaBubbles: { value: true, type: 'bool', label: 'Default: show LSA' },
@@ -1155,6 +1157,7 @@ NavAid.tuningGroups = [
   { name: 'Map clock', keys: ['featureMapClock', 'hideMapClockWhileLive', 'hideIdleMapClockOnPhone', 'mapClockHoursAhead'] },
   { name: 'Route check', keys: ['featureRouteCheck'] },
   { name: 'Airfield wind', keys: ['afWindBarbLenPx', 'afWindBarbTickPx', 'afWindBarbTickGapPx', 'afWindBarbWidthPx', 'afWindCalmRadiusPx', 'afWindBarbColor', 'afWindOffsetPx', 'afWindLabelFontPx', 'afWindLabelHaloPx', 'afWindMinZoom', 'afWindLabelMinZoom', 'afWindGustDeltaKt', 'afWindRunwayMinKt', 'afWindCalmMaxKt', 'afWindCrossDeadbandKt', 'afWindCacheMin', 'afWindForecastDays', 'afWindSampleToleranceMin', 'afWindPennantWidthFactor', 'afWindPennantGapFactor', 'afWindFullTickSlantFactor', 'afWindHalfTickSlantFactor', 'afWindHalfTickLenFactor', 'afWindStartGapPx', 'afWindBarbHaloPx', 'afWindObsColor', 'afWindModelDashPx', 'afWindModelGapPx', 'afWindModelLabelAlpha', 'afWindObsMaxAgeMin', 'featureAirfieldWind'] },
+  { name: 'Surface weather', keys: ['featureSurfaceWx'] },
   { name: 'Wind field', keys: ['windFieldDefaultAltFt', 'windFieldDefaultOpacity', 'windFieldGridDeg', 'windFieldFollowMap', 'windFieldMaxPoints', 'windFieldWest', 'windFieldEast', 'windFieldSouth', 'windFieldNorth', 'windFieldVelocityScale', 'windFieldParticleAge', 'windFieldParticleMultiplier', 'windFieldLineWidth', 'windFieldMaxVelocity', 'windFieldMinVelocity', 'windFieldFrameRate', 'windFieldHoursAhead', 'windFieldForecastDays'] },
   { name: 'Chrome layout', keys: ['inspectorDefaultTopPx', 'inspectorBottomGapPx', 'floatingPanelGapPx', 'zuluClockMinWidthPx', 'zuluClockPadYPx', 'zuluClockPadXPx', 'zuluClockMarginTopPx', 'zuluClockMarginRightPx', 'zuluClockFontPx', 'zuluClockFontWeight', 'zuluClockLineHeight', 'zuluClockTextColor', 'zuluClockBgColor', 'zuluClockBgAlpha', 'zuluClockBorderColor', 'zuluClockBorderWidthPx', 'zuluClockBorderRadiusPx', 'zuluClockShadowYPx', 'zuluClockShadowBlurPx', 'zuluClockShadowAlpha'] },
   // Includes the former 'First-run view' group: the first-run centre/zoom and the
@@ -1170,7 +1173,7 @@ NavAid.tuningGroups = [
     'defaultViewZoom', 'defaultViewLat', 'defaultViewLng'] },
   { name: 'Export', keys: ['exportBgColor'] },
   { name: 'Global palette', keys: ['inkColor', 'selectedColor', 'labelFillColor', 'kiteTextColor', 'legKiteHaloColor', 'kiteNoteAlpha'] },
-  { name: 'Default layer visibility', keys: ['defaultShowNavWP', 'defaultShowAirfields', 'defaultShowVor', 'defaultShowHotspots', 'defaultShowWpNames', 'defaultShowCumTime', 'defaultShowDrift', 'defaultShowCommChange', 'defaultVoiceAlerts', 'defaultShowMidLeg', 'defaultHighlightDiff', 'defaultLimitLegKites', 'defaultShowMsa', 'defaultShowReporting', 'defaultForceSnap', 'defaultShowReturn', 'featureShowReturn', 'featureFplReturnJoin', 'offlineAutoCvfr', 'offlineCvfrUnmeteredOnly', 'offlineCvfrMinZoom', 'offlineCvfrMaxZoom', 'featureRouteIntro', 'featureTour', 'defaultPressureUnit', 'defaultAltSource', 'featureGpsStatus', 'featureKeepAwake', 'featureHaptics', 'featureBrightness', 'featureBarometer', 'featureBatteryWarn', 'featureFullscreenFlight', 'featureGdl90', 'featureBleGps', 'featureSatZoomButtons', 'featureInspectorResize', 'featureInspectorWhileTracking', 'featureAssistant', 'featureMobileDeck', 'featureDisclaimer', 'featureOtaUpdates', 'featureNavLog', 'reverseWarnMs', 'notamSeenDays', 'toastReadWpm', 'toastNoticeMs', 'toastMinMs', 'toastWarnMinMs', 'toastMaxMs', 'reverseWarnBlink', 'reverseRotatesMap', 'addToRouteOpensInspector', 'defaultShowNotam', 'defaultShowAirmet', 'defaultShowSigmet', 'defaultShowWind', 'defaultWindField', 'defaultAirfieldWind', 'defaultImsPwx', 'defaultSigwxOv', 'defaultShowLsaBubbles', 'defaultAutoRoute', 'defaultShowCircuit', 'defaultShowTraining', 'defaultShowCvfr', 'defaultShowHeli', 'defaultShowCommfail', 'defaultShowAdc', 'defaultShowIfr', 'plateFieldZoom'] },
+  { name: 'Default layer visibility', keys: ['defaultShowNavWP', 'defaultShowAirfields', 'defaultShowVor', 'defaultShowHotspots', 'defaultShowWpNames', 'defaultShowCumTime', 'defaultShowDrift', 'defaultShowCommChange', 'defaultVoiceAlerts', 'defaultShowMidLeg', 'defaultHighlightDiff', 'defaultLimitLegKites', 'defaultShowMsa', 'defaultShowReporting', 'defaultForceSnap', 'defaultShowReturn', 'featureShowReturn', 'featureFplReturnJoin', 'offlineAutoCvfr', 'offlineCvfrUnmeteredOnly', 'offlineCvfrMinZoom', 'offlineCvfrMaxZoom', 'featureRouteIntro', 'featureTour', 'defaultPressureUnit', 'defaultAltSource', 'featureGpsStatus', 'featureKeepAwake', 'featureHaptics', 'featureBrightness', 'featureBarometer', 'featureBatteryWarn', 'featureFullscreenFlight', 'featureGdl90', 'featureBleGps', 'featureSatZoomButtons', 'featureInspectorResize', 'featureInspectorWhileTracking', 'featureAssistant', 'featureMobileDeck', 'featureDisclaimer', 'featureOtaUpdates', 'featureNavLog', 'reverseWarnMs', 'notamSeenDays', 'toastReadWpm', 'toastNoticeMs', 'toastMinMs', 'toastWarnMinMs', 'toastMaxMs', 'reverseWarnBlink', 'reverseRotatesMap', 'addToRouteOpensInspector', 'defaultShowNotam', 'defaultShowAirmet', 'defaultShowSigmet', 'defaultShowWind', 'defaultWindField', 'defaultAirfieldWind', 'defaultSurfaceWx', 'defaultImsPwx', 'defaultSigwxOv', 'defaultShowLsaBubbles', 'defaultAutoRoute', 'defaultShowCircuit', 'defaultShowTraining', 'defaultShowCvfr', 'defaultShowHeli', 'defaultShowCommfail', 'defaultShowAdc', 'defaultShowIfr', 'plateFieldZoom'] },
 ];
 // Padding pair + maxZoom for a fitBounds call, from the tuning registry. Every "frame the
 // map on X" call goes through this instead of carrying its own literals.
@@ -2455,6 +2458,24 @@ window.S = Object.assign({
   },
   windFetchErr: 'Wind fetch failed — check connection',
   tbWindField: 'Show wind field',
+  tbSurfaceWx: 'Show surface weather',
+  tbSurfaceWxTitle: 'Dew point spread, dew point, temperature, sea-level pressure or cloud base on a grid, at the look-ahead time above',
+  tbSurfaceWxShow: 'Surface weather to show',
+  swxFieldSpread: 'Dew point spread',
+  swxFieldDew: 'Dew point',
+  swxFieldTemp: 'Temperature',
+  swxFieldMsl: 'Sea-level pressure',
+  swxFieldBase: 'Cloud base (estimate)',
+  swxBaseUnit: 'ft above ground',
+  swxNow: 'now',
+  swxLoading: 'Loading surface weather…',
+  swxErr: 'Surface weather unavailable',
+  swxLegendSpread: 'Red: spread 2 °C or less, fog and low cloud likely · amber: 4 °C or less',
+  swxLegendBase: 'Red: 1,000 ft or lower · amber: 2,000 ft or lower · (T − Td) × 400 ft, an estimate',
+  swxLegendDew: 'Dew point at 2 m, °C',
+  swxLegendTemp: 'Temperature at 2 m, °C',
+  swxLegendMsl: 'Isobars every 2 hPa · H high, L low',
+  inspSurface: 'Surface',
   tbAirfieldWind: 'Show airfield wind',
   tbAirfieldWindTitle: 'Surface wind barb at every airfield, at the look-ahead time above',
   afWindLoading: 'Loading airfield wind…',
