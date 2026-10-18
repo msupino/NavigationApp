@@ -12,6 +12,10 @@
 (function () {
   const on = () => typeof tune === 'function' && tune('featureBleGps') === true;
   const str = (k, d) => (typeof S === 'object' && S && S[k]) || d;
+  const isIosApp = () => {
+    const C = window.Capacitor;
+    return !!(C && typeof C.getPlatform === 'function' && C.getPlatform() === 'ios');
+  };
   const plugin = () => {
     const C = window.Capacitor;
     return (C && typeof C.isNativePlatform === 'function' && C.isNativePlatform() && C.Plugins && C.Plugins.BluetoothLe) || null;
@@ -136,7 +140,10 @@
     btn.textContent = dev.id
       ? ((typeof S.bleGpsDisconnect === 'function') ? S.bleGpsDisconnect(dev.name) : 'Disconnect Bluetooth GPS')
       : str('tbBleGps', 'Connect Bluetooth GPS');
-    if (typeof setButtonWhy === 'function') setButtonWhy(btn, plugin() ? null : str('whyBleGpsApp', 'Bluetooth GPS works in the Android app'));
+    if (typeof setButtonWhy === 'function') setButtonWhy(btn, plugin() ? null : (isIosApp()
+      // The iOS app names no other platform (App Review 2.3.10): it says only what is so here.
+      ? str('whyBleGpsIos', 'Bluetooth GPS is not available on iPhone and iPad yet')
+      : str('whyBleGpsApp', 'Bluetooth GPS works in the Android app')));
   }
   if (btn) btn.addEventListener('click', () => (dev.id ? disconnect() : connect()));
   refresh();
