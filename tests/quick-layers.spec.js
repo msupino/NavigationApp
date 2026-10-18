@@ -31,14 +31,16 @@ test('base map: one of them, the select\'s own; choosing one switches it', async
   await boot(page);
   await page.locator('#edit-col-layers').click();
   const radios = page.locator('#quick-layers .ql-radio');
-  const opts = await page.evaluate(() => [...document.getElementById('base-layer-select').options].filter(o => !o.hidden && !o.disabled).map(o => o.textContent));
+  const opts = await page.evaluate(() => [...document.getElementById('layer-select').options].filter(o => !o.hidden && !o.disabled && o.value !== '---').map(o => o.textContent));
   await expect(radios).toHaveText(opts);
   await expect(page.locator('#quick-layers .ql-radio[aria-checked="true"]')).toHaveCount(1);
-  const target = await page.evaluate(() => { const s = document.getElementById('base-layer-select');
-    const o = [...s.options].find(x => x.value !== s.value && !x.hidden && !x.disabled); return o && [o.value, o.textContent]; });
+  const target = await page.evaluate(() => { const s = document.getElementById('layer-select');
+    const o = [...s.options].find(x => x.value !== s.value && !x.hidden && !x.disabled && x.value !== '---'); return o && [o.value, o.textContent]; });
   await radios.filter({ hasText: target[1] }).first().click();
-  expect(await page.evaluate(() => document.getElementById('base-layer-select').value)).toBe(target[0]);
+  expect(await page.evaluate(() => document.getElementById('layer-select').value)).toBe(target[0]);
   await expect(page.locator('#quick-layers .ql-radio[aria-checked="true"]')).toHaveText(target[1]);
+  // And the map shows it: the chosen chart is the layer on the map.
+  expect(await page.evaluate(() => currentLayerName())).toBe(target[0]);
 });
 
 test('an overlay switch presses the layer\'s own checkbox; one the browser cannot show is dimmed', async ({ page }) => {
@@ -75,10 +77,23 @@ test('Escape, a tap outside, and Back each close it', async ({ page }) => {
 test('Hebrew: the menu\'s own Hebrew names, laid out right to left', async ({ page }) => {
   await boot(page, 'he');
   await page.locator('#edit-col-layers').click();
-  await expect(page.locator('#quick-layers .ql-head').first()).toHaveText('מפת בסיס');
+  await expect(page.locator('#quick-layers .ql-head').first()).toHaveText('מפה');
   expect(await page.evaluate(() => getComputedStyle(document.querySelector('#quick-layers .ql-row')).direction)).toBe('rtl');
   const g = await page.evaluate(() => ({ b: document.getElementById('edit-col-layers').getBoundingClientRect().toJSON(),
     p: document.getElementById('quick-layers').getBoundingClientRect().toJSON(), w: innerWidth }));
   expect(g.p.right).toBeLessThanOrEqual(g.w);
   expect(g.p.left >= g.b.right || g.p.right <= g.b.left).toBe(true);   // beside the column, not over it
+});
+
+test('on a phone the list stops above the bottom bar and scrolls inside', async ({ page }) => {
+  await boot(page, 'en', { width: 390, height: 640 });
+  await page.locator('#edit-col-layers').click();
+  const g = await page.evaluate(() => {
+    const p = document.getElementById('quick-layers').getBoundingClientRect();
+    const bar = document.querySelector('.deck-bar, #deck-bar, .mobile-deck-bar');
+    const el = document.getElementById('quick-layers');
+    return { bottom: p.bottom, barTop: bar ? bar.getBoundingClientRect().top : innerHeight, scrolls: el.scrollHeight > el.clientHeight };
+  });
+  expect(g.bottom).toBeLessThanOrEqual(g.barTop);
+  expect(g.scrolls).toBe(true);
 });

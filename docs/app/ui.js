@@ -1549,15 +1549,16 @@ function quickLayerName(cb) {
 }
 function renderQuickLayers(p) {
   p.replaceChildren();
-  const sel = document.getElementById('base-layer-select');
+  // The chart itself (View → Layer), not the base map under it: that is what a pilot switches.
+  const sel = document.getElementById('layer-select');
   if (sel && sel.options.length) {
     const h = document.createElement('div');
     h.className = 'ql-head'; h.id = 'ql-head-chart';
-    h.textContent = S.tbBaseLayer || 'Base map';
+    h.textContent = S.quickLayersChart || 'Chart';
     const g = document.createElement('div');
     g.className = 'ql-group'; g.setAttribute('role', 'radiogroup'); g.setAttribute('aria-labelledby', h.id);
     for (const o of sel.options) {
-      if (o.hidden || o.disabled) continue;
+      if (o.hidden || o.disabled || o.value === '---') continue;
       const r = document.createElement('button');
       r.type = 'button'; r.className = 'ql-row ql-radio';
       r.setAttribute('role', 'radio');
@@ -1605,11 +1606,15 @@ function renderQuickLayers(p) {
 // left of it on the right), its top at the button's, kept on screen.
 function placeQuickLayers(p, b) {
   const r = b.getBoundingClientRect();
+  // Room above the phone's bottom bar (deck.js measures it); the list scrolls inside the rest.
+  const bar = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--navaid-deck-bar-h')) || 0;
+  const bottom = window.innerHeight - (document.body.classList.contains('deck-on') ? bar : 0) - 8;
+  p.style.maxHeight = Math.max(160, bottom - Math.max(8, Math.min(r.top, bottom - 160))) + 'px';
   const w = p.offsetWidth, h = p.offsetHeight, gap = 10, m = 8;
   const right = r.left + r.width / 2 < window.innerWidth / 2;
   let x = right ? r.right + gap : r.left - gap - w;
   x = Math.max(m, Math.min(x, window.innerWidth - w - m));
-  let y = Math.max(m, Math.min(r.top, window.innerHeight - h - m));
+  let y = Math.max(m, Math.min(r.top, bottom - h));
   p.style.left = x + 'px'; p.style.top = y + 'px';
 }
 function toggleQuickLayers() {

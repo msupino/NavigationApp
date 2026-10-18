@@ -3125,6 +3125,7 @@ window.S = Object.assign({
   tbQuickLayers: 'Layers',
   tbQuickLayersTitle: 'Map layers: the chart and its overlays',
   quickLayersOverlays: 'Overlays',
+  quickLayersChart: 'Chart',
   whyUnavailableHere: 'Not available here',
   tbBaseLayerTitle: 'What shows underneath the chart you picked — the map around a chart that covers only the FIR, and what you see through it when the chart is dimmed. Any chart can go here too: ATS over CVFR, or ATS over the satellite image.',
   tbBaseLayerNone: '— none —',

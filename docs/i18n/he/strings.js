@@ -1626,6 +1626,7 @@ window.S = {
   tbQuickLayers: 'שכבות',
   tbQuickLayersTitle: 'שכבות המפה: המפה והשכבות שעליה',
   quickLayersOverlays: 'שכבות',
+  quickLayersChart: 'מפה',
   whyUnavailableHere: 'לא זמין כאן',
   tbBaseLayerTitle: 'מה נראה מתחת לתרשים שנבחר — המפה סביב תרשים שמכסה רק את ה-FIR, ומה שרואים דרכו כשהתרשים מעומעם. אפשר לשים כאן גם תרשים: ATS מעל CVFR, או ATS מעל תצלום הלוויין.',
   tbBaseLayerNone: '— ללא —',

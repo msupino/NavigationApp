@@ -1482,8 +1482,9 @@ body.deck-on .leaflet-control.edit-col-ctrl {
   gap: 4px;
   min-width: 220px;
   max-width: min(300px, calc(100vw - 16px));
-  max-height: calc(100vh - 16px);
   overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
   padding: 10px;
   border-radius: 14px;
   color: var(--navaid-mapbtn-fg);
