@@ -5485,8 +5485,20 @@ function routePrimingArmed() {
   return !!document.getElementById('empty-route-hint');
 }
 
+// What was selected before the first press of a possible double-click. A double-click is a
+// zoom, not a request to inspect (reported: "double click on map to zoom on waypoint should
+// not open inspector"): its first click opens the panel before the browser knows a second is
+// coming, so the dblclick below puts back what was there. The second press must not overwrite
+// the record -- by then the first click has already selected the point.
+let _preClickSel = null;
+function notePreClick(p) {
+  const r = _preClickSel;
+  if (r && Date.now() - r.t < DOUBLE_TAP_MS && Math.hypot(p.x - r.x, p.y - r.y) <= DOUBLE_TAP_PX) return;
+  _preClickSel = { t: Date.now(), x: p.x, y: p.y, prev: state.selected || null };
+}
 map.on('mousedown', e => {
   if (touchGestureInProgress()) return;
+  notePreClick(e.containerPoint);
   pendingOverlayAction = null;
   // Measuring: a press is either a pan or the point to measure to (the click below), never a
   // grab of something on the route.
@@ -6140,14 +6152,25 @@ window.addEventListener('keydown', e => {
 const mapEl = map.getContainer();
 let touchDrag = null;
 
+// The double-click's zoom (Leaflet) goes ahead; the panel its first click opened goes back.
+function undoClickOpenOnDoubleClick(p) {
+  const r = _preClickSel;
+  _preClickSel = null;
+  if (!r || Date.now() - r.t > DOUBLE_TAP_MS * 2 || Math.hypot(p.x - r.x, p.y - r.y) > DOUBLE_TAP_PX) return;
+  if (state.selected === r.prev) return;
+  state.selected = r.prev;
+  showInspector();
+  draw();
+}
 mapEl.addEventListener('dblclick', e => {
   const rect = mapEl.getBoundingClientRect();
   const p = { x: e.clientX - rect.left, y: e.clientY - rect.top };
-  if (hitNote(p.x, p.y) >= 0) return;
-  if (hitWaypointCandidates(p.x, p.y).length) return;
+  if (hitNote(p.x, p.y) >= 0) { undoClickOpenOnDoubleClick(p); return; }
+  if (hitWaypointCandidates(p.x, p.y).length) { undoClickOpenOnDoubleClick(p); return; }
   if (hitCumLabel(p.x, p.y) || hitCumLabelRet(p.x, p.y) || hitLegLabel(p.x, p.y)) return;
   const leg = hitLeg(p.x, p.y);
-  if (leg < 0) return;
+  // A chart point (nav point, airfield, VOR) or the open map: Leaflet zooms, the panel goes back.
+  if (leg < 0) { undoClickOpenOnDoubleClick(p); return; }
   e.preventDefault();
   e.stopPropagation();
   if (e.stopImmediatePropagation) e.stopImmediatePropagation();
