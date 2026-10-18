@@ -467,7 +467,10 @@ public class BackgroundGeolocationPlugin: CAPPlugin, CAPBridgedPlugin, CLLocatio
             case .notDetermined:
                 if call.getBool("requestPermissions") ?? true { m.requestWhenInUseAuthorization() }
             case .denied, .restricted:
-                call.reject("Permission denied.", "NOT_AUTHORIZED"); self.watchers[call.callbackId] = nil; return
+                self.watchers[call.callbackId] = nil
+                call.reject("Permission denied.", "NOT_AUTHORIZED")
+                self.bridge?.releaseCall(call)
+                return
             default: break
             }
             m.startUpdatingLocation()
@@ -493,7 +496,11 @@ public class BackgroundGeolocationPlugin: CAPPlugin, CAPBridgedPlugin, CLLocatio
     public func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
         let st = manager.authorizationStatus
         if st == .denied || st == .restricted {
-            for (_, w) in watchers { w.reject("Permission denied.", "NOT_AUTHORIZED") }
+            // Taken away mid-watch (Settings): each watcher hears it once and is ended, as on
+            // Android, rather than being rejected again on every later change.
+            let ended = watchers; watchers.removeAll()
+            for (_, w) in ended { w.reject("Permission denied.", "NOT_AUTHORIZED"); bridge?.releaseCall(w) }
+            manager.stopUpdatingLocation()
         }
     }
 

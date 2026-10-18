@@ -81,8 +81,14 @@ jobs:
           npm run embed
 
       - name: Version (same as the Android app unless given)
+        env:
+          # Through the environment, never pasted into the script: an input is text, not code.
+          INPUT_VERSION: ${{ inputs.version }}
         run: |
-          v='${{ inputs.version }}'
+          v="$INPUT_VERSION"
+          if [ -n "$v" ] && ! printf '%s' "$v" | grep -Eq '^[0-9]+(\.[0-9]+){1,2}$'; then
+            echo "::error::Version must look like 1.26 or 1.26.1"; exit 1
+          fi
           [ -n "$v" ] || v=$(sed -n 's/.*versionName "\(.*\)".*/\1/p' mobile/android/app/build.gradle)
           [ -n "$v" ] || { echo "::error::No version"; exit 1; }
           echo "APP_VERSION=$v" >> "$GITHUB_ENV"
