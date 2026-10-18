@@ -1857,7 +1857,7 @@ window.S = Object.assign({
   tbShowVorTitle: 'Overlay Israeli VOR/DME stations and pick a reference for radial/DME',
   tbShowLsa: 'Show LSA bubbles',
   tbShowLsaTitle: 'Overlay LSA airspace areas (bubbles) — shown on the Low Alt layer',
-  vorRefLabel: 'VOR ref',
+  vorRefLabel: 'VOR Reference',
   vorRefNone: '— none —',
   tbShowWind: 'Show per-leg wind effect',
   tbShowWindTitle: 'Show the wind inputs, the per-leg wind arrows, and the wind-corrected readout in the leg inspector',
