@@ -2190,6 +2190,19 @@ body.theme-light .resize-grip {
   padding: 4px 6px;
 }
 .row select { cursor: pointer; }
+/* The airfield's map-layer choice names layers in words ("Communication-failure joining"):
+   sized to its longest choice, not the 110px number-field width, which clipped them. */
+.row select.airfield-layers { width: auto; min-width: 0; max-width: 65%; flex: 0 1 auto; }
+/* The label takes the slack, so a field and its ↻ sit together at the end of the row and every
+   field in a panel lines up -- with space-between a three-part row floated its field to the
+   middle (reported). */
+.row > label { margin-inline-end: auto; }
+.row > label + input, .row > label + select { margin-inline-start: 8px; }
+.row > .row-reset { margin-left: 0; margin-inline-start: 4px; }
+/* Speed and altitude: five digits plus the spinner, not the panel's full field width. Rows
+   with no ↻ keep a gap the size of one, so their field lines up with the fields that have it. */
+.row input[type="number"].row-num-narrow { width: 78px; }
+.row > input.row-num-narrow:last-child { margin-inline-end: 30px; }
 .vor-radial-row {
   justify-content: flex-start;
   gap: 10px;
@@ -2199,14 +2212,17 @@ body.theme-light .resize-grip {
   white-space: nowrap;
   unicode-bidi: isolate;
 }
+/* The station picker then its readout, in the row's own direction -- English reads
+   label · NAT · R-211°, Hebrew the mirror of it -- and both at the row's far edge, where
+   every other inspector value sits. (Forced LTR, Hebrew put the readout beside the
+   label and the picker outermost: the English order, not its mirror.) */
 .vor-radial-controls {
   display: flex;
   align-items: center;
   flex: 0 1 auto;
   gap: 6px;
   min-width: 0;
-  direction: ltr;
-  unicode-bidi: isolate;
+  margin-inline-start: auto;
 }
 .vor-radial-row select {
   /* A fixed 58px fit the VOR idents (2-3 letters: "BGN", "NAT") this control mostly
@@ -2233,6 +2249,8 @@ body.theme-light .resize-grip {
   font-variant-numeric: tabular-nums;
   unicode-bidi: isolate;
 }
+/* LTR text, but the outer edge of a Hebrew row is its left. */
+[dir="rtl"] .row .val.vor-radial-val { text-align: left; }
 /* Re-enable selection inside actual text fields (the toolbar disables it). */
 #toolbar input, #toolbar textarea,
 .row input, .row textarea {
@@ -4254,27 +4272,17 @@ body.deck-on .qtime select { min-height: 30px; font-size: 16px; }
 .plate-annex-empty { background: transparent; border-color: transparent; }
 .plate-row-title { flex: 1 1 auto; line-height: 1.3; }
 .plate-row-amd { flex: 0 0 auto; font-size: 11px; color: #9aa4b0; font-variant-numeric: tabular-nums; }
-/* The inspector's "Airport charts" button. It had no rule of its own, so it rendered as a
-   default browser button -- white with dark text -- which in dark mode looked like a light-mode
-   control dropped into the panel. */
-.insp-charts-btn {
-  font: inherit;
-  font-size: 13px;
-  min-height: 36px;
-  padding: 7px 12px;
-  color: #cfe4ff;
-  background: #24303f;
-  border: 1px solid #35506f;
-  border-radius: 6px;
-  cursor: pointer;
-}
-.insp-charts-btn:hover, .insp-charts-btn:focus-visible { background: #2d3d52; border-color: #1d6fe0; }
-body.theme-light .insp-charts-btn {
-  color: #16406e;
-  background: #dbe8fb;
-  border-color: #9dbde8;
-}
-body.theme-light .insp-charts-btn:hover, body.theme-light .insp-charts-btn:focus-visible { background: #cbdcf7; }
+/* The airfield's NOTAMs, charts and map layers: one group under one divider, each a label
+   with its control at the end -- the charts entry is a link like the NOTAM one beside it,
+   not a button of its own design (reported). */
+.airfield-refs { margin-top: 12px; border-top: 1px solid #3a3636; padding-top: 10px; }
+body.theme-light .airfield-refs { border-top-color: #d5dbe3; }
+/* The links are the row's control, so they are sized as one: 24px is the WCAG 2.2 target
+   size the inline 12px link fell short of (ui-ux-pro-max review), and on a phone they match
+   the 30px of the layer choice beside them. The old charts button was 36px; a link must not
+   be harder to hit than the button it replaced. */
+.airfield-refs :is(.insp-notam-link, .insp-charts-btn) { min-height: 24px; }
+body.deck-on .airfield-refs :is(.insp-notam-link, .insp-charts-btn) { min-height: 30px; }
 
 /* Airport charts: two screens rather than twenty accordions. Screen one is a grid of fields,
    screen two is one field's plates. Every target here is thumb-sized -- this is read on a
@@ -5005,7 +5013,7 @@ body.theme-light .map-time-now { background: rgba(255, 255, 255, 0.95); }
   opacity: 0.7;
   margin-block-start: 2px;
 }
-.insp-notam-link {
+.insp-notam-link, .insp-charts-btn {
   font: inherit;
   font-size: 12px;
   color: #6fb0ff;
@@ -5015,8 +5023,8 @@ body.theme-light .map-time-now { background: rgba(255, 255, 255, 0.95); }
   cursor: pointer;
   text-decoration: underline;
 }
-.insp-notam-link:hover { color: #9cc8ff; }
-body.theme-light .insp-notam-link { color: #1d6fe0; }
+.insp-notam-link:hover, .insp-charts-btn:hover { color: #9cc8ff; }
+body.theme-light .insp-notam-link, body.theme-light .insp-charts-btn { color: #1d6fe0; }
 /* Airfield METAR/TAF (#670) */
 .wx-section { margin: 8px 0 2px; border-top: 1px solid #3a3636; padding-top: 6px; }
 /* A titled group of inspector rows (Communication). Same rule and spacing as the weather
@@ -5732,6 +5740,85 @@ body.deck-on #search-overlay { top: calc(var(--navaid-deck-strip-h, 46px) + 8px)
   cursor: pointer;
 }
 #search-close:hover { background: #443f3f; color: #fff; }
+/* "?" beside the box: the same quiet button as the ✕, lit while its examples are open. */
+#search-help {
+  width: 28px;
+  height: 28px;
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1;
+  color: #b9b3b3;
+  background: transparent;
+  border: 1px solid #443f3f;
+  border-radius: 50%;
+  cursor: pointer;
+}
+#search-help:hover, #search-help[aria-expanded="true"] { background: #443f3f; color: #fff; }
+#search-examples {
+  flex-basis: 100%;
+  max-height: 60vh;
+  overflow-y: auto;
+  padding: 4px 0;
+  background: rgba(30, 26, 26, 0.97);
+  border: 1px solid #443f3f;
+  border-radius: 4px;
+}
+#search-examples[hidden] { display: none; }
+.search-ex-intro, .search-ex-more {
+  padding: 4px 10px;
+  font-size: 11px;
+  line-height: 1.35;
+  color: #9a9a9a;
+}
+.search-ex {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 10px;
+  width: 100%;
+  min-height: 34px;                 /* a finger-sized row on a phone */
+  padding: 6px 10px;
+  font: inherit;
+  font-size: 13px;
+  text-align: start;
+  color: #d8d4d4;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+}
+.search-ex:hover, .search-ex:focus-visible { background: #3a3535; }
+.search-ex code {
+  flex-shrink: 0;
+  /* The app's own face, not monospace: a monospace font spaced Hebrew out letter by letter. */
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  color: #8fc1ff;
+  background: none;
+  unicode-bidi: isolate;            /* a Hebrew name in an English row, and the reverse */
+}
+/* The search card follows the light theme; its examples have to as well (reported: a dark
+   list inside the light card). Same palette as the light results list. */
+body.theme-light #search-help {
+  color: #647184;
+  border-color: #c6ccd6;
+}
+body.theme-light #search-help:hover,
+body.theme-light #search-help[aria-expanded="true"] {
+  color: #111820;
+  background: rgba(29, 111, 224, 0.08);
+}
+body.theme-light #search-examples {
+  background: #fff;
+  border-color: #c6ccd6;
+  box-shadow: 0 8px 20px rgba(31, 37, 44, 0.18);
+}
+body.theme-light .search-ex-intro,
+body.theme-light .search-ex-more { color: #647184; }
+body.theme-light .search-ex { color: #1f252c; }
+body.theme-light .search-ex:hover,
+body.theme-light .search-ex:focus-visible { background: rgba(29, 111, 224, 0.08); }
+body.theme-light .search-ex code { color: #1d6fe0; }
 #search-overlay #wp-search-results {
   /* Override the toolbar-era absolute positioning (see #wp-search-results
      above): inside the fixed overlay it must flow below the input as a
@@ -7813,10 +7900,10 @@ html[dir="rtl"] body.theme-light #toolbar .navtoggle select {
   position: absolute;
   inset: 0;
   border-radius: 50%;
-  border: var(--flash-width, 2px) solid var(--flash-color, #ffb020);
-  background: rgba(var(--flash-rgb, 255, 176, 32), var(--flash-fill, .10));
+  border: var(--flash-width, 2px) solid var(--flash-color, #ff2a2a);
+  background: rgba(var(--flash-rgb, 255, 42, 42), var(--flash-fill, .10));
   box-shadow: 0 0 0 1px rgba(0, 0, 0, .45),
-              0 0 8px 1px rgba(var(--flash-rgb, 255, 176, 32), .35);
+              0 0 8px 1px rgba(var(--flash-rgb, 255, 42, 42), .35);
   animation: search-flash-hold var(--flash-ms, 3500ms) ease-out 1 both;
 }
 /* ...and the moving part: three expanding pulses off the same centre. */
@@ -7826,7 +7913,7 @@ html[dir="rtl"] body.theme-light #toolbar .navtoggle select {
   position: absolute;
   inset: -3px;
   border-radius: 50%;
-  border: var(--flash-width, 2px) solid var(--flash-color, #ffb020);
+  border: var(--flash-width, 2px) solid var(--flash-color, #ff2a2a);
   animation: search-flash-pulse calc(var(--flash-ms, 3500ms) / 2.5) ease-out
              var(--flash-pulses, 2) both;
 }
@@ -7836,7 +7923,7 @@ html[dir="rtl"] body.theme-light #toolbar .navtoggle select {
    menu is honoured in both themes rather than silently overridden in one. */
 body.theme-light .search-flash-ring {
   box-shadow: 0 0 0 1px rgba(255, 255, 255, .8),
-              0 0 8px 1px rgba(var(--flash-rgb, 210, 105, 10), .3);
+              0 0 8px 1px rgba(var(--flash-rgb, 200, 20, 20), .3);
 }
 /* Pulses off: the steady ring alone. */
 .search-flash-nopulse .search-flash-ring::before,
@@ -7852,9 +7939,21 @@ body.theme-light .search-flash-ring {
   0%   { transform: scale(1);   opacity: .7; }
   100% { transform: scale(1.7); opacity: 0; }
 }
+/* The go-to dot left on a looked-up coordinate: a few blinks to catch the eye, then steady --
+   it stays as the mark of the point. SVG path, so the blink is on its opacity and stroke. */
+.goto-marker {
+  animation: goto-marker-blink 0.6s ease-in-out 5;
+  transform-box: fill-box;
+  transform-origin: center;
+}
+@keyframes goto-marker-blink {
+  0%, 100% { opacity: 1; stroke-width: 2px; transform: scale(1); }
+  50%      { opacity: 0.15; stroke-width: 6px; transform: scale(1.6); }
+}
 /* A pilot who has asked for less motion gets the steady ring only -- still obvious, no
    expanding pulses. */
 @media (prefers-reduced-motion: reduce) {
+  .goto-marker { animation: none; }
   .search-flash-ring::before, .search-flash-ring::after { display: none; }
   .search-flash-ring { animation: search-flash-hold var(--flash-ms, 3500ms) linear 1 both; }
 }
@@ -9166,7 +9265,7 @@ body.deck-on .zoom-readout {
 /* The panel's text-link buttons (View N NOTAMs, Show the published hours, ...) carry the same
    injected icon, which had no rule here: it sat raised above the text and apart from it. On the
    text's own line, centred, a small gap, glyph a size down to match the 12px link. */
-.insp-notam-link, .hours-toggle { display: inline-flex; align-items: center; gap: 4px; }
+.insp-notam-link, .insp-charts-btn, .hours-toggle { display: inline-flex; align-items: center; gap: 4px; }
 #insp-body button:not(.insp-btn) > .mi-icon { display: inline-grid; place-items: center; line-height: 0; margin: 0; flex: none; }
 #insp-body button:not(.insp-btn) > .mi-icon svg { display: block; width: 14px; height: 14px; }
 

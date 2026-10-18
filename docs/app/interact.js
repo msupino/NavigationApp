@@ -37,7 +37,10 @@ function hitNote(px, py) {
       const dy = qy / (r.h / 2);
       if (dx * dx + dy * dy <= 1) return i;
     } else if (Math.abs(qx) <= r.w / 2 && Math.abs(qy) <= r.h / 2) {
-      return i;
+      // The pointed end narrows toward its tip; its empty corners are map,
+      // not a draggable part of the note. qx/qy already account for rotation.
+      if (!r.arrowHead || qx <= r.w / 2 - r.arrowHead ||
+          Math.abs(qy) <= (r.w / 2 - qx) * r.h / (2 * r.arrowHead)) return i;
     }
   }
   return -1;
@@ -2968,15 +2971,57 @@ function showNotamBadgeModal(entries) {
 
 function appendAirfieldPlates(body, af) {
   if (!af || !Array.isArray(af.plates) || !af.plates.length) return;
+  // A row like the NOTAM one above it: label, then a link that says how many there are.
   const row = document.createElement('div');
-  row.className = 'row plates-section';
+  row.className = 'row plates-row';
+  const lbl = document.createElement('label');
+  lbl.textContent = S.inspChartsLabel || 'Airport charts';
+  const val = document.createElement('span');
+  val.className = 'val';
   const btn = document.createElement('button');
   btn.type = 'button';
+  // Its own class only: the NOTAM link's class is how the NOTAM row is found (notam-layer
+  // specs), so the shared look comes from the stylesheet, not a shared class.
   btn.className = 'insp-charts-btn';
-  btn.textContent = S.inspOpenCharts || '🗺️ Airport charts';
+  const n = af.plates.length;
+  btn.textContent = S.inspChartsView ? S.inspChartsView(n) : ('View ' + n);
   btn.title = S.inspOpenChartsTitle || '';
   btn.onclick = () => { if (typeof showChartsModal === 'function') showChartsModal(af.name); };
-  row.appendChild(btn);
+  val.appendChild(btn);
+  row.append(lbl, val);
+  body.appendChild(row);
+}
+
+// The map layers this field publishes -- circuit, CVFR routes, aerodrome chart, its instrument
+// sheets -- as one choice, beside its charts. Choosing one draws this field's sheet; "None"
+// takes it off. Absent for a field with nothing to lay on the map.
+function appendAirfieldLayers(body, af) {
+  if (typeof airfieldLayers !== 'function') return;
+  const opts = airfieldLayers(af);
+  if (!opts.length) return;
+  const row = document.createElement('div');
+  row.className = 'row airfield-layers-row';
+  const lbl = document.createElement('label');
+  lbl.textContent = S.inspLayers || 'Airfield layer';
+  const sel = document.createElement('select');
+  sel.className = 'airfield-layers';
+  sel.dataset.icao = af.name;
+  lbl.htmlFor = sel.id = 'insp-af-layer';
+  const none = document.createElement('option');
+  none.value = '';
+  none.textContent = S.inspLayerNone || 'None';
+  sel.appendChild(none);
+  for (const o of opts) {
+    const opt = document.createElement('option');
+    opt.value = o.value;
+    opt.textContent = o.label;
+    if (o.title) opt.title = o.title;
+    sel.appendChild(opt);
+  }
+  sel.value = airfieldLayerShown(af);
+  sel.onchange = () => showAirfieldLayer(af, sel.value);
+  row.appendChild(lbl);
+  row.appendChild(sel);
   body.appendChild(row);
 }
 
@@ -3208,8 +3253,15 @@ function appendAirfieldDetailRows(body, af, label) {
   appendAirfieldRunways(body, af);
   appendSatelliteSnippet(body, af, label || airfieldInspectorTitle(af));
   appendVorRadialRow(body, af.lat, af.lng);
-  appendAirfieldNotams(body, af);
-  appendAirfieldPlates(body, af);
+  // NOTAMs, charts and map layers are the three things the field publishes, and they read as
+  // one group: a label, and its control at the end of the row. They were three designs --
+  // a link, a big button under its own divider, a dropdown -- side by side (reported).
+  const refs = document.createElement('div');
+  refs.className = 'airfield-refs';
+  appendAirfieldNotams(refs, af);
+  appendAirfieldPlates(refs, af);
+  appendAirfieldLayers(refs, af);
+  if (refs.childNodes.length) body.appendChild(refs);
 }
 
 // The AIP's published operating hours, with a verdict for right now. The verdict says
@@ -3849,13 +3901,28 @@ function showInspector() {
     // propagate, so the two editors disagreed about the same number.
     // Set once the Time · fuel row exists (below); speed and altitude edits refresh it.
     let refreshLegTime = () => {};
+    // ↻ puts the leg back on the Default speed setting -- the value AND the tracking, so a later
+    // change to Default speed carries it again -- the way the altitude ↻ restores the chart's.
+    const defaultKt = (typeof _defaultLegSpeedKt === 'function') ? _defaultLegSpeedKt() : 90;
     body.appendChild(numberRow(S.speedKt, leg.flightSpeed, v => {
       if (!(v > 0)) return;
       const oldVal = leg.flightSpeed;
       leg.flightSpeed = v;
       propagateAlt(idx, 'flightSpeed', v, oldVal);
       draw(); refreshWindFx(); refreshLegTime();
-    }));
+    }, { narrow: true, undoValue: defaultKt, defaultValue: defaultKt,
+         undoTitle: S.speedResetDefault || 'Reset to default speed',
+         // The legs a typed speed carried forward go back with it, and track the default again.
+         onUndo: () => {
+           const oldVal = leg.flightSpeed;
+           for (let j = idx; j < state.legs.length; j++) {
+             const l = state.legs[j];
+             if (j > idx && l.flightSpeed !== oldVal) break;
+             l.flightSpeed = defaultKt;
+             l._legSpeedAuto = 1;
+           }
+           draw(); refreshWindFx(); refreshLegTime();
+         } }));
     // Leg magnetic heading and length (read-only) — together, between speed and altitude: the two
     // facts of the line itself, the length to one decimal as the flight plan's Dist column has it.
     const _dirA = state.waypoints[idx], _dirB = state.waypoints[idx + 1];
@@ -3930,7 +3997,7 @@ function showInspector() {
       propagateAlt(idx, 'inboundAltitude', leg.inboundAltitude, oldVal);
       draw(); refreshMsa(); refreshLegTime();
     }, { allowUnknown: true, placeholder: legAltitudePlaceholder(leg, 'inboundAltitude'),
-         undoValue: knownIn, live: true,
+         undoValue: knownIn, live: true, narrow: true,
          defaultValue: knownIn, mutedWhenDefault: true, emptyRestoresDefault: true }));
     body.appendChild(numberRow(S.outboundAlt, leg.outboundAltitude, v => {
       const oldVal = leg.outboundAltitude;
@@ -3938,7 +4005,7 @@ function showInspector() {
       propagateAlt(idx, 'outboundAltitude', leg.outboundAltitude, oldVal);
       draw(); refreshMsa(); refreshLegTime();
     }, { allowUnknown: true, placeholder: legAltitudePlaceholder(leg, 'outboundAltitude'),
-         undoValue: knownOut, live: true,
+         undoValue: knownOut, live: true, narrow: true,
          defaultValue: knownOut, mutedWhenDefault: true, emptyRestoresDefault: true }));
     if (window.showMsa &&
         typeof terrainHasCoverage === 'function' && terrainHasCoverage() &&
@@ -4085,7 +4152,7 @@ function showInspector() {
       // omitted; only the label + colour apply.
       if (!note.rp) {
         body.appendChild(selectRow(S.shape, note.shape || 'rect',
-          [['rect', S.shapeRect], ['oval', S.shapeOval]], v => {
+          [['rect', S.shapeRect], ['oval', S.shapeOval], ['arrow', S.shapeArrow]], v => {
             note.shape = v; draw();
           }));
       }
@@ -4732,6 +4799,9 @@ function numberRow(label, value, onChange, opts = {}) {
   inp.type = 'number';
   inp.value = altitudeInputValue(value);
   if (opts.placeholder) inp.placeholder = opts.placeholder;
+  // Five digits is the most a speed or an altitude holds: the field is sized to that, not to
+  // the panel (reported: altitude boxes twice the width of what goes in them).
+  if (opts.narrow) inp.classList.add('row-num-narrow');
   // Endless 0–359 spinner wrap (attached first so it cleans the value before
   // the commit handler below reads it).
   if (opts.wrapStep) wrapDirectionInput(inp);
@@ -4797,7 +4867,8 @@ function numberRow(label, value, onChange, opts = {}) {
     btn.onclick = () => {
       inp.value = altitudeInputValue(opts.undoValue);
       updateDefaultStyle();                       // restored value → re-dim if it's the default
-      onChange(opts.undoValue);
+      // A reset can mean more than the number (the speed goes back to tracking the default).
+      if (typeof opts.onUndo === 'function') opts.onUndo(); else onChange(opts.undoValue);
     };
     row.appendChild(btn);
   }
@@ -6605,4 +6676,3 @@ function fitToScreen() {
   }
   fitView();
 }
-

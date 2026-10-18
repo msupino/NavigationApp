@@ -1,0 +1,53 @@
+name: Apply wiki patches
+
+# The wiki is its own git repo (<repo>.wiki.git) and has no pull requests. A wiki edit that
+# should be reviewed like code goes in as a `git format-patch` file under wiki-patches/; once
+# it reaches dev or main this applies it with the workflow token, the same credential the
+# changelog and screenshot workflows push with. Idempotent: a patch the wiki already carries
+# is skipped, so every later run (and the dev -> main promotion) is a no-op for it.
+on:
+  push:
+    branches: [dev, main]
+    paths: ['wiki-patches/**']
+  workflow_dispatch:
+
+permissions:
+  contents: write          # also grants push access to the <repo>.wiki.git repo
+
+concurrency:
+  group: wiki-push
+  cancel-in-progress: false
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      - name: Clone wiki
+        run: git clone "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.wiki.git" wiki
+
+      - name: Apply new patches and push
+        run: |
+          set -euo pipefail
+          cd wiki
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          applied=0
+          for p in ../wiki-patches/*.patch; do
+            [ -e "$p" ] || continue
+            if git apply --check "$p" 2>/dev/null; then
+              git am --keep-cr "$p"
+              echo "applied $(basename "$p")"
+              applied=$((applied + 1))
+            elif git apply --reverse --check "$p" 2>/dev/null; then
+              echo "already on the wiki: $(basename "$p")"
+            else
+              echo "::error::$(basename "$p") neither applies nor is already applied -- the wiki moved under it; regenerate the patch"
+              exit 1
+            fi
+          done
+          if [ "$applied" -gt 0 ]; then git push; else echo "nothing new"; fi

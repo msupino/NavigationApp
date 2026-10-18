@@ -46,13 +46,10 @@ test.describe('Multi-token search route builder (#98)', () => {
   test('Enter on single-token query with trailing space picks dropdown suggestion (not build)', async ({ page }) => {
     await boot(page);
     await openSearch(page);
+    // A trailing space (a phone keyboard adds one after every word) is ignored: the dropdown
+    // stays, and Enter takes its first hit rather than building a one-point route.
     await page.fill('#wp-search', 'BAZRA ');
-    // Dropdown is hidden when trailing-space tail is empty, so first re-type
-    // without trailing space, dropdown reappears, then Enter selects.
-    await page.fill('#wp-search', 'BAZRA');
     await page.waitForSelector('.wp-search-item');
-    // Now add a trailing space (single token + whitespace).
-    await page.fill('#wp-search', 'BAZRA ');
     await page.locator('#wp-search').press('Enter');
     // Route must NOT be built (only one real token).
     await page.waitForTimeout(150);
@@ -70,11 +67,17 @@ test.describe('Multi-token search route builder (#98)', () => {
     expect(names).toEqual(['BAZRA', 'GNYAM']);
   });
 
-  test('multi-token query suppresses dropdown when trailing whitespace (empty tail)', async ({ page }) => {
+  // Reported: phone autocomplete and dictation add a space after every word, and a trailing
+  // space used to close the dropdown -- "SHARO " found nothing. Spaces at the ends are ignored.
+  test('a trailing space does not hide the dropdown', async ({ page }) => {
     await boot(page);
     await openSearch(page);
     await page.fill('#wp-search', 'BAZRA ');
-    await expect(page.locator('#wp-search-results')).toBeHidden();
+    await expect(page.locator('#wp-search-results')).toBeVisible();
+    await expect(page.locator('.wp-search-item').filter({ hasText: /BAZRA/i }).first()).toBeVisible();
+    await page.fill('#wp-search', '  LLHZ BAZRA DEROR  ');
+    await page.locator('#wp-search').press('Enter');
+    await page.waitForFunction(() => state.waypoints.length === 3);
   });
 
   test('unknown token alerts and leaves the route unchanged', async ({ page }) => {

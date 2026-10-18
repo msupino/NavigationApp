@@ -45,8 +45,14 @@
       return (parsed && typeof parsed === 'object') ? parsed : {};
     } catch (e) { return {}; }
   }
+  // Every write of the sheet. It is saved with the route now, so a change here is an unsaved
+  // change to that route: the Save row's dot has to say so.
+  function write(v) {
+    try { localStorage.setItem(KEY, JSON.stringify(v)); } catch (e) { /* private mode */ }
+    if (typeof window.refreshRouteFileRows === 'function') window.refreshRouteFileRows();
+  }
   function save(cfg) {
-    try { localStorage.setItem(KEY, JSON.stringify(cfg)); } catch (e) { /* private mode */ }
+    write(cfg);
   }
   // Store ONE field, the one that was just typed.
   //
@@ -67,7 +73,7 @@
       dst = dst[parts[i]];
     }
     dst[parts[parts.length - 1]] = src[parts[parts.length - 1]];
-    try { localStorage.setItem(KEY, JSON.stringify(s)); } catch (e) { /* private mode */ }
+    write(s);
   }
   // Forget one typed value, so the field goes back to what the app knows.
   function clearField(path) {
@@ -79,7 +85,7 @@
       dst = dst[parts[i]];
     }
     delete dst[parts[parts.length - 1]];
-    try { localStorage.setItem(KEY, JSON.stringify(s)); } catch (e) { /* private mode */ }
+    write(s);
   }
   function storedHas(path) {
     const parts = String(path).split('.');
@@ -97,7 +103,7 @@
     const s = stored();
     s.met = cfg.met;
     s.deviation = cfg.deviation;
-    try { localStorage.setItem(KEY, JSON.stringify(s)); } catch (e) { /* private mode */ }
+    write(s);
   }
 
   // The elevation of an endpoint, when the endpoint is a field we know. Typed values win: an
@@ -197,6 +203,47 @@
           .map(r => ({ mh: Number(r.mh), ch: num(r.ch, Number(r.mh)) }))
         : d.deviation,
     };
+  }
+
+  // --- the sheet, saved with a route ---------------------------------------------------------
+  // A met table and a compass card belong to the flight they were written for, so they travel
+  // with the saved route (route library -> Drive) rather than as a device-wide setting. Only
+  // what the pilot TYPED goes, coerced like any file: the rest is re-derived on the device that
+  // opens it, so an untouched field elevation still follows that device's airfield data.
+  function typedOnly(n) {
+    if (!n || typeof n !== 'object') return {};
+    // routeStatesCruise off: a typed cruise level is kept as typed, not swapped for whatever
+    // route happens to be on the map while it is read.
+    const c = coerce(n, Object.assign(defaults(), { routeStatesCruise: false }));
+    const out = {};
+    for (const k of Object.keys(c)) {
+      if (!Object.prototype.hasOwnProperty.call(n, k)) continue;
+      const v = c[k];
+      if (v && typeof v === 'object' && !Array.isArray(v)) {
+        const sub = {};
+        for (const kk of Object.keys(v)) {
+          if (n[k] && typeof n[k] === 'object' && Object.prototype.hasOwnProperty.call(n[k], kk)) sub[kk] = v[kk];
+        }
+        if (Object.keys(sub).length) out[k] = sub;
+      } else {
+        out[k] = v;
+      }
+    }
+    return out;
+  }
+  // This device's sheet, to be saved with the route on the map. null when nothing was typed.
+  function forRoute() {
+    const t = typedOnly(stored());
+    return Object.keys(t).length ? t : null;
+  }
+  // A saved route's sheet, put back when that route is opened. Replaces what this device had
+  // typed: it is another flight's table otherwise. A route saved without one changes nothing.
+  function applyFromRoute(n) {
+    const t = typedOnly(n);
+    if (!Object.keys(t).length) return false;
+    save(t);
+    routeChanged();
+    return true;
   }
 
   // --- exercises as files -------------------------------------------------------------------
@@ -413,7 +460,7 @@
     c.met = rows.sort((a, b) => a.alt - b.alt);
     const s = stored();
     s.met = c.met;
-    try { localStorage.setItem(KEY, JSON.stringify(s)); } catch (e) { /* private mode */ }
+    write(s);
     c.metAtZ = stamp.slice(11) + ':00Z';
     if (typeof showToast === 'function') {
       showToast((S2.navTableMetFetched ? S2.navTableMetFetched(rows.length, c.metAtZ)
@@ -1185,5 +1232,5 @@
 
   NS.navLog = { show, config, save, rows: rowsFor, exportCsv, headers, cells, defaults,
     parseExercise, importExercise, openExerciseFile, exportExercise, routeChanged,
-    fetchMet, metLevelsFor, lookaheadHoursAhead };
+    fetchMet, metLevelsFor, lookaheadHoursAhead, forRoute, applyFromRoute };
 }());

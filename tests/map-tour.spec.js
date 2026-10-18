@@ -66,6 +66,16 @@ test('Back, Skip and Escape; Settings plays it again', async ({ page }) => {
   await expect(page.locator('#map-tour')).toHaveCount(0);
 });
 
+// Reported: the tour opened on Route check, before any step had shown how to add a route.
+test('the tour builds the route before it checks it', async ({ page }) => {
+  await boot(page, { width: 1280, height: 800 });
+  await expect(page.locator('#map-tour')).toBeVisible({ timeout: 10000 });
+  const titles = await page.evaluate(() => NavAid.tour.steps().map(s => s.k));
+  expect(titles[0]).toBe('Edit');
+  expect(titles.indexOf('Check')).toBe(titles.indexOf('Edit') + 1);
+  await expect(page.locator('#map-tour .tour-title')).toHaveText('Edit the route');
+});
+
 // Reported with a screenshot: the Edit step lit the whole column, Route check included.
 test('the Edit step lights the edit buttons, not Route check above them', async ({ page }) => {
   await boot(page, { width: 1280, height: 800 });
@@ -132,8 +142,7 @@ for (const [name, size, phoneLayout, lang] of [['phone', { width: 390, height: 8
 test('short phone: the Edit bubble sits beside the column, not on it', async ({ page }) => {
   await boot(page, { width: 360, height: 640 }, 'en');
   await expect(page.locator('#map-tour')).toBeVisible({ timeout: 10000 });
-  await page.locator('#map-tour .tour-next').click();             // Check -> Edit
-  await expect(page.locator('#map-tour .tour-title')).toHaveText('Edit the route');
+  await expect(page.locator('#map-tour .tour-title')).toHaveText('Edit the route');   // first step
   await page.waitForTimeout(700);                                 // let the bubble settle
   const g = await page.evaluate(() => {
     const b = document.querySelector('#map-tour .tour-bubble').getBoundingClientRect();

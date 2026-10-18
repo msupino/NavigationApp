@@ -18,6 +18,29 @@ const geom = page => page.evaluate(() => {
   };
 });
 
+for (const lang of ['en', 'he']) {
+  for (const desktop of [true, false]) {
+    test(`route creation keeps desktop search open and dismisses mobile search: ${lang}, ${desktop ? 'desktop' : 'mobile'}`, async ({ page }) => {
+      await page.setViewportSize({ width: desktop ? 1280 : 375, height: 800 });
+      await page.goto(`?lang=${lang}&nogist`);
+      await page.waitForFunction(() => typeof buildRouteFromQuery === 'function');
+      await page.evaluate(() => showSearchOverlay());
+      await page.locator('#wp-search').fill('LLHZ BAZRA DEROR');
+      await page.locator('#wp-search').press('Enter');
+      await page.waitForFunction(() => state.waypoints.length >= 3);
+      expect((await geom(page)).hidden).toBe(!desktop);
+      await expect(page.locator('#wp-search')).toHaveValue('');
+      await expect(page.locator('#wp-search-results')).toBeHidden();
+      expect(await page.evaluate(() => localStorage.getItem('navaid.searchShown'))).toBeNull();
+      if (desktop) {
+        await page.reload();
+        await page.waitForFunction(() => typeof searchDocked === 'function');
+        await expect(page.locator('#wp-search')).toBeVisible();
+      }
+    });
+  }
+}
+
 test('desktop shows the search docked below the menu bar, left in English', async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 800 });
   await page.goto('?lang=en&nogist');
@@ -68,7 +91,7 @@ test('crossing the breakpoint docks and undocks', async ({ page }) => {
   expect((await geom(page)).hidden).toBe(false);
 });
 
-test('Escape clears the query first, and only dismisses on a second press', async ({ page }) => {
+test('Escape clears desktop search but only the close button dismisses it', async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 800 });
   await page.goto('?lang=en&nogist');
   await page.waitForFunction(() => typeof searchDocked === 'function');
@@ -78,7 +101,13 @@ test('Escape clears the query first, and only dismisses on a second press', asyn
   await expect(page.locator('#wp-search')).toHaveValue('');
   expect((await geom(page)).hidden).toBe(false);   // query gone, panel stays
   await page.keyboard.press('Escape');
-  expect((await geom(page)).hidden).toBe(true);    // nothing left to clear -> dismissed
+  expect((await geom(page)).hidden).toBe(false);
+  await page.locator('#wp-search').blur();
+  await page.keyboard.press('Escape');
+  expect((await geom(page)).hidden).toBe(false);  // global Escape also leaves it open
+  expect(await page.evaluate(() => localStorage.getItem('navaid.searchShown'))).toBeNull();
+  await page.click('#search-close');
+  expect((await geom(page)).hidden).toBe(true);
 });
 
 test('Ctrl-F always reveals and focuses, never dismisses', async ({ page }) => {

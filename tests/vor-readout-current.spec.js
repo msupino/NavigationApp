@@ -46,3 +46,28 @@ test('on a phone the VOR line sits above the coordinate box, not under it', asyn
   });
   expect(r).toEqual({ overlap: false, above: true });
 });
+
+test('VOR ref row: picker then readout at the row\'s far edge, mirrored in Hebrew', async ({ page }) => {
+  for (const lang of ['en', 'he']) {
+    await page.goto('?lang=' + lang + '&nogist');
+    await page.waitForFunction(() => typeof syncLegs === 'function' && typeof showInspector === 'function');
+    await page.evaluate(() => {
+      state.waypoints = [{ lat: 32.18, lng: 34.83, name: 'A' }, { lat: 32.40, lng: 34.95, name: 'B' }];
+      syncLegs(); draw(); state.selected = { type: 'wp', index: 1 }; showInspector();
+    });
+    const row = page.locator('#inspector .vor-radial-row').first();
+    await row.waitFor();
+    const g = await row.evaluate((r) => {
+      const box = (el) => el.getBoundingClientRect();
+      return { row: box(r), lab: box(r.querySelector('label')), sel: box(r.querySelector('select')),
+        val: box(r.querySelector('.vor-radial-val')) };
+    });
+    if (lang === 'en') {
+      expect(g.sel.left).toBeLessThan(g.val.left);                       // label · NAT · R-xxx
+      expect(g.row.right - g.val.right).toBeLessThan(24);                 // at the far (right) edge
+    } else {
+      expect(g.sel.right).toBeGreaterThan(g.val.right);                  // mirror: NAT right of the readout
+      expect(g.val.left - g.row.left).toBeLessThan(24);                   // at the far (left) edge
+    }
+  }
+});

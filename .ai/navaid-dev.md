@@ -170,7 +170,12 @@ commit on `main`, `dev`, or an unrelated feature branch by mistake.
     route-wide drift lines are on; `showDrift: 1` shows it when route-wide
     drift lines are off. `hideDrift` wins if both legacy flags are present.
   - `state.notes[i]` = `{lat, lng, text, color, shape}` — free-text
-    annotation boxes; `shape` is `'rect'` or `'oval'`.
+    annotation boxes; `shape` is `'rect'`, `'oval'` or `'arrow'`. Arrow notes
+    share `traceArrowBox()` with cumulative-time markers; the pointer uses the
+    cumulative arrow's height/triangle-length tunables and extends beyond the
+    rectangular text body. Existing `rot`, `size`, colour, persistence and
+    print/export drawing apply. Hit-testing excludes the arrowhead's empty
+    corners in the note's rotated frame.
   - `state.mode` = `'add' | 'note' | null` (null = inspect);
     `state.selected` = `{type:'wp'|'leg'|'note', index}` or `null`.
   - Top-level globals: `showReturn`, `showMidLeg`, `showCumTime`,
@@ -782,6 +787,14 @@ as a machine-readable registry.
   its default-off **Include not yet active** checkbox and access to the full
   feed, including when the selected airfield currently has no active entry. The
   choice is transient and adds no `localStorage` key.
+- The airfield inspector's **Airfield layer** row offers only the plate layers that field
+  publishes (circuit, training, CVFR, helicopter, comm-failure, aerodrome chart, and each
+  placeable instrument sheet) as one choice, since plate layers are one at a time. It drives
+  the same hidden `*-cb` switches as the toolbar picker and points the "Show plates for"
+  filter at that field, so it adds no `localStorage` key of its own.
+- The airfield inspector groups NOTAMs, Airport charts and Airfield layer under one divider
+  (`.airfield-refs`), each a label with its control at the end; the charts entry is a link
+  like the NOTAM one (`.insp-notam-link.insp-charts-btn`), not a separate button design.
 - The NOTAM sheet orders its current result for flight planning: notices whose
   explicit map geometry intersects the planned route first, then departure and
   destination airfield notices, FIR-wide (`LLLL`) notices, and other airfields.
@@ -879,7 +892,12 @@ as a machine-readable registry.
 - `navaid.routes` — saved-route library entries and tombstones. An entry
   may carry `kind: 'gps'` plus a raw `track[]` (the recorded GPS
   breadcrumb: `{lat,lng,t,alt?,acc?}`); loading applies the simplified
-  waypoint route, the raw track is retained for fidelity.
+  waypoint route, the raw track is retained for fidelity. A route entry may
+  also carry `navlog` beside `data`: the planning form as typed for that
+  route (only typed fields, `NavAid.navLog.forRoute()`), so the met table and
+  deviation card travel with the route through Drive. Opening the entry puts
+  it back (`applyFromRoute`); `navaid.navlog` itself stays device-local.
+  A form edit counts as an unsaved change to the route (`routeFileDirty`).
 - `navaid.syncSettings` — `'1'` when the opt-in "Sync settings too" box (route
   library → Drive) is enabled. Device-local; itself never synced.
 - `navaid.settingsSyncedAt` / `navaid.settingsSnapshot` — bookkeeping for the

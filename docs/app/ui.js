@@ -2346,6 +2346,22 @@ function showCenterCoord() {
 // with nothing on screen saying so. A thin crosshair marks the spot the numbers belong to,
 // so panning the map under it reads coordinates the way a chart ruler would. Touch only --
 // with a pointer, the pointer already is the marker.
+// Focus a text field only where that does not cost the screen. On a touch-only device focusing an
+// input raises the on-screen keyboard, which covers the panel just opened -- reported on Saved
+// routes, where the list being opened to was hidden under a keyboard nobody asked for. There the
+// field waits for a tap. A dialog that exists to be typed into (rename, a code, search) passes
+// { typingIsThePoint: true } and focuses everywhere. Same touch test as the toolbar: a coarse
+// pointer that cannot hover, never a user-agent sniff.
+function touchOnlyDevice() {
+  return typeof matchMedia === 'function' && matchMedia('(hover: none) and (pointer: coarse)').matches;
+}
+function focusForTyping(el, opts) {
+  const o = opts || {};
+  if (!el || (!o.typingIsThePoint && touchOnlyDevice())) return false;
+  try { el.focus(); if (o.select && typeof el.select === 'function') el.select(); } catch (e) { return false; }
+  return true;
+}
+window.focusForTyping = focusForTyping;
 function coarsePointerOnly() {
   return typeof matchMedia === 'function' &&
     (matchMedia('(pointer: coarse)').matches || matchMedia('(max-width: 680px)').matches);
@@ -2377,6 +2393,9 @@ function dropGotoMarker(lat, lng) {
     fillColor: tune('gotoMarkerFillColor'), fillOpacity: tune('gotoMarkerFillAlpha'),
     interactive: false, className: 'goto-marker',
   }).addTo(map);
+  // A 7 px dot on a busy chart was easy to miss (reported): it blinks a few times (CSS) and the
+  // same pulsing ring a name search gets marks it while it does. The dot stays afterwards.
+  if (typeof flashMapPoint === 'function') flashMapPoint(lat, lng);
 }
 // A genuine map click (drop waypoint, pan, etc.) dismisses the temp marker.
 map.on('click', clearGotoMarker);
@@ -2626,13 +2645,13 @@ function flashMapPoint(lat, lng) {
   // from it so the two can never disagree.
   const T = (k, fb) => { const v = (typeof tune === 'function') ? tune(k) : undefined;
     return (v === undefined || v === null || v === '') ? fb : v; };
-  const hex = String(T('searchFlashColor', '#ffb020')).trim();
+  const hex = String(T('searchFlashColor', '#ff2a2a')).trim();
   // The fill is derived from the ring colour so the two cannot disagree. A malformed value
   // from the gist falls back rather than producing an invalid rgba() that would drop the
   // fill silently.
   const rgb = /^#?[0-9a-f]{6}$/i.test(hex)
     ? hex.replace('#', '').match(/../g).map(h => parseInt(h, 16)).join(', ')
-    : '255, 176, 32';
+    : '255, 42, 42';
   const el = _searchFlashEl.getElement();
   el.style.setProperty('--flash-size', px * 2 + 'px');
   el.style.setProperty('--flash-ms', ms + 'ms');
@@ -2754,7 +2773,8 @@ async function buildRouteFromQuery(raw) {
   syncLegs();
   if (typeof seedCommChangeNotes === 'function') seedCommChangeNotes();
   wpSearch.value = '';
-  hideSearchOverlay();
+  if (searchDocked()) closeSearch();
+  else hideSearchOverlay();
   showInspector();
   fitView();
   // Auto-route applies to a search-built route too: typing "LLHZ RIDNG" is the same
@@ -3591,7 +3611,9 @@ function showRouteLibraryModal(focusSave) {
   // type over it immediately.
   if (focusSave) {
     if (typeof defaultSavedRouteName === 'function') nameInput.value = defaultSavedRouteName();
-    setTimeout(() => { try { nameInput.focus(); nameInput.select(); } catch (e) { /* */ } }, 0);
+    // The suggested name is already filled in: on a phone one tap on Save is enough, and the
+    // keyboard comes up only if the pilot taps the name to change it.
+    setTimeout(() => focusForTyping(nameInput, { select: true }), 0);
     // An unnamed end point is named by the nearest chart point -- which needs the chart points.
     // With their overlays off they may never have loaded: load them, and suggest again if the
     // pilot has not typed over the first suggestion meanwhile.
@@ -4036,7 +4058,7 @@ function showRouteLibraryModal(focusSave) {
   render();
   // Let a background auto-sync refresh this list while it's open.
   window.refreshRouteLibrary = render;
-  nameInput.focus();
+  focusForTyping(nameInput);
 }
 
 function restoreOpenChartModal() {
@@ -4136,15 +4158,32 @@ function parseSearchLatLng(text) {
 }
 window.parseSearchLatLng = parseSearchLatLng;
 
+// Does a phrase with spaces in it name ONE point? Hebrew names often do -- צומת השרון -- and
+// a phrase that is a name is a search for it, not a route of its words. Without this, Enter on
+// "צומת השרון" refused with "unknown navigation waypoint: צומת" (reported).
+function searchPhraseMatches(phrase) {
+  const p = String(phrase || '').trim();
+  if (!/\s/.test(p)) return false;
+  const up = p.toUpperCase();
+  const has = (s) => s != null && String(s).toUpperCase().indexOf(up) >= 0;
+  const lists = [
+    typeof navWP !== 'undefined' ? navWP : null,
+    typeof airfields !== 'undefined' ? airfields : null,
+    typeof vors !== 'undefined' ? vors : null,
+  ];
+  return lists.some(l => Array.isArray(l) && l.some(w => w && (has(w.he) || has(w.en) || has(w.name))));
+}
+window.searchPhraseMatches = searchPhraseMatches;
+
 function runSearch() {
-  // Use the raw value (not trimmed) so a trailing space — meaning "I just
-  // accepted the previous token, waiting to type the next one" — suppresses
-  // the dropdown instead of re-running a stale single-token query.
-  const rawAll = wpSearch.value;
-  const trailingSpace = /\s$/.test(rawAll);
-  const qRaw = rawAll.trim();
-  const multi = /\s/.test(qRaw) || trailingSpace;
-  const lastToken = trailingSpace ? '' : (multi ? (qRaw.split(/\s+/).pop() || '') : qRaw);
+  // Leading and trailing spaces mean nothing. A trailing one used to mean "token accepted"
+  // and closed the dropdown -- but a phone keyboard's autocomplete and dictation add a space
+  // after every word, so "SHARO " showed nothing and Enter had nothing to take (reported).
+  const qRaw = wpSearch.value.trim();
+  let multi = /\s/.test(qRaw);
+  let lastToken = multi ? (qRaw.split(/\s+/).pop() || '') : qRaw;
+  // A name with spaces in it is searched whole, as one query (see searchPhraseMatches).
+  if (multi && searchPhraseMatches(qRaw)) { multi = false; lastToken = qRaw; }
   if (multi && !lastToken) { closeSearch(); return; }
   // A coordinate is read whole -- it has spaces in it, and the token logic below would see
   // "N32 30 E035 00" as a route of four waypoints.
@@ -4265,6 +4304,9 @@ function runSearch() {
     }
     item.textContent = alt && alt !== primary ? primary + ' / ' + alt : primary;
     item.onclick = () => {
+      // Going somewhere else: the red dot a coordinate left behind is no longer the answer, and
+      // left on the map it read as the place just searched (reported).
+      if (!multi || !h.src.routable) clearGotoMarker();
       if (h.kind === 'notam') {
         closeSearch();
         if (typeof notamMappable === 'function' && notamMappable(w)) {
@@ -4314,17 +4356,22 @@ function runSearch() {
       }
       map.setView([w.lat, w.lng], Math.max(map.getZoom(), 12));
       flashMapPoint(w.lat, w.lng);
-      // An airfield found by name opens its panel, the way a bubble and a typed coordinate
-      // already do. Everything a pilot searches a field FOR is in there -- its frequencies, its
-      // plates, the wind and the density altitude -- and flying the map to a triangle leaves
-      // them to find it again with a tap they have just made with the keyboard.
-      //
-      // Only a field: a nav waypoint, a VOR or a note is a point on the chart whose own label
-      // says what it is, and the flash is the answer to "where is it".
-      if (h.kind === 'af' && Array.isArray(airfields)) {
-        const index = airfields.indexOf(w);
+      // A point found by name opens its inspector, the way a bubble and a typed coordinate
+      // already do: an airfield's frequencies, plates and wind; a VOR's frequency and ident; a
+      // reporting point's altitude and code; your own route point or note, ready to edit.
+      // Flying the map to it and stopping there left them to find it again with a tap they had
+      // just made with the keyboard (reported for VORs and airfields).
+      const inspectAs = {
+        af: ['airfield', typeof airfields !== 'undefined' ? airfields : null],
+        vor: ['vor', typeof vors !== 'undefined' ? vors : null],
+        wp: ['navwp', typeof navWP !== 'undefined' ? navWP : null],
+        routewp: ['wp', state.waypoints],
+        note: ['note', state.notes],
+      }[h.kind];
+      if (inspectAs && Array.isArray(inspectAs[1])) {
+        const index = inspectAs[1].indexOf(w);
         if (index >= 0) {
-          state.selected = { type: 'airfield', index };
+          state.selected = { type: inspectAs[0], index };
           if (typeof showInspector === 'function') showInspector();
           if (typeof draw === 'function') draw();
         }
@@ -4371,10 +4418,21 @@ wpSearch.addEventListener('focus', () => { if (wpSearch.value.trim()) runSearch(
 wpSearch.addEventListener('keydown', e => {
   if (e.key === 'Enter') {
     const raw = wpSearch.value.trim();
-    // Only treat as a route-build when there are ≥ 2 actual tokens.
+    // A coordinate has spaces in it too, and was read here as a route: Enter on "32.18 34.83"
+    // tried to build one from waypoints named 32.18 and 34.83 (reported). runSearch reads a
+    // coordinate whole before anything else; Enter does the same and goes to it.
+    if (parseSearchLatLng(raw)) {
+      e.preventDefault();
+      if (!wpResults.querySelector('.wp-search-coord')) runSearch();
+      const hit = wpResults.querySelector('.wp-search-coord');
+      if (hit) hit.click();
+      return;
+    }
+    // Only treat as a route-build when there are ≥ 2 actual tokens -- and they are not one
+    // name with spaces in it (searchPhraseMatches), which takes its first hit like any name.
     // A single token with trailing whitespace must still let Enter pick
     // the highlighted dropdown suggestion.
-    if (raw.split(/\s+/).filter(Boolean).length >= 2) {
+    if (raw.split(/\s+/).filter(Boolean).length >= 2 && !searchPhraseMatches(raw)) {
       e.preventDefault();
       buildRouteFromQuery(raw);
       return;
@@ -4382,15 +4440,12 @@ wpSearch.addEventListener('keydown', e => {
     const first = wpResults.querySelector('.wp-search-item');
     if (first) first.click();
   } else if (e.key === 'Escape') {
-    // Route through escapeSearch, not straight to hide: docked, the first
-    // Escape clears the query and only a second one puts the panel away.
-    // Stop it here — the document-level handler runs the same function, and
-    // letting it bubble applied both steps to one keypress.
-    e.stopPropagation();
+    // Keyboard-opened inspectors still own Escape while focus remains in search.
+    if (!state.selected) e.stopPropagation();
     escapeSearch();
   }
 });
-// Floating search overlay — Ctrl/Cmd-F opens it, Escape or ✕ closes it. The
+// Floating search overlay — Ctrl/Cmd-F opens it, ✕ closes it, Escape clears it. The
 // search input moved out of the toolbar Build section so it no longer
 // requires the section to be expanded.
 const searchOverlay = document.getElementById('search-overlay');
@@ -4412,25 +4467,89 @@ function showSearchOverlay() {
 }
 function hideSearchOverlay() {
   searchOverlay.classList.add('hidden');
+  setSearchExamples(false);
   closeSearch();
   wpSearch.value = '';
   // Docked, dismissal is a preference rather than a one-off: the panel is part
   // of the desktop furniture, so whether it is up must survive a reload.
   if (searchDocked()) setSearchDockShown(false);
 }
-// Escape while docked clears the query first and only dismisses the panel on a
-// second press with nothing left to clear — so the common case (wrong search
-// term) does not cost the panel.
+// Escape clears the query/results but never dismisses the search bar or writes
+// its visibility preference. Explicit dismissal belongs to the close button.
 function escapeSearch() {
-  if (searchDocked() && wpSearch.value) {
-    closeSearch();
-    wpSearch.value = '';
-    return;
-  }
-  hideSearchOverlay();
+  closeSearch();
+  wpSearch.value = '';
+  setSearchExamples(false);
 }
 document.getElementById('search-trigger').onclick = revealSearchOverlay;
 document.getElementById('search-close').onclick = hideSearchOverlay;
+// "?" beside the box: what the search understands, as examples to tap. It reads like a name
+// search, but it also builds a route from codes and reads coordinates in three notations, and
+// the only thing that said so was a tip that retires after the first search (reported).
+// Every example is real data, so tapping one shows what a hit looks like.
+const SEARCH_EXAMPLES = [
+  ['searchExWaypoint', 'SHARO'],
+  ['searchExAirfield', 'LLHZ'],
+  ['searchExHebrew', 'הרצליה'],
+  ['searchExVor', 'NAT'],
+  ['searchExRoute', 'LLHZ BAZRA DEROR'],
+  ['searchExDecimal', '32.18 34.83'],
+  ['searchExDms', 'N32 10 48 E034 50 04'],
+  ['searchExPacked', '3211N03450E'],
+];
+// Looked up on each call, not held in consts: hideSearchOverlay can run before this part of
+// the file has, and a const read that early throws.
+function setSearchExamples(open) {
+  const searchHelpBtn = document.getElementById('search-help');
+  const searchExamples = document.getElementById('search-examples');
+  if (!searchHelpBtn || !searchExamples) return;
+  searchExamples.hidden = !open;
+  searchHelpBtn.setAttribute('aria-expanded', open ? 'true' : 'false');
+  // The one-line route tip says what the route example already shows: two lines of repeat
+  // above the list on a phone. Out of the way while the list is open; back as it was after.
+  const tip = document.getElementById('wp-search-hint');
+  if (tip) tip.classList.toggle('hidden', open || searchTipDone());
+  if (!open) return;
+  searchExamples.innerHTML = '';
+  const intro = document.createElement('div');
+  intro.className = 'search-ex-intro';
+  intro.textContent = S.searchExIntro || 'Tap an example to try it:';
+  searchExamples.appendChild(intro);
+  for (const [key, example] of SEARCH_EXAMPLES) {
+    const row = document.createElement('button');
+    row.type = 'button';
+    row.className = 'search-ex';
+    const what = document.createElement('span');
+    what.className = 'search-ex-what';
+    what.textContent = S[key] || key;
+    const code = document.createElement('code');
+    code.dir = 'auto';                       // a Hebrew name in an English list, and the reverse
+    code.textContent = example;
+    row.append(what, code);
+    row.onclick = () => {
+      setSearchExamples(false);
+      wpSearch.value = example;
+      runSearch();
+      // An example is submitted, not just typed in (reported): exactly what Enter does with it --
+      // a name goes to its first hit, a coordinate to the point, a route is built (after asking,
+      // when it would replace one on the map).
+      wpSearch.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+    };
+    searchExamples.appendChild(row);
+  }
+  const more = document.createElement('div');
+  more.className = 'search-ex-more';
+  more.textContent = S.searchExMore || '';
+  searchExamples.appendChild(more);
+}
+(function wireSearchHelp() {
+  const btn = document.getElementById('search-help');
+  const box = document.getElementById('search-examples');
+  if (!btn || !box) return;
+  btn.onclick = () => setSearchExamples(box.hidden);
+  // Typing is the answer to the question: the examples make way for real results.
+  wpSearch.addEventListener('input', () => { if (!box.hidden) setSearchExamples(false); });
+}());
 // Clearing the box is not closing the search: on a phone the overlay lives at the top of the
 // menu sheet, where the only ✕ in reach puts the whole menu away -- so emptying a mistyped
 // waypoint meant thirteen backspaces or losing the sheet. Shown only when there is something to
@@ -4452,8 +4571,8 @@ document.getElementById('search-close').onclick = hideSearchOverlay;
 
 // Ctrl/Cmd-F and the toolbar button always bring the panel up and put the caret
 // in it — never dismiss it, since Ctrl-F pressed while already in the search box
-// means "search", not "put the search away". Dismissal is the ✕, or Escape with
-// nothing left to clear. Docked, whether it is up is remembered under
+// means "search", not "put the search away". Dismissal is the ✕. Docked,
+// whether it is up is remembered under
 // navaid.searchShown; mobile keeps its summoned overlay.
 const SEARCH_SHOWN_KEY = 'navaid.searchShown';
 function searchDockShown() {
@@ -5049,7 +5168,11 @@ function routeFileDirty(entry) {
     const c = routeFileCache.entryJson;
     const key = entry.id + '|' + entry.savedAt;
     if (!c.has(key)) c.set(key, JSON.stringify(entry.data));
-    return JSON.stringify(serializeRoute()) !== c.get(key);
+    if (JSON.stringify(serializeRoute()) !== c.get(key)) return true;
+    // The planning form is saved with the route, so an edit there is an unsaved change too --
+    // otherwise Save answered "saved" to a new met table and it never reached Drive.
+    const nl = (typeof routeLibraryNavLog === 'function') ? routeLibraryNavLog() : null;
+    return JSON.stringify(entry.navlog || null) !== JSON.stringify(nl);
   } catch (e) { return true; }
 }
 
@@ -8536,6 +8659,10 @@ function applyIfrPoints(chosen) {
     // A point the chart dataset already carries stays the dataset's: same name, same place,
     // and its comm-change and report status come with it.
     if (navWP.some(w => w && w.name === p.name)) continue;
+    // ...and so does one that is a VOR: ROP, BGN and NAT are printed on their sheets with the
+    // station's own position, and a second "ROP" drawn as a waypoint on top of the station
+    // gave a tap two identical choices (reported). The station is already tappable.
+    if (typeof vors !== 'undefined' && Array.isArray(vors) && vors.some(v => v && v.ident === p.name)) continue;
     navWP.push({ lat: p.lat, lng: p.lng, name: p.name, en: p.name,
                  _plate: (chosen.icao + ' ' + chosen.sheet.code) });
   }
@@ -9688,6 +9815,97 @@ function plateMapLayer(filename) {
   } };
 }
 window.plateMapLayer = plateMapLayer;
+
+// The plate layers one airfield has, offered in its inspector (asked for: "in the inspector of
+// an airfield, allow adding the extra layers which are available for it"). Only the kinds that
+// field actually publishes are listed, and its instrument sheets one by one. The plate layers
+// are one-at-a-time (see the mutual-exclusion wiring below), so this is a single choice, and it
+// drives the same hidden switches the toolbar picker does -- one implementation of loading,
+// persistence and the on-map close button, not two.
+const AF_LAYER_TYPES = [
+  ['circuit-cb', 'circuit_overlay', 'plateTypeCircuit'],
+  ['training-cb', 'training_overlay', 'plateTypeTraining'],
+  ['cvfr-cb', 'cvfr_overlay', 'plateTypeCvfr'],
+  ['heli-cb', 'heli_overlay', 'plateTypeHeli'],
+  ['commfail-cb', 'commfail_overlay', 'plateTypeCommfail'],
+  ['adc-cb', 'adc_overlay', 'plateTypeAdc'],
+];
+function airfieldLayers(af) {
+  const out = [];
+  if (!af) return out;
+  for (const [cbId, key, label] of AF_LAYER_TYPES) {
+    if (af[key]) out.push({ value: cbId, label: S[label] || key });
+  }
+  for (const sheet of (Array.isArray(af.ifr_overlays) ? af.ifr_overlays : [])) {
+    if (!sheet || !sheet.png) continue;
+    out.push({ value: 'ifr|' + af.name + '|' + sheet.png,
+               label: (S.inspLayerIfr || 'Instrument') + ': ' + (sheet.code || sheet.png),
+               title: sheet.title || '' });
+  }
+  return out;
+}
+// Which of this field's layers is on the map now ('' when none of them is). A layer that is
+// on for another field only -- the airfield filter names a different one -- is not this
+// field's, and reads as off here.
+function airfieldLayerShown(af) {
+  if (!af) return '';
+  for (const [cbId, key] of AF_LAYER_TYPES) {
+    const box = document.getElementById(cbId);
+    if (box && box.checked && af[key] && plateAirfieldAllowed(af.name)) return cbId;
+  }
+  const ifr = document.getElementById('ifr-cb');
+  if (ifr && ifr.checked) {
+    const chosen = ifrChosen();
+    if (chosen && chosen.icao === af.name) return 'ifr|' + ifrKeyOf(chosen);
+  }
+  return '';
+}
+function showAirfieldLayer(af, value) {
+  if (!af) return;
+  const setBox = (id, on) => {
+    const box = document.getElementById(id);
+    if (!box || box.checked === on) return;
+    box.checked = on;
+    box.dispatchEvent(new Event('change', { bubbles: true }));
+  };
+  if (!value) {
+    const cur = airfieldLayerShown(af);
+    if (cur) setBox(cur.indexOf('ifr|') === 0 ? 'ifr-cb' : cur, false);
+    return;
+  }
+  if (value.indexOf('ifr|') === 0) {
+    const key = value.slice(4);
+    const ifr = document.getElementById('ifr-cb');
+    if (ifr && ifr.checked) setIfrSheet(key, { move: true });
+    else { setIfrSheet(key); setBox('ifr-cb', true); }
+    if (typeof window.refreshIfrSheets === 'function') window.refreshIfrSheets();
+    return;
+  }
+  // This field's sheet, not every field's: the airfield filter goes to this field, the way
+  // "show on map" from its charts already does (plateMapLayer).
+  const filter = document.getElementById('plate-airfield');
+  if (filter && filter.value !== af.name) {
+    filter.value = af.name;
+    filter.dispatchEvent(new Event('change', { bubbles: true }));
+  }
+  setBox(value, true);
+}
+window.airfieldLayers = airfieldLayers;
+window.airfieldLayerShown = airfieldLayerShown;
+window.showAirfieldLayer = showAirfieldLayer;
+// The inspector's choice follows the map: a layer closed from its ✕, from the toolbar, or
+// replaced by another plate reads as such in the open panel, not as still showing.
+function syncAirfieldLayerSelect() {
+  const sel = document.getElementById('insp-af-layer');
+  if (!sel || !Array.isArray(window.airfields)) return;
+  const af = airfields.find(a => a.name === sel.dataset.icao);
+  if (af) sel.value = airfieldLayerShown(af);
+}
+for (const id of ['circuit-cb', 'training-cb', 'cvfr-cb', 'heli-cb', 'commfail-cb', 'adc-cb',
+                  'ifr-cb', 'ifr-sheet', 'plate-airfield']) {
+  const el = document.getElementById(id);
+  if (el) el.addEventListener('change', syncAirfieldLayerSelect);
+}
 
 // Public NavAid pilots: everyone who ticked Public when sharing (followme.js publicPilots).
 // Remembered on this device; the frame goes when the gist switches public sharing off.
@@ -10863,6 +11081,33 @@ function clampInspToViewport() {
     get() { return d.get.call(this); },
     set(v) { d.set.call(this, v); this.title = v == null ? '' : String(v); },
   });
+})();
+
+(function keepInspectorWheelGesture() {
+  const insp = document.getElementById('inspector');
+  const mapEl = document.getElementById('map');
+  let lastWheel = -Infinity;
+  let pointerX = 0, pointerY = 0;
+  // Closing the sheet exposes the map to the same trackpad gesture's remaining samples.
+  window.addEventListener('wheel', e => {
+    const now = performance.now();
+    if (insp.contains(e.target)) {
+      lastWheel = now;
+      pointerX = e.clientX; pointerY = e.clientY;
+    } else if (insp.classList.contains('hidden') && mapEl.contains(e.target) && now - lastWheel < 250) {
+      lastWheel = now;
+      e.preventDefault();
+      e.stopImmediatePropagation();
+    }
+  }, { capture: true, passive: false });
+  window.addEventListener('pointermove', e => {
+    if (insp.classList.contains('hidden') && mapEl.contains(e.target) &&
+        Math.hypot(e.clientX - pointerX, e.clientY - pointerY) > 8) lastWheel = -Infinity;
+    pointerX = e.clientX; pointerY = e.clientY;
+  }, { capture: true, passive: true });
+  window.addEventListener('pointerdown', e => {
+    if (mapEl.contains(e.target)) lastWheel = -Infinity;
+  }, { capture: true, passive: true });
 })();
 
 document.getElementById('insp-close').onclick = () => {
@@ -12119,6 +12364,12 @@ function checkApkForUpdate(opts) {
 function backButtonStep() {
   // Innermost first, the way the pilot stacked them: a plate over the charts list over the
   // map. Each returns true when it consumed the press.
+  const shown = (el) => !!(el && !el.classList.contains('hidden') && !el.hidden && el.getClientRects().length);
+  // The tour sits over everything: Back ends it, as its own Skip does.
+  if (document.getElementById('map-tour') && window.NavAid && NavAid.tour) { NavAid.tour.close(); return true; }
+  // A popover inside a panel closes before the panel (the flight plan's departure / Columns).
+  const pop = document.querySelector('details.fp-when[open], details.fp-columns[open]');
+  if (pop) { pop.open = false; return true; }
   const modals = Array.from(document.querySelectorAll('.modal-back'));
   const top = modals.reverse().find(el => !el.hidden &&
     getComputedStyle(el).display !== 'none' && getComputedStyle(el).visibility !== 'hidden');
@@ -12131,6 +12382,13 @@ function backButtonStep() {
     closeFlightPlan();
     return true;
   }
+  // Windows that are not .modal-back backdrops: the simulator, the assistant, the More menu.
+  const sim = document.getElementById('sim-modal');
+  if (shown(sim)) { const x = document.getElementById('sim-modal-close'); if (x) x.click(); else sim.classList.add('hidden'); return true; }
+  const ai = document.querySelector('.assistant-panel');
+  if (shown(ai)) { const fab = document.querySelector('.assistant-fab'); if (fab) fab.click(); else ai.classList.add('hidden'); return true; }
+  const more = document.getElementById('footer-more-menu');
+  if (more && !more.hidden) { more.hidden = true; return true; }
   const insp = document.getElementById('inspector');
   if (insp && !insp.classList.contains('hidden')) {
     state.selected = null;
@@ -12138,9 +12396,24 @@ function backButtonStep() {
     if (typeof draw === 'function') draw();
     return true;
   }
+  // The measure tool, like add / note: a map tool to leave before leaving the app.
+  if (typeof measureOn === 'function' && measureOn() && typeof measureToggle === 'function') {
+    measureToggle(false);
+    return true;
+  }
+  // The search results list under the search bar (the bar itself stays).
+  const results = document.getElementById('wp-results');
+  if (shown(results) && typeof closeSearch === 'function') { closeSearch(); return true; }
   if (typeof state !== 'undefined' && (state.mode === 'add' || state.mode === 'note')) {
     setMode(null);
     if (typeof draw === 'function') draw();
+    return true;
+  }
+  // The phone's Menu (and any deck sheet): it was missed here, so Back went straight to "Close
+  // NavAid?" -- and that question, opening as a modal, closed the sheet under it: one press
+  // closed the menu AND offered to quit.
+  if (window.NavAid && typeof NavAid.deckSheetOpen === 'function' && NavAid.deckSheetOpen()) {
+    NavAid.closeDeckSheet();
     return true;
   }
   if (typeof window.closeToolbarMenus === 'function' &&

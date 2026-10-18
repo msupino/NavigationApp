@@ -72,6 +72,26 @@ Patterns:
 
 ## Route And Leg UI
 
+Free-text notes offer Rectangle, Oval and Arrow in their inspector. Arrow is the
+cumulative-time marker's pointed box, with text centred in its rectangular
+body. The existing Rotation and Size controls set its direction and scale;
+colour and print/export follow the ordinary note path. Identification-point
+notes remain fixed ovals and frequency-change callouts retain their own editor.
+
+Creating a route from typed waypoint codes clears the search query and results.
+The docked desktop search stays open and does not save a dismissal preference;
+the summoned mobile search closes after successful route creation.
+Escape clears the query, results, and examples without closing the search bar
+on either layout, even when the query is already empty. The × button dismisses
+it explicitly; only that dismissal updates the docked visibility preference.
+If a search result opened an inspector while focus stayed in the search input,
+Escape also reaches the inspector dismissal handler. Scrolling the inspector
+does not transfer keyboard focus back from search.
+When the inspector closes during a wheel gesture, trailing samples over the
+newly exposed map are consumed until a 250 ms quiet gap. A deliberate pointer
+move or press on the map starts a new interaction immediately; wheel zoom is
+never disabled globally.
+
 Route leg markers are called kites in code/comments. They store offsets in
 leg-relative coordinates.
 
@@ -127,6 +147,12 @@ Ask in the app, and await it:
 no modal factory). In tests, answer with `answerAppDialogs(page, true|false|'text'|[...])` and
 read toasts with `captureToasts(page)` (`tests/_setup.js`); a click handler that asks is async,
 so wait for its effect rather than reading state straight after `click()`.
+
+Focusing a text field when a panel opens raises the phone keyboard over that panel. Use
+`focusForTyping(el, { select?, typingIsThePoint? })` (ui.js), not `el.focus()`: on a touch-only
+device (`(hover: none) and (pointer: coarse)`) it leaves the field for a tap, unless the dialog
+exists to be typed into (rename, codes, search), which passes `typingIsThePoint: true`.
+`tests/mobile-keyboard-focus.spec.js` covers Saved routes and the assistant.
 
 ## RTL / LTR Guardrails
 

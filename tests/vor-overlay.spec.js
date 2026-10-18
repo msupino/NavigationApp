@@ -150,7 +150,7 @@ test.describe('VOR overlay + radial/DME (#404)', () => {
     const label = row.locator('label');
     const controls = row.locator('.vor-radial-controls');
     const val = row.locator('.vor-radial-val');
-    await expect(label).toHaveText('תחנת ייחוס');
+    await expect(label).toHaveText('VOR ייחוס');
     await expect(val).toHaveText(/R-\d{3}° \/ \d+\.\d NM/);
     const bidi = await val.evaluate(el => {
       const style = getComputedStyle(el);

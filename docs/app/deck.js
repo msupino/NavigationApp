@@ -286,6 +286,8 @@
     sync();
   }
   NavAid.closeDeckSheet = () => closeSheet();
+  // Android Back asks this first (ui.js backButtonStep): an open sheet is a step to go back.
+  NavAid.deckSheetOpen = () => !!(sheet && !sheet.hidden && sheetKey);
 
   // The menu, in the sheet. Not a copy of it: the toolbar element itself is moved in and put
   // back on close, so every section, handler and stored state is the one that already works.

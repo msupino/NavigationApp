@@ -1,0 +1,55 @@
+From 408f31e046e5b7af943956a246a45e84384dab66 Mon Sep 17 00:00:00 2001
+From: Marco Supino <marco@supino.org>
+Date: Fri, 16 Oct 2026 16:10:40 +0300
+Subject: [PATCH] Document arrow-shaped map notes in English and Hebrew
+
+---
+ Inspector-he.md           | 2 +-
+ Waypoints-and-Notes-he.md | 2 ++
+ Waypoints-and-Notes.md    | 2 +-
+ 3 files changed, 4 insertions(+), 2 deletions(-)
+
+diff --git a/Inspector-he.md b/Inspector-he.md
+index c052153..0858543 100644
+--- a/Inspector-he.md
++++ b/Inspector-he.md
+@@ -230,7 +230,7 @@ DA  = PA + 120 × (T − ISA)
+ | שדה | תיאור |
+ | --- | --- |
+ | **טקסט** | תוכן ההערה |
+-| **צורה** | מלבן, אליפסה |
++| **צורה** | מלבן, אליפסה או חץ |
+ | **צבע** | צבע ההערה |
+ 
+ ## חלונית Set Course
+diff --git a/Waypoints-and-Notes-he.md b/Waypoints-and-Notes-he.md
+index a9eb1f6..50986ff 100644
+--- a/Waypoints-and-Notes-he.md
++++ b/Waypoints-and-Notes-he.md
+@@ -81,8 +81,10 @@
+ ### סוגי הערות
+ 
+ ניתן לבחור צורה להערה בחלונית למידע נוסף:
++
+ - **מלבן** — ברירת מחדל
+ - **אליפסה**
++- **חץ** — מסגרת מחודדת כמו סימון הזמן המצטבר. כוונו אותו באמצעות בקרת **סיבוב**; אפשר לערוך את הטקסט, הגודל והצבע כרגיל. הצורה והכיוון נשמרים עם המסלול ומופיעים גם בהדפסה ובייצוא.
+ 
+ ### עריכה
+ 
+diff --git a/Waypoints-and-Notes.md b/Waypoints-and-Notes.md
+index 79cb355..8ac103e 100644
+--- a/Waypoints-and-Notes.md
++++ b/Waypoints-and-Notes.md
+@@ -57,7 +57,7 @@ Notes are free-standing map objects — text you place anywhere, independent of
+ 
+ **Adding** — note mode from the Edit menu, then click where it should go.
+ 
+-**Shapes** — rectangle (the default) or oval.
++**Shapes** — rectangle (the default), oval or arrow. Choose **Arrow** in the note inspector for the same pointed outline as a cumulative-time marker. Use the existing **Rotation** control to aim it; text, size and colour remain editable. The shape and direction are saved with the route and included in print/export.
+ 
+ **Editing** — select it and type; drag to move it. Fill colour and opacity come from the Display menu and the tuning keys.
+ 
+-- 
+2.33.0
+

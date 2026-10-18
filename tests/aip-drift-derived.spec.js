@@ -63,3 +63,22 @@ test('the script reads the map rather than carrying the exception in code', () =
   // for it -- that guess is what nearly got a published Arad chart deleted.
   expect(src).toMatch(/published per file, no single pack/);
 });
+
+test('an unreachable index is not drift: exit 2, said on stdout, issue untouched (#2656)', () => {
+  // A CAA outage made fetch_index() raise; Python exits 1 on an uncaught exception, which is
+  // also the drift code, so the workflow opened the drift issue with an empty report. Point
+  // the script at a closed local port (no third-party traffic) and check it says so instead.
+  const { spawnSync } = require('child_process');
+  const r = spawnSync('python3', [join(root, 'scripts/aip-drift.py')], {
+    encoding: 'utf8', cwd: root,
+    env: { ...process.env, AIP_INDEX_URL: 'http://127.0.0.1:9/getJson' },
+  });
+  expect(r.status).toBe(2);
+  expect(r.stdout).toMatch(/AIP index unreachable/);
+  expect(r.stdout).not.toMatch(/drifted/);
+  // And the workflow only touches the issue on 0 (close it) or 1 (drift); anything else
+  // fails the run with the issue left as it was.
+  const wf = readFileSync(join(root, '.github/workflows/aip-plates.yml'), 'utf8');
+  expect(wf).toMatch(/0\|1\) ;;/);
+  expect(wf).toMatch(/issue left untouched/);
+});

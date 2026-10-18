@@ -472,7 +472,7 @@ function _vKind(value) {
 }
 // Push an error onto `errs` if `obj[key]` is missing or wrong-typed.
 // `type` is one of: 'number' | 'string' | 'object' | 'array' | 'shape'.
-// 'number' rejects NaN/Infinity; 'shape' allows exactly 'rect' | 'oval'.
+// 'number' rejects NaN/Infinity; 'shape' allows 'rect' | 'oval' | 'arrow'.
 function _v(obj, key, type, path, errs) {
   if (!obj || typeof obj !== 'object' || !(key in obj)) {
     errs.push(path + '.' + key + ': missing');
@@ -501,8 +501,8 @@ function _v(obj, key, type, path, errs) {
       return false;
     }
   } else if (type === 'shape') {
-    if (v !== 'rect' && v !== 'oval') {
-      errs.push(path + '.' + key + ': expected "rect" or "oval", got ' +
+    if (v !== 'rect' && v !== 'oval' && v !== 'arrow') {
+      errs.push(path + '.' + key + ': expected "rect", "oval" or "arrow", got ' +
                 JSON.stringify(v));
       return false;
     }
@@ -3454,6 +3454,14 @@ function defaultSavedRouteName() {
   return (typeof S.routeDefaultName === 'function') ? S.routeDefaultName(when) : 'Route ' + when;
 }
 // Save the current route as a new named library entry. Returns the entry or null.
+// The planning form as typed for the route on the map (navlog.js), or null. Saved BESIDE the
+// entry's `data`, not in it: `data` is the route's own shape -- what the app's route checks
+// read and what a route file holds -- and the form is the flight's met table and compass
+// card, which used to stay on the device it was typed on while the route went to Drive.
+function routeLibraryNavLog() {
+  const nl = window.NavAid && NavAid.navLog;
+  return (nl && typeof nl.forRoute === 'function') ? nl.forRoute() : null;
+}
 function routeLibrarySaveCurrent(name) {
   if (state.waypoints.length < 2) { refuse(S.errNeedWps); return null; }
   const list = loadRouteLibrary();
@@ -3463,6 +3471,8 @@ function routeLibrarySaveCurrent(name) {
     savedAt: new Date().toISOString(),
     data: serializeRoute(),
   };
+  const navlog = routeLibraryNavLog();
+  if (navlog) entry.navlog = navlog;
   list.unshift(entry);
   if (!persistRouteLibrary(list)) return null;
   currentRouteLibraryId = entry.id;   // this route is now tracked as a saved entry
@@ -3478,6 +3488,8 @@ function routeLibraryUpdate(id) {
   if (!entry) return null;
   entry.savedAt = new Date().toISOString();
   entry.data = serializeRoute();
+  const navlog = routeLibraryNavLog();
+  if (navlog) entry.navlog = navlog; else delete entry.navlog;
   if (!persistRouteLibrary(list)) return null;
   currentRouteLibraryId = entry.id;   // now the active saved entry
   return entry;
@@ -3491,6 +3503,10 @@ async function routeLibraryApply(entry) {
     || 'Replace the current route?';
   if (!await askReplaceRoute(ask, S.routeLibraryLoad, S.routeLibraryTitle)) return false;
   applyRouteData(entry.data);
+  // Its planning form too, when it was saved with one (on this device or another, via Drive).
+  if (entry.navlog && window.NavAid && NavAid.navLog && typeof NavAid.navLog.applyFromRoute === 'function') {
+    NavAid.navLog.applyFromRoute(entry.navlog);
+  }
   currentRouteLibraryId = entry.id;   // track the loaded entry for in-place Save
   return true;
 }

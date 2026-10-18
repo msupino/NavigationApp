@@ -1,0 +1,77 @@
+From 2dd297de93702dbc8c6107f44a34728572500a49 Mon Sep 17 00:00:00 2001
+From: Marco <marco@supino.org>
+Date: Thu, 15 Oct 2026 05:59:37 +0000
+Subject: [PATCH] Hebrew guides: formula code blocks in Latin symbols with a
+ Hebrew key
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Hebrew words inside a left-to-right code block are reordered by the bidi
+algorithm, so the TAS / density-altitude formulas on Planning-Form-he and
+Inspector-he rendered garbled (and `מ.א.מ ÷ √σ` showed as σ√). The blocks now
+use PA / T / ISA / DA / ELEV, with a Hebrew line naming each symbol.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_016iFU698yss2ToHbRpRJJS8
+---
+ Inspector-he.md     |  7 +++++--
+ Planning-Form-he.md | 11 +++++++----
+ 2 files changed, 12 insertions(+), 6 deletions(-)
+
+diff --git a/Inspector-he.md b/Inspector-he.md
+index 04d465b..c052153 100644
+--- a/Inspector-he.md
++++ b/Inspector-he.md
+@@ -66,13 +66,16 @@
+ <div dir="ltr">
+ 
+ ```
+-PA  = גובה השדה + 30 × (1013 − QNH)
++PA  = ELEV + 30 × (1013 − QNH)
+ ISA = 15 − 1.98 × (PA / 1000)
+-DA  = PA + 120 × (טמפרטורה − ISA)
++DA  = PA + 120 × (T − ISA)
+ ```
+ 
+ </div>
+ 
++כאשר <span dir="ltr"><code>ELEV</code></span> הוא גובה השדה (רגל), <span dir="ltr"><code>PA</code></span> גובה הלחץ, <span dir="ltr"><code>T</code></span> הטמפרטורה (°C),
++<span dir="ltr"><code>ISA</code></span> הטמפרטורה התקנית באותו גובה, ו-<span dir="ltr"><code>DA</code></span> גובה הצפיפות.
++
+ מתחת לזה: הטמפרטורה וה־QNH ששימשו לחישוב, **בשתי הסקאלות** (`33 °C · 1009 hPa · 29.80״`),
+ ומהיכן הגיעו. בשעה אפס מועדף ה־METAR של השדה עצמו — נמדד שם — ובשדות שאינם מפרסמים תצפית,
+ והם הרוב, נלקחת התחזית השעתית (Open-Meteo).
+diff --git a/Planning-Form-he.md b/Planning-Form-he.md
+index 4d05bda..2c04781 100644
+--- a/Planning-Form-he.md
++++ b/Planning-Form-he.md
+@@ -38,18 +38,21 @@
+ כל אחד מאלה משחזר גיליון תשובות שפורסם. היכן שקיימת חלופה מתבקשת, היא מצוינת כאן — כי היא
+ **אינה** משחזרת אותו.
+ 
+-**מהירות אווירית אמיתית** היא `מ.א.מ ÷ √σ`, כש-σ הוא יחס הצפיפות בגובה הצפיפות של הקטע:
++**מהירות אווירית אמיתית** היא מ.א.מ חלקי <span dir="ltr"><code>√σ</code></span>, כש-σ הוא יחס הצפיפות בגובה הצפיפות של הקטע:
+ 
+ <div dir="ltr">
+ 
+ ```
+-טמפרטורת ISA בגובה לחץ = 15 − 2°C לכל 1000 רגל
+-גובה צפיפות            = גובה לחץ + 120 × (טמפרטורה − ISA)
+-σ                      = (1 − 6.8756e−6 × גובה צפיפות) ^ 4.2561
++ISA = 15 − 2 × PA / 1000          (°C)
++DA  = PA + 120 × (T − ISA)
++σ   = (1 − 6.8756e−6 × DA) ^ 4.2561
+ ```
+ 
+ </div>
+ 
++כאשר <span dir="ltr"><code>PA</code></span> הוא גובה הלחץ (רגל), <span dir="ltr"><code>T</code></span> הטמפרטורה (°C),
++<span dir="ltr"><code>ISA</code></span> הטמפרטורה התקנית באותו גובה, ו-<span dir="ltr"><code>DA</code></span> גובה הצפיפות.
++
+ שתי מעלות לכל 1000 רגל, ולא 1.98 הפיזיקלי: זה המספר שהתרגיל עובד לפיו וזה שאפשר לבדוק בראש.
+ השניים נפרדים בעשירית הראשונה של מ.א.א במקום אחד בגיליון הייחוס — 6,000 רגל, שבו 1.98 נותן 98.24
+ ו-2 נותן 98.26, כלומר 98.2 מול 98.3. תיקון הגובה שבטיסה נשאר על 1.98; טסים לפיו, לא בודקים אותו ביד.
+-- 
+2.43.0
+
