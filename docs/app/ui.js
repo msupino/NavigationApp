@@ -1512,7 +1512,7 @@ editColCtrl.addTo(map);
 // select, each layer's checkbox -- so the gist, the APK-only rules and each layer's own loading
 // stay in one place, and the popover reads them again each time it opens. A layer the gist has
 // taken away is not offered; one this device cannot show is dimmed, saying why.
-const QUICK_LAYERS = ['notam-cb', 'airspace-cb', 'sigmet-cb', 'show-wind-cb', 'traffic-cb', 'plate-enabled-cb'];
+const QUICK_LAYERS = ['notam-cb', 'airspace-cb', 'sigmet-cb', 'airmet-cb', 'show-wind-cb', 'traffic-cb', 'plate-enabled-cb'];
 function quickLayersOpen() { return !!document.getElementById('quick-layers'); }
 function closeQuickLayers() {
   const p = document.getElementById('quick-layers');
@@ -1581,9 +1581,10 @@ function renderQuickLayers(p) {
   for (const id of QUICK_LAYERS) {
     const cb = document.getElementById(id);
     if (!cb) continue;
-    // Only the gist removes a control: a layer whose row it hid is not offered here either.
-    const frame = cb.closest('.tb-layer-frame') || cb.closest('label');
-    if (frame && getComputedStyle(frame).display === 'none') continue;
+    // Only the gist removes a control (it hides the layer's frame): such a layer is not offered.
+    // Anything else -- nothing in force, this device cannot show it -- is dimmed, never hidden.
+    const frame = cb.closest('.tb-layer-frame');
+    if (frame && frame.style.display === 'none') continue;
     const t = document.createElement('button');
     t.type = 'button'; t.className = 'ql-row ql-switch';
     t.setAttribute('role', 'switch');
@@ -1593,7 +1594,10 @@ function renderQuickLayers(p) {
     const knob = document.createElement('span'); knob.className = 'ql-knob'; knob.setAttribute('aria-hidden', 'true');
     t.append(name, knob);
     const label = cb.closest('label');
+    // Dimmed as the menu dims it: disabled (not on this device), or idle (setLayerIdle: nothing in
+    // force), each with the menu's own reason.
     if (cb.disabled) setButtonWhy(t, (label && label.title) || S.whyUnavailableHere || 'Not available here');
+    else if (cb.getAttribute('aria-disabled') === 'true') setButtonWhy(t, cb.dataset.why || S.whyUnavailableHere || 'Not available here');
     t.addEventListener('click', () => {
       if (t.classList.contains('is-dim')) return;          // the shared handler says why
       cb.click();
