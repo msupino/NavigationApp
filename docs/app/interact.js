@@ -1437,6 +1437,31 @@ function appendVorAipInfo(body, v) {
   if (v.remarks && v.remarks !== 'Nil') line(S.vorInfoLimits || 'Limits', v.remarks);
 }
 
+// While the surface weather layer is on: the surface at this point, at the look-ahead hour --
+// temperature / dew point, their spread, QNH. The grid point nearest it, from what the layer
+// already fetched (no request of its own).
+function appendSurfaceWxRow(body, lat, lng) {
+  const sw = window.NavAid && NavAid.surfaceWx;
+  if (!window.showSurfaceWx || !sw) return;
+  const s = sw.sampleNear(lat, lng, sw.lookaheadHours());
+  if (!s) return;
+  const row = document.createElement('div');
+  row.className = 'row swx-row';
+  const label = document.createElement('label');
+  label.textContent = S.inspSurface || 'Surface';
+  const val = document.createElement('span');
+  val.className = 'val';
+  val.dir = 'ltr';
+  const parts = [];
+  if (s.t !== null && s.td !== null) parts.push(Math.round(s.t) + '°/' + Math.round(s.td) + '°');
+  if (s.spread !== null) parts.push('Δ' + Math.round(s.spread) + '°');
+  if (s.p !== null) parts.push('Q' + Math.round(s.p));
+  val.textContent = parts.join(' · ');
+  val.title = (S.tbSurfaceWxTitle || '');
+  row.append(label, val);
+  body.appendChild(row);
+}
+
 // Shared inspector-only VOR selector + "From <VOR>  R-xxx° / yy.y NM" readout.
 // Changing this selector never writes `vorRef` or localStorage; it only changes
 // the active inspector readout.
@@ -3252,7 +3277,7 @@ function appendAirfieldDetailRows(body, af, label) {
   // this runway today -- and they were being read a satellite photograph apart.
   appendAirfieldRunways(body, af);
   appendSatelliteSnippet(body, af, label || airfieldInspectorTitle(af));
-  appendVorRadialRow(body, af.lat, af.lng);
+  appendVorRadialRow(body, af.lat, af.lng); appendSurfaceWxRow(body, af.lat, af.lng);
   // NOTAMs, charts and map layers are the three things the field publishes, and they read as
   // one group: a label, and its control at the end of the row. They were three designs --
   // a link, a big button under its own divider, a dropdown -- side by side (reported).
@@ -4402,7 +4427,7 @@ function showInspector() {
     appendPointCoordinateRows(body, pt);
     appendPlaceRows(body, pt);
     appendSatelliteSnippet(body, pt, title.value);
-    appendVorRadialRow(body, pt.lat, pt.lng);
+    appendVorRadialRow(body, pt.lat, pt.lng); appendSurfaceWxRow(body, pt.lat, pt.lng);
     appendDirectToButton(body, pt);
     appendAddToRouteButton(body, pt);
   } else if (state.selected.type === 'navwp') {
@@ -4422,7 +4447,7 @@ function showInspector() {
     appendPlaceRows(body, nw);
     appendNavWaypointCommChangeInfo(body, nw.name);
     appendSatelliteSnippet(body, nw, title.value);
-    appendVorRadialRow(body, nw.lat, nw.lng);
+    appendVorRadialRow(body, nw.lat, nw.lng); appendSurfaceWxRow(body, nw.lat, nw.lng);
     appendReportingRow(body, nw.name);
     appendDirectToButton(body, nw);
     appendAddToRouteButton(body, nw);
@@ -4467,7 +4492,7 @@ function showInspector() {
     } else {
       appendPlaceRows(body, wp);
       appendSatelliteSnippet(body, wp, title.value);
-      appendVorRadialRow(body, wp.lat, wp.lng);
+      appendVorRadialRow(body, wp.lat, wp.lng); appendSurfaceWxRow(body, wp.lat, wp.lng);
     }
     appendReportingRow(body, wp.name);
     // Comm-change badge/editor, including manual callouts. Known

@@ -5041,6 +5041,20 @@ body.theme-light .map-time-now { background: rgba(255, 255, 255, 0.95); }
 
 /* Legend for the airfield-wind barb styles, under its toolbar switch. */
 .af-wind-legend { font-size: 10px; opacity: 0.75; margin-block-start: 2px; }
+.swx-fields { display: flex; flex-wrap: wrap; gap: 0 12px; margin-block-start: 2px; padding-inline-start: 22px; }
+.swx-fields .swx-field { min-height: 32px; }
+.swx-legend { font-size: 11px; opacity: 0.85; }
+/* On the map: what the surface weather shows, and for when. Top centre, under the phone's strip. */
+.swx-chip {
+  position: absolute; z-index: 650; pointer-events: none;
+  top: calc(var(--navaid-deck-strip-h, 46px) + 8px); left: 50%; transform: translateX(-50%);
+  max-width: calc(100% - 140px); padding: 4px 10px; border-radius: 999px;
+  font: 600 12px/1.3 sans-serif; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  color: var(--navaid-mapbtn-fg, #fff); background: var(--navaid-mapbtn-bg, rgba(22, 30, 40, 0.82));
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+}
+/* Desktop: the search card and the open menu own the top; above the time bar instead. */
+body:not(.deck-on) .swx-chip { top: auto; bottom: 52px; }
 .runway-wind-row { flex-wrap: wrap; gap: 4px; align-items: baseline; }
 /* The components always start their own line, under the label and the time. Left to fit as
    they liked, a wide panel put all three on one line and the time landed sandwiched between
