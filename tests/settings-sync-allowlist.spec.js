@@ -158,6 +158,7 @@ const NOT_A_SYNCED_SETTING = [
   [/^navaid\.bundledChartsSeedFailed$/, 'a copy of the packed CVFR tiles that could not finish on this device (storage full) -- about this phone, not a setting'],
   [/^navaid\.bundledChartsSeeded$/, 'whether the CVFR tiles packed in this APK were copied into this device\'s chart store -- about this phone\'s storage, and syncing it would stop another device ever copying its own'],
   [/^navaid\.otaInstalling$/,   'one launch\'s attempt at installing a downloaded web bundle -- about this device\'s install, not a setting, and syncing it would stop another device ever trying that bundle'],
+  [/^navaid\.cvfrAutoAsk$/,       'whether this phone agreed to the automatic CVFR download -- about its own connection'],
   [/^navaid\.printRes$/,         'print resolution for the printer and the device HERE (a phone holds less) -- not the pilot'],
   [/^navaid\.etd$/,              'the planned departure of one flight (#667), not a setting -- a stale ETD on another device would put wrong ETAs on its plan'],
   [/^navaid\.printBw$/,          'whether the printer HERE prints in colour -- about this device\'s printer, not the pilot'],
