@@ -13,7 +13,7 @@ async function boot(page, size) {
   await page.waitForFunction(() => typeof setMode === 'function' && !!document.getElementById('edit-col-add'));
 }
 
-test('on a phone: route check, then the menu\'s four, top left, drawn icons', async ({ page }) => {
+test('on a phone: quick layers, route check, then the menu\'s four, top left, drawn icons', async ({ page }) => {
   await boot(page);
   const out = await page.evaluate(() => {
     const col = document.querySelector('.edit-col-ctrl');
@@ -27,8 +27,8 @@ test('on a phone: route check, then the menu\'s four, top left, drawn icons', as
     };
   });
   expect(out.visible).toBe(true);
-  expect(out.ids).toEqual(['edit-col-check', 'edit-col-add', 'edit-col-note', 'edit-col-undo', 'edit-col-clear', 'edit-col-fit']);
-  expect(out.icons).toEqual(['routeCheck', 'addWp', 'addNote', 'undo', 'clearMap', 'fitFrame']);
+  expect(out.ids).toEqual(['edit-col-layers', 'edit-col-check', 'edit-col-add', 'edit-col-note', 'edit-col-undo', 'edit-col-clear', 'edit-col-fit']);
+  expect(out.icons).toEqual(['layers', 'routeCheck', 'addWp', 'addNote', 'undo', 'clearMap', 'fitFrame']);
   expect(out.left).toBeLessThan(40);                 // the left edge, opposite the live column
   expect(out.top).toBeGreaterThanOrEqual(out.stripBottom);   // below the top strip, not under it
 });

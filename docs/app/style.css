@@ -1473,6 +1473,62 @@ body.deck-on .leaflet-control.edit-col-ctrl {
 .leaflet-control.edit-col-ctrl button.edit-col-on { background: var(--navaid-mapbtn-on); }
 .leaflet-control.edit-col-ctrl button:disabled,
 .leaflet-control.edit-col-ctrl button.is-dim { opacity: 0.45; }
+/* Quick layers: the popover beside the column's Layers button, in the map buttons' own dark. */
+.quick-layers {
+  position: fixed;
+  z-index: 1700;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 220px;
+  max-width: min(300px, calc(100vw - 16px));
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  padding: 10px;
+  border-radius: 14px;
+  color: var(--navaid-mapbtn-fg);
+  background: rgba(22, 30, 40, 0.95);
+  box-shadow: 0 6px 22px rgba(0, 0, 0, 0.45);
+  font-size: 15px;
+}
+.quick-layers .ql-head {
+  font-size: 12px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase;
+  opacity: 0.7; padding: 6px 8px 2px;
+}
+.quick-layers .ql-head:not(:first-child) { margin-top: 6px; border-top: 1px solid rgba(255, 255, 255, 0.12); padding-top: 10px; }
+.quick-layers .ql-group { display: flex; flex-direction: column; gap: 2px; }
+.quick-layers .ql-row {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  min-height: 44px; width: 100%; padding: 0 10px;
+  border: 0; border-radius: 10px;
+  color: inherit; background: transparent; font: inherit; text-align: start;
+  cursor: pointer; touch-action: manipulation; -webkit-tap-highlight-color: transparent;
+}
+.quick-layers .ql-row:hover { background: rgba(255, 255, 255, 0.08); }
+.quick-layers .ql-row:focus-visible { outline: 2px solid #ffffff; outline-offset: -2px; }
+.quick-layers .ql-row.is-dim { opacity: 0.45; }
+/* The chart in use: a filled dot at the row's end, as a radio reads. */
+.quick-layers .ql-radio::after {
+  content: ''; flex: 0 0 auto; width: 16px; height: 16px; border-radius: 50%;
+  border: 2px solid currentColor; box-sizing: border-box; opacity: 0.6;
+}
+.quick-layers .ql-radio[aria-checked="true"] { background: rgba(255, 255, 255, 0.10); font-weight: 600; }
+.quick-layers .ql-radio[aria-checked="true"]::after { opacity: 1; background: var(--navaid-mapbtn-on); border-color: var(--navaid-mapbtn-on); box-shadow: inset 0 0 0 3px rgba(22, 30, 40, 0.95); }
+/* An overlay: a switch at the row's end. */
+.quick-layers .ql-knob {
+  position: relative; flex: 0 0 auto; width: 36px; height: 20px; border-radius: 10px;
+  background: rgba(255, 255, 255, 0.25); transition: background 0.15s;
+}
+.quick-layers .ql-knob::after {
+  content: ''; position: absolute; top: 2px; inset-inline-start: 2px; width: 16px; height: 16px;
+  border-radius: 50%; background: #ffffff; transition: inset-inline-start 0.15s;
+}
+.quick-layers .ql-switch[aria-checked="true"] .ql-knob { background: var(--navaid-mapbtn-on); }
+.quick-layers .ql-switch[aria-checked="true"] .ql-knob::after { inset-inline-start: 18px; }
+@media (prefers-reduced-motion: reduce) {
+  .quick-layers .ql-knob, .quick-layers .ql-knob::after { transition: none; }
+}
 /* The ruler without a position: dimmed the same way, still tappable to say why. */
 .leaflet-control.measure-ctrl button.is-dim { opacity: 0.45; }
 .leaflet-control.edit-col-ctrl button:focus-visible {
