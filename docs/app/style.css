@@ -2212,14 +2212,17 @@ body.theme-light .resize-grip {
   white-space: nowrap;
   unicode-bidi: isolate;
 }
+/* The station picker then its readout, in the row's own direction -- English reads
+   label · NAT · R-211°, Hebrew the mirror of it -- and both at the row's far edge, where
+   every other inspector value sits. (Forced LTR, Hebrew put the readout beside the
+   label and the picker outermost: the English order, not its mirror.) */
 .vor-radial-controls {
   display: flex;
   align-items: center;
   flex: 0 1 auto;
   gap: 6px;
   min-width: 0;
-  direction: ltr;
-  unicode-bidi: isolate;
+  margin-inline-start: auto;
 }
 .vor-radial-row select {
   /* A fixed 58px fit the VOR idents (2-3 letters: "BGN", "NAT") this control mostly
@@ -2246,6 +2249,8 @@ body.theme-light .resize-grip {
   font-variant-numeric: tabular-nums;
   unicode-bidi: isolate;
 }
+/* LTR text, but the outer edge of a Hebrew row is its left. */
+[dir="rtl"] .row .val.vor-radial-val { text-align: left; }
 /* Re-enable selection inside actual text fields (the toolbar disables it). */
 #toolbar input, #toolbar textarea,
 .row input, .row textarea {
