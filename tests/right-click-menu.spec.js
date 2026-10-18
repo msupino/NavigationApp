@@ -106,3 +106,26 @@ test('Hebrew', async ({ page }) => {
   expect(r.items).toContain('הוסף הערה כאן');
   expect(r.items).toContain('מה יש כאן');
 });
+
+test('on a leg kite (time / heading label): the leg menu, not the open-map one', async ({ page }) => {
+  await boot(page);
+  // Find a pixel the kite covers: scan around the first leg's midpoint.
+  const at = await page.evaluate(() => {
+    const a = map.latLngToContainerPoint([32.18, 34.83]), b = map.latLngToContainerPoint([32.40, 34.95]);
+    const mx = (a.x + b.x) / 2, my = (a.y + b.y) / 2;
+    for (let r = 0; r < 120; r += 3) for (let t = 0; t < 360; t += 15) {
+      const x = Math.round(mx + r * Math.cos(t * Math.PI / 180)), y = Math.round(my + r * Math.sin(t * Math.PI / 180));
+      const kite = (x, y) => hitLegLabel(x, y) || hitCumLabel(x, y);
+      // Well inside the kite (its neighbours hit too), off the line and the points.
+      if ([[0, 0], [4, 4], [-4, -4], [4, -4], [-4, 4]].every(([dx, dy]) => kite(x + dx, y + dy))
+          && hitLeg(x, y) < 0 && hitWaypointCandidates(x, y).length === 0) {
+        const ll = map.containerPointToLatLng([x, y]); return [ll.lat, ll.lng];
+      }
+    }
+    return null;
+  });
+  expect(at).not.toBeNull();
+  const r = await rightClick(page, at);
+  expect(r.items[0]).toBe('Insert waypoint here');
+  expect(await page.evaluate(() => state.selected && state.selected.type)).toBe('leg');
+});

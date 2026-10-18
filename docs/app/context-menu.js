@@ -157,6 +157,12 @@
       const w = hitWaypointCandidates(p.x, p.y);
       if (w.length) return { type: 'wp', index: w[0].index };
     }
+    // A leg's kites (time, heading) are the leg too: a left click there opens its inspector,
+    // so a right click opens its menu, not the bare map's.
+    for (const fn of ['hitCumLabel', 'hitCumLabelRet', 'hitLegLabel']) {
+      const k = typeof window[fn] === 'function' ? window[fn](p.x, p.y) : null;
+      if (k && Number.isInteger(k.i)) return { type: 'leg', index: k.i, latlng };
+    }
     if (typeof hitLeg === 'function') {
       const l = hitLeg(p.x, p.y);
       if (l >= 0) return { type: 'leg', index: l, latlng };

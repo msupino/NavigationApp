@@ -395,7 +395,7 @@ window.S = {
   tbShowVorTitle: 'הצג תחנות VOR/DME ובחר תחנת ייחוס לרדיאל/DME',
   tbShowLsa: 'הצגת בועות גובה נמוך',
   tbShowLsaTitle: 'הצג אזורי מרחב אווירי LSA (בועות) — בשכבת גובה נמוך',
-  vorRefLabel: 'תחנת ייחוס',
+  vorRefLabel: 'VOR ייחוס',
   vorRefNone: '— ללא —',
   tbShowWind: 'הצג השפעת רוח לכל קטע',
   tbShowWindTitle: 'הצג את שדות הרוח, חצי הרוח לכל קטע, וקריאת הכיוון המתוקן בחלונית הקטע',
