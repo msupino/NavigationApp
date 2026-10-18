@@ -141,8 +141,9 @@
       ? ((typeof S.bleGpsDisconnect === 'function') ? S.bleGpsDisconnect(dev.name) : 'Disconnect Bluetooth GPS')
       : str('tbBleGps', 'Connect Bluetooth GPS');
     if (typeof setButtonWhy === 'function') setButtonWhy(btn, plugin() ? null : (isIosApp()
-      // The iOS app names no other platform (App Review 2.3.10): it says only what is so here.
-      ? str('whyBleGpsIos', 'Bluetooth GPS is not available on iPhone and iPad yet')
+      // The iOS app names no other platform (App Review 2.3.10). Its build carries the plugin;
+      // only an older install, from before it did, lacks it.
+      ? str('whyBleGpsIos', 'Bluetooth GPS needs the latest version of the app')
       : str('whyBleGpsApp', 'Bluetooth GPS works in the Android app')));
   }
   if (btn) btn.addEventListener('click', () => (dev.id ? disconnect() : connect()));

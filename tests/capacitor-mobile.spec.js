@@ -71,7 +71,16 @@ test.describe('Capacitor mobile wrapper', () => {
       // to spend a pilot's data plan on -- navigator.connection does not exist in WKWebView.
       '@capgo/capacitor-updater',
       '@capacitor/network',
+      // The rest of the Android app's plugins, so the iOS app does what it does.
+      '@capacitor-community/bluetooth-le',
+      '@capacitor-community/keep-awake',
+      '@capacitor-community/screen-brightness',
+      '@capacitor/app',
+      '@capacitor/device',
+      '@capacitor/haptics',
+      '@capacitor/status-bar',
     ]);
+    // Its Swift package pins Capacitor 7: iOS has its own plugin of the same name instead.
     expect(config.ios.includePlugins).not.toContain('@capacitor-community/background-geolocation');
     for (const perm of ['ACCESS_FINE_LOCATION', 'ACCESS_COARSE_LOCATION',
       'FOREGROUND_SERVICE', 'FOREGROUND_SERVICE_LOCATION', 'POST_NOTIFICATIONS',
@@ -195,4 +204,25 @@ test('the offline shell speaks both languages', () => {
   expect(html).toMatch(/[\u0590-\u05FF]/);
   expect(html).toContain('dir="rtl"');
   expect(html).toMatch(/needs a network connection/i);
+});
+
+// The iOS app does what the Android one does: a Swift plugin for each Android-only native one
+// the page calls, registered on the bridge, with the permissions and background mode it needs.
+test('iOS has the Android app\'s native plugins and their permissions', () => {
+  const fs = require('fs');
+  const path = require('path');
+  const root = path.join(__dirname, '..');
+  const swift = fs.readFileSync(path.join(root, 'mobile/ios/App/App/AppDelegate.swift'), 'utf8');
+  const plist = fs.readFileSync(path.join(root, 'mobile/ios/App/App/Info.plist'), 'utf8');
+  for (const [cls, js] of [['BarometerPlugin', 'Barometer'], ['Gdl90Plugin', 'Gdl90'],
+    ['NavAidPrintPlugin', 'NavAidPrint'], ['BackgroundGeolocationPlugin', 'BackgroundGeolocation'],
+    ['LocationQualityPlugin', 'LocationQuality'], ['XPlaneDiscoveryPlugin', 'XPlaneDiscovery']]) {
+    expect(swift, cls).toContain(`public let jsName = "${js}"`);
+    expect(swift, cls + ' registered').toContain(`registerPluginInstance(${cls}())`);
+  }
+  for (const key of ['NSMotionUsageDescription', 'NSBluetoothAlwaysUsageDescription',
+    'NSLocationWhenInUseUsageDescription', 'NSLocalNetworkUsageDescription']) {
+    expect(plist, key).toMatch(new RegExp(`<key>${key}</key>\\s*<string>[^<]+</string>`));
+  }
+  expect(plist).toMatch(/<key>UIBackgroundModes<\/key>\s*<array>\s*<string>location<\/string>/);
 });
