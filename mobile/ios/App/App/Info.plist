@@ -43,6 +43,8 @@
 	</dict>
 	<key>NSLocalNetworkUsageDescription</key>
 	<string>NavAid finds X-Plane and connects to simulator bridges on your local network.</string>
+	<key>NSMotionUsageDescription</key>
+	<string>NavAid reads the barometer for pressure altitude and vertical speed while a position is shown.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>NavAid uses your location to show your position and record GPS tracks while the app is in use.</string>
 	<key>UILaunchStoryboardName</key>

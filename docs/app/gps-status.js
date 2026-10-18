@@ -22,6 +22,10 @@
   let firstFixMs = null;     // time to first fix, from the satellite engine
   let startedAt = 0;         // when this position session began
   let plugin = null, listener = null, el = null, detail = null;
+  // iOS (LocationQuality plugin): no satellites -- Apple gives none to any app -- but speed and
+  // track accuracy, and whether the fix is from an external receiver.
+  let iosq = null, iosPlugin = null, iosListener = null;
+  const isIos = () => { const C = window.Capacitor; return !!(C && typeof C.getPlatform === 'function' && C.getPlatform() === 'ios'); };
 
   function noteFix(pos) {
     if (!pos || !pos.coords) return;
@@ -164,6 +168,13 @@
       if (Number.isFinite(b.sats)) src.push(b.sats + ' ' + str('gpsStatusSatsWord', 'sats'));
       row(tb, str('gpsStatusSource', 'Source'), src);
     }
+    if (iosq) {
+      const q = [];
+      if (Number.isFinite(iosq.speedAcc)) q.push(str('gpsStatusSpeedShort', 'speed') + ' \u00b1' + Math.max(1, Math.round(iosq.speedAcc * 1.94384)) + ' kt');
+      if (Number.isFinite(iosq.courseAcc)) q.push(str('gpsStatusTrackShort', 'track') + ' \u00b1' + Math.max(1, Math.round(iosq.courseAcc)) + '\u00b0');
+      if (q.length) row(tb, str('gpsStatusMotionAcc', 'Speed, track'), q);
+      if (iosq.external) row(tb, str('gpsStatusSource', 'Source'), str('gpsStatusExternal', 'External GPS receiver'));
+    }
     if (gnss && Number.isFinite(gnss.inView)) {
       row(tb, str('gpsStatusSatellites', 'Satellites'),
         [typeof S.gpsStatusSatsOf === 'function' ? S.gpsStatusSatsOf(gnss.used, gnss.inView) : gnss.used + ' of ' + gnss.inView + ' used']
@@ -193,6 +204,7 @@
     if (!gnss) {
       // Why there are no satellites: in a browser that is all there is; in the app, the reason.
       const note = {
+        ios: ['gpsStatusSatsIos', 'iOS does not give satellite data to apps; NavAid shows what it does give: accuracy, fix rate, speed and track accuracy, and the barometer.'],
         browser: ['gpsStatusNoSats', 'Satellite counts are shown in the Android app; this browser gives only the position and its accuracy.'],
         waiting: ['gpsStatusSatsWaiting', 'No satellite data from the phone yet. Android reports satellites only while its GPS receiver runs; indoors, or on a Wi-Fi or cell fix, there may be none.'],
         engine: ['gpsStatusSatsEngine', 'The GPS receiver is on; no satellites in view yet. A clear view of the sky helps.'],
@@ -229,8 +241,18 @@
   // 'engine' (the receiver is on, nothing in view yet), 'denied' (no precise location),
   // 'unavailable' (this phone reports none), 'ok'.
   let satState = 'browser';
+  async function startIosQuality() {
+    const C = window.Capacitor;
+    iosPlugin = (C && C.Plugins && C.Plugins.LocationQuality) || null;
+    if (!iosPlugin) return;
+    try {
+      iosListener = await iosPlugin.addListener('quality', (e) => { if (e) { iosq = e; render(); } });
+      await iosPlugin.start();
+    } catch (e) { /* the panel shows less */ }
+  }
   async function startSats() {
     plugin = gnssPlugin();
+    if (!plugin && isIos()) { satState = 'ios'; startIosQuality(); return; }
     if (!plugin) { satState = 'browser'; return; }
     satState = 'waiting';
     try {
@@ -250,6 +272,9 @@
     }
   }
   function stopSats() {
+    if (iosListener && typeof iosListener.remove === 'function') { try { iosListener.remove(); } catch (e) { /* gone */ } }
+    if (iosPlugin) { try { iosPlugin.stop(); } catch (e) { /* gone */ } }
+    iosListener = null; iosPlugin = null; iosq = null;
     if (listener && typeof listener.remove === 'function') { try { listener.remove(); } catch (e) { /* gone */ } }
     listener = null;
     if (plugin) { try { plugin.stop(); } catch (e) { /* gone */ } }

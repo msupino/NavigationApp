@@ -122,3 +122,29 @@ test('app without satellite data: the details say why (waiting, receiver on, no 
   });
   await expect.poll(() => page.evaluate(() => NavAid.gpsStatus.satState())).toBe('denied');
 });
+
+test('iOS: no satellites (Apple gives none), the reason said so; speed and track accuracy and an external receiver shown', async ({ page }) => {
+  await boot(page);
+  await page.evaluate(() => {
+    window.__lq = { started: 0, cb: null };
+    const C = window.Capacitor;
+    C.isNativePlatform = () => true;
+    C.getPlatform = () => 'ios';
+    delete C.Plugins.GnssStatus;
+    C.Plugins.LocationQuality = {
+      addListener: async (n, cb) => { window.__lq.cb = cb; return { remove() { window.__lq.cb = null; } }; },
+      start: async () => { window.__lq.started++; }, stop: async () => {},
+    };
+  });
+  await goLive(page);
+  await expect.poll(() => page.evaluate(() => window.__lq.started)).toBe(1);
+  await fix(page, 5);
+  await page.evaluate(() => window.__lq.cb({ speedAcc: 0.6, courseAcc: 4.2, external: true }));
+  await page.locator('#gps-status').click();
+  const m = page.locator('.gps-status-modal');
+  await expect(m).toContainText('iOS does not give satellite data');
+  await expect(m).not.toContainText('Android app');
+  const rows = await m.locator('tr').evaluateAll(trs => trs.map(tr => [...tr.querySelectorAll('.gps-status-part')].map(p => p.textContent)));
+  expect(rows).toContainEqual(['speed ±1 kt', 'track ±4°']);
+  expect(rows).toContainEqual(['External GPS receiver']);
+});
