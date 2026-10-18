@@ -70,6 +70,9 @@ test('Escape, a tap outside, and Back each close it', async ({ page }) => {
   await btn.click();
   expect(await page.evaluate(() => backButtonStep())).toBe(true);
   await expect(page.locator('#quick-layers')).toHaveCount(0);
+  await btn.click(); await page.setViewportSize({ width: 844, height: 390 });   // the phone turned
+  await expect(page.locator('#quick-layers')).toHaveCount(0);
+  await page.setViewportSize({ width: 390, height: 844 });
   await btn.click(); await btn.click();                       // the button closes it too
   await expect(page.locator('#quick-layers')).toHaveCount(0);
 });

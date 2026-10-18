@@ -1520,6 +1520,7 @@ function closeQuickLayers() {
   p.remove();
   document.removeEventListener('pointerdown', quickLayersOutside, true);
   document.removeEventListener('keydown', quickLayersKey, true);
+  window.removeEventListener('resize', closeQuickLayers);
   const b = document.getElementById('edit-col-layers');
   if (b) { b.classList.remove('edit-col-on'); b.setAttribute('aria-expanded', 'false'); }
   return true;
@@ -1632,6 +1633,9 @@ function toggleQuickLayers() {
   b.classList.add('edit-col-on'); b.setAttribute('aria-expanded', 'true');
   document.addEventListener('pointerdown', quickLayersOutside, true);
   document.addEventListener('keydown', quickLayersKey, true);
+  // A turn of the phone moves the column (and Leaflet may rebuild it): the popover would be left
+  // pointing at nothing, so it closes, and the button opens it again in the right place.
+  window.addEventListener('resize', closeQuickLayers);
   const first = p.querySelector('.ql-row[aria-checked="true"], .ql-row');
   if (first) first.focus();
 }
