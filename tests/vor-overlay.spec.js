@@ -150,7 +150,7 @@ test.describe('VOR overlay + radial/DME (#404)', () => {
     const label = row.locator('label');
     const controls = row.locator('.vor-radial-controls');
     const val = row.locator('.vor-radial-val');
-    await expect(label).toHaveText('VOR ייחוס');
+    await expect(label).toHaveText('ייחוס VOR');
     await expect(val).toHaveText(/R-\d{3}° \/ \d+\.\d NM/);
     const bidi = await val.evaluate(el => {
       const style = getComputedStyle(el);
@@ -163,7 +163,9 @@ test.describe('VOR overlay + radial/DME (#404)', () => {
       controls.boundingBox(),
     ]);
     expect(labelBox && controlsBox).toBeTruthy();
-    expect(controlsBox.x + controlsBox.width).toBeLessThan(labelBox.x - 4);
+    // Separated: left of the label on its line, or wrapped to a line of their own below it.
+    const ownLine = controlsBox.y >= labelBox.y + labelBox.height - 1;
+    if (!ownLine) expect(controlsBox.x + controlsBox.width).toBeLessThan(labelBox.x - 4);
   });
 
   test('the "— none —" placeholder is not clipped, in Hebrew or English', async ({ page }) => {

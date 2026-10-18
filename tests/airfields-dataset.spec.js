@@ -488,14 +488,17 @@ test.describe('heli_overlay field', () => {
       if (!ho) continue;
       expect(typeof ho.png, `${af.name} heli png`).toBe('string');
       expect(ho.png).toMatch(/^[A-Z]{4}_heli\.png$/);
-      expect(Array.isArray(ho.sw) && ho.sw.length === 2).toBe(true);
-      expect(Array.isArray(ho.ne) && ho.ne.length === 2).toBe(true);
-      expect(ho.sw[0]).toBeLessThan(ho.ne[0]);     // sw lat < ne lat
-      expect(ho.sw[1]).toBeLessThan(ho.ne[1]);     // sw lng < ne lng
-      expect(ho.sw[0]).toBeGreaterThan(29);
-      expect(ho.ne[0]).toBeLessThan(34);
-      expect(ho.sw[1]).toBeGreaterThan(34);
-      expect(ho.ne[1]).toBeLessThan(36);
+      // A box (sw/ne) or three corners (tl/tr/bl) when the plate is turned against north.
+      const corners = ho.tl ? [ho.tl, ho.tr, ho.bl] : [ho.sw, ho.ne];
+      for (const c of corners) expect(Array.isArray(c) && c.length === 2, `${af.name} heli corner`).toBe(true);
+      if (!ho.tl) {
+        expect(ho.sw[0]).toBeLessThan(ho.ne[0]);     // sw lat < ne lat
+        expect(ho.sw[1]).toBeLessThan(ho.ne[1]);     // sw lng < ne lng
+      }
+      for (const [lat, lng] of corners) {
+        expect(lat).toBeGreaterThan(29); expect(lat).toBeLessThan(34);
+        expect(lng).toBeGreaterThan(34); expect(lng).toBeLessThan(36);
+      }
     }
   });
 
@@ -657,6 +660,8 @@ test('LLHA printed waypoint symbols align with the map coordinates', async () =>
   }
 });
 
+// Refitted on the plate's own waypoint symbols against the CVFR waypoints (the earlier anchors
+// left them 300-700 m off at Beit Oved, IKEA, East Yavne, Nes Tsiyona).
 test('LLRS CVFR overlay keeps its reviewed rotated anchors', async () => {
   const fs = require('fs');
   const path = require('path');
@@ -667,9 +672,9 @@ test('LLRS CVFR overlay keeps its reviewed rotated anchors', async () => {
 
   expect(llrs.cvfr_overlay).toEqual({
     png: 'LLRS_cvfr.png',
-    tl: [32.01458, 34.98322],
-    tr: [31.82413, 34.98434],
-    bl: [32.01318, 34.65388],
+    tl: [32.01008, 34.97162],
+    tr: [31.81874, 34.96803],
+    bl: [32.01309, 34.65771],
   });
 });
 
