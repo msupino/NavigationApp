@@ -4,17 +4,26 @@ Paste into App Store Connect → App Review Information → Notes.
 
 ---
 
-NavAid is a VFR flight-planning aid for pilots flying in Israeli airspace. Core planning needs no account and no
-sign-in. Optional Google Drive sync requires connecting a Google account.
+NavAid is a VFR flight-planning aid for pilots flying in Israeli airspace. Everything works with no
+account and no sign-in. Google sign-in appears only in the saved-routes library ("Sync with Google Drive"), as an optional way to keep the
+pilot's own routes in their own Google Drive; it creates no NavAid account and unlocks no feature.
 
 **What to try**
 1. The first launch shows a safety notice — NavAid is a planning aid and is not certified for
    navigation. Tap "I understand".
-2. Tap the map twice to place two waypoints. A route is drawn with headings, distances and
-   times.
+2. Type `LLHZ BAZRA DEROR SHARO HADRA FRDIS LLHA` in the search box at the top and press
+   Return (or tap the map to place waypoints). A route is drawn with headings, distances and
+   times. Tap a waypoint for its details.
 3. Tap **Plan** (bottom bar) for the navigation log: headings, ETE, fuel and a terrain
    profile.
-4. Tap **Location**
+4. Tap **Location** to show your position on the chart; tap the accuracy line that appears
+   for the GPS details, including the iPhone/iPad barometer (pressure altitude, vertical speed). Location and track recording ask
+   for location permission when enabled. Declining leaves everything else
+   working.
+5. **Menu → Extra layers** turns on NOTAM, airspace, weather and traffic. These are fetched
+   from public aviation feeds.
+
+**Location**
 "While Using the App" only. It draws the aircraft on the chart and records the flight track.
 While the pilot has a recording or the live position on, it keeps running with the screen
 locked (background mode "location", with the blue location indicator), so a track is not lost
@@ -34,8 +43,18 @@ must not be used as a primary in-flight reference. The notice cannot be dismisse
 acknowledging it.
 
 **Embedded build and offline use**
-The app shell and its Leaflet dependencies are bundled. In Charts, download CVFR until the
-status reads ready, then relaunch without a connection to use the downloaded chart and saved
-route. Other chart layers, plates, weather, NOTAM, traffic, and sharing require a connection.
+The app, its map libraries and the CVFR chart (zooms 7–12) are inside the app: turn on
+Airplane Mode and relaunch, and the chart, the saved route and planning all work. The closer
+zoom (13) can be downloaded in Charts for offline use. Other chart layers, plates, weather, NOTAM, traffic, and sharing require a connection.
 Files leave the app through the native share sheet. The native simulator discovery action
 can connect to a compatible X-Plane bridge on the same Wi-Fi network.
+
+**Native features**
+GPS position and track recording (also with the screen locked), the barometer (CoreMotion), offline chart storage, spoken and
+local-notification in-flight alerts, the native share sheet for exports, the system print sheet, Bluetooth GPS receivers, ADS-B
+traffic from a Wi-Fi receiver (GDL90), and Wi-Fi discovery of a flight-simulator bridge.
+
+**Content rights**
+CVFR and AIP chart material is published by the Civil Aviation Authority of Israel.
+[Before submitting: state the permission you hold to distribute the bundled chart, or attach it
+under App Review Information → Attachment.]

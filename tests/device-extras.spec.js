@@ -19,7 +19,7 @@ async function boot(page, opts = {}) {
     const plug = (name) => { const p = rec(name); return new Proxy(p, { get: (t, fn) => (fn === 'addListener'
       ? async (ev, cb) => { window.__calls.push(name + '.addListener ' + ev); (window.__cbs = window.__cbs || {})[name + ':' + ev] = cb; return { remove() {} }; }
       : p[fn]) }); };
-    window.Capacitor = { isNativePlatform: () => !!o.native, Plugins: {
+    window.Capacitor = { isNativePlatform: () => !!o.native, getPlatform: () => o.platform || (o.native ? 'android' : 'web'), Plugins: {
       KeepAwake: plug('KeepAwake'), Haptics: plug('Haptics'), ScreenBrightness: plug('ScreenBrightness'),
       Barometer: plug('Barometer'), Device: plug('Device'), StatusBar: plug('StatusBar'), Gdl90: plug('Gdl90'),
       BluetoothLe: plug('BluetoothLe'),
@@ -170,4 +170,14 @@ test('an in-flight alert shows its text in a bubble as well', async ({ page }) =
   await boot(page);
   await page.evaluate(() => gpsSendWatchAlert('Next leg', 'BAZRA 095° 2500 ft'));
   await expect(page.locator('#toast-stack .toast').filter({ hasText: 'Next leg: BAZRA 095° 2500 ft' }).first()).toBeAttached();
+});
+
+// App Review 2.3.10: the iOS app names no other platform.
+test('iOS app: the dimmed Bluetooth GPS button does not point to Android', async ({ page }) => {
+  await boot(page, { platform: 'ios', tune: { featureBleGps: true } });
+  const btn = page.locator('#ble-gps-btn');
+  await expect(btn).toHaveAttribute('aria-disabled', 'true');
+  const why = await btn.getAttribute('data-why');
+  expect(why).not.toMatch(/Android/i);
+  expect(why).toMatch(/latest version of the app/);
 });

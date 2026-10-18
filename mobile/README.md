@@ -54,7 +54,7 @@ cd android && JAVA_HOME=/usr/lib/jvm/java-21-openjdk-amd64 ./gradlew assembleRel
 cd .. && node scripts/bundle-web.mjs --remote   # back to the committed config
 ```
 
-Bump `versionCode` / `versionName` in `android/app/build.gradle` for every APK.
+Bump `versionCode` / `versionName` in `android/app/build.gradle` for every APK, and `MARKETING_VERSION` in the iOS project to the same `versionName` (the TestFlight workflow uses it by default).
 
 Embedded CVFR downloads use the existing Filesystem plugin and load directly into the map
 and magnifier without a service worker. Plates remain online at the production BYOP URL.
