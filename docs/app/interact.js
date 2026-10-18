@@ -1451,12 +1451,12 @@ function appendVorRadialRow(body, lat, lng) {
   const row = document.createElement('div');
   row.className = 'row vor-radial-row';
   const label = document.createElement('label');
-  label.textContent = S.vorRefLabel || 'VOR ref';
+  label.textContent = S.vorRefLabel || 'VOR Reference';
   const controls = document.createElement('div');
   controls.className = 'vor-radial-controls';
   const sel = document.createElement('select');
   sel.className = 'insp-vor-ref';
-  sel.setAttribute('aria-label', S.vorRefLabel || 'VOR ref');
+  sel.setAttribute('aria-label', S.vorRefLabel || 'VOR Reference');
   const val = document.createElement('span');
   val.className = 'val vor-radial-val';
   // Out-of-range notice only: it depends on THIS point's distance, so it belongs

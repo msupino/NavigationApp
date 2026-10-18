@@ -71,3 +71,19 @@ test('VOR ref row: picker then readout at the row\'s far edge, mirrored in Hebre
     }
   }
 });
+
+test('VOR Reference row: at the default inspector width the readout stays inside the panel', async ({ page }) => {
+  await page.goto('?lang=en&nogist');
+  await page.waitForFunction(() => typeof syncLegs === 'function' && typeof showInspector === 'function');
+  await page.evaluate(async () => {
+    await loadVors(); window.vorRef = 'NAT'; window.inspectorVorRef = undefined;
+    state.waypoints = [{ lat: 32.1025, lng: 34.80361, name: 'ROKCH' }];
+    syncLegs(); draw(); state.selected = { type: 'wp', index: 0 }; showInspector();
+  });
+  const row = page.locator('#inspector .vor-radial-row').first();
+  await row.waitFor();
+  await expect(row.locator('.vor-radial-val')).toHaveText(/R-\d{3}° \/ \d+\.\d NM/);
+  const g = await row.evaluate((r) => ({ row: r.getBoundingClientRect().right,
+    val: r.querySelector('.vor-radial-val').getBoundingClientRect().right }));
+  expect(g.val).toBeLessThanOrEqual(g.row + 1);
+});

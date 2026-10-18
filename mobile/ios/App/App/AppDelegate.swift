@@ -3,6 +3,8 @@ import Capacitor
 import Foundation
 import Darwin
 import CoreFoundation
+import CoreMotion
+import CoreLocation
 
 @objc(XPlaneDiscoveryPlugin)
 public class XPlaneDiscoveryPlugin: CAPPlugin, CAPBridgedPlugin {
@@ -190,10 +192,112 @@ public class XPlaneDiscoveryPlugin: CAPPlugin, CAPBridgedPlugin {
     }
 }
 
+// The iPhone/iPad pressure sensor, for the barometric readouts in docs/app/device-extras.js
+// (pressure altitude, vertical speed). Same contract as the Android BarometerPlugin: isAvailable,
+// start, stop, and a "pressure" event { hPa, t } about once a second. CMAltimeter reports kPa.
+@objc(BarometerPlugin)
+public class BarometerPlugin: CAPPlugin, CAPBridgedPlugin {
+    public let identifier = "BarometerPlugin"
+    public let jsName = "Barometer"
+    public let pluginMethods: [CAPPluginMethod] = [
+        CAPPluginMethod(name: "isAvailable", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "start", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "stop", returnType: CAPPluginReturnPromise)
+    ]
+    private let altimeter = CMAltimeter()
+    private var running = false
+
+    @objc func isAvailable(_ call: CAPPluginCall) {
+        call.resolve(["available": CMAltimeter.isRelativeAltitudeAvailable()])
+    }
+
+    @objc func start(_ call: CAPPluginCall) {
+        guard CMAltimeter.isRelativeAltitudeAvailable() else {
+            call.reject("No pressure sensor", "UNAVAILABLE"); return
+        }
+        if !running {
+            running = true
+            altimeter.startRelativeAltitudeUpdates(to: OperationQueue.main) { [weak self] data, _ in
+                guard let self = self, let d = data else { return }
+                self.notifyListeners("pressure", data: [
+                    "hPa": d.pressure.doubleValue * 10.0,
+                    "t": Date().timeIntervalSince1970 * 1000.0
+                ])
+            }
+        }
+        call.resolve()
+    }
+
+    @objc func stop(_ call: CAPPluginCall) {
+        halt(); call.resolve()
+    }
+
+    private func halt() {
+        if running { altimeter.stopRelativeAltitudeUpdates() }
+        running = false
+    }
+
+    deinit { halt() }
+}
+
+// What iOS tells about a fix beyond the web Geolocation API, for the GPS details panel
+// (docs/app/gps-status.js). iOS gives no satellite data to any app; this is what it does give:
+// speed and course accuracy, and whether the fix comes from an external receiver (a Bluetooth
+// GPS paired with the iPhone/iPad). A "quality" event per fix while started.
+@objc(LocationQualityPlugin)
+public class LocationQualityPlugin: CAPPlugin, CAPBridgedPlugin, CLLocationManagerDelegate {
+    public let identifier = "LocationQualityPlugin"
+    public let jsName = "LocationQuality"
+    public let pluginMethods: [CAPPluginMethod] = [
+        CAPPluginMethod(name: "start", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "stop", returnType: CAPPluginReturnPromise)
+    ]
+    private var manager: CLLocationManager?
+
+    @objc func start(_ call: CAPPluginCall) {
+        DispatchQueue.main.async {
+            if self.manager == nil {
+                let m = CLLocationManager()
+                m.delegate = self
+                m.desiredAccuracy = kCLLocationAccuracyBestForNavigation
+                self.manager = m
+            }
+            // Location permission is the page's own (navigator.geolocation asked for it);
+            // without it this sends nothing, and the panel simply shows less.
+            self.manager?.startUpdatingLocation()
+            call.resolve()
+        }
+    }
+
+    @objc func stop(_ call: CAPPluginCall) {
+        DispatchQueue.main.async {
+            self.manager?.stopUpdatingLocation()
+            call.resolve()
+        }
+    }
+
+    public func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
+        guard let l = locations.last else { return }
+        var o: [String: Any] = ["t": l.timestamp.timeIntervalSince1970 * 1000.0]
+        if l.speedAccuracy >= 0 { o["speedAcc"] = l.speedAccuracy }
+        if l.courseAccuracy >= 0 { o["courseAcc"] = l.courseAccuracy }
+        if l.verticalAccuracy >= 0 { o["ellAlt"] = l.ellipsoidalAltitude }
+        if #available(iOS 15.0, *), let info = l.sourceInformation {
+            o["external"] = info.isProducedByAccessory
+            o["simulated"] = info.isSimulatedBySoftware
+        }
+        notifyListeners("quality", data: o)
+    }
+
+    public func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) { /* nothing to show */ }
+}
+
 @objc(NavAidBridgeViewController)
 class NavAidBridgeViewController: CAPBridgeViewController {
     override func capacitorDidLoad() {
         bridge?.registerPluginInstance(XPlaneDiscoveryPlugin())
+        bridge?.registerPluginInstance(BarometerPlugin())
+        bridge?.registerPluginInstance(LocationQualityPlugin())
     }
 }
 
