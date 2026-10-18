@@ -100,3 +100,18 @@ test('on a phone the list stops above the bottom bar and scrolls inside', async 
   expect(g.bottom).toBeLessThanOrEqual(g.barTop);
   expect(g.scrolls).toBe(true);
 });
+
+test('a layer with nothing in force (AIRMET, SIGMET) is listed, dimmed, with the menu\'s reason', async ({ page }) => {
+  await boot(page);
+  await page.evaluate(() => { setLayerIdle('airmet-cb', true, 'No AIRMET in force'); setLayerIdle('sigmet-cb', true, 'No SIGMET in force'); });
+  await page.locator('#edit-col-layers').click();
+  for (const [id, why] of [['airmet-cb', 'No AIRMET in force'], ['sigmet-cb', 'No SIGMET in force']]) {
+    const row = page.locator(`#quick-layers .ql-switch[data-for="${id}"]`);
+    await expect(row).toHaveCount(1);
+    await expect(row).toHaveClass(/is-dim/);
+    await expect(row).toHaveAttribute('data-why', why);
+  }
+  const was = await page.evaluate(() => document.getElementById('airmet-cb').checked);
+  await page.evaluate(() => document.querySelector('#quick-layers .ql-switch[data-for="airmet-cb"]').click());
+  expect(await page.evaluate(() => document.getElementById('airmet-cb').checked)).toBe(was);   // says why, does not switch
+});
