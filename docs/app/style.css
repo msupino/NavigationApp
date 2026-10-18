@@ -3458,6 +3458,15 @@ html[dir="rtl"] .modal-back.export-place > .modal.export-floating { left: auto; 
   user-select: none;
 }
 .modal-title:active { cursor: grabbing; }
+/* A long title ran under the corner X (reported: "X to close mixes with text", the Hebrew
+   airfield name at its left end). Room for the X on both sides keeps the title centred; a
+   title too long for one line breaks into even lines instead of reaching the corner. */
+.modal:has(> .modal-close-x, > .modal-close-actions) > .modal-title {
+  padding-inline: 34px;
+  text-wrap: balance;
+}
+.modal:has(> .modal-close-actions .modal-close-action) > .modal-title { padding-inline: 64px; }
+body.deck-on .modal:has(> .modal-close-x, > .modal-close-actions) > .modal-title { padding-inline: 50px; }
 .modal-row {
   display: flex;
   align-items: center;
