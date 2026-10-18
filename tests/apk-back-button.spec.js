@@ -210,3 +210,17 @@ test('the exit question is titled by the question, and a running recording is sa
   expect(await page.evaluate(() => gpsRecording)).toBe(false);
   if (before >= 0) expect(await page.evaluate(() => routeLibrary.length)).toBe(before + 1);
 });
+
+// On a phone the Menu is the deck's sheet. Back closes it -- and only it: the press used to fall
+// through to "Close NavAid?", whose modal then closed the sheet, so one press did both.
+test('Back with the phone Menu open closes the menu, and does not offer to quit', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('?lang=en&nogist');
+  await page.waitForFunction(() => window.NavAid && typeof NavAid.deckSheetOpen === 'function' && typeof backButtonStep === 'function');
+  await page.locator('.deck-btn-menu').click();
+  await page.waitForFunction(() => NavAid.deckSheetOpen());
+  expect(await page.evaluate(() => backButtonStep())).toBe(true);     // consumed: no exit question
+  expect(await page.evaluate(() => NavAid.deckSheetOpen())).toBe(false);
+  // Nothing left open now: the next press is the one that asks.
+  expect(await page.evaluate(() => backButtonStep())).toBe(false);
+});

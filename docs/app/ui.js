@@ -12388,6 +12388,13 @@ function backButtonStep() {
     if (typeof draw === 'function') draw();
     return true;
   }
+  // The phone's Menu (and any deck sheet): it was missed here, so Back went straight to "Close
+  // NavAid?" -- and that question, opening as a modal, closed the sheet under it: one press
+  // closed the menu AND offered to quit.
+  if (window.NavAid && typeof NavAid.deckSheetOpen === 'function' && NavAid.deckSheetOpen()) {
+    NavAid.closeDeckSheet();
+    return true;
+  }
   if (typeof window.closeToolbarMenus === 'function' &&
       document.querySelector('#toolbar .tb-section.open')) {
     window.closeToolbarMenus();
