@@ -958,6 +958,9 @@ const MAP_ICONS = {
     + ' fill="currentColor" fill-opacity=".18"/><path d="M12 7.3v6.4M8.8 10.5h6.4"/>',
   addNote: '<path d="M5 4.5h14v10l-5 5H5z" fill="currentColor" fill-opacity=".18"/>'
     + '<path d="M14 19.5v-5h5M8.5 8.5h7M8.5 12h4.5"/>',
+  // Quick layers: the map's sheets, stacked -- the chart and what lies on it.
+  layers: '<path d="M12 4 3.5 8.5 12 13l8.5-4.5z" fill="currentColor" fill-opacity=".18"/>'
+    + '<path d="m3.5 12.2 8.5 4.5 8.5-4.5M3.5 15.9l8.5 4.6 8.5-4.6"/>',
   // Route check: the plan, checked -- a tick in the same outlined family.
   routeCheck: '<circle cx="12" cy="12" r="8.5" fill="currentColor" fill-opacity=".18"/>'
     + '<path d="m8 12.4 2.7 2.7L16.2 9.4"/>',
@@ -1462,6 +1465,8 @@ editColCtrl.onAdd = function () {
   // Route check heads the column: it reads the plan the buttons below build, and on a phone the
   // menu it otherwise lives in covers the very map it is about.
   const items = [
+    // Quick layers above it: the chart and the overlays a pilot switches most, without the menu.
+    ['edit-col-layers', 'layers', 'tbQuickLayersTitle', 'tbQuickLayers'],
     ['edit-col-check', 'routeCheck', 'tbRouteCheckTitle', 'tbRouteCheck'],
     ['edit-col-add', 'addWp', 'tbAddWpTitle', 'tbAddWp'],
     ['edit-col-note', 'addNote', 'tbAddNoteTitle', 'tbAddNote'],
@@ -1475,6 +1480,7 @@ editColCtrl.onAdd = function () {
   // (placeEditColumn: top right on a Hebrew desktop), and buttons wired once by id after the
   // first build were replaced by bare ones -- the column looked right and did nothing.
   const actions = {
+    'edit-col-layers': () => toggleQuickLayers(),
     'edit-col-check': () => document.getElementById('route-check-btn').click(),
     'edit-col-add': () => setMode('add'),
     'edit-col-note': () => setMode('note'),
@@ -1491,6 +1497,7 @@ editColCtrl.onAdd = function () {
     const name = String(S[nameKey] || '').replace(/^[^\p{L}\p{N}]+/u, '').replace(/\s*\([^)]*\)\s*$/, '');
     b.setAttribute('aria-label', name || S[titleKey] || id);
     b.title = S[titleKey] || name;
+    if (id === 'edit-col-layers') { b.setAttribute('aria-haspopup', 'dialog'); b.setAttribute('aria-expanded', 'false'); }
     wrap.appendChild(b);
   }
   L.DomEvent.disableClickPropagation(wrap);
@@ -1498,6 +1505,131 @@ editColCtrl.onAdd = function () {
   return wrap;
 };
 editColCtrl.addTo(map);
+
+// --- Quick layers -----------------------------------------------------------------------------
+// A popover beside the column's Layers button: the base chart (one of them, a radio list) and the
+// overlays a pilot turns on and off most. Every row presses the menu's own control -- the base-map
+// select, each layer's checkbox -- so the gist, the APK-only rules and each layer's own loading
+// stay in one place, and the popover reads them again each time it opens. A layer the gist has
+// taken away is not offered; one this device cannot show is dimmed, saying why.
+const QUICK_LAYERS = ['notam-cb', 'airspace-cb', 'sigmet-cb', 'show-wind-cb', 'traffic-cb', 'plate-enabled-cb'];
+function quickLayersOpen() { return !!document.getElementById('quick-layers'); }
+function closeQuickLayers() {
+  const p = document.getElementById('quick-layers');
+  if (!p) return false;
+  p.remove();
+  document.removeEventListener('pointerdown', quickLayersOutside, true);
+  document.removeEventListener('keydown', quickLayersKey, true);
+  const b = document.getElementById('edit-col-layers');
+  if (b) { b.classList.remove('edit-col-on'); b.setAttribute('aria-expanded', 'false'); }
+  return true;
+}
+window.closeQuickLayers = closeQuickLayers;
+window.quickLayersOpen = quickLayersOpen;
+function quickLayersOutside(e) {
+  const p = document.getElementById('quick-layers');
+  const b = document.getElementById('edit-col-layers');
+  if (p && !p.contains(e.target) && !(b && b.contains(e.target))) closeQuickLayers();
+}
+function quickLayersKey(e) {
+  if (e.key !== 'Escape' || !quickLayersOpen()) return;
+  e.stopImmediatePropagation(); e.preventDefault();
+  closeQuickLayers();
+  const b = document.getElementById('edit-col-layers');
+  if (b) b.focus();
+}
+// The label a layer has in the menu (its own bilingual text), without the trailing count.
+function quickLayerName(cb) {
+  const label = cb.closest('label');
+  const span = label && label.querySelector('span[data-i18n]');
+  const text = ((span && span.textContent) || (label && label.textContent) || cb.id).trim();
+  // The menu's checkbox says what it does ("Show NOTAMs"); a switch in a list of layers names it.
+  const bare = text.replace(/^(Show|הצג|הצגת)\s+/u, '');
+  return bare.charAt(0).toLocaleUpperCase() + bare.slice(1);
+}
+function renderQuickLayers(p) {
+  p.replaceChildren();
+  const sel = document.getElementById('base-layer-select');
+  if (sel && sel.options.length) {
+    const h = document.createElement('div');
+    h.className = 'ql-head'; h.id = 'ql-head-chart';
+    h.textContent = S.tbBaseLayer || 'Base map';
+    const g = document.createElement('div');
+    g.className = 'ql-group'; g.setAttribute('role', 'radiogroup'); g.setAttribute('aria-labelledby', h.id);
+    for (const o of sel.options) {
+      if (o.hidden || o.disabled) continue;
+      const r = document.createElement('button');
+      r.type = 'button'; r.className = 'ql-row ql-radio';
+      r.setAttribute('role', 'radio');
+      r.setAttribute('aria-checked', String(o.value === sel.value));
+      r.textContent = o.textContent;
+      r.addEventListener('click', () => {
+        if (sel.value !== o.value) { sel.value = o.value; sel.dispatchEvent(new Event('change', { bubbles: true })); }
+        renderQuickLayers(p);
+      });
+      g.appendChild(r);
+    }
+    p.append(h, g);
+  }
+  const h2 = document.createElement('div');
+  h2.className = 'ql-head'; h2.id = 'ql-head-layers';
+  h2.textContent = S.quickLayersOverlays || 'Layers';
+  const g2 = document.createElement('div');
+  g2.className = 'ql-group'; g2.setAttribute('aria-labelledby', h2.id);
+  for (const id of QUICK_LAYERS) {
+    const cb = document.getElementById(id);
+    if (!cb) continue;
+    // Only the gist removes a control: a layer whose row it hid is not offered here either.
+    const frame = cb.closest('.tb-layer-frame') || cb.closest('label');
+    if (frame && getComputedStyle(frame).display === 'none') continue;
+    const t = document.createElement('button');
+    t.type = 'button'; t.className = 'ql-row ql-switch';
+    t.setAttribute('role', 'switch');
+    t.setAttribute('aria-checked', String(!!cb.checked));
+    t.dataset.for = id;
+    const name = document.createElement('span'); name.textContent = quickLayerName(cb);
+    const knob = document.createElement('span'); knob.className = 'ql-knob'; knob.setAttribute('aria-hidden', 'true');
+    t.append(name, knob);
+    const label = cb.closest('label');
+    if (cb.disabled) setButtonWhy(t, (label && label.title) || S.whyUnavailableHere || 'Not available here');
+    t.addEventListener('click', () => {
+      if (t.classList.contains('is-dim')) return;          // the shared handler says why
+      cb.click();
+      renderQuickLayers(p);
+    });
+    g2.appendChild(t);
+  }
+  if (g2.children.length) p.append(h2, g2);
+}
+// Beside the button, on the map side of the column (right of it when the column is on the left,
+// left of it on the right), its top at the button's, kept on screen.
+function placeQuickLayers(p, b) {
+  const r = b.getBoundingClientRect();
+  const w = p.offsetWidth, h = p.offsetHeight, gap = 10, m = 8;
+  const right = r.left + r.width / 2 < window.innerWidth / 2;
+  let x = right ? r.right + gap : r.left - gap - w;
+  x = Math.max(m, Math.min(x, window.innerWidth - w - m));
+  let y = Math.max(m, Math.min(r.top, window.innerHeight - h - m));
+  p.style.left = x + 'px'; p.style.top = y + 'px';
+}
+function toggleQuickLayers() {
+  if (closeQuickLayers()) return;
+  const b = document.getElementById('edit-col-layers');
+  if (!b) return;
+  const p = document.createElement('div');
+  p.id = 'quick-layers';
+  p.className = 'quick-layers';
+  p.setAttribute('role', 'dialog');
+  p.setAttribute('aria-label', S.tbQuickLayersTitle || 'Map layers');
+  renderQuickLayers(p);
+  document.body.appendChild(p);
+  placeQuickLayers(p, b);
+  b.classList.add('edit-col-on'); b.setAttribute('aria-expanded', 'true');
+  document.addEventListener('pointerdown', quickLayersOutside, true);
+  document.addEventListener('keydown', quickLayersKey, true);
+  const first = p.querySelector('.ql-row[aria-checked="true"], .ql-row');
+  if (first) first.focus();
+}
 // Mirrors of the menu's state: Add/Note lit while armed, Undo dim when there is nothing to
 // undo, Add/Note dim while the route is locked (they would only say so and refuse).
 function refreshEditColumn() {
@@ -12367,6 +12499,7 @@ function backButtonStep() {
   const shown = (el) => !!(el && !el.classList.contains('hidden') && !el.hidden && el.getClientRects().length);
   // The tour sits over everything: Back ends it, as its own Skip does.
   if (document.getElementById('map-tour') && window.NavAid && NavAid.tour) { NavAid.tour.close(); return true; }
+  if (typeof closeQuickLayers === 'function' && closeQuickLayers()) return true;
   // A popover inside a panel closes before the panel (the flight plan's departure / Columns).
   const pop = document.querySelector('details.fp-when[open], details.fp-columns[open]');
   if (pop) { pop.open = false; return true; }
