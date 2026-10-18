@@ -1619,6 +1619,11 @@ window.S = Object.assign({
   appUpdateWaitCharts: 'after the charts finish copying',
   appUpdateRestart: 'Restart now',
   appUpdateLater: 'Later',
+  offlineCvfrAskTitle: 'Keep the CVFR chart offline?',
+  offlineCvfrAskText: function (mb) {
+    return 'About ' + mb + ' MB, kept on this phone so the chart works with no signal. This phone does not tell NavAid whether it is on Wi-Fi, so download when you are.';
+  },
+  offlineCvfrAskOk: 'Download now',
   tbTourReplay: 'Show the tour',
   tourNext: 'Next', tourBack: 'Back', tourSkip: 'Skip', tourDone: 'Done',
   tourCheckTitle: 'Check the route',
