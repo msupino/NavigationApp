@@ -60,9 +60,14 @@ async function fetchTile(chart, { z, x, y }) {
   const cached = readOrNull(hit);
   if (cached && isPng(cached)) return cached;
   if (readOrNull(hit + '.none')) return null;
-  for (let attempt = 0; attempt < 6; attempt++) {
+  const ATTEMPTS = 10;
+  for (let attempt = 0; attempt < ATTEMPTS; attempt++) {
+    let waitMs = Math.min(60e3, 1000 * 2 ** attempt);
     try {
       const res = await fetch(`${chart.base}/${rel}`);
+      // Rate-limited: wait as long as the mirror asks, when it says (seconds), then try again.
+      const ra = Number(res.headers && res.headers.get && res.headers.get('retry-after'));
+      if (res.status === 429 && Number.isFinite(ra) && ra > 0) waitMs = Math.min(120e3, ra * 1000);
       fs.mkdirSync(path.dirname(hit), { recursive: true });
       // No tile there (sea, the edge of the chart): the app shows nothing there either.
       if (res.status === 404) { fs.writeFileSync(hit + '.none', 'none'); return null; }
@@ -76,8 +81,8 @@ async function fetchTile(chart, { z, x, y }) {
       fs.writeFileSync(hit, data);
       return data;
     } catch (e) {
-      if (attempt === 5) throw new Error(`${chart.base}/${rel}: ${e.message}`);
-      await sleep(1000 * 2 ** attempt);
+      if (attempt === ATTEMPTS - 1) throw new Error(`${chart.base}/${rel}: ${e.message}`);
+      await sleep(waitMs + Math.random() * 500);     // jittered, so the workers do not retry in step
     }
   }
   return null;
@@ -102,7 +107,9 @@ export async function bundleCharts(wwwDir, chart = CVFR) {
       bytes += data.length;
     }
   };
-  await Promise.all(Array.from({ length: 8 }, worker));
+  // Fewer at once where the mirror is shared with every other build (CI: NAVAID_CHART_CONCURRENCY=3).
+  const n = Math.max(1, Math.min(16, Number(process.env.NAVAID_CHART_CONCURRENCY) || 8));
+  await Promise.all(Array.from({ length: n }, worker));
   kept.sort();
   // Which edition of the chart this is: a new APK with new tiles gets them copied again over
   // the last APK's (native-tiles.js seedBundled), and the same tiles are not copied twice.
