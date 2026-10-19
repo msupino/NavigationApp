@@ -145,3 +145,13 @@ test('H / L only at real centres: a deep low is marked, small bumps on a flat da
   expect(Math.abs(r.deep[0].lat - 32.9)).toBeLessThan(0.3);
   expect(r.flat).toEqual([]);
 });
+
+test('left on, it comes back on after a reload: switch, map and data together', async ({ page }) => {
+  await boot(page);
+  await switchOn(page);
+  await page.waitForFunction(() => !!NavAid.surfaceWx._store());
+  await page.reload();
+  await page.waitForFunction(() => window.NavAid && NavAid.surfaceWx && NavAid.surfaceWx._store(), null, { timeout: 15000 });
+  expect(await page.evaluate(() => [document.getElementById('surface-wx-cb').checked, window.showSurfaceWx])).toEqual([true, true]);
+  await expect(page.locator('#surface-wx-chip')).toContainText('Dew point spread');
+});
