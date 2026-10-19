@@ -4,6 +4,17 @@
 // the actual sequence on screen, on the device where it goes wrong.
 const { test, expect } = require('./_setup');
 
+// A tap is a press shorter than TAP_MAX_MS (300 ms). Sent as two round trips, a slow CI runner
+// let more than that pass between them and the app rightly read a hold: both go in one step.
+const tap = (page, x, y) => page.evaluate(([px, py]) => {
+  const el = map.getContainer();
+  const init = { clientX: px, clientY: py, pageX: px, pageY: py, identifier: 1, target: el };
+  for (const t of ['touchstart', 'touchend']) {
+    const list = t === 'touchend' ? [] : [new Touch(init)];
+    el.dispatchEvent(new TouchEvent(t, { bubbles: true, cancelable: true,
+      touches: list, targetTouches: list, changedTouches: [new Touch(init)] }));
+  }
+}, [x, y]);
 const touch = (page, type, x, y) => page.evaluate(([t, px, py]) => {
   const el = map.getContainer();
   const init = { clientX: px, clientY: py, pageX: px, pageY: py, identifier: 1, target: el };
@@ -33,8 +44,7 @@ test('off by default — nothing is drawn and nothing is recorded', async ({ pag
 
 test('?touchlog=1 shows the sequence and what it was decided to be', async ({ page }) => {
   const at = await boot(page, '&touchlog=1');
-  await touch(page, 'touchstart', at.x, at.y);
-  await touch(page, 'touchend', at.x, at.y);
+  await tap(page, at.x, at.y);
   const text = await page.locator('#touch-log').textContent();
   expect(text).toContain('touchstart');
   expect(text).toContain('grabbed');
