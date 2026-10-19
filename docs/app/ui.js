@@ -7475,7 +7475,7 @@ if (windDepartSlider) {
   let busy = false, gen = 0;
   async function enable() {
     const a = sw();
-    if (!a) { say(S.swxErr || 'Surface weather unavailable'); cb.checked = false; return; }
+    if (!a) { say(S.swxErr || 'Surface weather unavailable'); cb.checked = false; window.showSurfaceWx = false; legend(); return; }
     busy = true;
     const mine = ++gen;
     say(S.swxLoading || 'Loading surface weather…', true);
@@ -7503,12 +7503,19 @@ if (windDepartSlider) {
       if (typeof draw === 'function') draw();
     });
   }
-  buildFields();
-  refreshFeature();
-  try { if (lsGet(KEY) === '1' && featureOn()) cb.checked = true; } catch (e) { /* storage blocked */ }
-  window.showSurfaceWx = !!cb.checked;
-  legend();
-  if (cb.checked) enable();
+  // The layer's own file (app/surface-wx.js) loads after this one: the picker, the restored
+  // switch and its first fetch wait for it. Restored before it was there, the switch found no
+  // layer, turned itself off and left the map believing it was on (reported via screenshots).
+  const start = () => {
+    buildFields();
+    refreshFeature();
+    try { if (lsGet(KEY) === '1' && featureOn()) cb.checked = true; } catch (e) { /* storage blocked */ }
+    window.showSurfaceWx = !!cb.checked;
+    legend();
+    if (cb.checked) enable();
+  };
+  if (sw() || document.readyState === 'complete') start();
+  else window.addEventListener('load', start, { once: true });
 }());
 
 // --- Unified look-ahead time slider (drives NOTAM + wind-depart + windfield + airfield wind) ---
