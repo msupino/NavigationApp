@@ -155,7 +155,8 @@
   // Warning colours only where there is something to warn about; everything else one quiet
   // ink, so the chart under the layer still reads.
   const WARN = () => tn('swxWarnColor', '#c62828');
-  const CAUTION = () => tn('swxCautionColor', '#e07b00');
+  // Amber text must read on its white halo: #e07b00 was 3.0:1, this is 5.0:1 (WCAG AA).
+  const CAUTION = () => tn('swxCautionColor', '#b45309');
   const QUIET = () => tn('swxQuietColor', '#1f4e79');
   function colorFor(f, v) {
     if (v === null) return null;

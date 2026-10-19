@@ -187,3 +187,17 @@ test('offline, a stale forecast is retried once per few minutes, not on every re
   expect(await page.evaluate(() => !!NavAid.surfaceWx._store())).toBe(true);   // the old one stays
   expect(calls.n).toBe(1);
 });
+
+test('readable: warning colours hold 4.5:1 on their white halo; field rows are finger-sized on a phone', async ({ page }) => {
+  await boot(page, 'en', { width: 390, height: 844 });
+  const ratios = await page.evaluate(() => {
+    const L = (h) => { const v = [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16) / 255).map(x => x <= 0.03928 ? x / 12.92 : ((x + 0.055) / 1.055) ** 2.4); return 0.2126 * v[0] + 0.7152 * v[1] + 0.0722 * v[2]; };
+    const sw = NavAid.surfaceWx;
+    return [sw.colorFor('spread', 1), sw.colorFor('spread', 3), sw.colorFor('spread', 9)].map(c => 1.05 / (L(c) + 0.05));
+  });
+  for (const r of ratios) expect(r).toBeGreaterThanOrEqual(4.5);
+  await switchOn(page);
+  // The row sits in a menu section closed here: its rule, as the phone applies it.
+  const h = await page.evaluate(() => parseFloat(getComputedStyle(document.querySelector('#surface-wx-controls .swx-field')).minHeight));
+  expect(h).toBeGreaterThanOrEqual(44);
+});
