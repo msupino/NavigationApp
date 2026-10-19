@@ -20,7 +20,7 @@ async function stubGrid(page) {
       const lo = lngs[k];
       const moist = Math.hypot(la - 32.18, lo - 34.83) < 0.2;
       const p = 1004 + 2.2 * Math.hypot(la - 32.9, lo - 34.5) * 4;
-      return { latitude: la, longitude: lo, hourly: { time,
+      return { latitude: la, longitude: lo, elevation: moist ? 800 : 10, hourly: { time,
         temperature_2m: time.map((_, h) => 20 + 2 * h),
         dew_point_2m: time.map((_, h) => (moist ? 19 : 10) + 2 * h),
         pressure_msl: time.map(() => +p.toFixed(1)) } };
@@ -92,7 +92,10 @@ test('a waypoint inspector shows the surface there while the layer is on', async
   await page.waitForFunction(() => !!NavAid.surfaceWx._store());
   await page.evaluate(() => { state.waypoints = [{ lat: 32.18, lng: 34.83, name: 'HERZ' }, { lat: 32.4, lng: 34.95, name: 'B' }];
     syncLegs(); draw(); state.selected = { type: 'wp', index: 0 }; showInspector(); });
-  await expect(page.locator('#inspector .swx-row .val')).toHaveText('20°/19° · Δ1° · Q' + await page.evaluate(() => Math.round(NavAid.surfaceWx.sampleNear(32.18, 34.83, 0).p)));
+  // The estimated cloud base: 400 ft above the ground there, plus the model's 800 m (2,625 ft)
+  // of ground = 3,000 ft above sea level.
+  await expect(page.locator('#inspector .swx-base-row .val')).toHaveText('400 ft AGL · 3,000 ft AMSL');
+  await expect(page.locator('#inspector .swx-row:not(.swx-base-row) .val')).toHaveText('20°/19° · Δ1° · Q' + await page.evaluate(() => Math.round(NavAid.surfaceWx.sampleNear(32.18, 34.83, 0).p)));
 });
 
 test('no data: the switch goes back off and says why; it is in the quick layers list', async ({ page }) => {
