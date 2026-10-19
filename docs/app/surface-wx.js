@@ -267,24 +267,41 @@
       }
       if (best) haloText(ctx, String(Math.round(L)), best.x, best.y, color);
     }
-    // Centres: H / L, with their value under them.
+    // Centres: H / L only where the pressure really peaks. A point counts when it is the
+    // highest (lowest) within two grid steps every way -- about 60 km -- and stands out from
+    // the ring around it by swxCentreMinHpa. Tested on the 3x3 neighbours alone, a nearly
+    // flat day put an H on every small bump (three in one view, live).
     ctx.font = 'bold ' + tn('swxCentreFontPx', 18) + 'px sans-serif';
-    for (let i = 1; i < R - 1; i++) for (let j = 1; j < C - 1; j++) {
+    for (const c of pressureCentres(hi)) {
+      const p = pt(c.i, c.j);
+      if (p.x < 0 || p.y < 0 || p.x > w || p.y > h) continue;
+      haloText(ctx, c.high ? 'H' : 'L', p.x, p.y, c.high ? tn('swxHighColor', '#1f4e79') : tn('swxLowColor', '#c62828'));
+    }
+  }
+  // The real highs and lows of the pressure field at an hour: [{ i, j, high, p }].
+  function pressureCentres(hi) {
+    if (!store) return [];
+    const g = store.grid, R = g.lats.length, C = g.lngs.length;
+    const P = (i, j) => valueAt(i * C + j, hi, 'msl');
+    const rad = tn('swxCentreRadiusSteps', 2), min = tn('swxCentreMinHpa', 1.5);
+    const out = [];
+    for (let i = rad; i < R - rad; i++) for (let j = rad; j < C - rad; j++) {
       const v = P(i, j);
       if (v === null) continue;
-      let isHi = true, isLo = true;
-      for (let di = -1; di <= 1; di++) for (let dj = -1; dj <= 1; dj++) {
+      let isHi = true, isLo = true, ring = 0, n = 0, ok = true;
+      for (let di = -rad; di <= rad && ok; di++) for (let dj = -rad; dj <= rad; dj++) {
         if (!di && !dj) continue;
-        const n = P(i + di, j + dj);
-        if (n === null) { isHi = isLo = false; continue; }
-        if (n >= v) isHi = false;
-        if (n <= v) isLo = false;
+        const q = P(i + di, j + dj);
+        if (q === null) { ok = false; break; }
+        if (q >= v) isHi = false;
+        if (q <= v) isLo = false;
+        if (Math.max(Math.abs(di), Math.abs(dj)) === rad) { ring += q; n++; }
       }
-      if (!isHi && !isLo) continue;
-      const p = pt(i, j);
-      if (p.x < 0 || p.y < 0 || p.x > w || p.y > h) continue;
-      haloText(ctx, isHi ? 'H' : 'L', p.x, p.y, isHi ? tn('swxHighColor', '#1f4e79') : tn('swxLowColor', '#c62828'));
+      if (!ok || (!isHi && !isLo) || !n) continue;
+      if (Math.abs(v - ring / n) < min) continue;           // a bump, not a centre
+      out.push({ i, j, high: isHi, p: v });
     }
+    return out;
   }
 
   function drawSurfaceWx() {
@@ -324,7 +341,7 @@
 
   NS.surfaceWx = {
     FIELDS, field, setField, gridPoints, fetchGrid, hourIndex, valueAt, sampleNear,
-    colorFor, label, caption, lookaheadHours, enable, clear, _store: () => store,
+    colorFor, label, caption, lookaheadHours, enable, clear, pressureCentres, _store: () => store,
   };
   window.drawSurfaceWx = drawSurfaceWx;
 }());
