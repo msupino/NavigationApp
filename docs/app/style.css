@@ -2165,7 +2165,7 @@ body.theme-light .resize-grip {
 }
 #insp-close:hover { background: #443f3f; color: #fff; }
 
-#insp-body { padding: 10px 12px; }
+#insp-body { --insp-pad-b: 10px; padding: 10px 12px var(--insp-pad-b); }
 
 #magnifier-settings {
   position: absolute;
@@ -5052,7 +5052,9 @@ body.theme-light .map-time-now { background: rgba(255, 255, 255, 0.95); }
 .af-wind-legend { font-size: 10px; opacity: 0.75; margin-block-start: 2px; }
 .swx-fields { display: flex; flex-wrap: wrap; gap: 0 12px; margin-block-start: 2px; padding-inline-start: 22px; }
 .swx-fields .swx-field { min-height: 32px; }
-.swx-legend { font-size: 11px; opacity: 0.85; }
+/* A finger's width on the phone, like every other tap target there. */
+body.deck-on .swx-fields .swx-field { min-height: 44px; }
+.swx-legend { font-size: 12px; opacity: 0.85; }
 /* On the map: what the surface weather shows, and for when. Top centre, under the phone's strip. */
 .swx-chip {
   position: absolute; z-index: 650; pointer-events: none;
@@ -9417,7 +9419,7 @@ body.theme-dark #insp-body .insp-actions {
 }
 /* And down to the panel's edge: #insp-body's 10px bottom padding left a strip under the pinned
    buttons where the rows scrolling beneath still showed (a "300 ft AGL" under Delete, reported). */
-#insp-body .insp-actions { bottom: -10px; padding-bottom: 10px; }
+#insp-body .insp-actions { bottom: calc(-1 * var(--insp-pad-b, 10px)); padding-bottom: var(--insp-pad-b, 10px); }
 body.theme-light #insp-body .insp-actions {
   background: linear-gradient(to bottom, rgba(250, 252, 255, 0), rgb(250, 252, 255) 10px);
 }

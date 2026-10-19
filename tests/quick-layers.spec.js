@@ -108,13 +108,23 @@ test('a layer with nothing in force (AIRMET, SIGMET) is listed, dimmed, with the
   await boot(page);
   await page.evaluate(() => { setLayerIdle('airmet-cb', true, 'No AIRMET in force'); setLayerIdle('sigmet-cb', true, 'No SIGMET in force'); });
   await page.locator('#edit-col-layers').click();
-  for (const [id, why] of [['airmet-cb', 'No AIRMET in force'], ['sigmet-cb', 'No SIGMET in force']]) {
+  for (const id of ['airmet-cb', 'sigmet-cb']) {
     const row = page.locator(`#quick-layers .ql-switch[data-for="${id}"]`);
     await expect(row).toHaveCount(1);
     await expect(row).toHaveClass(/is-dim/);
+    // The menu's own reason, whichever set it last: the app re-checks AIRMET / SIGMET itself.
+    const why = await page.evaluate((id) => document.getElementById(id).dataset.why, id);
+    expect(why).toMatch(/AIRMET|SIGMET/);
     await expect(row).toHaveAttribute('data-why', why);
   }
   const was = await page.evaluate(() => document.getElementById('airmet-cb').checked);
   await page.evaluate(() => document.querySelector('#quick-layers .ql-switch[data-for="airmet-cb"]').click());
   expect(await page.evaluate(() => document.getElementById('airmet-cb').checked)).toBe(was);   // says why, does not switch
+});
+
+test('a layer the gist withdrew row by row (surface weather) is not offered', async ({ page }) => {
+  await boot(page);
+  await page.evaluate(() => { NavAid.tuning.featureSurfaceWx = false; NavAid.refreshSurfaceWxFeature(); });
+  await page.locator('#edit-col-layers').click();
+  await expect(page.locator('#quick-layers .ql-switch[data-for="surface-wx-cb"]')).toHaveCount(0);
 });

@@ -1585,8 +1585,12 @@ function renderQuickLayers(p) {
     if (!cb) continue;
     // Only the gist removes a control (it hides the layer's frame): such a layer is not offered.
     // Anything else -- nothing in force, this device cannot show it -- is dimmed, never hidden.
+    // Some layers' rows are withdrawn one by one instead (row.hidden: surface weather, airfield
+    // wind) -- withdrawn just the same.
     const frame = cb.closest('.tb-layer-frame');
     if (frame && frame.style.display === 'none') continue;
+    const ownRow = cb.closest('label');
+    if (ownRow && ownRow.hidden) continue;
     const t = document.createElement('button');
     t.type = 'button'; t.className = 'ql-row ql-switch';
     t.setAttribute('role', 'switch');
@@ -7390,6 +7394,17 @@ if (windDepartSlider) {
   const KEY = 'navaid.surfaceWx';
   const sw = () => (window.NavAid && window.NavAid.surfaceWx) || null;
   const featureOn = () => typeof tune !== 'function' || tune('featureSurfaceWx') !== false;
+  // The open inspector rebuilt for its Surface rows, scrolled where it was. `onlyIfShown`: only
+  // when it is showing them now (the hour moved, the layer went off, new data) -- not every panel.
+  function refreshSurfaceWxRows(onlyIfShown) {
+    if (typeof refreshInspectorIfVisible !== 'function') return;
+    if (onlyIfShown && !document.querySelector('#inspector:not(.hidden) .swx-row')) return;
+    const body = document.getElementById('insp-body');
+    const top = body ? body.scrollTop : 0;
+    refreshInspectorIfVisible();
+    if (body) body.scrollTop = top;
+  }
+  window.refreshSurfaceWxRows = refreshSurfaceWxRows;
   const NAMES = {
     spread: ['swxFieldSpread', 'Dew point spread'], dew: ['swxFieldDew', 'Dew point'],
     temp: ['swxFieldTemp', 'Temperature'], msl: ['swxFieldMsl', 'Sea-level pressure'],
@@ -7486,6 +7501,8 @@ if (windDepartSlider) {
     say(ok ? '' : (S.swxErr || 'Surface weather unavailable'));
     if (!ok) { cb.checked = false; window.showSurfaceWx = false; }
     legend();
+    // An inspector opened while the data was on its way gets its Surface rows now.
+    refreshSurfaceWxRows(false);
   }
   cb.onchange = () => {
     gen++;
@@ -7494,6 +7511,7 @@ if (windDepartSlider) {
     if (cb.checked) { if (!busy) enable(); } else say('');
     legend();
     if (typeof draw === 'function') draw();
+    if (!cb.checked) refreshSurfaceWxRows(true);
   };
   // Driven by the shared look-ahead: re-sample what was fetched, say the new hour, redraw.
   if (timeSlider) {
@@ -7501,6 +7519,8 @@ if (windDepartSlider) {
       if (!window.showSurfaceWx) return;
       legend();
       if (typeof draw === 'function') draw();
+      // The inspector's Surface / Cloud base rows name the same hour as the map.
+      refreshSurfaceWxRows(true);
     });
   }
   // The layer's own file (app/surface-wx.js) loads after this one: the picker, the restored

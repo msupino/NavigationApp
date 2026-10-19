@@ -64,7 +64,7 @@
 
   async function fetchGrid(opts) {
     const o = opts || {};
-    if (store && Date.now() - store.at < ttlMs()) return store;
+    if (store && !o.force && Date.now() - store.at < ttlMs()) return store;
     if (inflight) return inflight;
     const grid = gridPoints();
     const url = 'https://api.open-meteo.com/v1/forecast'
@@ -155,7 +155,8 @@
   // Warning colours only where there is something to warn about; everything else one quiet
   // ink, so the chart under the layer still reads.
   const WARN = () => tn('swxWarnColor', '#c62828');
-  const CAUTION = () => tn('swxCautionColor', '#e07b00');
+  // Amber text must read on its white halo: #e07b00 was 3.0:1, this is 5.0:1 (WCAG AA).
+  const CAUTION = () => tn('swxCautionColor', '#b45309');
   const QUIET = () => tn('swxQuietColor', '#1f4e79');
   function colorFor(f, v) {
     if (v === null) return null;
@@ -311,8 +312,26 @@
     return out;
   }
 
+  // A forecast older than its cache life is fetched again the next time the layer draws, so a
+  // map left open for a day does not run off the end of the 48 hours it was given and go blank.
+  let refreshing = false, lastTry = 0;
+  function refreshIfStale() {
+    if (!store || refreshing || Date.now() - store.at < ttlMs()) return;
+    // Offline the refetch fails and the forecast stays old: one attempt per few minutes, not one
+    // per redraw (every pan draws).
+    if (Date.now() - lastTry < tn('swxRetryMin', 5) * 60e3) return;
+    lastTry = Date.now();
+    refreshing = true;
+    // The old forecast stays on the map while the new one loads; offline, it simply stays.
+    fetchGrid({ force: true }).then(() => {
+      refreshing = false;
+      if (typeof draw === 'function') draw();
+      if (typeof window.refreshSurfaceWxRows === 'function') window.refreshSurfaceWxRows(true);
+    });
+  }
   function drawSurfaceWx() {
     if (!window.showSurfaceWx || !store) return;
+    refreshIfStale();
     if (typeof octx === 'undefined' || !octx || typeof proj !== 'function') return;
     const zoom = (typeof map !== 'undefined' && map.getZoom) ? map.getZoom() : 99;
     if (zoom < tn('swxMinZoom', 7)) return;
