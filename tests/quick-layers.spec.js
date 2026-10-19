@@ -38,6 +38,8 @@ test('base map: one of them, the select\'s own; choosing one switches it', async
     const o = [...s.options].find(x => x.value !== s.value && !x.hidden && !x.disabled && x.value !== '---'); return o && [o.value, o.textContent]; });
   await radios.filter({ hasText: target[1] }).first().click();
   expect(await page.evaluate(() => document.getElementById('layer-select').value)).toBe(target[0]);
+  await expect(page.locator('#quick-layers')).toHaveCount(0);           // a chart chosen: closed
+  await page.locator('#edit-col-layers').click();
   await expect(page.locator('#quick-layers .ql-radio[aria-checked="true"]')).toHaveText(target[1]);
   // And the map shows it: the chosen chart is the layer on the map.
   expect(await page.evaluate(() => currentLayerName())).toBe(target[0]);
@@ -52,6 +54,7 @@ test('an overlay switch presses the layer\'s own checkbox; one the browser canno
   await wind.click();
   expect(await page.evaluate(() => document.getElementById('show-wind-cb').checked)).toBe(!was);
   await expect(page.locator('#quick-layers .ql-switch[data-for="show-wind-cb"]')).toHaveAttribute('aria-checked', String(!was));
+  await expect(page.locator('#quick-layers')).toHaveCount(1);           // an overlay switch: stays open
   // Traffic needs the app: dimmed, saying why, and pressing it does not switch it.
   const traffic = page.locator('#quick-layers .ql-switch[data-for="traffic-cb"]');
   if (await traffic.count()) {

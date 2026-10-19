@@ -1565,9 +1565,11 @@ function renderQuickLayers(p) {
       r.setAttribute('role', 'radio');
       r.setAttribute('aria-checked', String(o.value === sel.value));
       r.textContent = o.textContent;
+      // Choosing the chart is the whole errand: the popover closes on it. The overlay switches
+      // below leave it open, so several can be flipped in one visit.
       r.addEventListener('click', () => {
         if (sel.value !== o.value) { sel.value = o.value; sel.dispatchEvent(new Event('change', { bubbles: true })); }
-        renderQuickLayers(p);
+        closeQuickLayers();
       });
       g.appendChild(r);
     }
