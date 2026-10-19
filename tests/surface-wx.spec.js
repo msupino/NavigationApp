@@ -155,3 +155,49 @@ test('left on, it comes back on after a reload: switch, map and data together', 
   expect(await page.evaluate(() => [document.getElementById('surface-wx-cb').checked, window.showSurfaceWx])).toEqual([true, true]);
   await expect(page.locator('#surface-wx-chip')).toContainText('Dew point spread');
 });
+
+test('the inspector\'s rows follow the slider; a stale forecast is fetched again', async ({ page }) => {
+  const calls = await boot(page);
+  await switchOn(page);
+  await page.waitForFunction(() => !!NavAid.surfaceWx._store());
+  await page.evaluate(() => { state.waypoints = [{ lat: 31.0, lng: 34.8, name: 'S' }, { lat: 31.2, lng: 34.9, name: 'B' }];
+    syncLegs(); draw(); state.selected = { type: 'wp', index: 0 }; showInspector(); });
+  const surface = page.locator('#inspector .swx-row:not(.swx-base-row) .val');
+  await expect(surface).toContainText('20°/10°');
+  await page.evaluate(() => { const m = document.getElementById('lookahead-time'); m.value = '2'; m.dispatchEvent(new Event('input')); });
+  await expect(surface).toContainText('24°/14°');                     // the +2 h hour, as on the map
+  // An hour past its cache life: the next draw asks again.
+  await page.evaluate(() => { NavAid.surfaceWx._store().at -= 2 * 3600e3; draw(); });
+  await expect.poll(() => calls.n).toBe(2);
+});
+
+test('offline, a stale forecast is retried once per few minutes, not on every redraw', async ({ page }) => {
+  const calls = await boot(page);
+  await switchOn(page);
+  await page.waitForFunction(() => !!NavAid.surfaceWx._store());
+  await page.unroute('https://api.open-meteo.com/**');
+  let failed = 0;
+  await page.route('https://api.open-meteo.com/**', (route) => { failed++; return route.fulfill({ status: 503, body: '' }); });
+  await page.evaluate(async () => {
+    NavAid.surfaceWx._store().at -= 2 * 3600e3;
+    for (let i = 0; i < 10; i++) { draw(); await new Promise(r => setTimeout(r, 50)); }
+  });
+  await page.waitForTimeout(500);
+  expect(failed).toBe(1);
+  expect(await page.evaluate(() => !!NavAid.surfaceWx._store())).toBe(true);   // the old one stays
+  expect(calls.n).toBe(1);
+});
+
+test('readable: warning colours hold 4.5:1 on their white halo; field rows are finger-sized on a phone', async ({ page }) => {
+  await boot(page, 'en', { width: 390, height: 844 });
+  const ratios = await page.evaluate(() => {
+    const L = (h) => { const v = [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16) / 255).map(x => x <= 0.03928 ? x / 12.92 : ((x + 0.055) / 1.055) ** 2.4); return 0.2126 * v[0] + 0.7152 * v[1] + 0.0722 * v[2]; };
+    const sw = NavAid.surfaceWx;
+    return [sw.colorFor('spread', 1), sw.colorFor('spread', 3), sw.colorFor('spread', 9)].map(c => 1.05 / (L(c) + 0.05));
+  });
+  for (const r of ratios) expect(r).toBeGreaterThanOrEqual(4.5);
+  await switchOn(page);
+  // The row sits in a menu section closed here: its rule, as the phone applies it.
+  const h = await page.evaluate(() => parseFloat(getComputedStyle(document.querySelector('#surface-wx-controls .swx-field')).minHeight));
+  expect(h).toBeGreaterThanOrEqual(44);
+});
