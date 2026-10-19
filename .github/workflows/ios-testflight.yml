@@ -72,9 +72,20 @@ jobs:
       - name: Install mobile dependencies
         run: npm ci --prefix mobile
 
+      # The CVFR tiles, kept between runs: ~1,500 fetches from the mirror on every build is what it
+      # rate-limits (HTTP 429). Each run saves its own copy; the next restores the newest.
+      - name: Cache chart tiles
+        if: ${{ inputs.charts }}
+        uses: actions/cache@v4
+        with:
+          path: mobile/.chart-cache
+          key: chart-tiles-cvfr-${{ github.run_id }}
+          restore-keys: chart-tiles-cvfr-
+
       - name: Bundle the web app (embedded)
         env:
           NAVAID_CHARTS: ${{ inputs.charts && '1' || '0' }}
+          NAVAID_CHART_CONCURRENCY: '3'
         run: |
           cd mobile
           npm run bundle:check
