@@ -115,3 +115,30 @@ test('Hebrew: its names, and the chip isolates them from the times', async ({ pa
   await expect(page.locator('#surface-wx-chip')).toContainText('פער נקודת טל');
   await expect(page.locator('#surface-wx-chip')).toContainText('עכשיו');
 });
+
+test('H / L only at real centres: a deep low is marked, small bumps on a flat day are not', async ({ page }) => {
+  await page.setViewportSize({ width: 1300, height: 850 });
+  await page.route('https://api.open-meteo.com/**', async (route) => {
+    const u = new URL(route.request().url());
+    if (!/dew_point_2m/.test(u.search)) return route.fallback();
+    const lats = u.searchParams.get('latitude').split(',').map(Number), lngs = u.searchParams.get('longitude').split(',').map(Number);
+    const now = new Date(Math.round(Date.now() / 3600e3) * 3600e3);
+    const time = [0, 1].map(h => new Date(now.getTime() + h * 3600e3).toISOString().slice(0, 16));
+    // Hour 0: a deep low near Haifa. Hour 1: 1015 with ±0.3 hPa ripples everywhere.
+    await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(lats.map((la, k) => ({ hourly: { time,
+      temperature_2m: [20, 20], dew_point_2m: [10, 10],
+      pressure_msl: [+(1000 + Math.hypot(la - 32.9, lngs[k] - 35.0) * 6).toFixed(2), +(1015 + 0.3 * Math.sin(la * 40) * Math.cos(lngs[k] * 40)).toFixed(2)] } }))) });
+  });
+  await page.goto('?lang=en&nogist');
+  await page.waitForFunction(() => window.NavAid && NavAid.surfaceWx);
+  await page.evaluate(() => NavAid.surfaceWx.fetchGrid());
+  const r = await page.evaluate(() => {
+    const sw = NavAid.surfaceWx, g = sw._store().grid;
+    const at = (c) => ({ high: c.high, lat: g.lats[c.i], lng: g.lngs[c.j] });
+    return { deep: sw.pressureCentres(0).map(at), flat: sw.pressureCentres(1).map(at) };
+  });
+  expect(r.deep).toHaveLength(1);
+  expect(r.deep[0].high).toBe(false);
+  expect(Math.abs(r.deep[0].lat - 32.9)).toBeLessThan(0.3);
+  expect(r.flat).toEqual([]);
+});
