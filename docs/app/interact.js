@@ -1460,6 +1460,23 @@ function appendSurfaceWxRow(body, lat, lng) {
   val.title = (S.tbSurfaceWxTitle || '');
   row.append(label, val);
   body.appendChild(row);
+  // The estimated cloud base, above the ground there and above sea level -- the second is what
+  // compares with an altimeter set to QNH, and differs most over the hills.
+  if (s.base !== null) {
+    const r2 = document.createElement('div');
+    r2.className = 'row swx-row swx-base-row';
+    const l2 = document.createElement('label');
+    l2.textContent = S.inspCloudBase || 'Cloud base (est.)';
+    const v2 = document.createElement('span');
+    v2.className = 'val';
+    v2.dir = 'ltr';
+    const ft = (x) => (Math.round(x / 100) * 100).toLocaleString('en-US') + ' ft';
+    const agl = ft(s.base) + ' ' + (S.unitAgl || 'AGL');
+    v2.textContent = s.baseAmsl !== null ? agl + ' · ' + ft(s.baseAmsl) + ' ' + (S.unitAmsl || 'AMSL') : agl;
+    v2.title = S.swxLegendBase || '';
+    r2.append(l2, v2);
+    body.appendChild(r2);
+  }
 }
 
 // Shared inspector-only VOR selector + "From <VOR>  R-xxx° / yy.y NM" readout.

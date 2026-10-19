@@ -83,14 +83,17 @@
         const times = (h0 && h0.time) || [];
         if (!times.length || locs.length < grid.pts.length) throw new Error('no grid data');
         const ms = times.map(t => Date.parse(String(t).length <= 16 ? t + ':00Z' : t));
-        const t = [], td = [], p = [];
+        // The model's own ground height at each point (metres): a cloud base above the ground
+        // there plus this is the base above sea level.
+        const t = [], td = [], p = [], elev = [];
         for (let k = 0; k < grid.pts.length; k++) {
           const h = (locs[k] && locs[k].hourly) || {};
           t.push((h.temperature_2m || []).map(num));
           td.push((h.dew_point_2m || []).map(num));
           p.push((h.pressure_msl || []).map(num));
+          elev.push(num(locs[k] && locs[k].elevation));
         }
-        store = { at: Date.now(), times: ms, grid, t, td, p };
+        store = { at: Date.now(), times: ms, grid, t, td, p, elev };
         return store;
       } catch (e) {
         return null;
@@ -141,7 +144,11 @@
     }
     const t = valueAt(best, hi, 'temp'), td = valueAt(best, hi, 'dew'), p = valueAt(best, hi, 'msl');
     if (t === null && td === null && p === null) return null;
-    return { t, td, spread: valueAt(best, hi, 'spread'), p, base: valueAt(best, hi, 'base'), at: store.times[hi] };
+    const base = valueAt(best, hi, 'base');
+    const em = store.elev ? store.elev[best] : null;
+    const elevFt = Number.isFinite(em) ? em * 3.28084 : null;
+    return { t, td, spread: valueAt(best, hi, 'spread'), p, base, elevFt,
+      baseAmsl: base !== null && elevFt !== null ? base + elevFt : null, at: store.times[hi] };
   }
 
   // --- how each field reads ---------------------------------------------------------

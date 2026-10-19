@@ -13,6 +13,7 @@ const SAME_IN_BOTH = [
   'choosePointNotam', 'notamInspLabel',        // NOTAM
   'tbSigmet', 'sigmetReadout',                 // SIGMET
   'tbAirmet',                                  // AIRMET -- an ICAO product name, same word in Hebrew
+  'unitAgl', 'unitAmsl',                       // AGL / AMSL -- the abbreviations a Hebrew altimeter speaks too
   // The route check names its sources. Four of them translate; this one is the pair of ICAO
   // product names already listed above, written as they are written on a briefing sheet.
   'routeCheckSrcHazards',
