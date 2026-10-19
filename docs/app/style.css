@@ -2165,7 +2165,7 @@ body.theme-light .resize-grip {
 }
 #insp-close:hover { background: #443f3f; color: #fff; }
 
-#insp-body { padding: 10px 12px; }
+#insp-body { --insp-pad-b: 10px; padding: 10px 12px var(--insp-pad-b); }
 
 #magnifier-settings {
   position: absolute;
@@ -9417,7 +9417,7 @@ body.theme-dark #insp-body .insp-actions {
 }
 /* And down to the panel's edge: #insp-body's 10px bottom padding left a strip under the pinned
    buttons where the rows scrolling beneath still showed (a "300 ft AGL" under Delete, reported). */
-#insp-body .insp-actions { bottom: -10px; padding-bottom: 10px; }
+#insp-body .insp-actions { bottom: calc(-1 * var(--insp-pad-b, 10px)); padding-bottom: var(--insp-pad-b, 10px); }
 body.theme-light #insp-body .insp-actions {
   background: linear-gradient(to bottom, rgba(250, 252, 255, 0), rgb(250, 252, 255) 10px);
 }
