@@ -6475,6 +6475,11 @@ let _legendPillW = (() => {
   catch (e) { return 0; }
 })();
 function reserveSummaryWidth(pill) {
+  // Measured only when the text changed: scrollWidth right after a write forces a layout, and
+  // draw() runs on every frame of a pan -- this was the largest single cost of panning (profile).
+  if (pill._measuredText === pill.textContent && pill._measuredLang === document.documentElement.lang) return;
+  pill._measuredText = pill.textContent;
+  pill._measuredLang = document.documentElement.lang;
   const w = Math.ceil(pill.scrollWidth);
   if (w > _legendPillW + 0.5) {
     _legendPillW = w;
@@ -6482,6 +6487,9 @@ function reserveSummaryWidth(pill) {
   }
   if (_legendPillW > 0) pill.style.minWidth = _legendPillW + 'px';
 }
+
+// The same text written again is still a DOM change, and a style recalculation, on every frame.
+function setPillText(pill, t) { if (pill.textContent !== t) pill.textContent = t; }
 
 function drawSummaryPill(prof, totalDist, totalH, totalFuel, legIndexes) {
   const pill = document.getElementById('route-summary');
@@ -6493,8 +6501,8 @@ function drawSummaryPill(prof, totalDist, totalH, totalFuel, legIndexes) {
   if (!state.legs.length || totalDist <= 0) {
     pill.style.display = '';
     pill.style.visibility = 'hidden';
-    pill.textContent = (typeof S.fpMobileSummary === 'function')
-      ? S.fpMobileSummary(0, '0.0', '0:00', '0.0') : '0 NM';
+    setPillText(pill, (typeof S.fpMobileSummary === 'function')
+      ? S.fpMobileSummary(0, '0.0', '0:00', '0.0') : '0 NM');
     reserveSummaryWidth(pill);
     return;
   }
@@ -6512,10 +6520,10 @@ function drawSummaryPill(prof, totalDist, totalH, totalFuel, legIndexes) {
   const gal = prof && totalFuel > 0 ? totalFuel + taxi : 0;
   const legCount = legIndexes ? legIndexes.length : state.legs.length;
   pill.style.display = '';
-  pill.textContent = (typeof S.fpMobileSummary === 'function')
+  setPillText(pill, (typeof S.fpMobileSummary === 'function')
     ? S.fpMobileSummary(legCount, totalDist.toFixed(1),
       totalH > 0 ? toHMS(totalH) : '--', gal.toFixed(1))
-    : `${totalDist.toFixed(1)} NM`;
+    : `${totalDist.toFixed(1)} NM`);
   reserveSummaryWidth(pill);
 }
 
