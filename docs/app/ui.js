@@ -8721,19 +8721,34 @@ function addOverlayHideButton(layer, g, type) {
 // which then takes the press meant for the ✕. Step any ✕ that falls under the column out to its
 // right, on the same row; it goes back to the corner as soon as the corner is clear again.
 function clearOvHideFromEditCol() {
+  const btns = document.querySelectorAll('.ov-hide-btn');
+  if (!btns.length) return;
   const col = document.querySelector('.edit-col-ctrl');
   const c = col && col.getClientRects().length ? col.getBoundingClientRect() : null;
-  for (const el of document.querySelectorAll('.ov-hide-btn')) {
-    el.style.marginLeft = '0px';
-    if (!c) continue;
-    const r = el.getBoundingClientRect();
-    if (r.left < c.right && r.right > c.left && r.top < c.bottom && r.bottom > c.top) {
-      el.style.marginLeft = Math.ceil(c.right + 6 - r.left) + 'px';
+  // All reads, then all writes. Resetting each ✕ and measuring it straight after forced a layout
+  // per button, on every frame of a pan -- the largest cost of panning in the profile. The home
+  // position is the measured one less the margin already applied.
+  const plan = [];
+  for (const el of btns) {
+    const cur = parseFloat(el.style.marginLeft) || 0;
+    let want = 0;
+    if (c) {
+      const r = el.getBoundingClientRect();
+      const left = r.left - cur, right = r.right - cur;
+      if (left < c.right && right > c.left && r.top < c.bottom && r.bottom > c.top) want = Math.ceil(c.right + 6 - left);
     }
+    if (want !== cur) plan.push([el, want]);
   }
+  for (const [el, want] of plan) el.style.marginLeft = want + 'px';
+}
+// Once per frame at most while the map moves (a pan fires many 'move' events per frame).
+let _ovHideRaf = 0;
+function clearOvHideFromEditColSoon() {
+  if (_ovHideRaf) return;
+  _ovHideRaf = requestAnimationFrame(() => { _ovHideRaf = 0; clearOvHideFromEditCol(); });
 }
 window.clearOvHideFromEditCol = clearOvHideFromEditCol;
-if (typeof map !== 'undefined' && map) map.on('move zoomend viewreset resize', clearOvHideFromEditCol);
+if (typeof map !== 'undefined' && map) map.on('move zoomend viewreset resize', clearOvHideFromEditColSoon);
 
 // ── Circuit overlay ──────────────────────────────────────────────────────────
 const CIRCUIT_SHOW_KEY    = 'navaid.showCircuit';
