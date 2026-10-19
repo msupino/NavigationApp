@@ -9415,6 +9415,9 @@ body.deck-on .satellite-expand-hint { min-width: 44px; justify-content: center; 
 body.theme-dark #insp-body .insp-actions {
   background: linear-gradient(to bottom, rgba(20, 18, 18, 0), rgb(20, 18, 18) 10px);
 }
+/* And down to the panel's edge: #insp-body's 10px bottom padding left a strip under the pinned
+   buttons where the rows scrolling beneath still showed (a "300 ft AGL" under Delete, reported). */
+#insp-body .insp-actions { bottom: -10px; padding-bottom: 10px; }
 body.theme-light #insp-body .insp-actions {
   background: linear-gradient(to bottom, rgba(250, 252, 255, 0), rgb(250, 252, 255) 10px);
 }
