@@ -6548,9 +6548,9 @@ function drawA4x2TileMarks(cx, t, total, pxPerMm) {
   cx.fillStyle = tune('a4x2MarkLabelInkColor');
   cx.fillText(label, pad * 2, pad * 2);
   // dashed guide along the shared (seam) edge
-  cx.strokeStyle = 'rgba(0,0,0,0.7)';
+  cx.strokeStyle = colorWithAlpha(tune('a4x2MarkGuideColor'), tune('a4x2MarkGuideAlpha'));
   cx.lineWidth = Math.max(1, tune('a4x2MarkGuideMm') * mm);
-  cx.setLineDash([Math.round(4 * mm), Math.round(2.5 * mm)]);
+  cx.setLineDash([Math.round(tune('a4x2MarkGuideDashMm') * mm), Math.round(tune('a4x2MarkGuideGapMm') * mm)]);
   cx.beginPath();
   if (t.seam === 'right')       { cx.moveTo(W - 1, 0); cx.lineTo(W - 1, H); }
   else if (t.seam === 'left')   { cx.moveTo(1, 0);     cx.lineTo(1, H); }
@@ -12589,7 +12589,7 @@ function showFplXcForm(opts) {
     pad.style.height = cssH + 'px';
     const ctx = pad.getContext('2d');
     ctx.scale(2, 2);
-    ctx.lineWidth = 1.6;
+    ctx.lineWidth = tune('fplSignatureWidthPx');
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
     // Presentation values come from the tuning registry, not from literals in here.
