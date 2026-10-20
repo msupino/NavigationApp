@@ -9460,13 +9460,16 @@ body.deck-on #deck-sheet .tb-section[data-sec="settings"] .tb-section-body > lab
    controls sit together at the row's end, so they line up whatever the name's length -- a
    fixed name column (it was 9.5em / 12.5em) broke under a phone's larger font: the Hebrew
    names outgrew it, the controls stepped out of line, and Magnetic variation wrapped. */
-#toolbar .tb-section[data-sec="settings"] .tb-section-body > .navtoggle {
+#toolbar .tb-section[data-sec="settings"] .tb-section-body > .navtoggle,
+#toolbar .tb-section[data-sec="settings"] #settings-ac-custom > .navtoggle {
   display: flex; flex-wrap: nowrap; align-items: center; gap: 6px;
 }
-#toolbar .tb-section[data-sec="settings"] .tb-section-body > .navtoggle > span:first-child {
+#toolbar .tb-section[data-sec="settings"] .tb-section-body > .navtoggle > span:first-child,
+#toolbar .tb-section[data-sec="settings"] #settings-ac-custom > .navtoggle > span:first-child {
   flex: 1 1 auto; min-width: 0;
 }
-#toolbar .tb-section[data-sec="settings"] .tb-section-body > .navtoggle > :not(span:first-child) { flex: 0 0 auto; }
+#toolbar .tb-section[data-sec="settings"] .tb-section-body > .navtoggle > :not(span:first-child),
+#toolbar .tb-section[data-sec="settings"] #settings-ac-custom > .navtoggle > :not(span:first-child) { flex: 0 0 auto; }
 
 /* ---- Menu fields: one family ------------------------------------------------------------
    UI/UX audit of every select, field, swatch and reset button in the menus, both themes:
@@ -9901,3 +9904,14 @@ body.theme-light #export-progress { background: #fafcff; color: #1d2430; border-
   .route-template-row select,
   .route-template-row input { min-height: 44px; font-size: 15px; }
 }
+
+/* Settings -> Aircraft: a figure changed from the type's carries a small dot after its name. */
+.ac-field.ac-overridden > span::after {
+  content: ' \2022'; color: #b45309; font-weight: 700;
+}
+#settings-ac-restore { margin-block: 4px 2px; }
+
+/* Custom figures: a fold inside the settings column, as wide as the rows around it. */
+#settings-ac-custom { display: block; width: 100%; }
+#settings-ac-custom > summary { cursor: pointer; padding: 6px 2px; font-weight: 600; min-height: 32px; }
+body.deck-on #settings-ac-custom > summary { min-height: 44px; display: flex; align-items: center; }

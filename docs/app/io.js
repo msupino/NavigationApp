@@ -11359,7 +11359,8 @@ function showFplDialog(opts) {
     typeBox.className = 'fpl-type-box';
     typeBox.append(typeSel, type, backToList);
 
-    const storedType = String(profile.type || '').toUpperCase();
+    // The aircraft chosen in Settings when the form has none of its own yet.
+    const storedType = String(profile.type || (aircraft && aircraft.type) || '').toUpperCase();
     const typeListed = !storedType || TYPE_SUGGESTIONS.includes(storedType);
     const showType = other => {
       typeSel.hidden = other;
@@ -11375,9 +11376,16 @@ function showFplDialog(opts) {
       if (!other) type.value = typeSel.value;
       else type.value = '';
       showType(other);
+      // A listed type is the aircraft: Settings, its figures and the plan follow, and stay.
+      // "Other…" here is "Other…" in Settings too: the figures stay as they are, set by hand.
+      if (typeof window.applyAircraftType === 'function' && window.AIRCRAFT_TYPES) {
+        if (!other && window.AIRCRAFT_TYPES[typeSel.value]) window.applyAircraftType(typeSel.value);
+        else if (other) window.applyAircraftType('');
+      }
     };
     backToList.onclick = () => {
-      typeSel.value = TYPE_SUGGESTIONS[0];
+      const settingsType = aircraft && aircraft.type;
+      typeSel.value = settingsType && TYPE_SUGGESTIONS.includes(settingsType) ? settingsType : TYPE_SUGGESTIONS[0];
       type.value = typeSel.value;
       showType(false);
     };
@@ -11410,7 +11418,16 @@ function showFplDialog(opts) {
       endurance.appendChild(o);
     }
     // Five hours is the usual tankful; the pilot's own choice wins once made.
-    endurance.value = /^[0-9]{4}$/.test(profile.endurance) ? profile.endurance : FPL_DEFAULT_ENDURANCE;
+    // With none chosen yet, the aircraft's own: usable fuel less taxi, at its burn, rounded DOWN to
+    // the half hour the list offers (never more endurance than the tanks hold).
+    const acEndurance = () => {
+      const u = aircraft && Number(aircraft.usableGal), g = aircraft && Number(aircraft.gph);
+      if (!(u > 0 && g > 0)) return null;
+      const mins = Math.floor(((u - (Number(aircraft.taxiGal) || 0)) / g) * 60 / 30) * 30;
+      const m = Math.max(30, Math.min(480, mins));
+      return hhmmFromMinutes(m);
+    };
+    endurance.value = /^[0-9]{4}$/.test(profile.endurance) ? profile.endurance : (acEndurance() || FPL_DEFAULT_ENDURANCE);
     if (!endurance.value || endurance.selectedIndex < 0) endurance.value = FPL_DEFAULT_ENDURANCE;
     body.appendChild(row(S.fplEndurance || 'Fuel endurance', endurance));
 

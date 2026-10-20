@@ -7807,6 +7807,45 @@ function refreshSettingsAircraft() {
   if (!a || !(Number(a.gph) > 0)) a = { gph: tune('defaultGph'), taxiGal: tune('defaultTaxiGal') };
   if (document.activeElement !== g) g.value = a.gph;
   if (document.activeElement !== t) t.value = a.taxiGal;
+  // The type and its other figures; empty where no type gives one and the pilot set none.
+  const typeSel = document.getElementById('settings-ac-type');
+  if (typeSel) {
+    if (!typeSel.options.length) {
+      for (const code of Object.keys(window.AIRCRAFT_TYPES || {})) {
+        const o = document.createElement('option'); o.value = code; o.textContent = code; typeSel.appendChild(o);
+      }
+      // Last, as in the flight plan form: any other aircraft, with the figures set by hand.
+      const other = document.createElement('option');
+      other.value = ''; other.textContent = S.fplTypeOther || 'Other\u2026';
+      typeSel.appendChild(other);
+    }
+    typeSel.value = (a.type && window.AIRCRAFT_TYPES[a.type]) ? a.type : '';
+  }
+  for (const [id, f] of [['settings-usable', 'usableGal'], ['settings-climb-kt', 'climbKt']]) {
+    const el = document.getElementById(id);
+    if (el && document.activeElement !== el) el.value = Number(a[f]) > 0 ? a[f] : '';
+  }
+  // A dot on each figure changed from the type's, saying what the type gives; Restore when any is.
+  let any = false;
+  for (const lab of document.querySelectorAll('.ac-field[data-field]')) {
+    const f = lab.dataset.field;
+    const d = typeof aircraftTypeDefault === 'function' ? aircraftTypeDefault(f) : null;
+    const cur = f === 'climbFpm' ? (window.profileVS > 0 ? window.profileVS : a.climbFpm) : a[f];
+    const changed = d !== null && Number(cur) !== d;
+    lab.classList.toggle('ac-overridden', changed);
+    lab.dataset.typeValue = changed ? String(d) : '';
+    if (lab.dataset.baseTitle === undefined) lab.dataset.baseTitle = lab.title || '';
+    lab.title = changed && typeof S.aircraftChangedFrom === 'function'
+      ? lab.dataset.baseTitle + ' \u2014 ' + S.aircraftChangedFrom(d) : lab.dataset.baseTitle;
+    if (changed) any = true;
+  }
+  const restore = document.getElementById('settings-ac-restore');
+  if (restore) {
+    const has = !!(a.type && window.AIRCRAFT_TYPES[a.type]);
+    restore.hidden = !has;
+    restore.textContent = has ? (typeof S.tbAircraftRestore === 'function' ? S.tbAircraftRestore(a.type) : 'Restore ' + a.type + ' figures') : '';
+    if (typeof setButtonWhy === 'function') setButtonWhy(restore, any ? null : (S.whyAircraftAsType || 'Every figure is the type\u2019s already'));
+  }
   // Vertical speed: the flight plan's V/S, the same window.profileVS / navaid.profileVS.
   const vs = document.getElementById('settings-vs');
   if (vs && document.activeElement !== vs) {
@@ -7830,10 +7869,47 @@ window.refreshSettingsAircraft = refreshSettingsAircraft;
     }
     const gph = parseFloat(g.value);
     if (!(gph > 0)) return;            // an empty box is not a profile; storage keeps the last one
-    aircraft = { gph, taxiGal: parseFloat(t.value) || 0 };
+    // Only the two fuel figures change here; the type and its other figures stay.
+    aircraft = Object.assign({}, aircraft || {}, { gph, taxiGal: parseFloat(t.value) || 0 });
     if (typeof saveAircraft === 'function') saveAircraft();
+    refreshSettingsAircraft();
     draw();
   };
+  // The type: every figure from its table, the flight plan's fields and the filing type with it.
+  const typeSel = document.getElementById('settings-ac-type');
+  const pushToPlan = () => {
+    const fpG = document.getElementById('aircraft-gph');
+    const fpT = document.getElementById('aircraft-taxi');
+    if (fpG && fpT && aircraft) { fpG.value = aircraft.gph; fpT.value = aircraft.taxiGal; fpG.dispatchEvent(new Event('input')); }
+    const fpVs = document.querySelector('.fp-profile-vs-input');
+    if (fpVs && window.profileVS > 0) { fpVs.value = String(window.profileVS); fpVs.dispatchEvent(new Event('input')); }
+    refreshSettingsAircraft();
+    draw();
+  };
+  // One aircraft, two places to choose it: Settings and the flight plan form's type. Either one
+  // sets the type, its figures and the type filed, and it is remembered.
+  function applyAircraftType(code) {
+    setAircraftType(code);
+    // The form's own profile field (io.js FPL_PROFILE_PREFIX + 'type'), synced with that profile.
+    if (code) { try { localStorage.setItem(FPL_PROFILE_PREFIX + 'type', code); } catch (e) { /* storage off */ } }
+    pushToPlan();
+  }
+  window.applyAircraftType = applyAircraftType;
+  if (typeSel) typeSel.addEventListener('change', () => applyAircraftType(typeSel.value));
+  const restore = document.getElementById('settings-ac-restore');
+  if (restore) restore.addEventListener('click', () => { restoreAircraftDefaults(); pushToPlan(); });
+  for (const [id, f, parse] of [['settings-usable', 'usableGal', parseFloat], ['settings-climb-kt', 'climbKt', parseFloat]]) {
+    const el = document.getElementById(id);
+    if (!el) continue;
+    el.addEventListener('input', () => {
+      const v = parse(el.value);
+      if (!(v > 0)) return;
+      aircraft = Object.assign({}, aircraft || { gph: tune('defaultGph'), taxiGal: tune('defaultTaxiGal') }, { [f]: v });
+      if (typeof saveAircraft === 'function') saveAircraft();
+      refreshSettingsAircraft();
+      draw();
+    });
+  }
   g.addEventListener('input', onInput);
   t.addEventListener('input', onInput);
   const vs = document.getElementById('settings-vs');
@@ -7844,6 +7920,7 @@ window.refreshSettingsAircraft = refreshSettingsAircraft;
     if (fpVs) { fpVs.value = String(v); fpVs.dispatchEvent(new Event('input')); return; }
     window.profileVS = v;
     try { localStorage.setItem('navaid.profileVS', String(v)); } catch (e) { /* ignore */ }
+    refreshSettingsAircraft();
     draw();            // the map's TOC marker moves with the climb
   });
   refreshSettingsAircraft();
@@ -10996,6 +11073,27 @@ wireColorPicker('waypoint-color', 'waypointFillColor', 'navaid.waypointColor');
 // separate fill keys. The RETURN arrows keep their own colours on purpose -- they are
 // deliberately different so the return path reads as the return path.
 wireColorPicker('leg-arrow-color', ['legKiteFillColor', 'cumKiteFillColor'], 'navaid.legArrowColor');
+wireColorPicker('return-arrow-color', ['returnKiteFillColor', 'returnCumKiteFillColor'], 'navaid.returnArrowColor');
+wireColorPicker('minute-to-color', ['minuteMarkerToColor'], 'navaid.minuteToColor');
+wireColorPicker('minute-from-color', ['minuteMarkerFromColor'], 'navaid.minuteFromColor');
+// The way-back colours act only while the return path shows: dimmed otherwise, saying so
+// (dim, never hide -- the pilot still finds them where they belong).
+function refreshReturnColorRows() {
+  for (const id of ['minute-from-color', 'return-arrow-color']) {
+    const el = document.getElementById(id);
+    const row = el && el.closest('label');
+    if (!row) continue;
+    const off = !showReturn;
+    row.classList.toggle('navtoggle-idle', off);
+    if (typeof setButtonWhy === 'function') setButtonWhy(el, off ? (S.whyReturnColorOff || 'Shown with Show return path (B)') : null);
+  }
+}
+window.refreshReturnColorRows = refreshReturnColorRows;
+refreshReturnColorRows();
+{
+  const rc = document.getElementById('ret-cb');
+  if (rc) rc.addEventListener('change', () => setTimeout(refreshReturnColorRows, 0));
+}
 
 const MAPOPACITY_KEY = 'navaid.mapOpacity.v2';
 // `var` (not `let`) so writes from any module via window.mapOpacity reach
@@ -11073,6 +11171,25 @@ LEGARROW_EL.oninput = e => {
   catch (err) { /* storage unavailable */ }
   draw();
 };
+
+// Minute markers size: the same scale and grid as the leg arrows, 1.0 in the middle.
+const MINSIZE_KEY = 'navaid.minuteMarkerSize';
+try {
+  const v = parseFloat(lsGet(MINSIZE_KEY));
+  if (!isNaN(v)) window.minuteMarkerSize = Math.max(LEGARROW_MIN, Math.min(LEGARROW_MAX, v));
+} catch (e) { /* storage unavailable */ }
+const MINSIZE_EL = document.getElementById('minute-size');
+if (MINSIZE_EL) {
+  MINSIZE_EL.min = String(LEGARROW_MIN); MINSIZE_EL.max = String(LEGARROW_MAX); MINSIZE_EL.step = String(LEGARROW_STEP);
+  MINSIZE_EL.value = minuteMarkerSize;
+  updateSliderVal(MINSIZE_EL, sizeSliderVal(minuteMarkerSize));
+  MINSIZE_EL.oninput = e => {
+    window.minuteMarkerSize = parseFloat(e.target.value);
+    updateSliderVal(e.target, sizeSliderVal(e.target.value));
+    try { localStorage.setItem(MINSIZE_KEY, String(minuteMarkerSize)); } catch (err) { /* storage unavailable */ }
+    draw();
+  };
+}
 
 // A slider whose RANGE changed needs a new key, or an out-of-range saved value gets
 // silently clamped and the pilot sees a width they never chose. Bumping alone would
@@ -11156,7 +11273,7 @@ if (KITEALPHA_EL) {
   };
   KITEALPHA_EL.parentElement.appendChild(btn);
 }
-['yellow-alpha', 'map-opacity', 'wp-size', 'leg-arrow-size', 'leg-line-width', 'drift-line-width',
+['yellow-alpha', 'map-opacity', 'wp-size', 'leg-arrow-size', 'minute-size', 'leg-line-width', 'drift-line-width',
  'mag-zoom', 'windfield-alt']
   .forEach(id => addSliderReset(document.getElementById(id)));
 // Magnetic variation has its own control under the default speed (magvar-mode).
@@ -12899,7 +13016,9 @@ if (typeof loadRemoteConfig === "function") {
     // A gist-shipped default is in force now, so the legs following it move too.
     if (typeof carryDefaultSpeedToRoute === 'function') carryDefaultSpeedToRoute();
     for (const [id, keys] of [['waypoint-color', ['waypointFillColor']],
-      ['leg-arrow-color', ['legKiteFillColor', 'cumKiteFillColor']]]) {
+      ['leg-arrow-color', ['legKiteFillColor', 'cumKiteFillColor']],
+      ['return-arrow-color', ['returnKiteFillColor', 'returnCumKiteFillColor']],
+      ['minute-to-color', ['minuteMarkerToColor']], ['minute-from-color', ['minuteMarkerFromColor']]]) {
       const el = document.getElementById(id);
       if (el) el.value = tune(keys[0]);
     }
