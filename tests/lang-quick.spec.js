@@ -65,7 +65,9 @@ for (const lang of ['he', 'en']) test(`settings rows stay one line with the cont
   await page.goto('?lang=' + lang + '&nogist');
   await page.evaluate(() => document.querySelector('.deck-btn-menu').click());
   await page.locator('.tb-section[data-sec="settings"] .tb-section-head').click();
-  const rows = await page.evaluate(() => [...document.querySelectorAll('.tb-section[data-sec="settings"] .tb-section-body > .navtoggle')]
+  // The aircraft's figures fold away under Custom figures; open it so they are measured too.
+  await page.evaluate(() => { const d = document.getElementById('settings-ac-custom'); if (d) d.open = true; });
+  const rows = await page.evaluate(() => [...document.querySelectorAll('.tb-section[data-sec="settings"] .tb-section-body > .navtoggle, #settings-ac-custom > .navtoggle')]
     .filter(r => r.getClientRects().length).map(r => {
       const kids = [...r.children].filter(k => k.getClientRects().length);
       const mids = kids.map(k => { const b = k.getBoundingClientRect(); return b.top + b.height / 2; });
@@ -74,7 +76,9 @@ for (const lang of ['he', 'en']) test(`settings rows stay one line with the cont
       return { spread: Math.max(...mids) - Math.min(...mids),
         edge: rtl ? Math.min(...ctrls.map(b => b.left)) : Math.max(...ctrls.map(b => b.right)) };
     }));
-  expect(rows.length).toBe(9);                   // the settings rows: pressure unit, altitude from, gal/h, taxi gal, V/S, brightness among them
+  // the settings rows: pressure unit, altitude from, aircraft type, then under Custom figures
+  // gal/h, taxi, usable fuel, climb speed, V/S; brightness among them
+  expect(rows.length).toBe(12);
   for (const r of rows) expect(r.spread).toBeLessThan(8);         // one line
   expect(Math.max(...rows.map(r => r.edge)) - Math.min(...rows.map(r => r.edge))).toBeLessThan(2);   // aligned
 });
