@@ -299,7 +299,8 @@ test.describe('#412 — airfields.json (chart-sourced)', () => {
     const bare = ['KKDEM', 'GVULT'];
     for (const code of bare) {
       const a = byCode.get(code);
-      expect(Object.keys(a).filter(k => k !== 'chartClass').sort()).toEqual(['en', 'he', 'lat', 'lng', 'name']);
+      // runwayGeom (the strip's ends, from OpenStreetMap) is map geometry, like lat/lng.
+      expect(Object.keys(a).filter(k => k !== 'chartClass' && k !== 'runwayGeom' && k !== 'runwayChart').sort()).toEqual(['en', 'he', 'lat', 'lng', 'name']);
     }
   });
 
@@ -702,4 +703,24 @@ test('each CVFR overlay contains its field and keeps the plate\'s proportions', 
       expect([f.name, f.lng > Math.min(...lngs) && f.lng < Math.max(...lngs)]).toEqual([f.name, true]);
     }
   }
+});
+
+// The runway drawn to scale at a close zoom: every civil field's runwayGeom lies near its ARP,
+// is a real runway's length, and the drawing switches from the icon to it as the map zooms in.
+test('runwayGeom: plausible ends near each field', async () => {
+  const d = loadData();
+  const km = (a1, o1, a2, o2) => Math.hypot((a2 - a1) * 111.32, (o2 - o1) * 111.32 * Math.cos(a1 * Math.PI / 180));
+  let n = 0;
+  for (const af of d.airfields) {
+    if (!af.runwayGeom) continue;
+    n++;
+    expect(af.type, af.name + ' military fields keep their circle').not.toBe('military');
+    for (const [a1, o1, a2, o2] of af.runwayGeom) {
+      const len = km(a1, o1, a2, o2);
+      expect(len, af.name + ' runway length').toBeGreaterThan(0.25);
+      expect(len, af.name + ' runway length').toBeLessThan(4.5);
+      expect(km(af.lat, af.lng, (a1 + a2) / 2, (o1 + o2) / 2), af.name + ' runway near its ARP').toBeLessThan(2.5);
+    }
+  }
+  expect(n).toBeGreaterThan(15);
 });
