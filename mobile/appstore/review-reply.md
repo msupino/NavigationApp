@@ -61,8 +61,9 @@ airfields — covers Israel, its intended area of use; OpenFlightMaps adds chart
 regions. The interface is in English and Hebrew.
 
 **6. Regulated / third-party material**
-NavAid is a pilot's planning aid, not a certified avionics or air-navigation service, and makes
-no regulatory claim. Third-party material: [state here the permission you hold from the CAAI /
-flight-maps.com to distribute the VFR chart, and attach it]. OpenStreetMap (ODbL),
-OpenFlightMaps and Esri imagery are used under their published terms, with attribution shown
-on the map.
+NavAid is a pilot's planning aid, not a certified avionics or air-navigation service, and makes no
+regulatory claim. The VFR charts it shows are published publicly by the Civil Aviation Authority
+of Israel and are displayed with attribution to the CAAI and flight-maps.com. We have requested
+written permission from both to display and cache them in the app, and will provide it as soon
+as it is received. OpenStreetMap (ODbL), OpenFlightMaps and Esri imagery are used under their
+published terms, with attribution shown on the map.
