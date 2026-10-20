@@ -300,7 +300,7 @@ test.describe('#412 — airfields.json (chart-sourced)', () => {
     for (const code of bare) {
       const a = byCode.get(code);
       // runwayGeom (the strip's ends, from OpenStreetMap) is map geometry, like lat/lng.
-      expect(Object.keys(a).filter(k => k !== 'chartClass' && k !== 'runwayGeom').sort()).toEqual(['en', 'he', 'lat', 'lng', 'name']);
+      expect(Object.keys(a).filter(k => k !== 'chartClass' && k !== 'runwayGeom' && k !== 'runwayChart').sort()).toEqual(['en', 'he', 'lat', 'lng', 'name']);
     }
   });
 

@@ -3717,6 +3717,8 @@ async function loadAirfields() {
       runways: Array.isArray(a.runways) ? a.runways.slice() : null,
       // True runway ends (OpenStreetMap), so a close zoom draws them on the chart's own runway.
       runwayGeom: Array.isArray(a.runwayGeom) ? a.runwayGeom.map(r => r.slice()) : null,
+      // The CVFR chart's own printed runway bar (ends + width in m), measured off the chart tiles.
+      runwayChart: Array.isArray(a.runwayChart) ? a.runwayChart.map(r => r.slice()) : null,
       type: a.type === 'military' ? 'military' : 'civil',   // chart symbol: ◎ for a military field
       // The LSA chart legend's strip class and field block (see airfields.json _chartClass).
       chartClass: a.chartClass || null,
@@ -3948,24 +3950,40 @@ function drawArp(ctx, s, r, withRunways, ink, halo, lw) {
 // Width: the real runway's (tunable, metres) or the symbol's, whichever is wider. Returns false
 // (draw the symbol instead) while the true runway would be smaller than the icon.
 function drawTrueRunways(ctx, af, r, blue, halo, lw) {
-  const ends = af.runwayGeom.map(([a1, o1, a2, o2]) => [proj({ lat: a1, lng: o1 }), proj({ lat: a2, lng: o2 })]);
+  // On the CVFR chart, the chart's own bar where it was measured ("match square to map"): its
+  // ends and its width, so the drawing lies on what the pilot reads. On any other map (satellite
+  // above all) the runway where it really is.
+  const onChart = typeof currentLayerName === 'function' && currentLayerName() === 'CVFR';
+  if (onChart && Array.isArray(af.runwayChart) && af.runwayChart.length) {
+    return drawRunwayBars(ctx, af.runwayChart, r, blue, halo, lw, true);
+  }
+  return drawRunwayBars(ctx, af.runwayGeom, r, blue, halo, lw, false);
+}
+function drawRunwayBars(ctx, geom, r, blue, halo, lw, chartWidths) {
+  const ends = geom.map(([a1, o1, a2, o2]) => [proj({ lat: a1, lng: o1 }), proj({ lat: a2, lng: o2 })]);
   const longest = Math.max(...ends.map(([p, q]) => Math.hypot(q.x - p.x, q.y - p.y)));
   if (!(longest > r * 3.6)) return false;              // the symbol's full length is 2 x 1.8 r
-  const g = af.runwayGeom[0];
+  const g = geom[0];
   const pxPerM = Math.hypot(ends[0][1].x - ends[0][0].x, ends[0][1].y - ends[0][0].y)
     / Math.max(1, haversineM(g[0], g[1], g[2], g[3]));
-  const half = Math.max(Math.max(2, r * 0.32), (tune('airfieldRunwayWidthM') || 30) * pxPerM / 2);
   ctx.lineJoin = 'miter';
-  for (const [p, q] of ends) {
+  for (let i = 0; i < ends.length; i++) {
+    const [p, q] = ends[i];
+    // The chart bar's own width (measured, outline to outline); a real runway's 30 m otherwise.
+    const wM = chartWidths && Number.isFinite(geom[i][4]) ? geom[i][4] : (tune('airfieldRunwayWidthM') || 30);
+    const half = Math.max(Math.max(2, r * 0.32), wM * pxPerM / 2);
+    const lwHere = chartWidths ? Math.max(lw, half * 0.45) : lw;     // the chart's thick blue frame
     const ang = Math.atan2(q.y - p.y, q.x - p.x), len = Math.hypot(q.x - p.x, q.y - p.y);
     ctx.save();
     ctx.translate(p.x, p.y);
     ctx.rotate(ang);
     ctx.beginPath();
-    ctx.rect(0, -half, len, half * 2);
+    // Inset by half the frame, so the frame's outer edge is the bar's outer edge.
+    const inset = chartWidths ? lwHere / 2 : 0;
+    ctx.rect(inset, -half + inset, len - inset * 2, half * 2 - inset * 2);
     ctx.fillStyle = halo;
     ctx.fill();
-    ctx.lineWidth = lw;
+    ctx.lineWidth = lwHere;
     ctx.strokeStyle = blue;
     ctx.stroke();
     ctx.restore();
