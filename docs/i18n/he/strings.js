@@ -684,7 +684,6 @@ window.S = {
   tbAircraftCustom: 'נתונים מותאמים',
   tbAircraftType: 'סוג מטוס',
   tbAircraftTypeTitle: 'ממלא את הנתונים שלמטה בערכים האופייניים לסוג, וזה הסוג שתכנית הטיסה מגישה',
-  tbAircraftTypeNone: '\u2014 לא נבחר \u2014',
   tbUsableFuel: 'דלק שמיש (גלון)',
   tbUsableFuelTitle: 'קובע את זמן הדלק בטופס תכנית הטיסה',
   tbClimbKt: 'מהירות טיפוס (קשר)',

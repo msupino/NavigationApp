@@ -80,3 +80,14 @@ test('C172 by default; a profile from before types keeps its numbers as changes;
   await page.waitForFunction(() => typeof setAircraftType === 'function');
   expect(await page.evaluate(() => [aircraft.type, aircraft.gph, document.getElementById('settings-ac-type').value])).toEqual(['C172', 8.5, 'C172']);
 });
+
+test('Settings lists the types, then Other… last, as the flight plan form does; Other keeps the figures', async ({ page }) => {
+  await boot(page);
+  const opts = await page.evaluate(() => [...document.getElementById('settings-ac-type').options].map(o => [o.value, o.textContent]));
+  expect(opts[0]).toEqual(['C152', 'C152']);
+  expect(opts[opts.length - 1]).toEqual(['', 'Other…']);
+  await typeIn(page, 'settings-gph', 7.2);
+  await chooseType(page, '');
+  expect(await page.evaluate(() => [aircraft.type, aircraft.gph])).toEqual(['', 7.2]);
+  await expect(page.locator('#settings-ac-restore')).toBeHidden();         // nothing to restore to
+});

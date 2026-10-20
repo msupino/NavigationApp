@@ -2152,7 +2152,6 @@ window.S = Object.assign({
   tbAircraftCustom: 'Custom figures',
   tbAircraftType: 'Aircraft type',
   tbAircraftTypeTitle: 'Fills the figures below with the type\u2019s typical values, and is the type the flight plan files',
-  tbAircraftTypeNone: '\u2014 not set \u2014',
   tbUsableFuel: 'Usable fuel (gal)',
   tbUsableFuelTitle: 'Sets the flight plan form\u2019s fuel endurance',
   tbClimbKt: 'Climb speed (kt)',

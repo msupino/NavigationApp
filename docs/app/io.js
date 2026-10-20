@@ -11377,8 +11377,10 @@ function showFplDialog(opts) {
       else type.value = '';
       showType(other);
       // A listed type is the aircraft: Settings, its figures and the plan follow, and stay.
-      if (!other && typeof window.applyAircraftType === 'function' && window.AIRCRAFT_TYPES && window.AIRCRAFT_TYPES[typeSel.value]) {
-        window.applyAircraftType(typeSel.value);
+      // "Other…" here is "Other…" in Settings too: the figures stay as they are, set by hand.
+      if (typeof window.applyAircraftType === 'function' && window.AIRCRAFT_TYPES) {
+        if (!other && window.AIRCRAFT_TYPES[typeSel.value]) window.applyAircraftType(typeSel.value);
+        else if (other) window.applyAircraftType('');
       }
     };
     backToList.onclick = () => {

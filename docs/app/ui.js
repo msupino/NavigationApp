@@ -7811,12 +7811,13 @@ function refreshSettingsAircraft() {
   const typeSel = document.getElementById('settings-ac-type');
   if (typeSel) {
     if (!typeSel.options.length) {
-      const none = document.createElement('option');
-      none.value = ''; none.textContent = S.tbAircraftTypeNone || '— not set —';
-      typeSel.appendChild(none);
       for (const code of Object.keys(window.AIRCRAFT_TYPES || {})) {
         const o = document.createElement('option'); o.value = code; o.textContent = code; typeSel.appendChild(o);
       }
+      // Last, as in the flight plan form: any other aircraft, with the figures set by hand.
+      const other = document.createElement('option');
+      other.value = ''; other.textContent = S.fplTypeOther || 'Other\u2026';
+      typeSel.appendChild(other);
     }
     typeSel.value = (a.type && window.AIRCRAFT_TYPES[a.type]) ? a.type : '';
   }
