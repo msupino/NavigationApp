@@ -2926,6 +2926,7 @@ async function buildRouteFromQuery(raw) {
   wpSearch.value = '';
   if (searchDocked()) closeSearch();
   else hideSearchOverlay();
+  finishDeckSearch();
   showInspector();
   fitView();
   // Auto-route applies to a search-built route too: typing "LLHZ RIDNG" is the same
@@ -4564,6 +4565,18 @@ function showCoordinateHit(ll) {
   syncSearchResultsStacking();
 }
 
+// A search typed in the deck's Menu sheet (deck.js hostSearch) is done once it has done its
+// job -- a route built, a result picked -- and the sheet goes with it, keyboard and all.
+// Reported from the iPad: Return built the route and left the menu open over it.
+function finishDeckSearch() {
+  if (!searchOverlay.classList.contains('deck-hosted-search')) return;
+  wpSearch.blur();
+  if (window.NavAid && typeof NavAid.closeDeckSheet === 'function') NavAid.closeDeckSheet();
+}
+wpResults.addEventListener('click', e => {
+  // After the item's own handler (this listens on the list, the item's is on the item).
+  if (e.target.closest && e.target.closest('.wp-search-item')) finishDeckSearch();
+});
 wpSearch.addEventListener('input', runSearch);
 wpSearch.addEventListener('focus', () => { if (wpSearch.value.trim()) runSearch(); });
 wpSearch.addEventListener('keydown', e => {
@@ -6492,7 +6505,20 @@ document.getElementById('limit-kites-cb').onchange = e => {
 })();
 
 document.getElementById('ret-cb').onchange = e => {
+  // The callouts' default side depends on the return path (commCalloutDefaultTail): one still
+  // on its default spot moves with the switch; a dragged one stays where it was put.
+  const atDefault = (typeof commCalloutTarget === 'function' && typeof commNoteDefaultTail === 'function')
+    ? state.notes.filter(n => {
+      if (!n || !n.cc || n.ret) return false;
+      const wp = commCalloutTarget(n);
+      const d = wp ? commNoteDefaultTail(n, wp) : null;
+      return !!d && Math.abs(n.lat - d.lat) < 1e-4 && Math.abs(n.lng - d.lng) < 1e-4;
+    }) : [];
   window.showReturn =e.target.checked;
+  for (const n of atDefault) {
+    const d = commNoteDefaultTail(n, commCalloutTarget(n));
+    n.lat = d.lat; n.lng = d.lng;
+  }
   try { localStorage.setItem(RETURN_KEY, showReturn ? '1' : '0'); } catch (err) { /* */ }
   // The way back's frequency changes come with it (kept, but hidden, while it is off).
   const seeded = showCommChange && typeof seedCommChangeNotes === 'function' && seedCommChangeNotes();

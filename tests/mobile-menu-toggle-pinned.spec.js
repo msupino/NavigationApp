@@ -3,6 +3,8 @@
 // them: open a long section, scroll to its bottom, and the control that closes it is above
 // the top of the screen. It is pinned to the top of the panel now; only the sections move.
 const { test, expect } = require('./_setup');
+// The floating phone menu exists only with the deck off (?deck=0): with the deck on, the menu
+// is in the deck's Menu sheet and the floating one is not shown at all (deck-ipad.spec.js).
 
 // Short on purpose: a phone in landscape, or a tall one with the keyboard up. The panel
 // has to actually overflow for any of this to mean anything.
@@ -10,7 +12,7 @@ const PHONE = { width: 390, height: 360 };
 
 async function boot(page) {
   await page.setViewportSize(PHONE);
-  await page.goto('?lang=en&nogist');
+  await page.goto('?lang=en&nogist&deck=0');
   await page.waitForFunction(() => !!document.getElementById('toolbar-toggle'));
   // Open the panel if it booted closed, and expand a couple of sections so it can scroll.
   await page.evaluate(() => {
@@ -114,7 +116,7 @@ test('the closed card is untouched', async ({ page }) => {
 
 test('on a desktop width nothing is pinned', async ({ page }) => {
   await page.setViewportSize({ width: 1200, height: 900 });
-  await page.goto('?lang=en&nogist');
+  await page.goto('?lang=en&nogist&deck=0');
   await page.waitForFunction(() => !!document.getElementById('toolbar-toggle'));
   // The ☰ is display:none from 681px up; the menubar takes over there.
   const cs = await page.evaluate(() => {

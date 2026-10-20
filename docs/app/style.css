@@ -8550,7 +8550,10 @@ body.theme-dark .deck-btn-here[aria-pressed="true"] { color: #6fdc9a; background
 /* The chart's own furniture moves up out of the deck's way, and the closed menu card gives
    up its corner: everything it held is on the deck or one tap inside it. */
 body.deck-on .leaflet-bottom { margin-bottom: calc(var(--navaid-deck-bar-h, 52px) + env(safe-area-inset-bottom, 0px)); }
-body.deck-on #toolbar.collapsed { display: none; }
+/* With the deck on, the old floating menu is off entirely: the menu lives in the deck's
+   Menu sheet (deck.js hostToolbar) and nowhere else. It was hidden only while collapsed,
+   so a wide touch screen -- an iPad, which starts it expanded -- showed both. Reported. */
+body.deck-on #toolbar:not(.deck-hosted) { display: none; }
 /* The open menu starts below the strip. It used to open at the top of the screen with the
    strip drawn over it, so the language picker and the hamburger -- the row that closes it
    again -- were behind an opaque bar. Reported: top banner hides menu in new dock. */

@@ -1,9 +1,8 @@
 // @ts-check
-// The cumulative-time kite's default place is an ANGLE from the nav kite's side
-// (`cumKiteAngleDeg`), turned towards the direction of flight: 0 is square on the nav kite's
-// side, 90 ahead along the leg, 180 straight opposite. The default is 0: the nav kites' side,
-// like every other mark of a direction (minute ticks, freq arrow); the way back's all sit on
-// the other side.
+// The cumulative-time kite used to sit on the SAME side of the leg as the nav kite, so the
+// two stacked against each other at the waypoint. Its default place is now an ANGLE from
+// the nav kite's side (`cumKiteAngleDeg`), turned towards the direction of flight: 180
+// (the default) is straight opposite, 0 is back where it was, 90 is ahead along the leg.
 // The distance is unchanged at any angle, so the tip clears the waypoint disc from every
 // direction — the clamp in cum-kite-clear-of-waypoint.spec.js covers dragged ones.
 const { test, expect } = require('./_setup');
@@ -44,12 +43,12 @@ const sides = (page) => page.evaluate(() => {
   };
 });
 
-test('0 by default: square on the nav kite side', async ({ page }) => {
+test('180 by default: straight opposite the nav kite', async ({ page }) => {
   await boot(page);
   const s = await sides(page);
-  expect(await page.evaluate(() => tune('cumKiteAngleDeg'))).toBe(0);
+  expect(await page.evaluate(() => tune('cumKiteAngleDeg'))).toBe(180);
   expect(Math.sign(s.navPerp)).toBe(1);
-  expect(Math.sign(s.cumPerp)).toBe(1);          // same sign = same side
+  expect(Math.sign(s.cumPerp)).toBe(-1);         // opposite sign = opposite side
   expect(Math.abs(s.cumAlong)).toBeLessThan(0.001);   // ...and nothing along the leg
 });
 
@@ -64,7 +63,7 @@ test('0 puts it back on the nav kite side, 90 sends it along the leg', async ({ 
   const ahead = await sides(page);
   expect(Math.abs(ahead.cumPerp)).toBeLessThan(0.001);   // nothing sideways
   expect(ahead.cumAlong).toBeGreaterThan(0);             // ...all of it along the leg
-  await page.evaluate(() => setTune('cumKiteAngleDeg', 0));
+  await page.evaluate(() => setTune('cumKiteAngleDeg', 180));
 });
 
 test('the distance is the same at every angle, so the disc is always cleared', async ({ page }) => {
@@ -77,7 +76,7 @@ test('the distance is the same at every angle, so the disc is always cleared', a
       const rad = a * Math.PI / 180;
       out.push(Math.hypot(Math.cos(rad) * r, Math.sin(rad) * r));
     }
-    setTune('cumKiteAngleDeg', 0);
+    setTune('cumKiteAngleDeg', 180);
     return out;
   });
   const first = dists[0];
@@ -94,12 +93,12 @@ test('the drawn kite really is where the angle says, not just the number', async
     draw();
     window.drawCumTimeArrow = orig;
     const b = map.latLngToContainerPoint([state.waypoints[1].lat, state.waypoints[1].lng]);
-    // Northbound leg on screen: right of travel is +x. The nav kite is right, and so is
-    // the cum kite: to the RIGHT of the waypoint.
+    // Northbound leg on screen: right of travel is +x. The nav kite is right, so the cum
+    // kite must be to the LEFT of the waypoint.
     return { dxFromWaypoint: painted ? painted.x - b.x : null };
   });
   expect(out.dxFromWaypoint).not.toBeNull();
-  expect(out.dxFromWaypoint).toBeGreaterThan(0);
+  expect(out.dxFromWaypoint).toBeLessThan(0);
 });
 
 test('a dragged kite is untouched by the setting', async ({ page }) => {
@@ -108,10 +107,10 @@ test('a dragged kite is untouched by the setting', async ({ page }) => {
     const b = map.latLngToContainerPoint([state.waypoints[1].lat, state.waypoints[1].lng]);
     setCumLabelFromPoint(0, false, b.x + 140, b.y + 90);      // placed by hand, well clear
     const placed = { a: state.legs[0].cumLabel.a, p: state.legs[0].cumLabel.p };
-    setTune('cumKiteAngleDeg', 180);
+    setTune('cumKiteAngleDeg', 0);
     draw();
     const afterFlip = { a: state.legs[0].cumLabel.a, p: state.legs[0].cumLabel.p };
-    setTune('cumKiteAngleDeg', 0);
+    setTune('cumKiteAngleDeg', 180);
     return { placed, afterFlip };
   });
   expect(out.afterFlip).toEqual(out.placed);
@@ -121,7 +120,7 @@ test('a dragged kite is untouched by the setting', async ({ page }) => {
 // The frequency callout used to be pinned 90 degrees left of track -- the quarter the
 // cumulative kite now occupies -- so it covered the time it was meant to sit beside.
 test.describe('the frequency callout has its own angle', () => {
-  test('defaults behind and to the right, the nav kites\' side', async ({ page }) => {
+  test('defaults right and behind, clear of the cumulative kite', async ({ page }) => {
     await boot(page);
     const out = await page.evaluate(() => {
       const ang = tune('commCalloutAngleDeg');
@@ -135,7 +134,7 @@ test.describe('the frequency callout has its own angle', () => {
       const rel = -(((out - brg + 540) % 360) - 180);
       return { ang, rel };
     });
-    expect(out.ang).toBe(-130);
+    expect(out.ang).toBe(-230);
     // The knob may run past a half turn; the measurement wraps to (-180, 180], so compare
     // the two in the same terms rather than expecting -230 to come back verbatim.
     const wrapped = ((out.ang + 540) % 360) - 180;
@@ -150,7 +149,7 @@ test.describe('the frequency callout has its own angle', () => {
       const tail = commCalloutDefaultTail(wp, 1);
       const brg = geo(state.waypoints[0], wp).brg;
       const out = geo(wp, { lat: tail.lat, lng: tail.lng }).brg;
-      setTune('commCalloutAngleDeg', -130);
+      setTune('commCalloutAngleDeg', -230);
       return -(((out - brg + 540) % 360) - 180);
     });
     expect(Math.round(rel)).toBe(90);                   // back to square left
