@@ -81,7 +81,7 @@ test('isobars with the station plot together; the choices are remembered', async
   await expect(page.locator('#surface-wx-chip')).toContainText('T / Td');
   await expect(page.locator('#surface-wx-chip')).toContainText('isobars');
   // In the pilot's pressure unit (the app's default is inches).
-  await expect(page.locator('#surface-wx-legend')).toContainText('Isobars every 0.05″ (inHg)');
+  await expect(page.locator('#surface-wx-legend')).toContainText(/Isobars every 0\.0[125]″/);
   await expect(page.locator('#surface-wx-chip')).toContainText('isobars (inHg)');
   await expect(page.locator('#surface-wx-legend')).toContainText('Temperature above');
   await page.evaluate(() => { const r = document.querySelector('#surface-wx-controls input[value="none"]'); r.checked = true; r.dispatchEvent(new Event('change')); });
@@ -219,7 +219,7 @@ test('pressure follows Settings -> Pressure unit: hPa labels, legend, chip and Q
   await boot(page);
   await switchOn(page);
   await page.waitForFunction(() => !!NavAid.surfaceWx._store());
-  await expect(page.locator('#surface-wx-legend')).toContainText('Isobars every 2 hPa');
+  await expect(page.locator('#surface-wx-legend')).toContainText(/Isobars every (2|1|0\.5) hPa/);
   await expect(page.locator('#surface-wx-chip')).toContainText('isobars (hPa)');
   await page.evaluate(() => { state.waypoints = [{ lat: 32.18, lng: 34.83, name: 'H' }, { lat: 32.4, lng: 34.95, name: 'B' }];
     syncLegs(); draw(); state.selected = { type: 'wp', index: 0 }; showInspector(); });
@@ -229,4 +229,21 @@ test('pressure follows Settings -> Pressure unit: hPa labels, legend, chip and Q
   await page.evaluate(() => { const s = document.getElementById('pressure-unit'); s.value = 'inHg'; s.dispatchEvent(new Event('change', { bubbles: true })); });
   await expect(page.locator('#surface-wx-chip')).toContainText('isobars (inHg)');
   await expect(page.locator('#inspector .swx-row:not(.swx-base-row) .val')).toContainText('″');
+});
+
+test('a flat day still shows isobars: the spacing narrows to give at least three lines', async ({ page }) => {
+  await boot(page);
+  const r = await page.evaluate(() => {
+    localStorage.setItem('navaid.pressureUnit', 'hPa');
+    const sw = NavAid.surfaceWx;
+    return sw.fetchGrid().then(() => sw.isobarStep());
+  });
+  // The stub's field spans ~1004-1027 hPa: the chart standard 2 hPa.
+  expect(r).toBe('2 hPa');
+  const flat = await page.evaluate(() => { const st = NavAid.surfaceWx._store();
+    // Today's field over Israel: 1019.3 to 1021.8 hPa, rising north to south.
+    const n = st.p.length;
+    st.p.forEach((row, k) => { for (let h = 0; h < row.length; h++) row[h] = 1019.3 + 2.5 * k / (n - 1); });
+    return NavAid.surfaceWx.isobarStep(); });
+  expect(flat).toBe('0.5 hPa');
 });

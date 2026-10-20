@@ -7447,9 +7447,11 @@ if (windDepartSlider) {
       legendEl.hidden = !cb.checked;
       const lines = [];
       if (LEGEND[pts]) lines.push(S[LEGEND[pts][0]] || LEGEND[pts][1]);
-      if (a && a.isobars()) lines.push(typeof pressureUnit === 'function' && pressureUnit() === 'inHg'
-        ? (S.swxLegendMslIn || 'Isobars every 0.05″ (inHg) · H high, L low')
-        : (S.swxLegendMsl || 'Isobars every 2 hPa · H high, L low'));
+      // The spacing in use (finer on a flat day), in the pilot's pressure unit.
+      if (a && a.isobars()) {
+        const st = a.isobarStep() || (typeof pressureUnit === 'function' && pressureUnit() === 'inHg' ? '0.05\u2033' : '2 hPa');
+        lines.push(typeof S.swxLegendIsobars === 'function' ? S.swxLegendIsobars(st) : 'Isobars every ' + st + ' · H high, L low');
+      }
       legendEl.textContent = cb.checked ? lines.join(' · ') : '';
     }
     if (fieldsEl) fieldsEl.hidden = !cb.checked;

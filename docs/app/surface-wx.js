@@ -64,6 +64,24 @@
   const HPA_PER_IN = 33.8639;
   const pressureInches = () => typeof pressureUnit === 'function' && pressureUnit() === 'inHg';
   const pressureUnitText = () => (pressureInches() ? 'inHg' : 'hPa');
+  // The spacing that shows the day's pattern: the chart standard (2 hPa / 0.05 inch) when the
+  // pressure varies enough for three lines, finer on a flat day -- Israel often spans only 2-3 hPa,
+  // which at 2 hPa is one line, easily off screen ("I don't see any isobars").
+  function isobarStepHpa(lo, hi) {
+    const steps = pressureInches() ? [0.05, 0.02, 0.01].map(x => x * HPA_PER_IN) : [2, 1, 0.5];
+    for (const st of steps) if (Math.floor(hi / st) - Math.ceil(lo / st) + 1 >= tn('swxIsobarMinLines', 3)) return st;
+    return steps[steps.length - 1];
+  }
+  // The spacing in use at an hour, in the pilot's unit (for the legend): '2 hPa', '0.02″'.
+  function isobarStepText(hi) {
+    if (!store || hi < 0) return '';
+    let lo = Infinity, mx = -Infinity;
+    for (let k = 0; k < store.grid.pts.length; k++) { const v = valueAt(k, hi, 'msl'); if (v !== null) { lo = Math.min(lo, v); mx = Math.max(mx, v); } }
+    if (!Number.isFinite(lo)) return '';
+    const st = isobarStepHpa(lo, mx);
+    return pressureInches() ? (st / HPA_PER_IN).toFixed(2) + '\u2033' : (st >= 1 ? String(Math.round(st)) : st.toFixed(1)) + ' hPa';
+  }
+  function isobarStep() { return isobarStepText(hourIndex(lookaheadHours())); }
 
   // --- the grid -----------------------------------------------------------------
   // Over Israel and its approaches, the area the Israeli charts cover. A fixed grid, not the
@@ -270,7 +288,7 @@
     // In the pilot's pressure unit (Settings): every 2 hPa, or every 0.05 inch, labelled as it is
     // written on the altimeter -- 1013, or 29.92.
     const inch = pressureInches();
-    const step = inch ? tn('swxIsobarStepInHg', 0.05) * HPA_PER_IN : tn('swxIsobarStepHpa', 2);
+    const step = isobarStepHpa(lo, hiP);
     const color = tn('swxIsobarColor', '#5b2a86');
     const w = ctx.canvas.width / (window.devicePixelRatio || 1), h = ctx.canvas.height / (window.devicePixelRatio || 1);
     const pt = (i, j) => proj({ lat: g.lats[i], lng: g.lngs[j] });
@@ -309,7 +327,7 @@
         const d = (m.x - w / 2) ** 2 + (m.y - h / 2) ** 2;
         if (d < bd) { bd = d; best = m; }
       }
-      if (best) haloText(ctx, inch ? (L / HPA_PER_IN).toFixed(2) : String(Math.round(L)), best.x, best.y, color);
+      if (best) haloText(ctx, inch ? (L / HPA_PER_IN).toFixed(2) : (step < 1 ? L.toFixed(1) : String(Math.round(L))), best.x, best.y, color);
     }
     // Centres: H / L only where the pressure really peaks. A point counts when it is the
     // highest (lowest) within two grid steps every way -- about 60 km -- and stands out from
@@ -408,7 +426,7 @@
   function clear() { store = null; }
 
   NS.surfaceWx = {
-    POINTS, FIELDS, points, setPoints, isobars, setIsobars, field, gridPoints, fetchGrid, hourIndex, valueAt, sampleNear,
+    POINTS, FIELDS, points, setPoints, isobars, setIsobars, isobarStep, field, gridPoints, fetchGrid, hourIndex, valueAt, sampleNear,
     colorFor, label, caption, lookaheadHours, enable, clear, pressureCentres, _store: () => store,
   };
   window.drawSurfaceWx = drawSurfaceWx;

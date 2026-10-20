@@ -997,6 +997,7 @@ window.S = {
   swxLegendTemp: 'טמפרטורה בגובה 2 מ׳, °C',
   swxLegendMsl: 'קווי לחץ שווה כל ⁦2 hPa⁩ · ⁦H⁩ גבוה, ⁦L⁩ נמוך',
   swxLegendMslIn: 'קווי לחץ שווה כל ⁦0.05″ (inHg)⁩ · ⁦H⁩ גבוה, ⁦L⁩ נמוך',
+  swxLegendIsobars: function (step) { return 'קווי לחץ שווה כל ⁦' + step + '⁩ · ⁦H⁩ גבוה, ⁦L⁩ נמוך'; },
   inspSurface: 'קרקע',
   inspCloudBase: 'בסיס עננים (הערכה)',
   unitAgl: 'AGL',
