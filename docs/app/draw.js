@@ -5871,17 +5871,26 @@ function drawMinuteMarkers(sa, sb, durH, color, flip) {
 // Highlight when altitude OR speed differs from the adjacent leg.
 // 'in'  -> compare with previous leg's inbound altitude/speed.
 // 'out' -> compare with next leg's outbound altitude/speed (return direction).
+// The highlight says "this differs from the kite before it", so it compares with the nearest
+// leg whose kite is actually drawn -- not one hidden inside a CTR. A route out of LLMG lit up
+// AFULA -> TAVOR, the first kite on the chart, for differing from the departure leg nobody
+// can see. No drawn kite before it (the way back: after it), nothing to differ from.
 function needsHalo(i, which) {
   if (!highlightDiff) return false;
   const cur = state.legs[i];
+  const shown = (j) => typeof legKiteVisible !== 'function' || legKiteVisible(j, state.legs[j]);
   if (which === 'in') {
-    if (i === 0) return false;
-    const prev = state.legs[i - 1];
+    let j = i - 1;
+    while (j >= 0 && !shown(j)) j--;
+    if (j < 0) return false;
+    const prev = state.legs[j];
     return !sameAltitudeValue(cur.inboundAltitude, prev.inboundAltitude) ||
            cur.flightSpeed     !== prev.flightSpeed;
   }
-  if (i === state.legs.length - 1) return false;
-  const next = state.legs[i + 1];
+  let j = i + 1;
+  while (j < state.legs.length && !shown(j)) j++;
+  if (j >= state.legs.length) return false;
+  const next = state.legs[j];
   return !sameAltitudeValue(cur.outboundAltitude, next.outboundAltitude) ||
          cur.outboundSpeed    !== next.outboundSpeed;
 }
