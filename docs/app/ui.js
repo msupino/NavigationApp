@@ -6492,7 +6492,20 @@ document.getElementById('limit-kites-cb').onchange = e => {
 })();
 
 document.getElementById('ret-cb').onchange = e => {
+  // The callouts' default side depends on the return path (commCalloutDefaultTail): one still
+  // on its default spot moves with the switch; a dragged one stays where it was put.
+  const atDefault = (typeof commCalloutTarget === 'function' && typeof commNoteDefaultTail === 'function')
+    ? state.notes.filter(n => {
+      if (!n || !n.cc || n.ret) return false;
+      const wp = commCalloutTarget(n);
+      const d = wp ? commNoteDefaultTail(n, wp) : null;
+      return !!d && Math.abs(n.lat - d.lat) < 1e-4 && Math.abs(n.lng - d.lng) < 1e-4;
+    }) : [];
   window.showReturn =e.target.checked;
+  for (const n of atDefault) {
+    const d = commNoteDefaultTail(n, commCalloutTarget(n));
+    n.lat = d.lat; n.lng = d.lng;
+  }
   try { localStorage.setItem(RETURN_KEY, showReturn ? '1' : '0'); } catch (err) { /* */ }
   // The way back's frequency changes come with it (kept, but hidden, while it is off).
   const seeded = showCommChange && typeof seedCommChangeNotes === 'function' && seedCommChangeNotes();

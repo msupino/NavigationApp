@@ -79,7 +79,10 @@ function cumKiteMinAnchorDistPx(wpIdx) {
 // when only the renderer knew the angle the kite painted in one place and could be grabbed
 // in another.
 function cumDefaultLabelOffset() {
-  const deg = (typeof tune === 'function' ? tune('cumKiteAngleDeg') : 0) || 0;
+  // With the return path shown each direction keeps all its marks on its own side, so the
+  // box joins the nav kite (cumKiteAngleReturnDeg); one way, it stays clear of it.
+  const deg = (typeof tune === 'function'
+    ? tune(returnCommOn() ? 'cumKiteAngleReturnDeg' : 'cumKiteAngleDeg') : 180) || 0;
   const rad = deg * Math.PI / 180;
   const d = cumDefaultLabelPerp();
   return { perp: Math.cos(rad) * d, along: Math.sin(rad) * d };
@@ -5159,11 +5162,14 @@ function commCalloutDefaultTail(wp, idx, wpsOverride) {
   }
   // Signed angle from the direction of travel: positive left, negative right. It was a
   // hardcoded 90 (square left) -- the quarter the cumulative-time kite now sits in, so the
-  // callout covered it -- then -230 (behind-left), 180 degrees from the nav kites. -130 puts
-  // it behind and to the RIGHT, the kites' side, as on a hand-drawn chart: with the return
-  // path shown, each direction's callout then sits on its own kites' side of the track.
-  const away = (typeof tune === 'function') ? tune('commCalloutAngleDeg') : -130;
-  const th = (brg - (Number.isFinite(away) ? away : -130)) * Math.PI / 180;
+  // callout covered it. -230 (the same place as +130) puts it behind and to the left, clear
+  // of that kite's quarter and of the nav kite ahead-right. With the return path shown,
+  // commCalloutAngleReturnDeg (-130) puts it behind and to the RIGHT, the kites' side, as on
+  // a hand-drawn chart: each direction's callout then sits on its own kites' side of the track.
+  const ret = typeof returnCommOn === 'function' && returnCommOn();
+  const fallback = ret ? -130 : -230;
+  const away = (typeof tune === 'function') ? tune(ret ? 'commCalloutAngleReturnDeg' : 'commCalloutAngleDeg') : fallback;
+  const th = (brg - (Number.isFinite(away) ? away : fallback)) * Math.PI / 180;
   const cosLat = Math.max(0.1, Math.cos(wp.lat * Math.PI / 180));
   return {
     lat: r5(wp.lat + D * Math.cos(th)),
@@ -5660,10 +5666,10 @@ function drawLegs() {
       ang, pad3(magIn), timeStr, kiteAltitudeLabel(leg.inboundAltitude, leg, 'inboundAltitude'),
       tune('inkColor'), tintFill(tune('legKiteFillColor'), tune('kiteNoteAlpha')), needsHalo(i, 'in'), zoomScale);
     // Cumulative inbound time: < [time], position driven by leg.cumLabel. By default it
-    // sits square on the nav kite's side (cumKiteAngleDeg 0): every mark of one
-    // direction -- nav kite, minute ticks, freq arrow, this -- on one side of the track,
-    // and the way back's all on the other. The distance is the same at any angle, so it
-    // stays clear of the disc.
+    // sits opposite the nav kite (cumKiteAngleDeg 180). With the return path shown it joins
+    // the nav kite (cumKiteAngleReturnDeg 0): every mark of one direction -- nav kite,
+    // minute ticks, freq arrow, this -- on one side of the track, and the way back's all on
+    // the other. The distance is the same at any angle, so it stays clear of the disc.
     const defCum = { a: 0, _default: 1, _m: 1 };
     // Default placement of the cumulative kite around its waypoint: an angle FROM the nav
     // kite's side (cumKiteAngleDeg), turned towards the direction of flight. The nav kite
