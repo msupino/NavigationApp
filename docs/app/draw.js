@@ -3715,6 +3715,10 @@ async function loadAirfields() {
       clearance: a.clearance,
       plates: Array.isArray(a.plates) ? a.plates.slice() : [],
       runways: Array.isArray(a.runways) ? a.runways.slice() : null,
+      // True runway ends (OpenStreetMap), so a close zoom draws them on the chart's own runway.
+      runwayGeom: Array.isArray(a.runwayGeom) ? a.runwayGeom.map(r => r.slice()) : null,
+      // The CVFR chart's own printed runway bar (ends + width in m), measured off the chart tiles.
+      runwayChart: Array.isArray(a.runwayChart) ? a.runwayChart.map(r => r.slice()) : null,
       type: a.type === 'military' ? 'military' : 'civil',   // chart symbol: ◎ for a military field
       // The LSA chart legend's strip class and field block (see airfields.json _chartClass).
       chartClass: a.chartClass || null,
@@ -3894,6 +3898,16 @@ function drawAirfieldSymbol(ctx, s, r, af, angles) {
     return;
   }
   const rwys = Array.isArray(angles) ? angles : runwayScreenAngles(af, s);
+  // Zoomed in, the runways themselves: where the field's real runway (OpenStreetMap ends, in
+  // runwayGeom) would draw longer than the symbol, it is drawn at its true place, length and
+  // direction -- on top of the chart's own runway -- instead of a fixed-size icon beside it.
+  // The ARP crosshair below keeps its size. Not for the legend swatch (`angles` given).
+  if (!Array.isArray(angles) && af && Array.isArray(af.runwayGeom) && af.runwayGeom.length
+      && drawTrueRunways(ctx, af, r, blue, halo, lw)) {
+    drawArp(ctx, s, r, true, ink, halo, lw);
+    ctx.restore();
+    return;
+  }
   if (rwys.length) {
     // שדה תעופה: each runway a blue outline with a light inside.
     const len = r * 1.8;                 // half-length
@@ -3913,21 +3927,73 @@ function drawAirfieldSymbol(ctx, s, r, af, angles) {
       ctx.restore();
     }
   }
-  // ARP: a ring with a cross through it, smaller when the runways carry the symbol.
-  const ar = rwys.length ? Math.max(2.5, r * 0.34) : r * 0.8;
-  const tick = rwys.length ? ar * 0.35 : ar * 0.45;
+  drawArp(ctx, s, r, rwys.length > 0, ink, halo, lw);
+  ctx.restore();
+}
+// ARP: a ring with a cross through it, smaller when the runways carry the symbol.
+function drawArp(ctx, s, r, withRunways, ink, halo, lw) {
+  const ar = withRunways ? Math.max(2.5, r * 0.34) : r * 0.8;
+  const tick = withRunways ? ar * 0.35 : ar * 0.45;
   ctx.beginPath();
   ctx.arc(s.x, s.y, ar, 0, Math.PI * 2);
   ctx.moveTo(s.x, s.y - ar - tick); ctx.lineTo(s.x, s.y + ar + tick);
   ctx.moveTo(s.x - ar - tick, s.y); ctx.lineTo(s.x + ar + tick, s.y);
   ctx.lineCap = 'round';
-  ctx.lineWidth = lw + (rwys.length ? 1 : 2);
+  ctx.lineWidth = lw + (withRunways ? 1 : 2);
   ctx.strokeStyle = halo;
   ctx.stroke();
-  ctx.lineWidth = rwys.length ? Math.max(1, lw * 0.8) : lw;
+  ctx.lineWidth = withRunways ? Math.max(1, lw * 0.8) : lw;
   ctx.strokeStyle = ink;
   ctx.stroke();
-  ctx.restore();
+}
+// Each runway between its true ends, when that is longer on screen than the symbol would be.
+// Width: the real runway's (tunable, metres) or the symbol's, whichever is wider. Returns false
+// (draw the symbol instead) while the true runway would be smaller than the icon.
+function drawTrueRunways(ctx, af, r, blue, halo, lw) {
+  // On the CVFR chart, the chart's own bar where it was measured ("match square to map"): its
+  // ends and its width, so the drawing lies on what the pilot reads. On any other map (satellite
+  // above all) the runway where it really is.
+  const onChart = typeof currentLayerName === 'function' && currentLayerName() === 'CVFR';
+  if (onChart && Array.isArray(af.runwayChart) && af.runwayChart.length) {
+    return drawRunwayBars(ctx, af.runwayChart, r, blue, halo, lw, true);
+  }
+  return drawRunwayBars(ctx, af.runwayGeom, r, blue, halo, lw, false);
+}
+function drawRunwayBars(ctx, geom, r, blue, halo, lw, chartWidths) {
+  const ends = geom.map(([a1, o1, a2, o2]) => [proj({ lat: a1, lng: o1 }), proj({ lat: a2, lng: o2 })]);
+  const longest = Math.max(...ends.map(([p, q]) => Math.hypot(q.x - p.x, q.y - p.y)));
+  if (!(longest > r * 3.6)) return false;              // the symbol's full length is 2 x 1.8 r
+  const g = geom[0];
+  const pxPerM = Math.hypot(ends[0][1].x - ends[0][0].x, ends[0][1].y - ends[0][0].y)
+    / Math.max(1, haversineM(g[0], g[1], g[2], g[3]));
+  ctx.lineJoin = 'miter';
+  for (let i = 0; i < ends.length; i++) {
+    const [p, q] = ends[i];
+    // The chart bar's own width (measured, outline to outline); a real runway's 30 m otherwise.
+    const wM = chartWidths && Number.isFinite(geom[i][4]) ? geom[i][4] : (tune('airfieldRunwayWidthM') || 30);
+    const half = Math.max(Math.max(2, r * 0.32), wM * pxPerM / 2);
+    const lwHere = chartWidths ? Math.max(lw, half * 0.45) : lw;     // the chart's thick blue frame
+    const ang = Math.atan2(q.y - p.y, q.x - p.x), len = Math.hypot(q.x - p.x, q.y - p.y);
+    ctx.save();
+    ctx.translate(p.x, p.y);
+    ctx.rotate(ang);
+    ctx.beginPath();
+    // Inset by half the frame, so the frame's outer edge is the bar's outer edge.
+    const inset = chartWidths ? lwHere / 2 : 0;
+    ctx.rect(inset, -half + inset, len - inset * 2, half * 2 - inset * 2);
+    ctx.fillStyle = halo;
+    ctx.fill();
+    ctx.lineWidth = lwHere;
+    ctx.strokeStyle = blue;
+    ctx.stroke();
+    ctx.restore();
+  }
+  return true;
+}
+function haversineM(la1, lo1, la2, lo2) {
+  const R = 6371000, t = Math.PI / 180;
+  const a = Math.sin((la2 - la1) * t / 2) ** 2 + Math.cos(la1 * t) * Math.cos(la2 * t) * Math.sin((lo2 - lo1) * t / 2) ** 2;
+  return 2 * R * Math.asin(Math.sqrt(a));
 }
 function drawAirfields() {
   if (!showAirfields || !airfields || airfields.length === 0) return;
