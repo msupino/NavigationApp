@@ -1396,11 +1396,11 @@ function drawTracks() {
       octx.save();
       // Wide soft amber outer glow + a tighter brighter ring so the freshly
       // shown track pops on both the light and dark base maps for 10s.
-      octx.lineWidth = tune('gpsBreadcrumbWidthPx') + 16;
-      octx.strokeStyle = 'rgba(255, 209, 0, 0.35)';
+      octx.lineWidth = tune('gpsBreadcrumbWidthPx') + tune('gpsTrackGlowOuterAddPx');
+      octx.strokeStyle = colorWithAlpha(tune('gpsTrackGlowColor'), tune('gpsTrackGlowOuterAlpha'));
       octx.stroke();
-      octx.lineWidth = tune('gpsBreadcrumbWidthPx') + 7;
-      octx.strokeStyle = 'rgba(255, 209, 0, 0.85)';
+      octx.lineWidth = tune('gpsBreadcrumbWidthPx') + tune('gpsTrackGlowInnerAddPx');
+      octx.strokeStyle = colorWithAlpha(tune('gpsTrackGlowColor'), tune('gpsTrackGlowInnerAlpha'));
       octx.stroke();
       octx.restore();
     }
@@ -1408,9 +1408,9 @@ function drawTracks() {
     octx.strokeStyle = t.color;
     octx.stroke();
     const dot = (p, c) => {
-      octx.beginPath(); octx.arc(p.x, p.y, 4, 0, 2 * Math.PI);
+      octx.beginPath(); octx.arc(p.x, p.y, tune('gpsTrackDotRadiusPx'), 0, 2 * Math.PI);
       octx.fillStyle = c; octx.fill();
-      octx.lineWidth = 1.5; octx.strokeStyle = tune('gpsTrackOutlineColor'); octx.stroke();
+      octx.lineWidth = tune('gpsTrackDotRingWidthPx'); octx.strokeStyle = tune('gpsTrackOutlineColor'); octx.stroke();
     };
     dot(pts[0], tune('gpsTrackStartColor'));       // start
     dot(pts[pts.length - 1], tune('gpsTrackEndColor'));  // end
