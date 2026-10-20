@@ -330,7 +330,7 @@ NavAid.tuningDefaults = {
   cumKiteTextPx: { value: 15, min: 4, max: 36, step: 1, label: 'Cumulative-time box text size (px)' },
 
   minuteMarkerFontPx: { value: 10, min: 4, max: 28, step: 1, label: 'Minute label text size (px)' },
-  // Each direction's minute marks in their own colour, so with the return path shown the two
+  // The minute marks of each direction in their own colour, so with the return path shown the two
   // sets along one leg cannot be read for each other: blue going, red coming back.
   minuteMarkerToColor: { value: '#1565c0', type: 'color', label: 'Minute markers colour, to (outbound)' },
   minuteMarkerFromColor: { value: '#c62828', type: 'color', label: 'Minute markers colour, from (return)' },
