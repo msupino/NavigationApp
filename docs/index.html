@@ -982,10 +982,10 @@
           <span data-i18n="tbAircraftType"></span>
           <select id="settings-ac-type"></select>
         </label>
-        <label class="navtoggle ac-field" data-field="tasKt" data-i18n-title="tbCruiseTasTitle">
-          <span data-i18n="tbCruiseTas"></span>
-          <input type="number" id="settings-tas" min="30" max="400" step="5" inputmode="numeric">
-        </label>
+        <!-- The figures themselves, folded away: the type sets them, and most pilots never open
+             this. A changed figure is marked inside, and on the summary. -->
+        <details class="ac-custom" id="settings-ac-custom">
+          <summary data-i18n="tbAircraftCustom"></summary>
         <label class="navtoggle ac-field" data-field="gph" data-i18n-title="tbGphTitle">
           <span data-i18n="tbGph"></span>
           <input type="number" id="settings-gph" min="1" max="50" step="0.5" inputmode="decimal">
@@ -1009,6 +1009,7 @@
           <input type="number" id="settings-vs" min="50" step="50" inputmode="numeric">
         </label>
         <div class="settings-hint" id="settings-vs-hint" data-i18n="profileVsHint"></div>
+        </details>
         <button type="button" id="settings-ac-restore"></button>
         <!-- Reference tables a pilot sets up once and consults: the frequency table and the
              altitude pairs, moved here from Charts. -->

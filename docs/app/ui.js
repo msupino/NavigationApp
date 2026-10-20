@@ -7818,9 +7818,9 @@ function refreshSettingsAircraft() {
         const o = document.createElement('option'); o.value = code; o.textContent = code; typeSel.appendChild(o);
       }
     }
-    typeSel.value = (a && a.type && window.AIRCRAFT_TYPES[a.type]) ? a.type : '';
+    typeSel.value = (a.type && window.AIRCRAFT_TYPES[a.type]) ? a.type : '';
   }
-  for (const [id, f] of [['settings-tas', 'tasKt'], ['settings-usable', 'usableGal'], ['settings-climb-kt', 'climbKt']]) {
+  for (const [id, f] of [['settings-usable', 'usableGal'], ['settings-climb-kt', 'climbKt']]) {
     const el = document.getElementById(id);
     if (el && document.activeElement !== el) el.value = Number(a[f]) > 0 ? a[f] : '';
   }
@@ -7840,7 +7840,7 @@ function refreshSettingsAircraft() {
   }
   const restore = document.getElementById('settings-ac-restore');
   if (restore) {
-    const has = !!(a && a.type && window.AIRCRAFT_TYPES[a.type]);
+    const has = !!(a.type && window.AIRCRAFT_TYPES[a.type]);
     restore.hidden = !has;
     restore.textContent = has ? (typeof S.tbAircraftRestore === 'function' ? S.tbAircraftRestore(a.type) : 'Restore ' + a.type + ' figures') : '';
     if (typeof setButtonWhy === 'function') setButtonWhy(restore, any ? null : (S.whyAircraftAsType || 'Every figure is the type\u2019s already'));
@@ -7883,8 +7883,6 @@ window.refreshSettingsAircraft = refreshSettingsAircraft;
     const fpVs = document.querySelector('.fp-profile-vs-input');
     if (fpVs && window.profileVS > 0) { fpVs.value = String(window.profileVS); fpVs.dispatchEvent(new Event('input')); }
     refreshSettingsAircraft();
-    // Legs still on the default speed take the new cruise speed; a typed speed stays.
-    if (typeof applyDefaultSpeedToAutoLegs === 'function') applyDefaultSpeedToAutoLegs(_defaultLegSpeedKt());
     draw();
   };
   // One aircraft, two places to choose it: Settings and the flight plan form's type. Either one
@@ -7899,7 +7897,7 @@ window.refreshSettingsAircraft = refreshSettingsAircraft;
   if (typeSel) typeSel.addEventListener('change', () => applyAircraftType(typeSel.value));
   const restore = document.getElementById('settings-ac-restore');
   if (restore) restore.addEventListener('click', () => { restoreAircraftDefaults(); pushToPlan(); });
-  for (const [id, f, parse] of [['settings-tas', 'tasKt', parseFloat], ['settings-usable', 'usableGal', parseFloat], ['settings-climb-kt', 'climbKt', parseFloat]]) {
+  for (const [id, f, parse] of [['settings-usable', 'usableGal', parseFloat], ['settings-climb-kt', 'climbKt', parseFloat]]) {
     const el = document.getElementById(id);
     if (!el) continue;
     el.addEventListener('input', () => {
@@ -7908,7 +7906,6 @@ window.refreshSettingsAircraft = refreshSettingsAircraft;
       aircraft = Object.assign({}, aircraft || { gph: tune('defaultGph'), taxiGal: tune('defaultTaxiGal') }, { [f]: v });
       if (typeof saveAircraft === 'function') saveAircraft();
       refreshSettingsAircraft();
-      if (f === 'tasKt' && typeof applyDefaultSpeedToAutoLegs === 'function') applyDefaultSpeedToAutoLegs(v);
       draw();
     });
   }

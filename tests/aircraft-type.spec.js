@@ -15,21 +15,13 @@ test('choosing C172 fills the figures from its table (taxi 1.1, the C172N/P manu
   await boot(page);
   await chooseType(page, 'C172');
   const v = await page.evaluate(() => ({ a: aircraft, vs: window.profileVS,
-    ui: ['settings-tas', 'settings-gph', 'settings-taxi', 'settings-usable', 'settings-climb-kt'].map(id => document.getElementById(id).value) }));
-  expect(v.a).toMatchObject({ type: 'C172', tasKt: 115, gph: 8.5, taxiGal: 1.1, usableGal: 53, climbKt: 75 });
+    ui: ['settings-gph', 'settings-taxi', 'settings-usable', 'settings-climb-kt'].map(id => document.getElementById(id).value) }));
+  expect(v.a).toMatchObject({ type: 'C172', gph: 8.5, taxiGal: 1.1, usableGal: 53, climbKt: 75 });
   expect(v.vs).toBe(700);
-  expect(v.ui).toEqual(['115', '8.5', '1.1', '53', '75']);
-  // New legs start at the cruise TAS.
+  expect(v.ui).toEqual(['8.5', '1.1', '53', '75']);
+  // The leg speed is its own setting: a type does not change it.
   const speed = await page.evaluate(() => { state.waypoints = [{ lat: 32.1, lng: 34.8, name: 'A' }, { lat: 32.3, lng: 34.9, name: 'B' }]; syncLegs(); return state.legs[0].flightSpeed; });
-  expect(speed).toBe(115);
-  // A leg still on the default follows a new type; a typed one keeps its speed.
-  const after = await page.evaluate(() => {
-    state.waypoints.push({ lat: 32.5, lng: 35.0, name: 'C' }); syncLegs();
-    state.legs[1].flightSpeed = 99; markLegSpeedManual(state.legs[1], 'flightSpeed');
-    const s = document.getElementById('settings-ac-type'); s.value = 'C152'; s.dispatchEvent(new Event('change'));
-    return [state.legs[0].flightSpeed, state.legs[1].flightSpeed];
-  });
-  expect(after).toEqual([95, 99]);
+  expect(speed).toBe(await page.evaluate(() => tune('defaultLegSpeedKt')));
 });
 
 test('an overridden figure is marked and kept; Restore puts the type back', async ({ page }) => {
@@ -73,4 +65,18 @@ test('Hebrew: the controls have their Hebrew names', async ({ page }) => {
   await page.goto('?lang=he&nogist');
   await page.waitForFunction(() => document.getElementById('settings-ac-type'));
   await expect(page.locator('label:has(#settings-ac-type) span')).toHaveText('סוג מטוס');
+});
+
+test('C172 by default; a profile from before types keeps its numbers as changes; figures folded away', async ({ page }) => {
+  await page.addInitScript(() => { try { if (!sessionStorage.getItem('m')) { localStorage.setItem('navaid.aircraft', JSON.stringify({ gph: 9, taxiGal: 1.3 })); sessionStorage.setItem('m', '1'); } } catch (e) {} });
+  await boot(page);
+  expect(await page.evaluate(() => ({ t: aircraft.type, g: aircraft.gph, x: aircraft.taxiGal, u: aircraft.usableGal })))
+    .toEqual({ t: 'C172', g: 9, x: 1.3, u: 53 });
+  await expect(page.locator('.ac-field[data-field="gph"]')).toHaveClass(/ac-overridden/);
+  expect(await page.evaluate(() => document.getElementById('settings-ac-custom').open)).toBe(false);
+  // A fresh device: the C172 itself.
+  await page.evaluate(() => { localStorage.removeItem('navaid.aircraft'); });
+  await page.reload();
+  await page.waitForFunction(() => typeof setAircraftType === 'function');
+  expect(await page.evaluate(() => [aircraft.type, aircraft.gph, document.getElementById('settings-ac-type').value])).toEqual(['C172', 8.5, 'C172']);
 });
