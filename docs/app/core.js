@@ -337,7 +337,7 @@ NavAid.tuningDefaults = {
   minuteMarkerToColor: { value: '#1565c0', type: 'color', label: 'Minute markers colour, to (outbound)' },
   minuteMarkerFromColor: { value: '#c62828', type: 'color', label: 'Minute markers colour, from (return)' },
   minuteTickEvenPx: { value: 9, min: 1, max: 30, step: 1, label: 'Even minute tick length (px)' },
-  minuteTickOddPx: { value: 4, min: 1, max: 30, step: 1, label: 'Odd minute tick length (px)' },
+  minuteTickOddPx: { value: 6, min: 1, max: 30, step: 1, label: 'Odd minute tick length, no digit (px)' },
   minuteTickEvenWidthPx: { value: 2, min: 0.25, max: 8, step: 0.25, label: 'Even minute tick width (px)' },
   minuteTickOddWidthPx: { value: 1.5, min: 0.25, max: 8, step: 0.25, label: 'Odd minute tick width (px)' },
   minuteLabelOffsetPx: { value: 8, min: 0, max: 40, step: 1, label: 'Minute label distance from the track (px)' },
