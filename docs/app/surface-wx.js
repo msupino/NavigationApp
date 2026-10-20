@@ -31,17 +31,57 @@
   };
   const str = (k, d) => ((typeof S === 'object' && S && S[k]) || d);
 
-  const FIELDS = ['spread', 'dew', 'temp', 'msl', 'base'];
-  const FIELD_KEY = 'navaid.surfaceWxField';
-  function field() {
-    let f = null;
-    try { f = localStorage.getItem(FIELD_KEY); } catch (e) { /* storage blocked */ }
-    return FIELDS.includes(f) ? f : 'spread';
+  // What the layer shows, as a surface chart does: a point style at each grid point, and the
+  // isobars under it on their own switch. Points: a met station plot (temperature above, dew
+  // point below, the dot coloured by their spread), the spread alone, the cloud base, or none.
+  const POINTS = ['station', 'spread', 'base', 'none'];
+  const FIELDS = ['spread', 'dew', 'temp', 'msl', 'base'];     // the values valueAt() knows
+  const POINTS_KEY = 'navaid.surfaceWxPoints';
+  const ISOBARS_KEY = 'navaid.surfaceWxIsobars';
+  const OLD_FIELD_KEY = 'navaid.surfaceWxField';                 // one field at a time (before)
+  const lsRead = (k) => { try { return localStorage.getItem(k); } catch (e) { return null; } };
+  const lsWrite = (k, v) => { try { localStorage.setItem(k, v); } catch (e) { /* storage blocked */ } };
+  function points() {
+    const p = lsRead(POINTS_KEY);
+    if (POINTS.includes(p)) return p;
+    // A pilot who picked one field before keeps what it showed.
+    const old = lsRead(OLD_FIELD_KEY);
+    if (old === 'msl') return 'none';
+    if (old === 'dew' || old === 'temp') return 'station';
+    if (old === 'spread' || old === 'base') return old;
+    return 'station';
   }
-  function setField(f) {
-    if (!FIELDS.includes(f)) return;
-    try { localStorage.setItem(FIELD_KEY, f); } catch (e) { /* storage blocked */ }
+  function setPoints(v) { if (POINTS.includes(v)) lsWrite(POINTS_KEY, v); }
+  function isobars() {
+    const v = lsRead(ISOBARS_KEY);
+    if (v === '1' || v === '0') return v === '1';
+    return lsRead(OLD_FIELD_KEY) === 'msl';
   }
+  function setIsobars(on) { lsWrite(ISOBARS_KEY, on ? '1' : '0'); }
+  // The single value a point style colours by (and labels, for spread / base).
+  const field = () => (points() === 'base' ? 'base' : 'spread');
+  // The pilot's pressure unit (Settings -> Pressure unit), as the rest of the app reads it.
+  const HPA_PER_IN = 33.8639;
+  const pressureInches = () => typeof pressureUnit === 'function' && pressureUnit() === 'inHg';
+  const pressureUnitText = () => (pressureInches() ? 'inHg' : 'hPa');
+  // The spacing that shows the day's pattern: the chart standard (2 hPa / 0.05 inch) when the
+  // pressure varies enough for three lines, finer on a flat day -- Israel often spans only 2-3 hPa,
+  // which at 2 hPa is one line, easily off screen ("I don't see any isobars").
+  function isobarStepHpa(lo, hi) {
+    const steps = pressureInches() ? [0.05, 0.02, 0.01].map(x => x * HPA_PER_IN) : [2, 1, 0.5];
+    for (const st of steps) if (Math.floor(hi / st) - Math.ceil(lo / st) + 1 >= tn('swxIsobarMinLines', 3)) return st;
+    return steps[steps.length - 1];
+  }
+  // The spacing in use at an hour, in the pilot's unit (for the legend): '2 hPa', '0.02″'.
+  function isobarStepText(hi) {
+    if (!store || hi < 0) return '';
+    let lo = Infinity, mx = -Infinity;
+    for (let k = 0; k < store.grid.pts.length; k++) { const v = valueAt(k, hi, 'msl'); if (v !== null) { lo = Math.min(lo, v); mx = Math.max(mx, v); } }
+    if (!Number.isFinite(lo)) return '';
+    const st = isobarStepHpa(lo, mx);
+    return pressureInches() ? (st / HPA_PER_IN).toFixed(2) + '\u2033' : (st >= 1 ? String(Math.round(st)) : st.toFixed(1)) + ' hPa';
+  }
+  function isobarStep() { return isobarStepText(hourIndex(lookaheadHours())); }
 
   // --- the grid -----------------------------------------------------------------
   // Over Israel and its approaches, the area the Israeli charts cover. A fixed grid, not the
@@ -172,7 +212,7 @@
     return String(Math.round(v)) + '°';
   }
   function unitText(f) {
-    if (f === 'msl') return 'hPa';
+    if (f === 'msl') return pressureUnitText();
     if (f === 'base') return str('swxBaseUnit', 'ft above ground');
     return '°C';
   }
@@ -198,11 +238,12 @@
     while (pxPerStep * s < min && s < 16) s *= 2;
     return s;
   }
-  function drawPoints(ctx, f, hi) {
+  function drawPoints(ctx, f, hi, station) {
     const g = store.grid;
     if (g.lats.length < 2 || g.lngs.length < 2) return;
     const a = proj({ lat: g.lats[0], lng: g.lngs[0] }), b = proj({ lat: g.lats[0], lng: g.lngs[1] });
-    const stride = strideFor(Math.hypot(b.x - a.x, b.y - a.y));
+    // A station plot is two lines tall: it needs more room between points than one number.
+    const stride = strideFor(Math.hypot(b.x - a.x, b.y - a.y) * (station ? tn('swxStationSpacingFactor', 0.8) : 1));
     const r = tn('swxDotRadiusPx', 4.5);
     const w = ctx.canvas.width / (window.devicePixelRatio || 1), h = ctx.canvas.height / (window.devicePixelRatio || 1);
     ctx.font = 'bold ' + tn('swxLabelFontPx', 12) + 'px sans-serif';
@@ -223,7 +264,17 @@
       ctx.lineWidth = 1.5;
       ctx.strokeStyle = tn('overlayLabelHaloColor', '#ffffff');
       ctx.stroke();
-      haloText(ctx, label(f, v), p.x + r + 3, p.y, c);
+      if (station) {
+        // The met convention: temperature above-left of the station, dew point below-left; the
+        // dot between them already says how close they are. The dew point takes the dot's colour,
+        // so a red pair reads as "fog" without looking at the dot.
+        const t = valueAt(k, hi, 'temp'), td = valueAt(k, hi, 'dew');
+        const gap = tn('swxStationGapPx', 8);
+        if (t !== null) haloText(ctx, String(Math.round(t)), p.x + r + 3, p.y - gap, tn('swxTempColor', '#9a3d00'));
+        if (td !== null) haloText(ctx, String(Math.round(td)), p.x + r + 3, p.y + gap, c);
+      } else {
+        haloText(ctx, label(f, v), p.x + r + 3, p.y, c);
+      }
     }
   }
   // Isobars by marching squares over the grid, every 2 hPa, each line labelled once in view;
@@ -234,7 +285,10 @@
     let lo = Infinity, hiP = -Infinity;
     for (let i = 0; i < R; i++) for (let j = 0; j < C; j++) { const v = P(i, j); if (v !== null) { lo = Math.min(lo, v); hiP = Math.max(hiP, v); } }
     if (!Number.isFinite(lo)) return;
-    const step = tn('swxIsobarStepHpa', 2);
+    // In the pilot's pressure unit (Settings): every 2 hPa, or every 0.05 inch, labelled as it is
+    // written on the altimeter -- 1013, or 29.92.
+    const inch = pressureInches();
+    const step = isobarStepHpa(lo, hiP);
     const color = tn('swxIsobarColor', '#5b2a86');
     const w = ctx.canvas.width / (window.devicePixelRatio || 1), h = ctx.canvas.height / (window.devicePixelRatio || 1);
     const pt = (i, j) => proj({ lat: g.lats[i], lng: g.lngs[j] });
@@ -273,7 +327,7 @@
         const d = (m.x - w / 2) ** 2 + (m.y - h / 2) ** 2;
         if (d < bd) { bd = d; best = m; }
       }
-      if (best) haloText(ctx, String(Math.round(L)), best.x, best.y, color);
+      if (best) haloText(ctx, inch ? (L / HPA_PER_IN).toFixed(2) : (step < 1 ? L.toFixed(1) : String(Math.round(L))), best.x, best.y, color);
     }
     // Centres: H / L only where the pressure really peaks. A point counts when it is the
     // highest (lowest) within two grid steps every way -- about 60 km -- and stands out from
@@ -337,25 +391,31 @@
     if (zoom < tn('swxMinZoom', 7)) return;
     const hi = hourIndex(lookaheadHours());
     if (hi < 0) return;
-    const f = field();
+    const pts = points();
     octx.save();
-    if (f === 'msl') drawIsobars(octx, hi); else drawPoints(octx, f, hi);
+    if (isobars()) drawIsobars(octx, hi);            // under the points
+    if (pts !== 'none') drawPoints(octx, field(), hi, pts === 'station');
     octx.restore();
   }
 
-  // The hour the map shows, in words: "Dew point spread · +3 h · 15:00Z".
+  // The hour the map shows, in words: "T / Td + isobars · +3 h · 15:00Z".
   function caption() {
     if (!store) return '';
     const hrs = lookaheadHours();
     const hi = hourIndex(hrs);
     if (hi < 0) return '';
-    const names = { spread: str('swxFieldSpread', 'Dew point spread'), dew: str('swxFieldDew', 'Dew point'),
-      temp: str('swxFieldTemp', 'Temperature'), msl: str('swxFieldMsl', 'Sea-level pressure'), base: str('swxFieldBase', 'Cloud base (estimate)') };
+    const pts = points();
+    const names = { station: str('swxCapStation', 'T / Td'), spread: str('swxFieldSpread', 'Dew point spread'),
+      base: str('swxFieldBase', 'Cloud base (estimate)') };
+    const parts = [];
+    if (pts !== 'none') parts.push(names[pts] + (pts === 'base' ? ' (' + unitText('base') + ')' : ' (°C)'));
+    if (isobars()) parts.push(str('swxCapIsobars', 'isobars') + ' (' + pressureUnitText() + ')');
+    if (!parts.length) return '';
     const t = new Date(store.times[hi]);
     const z = String(t.getUTCHours()).padStart(2, '0') + ':00Z';
     const when = hrs ? '+' + hrs + ' h · ' + z : str('swxNow', 'now') + ' · ' + z;
     // Each part isolated: in Hebrew "°C" and "16:00Z" keep their own order inside the line.
-    return '⁨' + names[field()] + '⁩ · ⁨' + when + '⁩ · ⁦' + unitText(field()) + '⁩';
+    return parts.map(x => '\u2068' + x + '\u2069').join(' + ') + ' · \u2068' + when + '\u2069';
   }
 
   async function enable(opts) {
@@ -366,7 +426,7 @@
   function clear() { store = null; }
 
   NS.surfaceWx = {
-    FIELDS, field, setField, gridPoints, fetchGrid, hourIndex, valueAt, sampleNear,
+    POINTS, FIELDS, points, setPoints, isobars, setIsobars, isobarStep, field, gridPoints, fetchGrid, hourIndex, valueAt, sampleNear,
     colorFor, label, caption, lookaheadHours, enable, clear, pressureCentres, _store: () => store,
   };
   window.drawSurfaceWx = drawSurfaceWx;

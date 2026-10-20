@@ -5059,8 +5059,10 @@ body.deck-on .swx-fields .swx-field { min-height: 44px; }
 .swx-chip {
   position: absolute; z-index: 650; pointer-events: none;
   top: calc(var(--navaid-deck-strip-h, 46px) + 8px); left: 50%; transform: translateX(-50%);
-  max-width: calc(100% - 140px); padding: 4px 10px; border-radius: 999px;
-  font: 600 12px/1.3 sans-serif; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  /* Two lines rather than an ellipsis: a station plot with isobars names two things and the hour,
+     and in Hebrew on a phone the cut fell on the hour. */
+  max-width: calc(100% - 140px); padding: 4px 12px; border-radius: 14px;
+  font: 600 12px/1.3 sans-serif; text-align: center; text-wrap: balance;
   color: var(--navaid-mapbtn-fg, #fff); background: var(--navaid-mapbtn-bg, rgba(22, 30, 40, 0.82));
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
 }

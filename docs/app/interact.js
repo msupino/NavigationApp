@@ -1455,7 +1455,8 @@ function appendSurfaceWxRow(body, lat, lng) {
   const parts = [];
   if (s.t !== null && s.td !== null) parts.push(Math.round(s.t) + '°/' + Math.round(s.td) + '°');
   if (s.spread !== null) parts.push('Δ' + Math.round(s.spread) + '°');
-  if (s.p !== null) parts.push('Q' + Math.round(s.p));
+  // QNH in the pilot's unit (Settings -> Pressure unit), as every other pressure in the app.
+  if (s.p !== null) parts.push('Q ' + (typeof fmtPressure === 'function' ? fmtPressure(s.p) : Math.round(s.p)));
   val.textContent = parts.join(' · ');
   val.title = (S.tbSurfaceWxTitle || '');
   row.append(label, val);
