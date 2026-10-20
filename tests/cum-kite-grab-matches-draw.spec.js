@@ -48,7 +48,7 @@ for (const deg of [180, 90, 45, 0]) {
 
 test('a drag from the painted spot moves the kite with the pointer', async ({ page }) => {
   await boot(page);
-  await page.evaluate(() => { setTune('cumKiteAngleDeg', 180); draw(); });
+  await page.evaluate(() => { setTune('cumKiteAngleDeg', 0); draw(); });
   const c = await paintedCentre(page);
   const out = await page.evaluate(([x, y]) => {
     const before = hitCumLabel(x, y);

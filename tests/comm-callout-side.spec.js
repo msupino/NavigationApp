@@ -1,7 +1,8 @@
 // @ts-check
-// The freq-change callout's default position sits on the LEFT of the direction
-// of travel — the opposite side from the nav kites (which sit on the right) —
-// so it flips with route direction instead of being a static compass offset.
+// The freq-change callout's default position sits on the RIGHT of the direction
+// of travel — the nav kites' side, as on a hand-drawn chart (it used to be the
+// opposite side) — so it flips with route direction instead of being a static
+// compass offset.
 const { test, expect } = require('./_setup');
 
 test.beforeEach(async ({ page }) => {
@@ -10,7 +11,7 @@ test.beforeEach(async ({ page }) => {
     typeof commCalloutDefaultTail === 'function' && typeof syncLegs === 'function');
 });
 
-test('callout default flips side with route direction (opposite the nav kites)', async ({ page }) => {
+test('callout default flips side with route direction (the nav kites\' side)', async ({ page }) => {
   const r = await page.evaluate(() => {
     // Southbound through the middle point (prev north, next south).
     state.waypoints = [{ lat: 32.7, lng: 35.0, name: 'N' }, { lat: 32.4, lng: 35.0, name: 'MID' }, { lat: 32.1, lng: 35.0, name: 'S' }];
@@ -22,26 +23,26 @@ test('callout default flips side with route direction (opposite the nav kites)',
     const north = commCalloutDefaultTail(state.waypoints[1], 1);
     return { southDLng: south.lng - 35.0, northDLng: north.lng - 35.0 };
   });
-  // Southbound: left of travel = east (+lng). Northbound: left = west (-lng).
-  expect(r.southDLng).toBeGreaterThan(0);
-  expect(r.northDLng).toBeLessThan(0);
+  // Southbound: right of travel = west (-lng). Northbound: right = east (+lng).
+  expect(r.southDLng).toBeLessThan(0);
+  expect(r.northDLng).toBeGreaterThan(0);
   // And they are genuine mirror images, not a static offset.
   expect(r.southDLng).toBeCloseTo(-r.northDLng, 6);
 });
 
-test('reversing the route flips a default callout to the far side of the kites', async ({ page }) => {
+test('reversing the route flips a default callout with the kites', async ({ page }) => {
   const r = await page.evaluate(() => {
     state.waypoints = [{ lat: 32.7, lng: 35.0, name: 'N' }, { lat: 32.4, lng: 35.0, name: 'MID' }, { lat: 32.1, lng: 35.0, name: 'S' }];
     state.legs = []; syncLegs();
-    const def = commCalloutDefaultTail(state.waypoints[1], 1);   // southbound → east
+    const def = commCalloutDefaultTail(state.waypoints[1], 1);   // southbound → west
     state.notes = [{ lat: def.lat, lng: def.lng, text: 'Freq change', color: '#fff6aa', shape: 'rect', cc: 'MID', freqName: 'X', freq: '118.40', freqAuto: true }];
     const before = state.notes[0].lng - 35.0;
-    document.getElementById('reverse').click();                  // northbound → west
+    document.getElementById('reverse').click();                  // northbound → east
     const after = state.notes[0].lng - 35.0;
     return { before, after };
   });
-  expect(r.before).toBeGreaterThan(0);
-  expect(r.after).toBeLessThan(0);
+  expect(r.before).toBeLessThan(0);
+  expect(r.after).toBeGreaterThan(0);
 });
 
 test('reversing leaves a user-dragged callout where it is', async ({ page }) => {
@@ -70,7 +71,7 @@ test('a lone point (no adjacent leg) falls back to the plain tune offset', async
 
 test('omitting the index still resolves the side (no caller can regress to static)', async ({ page }) => {
   const r = await page.evaluate(() => {
-    // Northbound: left of travel is WEST. A one-argument call must match the
+    // Northbound: right of travel is EAST. A one-argument call must match the
     // two-argument one — several callers (the ↻ reset button, a manually added
     // freq change, reset-all-markers, a shared-link load) pass no index, and used
     // to silently get the static east offset instead.
@@ -80,7 +81,7 @@ test('omitting the index still resolves the side (no caller can regress to stati
     const noIdx = commCalloutDefaultTail(state.waypoints[1]);
     return { withIdx, noIdx, dLng: noIdx.lng - 35.0 };
   });
-  expect(r.dLng).toBeLessThan(0);                    // west = left of travel
+  expect(r.dLng).toBeGreaterThan(0);                 // east = right of travel
   expect(r.noIdx.lat).toBeCloseTo(r.withIdx.lat, 6); // identical to the indexed call
   expect(r.noIdx.lng).toBeCloseTo(r.withIdx.lng, 6);
 });
@@ -89,15 +90,15 @@ test('a callout placed without an index is still recognised as "at default" on r
   const r = await page.evaluate(() => {
     state.waypoints = [{ lat: 32.7, lng: 35.0, name: 'N' }, { lat: 32.4, lng: 35.0, name: 'MID' }, { lat: 32.1, lng: 35.0, name: 'S' }];
     state.legs = []; syncLegs();
-    const def = commCalloutDefaultTail(state.waypoints[1]);       // no index, southbound → east
+    const def = commCalloutDefaultTail(state.waypoints[1]);       // no index, southbound → west
     state.notes = [{ lat: def.lat, lng: def.lng, text: 'Freq change', color: '#fff6aa', shape: 'rect', cc: 'MID', freqName: 'X', freq: '118.40', freqAuto: true }];
     const before = state.notes[0].lng - 35.0;
     document.getElementById('reverse').click();
     return { before, after: state.notes[0].lng - 35.0 };
   });
   // It must FLIP (treated as a default), not be frozen as user-dragged.
-  expect(r.before).toBeGreaterThan(0);
-  expect(r.after).toBeLessThan(0);
+  expect(r.before).toBeLessThan(0);
+  expect(r.after).toBeGreaterThan(0);
 });
 
 test('a zero offset means zero, not the shipped default', async ({ page }) => {

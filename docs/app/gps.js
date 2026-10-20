@@ -931,7 +931,7 @@ function gpsCommChangeAt(wp) {
   if (!wp || typeof state === 'undefined' || !Array.isArray(state.notes)) return null;
   const name = wp.name || '';
   if (!name) return null;
-  const note = state.notes.find(n => n && n.cc && n.cc === name);
+  const note = state.notes.find(n => n && n.cc && !n.ret && n.cc === name);
   if (!note) return null;
   if (!note.freqName && !note.freq) return null;
   return { freqName: note.freqName || '', freq: note.freq || '' };
