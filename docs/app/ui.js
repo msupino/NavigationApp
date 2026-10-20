@@ -2926,6 +2926,7 @@ async function buildRouteFromQuery(raw) {
   wpSearch.value = '';
   if (searchDocked()) closeSearch();
   else hideSearchOverlay();
+  finishDeckSearch();
   showInspector();
   fitView();
   // Auto-route applies to a search-built route too: typing "LLHZ RIDNG" is the same
@@ -4564,6 +4565,18 @@ function showCoordinateHit(ll) {
   syncSearchResultsStacking();
 }
 
+// A search typed in the deck's Menu sheet (deck.js hostSearch) is done once it has done its
+// job -- a route built, a result picked -- and the sheet goes with it, keyboard and all.
+// Reported from the iPad: Return built the route and left the menu open over it.
+function finishDeckSearch() {
+  if (!searchOverlay.classList.contains('deck-hosted-search')) return;
+  wpSearch.blur();
+  if (window.NavAid && typeof NavAid.closeDeckSheet === 'function') NavAid.closeDeckSheet();
+}
+wpResults.addEventListener('click', e => {
+  // After the item's own handler (this listens on the list, the item's is on the item).
+  if (e.target.closest && e.target.closest('.wp-search-item')) finishDeckSearch();
+});
 wpSearch.addEventListener('input', runSearch);
 wpSearch.addEventListener('focus', () => { if (wpSearch.value.trim()) runSearch(); });
 wpSearch.addEventListener('keydown', e => {
