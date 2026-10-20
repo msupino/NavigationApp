@@ -72,7 +72,15 @@ jobs:
         # job. Tighten once the codebase is baselined.
         # --config=p/default (registry ruleset) works with --metrics=off;
         # --config=auto requires metrics enabled.
-        run: semgrep scan --config=p/default --quiet --metrics=off
+        # Without --error a finding never fails the step, so a non-zero exit is Semgrep itself
+        # failing -- exit 2, mostly the registry ruleset not downloading. Try three times.
+        run: |
+          for attempt in 1 2 3; do
+            semgrep scan --config=p/default --quiet --metrics=off && exit 0
+            echo "::warning::Semgrep exited $? (attempt $attempt of 3)"
+            sleep $((attempt * 20))
+          done
+          exit 1
 
   codeql:
     # Skip the dev -> main promotion PR. It is opened by GITHUB_TOKEN, so its
