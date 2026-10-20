@@ -324,11 +324,12 @@ test('a field with only written pages still shows them in the menu', async ({ pa
   await page.waitForFunction(() => typeof showChartsModal === 'function');
   await page.evaluate(() => showChartsModal('LLHZ'));
   await page.waitForSelector('.charts-airport[data-icao="LLHZ"] .plate-row');
-  const titles = await page.evaluate(() =>
+  // The rows can paint before the written titles have loaded (seen on CI): wait for them.
+  const titles = () => page.evaluate(() =>
     [...document.querySelectorAll('.charts-airport[data-icao="LLHZ"] .plate-row-title')]
       .map(t => t.textContent));
-  expect(titles.some(t => /מלל/.test(t))).toBe(true);
-  expect(titles.some(t => /airport/i.test(t))).toBe(false);
+  await expect.poll(async () => (await titles()).some(t => /מלל/.test(t))).toBe(true);
+  expect((await titles()).some(t => /airport/i.test(t))).toBe(false);
 });
 
 // The CAA publishes English titles for the three international aerodromes (LLBG, LLHA, LLER)

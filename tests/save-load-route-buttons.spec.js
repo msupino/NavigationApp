@@ -21,7 +21,9 @@ async function boot(page, lang = 'en') {
       localStorage.removeItem('navaid.route');
     } catch (e) {}
   });
-  await page.goto('?lang=' + lang);
+  // The floating (stacked) menu: with the deck on it is shown only inside the deck's sheet, so
+  // this is the deck-off layout (?deck=0, or featureMobileDeck off in the gist).
+  await page.goto('?lang=' + lang + '&deck=0');
   await page.waitForFunction(() =>
     typeof state !== 'undefined' && typeof showRouteLibraryModal === 'function' &&
     document.getElementById('tool-save-route') && document.getElementById('tool-load-route'));
