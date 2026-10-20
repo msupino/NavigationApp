@@ -397,6 +397,7 @@ NavAid.tuningDefaults = {
   commChangeArrowStartGapPx: { value: 3, min: 0, max: 50, step: 0.5, label: 'Comm-change arrow start gap (px)' },
   commChangeArrowWidthPx: { value: 4, min: 1, max: 28, step: 0.5, label: 'Comm-change arrow width (px)' },
   commChangeArrowColor: { value: '#000000', type: 'color', label: 'Comm-change arrow color' },
+  commChangeReturnArrowColor: { value: '#c62828', type: 'color', label: 'Frequency-change callout colour on the way back (Show return path)' },
   commChangeArrowLineCap: { value: 'square', type: 'select', options: ['butt', 'round', 'square'], label: 'Comm-change arrow line cap' },
   commChangeArrowLineJoin: { value: 'miter', type: 'select', options: ['bevel', 'round', 'miter'], label: 'Comm-change arrow line join' },
   commChangeArrowMiterLimit: { value: 1, min: 1, max: 20, step: 0.5, label: 'Comm-change arrow miter limit' },

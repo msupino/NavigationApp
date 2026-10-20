@@ -6327,7 +6327,7 @@ function drawCommCalloutText(g) {
   octx.restore();
 }
 
-function drawCommCallout(n, selected) {
+function drawCommCallout(n, selected, arrowColor) {
   const g = commCalloutGeom(n);
   if (!g) return;
   octx.save();
@@ -6339,10 +6339,48 @@ function drawCommCallout(n, selected) {
     const halo = colorWithAlpha(tune('commChangeArrowHaloColor'), tune('commChangeArrowHaloAlpha'));
     strokeCommCalloutShape(g, g.width + g.halo * 2, halo, 1);
   }
-  strokeCommCalloutShape(g, g.width, tune('commChangeArrowColor'), 1);
+  strokeCommCalloutShape(g, g.width, arrowColor || tune('commChangeArrowColor'), 1);
   drawCommCalloutText(g);
   octx.restore();
 }
+
+// The way back's frequency changes. The callouts are chosen walking the route FORWARD: at a
+// change point, the station flown INTO. Flying home the same point can call for another one,
+// or none (LLHA -> LLIB: GILAM is Pluto East going, Haifa coming back; DESHE Rosh Pina going,
+// Pluto East coming back). With the return path shown they are worked out the same way on the
+// route reversed -- the app's own seeding, run on a reversed copy and every bit of state put
+// back -- and drawn in the return colour beside the way-out ones. Computed, not stored: the
+// pilot's own callouts and suppressions on the way out are untouched.
+let _retCommMemo = { key: '', notes: [] };
+function returnCommCallouts() {
+  const returnOn = typeof showReturn !== 'undefined' && showReturn
+    && (typeof showReturnFeatureOn !== 'function' || showReturnFeatureOn());
+  if (!returnOn || !showCommChange || !commChangeMap || !Array.isArray(state.waypoints) || state.waypoints.length < 2) return [];
+  const key = state.waypoints.map(w => (w && w.name) + '@' + (w && w.lat) + ',' + (w && w.lng)).join('|')
+    + '#' + Object.keys(commChangeMap).length + '#' + (typeof _layerGen !== 'undefined' ? _layerGen : 0);
+  if (_retCommMemo.key === key) return _retCommMemo.notes;
+  const snap = { waypoints: state.waypoints, notes: state.notes, selected: state.selected,
+    sup: state.commChangeSuppressions };
+  let out = [];
+  try {
+    state.waypoints = snap.waypoints.slice().reverse();
+    state.notes = [];
+    state.selected = null;
+    state.commChangeSuppressions = [];
+    seedCommChangeNotes();
+    out = state.notes.filter(n => n && n.cc).map(n => Object.assign({}, n, { ret: true }));
+  } catch (e) {
+    out = [];
+  } finally {
+    state.waypoints = snap.waypoints;
+    state.notes = snap.notes;
+    state.selected = snap.selected;
+    state.commChangeSuppressions = snap.sup;
+  }
+  _retCommMemo = { key, notes: out };
+  return out;
+}
+window.returnCommCallouts = returnCommCallouts;
 
 function selectedCommCallout(i) {
   if (!state.selected) return false;
@@ -6465,6 +6503,11 @@ function drawNotes() {
     }
     octx.restore();
     octx.textAlign = 'left';
+  }
+  // The way back's frequency changes, in the return colour (see returnCommCallouts).
+  if (showCommChange && layerShownAtZoom('commChangeMinZoom')) {
+    const retColor = tune('commChangeReturnArrowColor');
+    for (const n of returnCommCallouts()) drawCommCallout(n, false, retColor);
   }
 }
 
