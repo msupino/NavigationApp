@@ -79,7 +79,7 @@ function cumKiteMinAnchorDistPx(wpIdx) {
 // when only the renderer knew the angle the kite painted in one place and could be grabbed
 // in another.
 function cumDefaultLabelOffset() {
-  const deg = (typeof tune === 'function' ? tune('cumKiteAngleDeg') : 180) || 0;
+  const deg = (typeof tune === 'function' ? tune('cumKiteAngleDeg') : 0) || 0;
   const rad = deg * Math.PI / 180;
   const d = cumDefaultLabelPerp();
   return { perp: Math.cos(rad) * d, along: Math.sin(rad) * d };
@@ -5601,7 +5601,7 @@ function drawLegs() {
     drawMinuteMarkers(sa, sb, durH, tune('minuteMarkerToColor'));
     // The return's own minutes, counted from B back to A, on the side right of ITS direction
     // -- the other side of the line -- in the return colour.
-    if (showReturn && durOut > 0) drawMinuteMarkers(sb, sa, durOut, tune('minuteMarkerFromColor'));
+    if (showReturn && durOut > 0) drawMinuteMarkers(sb, sa, durOut, tune('minuteMarkerFromColor'), true);
 
     const ang = Math.atan2(sb.y - sa.y, sb.x - sa.x);
     const mid = { x: (sa.x + sb.x) / 2, y: (sa.y + sb.y) / 2 };
@@ -5660,9 +5660,10 @@ function drawLegs() {
       ang, pad3(magIn), timeStr, kiteAltitudeLabel(leg.inboundAltitude, leg, 'inboundAltitude'),
       tune('inkColor'), tintFill(tune('legKiteFillColor'), tune('kiteNoteAlpha')), needsHalo(i, 'in'), zoomScale);
     // Cumulative inbound time: < [time], position driven by leg.cumLabel. By default it
-    // takes the side AWAY from the nav kite (cumKiteAngleDeg): sharing a side stacked
-    // the two against each other at the waypoint, and a glance had to separate them.
-    // Sign only -- the distance is the same either way, so both stay clear of the disc.
+    // sits square on the nav kite's side (cumKiteAngleDeg 0): every mark of one
+    // direction -- nav kite, minute ticks, freq arrow, this -- on one side of the track,
+    // and the way back's all on the other. The distance is the same at any angle, so it
+    // stays clear of the disc.
     const defCum = { a: 0, _default: 1, _m: 1 };
     // Default placement of the cumulative kite around its waypoint: an angle FROM the nav
     // kite's side (cumKiteAngleDeg), turned towards the direction of flight. The nav kite
@@ -5706,7 +5707,7 @@ function drawLegs() {
         const cumRetY = sa.y + dy * cumRetAlong + ny * cumRetPerp;
         queueCumTimeArrow(cumRetX, cumRetY,
           Math.atan2(sa.y - cumRetY, sa.x - cumRetX),
-          cumOutArr[i], tune('inkColor'), tintFill(tune('returnCumKiteFillColor'), tune('kiteNoteAlpha')), zoomScale);
+          cumOutArr[i], tune('inkColor'), tintFill(tune('returnCumKiteFillColor'), tune('kiteNoteAlpha')), zoomScale, true);
       }
     }
     if (showMidLeg) drawDistanceBadge(mid.x, mid.y, dist);
@@ -5809,7 +5810,9 @@ function drawDriftLines(sa, sb) {
   octx.restore();
 }
 
-function drawMinuteMarkers(sa, sb, durH, color) {
+// `flip`: the way back's digits, turned 180 degrees -- upright for a chart turned round to fly
+// home, the same as the return kites' text.
+function drawMinuteMarkers(sa, sb, durH, color, flip) {
   const totalMin = durH * 60;
   if (totalMin < 1) return;
   let dx = sb.x - sa.x, dy = sb.y - sa.y;
@@ -5844,7 +5847,15 @@ function drawMinuteMarkers(sa, sb, durH, color) {
       const ty = py + ny * (tick + tune('minuteLabelOffsetPx') * k);
       octx.fillStyle = ink;
       octx.font = `bold ${fontPx}px sans-serif`;
-      octx.fillText(String(m), tx, ty);
+      if (flip) {
+        octx.save();
+        octx.translate(tx, ty);
+        octx.rotate(Math.PI);
+        octx.fillText(String(m), 0, 0);
+        octx.restore();
+      } else {
+        octx.fillText(String(m), tx, ty);
+      }
     }
   }
   octx.textAlign = 'left';
@@ -5900,7 +5911,8 @@ function traceArrowBox(ctx, width, height, headLength) {
   ctx.lineTo(-width / 2, height / 2);
   ctx.closePath();
 }
-function drawCumTimeArrow(cx, cy, flightAng, cumTime, accent, fill, sc) {
+// `ret`: a way-back kite, its time upright for the chart turned round to fly home.
+function drawCumTimeArrow(cx, cy, flightAng, cumTime, accent, fill, sc, ret) {
   sc = sc ?? 1;
   // Fixed GROUND size — cumKitePrintHeightMm tall at the 1:250,000 scale (× the
   // legArrowSize selector) — so it scales with the map like its position and
@@ -5936,7 +5948,7 @@ function drawCumTimeArrow(cx, cy, flightAng, cumTime, accent, fill, sc) {
   octx.translate(p.x, p.y);
   // Text orientation matches the navigation kite (flightAng+π = ang+π/2 when kite is at ang-π/2).
   let textAng = flightAng + Math.PI;
-  if (Math.cos(textAng) < 0) textAng += Math.PI;
+  if (ret ? Math.cos(textAng) > 0 : Math.cos(textAng) < 0) textAng += Math.PI;
   octx.rotate(textAng);
   octx.font = `bold ${fontPx}px sans-serif`;
   octx.textAlign = 'center';
@@ -6325,7 +6337,8 @@ function commCalloutGeom(n) {
   const ty = textSeg ? textSeg.a.y + (textSeg.b.y - textSeg.a.y) * textT : fp.y;
   let textAngle = textSeg ? Math.atan2(textSeg.b.y - textSeg.a.y, textSeg.b.x - textSeg.a.x)
                           : Math.atan2(uy, ux);
-  if (Math.cos(textAngle) < 0) textAngle += Math.PI;
+  // Upright to read -- for a way-back callout, upright on the chart turned round to fly home.
+  if (n && n.ret ? Math.cos(textAngle) > 0 : Math.cos(textAngle) < 0) textAngle += Math.PI;
   const textGap = tune('commChangeTextGapPx');
   return {
     target: tp, targetCenter, targetRadius, startGap, tail: fp, bends, bend1, bend2,

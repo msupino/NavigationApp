@@ -315,7 +315,7 @@ NavAid.tuningDefaults = {
   // Range runs past a half turn on purpose: -230 and +130 are the same place, and a pilot
   // dialling this in should not have to do the arithmetic to stay inside a bound.
   commCalloutAngleDeg: { value: -130, min: -359, max: 359, step: 5, label: 'Freq callout angle from track (°, +left)' },
-  cumKiteAngleDeg: { value: 180, min: 0, max: 359, step: 5, label: 'Cumulative-time box angle from the leg box (°)' },
+  cumKiteAngleDeg: { value: 0, min: 0, max: 359, step: 5, label: 'Cumulative-time box angle from the leg box (°)' },
   cumKiteFillColor: { value: '#00ff00', type: 'color', label: 'Cumulative-time box fill color' },
   returnCumKiteFillColor: { value: '#ffccd6', type: 'color', label: 'Return-leg cumulative-time box fill color' },
   cumKiteHeightPx: { value: 23, min: 8, max: 100, step: 1, label: 'Cumulative-time box height (px)' },
