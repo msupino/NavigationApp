@@ -314,8 +314,8 @@ NavAid.tuningDefaults = {
   // the nav kite ahead-right.
   // Range runs past a half turn on purpose: -230 and +130 are the same place, and a pilot
   // dialling this in should not have to do the arithmetic to stay inside a bound.
-  commCalloutAngleDeg: { value: -230, min: -359, max: 359, step: 5, label: 'Freq callout angle from track (°, +left)' },
-  cumKiteAngleDeg: { value: 180, min: 0, max: 359, step: 5, label: 'Cumulative-time box angle from the leg box (°)' },
+  commCalloutAngleDeg: { value: -130, min: -359, max: 359, step: 5, label: 'Freq callout angle from track (°, +left)' },
+  cumKiteAngleDeg: { value: 0, min: 0, max: 359, step: 5, label: 'Cumulative-time box angle from the leg box (°)' },
   cumKiteFillColor: { value: '#00ff00', type: 'color', label: 'Cumulative-time box fill color' },
   returnCumKiteFillColor: { value: '#ffccd6', type: 'color', label: 'Return-leg cumulative-time box fill color' },
   cumKiteHeightPx: { value: 23, min: 8, max: 100, step: 1, label: 'Cumulative-time box height (px)' },
@@ -401,6 +401,7 @@ NavAid.tuningDefaults = {
   commChangeArrowStartGapPx: { value: 3, min: 0, max: 50, step: 0.5, label: 'Comm-change arrow start gap (px)' },
   commChangeArrowWidthPx: { value: 4, min: 1, max: 28, step: 0.5, label: 'Comm-change arrow width (px)' },
   commChangeArrowColor: { value: '#000000', type: 'color', label: 'Comm-change arrow color' },
+  commChangeReturnArrowColor: { value: '#000000', type: 'color', label: 'Frequency-change callout colour on the way back (Show return path)' },
   commChangeArrowLineCap: { value: 'square', type: 'select', options: ['butt', 'round', 'square'], label: 'Comm-change arrow line cap' },
   commChangeArrowLineJoin: { value: 'miter', type: 'select', options: ['bevel', 'round', 'miter'], label: 'Comm-change arrow line join' },
   commChangeArrowMiterLimit: { value: 1, min: 1, max: 20, step: 0.5, label: 'Comm-change arrow miter limit' },
@@ -1133,7 +1134,7 @@ NavAid.tuningGroups = [
   { name: 'Airfields', keys: ['airfieldMarkerRadiusPx', 'airfieldRunwayWidthM', 'airfieldStrokeWidthPx', 'airfieldLabelFontPx', 'airfieldLabelOffsetPx', 'airfieldLabelHaloPx', 'airfieldFillColor', 'airfieldCenterColor', 'airfieldOutlineColor'] },
   { name: 'Nav waypoints', keys: ['reportingPointRadiusPx', 'navWaypointStrokeWidthPx', 'navWaypointLabelFontPx', 'navWaypointLabelOffsetPx', 'navWaypointLabelHaloPx', 'navWaypointDotColor'] },
   { name: 'Overlay labels', keys: ['overlayLabelHaloColor', 'overlayLabelHaloAlpha'] },
-  { name: 'Frequency changes', keys: ['commCalloutAngleDeg', 'commChangeRings', 'commChangeRingRadiusPx', 'commChangeRingWidthPx', 'commChangeRingColor', 'commChangeDot', 'commChangeDotColor', 'commChangeNoteLatOffset', 'commChangeNoteLngOffset', 'commChangeArrowStartGapPx', 'commChangeArrowWidthPx', 'commChangeArrowColor', 'commChangeArrowLineCap', 'commChangeArrowLineJoin', 'commChangeArrowMiterLimit', 'commChangeArrowHaloPx', 'commChangeArrowHaloColor', 'commChangeArrowHaloAlpha', 'commChangeSelectedColor', 'commChangeSelectedAlpha', 'commChangeSelectedWidthAddPx', 'commChangeArrowBoltPx', 'commChangeArrowBoltAngleDeg', 'commChangeArrowBend1Along', 'commChangeArrowBend2Along', 'commChangeNameFontPx', 'commChangeFreqFontPx', 'commChangeTextColor', 'commChangeTextHaloColor', 'commChangeTextHaloAlpha', 'commChangeTextAlong', 'commChangeTextGapPx', 'commChangeNameHaloWidthPx', 'commChangeFreqHaloWidthPx'] },
+  { name: 'Frequency changes', keys: ['commCalloutAngleDeg', 'commChangeRings', 'commChangeRingRadiusPx', 'commChangeRingWidthPx', 'commChangeRingColor', 'commChangeDot', 'commChangeDotColor', 'commChangeNoteLatOffset', 'commChangeNoteLngOffset', 'commChangeArrowStartGapPx', 'commChangeArrowWidthPx', 'commChangeArrowColor', 'commChangeReturnArrowColor', 'commChangeArrowLineCap', 'commChangeArrowLineJoin', 'commChangeArrowMiterLimit', 'commChangeArrowHaloPx', 'commChangeArrowHaloColor', 'commChangeArrowHaloAlpha', 'commChangeSelectedColor', 'commChangeSelectedAlpha', 'commChangeSelectedWidthAddPx', 'commChangeArrowBoltPx', 'commChangeArrowBoltAngleDeg', 'commChangeArrowBend1Along', 'commChangeArrowBend2Along', 'commChangeNameFontPx', 'commChangeFreqFontPx', 'commChangeTextColor', 'commChangeTextHaloColor', 'commChangeTextHaloAlpha', 'commChangeTextAlong', 'commChangeTextGapPx', 'commChangeNameHaloWidthPx', 'commChangeFreqHaloWidthPx'] },
   { name: 'Notes', keys: ['noteFontPx', 'notePadXPx', 'notePadYPx', 'noteLineHeightPx', 'noteMinWidthPx', 'notePrintWidthMm', 'notePrintHeightMm', 'noteStrokeWidthPx', 'noteSelectedStrokeWidthPx', 'noteDefaultFillColor'] },
   { name: 'Page frame', keys: ['pageFrameLineWidthPx', 'pageFrameDashOnPx', 'pageFrameDashOffPx', 'pageFrameScrimColor', 'pageFrameScrimAlpha', 'pageFrameLocked', 'pageFrameHitPx', 'a4x2CutLineWidthPx', 'a4x2CutDashOnPx', 'a4x2CutDashOffPx', 'a4x2CutLineColor', 'a4x2CutLineAlpha', 'a4x2MarkLabelMm', 'a4x2MarkGuideMm', 'a4x2MarkLabelBgColor', 'a4x2MarkLabelInkColor'] },
   { name: 'Route defaults', keys: ['defaultLegSpeedKt', 'unknownProfileAltFt', 'legLabelMaxScale'] },
@@ -1228,6 +1229,7 @@ const PRINT_BW_TUNES = {
   waypointHotspotFillColor: '#b4b4b4', waypointHotspotRingColor: '#000000',
   noteDefaultFillColor: '#ffffff', kiteNoteAlpha: 1,
   commChangeRingColor: '#000000', commChangeDotColor: '#000000', commChangeArrowColor: '#000000',
+  commChangeReturnArrowColor: '#000000',
   commChangeArrowHaloColor: '#ffffff', commChangeArrowHaloAlpha: 1, commChangeSelectedColor: '#000000',
   commChangeTextColor: '#000000', commChangeTextHaloColor: '#ffffff', commChangeTextHaloAlpha: 1,
   airfieldFillColor: '#000000', airfieldCenterColor: '#ffffff', airfieldOutlineColor: '#000000',
@@ -3042,6 +3044,7 @@ window.S = Object.assign({
   addFreqChange: 'Add freq change (Z)',
   addFreqChangeAtTurn: 'You leave the turning point on the frequency you arrived on, so there is no change to call here.',
   deleteFreqChange: 'Delete freq change (X)',
+  freqWayBack: 'On the way back (return path)',
   resetFreqLocation: '↻ Reset callout location',
   resetFreqLocationTitle: 'Reset callout location',
   resetFreqOverride: 'Reset frequency to default',
@@ -5406,7 +5409,7 @@ function routeFreqSources() {
     if (f) out.push({ wpi: legCount - 1, freq: f });
   }
   for (const n of (state.notes || [])) {
-    if (!n || !n.cc) continue;
+    if (!n || !n.cc || n.ret) continue;   // the way back's callouts are not this route's
     const wpi = typeof commCalloutWaypointIndex === 'function' ? commCalloutWaypointIndex(n) : -1;
     const f = typeof commNoteFreq === 'function' ? commNoteFreq(n) : (n.freq || '');
     if (wpi >= 0 && f) out.push({ wpi, freq: freqClean(f) });
@@ -7779,6 +7782,8 @@ function legDirWaypointVisible(i) {
 }
 function routeNoteDirVisible(note) {
   if (!note) return false;
+  // A way-back callout belongs to the return path and shows only with it.
+  if (note.ret && !(typeof returnCommOn === 'function' && returnCommOn())) return false;
   if (note.rp && Number.isInteger(note.rp.leg)) return legDirVisible(note.rp.leg);
   if (!note.cc || !Array.isArray(state.waypoints)) return true;
   const canonical = value => typeof canonicalNavWaypointName === 'function'

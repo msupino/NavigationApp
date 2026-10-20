@@ -79,7 +79,7 @@ function cumKiteMinAnchorDistPx(wpIdx) {
 // when only the renderer knew the angle the kite painted in one place and could be grabbed
 // in another.
 function cumDefaultLabelOffset() {
-  const deg = (typeof tune === 'function' ? tune('cumKiteAngleDeg') : 180) || 0;
+  const deg = (typeof tune === 'function' ? tune('cumKiteAngleDeg') : 0) || 0;
   const rad = deg * Math.PI / 180;
   const d = cumDefaultLabelPerp();
   return { perp: Math.cos(rad) * d, along: Math.sin(rad) * d };
@@ -5023,9 +5023,11 @@ function commRouteCalloutDefaultsMap() {
   }
   return { defaults: out, hinted };
 }
-function commCalloutDefaults(name) {
+// `note` is the callout asking: a way-back one (ret) takes its default from the route flown home.
+function commCalloutDefaults(name, note) {
   const key = canonicalNavWaypointName(name);
-  const { defaults: routeDefaults } = commRouteCalloutDefaultsMap();
+  const { defaults: routeDefaults } = note && note.ret
+    ? withReturnRoute(commRouteCalloutDefaultsMap) : commRouteCalloutDefaultsMap();
   return (key && routeDefaults[key]) || commStaticCalloutDefaults(key);
 }
 function commNoteCallSignOption(n) {
@@ -5040,7 +5042,7 @@ function commNoteName(n) {
     return n.freqName.trim();
   }
   if (n && n.cc) {
-    const d = commCalloutDefaults(n.cc);
+    const d = commCalloutDefaults(n.cc, n);
     const def = commCallSignOptions(n.cc)
       .find(o => commCallSignOptionMatches(o, d.freqName));
     return def ? def.label : d.freqName;
@@ -5055,7 +5057,7 @@ function commNoteFreq(n) {
   }
   if (n && typeof n.freq === 'string' && n.freq.trim()) return commFormatFreq(n.freq);
   if (opt && opt.freq) return opt.freq;
-  if (n && n.cc) return commCalloutDefaults(n.cc).freq;
+  if (n && n.cc) return commCalloutDefaults(n.cc, n).freq;
   return '';
 }
 // Identification / report point (נקי הזדהות): an oval note anchored to a leg
@@ -5157,10 +5159,11 @@ function commCalloutDefaultTail(wp, idx, wpsOverride) {
   }
   // Signed angle from the direction of travel: positive left, negative right. It was a
   // hardcoded 90 (square left) -- the quarter the cumulative-time kite now sits in, so the
-  // callout covered it. -230 -- the same place as +130 -- puts it behind and to the left,
-  // clear of that kite's quarter and of the nav kite ahead-right.
-  const away = (typeof tune === 'function') ? tune('commCalloutAngleDeg') : -230;
-  const th = (brg - (Number.isFinite(away) ? away : -230)) * Math.PI / 180;
+  // callout covered it -- then -230 (behind-left), 180 degrees from the nav kites. -130 puts
+  // it behind and to the RIGHT, the kites' side, as on a hand-drawn chart: with the return
+  // path shown, each direction's callout then sits on its own kites' side of the track.
+  const away = (typeof tune === 'function') ? tune('commCalloutAngleDeg') : -130;
+  const th = (brg - (Number.isFinite(away) ? away : -130)) * Math.PI / 180;
   const cosLat = Math.max(0.1, Math.cos(wp.lat * Math.PI / 180));
   return {
     lat: r5(wp.lat + D * Math.cos(th)),
@@ -5220,19 +5223,25 @@ function normalizeCommChangeSuppressions(raw) {
   const out = [];
   if (Array.isArray(src)) {
     for (const v of src) {
-      const key = canonicalNavWaypointName(v);
+      // A way-back deletion keeps its prefix (see RET_COMM_SUP).
+      const { ret, key: name } = commSupParts(v);
+      const key = name ? (ret ? RET_COMM_SUP : '') + name : '';
       if (key && !out.includes(key)) out.push(key);
     }
   }
   state.commChangeSuppressions = out;
   return out;
 }
+function commSupKey(name) {
+  const { ret, key } = commSupParts(name);
+  return key ? (ret ? RET_COMM_SUP : '') + key : '';
+}
 function isCommChangeSuppressed(name) {
-  const key = canonicalNavWaypointName(name);
+  const key = commSupKey(name);
   return !!key && normalizeCommChangeSuppressions().includes(key);
 }
 function suppressCommChange(name) {
-  const key = canonicalNavWaypointName(name);
+  const key = commSupKey(name);
   if (!key) return false;
   const suppressions = normalizeCommChangeSuppressions();
   if (suppressions.includes(key)) return false;
@@ -5241,10 +5250,10 @@ function suppressCommChange(name) {
   return true;
 }
 function unsuppressCommChange(name) {
-  const key = canonicalNavWaypointName(name);
+  const key = commSupKey(name);
   if (!key) return false;
   const suppressions = normalizeCommChangeSuppressions()
-    .filter(v => canonicalNavWaypointName(v) !== key);
+    .filter(v => v !== key);
   if (suppressions.length === state.commChangeSuppressions.length) return false;
   state.commChangeSuppressions = suppressions;
   return true;
@@ -5255,7 +5264,8 @@ function pruneStaleCommChangeSuppressions() {
     return false;
   }
   const before = normalizeCommChangeSuppressions();
-  const kept = before.filter(name => {
+  const kept = before.filter(v => {
+    const name = commSupParts(v).key;
     const row = commChangeMap && commChangeMap[name];
     return row && row.commChange && hasActiveCommChangeWaypoint(name);
   });
@@ -5308,7 +5318,65 @@ function pruneTurnCommChangeNotes() {
   }
   return true;
 }
+// Seeds the way out's callouts and, with the return path shown, the way back's: each pass sees
+// only its own direction's notes and deletions, so neither can claim, prune or un-delete the
+// other's at a point both cross. A note keeps its place in state.notes; new ones are appended.
 function seedCommChangeNotes() {
+  if (typeof state === 'undefined' ||
+      !Array.isArray(state.waypoints) || !Array.isArray(state.notes)) return false;
+  const all = state.notes, sel = state.selected;
+  const selNote = sel && sel.type === 'note' ? all[sel.index] : null;
+  const selFreq = sel && sel.type === 'wp' && Number.isInteger(sel.freqNoteIndex)
+    ? all[sel.freqNoteIndex] : null;
+  const sups = normalizeCommChangeSuppressions();
+  const fwdSup = [], retSup = [];
+  for (const v of sups) {
+    if (v.startsWith(RET_COMM_SUP)) retSup.push(v.slice(RET_COMM_SUP.length)); else fwdSup.push(v);
+  }
+  const retNotes = all.filter(n => n && n.ret);
+  let changed = false;
+  let outFwd, outRet = retNotes, outRetSup = retSup;
+  try {
+    state.selected = null;
+    state.notes = all.filter(n => !(n && n.ret));
+    state.commChangeSuppressions = fwdSup;
+    if (seedCommChangeNotesOneWay()) changed = true;
+    outFwd = state.notes;
+    const outFwdSup = state.commChangeSuppressions;
+    if (returnCommOn()) {
+      state.notes = retNotes;
+      state.commChangeSuppressions = retSup;
+      if (withReturnRoute(seedCommChangeNotesOneWay)) changed = true;
+      outRet = state.notes;
+      for (const n of outRet) if (n && n.cc && !n.ret) n.ret = 1;
+      outRetSup = state.commChangeSuppressions;
+    }
+    state.commChangeSuppressions = outFwdSup.concat(outRetSup.map(v => RET_COMM_SUP + v));
+  } catch (e) {
+    state.notes = all;
+    state.commChangeSuppressions = sups;
+    state.selected = sel;
+    throw e;
+  }
+  if (!changed) {
+    state.notes = all;
+    state.selected = sel;
+    return false;
+  }
+  const kept = new Set(outFwd.concat(outRet));
+  state.notes = all.filter(n => kept.has(n)).concat(outFwd.concat(outRet).filter(n => !all.includes(n)));
+  state.selected = sel;
+  if (selNote) {
+    const idx = state.notes.indexOf(selNote);
+    state.selected = idx >= 0 ? { type: 'note', index: idx } : null;
+  } else if (selFreq) {
+    const idx = state.notes.indexOf(selFreq);
+    if (idx >= 0) state.selected.freqNoteIndex = idx;
+    else delete state.selected.freqNoteIndex;
+  }
+  return true;
+}
+function seedCommChangeNotesOneWay() {
   if (typeof state === 'undefined' ||
       !Array.isArray(state.waypoints) || !Array.isArray(state.notes)) return false;
   let changed = pruneTurnCommChangeNotes();
@@ -5533,7 +5601,7 @@ function drawLegs() {
     drawMinuteMarkers(sa, sb, durH, tune('minuteMarkerToColor'));
     // The return's own minutes, counted from B back to A, on the side right of ITS direction
     // -- the other side of the line -- in the return colour.
-    if (showReturn && durOut > 0) drawMinuteMarkers(sb, sa, durOut, tune('minuteMarkerFromColor'));
+    if (showReturn && durOut > 0) drawMinuteMarkers(sb, sa, durOut, tune('minuteMarkerFromColor'), true);
 
     const ang = Math.atan2(sb.y - sa.y, sb.x - sa.x);
     const mid = { x: (sa.x + sb.x) / 2, y: (sa.y + sb.y) / 2 };
@@ -5592,9 +5660,10 @@ function drawLegs() {
       ang, pad3(magIn), timeStr, kiteAltitudeLabel(leg.inboundAltitude, leg, 'inboundAltitude'),
       tune('inkColor'), tintFill(tune('legKiteFillColor'), tune('kiteNoteAlpha')), needsHalo(i, 'in'), zoomScale);
     // Cumulative inbound time: < [time], position driven by leg.cumLabel. By default it
-    // takes the side AWAY from the nav kite (cumKiteAngleDeg): sharing a side stacked
-    // the two against each other at the waypoint, and a glance had to separate them.
-    // Sign only -- the distance is the same either way, so both stay clear of the disc.
+    // sits square on the nav kite's side (cumKiteAngleDeg 0): every mark of one
+    // direction -- nav kite, minute ticks, freq arrow, this -- on one side of the track,
+    // and the way back's all on the other. The distance is the same at any angle, so it
+    // stays clear of the disc.
     const defCum = { a: 0, _default: 1, _m: 1 };
     // Default placement of the cumulative kite around its waypoint: an angle FROM the nav
     // kite's side (cumKiteAngleDeg), turned towards the direction of flight. The nav kite
@@ -5623,7 +5692,10 @@ function drawLegs() {
         mid.y + dy * outAlong + ny * outPerp, ang + Math.PI,
         pad3(magOut), timeStrOut, kiteAltitudeLabel(leg.outboundAltitude, leg, 'outboundAltitude'),
         tune('inkColor'), tintFill(tune('returnKiteFillColor'), tune('kiteNoteAlpha')), needsHalo(i, 'out'), zoomScale);
-      if (showCumTime) {
+      // Inside a CTR the way back is off its clock too (cumOutArr '---'), and draws no
+      // cumulative kite there, as the way out does not. Only the CTR: a leg before the
+      // start-timer point is off the way OUT's clock but still on the way home's.
+      if (showCumTime && cumOutArr[i] !== '---') {
         // Cumulative return time kite at A waypoint (return destination).
         // Own offset (cumLabelRet), anchored at A with the same +dx/+nx frame
         // as the inbound kite so its drag math is identical; default sits on
@@ -5636,7 +5708,7 @@ function drawLegs() {
         const cumRetY = sa.y + dy * cumRetAlong + ny * cumRetPerp;
         queueCumTimeArrow(cumRetX, cumRetY,
           Math.atan2(sa.y - cumRetY, sa.x - cumRetX),
-          cumOutArr[i], tune('inkColor'), tintFill(tune('returnCumKiteFillColor'), tune('kiteNoteAlpha')), zoomScale);
+          cumOutArr[i], tune('inkColor'), tintFill(tune('returnCumKiteFillColor'), tune('kiteNoteAlpha')), zoomScale, true);
       }
     }
     if (showMidLeg) drawDistanceBadge(mid.x, mid.y, dist);
@@ -5739,7 +5811,9 @@ function drawDriftLines(sa, sb) {
   octx.restore();
 }
 
-function drawMinuteMarkers(sa, sb, durH, color) {
+// `flip`: the way back's digits, turned 180 degrees -- upright for a chart turned round to fly
+// home, the same as the return kites' text.
+function drawMinuteMarkers(sa, sb, durH, color, flip) {
   const totalMin = durH * 60;
   if (totalMin < 1) return;
   let dx = sb.x - sa.x, dy = sb.y - sa.y;
@@ -5774,7 +5848,15 @@ function drawMinuteMarkers(sa, sb, durH, color) {
       const ty = py + ny * (tick + tune('minuteLabelOffsetPx') * k);
       octx.fillStyle = ink;
       octx.font = `bold ${fontPx}px sans-serif`;
-      octx.fillText(String(m), tx, ty);
+      if (flip) {
+        octx.save();
+        octx.translate(tx, ty);
+        octx.rotate(Math.PI);
+        octx.fillText(String(m), 0, 0);
+        octx.restore();
+      } else {
+        octx.fillText(String(m), tx, ty);
+      }
     }
   }
   octx.textAlign = 'left';
@@ -5830,7 +5912,8 @@ function traceArrowBox(ctx, width, height, headLength) {
   ctx.lineTo(-width / 2, height / 2);
   ctx.closePath();
 }
-function drawCumTimeArrow(cx, cy, flightAng, cumTime, accent, fill, sc) {
+// `ret`: a way-back kite, its time upright for the chart turned round to fly home.
+function drawCumTimeArrow(cx, cy, flightAng, cumTime, accent, fill, sc, ret) {
   sc = sc ?? 1;
   // Fixed GROUND size — cumKitePrintHeightMm tall at the 1:250,000 scale (× the
   // legArrowSize selector) — so it scales with the map like its position and
@@ -5866,7 +5949,7 @@ function drawCumTimeArrow(cx, cy, flightAng, cumTime, accent, fill, sc) {
   octx.translate(p.x, p.y);
   // Text orientation matches the navigation kite (flightAng+π = ang+π/2 when kite is at ang-π/2).
   let textAng = flightAng + Math.PI;
-  if (Math.cos(textAng) < 0) textAng += Math.PI;
+  if (ret ? Math.cos(textAng) > 0 : Math.cos(textAng) < 0) textAng += Math.PI;
   octx.rotate(textAng);
   octx.font = `bold ${fontPx}px sans-serif`;
   octx.textAlign = 'center';
@@ -6255,7 +6338,8 @@ function commCalloutGeom(n) {
   const ty = textSeg ? textSeg.a.y + (textSeg.b.y - textSeg.a.y) * textT : fp.y;
   let textAngle = textSeg ? Math.atan2(textSeg.b.y - textSeg.a.y, textSeg.b.x - textSeg.a.x)
                           : Math.atan2(uy, ux);
-  if (Math.cos(textAngle) < 0) textAngle += Math.PI;
+  // Upright to read -- for a way-back callout, upright on the chart turned round to fly home.
+  if (n && n.ret ? Math.cos(textAngle) > 0 : Math.cos(textAngle) < 0) textAngle += Math.PI;
   const textGap = tune('commChangeTextGapPx');
   return {
     target: tp, targetCenter, targetRadius, startGap, tail: fp, bends, bend1, bend2,
@@ -6333,7 +6417,7 @@ function drawCommCalloutText(g) {
   octx.restore();
 }
 
-function drawCommCallout(n, selected) {
+function drawCommCallout(n, selected, arrowColor) {
   const g = commCalloutGeom(n);
   if (!g) return;
   octx.save();
@@ -6345,9 +6429,53 @@ function drawCommCallout(n, selected) {
     const halo = colorWithAlpha(tune('commChangeArrowHaloColor'), tune('commChangeArrowHaloAlpha'));
     strokeCommCalloutShape(g, g.width + g.halo * 2, halo, 1);
   }
-  strokeCommCalloutShape(g, g.width, tune('commChangeArrowColor'), 1);
+  strokeCommCalloutShape(g, g.width, arrowColor || tune('commChangeArrowColor'), 1);
   drawCommCalloutText(g);
   octx.restore();
+}
+
+// The way back's frequency changes. The callouts are chosen walking the route FORWARD: at a
+// change point, the station flown INTO. Flying home the same point can call for another one,
+// or none (LLHA -> LLIB: GILAM is Pluto East going, Haifa coming back; DESHE Rosh Pina going,
+// Pluto East coming back). With the return path shown they are seeded the same way on the
+// route reversed and kept as ordinary comm-change notes tagged `ret: 1` -- so the pilot drags,
+// edits and deletes them exactly like the way out's. A deleted one is remembered in the same
+// suppression list, prefixed RET_COMM_SUP. The way-out logic never sees them: every pass that
+// seeds or prunes runs on one direction's notes at a time (seedCommChangeNotes).
+const RET_COMM_SUP = '<';
+function returnCommOn() {
+  return typeof showReturn !== 'undefined' && !!showReturn
+    && (typeof showReturnFeatureOn !== 'function' || showReturnFeatureOn());
+}
+// Run fn with the route reversed: the way home, as the comm-change code reads a route.
+function withReturnRoute(fn) {
+  const wps = state.waypoints;
+  if (!Array.isArray(wps)) return fn();
+  try {
+    state.waypoints = wps.slice().reverse();
+    return fn();
+  } finally {
+    state.waypoints = wps;
+  }
+}
+// The suppression key a deleted callout leaves behind: its point, prefixed when on the way back.
+function commNoteSupKey(note) {
+  if (!note || !note.cc) return '';
+  const key = canonicalNavWaypointName(note.cc);
+  return key ? (note.ret ? RET_COMM_SUP : '') + key : '';
+}
+function commSupParts(v) {
+  const s = String(v || '');
+  const ret = s.startsWith(RET_COMM_SUP);
+  return { ret, key: canonicalNavWaypointName(ret ? s.slice(RET_COMM_SUP.length) : s) };
+}
+window.returnCommOn = returnCommOn;
+window.withReturnRoute = withReturnRoute;
+window.commNoteSupKey = commNoteSupKey;
+// A callout's default spot, worked out for the direction it is flown in.
+function commNoteDefaultTail(note, wp) {
+  return note && note.ret
+    ? withReturnRoute(() => commCalloutDefaultTail(wp)) : commCalloutDefaultTail(wp);
 }
 
 function selectedCommCallout(i) {
@@ -6405,7 +6533,7 @@ function drawNotes() {
     // A black-and-white print draws every note white, whatever colour it was given on screen.
     const color = (NavAid.printOverride ? null : n.color) || tune('noteDefaultFillColor') || NOTE_DEFAULT_COLOR;
     if (n.cc) {
-      if (!commCalloutDragging(i)) drawCommCallout(n, selected);
+      if (!commCalloutDragging(i)) drawCommCallout(n, selected, n.ret ? tune('commChangeReturnArrowColor') : undefined);
       continue;
     }
     octx.fillStyle = tintFill(color, tune('kiteNoteAlpha'));   // notes share the gist-tuned kite opacity
@@ -6722,7 +6850,7 @@ function routeInkRects() {
       if (!offClockHere && typeof cumLabelCenter === 'function') {
         pushRotated(cumLabelCenter(i), kB.x, kB.y, cum.halfL, cum.halfW);
       }
-      if (inkReturnOn && typeof cumLabelRetCenter === 'function') {
+      if (inkReturnOn && !(typeof legInsideCtr === 'function' && legInsideCtr(i)) && typeof cumLabelRetCenter === 'function') {
         pushRotated(cumLabelRetCenter(i), kA.x, kA.y, cum.halfL, cum.halfW);
       }
     }
