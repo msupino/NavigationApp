@@ -549,9 +549,10 @@ function paintLegendPoints() {
   const bubble = (weekend) => ctx => {
     ctx.beginPath();
     ctx.moveTo(5, 3); ctx.lineTo(16, 3); ctx.lineTo(13, 15); ctx.lineTo(2, 15); ctx.closePath();
-    ctx.fillStyle = weekend ? 'rgba(201,178,138,0.55)' : 'rgba(60,160,60,0.25)';
+    ctx.fillStyle = weekend ? colorWithAlpha(tune('lsaWeekendFillColor'), tune('lsaLegendWeekendFillAlpha'))
+      : colorWithAlpha(tune('lsaAreaFillColor'), tune('lsaLegendFillAlpha'));
     ctx.fill();
-    ctx.lineWidth = 1.6;
+    ctx.lineWidth = tune('lsaLegendLineWidthPx');
     ctx.strokeStyle = tune(weekend ? 'lsaWeekendColor' : 'lsaAlwaysColor');
     ctx.stroke();
   };
@@ -932,7 +933,6 @@ window.orderMapControls = orderMapControls;
 // One line-icon set for the whole in-flight column: 24-unit box, 2-unit round strokes in
 // currentColor, so the button's state colour (style.css, "The in-flight column") drives them.
 // The follow target's centre fills while it is holding the map on the aircraft.
-const NEEDLE_COLOR = '#ff5a45';        // compass north half: red, readable on dark and on blue
 const MAP_ICON_OPEN = '<svg viewBox="0 0 24 24" width="26" height="26" aria-hidden="true"'
   + ' focusable="false" fill="none" stroke="currentColor" stroke-width="2"'
   + ' stroke-linecap="round" stroke-linejoin="round">';
@@ -1064,7 +1064,7 @@ function compassIconSvg(deg, hdg) {
     + '<svg viewBox="0 0 24 24" width="26" height="26" aria-hidden="true" focusable="false">'
     + '<circle cx="12" cy="12" r="9.3" fill="none" stroke="currentColor" stroke-width="2"/>'
     + '<g transform="rotate(' + (Number.isFinite(deg) ? compassDeg(deg) : 0) + ' 12 12)">'
-    + '<path d="M12 4.6 15 12H9z" fill="' + NEEDLE_COLOR + '"/>'
+    + '<path d="M12 4.6 15 12H9z" fill="' + tune('compassNeedleColor') + '"/>'
     + '<path d="M12 19.4 9 12h6z" fill="currentColor" fill-opacity=".55"/>'
     + '</g></svg>' + readout + '</span>';
 }
@@ -2926,6 +2926,7 @@ async function buildRouteFromQuery(raw) {
   wpSearch.value = '';
   if (searchDocked()) closeSearch();
   else hideSearchOverlay();
+  finishDeckSearch();
   showInspector();
   fitView();
   // Auto-route applies to a search-built route too: typing "LLHZ RIDNG" is the same
@@ -3469,7 +3470,7 @@ if (typeof window !== 'undefined') window.showProfileModal = showProfileModal;
 function exportProfilePng(title, subtitle, paint) {
   const w = Math.round((typeof tune === 'function' && tune('profileExportWidthPx')) || 1200);
   const h = Math.round((typeof tune === 'function' && tune('profileExportHeightPx')) || 420);
-  const head = 46;
+  const head = Math.round(tune('profileExportHeaderPx'));
   const canvas = document.createElement('canvas');
   canvas.width = w;
   canvas.height = h;
@@ -3484,15 +3485,15 @@ function exportProfilePng(title, subtitle, paint) {
   ctx.textBaseline = 'top';
   ctx.direction = rtl ? 'rtl' : 'ltr';
   ctx.textAlign = rtl ? 'right' : 'left';
-  const tx = rtl ? w - 12 : 12;
+  const tx = rtl ? w - tune('profileExportInsetPx') : tune('profileExportInsetPx');
   ctx.fillStyle = (typeof tune === 'function' && tune('profileTextColor')) || '#e8e8e8';
-  ctx.font = 'bold 16px sans-serif';
-  ctx.fillText(String(title || ''), tx, 10, w - 24);
+  ctx.font = 'bold ' + tune('profileExportTitleFontPx') + 'px sans-serif';
+  ctx.fillText(String(title || ''), tx, tune('profileExportTitleTopPx'), w - 2 * tune('profileExportInsetPx'));
   if (subtitle) {
     ctx.direction = 'ltr';
-    ctx.font = '12px sans-serif';
+    ctx.font = tune('profileExportSubtitleFontPx') + 'px sans-serif';
     ctx.fillStyle = (typeof tune === 'function' && tune('profileNmTextColor')) || '#bdb7b7';
-    ctx.fillText(String(subtitle), tx, 30, w - 24);
+    ctx.fillText(String(subtitle), tx, tune('profileExportSubtitleTopPx'), w - 2 * tune('profileExportInsetPx'));
   }
   ctx.direction = rtl ? 'rtl' : 'ltr';
   paint(ctx, 0, head, w, h - head);
@@ -4564,6 +4565,18 @@ function showCoordinateHit(ll) {
   syncSearchResultsStacking();
 }
 
+// A search typed in the deck's Menu sheet (deck.js hostSearch) is done once it has done its
+// job -- a route built, a result picked -- and the sheet goes with it, keyboard and all.
+// Reported from the iPad: Return built the route and left the menu open over it.
+function finishDeckSearch() {
+  if (!searchOverlay.classList.contains('deck-hosted-search')) return;
+  wpSearch.blur();
+  if (window.NavAid && typeof NavAid.closeDeckSheet === 'function') NavAid.closeDeckSheet();
+}
+wpResults.addEventListener('click', e => {
+  // After the item's own handler (this listens on the list, the item's is on the item).
+  if (e.target.closest && e.target.closest('.wp-search-item')) finishDeckSearch();
+});
 wpSearch.addEventListener('input', runSearch);
 wpSearch.addEventListener('focus', () => { if (wpSearch.value.trim()) runSearch(); });
 wpSearch.addEventListener('keydown', e => {
@@ -4962,8 +4975,29 @@ document.getElementById('reverse').onclick = () => {
   // depends on travel direction — so before reversing, note which callouts are
   // still on their (pre-reverse) default tail; those get re-defaulted after the
   // reversal so they flip with the route. User-dragged callouts are left put.
+  // With the return path shown, the way out and the way back simply trade places: each
+  // callout keeps its spot and its station, and only its direction tag flips (below). Hidden,
+  // the way-back callouts were for the old direction's way home -- dropped, they are seeded
+  // afresh for the new one when the return path is next shown.
+  const flipCommDir = typeof returnCommOn === 'function' && returnCommOn();
+  if (!flipCommDir && state.notes.some(n => n && n.ret)) {
+    const sel0 = state.selected;
+    const selNote0 = sel0 && sel0.type === 'note' ? state.notes[sel0.index] : null;
+    const selFreq0 = sel0 && sel0.type === 'wp' && Number.isInteger(sel0.freqNoteIndex)
+      ? state.notes[sel0.freqNoteIndex] : null;
+    state.notes = state.notes.filter(n => !(n && n.ret));
+    state.commChangeSuppressions = (state.commChangeSuppressions || [])
+      .filter(v => !(typeof v === 'string' && v.startsWith(RET_COMM_SUP)));
+    if (selNote0) {
+      const i = state.notes.indexOf(selNote0);
+      state.selected = i >= 0 ? { type: 'note', index: i } : null;
+    } else if (sel0 && sel0.type === 'wp' && Number.isInteger(sel0.freqNoteIndex)) {
+      const i = state.notes.indexOf(selFreq0);
+      if (i >= 0) sel0.freqNoteIndex = i; else delete sel0.freqNoteIndex;
+    }
+  }
   const commOnDefault = new Set();
-  if (typeof commCalloutTarget === 'function' && typeof commCalloutDefaultTail === 'function') {
+  if (!flipCommDir && typeof commCalloutTarget === 'function' && typeof commCalloutDefaultTail === 'function') {
     for (const n of state.notes) {
       if (!n || !n.cc) continue;
       const wp = commCalloutTarget(n);
@@ -5032,6 +5066,15 @@ document.getElementById('reverse').onclick = () => {
     };
   });
   applyLegAltitudesToRoute();
+  if (flipCommDir) {
+    for (const n of state.notes) {
+      if (!n || !n.cc) continue;
+      if (n.ret) delete n.ret; else n.ret = 1;
+    }
+    state.commChangeSuppressions = (state.commChangeSuppressions || []).map(v =>
+      typeof v !== 'string' ? v
+        : (v.startsWith(RET_COMM_SUP) ? v.slice(RET_COMM_SUP.length) : RET_COMM_SUP + v));
+  }
   // Identification-point ovals are anchored to (leg, t); reversing flips both
   // so the oval stays on the same geographic spot instead of jumping to the
   // mirrored end. new leg = (M-1) - leg; new t = 1 - t.
@@ -6462,10 +6505,26 @@ document.getElementById('limit-kites-cb').onchange = e => {
 })();
 
 document.getElementById('ret-cb').onchange = e => {
+  // The callouts' default side depends on the return path (commCalloutDefaultTail): one still
+  // on its default spot moves with the switch; a dragged one stays where it was put.
+  const atDefault = (typeof commCalloutTarget === 'function' && typeof commNoteDefaultTail === 'function')
+    ? state.notes.filter(n => {
+      if (!n || !n.cc || n.ret) return false;
+      const wp = commCalloutTarget(n);
+      const d = wp ? commNoteDefaultTail(n, wp) : null;
+      return !!d && Math.abs(n.lat - d.lat) < 1e-4 && Math.abs(n.lng - d.lng) < 1e-4;
+    }) : [];
   window.showReturn =e.target.checked;
+  for (const n of atDefault) {
+    const d = commNoteDefaultTail(n, commCalloutTarget(n));
+    n.lat = d.lat; n.lng = d.lng;
+  }
   try { localStorage.setItem(RETURN_KEY, showReturn ? '1' : '0'); } catch (err) { /* */ }
+  // The way back's frequency changes come with it (kept, but hidden, while it is off).
+  const seeded = showCommChange && typeof seedCommChangeNotes === 'function' && seedCommChangeNotes();
   if (fpOpen) { closeFlightPlan(); setTimeout(showFlightPlan, 0); }
   draw();
+  if (seeded && state.selected) showInspector();
 };
 document.getElementById('mid-cb').onchange = e => {
   window.showMidLeg =e.target.checked;
@@ -7405,16 +7464,18 @@ if (windDepartSlider) {
     if (body) body.scrollTop = top;
   }
   window.refreshSurfaceWxRows = refreshSurfaceWxRows;
+  // The point styles, and what the legend says for each (the isobars add their own line).
   const NAMES = {
-    spread: ['swxFieldSpread', 'Dew point spread'], dew: ['swxFieldDew', 'Dew point'],
-    temp: ['swxFieldTemp', 'Temperature'], msl: ['swxFieldMsl', 'Sea-level pressure'],
+    station: ['swxPtsStation', 'Station plot: temperature / dew point'],
+    spread: ['swxFieldSpread', 'Dew point spread'],
     base: ['swxFieldBase', 'Cloud base (estimate)'],
+    none: ['swxPtsNone', 'No points'],
   };
   const LEGEND = {
+    station: ['swxLegendStation', 'Temperature above, dew point below (°C); the dot red when they are 2 °C apart or less, amber at 4 °C'],
     spread: ['swxLegendSpread', 'Red: spread 2 °C or less, fog and low cloud likely · amber: 4 °C or less'],
     base: ['swxLegendBase', 'Red: 1,000 ft or lower · amber: 2,000 ft or lower · (T − Td) × 400 ft, an estimate'],
-    dew: ['swxLegendDew', 'Dew point at 2 m, °C'], temp: ['swxLegendTemp', 'Temperature at 2 m, °C'],
-    msl: ['swxLegendMsl', 'Isobars every 2 hPa · H high, L low'],
+    none: null,
   };
   function say(msg, loading) {
     if (!statusEl) return;
@@ -7440,40 +7501,55 @@ if (windDepartSlider) {
   }
   function legend() {
     const a = sw();
-    const f = a ? a.field() : 'spread';
+    const pts = a ? a.points() : 'station';
     if (legendEl) {
       legendEl.hidden = !cb.checked;
-      legendEl.textContent = cb.checked ? (S[LEGEND[f][0]] || LEGEND[f][1]) : '';
+      const lines = [];
+      if (LEGEND[pts]) lines.push(S[LEGEND[pts][0]] || LEGEND[pts][1]);
+      // The spacing in use (finer on a flat day), in the pilot's pressure unit.
+      if (a && a.isobars()) {
+        const st = a.isobarStep() || (typeof pressureUnit === 'function' && pressureUnit() === 'inHg' ? '0.05\u2033' : '2 hPa');
+        lines.push(typeof S.swxLegendIsobars === 'function' ? S.swxLegendIsobars(st) : 'Isobars every ' + st + ' · H high, L low');
+      }
+      legendEl.textContent = cb.checked ? lines.join(' · ') : '';
     }
     if (fieldsEl) fieldsEl.hidden = !cb.checked;
     updateChip();
   }
-  // The field picker: one of five, as radio buttons in the menu's own style.
+  // The picker: a point style (radio) and the isobars (their own switch), so a station plot can
+  // sit on the pressure pattern the way a surface chart shows them.
   function buildFields() {
     if (!fieldsEl) return;
     const a = sw();
-    let cur = a ? a.field() : null;
-    if (!cur) { try { cur = localStorage.getItem('navaid.surfaceWxField'); } catch (e) { /* storage blocked */ } }
-    cur = NAMES[cur] ? cur : 'spread';
+    const cur = a ? a.points() : 'station';
     fieldsEl.textContent = '';
+    const changed = () => { legend(); if (typeof draw === 'function') draw(); };
     for (const f of Object.keys(NAMES)) {
       const l = document.createElement('label');
       l.className = 'navtoggle swx-field';
       const r = document.createElement('input');
-      r.type = 'radio'; r.name = 'surface-wx-field'; r.value = f; r.checked = f === cur;
+      r.type = 'radio'; r.name = 'surface-wx-points'; r.value = f; r.checked = f === cur;
       r.addEventListener('change', () => {
         // Looked up now, not when the picker was built: ui.js runs before surface-wx.js loads.
         const m = sw();
         if (!r.checked || !m) return;
-        m.setField(f);
-        legend();
-        if (typeof draw === 'function') draw();
+        m.setPoints(f);
+        changed();
       });
-      const s = document.createElement('span');
-      s.textContent = S[NAMES[f][0]] || NAMES[f][1];
-      l.append(r, ' ', s);
+      const s2 = document.createElement('span');
+      s2.textContent = S[NAMES[f][0]] || NAMES[f][1];
+      l.append(r, ' ', s2);
       fieldsEl.appendChild(l);
     }
+    const il = document.createElement('label');
+    il.className = 'navtoggle swx-field swx-isobars';
+    const ic = document.createElement('input');
+    ic.type = 'checkbox'; ic.id = 'surface-wx-isobars'; ic.checked = !!(a && a.isobars());
+    ic.addEventListener('change', () => { const m = sw(); if (!m) return; m.setIsobars(ic.checked); changed(); });
+    const is = document.createElement('span');
+    is.textContent = S.swxIsobars || 'Isobars (sea-level pressure)';
+    il.append(ic, ' ', is);
+    fieldsEl.appendChild(il);
   }
   function refreshFeature() {
     const on = featureOn();
@@ -7529,6 +7605,15 @@ if (windDepartSlider) {
   const start = () => {
     buildFields();
     refreshFeature();
+    // The pressure unit is a setting of its own: the isobars, the chip and the legend follow it.
+    const unitSel = document.getElementById('pressure-unit');
+    // Next tick: the setting's own handler stores the new unit first.
+    if (unitSel) unitSel.addEventListener('change', () => setTimeout(() => {
+      if (!window.showSurfaceWx) return;
+      legend();
+      if (typeof draw === 'function') draw();
+      refreshSurfaceWxRows(true);
+    }, 0));
     try { if (lsGet(KEY) === '1' && featureOn()) cb.checked = true; } catch (e) { /* storage blocked */ }
     window.showSurfaceWx = !!cb.checked;
     legend();
@@ -7781,6 +7866,45 @@ function refreshSettingsAircraft() {
   if (!a || !(Number(a.gph) > 0)) a = { gph: tune('defaultGph'), taxiGal: tune('defaultTaxiGal') };
   if (document.activeElement !== g) g.value = a.gph;
   if (document.activeElement !== t) t.value = a.taxiGal;
+  // The type and its other figures; empty where no type gives one and the pilot set none.
+  const typeSel = document.getElementById('settings-ac-type');
+  if (typeSel) {
+    if (!typeSel.options.length) {
+      for (const code of Object.keys(window.AIRCRAFT_TYPES || {})) {
+        const o = document.createElement('option'); o.value = code; o.textContent = code; typeSel.appendChild(o);
+      }
+      // Last, as in the flight plan form: any other aircraft, with the figures set by hand.
+      const other = document.createElement('option');
+      other.value = ''; other.textContent = S.fplTypeOther || 'Other\u2026';
+      typeSel.appendChild(other);
+    }
+    typeSel.value = (a.type && window.AIRCRAFT_TYPES[a.type]) ? a.type : '';
+  }
+  for (const [id, f] of [['settings-usable', 'usableGal'], ['settings-climb-kt', 'climbKt']]) {
+    const el = document.getElementById(id);
+    if (el && document.activeElement !== el) el.value = Number(a[f]) > 0 ? a[f] : '';
+  }
+  // A dot on each figure changed from the type's, saying what the type gives; Restore when any is.
+  let any = false;
+  for (const lab of document.querySelectorAll('.ac-field[data-field]')) {
+    const f = lab.dataset.field;
+    const d = typeof aircraftTypeDefault === 'function' ? aircraftTypeDefault(f) : null;
+    const cur = f === 'climbFpm' ? (window.profileVS > 0 ? window.profileVS : a.climbFpm) : a[f];
+    const changed = d !== null && Number(cur) !== d;
+    lab.classList.toggle('ac-overridden', changed);
+    lab.dataset.typeValue = changed ? String(d) : '';
+    if (lab.dataset.baseTitle === undefined) lab.dataset.baseTitle = lab.title || '';
+    lab.title = changed && typeof S.aircraftChangedFrom === 'function'
+      ? lab.dataset.baseTitle + ' \u2014 ' + S.aircraftChangedFrom(d) : lab.dataset.baseTitle;
+    if (changed) any = true;
+  }
+  const restore = document.getElementById('settings-ac-restore');
+  if (restore) {
+    const has = !!(a.type && window.AIRCRAFT_TYPES[a.type]);
+    restore.hidden = !has;
+    restore.textContent = has ? (typeof S.tbAircraftRestore === 'function' ? S.tbAircraftRestore(a.type) : 'Restore ' + a.type + ' figures') : '';
+    if (typeof setButtonWhy === 'function') setButtonWhy(restore, any ? null : (S.whyAircraftAsType || 'Every figure is the type\u2019s already'));
+  }
   // Vertical speed: the flight plan's V/S, the same window.profileVS / navaid.profileVS.
   const vs = document.getElementById('settings-vs');
   if (vs && document.activeElement !== vs) {
@@ -7804,10 +7928,47 @@ window.refreshSettingsAircraft = refreshSettingsAircraft;
     }
     const gph = parseFloat(g.value);
     if (!(gph > 0)) return;            // an empty box is not a profile; storage keeps the last one
-    aircraft = { gph, taxiGal: parseFloat(t.value) || 0 };
+    // Only the two fuel figures change here; the type and its other figures stay.
+    aircraft = Object.assign({}, aircraft || {}, { gph, taxiGal: parseFloat(t.value) || 0 });
     if (typeof saveAircraft === 'function') saveAircraft();
+    refreshSettingsAircraft();
     draw();
   };
+  // The type: every figure from its table, the flight plan's fields and the filing type with it.
+  const typeSel = document.getElementById('settings-ac-type');
+  const pushToPlan = () => {
+    const fpG = document.getElementById('aircraft-gph');
+    const fpT = document.getElementById('aircraft-taxi');
+    if (fpG && fpT && aircraft) { fpG.value = aircraft.gph; fpT.value = aircraft.taxiGal; fpG.dispatchEvent(new Event('input')); }
+    const fpVs = document.querySelector('.fp-profile-vs-input');
+    if (fpVs && window.profileVS > 0) { fpVs.value = String(window.profileVS); fpVs.dispatchEvent(new Event('input')); }
+    refreshSettingsAircraft();
+    draw();
+  };
+  // One aircraft, two places to choose it: Settings and the flight plan form's type. Either one
+  // sets the type, its figures and the type filed, and it is remembered.
+  function applyAircraftType(code) {
+    setAircraftType(code);
+    // The form's own profile field (io.js FPL_PROFILE_PREFIX + 'type'), synced with that profile.
+    if (code) { try { localStorage.setItem(FPL_PROFILE_PREFIX + 'type', code); } catch (e) { /* storage off */ } }
+    pushToPlan();
+  }
+  window.applyAircraftType = applyAircraftType;
+  if (typeSel) typeSel.addEventListener('change', () => applyAircraftType(typeSel.value));
+  const restore = document.getElementById('settings-ac-restore');
+  if (restore) restore.addEventListener('click', () => { restoreAircraftDefaults(); pushToPlan(); });
+  for (const [id, f, parse] of [['settings-usable', 'usableGal', parseFloat], ['settings-climb-kt', 'climbKt', parseFloat]]) {
+    const el = document.getElementById(id);
+    if (!el) continue;
+    el.addEventListener('input', () => {
+      const v = parse(el.value);
+      if (!(v > 0)) return;
+      aircraft = Object.assign({}, aircraft || { gph: tune('defaultGph'), taxiGal: tune('defaultTaxiGal') }, { [f]: v });
+      if (typeof saveAircraft === 'function') saveAircraft();
+      refreshSettingsAircraft();
+      draw();
+    });
+  }
   g.addEventListener('input', onInput);
   t.addEventListener('input', onInput);
   const vs = document.getElementById('settings-vs');
@@ -7818,6 +7979,7 @@ window.refreshSettingsAircraft = refreshSettingsAircraft;
     if (fpVs) { fpVs.value = String(v); fpVs.dispatchEvent(new Event('input')); return; }
     window.profileVS = v;
     try { localStorage.setItem('navaid.profileVS', String(v)); } catch (e) { /* ignore */ }
+    refreshSettingsAircraft();
     draw();            // the map's TOC marker moves with the climb
   });
   refreshSettingsAircraft();
@@ -10970,6 +11132,27 @@ wireColorPicker('waypoint-color', 'waypointFillColor', 'navaid.waypointColor');
 // separate fill keys. The RETURN arrows keep their own colours on purpose -- they are
 // deliberately different so the return path reads as the return path.
 wireColorPicker('leg-arrow-color', ['legKiteFillColor', 'cumKiteFillColor'], 'navaid.legArrowColor');
+wireColorPicker('return-arrow-color', ['returnKiteFillColor', 'returnCumKiteFillColor'], 'navaid.returnArrowColor');
+wireColorPicker('minute-to-color', ['minuteMarkerToColor'], 'navaid.minuteToColor');
+wireColorPicker('minute-from-color', ['minuteMarkerFromColor'], 'navaid.minuteFromColor');
+// The way-back colours act only while the return path shows: dimmed otherwise, saying so
+// (dim, never hide -- the pilot still finds them where they belong).
+function refreshReturnColorRows() {
+  for (const id of ['minute-from-color', 'return-arrow-color']) {
+    const el = document.getElementById(id);
+    const row = el && el.closest('label');
+    if (!row) continue;
+    const off = !showReturn;
+    row.classList.toggle('navtoggle-idle', off);
+    if (typeof setButtonWhy === 'function') setButtonWhy(el, off ? (S.whyReturnColorOff || 'Shown with Show return path (B)') : null);
+  }
+}
+window.refreshReturnColorRows = refreshReturnColorRows;
+refreshReturnColorRows();
+{
+  const rc = document.getElementById('ret-cb');
+  if (rc) rc.addEventListener('change', () => setTimeout(refreshReturnColorRows, 0));
+}
 
 const MAPOPACITY_KEY = 'navaid.mapOpacity.v2';
 // `var` (not `let`) so writes from any module via window.mapOpacity reach
@@ -11047,6 +11230,25 @@ LEGARROW_EL.oninput = e => {
   catch (err) { /* storage unavailable */ }
   draw();
 };
+
+// Minute markers size: the same scale and grid as the leg arrows, 1.0 in the middle.
+const MINSIZE_KEY = 'navaid.minuteMarkerSize';
+try {
+  const v = parseFloat(lsGet(MINSIZE_KEY));
+  if (!isNaN(v)) window.minuteMarkerSize = Math.max(LEGARROW_MIN, Math.min(LEGARROW_MAX, v));
+} catch (e) { /* storage unavailable */ }
+const MINSIZE_EL = document.getElementById('minute-size');
+if (MINSIZE_EL) {
+  MINSIZE_EL.min = String(LEGARROW_MIN); MINSIZE_EL.max = String(LEGARROW_MAX); MINSIZE_EL.step = String(LEGARROW_STEP);
+  MINSIZE_EL.value = minuteMarkerSize;
+  updateSliderVal(MINSIZE_EL, sizeSliderVal(minuteMarkerSize));
+  MINSIZE_EL.oninput = e => {
+    window.minuteMarkerSize = parseFloat(e.target.value);
+    updateSliderVal(e.target, sizeSliderVal(e.target.value));
+    try { localStorage.setItem(MINSIZE_KEY, String(minuteMarkerSize)); } catch (err) { /* storage unavailable */ }
+    draw();
+  };
+}
 
 // A slider whose RANGE changed needs a new key, or an out-of-range saved value gets
 // silently clamped and the pilot sees a width they never chose. Bumping alone would
@@ -11130,7 +11332,7 @@ if (KITEALPHA_EL) {
   };
   KITEALPHA_EL.parentElement.appendChild(btn);
 }
-['yellow-alpha', 'map-opacity', 'wp-size', 'leg-arrow-size', 'leg-line-width', 'drift-line-width',
+['yellow-alpha', 'map-opacity', 'wp-size', 'leg-arrow-size', 'minute-size', 'leg-line-width', 'drift-line-width',
  'mag-zoom', 'windfield-alt']
   .forEach(id => addSliderReset(document.getElementById(id)));
 // Magnetic variation has its own control under the default speed (magvar-mode).
@@ -11185,7 +11387,7 @@ document.getElementById('tool-reset-all-markers').onclick = async () => {
     if (!note || !note.cc) continue;
     const target = typeof commCalloutTarget === 'function' ? commCalloutTarget(note) : null;
     if (target && typeof commCalloutDefaultTail === 'function') {
-      const tail = commCalloutDefaultTail(target);
+      const tail = commNoteDefaultTail(note, target);
       note.lat = tail.lat;
       note.lng = tail.lng;
     }
@@ -12873,7 +13075,9 @@ if (typeof loadRemoteConfig === "function") {
     // A gist-shipped default is in force now, so the legs following it move too.
     if (typeof carryDefaultSpeedToRoute === 'function') carryDefaultSpeedToRoute();
     for (const [id, keys] of [['waypoint-color', ['waypointFillColor']],
-      ['leg-arrow-color', ['legKiteFillColor', 'cumKiteFillColor']]]) {
+      ['leg-arrow-color', ['legKiteFillColor', 'cumKiteFillColor']],
+      ['return-arrow-color', ['returnKiteFillColor', 'returnCumKiteFillColor']],
+      ['minute-to-color', ['minuteMarkerToColor']], ['minute-from-color', ['minuteMarkerFromColor']]]) {
       const el = document.getElementById(id);
       if (el) el.value = tune(keys[0]);
     }
@@ -14284,7 +14488,7 @@ window.makeImageZoomable = makeImageZoomable;
           const o = document.createElement('canvas');
           o.width = w; o.height = outH;
           const octx = o.getContext('2d');
-          octx.fillStyle = '#fff';
+          octx.fillStyle = tune('sigwxPaperColor');
           octx.fillRect(0, 0, w, outH);
           let y = pad;
           for (const b of merged) {
@@ -14553,7 +14757,7 @@ window.makeImageZoomable = makeImageZoomable;
       const c = document.createElement('canvas');
       c.width = cw; c.height = ch;
       const ctx = c.getContext('2d');
-      ctx.fillStyle = '#fff';
+      ctx.fillStyle = tune('sigwxPaperColor');
       ctx.fillRect(0, 0, cw, ch);
       const x = Math.round((cw - W) / 2);
       if (h) ctx.drawImage(h, x, 0, W, hh);

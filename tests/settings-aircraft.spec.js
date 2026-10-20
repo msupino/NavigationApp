@@ -24,7 +24,8 @@ test('Settings shows the profile and saves a change to it', async ({ page }) => 
   expect(Number(before.sGph)).toBeGreaterThan(0);
   await type(page, 'settings-gph', '9.5');
   await type(page, 'settings-taxi', '1.4');
-  expect((await values(page)).stored).toEqual({ gph: 9.5, taxiGal: 1.4 });
+  // The two figures, on the default C172 profile (its other figures ride along).
+  expect((await values(page)).stored).toMatchObject({ type: 'C172', gph: 9.5, taxiGal: 1.4 });
   // ...and it survives a reload, read back into Settings.
   await page.reload();
   await page.waitForFunction(() => !!document.getElementById('settings-gph'));

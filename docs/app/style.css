@@ -5059,8 +5059,10 @@ body.deck-on .swx-fields .swx-field { min-height: 44px; }
 .swx-chip {
   position: absolute; z-index: 650; pointer-events: none;
   top: calc(var(--navaid-deck-strip-h, 46px) + 8px); left: 50%; transform: translateX(-50%);
-  max-width: calc(100% - 140px); padding: 4px 10px; border-radius: 999px;
-  font: 600 12px/1.3 sans-serif; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  /* Two lines rather than an ellipsis: a station plot with isobars names two things and the hour,
+     and in Hebrew on a phone the cut fell on the hour. */
+  max-width: calc(100% - 140px); padding: 4px 12px; border-radius: 14px;
+  font: 600 12px/1.3 sans-serif; text-align: center; text-wrap: balance;
   color: var(--navaid-mapbtn-fg, #fff); background: var(--navaid-mapbtn-bg, rgba(22, 30, 40, 0.82));
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
 }
@@ -8548,7 +8550,10 @@ body.theme-dark .deck-btn-here[aria-pressed="true"] { color: #6fdc9a; background
 /* The chart's own furniture moves up out of the deck's way, and the closed menu card gives
    up its corner: everything it held is on the deck or one tap inside it. */
 body.deck-on .leaflet-bottom { margin-bottom: calc(var(--navaid-deck-bar-h, 52px) + env(safe-area-inset-bottom, 0px)); }
-body.deck-on #toolbar.collapsed { display: none; }
+/* With the deck on, the old floating menu is off entirely: the menu lives in the deck's
+   Menu sheet (deck.js hostToolbar) and nowhere else. It was hidden only while collapsed,
+   so a wide touch screen -- an iPad, which starts it expanded -- showed both. Reported. */
+body.deck-on #toolbar:not(.deck-hosted) { display: none; }
 /* The open menu starts below the strip. It used to open at the top of the screen with the
    strip drawn over it, so the language picker and the hamburger -- the row that closes it
    again -- were behind an opaque bar. Reported: top banner hides menu in new dock. */
@@ -9458,13 +9463,16 @@ body.deck-on #deck-sheet .tb-section[data-sec="settings"] .tb-section-body > lab
    controls sit together at the row's end, so they line up whatever the name's length -- a
    fixed name column (it was 9.5em / 12.5em) broke under a phone's larger font: the Hebrew
    names outgrew it, the controls stepped out of line, and Magnetic variation wrapped. */
-#toolbar .tb-section[data-sec="settings"] .tb-section-body > .navtoggle {
+#toolbar .tb-section[data-sec="settings"] .tb-section-body > .navtoggle,
+#toolbar .tb-section[data-sec="settings"] #settings-ac-custom > .navtoggle {
   display: flex; flex-wrap: nowrap; align-items: center; gap: 6px;
 }
-#toolbar .tb-section[data-sec="settings"] .tb-section-body > .navtoggle > span:first-child {
+#toolbar .tb-section[data-sec="settings"] .tb-section-body > .navtoggle > span:first-child,
+#toolbar .tb-section[data-sec="settings"] #settings-ac-custom > .navtoggle > span:first-child {
   flex: 1 1 auto; min-width: 0;
 }
-#toolbar .tb-section[data-sec="settings"] .tb-section-body > .navtoggle > :not(span:first-child) { flex: 0 0 auto; }
+#toolbar .tb-section[data-sec="settings"] .tb-section-body > .navtoggle > :not(span:first-child),
+#toolbar .tb-section[data-sec="settings"] #settings-ac-custom > .navtoggle > :not(span:first-child) { flex: 0 0 auto; }
 
 /* ---- Menu fields: one family ------------------------------------------------------------
    UI/UX audit of every select, field, swatch and reset button in the menus, both themes:
@@ -9899,3 +9907,14 @@ body.theme-light #export-progress { background: #fafcff; color: #1d2430; border-
   .route-template-row select,
   .route-template-row input { min-height: 44px; font-size: 15px; }
 }
+
+/* Settings -> Aircraft: a figure changed from the type's carries a small dot after its name. */
+.ac-field.ac-overridden > span::after {
+  content: ' \2022'; color: #b45309; font-weight: 700;
+}
+#settings-ac-restore { margin-block: 4px 2px; }
+
+/* Custom figures: a fold inside the settings column, as wide as the rows around it. */
+#settings-ac-custom { display: block; width: 100%; }
+#settings-ac-custom > summary { cursor: pointer; padding: 6px 2px; font-weight: 600; min-height: 32px; }
+body.deck-on #settings-ac-custom > summary { min-height: 44px; display: flex; align-items: center; }

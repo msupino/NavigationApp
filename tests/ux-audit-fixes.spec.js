@@ -9,9 +9,9 @@ test.beforeEach(async ({ page }) => {
   await page.addInitScript(() => { window.__navaidTune = Object.assign(window.__navaidTune || {}, { featureRouteIntro: true }); });
 });
 
-async function boot(page, w, h) {
+async function boot(page, w, h, query) {
   if (w) await page.setViewportSize({ width: w, height: h });
-  await page.goto('?lang=en&nogist');
+  await page.goto('?lang=en&nogist' + (query || ''));
   await page.waitForFunction(() => typeof state !== 'undefined' && typeof draw === 'function');
   await page.evaluate(() => {
     state.waypoints = []; state.legs = []; state.notes = [];
@@ -139,8 +139,10 @@ test('add-mode shows a lasting cue on the map that can stop it', async ({ page }
   await expect(add).not.toHaveClass(/edit-col-on/);
 });
 
+// The floating phone menu: with the deck on (the default) it is never shown, so this is the
+// deck-off layout (?deck=0, or featureMobileDeck off in the gist).
 test('mobile: arming a map tool gets the menu off the map', async ({ page }) => {
-  await boot(page, 375, 812);
+  await boot(page, 375, 812, '&deck=0');
   const r = await page.evaluate(async () => {
     const bar = document.getElementById('toolbar');
     if (typeof window.collapseToolbarForMapTool === 'function') { /* present */ }

@@ -79,7 +79,10 @@ function cumKiteMinAnchorDistPx(wpIdx) {
 // when only the renderer knew the angle the kite painted in one place and could be grabbed
 // in another.
 function cumDefaultLabelOffset() {
-  const deg = (typeof tune === 'function' ? tune('cumKiteAngleDeg') : 180) || 0;
+  // With the return path shown each direction keeps all its marks on its own side, so the
+  // box joins the nav kite (cumKiteAngleReturnDeg); one way, it stays clear of it.
+  const deg = (typeof tune === 'function'
+    ? tune(returnCommOn() ? 'cumKiteAngleReturnDeg' : 'cumKiteAngleDeg') : 180) || 0;
   const rad = deg * Math.PI / 180;
   const d = cumDefaultLabelPerp();
   return { perp: Math.cos(rad) * d, along: Math.sin(rad) * d };
@@ -149,7 +152,7 @@ function drawOwnShip(pos, hdg, gsKt) {
   const r = tune('liveAircraftRadiusPx');
   octx.save();
   // Inside the existing save/restore, on the overlay canvas the symbol is actually drawn on.
-  if (stale) octx.globalAlpha = 0.35;
+  if (stale) octx.globalAlpha = tune('ownShipStaleAlpha');
   octx.translate(s.x, s.y);
   octx.rotate(screenAngle);
 
@@ -159,10 +162,10 @@ function drawOwnShip(pos, hdg, gsKt) {
   const k = r / 13.5;
   octx.scale(k, k);
   octx.lineJoin = 'round';
-  octx.shadowColor = 'rgba(0,0,0,0.35)';
-  octx.shadowBlur = 4;
-  octx.shadowOffsetY = 1.5;
-  octx.lineWidth = 3.2;
+  octx.shadowColor = colorWithAlpha(tune('ownShipShadowColor'), tune('ownShipShadowAlpha'));
+  octx.shadowBlur = tune('ownShipShadowBlurPx');
+  octx.shadowOffsetY = tune('ownShipShadowOffsetPx');
+  octx.lineWidth = tune('ownShipHaloWidthPx');
   octx.strokeStyle = tune('ownShipHaloColor');
   octx.stroke(OWN_SHIP_PATH);
   octx.shadowColor = 'transparent';
@@ -457,7 +460,7 @@ function drawHeadingLine(pos, hdg, gsKt, opts) {
     const point = pathAtNm(nm).screen;
     octx.lineTo(point.x, point.y);
   }
-  octx.strokeStyle = colorWithAlpha(tune('liveHeadingLineColor'), 0.95);
+  octx.strokeStyle = colorWithAlpha(tune('liveHeadingLineColor'), tune('liveHeadingLineAlpha'));
   octx.lineWidth = tune('liveHeadingLineWidthPx');
   octx.setLineDash([tune('liveHeadingDashPx'), tune('liveHeadingDashGapPx')]);
   octx.stroke();
@@ -482,7 +485,7 @@ function drawHeadingLine(pos, hdg, gsKt, opts) {
     octx.beginPath();
     octx.moveTo(m.x - px * tick, m.y - py * tick);
     octx.lineTo(m.x + px * tick, m.y + py * tick);
-    octx.strokeStyle = colorWithAlpha(tune('liveHeadingLineColor'), 0.9);
+    octx.strokeStyle = colorWithAlpha(tune('liveHeadingLineColor'), tune('liveHeadingTickAlpha'));
     octx.lineWidth = tune('liveHeadingLineWidthPx');
     octx.stroke();
     const lx = m.x + px * (tick + gap), ly = m.y + py * (tick + gap);
@@ -569,19 +572,19 @@ function drawProfileMarkers() {
     octx.save();
     octx.fillStyle = color;
     octx.strokeStyle = tune('profileMarkerHaloColor');
-    octx.lineWidth = 1.5;
+    octx.lineWidth = tune('profileMarkerRingWidthPx');
     octx.beginPath();
-    octx.arc(x, y, 4, 0, 2 * Math.PI);
+    octx.arc(x, y, tune('profileMarkerRadiusPx'), 0, 2 * Math.PI);
     octx.fill();
     octx.stroke();
-    octx.font = 'bold 11px sans-serif';
+    octx.font = 'bold ' + tune('profileMarkerFontPx') + 'px sans-serif';
     octx.textAlign = 'left';
     octx.textBaseline = 'middle';
-    octx.lineWidth = 3;
-    octx.strokeStyle = colorWithAlpha(tune('profileMarkerHaloColor'), 0.9);
-    octx.strokeText(label, x + 7, y);
+    octx.lineWidth = tune('profileMarkerTextHaloPx');
+    octx.strokeStyle = colorWithAlpha(tune('profileMarkerHaloColor'), tune('profileMarkerHaloAlpha'));
+    octx.strokeText(label, x + tune('profileMarkerLabelGapPx'), y);
     octx.fillStyle = color;
-    octx.fillText(label, x + 7, y);
+    octx.fillText(label, x + tune('profileMarkerLabelGapPx'), y);
     octx.restore();
   };
   for (const t of prof.tocs) mark(t, S.toc || 'TOC', tune('profileTocColor'));
@@ -817,10 +820,10 @@ function drawProfileLegend(ctx, x, y, w, items) {
   const list = (items || []).filter(Boolean);
   if (!list.length) return;
   ctx.save();
-  ctx.font = '8px sans-serif';
+  ctx.font = tune('profileFontPx') + 'px sans-serif';
   ctx.textBaseline = 'middle';
   ctx.textAlign = 'left';
-  const swatch = 12, gap = 5, pad = 10;
+  const swatch = tune('profileLegendSwatchPx'), gap = tune('profileLegendGapPx'), pad = tune('profileLegendPadPx');
   // Right to left in an RTL interface: the key reads with everything else on the page.
   const rtl = document.documentElement && document.documentElement.dir === 'rtl';
   let used = 0;
@@ -832,11 +835,11 @@ function drawProfileLegend(ctx, x, y, w, items) {
     const it = list[i];
     const cy = y + 4;
     if (it.fill) {
-      ctx.fillStyle = colorWithAlpha(it.color, 0.85);
+      ctx.fillStyle = colorWithAlpha(it.color, tune('profileTerrainAlpha'));
       ctx.fillRect(cursor, cy - 3, swatch, 6);
     } else {
       ctx.strokeStyle = it.color;
-      ctx.lineWidth = it.width || 2;
+      ctx.lineWidth = it.width || tune('profileLineWidthPx');
       ctx.setLineDash(it.dash || []);
       ctx.beginPath();
       ctx.moveTo(cursor, cy + 0.5);
@@ -969,22 +972,22 @@ function drawTrackProfile(ctx, x, y, w, h, pts, opts) {
   const niceSteps = [100, 200, 500, 1000, 2000, 5000, 10000, 20000];
   const yStep = niceSteps.find(st => (maxA - minA) / st <= 5) || 50000;
   ctx.textBaseline = 'middle';
-  ctx.font = '8px sans-serif';
+  ctx.font = tune('profileFontPx') + 'px sans-serif';
   for (let a = 0; a <= maxA; a += yStep) {
     const gy = py(a);
-    ctx.strokeStyle = colorWithAlpha(tune('profileGridColor'), 0.16);
-    ctx.lineWidth = 1;
+    ctx.strokeStyle = colorWithAlpha(tune('profileGridColor'), tune('profileGridAlpha'));
+    ctx.lineWidth = tune('profileGridWidthPx');
     ctx.beginPath(); ctx.moveTo(x0, gy + 0.5); ctx.lineTo(x + w, gy + 0.5); ctx.stroke();
     ctx.fillStyle = tune('profileTextColor');
     ctx.textAlign = 'right';
-    ctx.fillText(String(a), x0 - 3, gy);
+    ctx.fillText(String(a), x0 - tune('profileLabelGapPx'), gy);
   }
   ctx.fillStyle = tune('profileTextColor');
   ctx.textAlign = 'left';
   ctx.textBaseline = 'top';
-  ctx.fillText('ft', x + 2, y + 2);
+  ctx.fillText('ft', x + tune('profileCaptionInsetPx'), y + tune('profileCaptionInsetPx'));
   ctx.strokeStyle = tune('profileGroundColor');
-  ctx.lineWidth = 1;
+  ctx.lineWidth = tune('profileGridWidthPx');
   ctx.beginPath(); ctx.moveTo(x0, py(minA) + 0.5); ctx.lineTo(x + w, py(minA) + 0.5); ctx.stroke();
   if (terrain.length) {
     let run = [];
@@ -1001,7 +1004,7 @@ function drawTrackProfile(ctx, x, y, w, h, pts, opts) {
       for (const t of r) ctx.lineTo(px(t.d), py(t.ft));
       ctx.lineTo(px(r[r.length - 1].d), py(minA));
       ctx.closePath();
-      ctx.fillStyle = colorWithAlpha(tune('profileTerrainColor'), 0.85);
+      ctx.fillStyle = colorWithAlpha(tune('profileTerrainColor'), tune('profileTerrainAlpha'));
       ctx.fill();
     }
   }
@@ -1011,8 +1014,8 @@ function drawTrackProfile(ctx, x, y, w, h, pts, opts) {
   if (planPts) {
     ctx.save();
     ctx.strokeStyle = tune('profilePlanColor');
-    ctx.lineWidth = 1.5;
-    ctx.setLineDash([6, 4]);
+    ctx.lineWidth = tune('profilePlanWidthPx');
+    ctx.setLineDash([tune('profilePlanDashOnPx'), tune('profilePlanDashOffPx')]);
     ctx.lineJoin = 'round';
     ctx.beginPath();
     ctx.moveTo(px(planPts[0].d), py(planPts[0].alt));
@@ -1025,7 +1028,7 @@ function drawTrackProfile(ctx, x, y, w, h, pts, opts) {
   // drawn straight across ground it never measured.
   if (fts.length) {
     ctx.strokeStyle = tune('profileLineColor');
-    ctx.lineWidth = 2;
+    ctx.lineWidth = tune('profileLineWidthPx');
     ctx.lineJoin = 'round';
     let open = false;
     ctx.beginPath();
@@ -1039,7 +1042,7 @@ function drawTrackProfile(ctx, x, y, w, h, pts, opts) {
     ctx.fillStyle = tune('profileTextColor');
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.font = '10px sans-serif';
+    ctx.font = tune('profileMessageFontPx') + 'px sans-serif';
     ctx.fillText(S.trackProfileNoAlt || 'No altitude recorded', x + w / 2, y + plotH / 2);
   }
   // Ground speed, on its own scale, as one continuous line: unlike a planned leg this is a
@@ -1048,8 +1051,8 @@ function drawTrackProfile(ctx, x, y, w, h, pts, opts) {
     const maxV = Math.max.apply(null, kts) * 1.35 + 5;
     const pv = v => baseY - (v / (maxV || 1)) * plotH;
     ctx.strokeStyle = tune('profileSpeedColor');
-    ctx.lineWidth = 1.5;
-    ctx.setLineDash([3, 3]);
+    ctx.lineWidth = tune('profileSpeedWidthPx');
+    ctx.setLineDash([tune('profileSpeedDashOnPx'), tune('profileSpeedDashOffPx')]);
     let open = false;
     for (const p of samples) {
       if (p.kt == null) { if (open) { ctx.stroke(); open = false; } continue; }
@@ -1061,20 +1064,20 @@ function drawTrackProfile(ctx, x, y, w, h, pts, opts) {
     ctx.fillStyle = tune('profileSpeedColor');
     ctx.textBaseline = 'middle';
     ctx.textAlign = 'left';
-    ctx.font = '8px sans-serif';
+    ctx.font = tune('profileFontPx') + 'px sans-serif';
     const vStep = maxV > 240 ? 100 : maxV > 120 ? 50 : 25;
-    for (let v = vStep; v < maxV; v += vStep) ctx.fillText(String(v), x + w - 14, pv(v));
+    for (let v = vStep; v < maxV; v += vStep) ctx.fillText(String(v), x + w - tune('profileSpeedLabelInsetPx'), pv(v));
     ctx.textBaseline = 'top';
     ctx.textAlign = 'right';
-    ctx.fillText('kt', x + w - 2, y + 2);
+    ctx.fillText('kt', x + w - tune('profileCaptionInsetPx'), y + tune('profileCaptionInsetPx'));
   }
   if (typeof drawProfileLegend === 'function') {
-    drawProfileLegend(ctx, x0, y + 2, plotW - 16, [
+    drawProfileLegend(ctx, x0, y + tune('profileCaptionInsetPx'), plotW - tune('profileLegendRightInsetPx'), [
       fts.length && { color: tune('profileLineColor'),
         text: planPts ? (S.profileLegendFlown || 'flown') : (S.profileLegendAlt || 'altitude') },
-      planPts && { color: tune('profilePlanColor'), dash: [6, 4], width: 1.5,
+      planPts && { color: tune('profilePlanColor'), dash: [tune('profilePlanDashOnPx'), tune('profilePlanDashOffPx')], width: tune('profilePlanWidthPx'),
         text: S.profileLegendPlanned || 'planned' },
-      kts.length && { color: tune('profileSpeedColor'), dash: [3, 3], width: 1.5,
+      kts.length && { color: tune('profileSpeedColor'), dash: [tune('profileSpeedDashOnPx'), tune('profileSpeedDashOffPx')], width: tune('profileSpeedWidthPx'),
         text: S.profileLegendGs || 'ground speed' },
       terrainFt.length && { color: tune('profileTerrainColor'), fill: true,
         text: S.profileLegendTerrain || 'terrain' },
@@ -1083,24 +1086,24 @@ function drawTrackProfile(ctx, x, y, w, h, pts, opts) {
 
   // Distance axis: this one has no waypoints to tick, so it is marked at round numbers.
   ctx.textBaseline = 'top';
-  ctx.lineWidth = 1;
+  ctx.lineWidth = tune('profileGridWidthPx');
   const dSteps = [1, 2, 5, 10, 20, 50, 100];
   const dStep = dSteps.find(st => totalDist / st <= 6) || 200;
   for (let d = 0; d <= totalDist + 0.001; d += dStep) {
     const lx = px(d);
-    ctx.strokeStyle = colorWithAlpha(tune('profileGridColor'), 0.18);
+    ctx.strokeStyle = colorWithAlpha(tune('profileGridColor'), tune('profileGridXAlpha'));
     ctx.beginPath(); ctx.moveTo(lx, y); ctx.lineTo(lx, baseY); ctx.stroke();
     ctx.strokeStyle = tune('profileAxisColor');
-    ctx.beginPath(); ctx.moveTo(lx, baseY + 0.5); ctx.lineTo(lx, baseY + 3.5); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(lx, baseY + 0.5); ctx.lineTo(lx, baseY + 0.5 + tune('profileTickLenPx')); ctx.stroke();
     ctx.fillStyle = tune('profileNmTextColor');
-    ctx.font = '8px sans-serif';
+    ctx.font = tune('profileFontPx') + 'px sans-serif';
     ctx.textAlign = d === 0 ? 'left' : 'center';
-    ctx.fillText(String(Math.round(d)), lx, baseY + 4);
+    ctx.fillText(String(Math.round(d)), lx, baseY + tune('profileAxisRow1Px'));
   }
   ctx.fillStyle = tune('profileTimeTextColor');
-  ctx.font = '7px sans-serif';
+  ctx.font = tune('profileSmallFontPx') + 'px sans-serif';
   ctx.textAlign = rtl ? 'left' : 'right';
-  ctx.fillText('NM', rtl ? x + 2 : x + w - 2, baseY + 4);
+  ctx.fillText('NM', rtl ? x + tune('profileCaptionInsetPx') : x + w - tune('profileCaptionInsetPx'), baseY + tune('profileAxisRow1Px'));
   ctx.restore();
   return true;
 }
@@ -1154,24 +1157,24 @@ function drawVerticalProfile(ctx, x, y, w, h, opts) {
   const range = maxA - minA;
   const yStep = niceSteps.find(s => range / s <= 5) || 50000;
   ctx.textBaseline = 'middle';
-  ctx.font = '8px sans-serif';
+  ctx.font = tune('profileFontPx') + 'px sans-serif';
   for (let a = Math.ceil(minA / yStep) * yStep; a <= maxA; a += yStep) {
     const gy = py(a);
-    ctx.strokeStyle = colorWithAlpha(tune('profileGridColor'), 0.16);
-    ctx.lineWidth = 1;
+    ctx.strokeStyle = colorWithAlpha(tune('profileGridColor'), tune('profileGridAlpha'));
+    ctx.lineWidth = tune('profileGridWidthPx');
     ctx.beginPath(); ctx.moveTo(x0, gy + 0.5); ctx.lineTo(x + w, gy + 0.5); ctx.stroke();
     ctx.fillStyle = tune('profileTextColor');
     ctx.textAlign = 'right';
-    ctx.fillText(String(a), x0 - 3, gy);
+    ctx.fillText(String(a), x0 - tune('profileLabelGapPx'), gy);
   }
   // Y axis unit caption.
   ctx.fillStyle = tune('profileTextColor');
   ctx.textAlign = 'left';
   ctx.textBaseline = 'top';
-  ctx.fillText('ft', x + 2, y + 2);
+  ctx.fillText('ft', x + tune('profileCaptionInsetPx'), y + tune('profileCaptionInsetPx'));
   // ground line
   ctx.strokeStyle = tune('profileGroundColor');
-  ctx.lineWidth = 1;
+  ctx.lineWidth = tune('profileGridWidthPx');
   ctx.beginPath(); ctx.moveTo(x0, py(minA) + 0.5); ctx.lineTo(x + w, py(minA) + 0.5); ctx.stroke();
   // Terrain, under everything the plan draws: filled to the baseline, in runs so a gap in
   // coverage stays a gap rather than a straight line across unmeasured ground. The
@@ -1192,11 +1195,11 @@ function drawVerticalProfile(ctx, x, y, w, h, opts) {
       for (const t of r) ctx.lineTo(px(t.d), py(t.ft));
       ctx.lineTo(px(r[r.length - 1].d), py(minA));
       ctx.closePath();
-      ctx.fillStyle = colorWithAlpha(tune('profileTerrainColor'), 0.85);
+      ctx.fillStyle = colorWithAlpha(tune('profileTerrainColor'), tune('profileTerrainAlpha'));
       ctx.fill();
-      ctx.setLineDash([4, 3]);
-      ctx.lineWidth = 1;
-      ctx.strokeStyle = colorWithAlpha(tune('profileMsaColor'), 0.9);
+      ctx.setLineDash([tune('profileMsaDashOnPx'), tune('profileMsaDashOffPx')]);
+      ctx.lineWidth = tune('profileMsaWidthPx');
+      ctx.strokeStyle = colorWithAlpha(tune('profileMsaColor'), tune('profileMsaAlpha'));
       ctx.beginPath();
       ctx.moveTo(px(r[0].d), py(r[0].ft + msaBuf));
       for (const t of r) ctx.lineTo(px(t.d), py(t.ft + msaBuf));
@@ -1211,14 +1214,14 @@ function drawVerticalProfile(ctx, x, y, w, h, opts) {
   ctx.lineTo(px(prof.totalDist), py(minA));
   ctx.lineTo(px(0), py(minA));
   ctx.closePath();
-  ctx.fillStyle = colorWithAlpha(tune('profileAreaColor'), 0.2);
+  ctx.fillStyle = colorWithAlpha(tune('profileAreaColor'), tune('profileAreaAlpha'));
   ctx.fill();
   // Legs with no altitude typed are drawn at unknownProfileAltFt. Stroke those
   // segments dashed and caption the strip, so an invented height cannot be read
   // as a flown one — a solid confident line said "we are at 2000" for a route
   // the pilot had not given any altitude at all.
   ctx.strokeStyle = tune('profileLineColor');
-  ctx.lineWidth = 2;
+  ctx.lineWidth = tune('profileLineWidthPx');
   ctx.lineJoin = 'round';
   // Stroke consecutive same-dash points as ONE path so the joins survive: drawing
   // a segment at a time left butt ends at every TOC kink. A run's dash state is
@@ -1228,7 +1231,7 @@ function drawVerticalProfile(ctx, x, y, w, h, opts) {
   let runStart = 0;
   const strokeRun = (from, to, dashed) => {
     if (to <= from) return;
-    ctx.setLineDash(dashed ? [5, 4] : []);
+    ctx.setLineDash(dashed ? [tune('profileAssumedDashOnPx'), tune('profileAssumedDashOffPx')] : []);
     ctx.beginPath();
     ctx.moveTo(px(prof.pts[from].d), py(prof.pts[from].alt));
     for (let k = from + 1; k <= to; k++) ctx.lineTo(px(prof.pts[k].d), py(prof.pts[k].alt));
@@ -1239,7 +1242,7 @@ function drawVerticalProfile(ctx, x, y, w, h, opts) {
     if (!changed) continue;
     strokeRun(runStart, i - 1, !!prof.pts[runStart].assumed);
     // The bridging segment: dashed when either end is assumed.
-    ctx.setLineDash([5, 4]);
+    ctx.setLineDash([tune('profileAssumedDashOnPx'), tune('profileAssumedDashOffPx')]);
     ctx.beginPath();
     ctx.moveTo(px(prof.pts[i - 1].d), py(prof.pts[i - 1].alt));
     ctx.lineTo(px(prof.pts[i].d), py(prof.pts[i].alt));
@@ -1252,15 +1255,15 @@ function drawVerticalProfile(ctx, x, y, w, h, opts) {
     const note = S.profileAssumedNote
       ? S.profileAssumedNote(Math.round(_unknownProfileAltFt()))
       : 'No altitude set';
-    ctx.font = 'bold 9px sans-serif';
+    ctx.font = 'bold ' + tune('profileBadgeFontPx') + 'px sans-serif';
     ctx.textAlign = 'right';
     ctx.textBaseline = 'top';
     // A route with no altitude is drawn at the top of the strip, so the caption
     // lands on the very line it is describing — give it a backdrop rather than
     // guessing at a corner that happens to be free.
     const nw = ctx.measureText(note).width;
-    ctx.fillStyle = colorWithAlpha(tune('profileBgColor'), 0.82);
-    ctx.fillRect(x + w - nw - 6, y + 1, nw + 5, 12);
+    ctx.fillStyle = colorWithAlpha(tune('profileBgColor'), tune('profileNoteBgAlpha'));
+    ctx.fillRect(x + w - nw - 6, y + 1, nw + 5, tune('profileNoteBgHeightPx'));
     ctx.fillStyle = tune('profileTextColor');
     ctx.fillText(note, x + w - 3, y + 2);
   }
@@ -1271,10 +1274,10 @@ function drawVerticalProfile(ctx, x, y, w, h, opts) {
     const d = cum + (prof.legs[m.leg] ? prof.legs[m.leg].dist * m.frac : 0);
     const cx = px(d), cy = py(m.alt);
     ctx.fillStyle = color;
-    ctx.beginPath(); ctx.arc(cx, cy, 3, 0, 2 * Math.PI); ctx.fill();
-    ctx.font = 'bold 9px sans-serif';
+    ctx.beginPath(); ctx.arc(cx, cy, tune('profileTocDotRadiusPx'), 0, 2 * Math.PI); ctx.fill();
+    ctx.font = 'bold ' + tune('profileBadgeFontPx') + 'px sans-serif';
     ctx.textAlign = 'center';
-    ctx.fillText(label, cx, cy - 6);
+    ctx.fillText(label, cx, cy - tune('profileTocLabelGapPx'));
   };
   for (const t of prof.tocs) dot(t, tune('profileTocColor'), S.toc || 'TOC');
 
@@ -1295,8 +1298,8 @@ function drawVerticalProfile(ctx, x, y, w, h, opts) {
       const pv = v => baseY - (v / (maxV || 1)) * plotH;
       ctx.save();
       ctx.strokeStyle = tune('profileSpeedColor');
-      ctx.lineWidth = 1.5;
-      ctx.setLineDash([3, 3]);
+      ctx.lineWidth = tune('profileSpeedWidthPx');
+      ctx.setLineDash([tune('profileSpeedDashOnPx'), tune('profileSpeedDashOffPx')]);
       let cumD = 0;
       for (let i = 0; i < kt.length; i++) {
         const d0 = cumD;
@@ -1318,16 +1321,16 @@ function drawVerticalProfile(ctx, x, y, w, h, opts) {
       // Right-hand axis: a couple of labels only. The trace is a shape to compare against
       // the altitude line, not a number to read off to the knot.
       ctx.textBaseline = 'middle';
-      ctx.font = '8px sans-serif';
+      ctx.font = tune('profileFontPx') + 'px sans-serif';
       ctx.textAlign = 'left';
       ctx.fillStyle = tune('profileSpeedColor');
       const vStep = maxV > 240 ? 100 : maxV > 120 ? 50 : 25;
       for (let v = vStep; v < maxV; v += vStep) {
-        ctx.fillText(String(v), x + w - 14, pv(v));
+        ctx.fillText(String(v), x + w - tune('profileSpeedLabelInsetPx'), pv(v));
       }
       ctx.textBaseline = 'top';
       ctx.textAlign = 'right';
-      ctx.fillText('kt', x + w - 2, y + 2);
+      ctx.fillText('kt', x + w - tune('profileCaptionInsetPx'), y + tune('profileCaptionInsetPx'));
       ctx.restore();
     }
   }
@@ -1335,11 +1338,11 @@ function drawVerticalProfile(ctx, x, y, w, h, opts) {
   // The key, along the top of the plot: the altitude line is the obvious one, the rest are
   // not -- a dashed red line and a dotted amber one are only guesses until they are named.
   if (typeof drawProfileLegend === 'function') {
-    drawProfileLegend(ctx, x0, y + 2, plotW - 16, [
+    drawProfileLegend(ctx, x0, y + tune('profileCaptionInsetPx'), plotW - tune('profileLegendRightInsetPx'), [
       { color: tune('profileLineColor'), text: S.profileLegendAlt || 'altitude' },
-      o.speed && { color: tune('profileSpeedColor'), dash: [3, 3], width: 1.5,
+      o.speed && { color: tune('profileSpeedColor'), dash: [tune('profileSpeedDashOnPx'), tune('profileSpeedDashOffPx')], width: tune('profileSpeedWidthPx'),
         text: S.profileLegendPlannedSpeed || 'planned speed' },
-      terrain && { color: tune('profileMsaColor'), dash: [4, 3], width: 1,
+      terrain && { color: tune('profileMsaColor'), dash: [tune('profileMsaDashOnPx'), tune('profileMsaDashOffPx')], width: tune('profileMsaWidthPx'),
         text: S.profileLegendMsa || 'safe alt' },
       terrain && { color: tune('profileTerrainColor'), fill: true,
         text: S.profileLegendTerrain || 'terrain' },
@@ -1363,27 +1366,27 @@ function drawVerticalProfile(ctx, x, y, w, h, opts) {
     const m = Math.round((h || 0) * 60);
     return m < 60 ? m + 'm' : Math.floor(m / 60) + ':' + String(m % 60).padStart(2, '0');
   };
-  ctx.lineWidth = 1;
+  ctx.lineWidth = tune('profileGridWidthPx');
   ctx.textBaseline = 'top';
   for (let i = 0; i < cum.length; i++) {
     const lx = px(cum[i]);
-    ctx.strokeStyle = colorWithAlpha(tune('profileGridColor'), 0.18);
+    ctx.strokeStyle = colorWithAlpha(tune('profileGridColor'), tune('profileGridXAlpha'));
     ctx.beginPath(); ctx.moveTo(lx, y); ctx.lineTo(lx, baseY); ctx.stroke();
     ctx.strokeStyle = tune('profileAxisColor');
-    ctx.beginPath(); ctx.moveTo(lx, baseY + 0.5); ctx.lineTo(lx, baseY + 3.5); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(lx, baseY + 0.5); ctx.lineTo(lx, baseY + 0.5 + tune('profileTickLenPx')); ctx.stroke();
     ctx.textAlign = i === 0 ? 'left' : i === last ? 'right' : 'center';
     // NM (bright) then cumulative time (dimmer) stacked under the tick.
     ctx.fillStyle = tune('profileNmTextColor');
-    ctx.font = '8px sans-serif';
-    ctx.fillText(String(Math.round(cum[i])), lx, baseY + 4);
+    ctx.font = tune('profileFontPx') + 'px sans-serif';
+    ctx.fillText(String(Math.round(cum[i])), lx, baseY + tune('profileAxisRow1Px'));
     ctx.fillStyle = tune('profileTimeTextColor');
-    ctx.font = '7px sans-serif';
-    ctx.fillText(fmtT(tcum[i]), lx, baseY + 13);
+    ctx.font = tune('profileSmallFontPx') + 'px sans-serif';
+    ctx.fillText(fmtT(tcum[i]), lx, baseY + tune('profileAxisRow2Px'));
     // Waypoint id (skip when ticks are too tight to avoid overlap).
-    if (gap >= 22) {
+    if (gap >= tune('profileWpIdMinGapPx')) {
       ctx.fillStyle = tune('profileTextColor');
-      ctx.font = '7px sans-serif';
-      ctx.fillText(wpId(i), lx, baseY + 22);
+      ctx.font = tune('profileSmallFontPx') + 'px sans-serif';
+      ctx.fillText(wpId(i), lx, baseY + tune('profileAxisRow3Px'));
     }
   }
   // TOC/TOD also get an X-axis tick + NM/time readout in their marker colour,
@@ -1397,23 +1400,23 @@ function drawVerticalProfile(ctx, x, y, w, h, opts) {
     const t = (tcum[m.leg] || 0) + segT * m.frac;
     const lx = px(d);
     ctx.strokeStyle = color;
-    ctx.lineWidth = 1;
-    ctx.beginPath(); ctx.moveTo(lx, baseY + 0.5); ctx.lineTo(lx, baseY + 4); ctx.stroke();
+    ctx.lineWidth = tune('profileGridWidthPx');
+    ctx.beginPath(); ctx.moveTo(lx, baseY + 0.5); ctx.lineTo(lx, baseY + 0.5 + tune('profileTocTickLenPx')); ctx.stroke();
     ctx.fillStyle = color;
     ctx.textAlign = 'center';
-    ctx.font = '8px sans-serif';
-    ctx.fillText(String(Math.round(d)), lx, baseY + 4);
-    ctx.font = '7px sans-serif';
-    ctx.fillText(fmtT(t), lx, baseY + 13);
+    ctx.font = tune('profileFontPx') + 'px sans-serif';
+    ctx.fillText(String(Math.round(d)), lx, baseY + tune('profileAxisRow1Px'));
+    ctx.font = tune('profileSmallFontPx') + 'px sans-serif';
+    ctx.fillText(fmtT(t), lx, baseY + tune('profileAxisRow2Px'));
   };
   for (const t of prof.tocs) markAxis(t, tune('profileTocColor'));
 
   // Axis unit caption.
   ctx.fillStyle = tune('profileTextColor');
-  ctx.font = '7px sans-serif';
+  ctx.font = tune('profileSmallFontPx') + 'px sans-serif';
   ctx.textAlign = rtl ? 'left' : 'right';
   ctx.textBaseline = 'bottom';
-  ctx.fillText('NM / time', rtl ? x + 2 : x + w - 2, y + h);
+  ctx.fillText('NM / time', rtl ? x + tune('profileCaptionInsetPx') : x + w - tune('profileCaptionInsetPx'), y + h);
   ctx.restore();
 }
 
@@ -1472,15 +1475,15 @@ function drawMeasure() {
   octx.save();
   octx.fillStyle = tune('measureDotFill');
   octx.strokeStyle = tune('measureLineColor');
-  octx.lineWidth = 2.5;
+  octx.lineWidth = tune('measureDotRingWidthPx');
   if (!to) { octx.restore(); return; }
   const a = proj(from), b = proj(to);
-  octx.setLineDash([10, 6]);
-  octx.lineWidth = 3;
+  octx.setLineDash([tune('measureDashOnPx'), tune('measureDashOffPx')]);
+  octx.lineWidth = tune('measureLineWidthPx');
   octx.beginPath(); octx.moveTo(a.x, a.y); octx.lineTo(b.x, b.y); octx.stroke();
   octx.setLineDash([]);
-  octx.lineWidth = 2.5;
-  dot(to, 6);
+  octx.lineWidth = tune('measureDotRingWidthPx');
+  dot(to, tune('measureDotRadiusPx'));
   const g = geo(from, to);
   const brg = typeof toMagnetic === 'function' ? toMagnetic(g.brg) : Math.round(g.brg);
   const kt = live && typeof gpsLastGS === 'number' ? gpsLastGS : NaN;
@@ -1490,8 +1493,8 @@ function drawMeasure() {
   if (to.name) lines.unshift(to.name);
   window.__measureLabel = lines.join(' | ');
   // The label beside the point, on the side away from the line, in the map buttons' dark glass.
-  octx.font = 'bold 13px system-ui, sans-serif';
-  const w = Math.max(...lines.map(t => octx.measureText(t).width)) + 16, h = lines.length * 17 + 10;
+  octx.font = 'bold ' + tune('measureLabelFontPx') + 'px system-ui, sans-serif';
+  const w = Math.max(...lines.map(t => octx.measureText(t).width)) + 2 * tune('measureLabelPadXPx'), h = lines.length * tune('measureLabelLineHeightPx') + 2 * tune('measureLabelPadYPx');
   // Of the four corners around the point, the first that is on screen and clear of the map
   // buttons (the right-hand column, the edit column) -- preferring the side away from the line.
   const cr = octx.canvas.getBoundingClientRect();
@@ -1519,7 +1522,7 @@ function drawMeasure() {
   if (!seg) { octx.restore(); return; }
   const right = b.x >= a.x, down = b.y >= a.y;
   const around = (p) => [[right, down], [right, !down], [!right, down], [!right, !down]]
-    .map(([rt, dn]) => [rt ? p.x + 12 : p.x - 12 - w, dn ? p.y + 10 : p.y - 10 - h]);
+    .map(([rt, dn]) => [rt ? p.x + tune('measureLabelGapXPx') : p.x - tune('measureLabelGapXPx') - w, dn ? p.y + tune('measureLabelGapYPx') : p.y - tune('measureLabelGapYPx') - h]);
   const len = Math.hypot(b.x - a.x, b.y - a.y) || 1;
   const step = 24 / len;
   const home = (seg.t0 + seg.t1) / 2;
@@ -1906,8 +1909,8 @@ function drawSigmets() {
     if (label) {
       octx.font = 'bold ' + tune('sigmetLabelFontPx') + 'px sans-serif';
       octx.textAlign = 'center';
-      octx.lineWidth = 3;
-      octx.strokeStyle = colorWithAlpha(tune('overlayLabelHaloColor'), 0.9);
+      octx.lineWidth = tune('metLabelHaloWidthPx');
+      octx.strokeStyle = colorWithAlpha(tune('overlayLabelHaloColor'), tune('metLabelHaloAlpha'));
       octx.strokeText(label, cx, cy);
       octx.fillStyle = col;
       octx.fillText(label, cx, cy);
@@ -2093,7 +2096,7 @@ function drawAirmets() {
     octx.fillStyle = colorWithAlpha(col, tune('sigmetFillAlpha'));
     octx.fill();
     // Dotted, to read as distinct from the SIGMET dashes on the same map.
-    octx.setLineDash([2, tune('sigmetDashOffPx')]);
+    octx.setLineDash([tune('airmetDotPx'), tune('sigmetDashOffPx')]);
     octx.lineWidth = tune('sigmetLineWidthPx') + metFlashWidth(a);
     octx.strokeStyle = col;
     octx.stroke();
@@ -2105,8 +2108,8 @@ function drawAirmets() {
     if (label) {
       octx.font = 'bold ' + tune('sigmetLabelFontPx') + 'px sans-serif';
       octx.textAlign = 'center';
-      octx.lineWidth = 3;
-      octx.strokeStyle = colorWithAlpha(tune('overlayLabelHaloColor'), 0.9);
+      octx.lineWidth = tune('metLabelHaloWidthPx');
+      octx.strokeStyle = colorWithAlpha(tune('overlayLabelHaloColor'), tune('metLabelHaloAlpha'));
       octx.strokeText(label, cx, cy);
       octx.fillStyle = col;
       octx.fillText(label, cx, cy);
@@ -2381,7 +2384,7 @@ function drawNotams() {
       octx.moveTo(lp[0].x, lp[0].y);
       for (let i = 1; i < lp.length; i++) octx.lineTo(lp[i].x, lp[i].y);
       if (rl.kind === 'diverted') {
-        octx.setLineDash([4, 6]); octx.strokeStyle = divCol;
+        octx.setLineDash([tune('notamDivertDashOnPx'), tune('notamDivertDashOffPx')]); octx.strokeStyle = divCol;
         octx.lineWidth = tune('notamLineWidthPx');
       } else {
         octx.setLineDash([]); octx.strokeStyle = col;
@@ -2397,10 +2400,10 @@ function drawNotams() {
       }
       if (n.id) {
         const mid = lp[Math.floor(lp.length / 2)];
-        octx.font = 'bold 11px sans-serif';
+        octx.font = 'bold ' + tune('metLabelFontPx') + 'px sans-serif';
         octx.textAlign = 'center';
-        octx.lineWidth = 3;
-        octx.strokeStyle = colorWithAlpha(tune('overlayLabelHaloColor'), 0.9);
+        octx.lineWidth = tune('metLabelHaloWidthPx');
+        octx.strokeStyle = colorWithAlpha(tune('overlayLabelHaloColor'), tune('metLabelHaloAlpha'));
         octx.strokeText(n.id, mid.x, mid.y - 6);
         octx.fillStyle = rl.kind === 'diverted' ? divCol : col;
         octx.fillText(n.id, mid.x, mid.y - 6);
@@ -2419,7 +2422,7 @@ function drawNotams() {
       octx.closePath();
       octx.fillStyle = colorWithAlpha(col, tune('notamFillAlpha'));
       octx.fill();
-      octx.setLineDash([6, 4]);
+      octx.setLineDash([tune('notamDashOnPx'), tune('notamDashOffPx')]);
       octx.lineWidth = tune('notamLineWidthPx');
       octx.strokeStyle = col;
       octx.stroke();
@@ -2432,10 +2435,10 @@ function drawNotams() {
       if (n.id) {
         const c = areaCentroid(a.coords);
         const p = proj({ lat: c.lat, lng: c.lng });
-        octx.font = 'bold 11px sans-serif';
+        octx.font = 'bold ' + tune('metLabelFontPx') + 'px sans-serif';
         octx.textAlign = 'center';
-        octx.lineWidth = 3;
-        octx.strokeStyle = colorWithAlpha(tune('overlayLabelHaloColor'), 0.9);
+        octx.lineWidth = tune('metLabelHaloWidthPx');
+        octx.strokeStyle = colorWithAlpha(tune('overlayLabelHaloColor'), tune('metLabelHaloAlpha'));
         octx.strokeText(n.id, p.x, p.y - 14);
         octx.fillStyle = col;
         octx.fillText(n.id, p.x, p.y - 14);
@@ -2450,8 +2453,8 @@ function drawNotams() {
       octx.beginPath();
       octx.moveTo(lp[0].x, lp[0].y);
       for (let i = 1; i < lp.length; i++) octx.lineTo(lp[i].x, lp[i].y);
-      octx.setLineDash([10, 5]);
-      octx.lineWidth = tune('notamLineWidthPx') + 1;
+      octx.setLineDash([tune('notamClosureDashOnPx'), tune('notamClosureDashOffPx')]);
+      octx.lineWidth = tune('notamLineWidthPx') + tune('notamClosureExtraWidthPx');
       octx.strokeStyle = col;
       octx.stroke();
       octx.setLineDash([]);
@@ -2480,7 +2483,7 @@ function drawNotams() {
     // Border-buffer areas (FM <NEIGHBOUR> BOUNDARY TO NKM) trace the
     // international border, so draw their outline as a continuous solid line;
     // ordinary point/area NOTAMs keep the dashed outline.
-    if (!(g && g._border)) octx.setLineDash([6, 4]);
+    if (!(g && g._border)) octx.setLineDash([tune('notamDashOnPx'), tune('notamDashOffPx')]);
     octx.lineWidth = tune('notamLineWidthPx');
     octx.strokeStyle = col;
     octx.stroke();
@@ -2494,10 +2497,10 @@ function drawNotams() {
     for (const p of pts) { cx += p.x; cy += p.y; }
     cx /= pts.length; cy /= pts.length;
     if (n.id) {
-      octx.font = 'bold 11px sans-serif';
+      octx.font = 'bold ' + tune('metLabelFontPx') + 'px sans-serif';
       octx.textAlign = 'center';
-      octx.lineWidth = 3;
-      octx.strokeStyle = colorWithAlpha(tune('overlayLabelHaloColor'), 0.9);
+      octx.lineWidth = tune('metLabelHaloWidthPx');
+      octx.strokeStyle = colorWithAlpha(tune('overlayLabelHaloColor'), tune('metLabelHaloAlpha'));
       octx.strokeText(n.id, cx, cy);
       octx.fillStyle = col;
       octx.fillText(n.id, cx, cy);
@@ -2614,23 +2617,23 @@ function drawNotamAirportMarkers() {
     const p = proj({ lat: af.lat, lng: af.lng });
     if (flashId && byIcao[code].some(n => n.id === flashId)) {
       octx.beginPath();
-      octx.arc(p.x, p.y + 14, 15, 0, 2 * Math.PI);   // pulsing halo around the badge
-      octx.lineWidth = 4;
+      octx.arc(p.x, p.y + tune('notamBadgeOffsetPx'), tune('notamBadgeFlashRadiusPx'), 0, 2 * Math.PI);   // pulsing halo around the badge
+      octx.lineWidth = tune('notamBadgeFlashWidthPx');
       octx.strokeStyle = colorWithAlpha(tune('notamFlashColor'), flashPulse);
       octx.stroke();
     }
     octx.beginPath();
-    octx.arc(p.x, p.y + 14, 9, 0, 2 * Math.PI);    // offset below the field marker
-    octx.fillStyle = colorWithAlpha(col, 0.92);
+    octx.arc(p.x, p.y + tune('notamBadgeOffsetPx'), tune('notamBadgeRadiusPx'), 0, 2 * Math.PI);    // offset below the field marker
+    octx.fillStyle = colorWithAlpha(col, tune('notamBadgeFillAlpha'));
     octx.fill();
-    octx.lineWidth = 1.5;
-    octx.strokeStyle = colorWithAlpha(tune('overlayLabelHaloColor'), 0.9);
+    octx.lineWidth = tune('notamBadgeRingWidthPx');
+    octx.strokeStyle = colorWithAlpha(tune('overlayLabelHaloColor'), tune('metLabelHaloAlpha'));
     octx.stroke();
     octx.fillStyle = tune('notamBadgeTextColor');
     octx.font = 'bold ' + tune('notamBadgeFontPx') + 'px sans-serif';
     octx.textAlign = 'center';
     octx.textBaseline = 'middle';
-    octx.fillText(String(byIcao[code].length), p.x, p.y + 14);
+    octx.fillText(String(byIcao[code].length), p.x, p.y + tune('notamBadgeOffsetPx'));
     octx.textBaseline = 'alphabetic';
   }
   octx.textAlign = 'left';
@@ -3093,8 +3096,8 @@ function drawAirspace() {
       const lines = [a.short || a.id, airspaceLimitText(a)];
       for (let i = 0; i < lines.length; i++) {
         const ly = y + (i - 0.5) * (px + 2);
-        octx.lineWidth = 3;
-        octx.strokeStyle = 'rgba(255,255,255,0.9)';
+        octx.lineWidth = tune('airspaceLabelHaloWidthPx');
+        octx.strokeStyle = colorWithAlpha(tune('airspaceLabelHaloColor'), tune('airspaceLabelHaloAlpha'));
         octx.strokeText(lines[i], x, ly);
         octx.fillStyle = col;
         octx.fillText(lines[i], x, ly);
@@ -3189,9 +3192,9 @@ function drawActivitySymbol(ctx, x, y, kind, r) {
   const canopyY = y - r * 0.15;
   if (isDropZone) {
     // The drop zone's dotted ring.
-    ctx.setLineDash([1.5, 2.5]);
+    ctx.setLineDash([tune('activityDropZoneDotPx'), tune('activityDropZoneGapPx')]);
     ctx.strokeStyle = col;
-    ctx.lineWidth = 1.5;
+    ctx.lineWidth = tune('activityLineWidthPx');
     ctx.beginPath();
     ctx.arc(x, y, r * 2.1, 0, Math.PI * 2);
     ctx.stroke();
@@ -3205,7 +3208,7 @@ function drawActivitySymbol(ctx, x, y, kind, r) {
   ctx.fill();
   // Rigging lines, from the canopy's edge to the harness point below.
   ctx.strokeStyle = tune('inkColor');
-  ctx.lineWidth = 1;
+  ctx.lineWidth = tune('activityRiggingWidthPx');
   ctx.beginPath();
   for (const dx of [-1, -0.5, 0, 0.5, 1]) {
     ctx.moveTo(x + dx * r, canopyY);
@@ -3241,7 +3244,7 @@ function drawAreas() {
     // every day); weekend = black outline + tan fill (Fri–Sat only). The locate
     // highlight overrides both with the locate red every search highlight uses (it was amber,
     // which vanished on the yellow chart -- reported). The fill follows the tuned colour.
-    octx.fillStyle = hl ? colorWithAlpha(tune('lsaHighlightColor'), 0.22) : (wknd ? 'rgba(201,178,138,0.35)' : 'rgba(60,160,60,0.15)');
+    octx.fillStyle = hl ? colorWithAlpha(tune('lsaHighlightColor'), tune('lsaHighlightFillAlpha')) : (wknd ? colorWithAlpha(tune('lsaWeekendFillColor'), tune('lsaWeekendFillAlpha')) : colorWithAlpha(tune('lsaAreaFillColor'), tune('lsaAreaFillAlpha')));
     octx.strokeStyle = hl ? tune('lsaHighlightColor')
       : (wknd ? tune('lsaWeekendColor') : tune('lsaAlwaysColor'));
     octx.lineWidth = hl ? tune('lsaHighlightWidthPx') : tune('lsaLineWidthPx');
@@ -3715,6 +3718,10 @@ async function loadAirfields() {
       clearance: a.clearance,
       plates: Array.isArray(a.plates) ? a.plates.slice() : [],
       runways: Array.isArray(a.runways) ? a.runways.slice() : null,
+      // True runway ends (OpenStreetMap), so a close zoom draws them on the chart's own runway.
+      runwayGeom: Array.isArray(a.runwayGeom) ? a.runwayGeom.map(r => r.slice()) : null,
+      // The CVFR chart's own printed runway bar (ends + width in m), measured off the chart tiles.
+      runwayChart: Array.isArray(a.runwayChart) ? a.runwayChart.map(r => r.slice()) : null,
       type: a.type === 'military' ? 'military' : 'civil',   // chart symbol: ◎ for a military field
       // The LSA chart legend's strip class and field block (see airfields.json _chartClass).
       chartClass: a.chartClass || null,
@@ -3894,6 +3901,16 @@ function drawAirfieldSymbol(ctx, s, r, af, angles) {
     return;
   }
   const rwys = Array.isArray(angles) ? angles : runwayScreenAngles(af, s);
+  // Zoomed in, the runways themselves: where the field's real runway (OpenStreetMap ends, in
+  // runwayGeom) would draw longer than the symbol, it is drawn at its true place, length and
+  // direction -- on top of the chart's own runway -- instead of a fixed-size icon beside it.
+  // The ARP crosshair below keeps its size. Not for the legend swatch (`angles` given).
+  if (!Array.isArray(angles) && af && Array.isArray(af.runwayGeom) && af.runwayGeom.length
+      && drawTrueRunways(ctx, af, r, blue, halo, lw)) {
+    drawArp(ctx, s, r, true, ink, halo, lw);
+    ctx.restore();
+    return;
+  }
   if (rwys.length) {
     // שדה תעופה: each runway a blue outline with a light inside.
     const len = r * 1.8;                 // half-length
@@ -3913,21 +3930,73 @@ function drawAirfieldSymbol(ctx, s, r, af, angles) {
       ctx.restore();
     }
   }
-  // ARP: a ring with a cross through it, smaller when the runways carry the symbol.
-  const ar = rwys.length ? Math.max(2.5, r * 0.34) : r * 0.8;
-  const tick = rwys.length ? ar * 0.35 : ar * 0.45;
+  drawArp(ctx, s, r, rwys.length > 0, ink, halo, lw);
+  ctx.restore();
+}
+// ARP: a ring with a cross through it, smaller when the runways carry the symbol.
+function drawArp(ctx, s, r, withRunways, ink, halo, lw) {
+  const ar = withRunways ? Math.max(2.5, r * 0.34) : r * 0.8;
+  const tick = withRunways ? ar * 0.35 : ar * 0.45;
   ctx.beginPath();
   ctx.arc(s.x, s.y, ar, 0, Math.PI * 2);
   ctx.moveTo(s.x, s.y - ar - tick); ctx.lineTo(s.x, s.y + ar + tick);
   ctx.moveTo(s.x - ar - tick, s.y); ctx.lineTo(s.x + ar + tick, s.y);
   ctx.lineCap = 'round';
-  ctx.lineWidth = lw + (rwys.length ? 1 : 2);
+  ctx.lineWidth = lw + (withRunways ? 1 : 2);
   ctx.strokeStyle = halo;
   ctx.stroke();
-  ctx.lineWidth = rwys.length ? Math.max(1, lw * 0.8) : lw;
+  ctx.lineWidth = withRunways ? Math.max(1, lw * 0.8) : lw;
   ctx.strokeStyle = ink;
   ctx.stroke();
-  ctx.restore();
+}
+// Each runway between its true ends, when that is longer on screen than the symbol would be.
+// Width: the real runway's (tunable, metres) or the symbol's, whichever is wider. Returns false
+// (draw the symbol instead) while the true runway would be smaller than the icon.
+function drawTrueRunways(ctx, af, r, blue, halo, lw) {
+  // On the CVFR chart, the chart's own bar where it was measured ("match square to map"): its
+  // ends and its width, so the drawing lies on what the pilot reads. On any other map (satellite
+  // above all) the runway where it really is.
+  const onChart = typeof currentLayerName === 'function' && currentLayerName() === 'CVFR';
+  if (onChart && Array.isArray(af.runwayChart) && af.runwayChart.length) {
+    return drawRunwayBars(ctx, af.runwayChart, r, blue, halo, lw, true);
+  }
+  return drawRunwayBars(ctx, af.runwayGeom, r, blue, halo, lw, false);
+}
+function drawRunwayBars(ctx, geom, r, blue, halo, lw, chartWidths) {
+  const ends = geom.map(([a1, o1, a2, o2]) => [proj({ lat: a1, lng: o1 }), proj({ lat: a2, lng: o2 })]);
+  const longest = Math.max(...ends.map(([p, q]) => Math.hypot(q.x - p.x, q.y - p.y)));
+  if (!(longest > r * 3.6)) return false;              // the symbol's full length is 2 x 1.8 r
+  const g = geom[0];
+  const pxPerM = Math.hypot(ends[0][1].x - ends[0][0].x, ends[0][1].y - ends[0][0].y)
+    / Math.max(1, haversineM(g[0], g[1], g[2], g[3]));
+  ctx.lineJoin = 'miter';
+  for (let i = 0; i < ends.length; i++) {
+    const [p, q] = ends[i];
+    // The chart bar's own width (measured, outline to outline); a real runway's 30 m otherwise.
+    const wM = chartWidths && Number.isFinite(geom[i][4]) ? geom[i][4] : (tune('airfieldRunwayWidthM') || 30);
+    const half = Math.max(Math.max(2, r * 0.32), wM * pxPerM / 2);
+    const lwHere = chartWidths ? Math.max(lw, half * 0.45) : lw;     // the chart's thick blue frame
+    const ang = Math.atan2(q.y - p.y, q.x - p.x), len = Math.hypot(q.x - p.x, q.y - p.y);
+    ctx.save();
+    ctx.translate(p.x, p.y);
+    ctx.rotate(ang);
+    ctx.beginPath();
+    // Inset by half the frame, so the frame's outer edge is the bar's outer edge.
+    const inset = chartWidths ? lwHere / 2 : 0;
+    ctx.rect(inset, -half + inset, len - inset * 2, half * 2 - inset * 2);
+    ctx.fillStyle = halo;
+    ctx.fill();
+    ctx.lineWidth = lwHere;
+    ctx.strokeStyle = blue;
+    ctx.stroke();
+    ctx.restore();
+  }
+  return true;
+}
+function haversineM(la1, lo1, la2, lo2) {
+  const R = 6371000, t = Math.PI / 180;
+  const a = Math.sin((la2 - la1) * t / 2) ** 2 + Math.cos(la1 * t) * Math.cos(la2 * t) * Math.sin((lo2 - lo1) * t / 2) ** 2;
+  return 2 * R * Math.asin(Math.sqrt(a));
 }
 function drawAirfields() {
   if (!showAirfields || !airfields || airfields.length === 0) return;
@@ -3954,7 +4023,7 @@ function drawAirfields() {
       octx.fillText(label, lx, s.y);
     }
   }
-  octx.lineWidth = 1;
+  octx.lineWidth = 1;   // ctx reset
 }
 
 // ICAO reporting-point symbol: a filled triangle for a compulsory point, an open one for a
@@ -4020,7 +4089,7 @@ function drawNavWaypoints() {
       octx.fillText(label, s.x + labelOffset, s.y);
     }
   }
-  octx.lineWidth = 1;
+  octx.lineWidth = 1;   // ctx reset
 }
 
 // VOR/DME station overlay. Each station draws its chart symbol (see drawVorSymbol) with an
@@ -4136,7 +4205,7 @@ function drawVors(force) {
       octx.lineWidth = tune('overlayLabelHaloWidthPx');
       octx.strokeStyle = colorWithAlpha(tune('overlayLabelHaloColor'), tune('overlayLabelHaloAlpha'));
       octx.strokeText(txt, top.x, top.y - tune('vorRangeRingLabelGapPx'));
-      octx.fillStyle = colorWithAlpha(tune('vorRangeRingColor'), 1);
+      octx.fillStyle = colorWithAlpha(tune('vorRangeRingColor'), tune('vorRangeRingLabelAlpha'));
       octx.fillText(txt, top.x, top.y - tune('vorRangeRingLabelGapPx'));
     }
     octx.restore();
@@ -4158,7 +4227,7 @@ function drawVors(force) {
     }
   }
   octx.restore();
-  octx.lineWidth = 1;
+  octx.lineWidth = 1;   // ctx reset
 }
 
 // --- reporting-type overlay -------------------------------------------
@@ -4193,7 +4262,7 @@ function drawReportingBadges() {
   const r = tune('reportBadgeRadiusPx');
   const off = tune('reportBadgeOffsetPx');
   octx.save();
-  octx.lineWidth = 1.5;
+  octx.lineWidth = tune('reportBadgeStrokeWidthPx');
   for (const wp of navWP) {
     if (wp.report !== 'mandatory') continue;
     if (showNavWP && !routeOccupiesPoint(wp)) continue;
@@ -4201,7 +4270,7 @@ function drawReportingBadges() {
     drawReportingPointSymbol(octx, s.x + off, s.y - off, r, true);
   }
   octx.restore();
-  octx.lineWidth = 1;
+  octx.lineWidth = 1;   // ctx reset
 }
 
 // Comm-change rings. Drawn independently of the nav-WP
@@ -4275,8 +4344,8 @@ function drawAtisMarker() {
   }
   octx.save();
   octx.strokeStyle = tune('atisMarkerColor');
-  octx.fillStyle = colorWithAlpha(tune('atisMarkerColor'), 0.25);
-  octx.lineWidth = 2;
+  octx.fillStyle = colorWithAlpha(tune('atisMarkerColor'), tune('atisMarkerFillAlpha'));
+  octx.lineWidth = tune('atisMarkerWidthPx');
   octx.beginPath();
   octx.arc(s.x, s.y, r, 0, Math.PI * 2);
   octx.fill();
@@ -4360,7 +4429,7 @@ function drawCommChangeRings() {
       ringsDrawn.add(wp.name);
       ringRadii[wp.name] = radius;
     }
-    octx.lineWidth = 1;
+    octx.lineWidth = 1;   // ctx reset
   }
   window.__commChangeRingsDrawn = ringsDrawn;
   window.__commChangeRingRadii = ringRadii;
@@ -4957,9 +5026,11 @@ function commRouteCalloutDefaultsMap() {
   }
   return { defaults: out, hinted };
 }
-function commCalloutDefaults(name) {
+// `note` is the callout asking: a way-back one (ret) takes its default from the route flown home.
+function commCalloutDefaults(name, note) {
   const key = canonicalNavWaypointName(name);
-  const { defaults: routeDefaults } = commRouteCalloutDefaultsMap();
+  const { defaults: routeDefaults } = note && note.ret
+    ? withReturnRoute(commRouteCalloutDefaultsMap) : commRouteCalloutDefaultsMap();
   return (key && routeDefaults[key]) || commStaticCalloutDefaults(key);
 }
 function commNoteCallSignOption(n) {
@@ -4974,7 +5045,7 @@ function commNoteName(n) {
     return n.freqName.trim();
   }
   if (n && n.cc) {
-    const d = commCalloutDefaults(n.cc);
+    const d = commCalloutDefaults(n.cc, n);
     const def = commCallSignOptions(n.cc)
       .find(o => commCallSignOptionMatches(o, d.freqName));
     return def ? def.label : d.freqName;
@@ -4989,7 +5060,7 @@ function commNoteFreq(n) {
   }
   if (n && typeof n.freq === 'string' && n.freq.trim()) return commFormatFreq(n.freq);
   if (opt && opt.freq) return opt.freq;
-  if (n && n.cc) return commCalloutDefaults(n.cc).freq;
+  if (n && n.cc) return commCalloutDefaults(n.cc, n).freq;
   return '';
 }
 // Identification / report point (נקי הזדהות): an oval note anchored to a leg
@@ -5091,10 +5162,14 @@ function commCalloutDefaultTail(wp, idx, wpsOverride) {
   }
   // Signed angle from the direction of travel: positive left, negative right. It was a
   // hardcoded 90 (square left) -- the quarter the cumulative-time kite now sits in, so the
-  // callout covered it. -230 -- the same place as +130 -- puts it behind and to the left,
-  // clear of that kite's quarter and of the nav kite ahead-right.
-  const away = (typeof tune === 'function') ? tune('commCalloutAngleDeg') : -230;
-  const th = (brg - (Number.isFinite(away) ? away : -230)) * Math.PI / 180;
+  // callout covered it. -230 (the same place as +130) puts it behind and to the left, clear
+  // of that kite's quarter and of the nav kite ahead-right. With the return path shown,
+  // commCalloutAngleReturnDeg (-130) puts it behind and to the RIGHT, the kites' side, as on
+  // a hand-drawn chart: each direction's callout then sits on its own kites' side of the track.
+  const ret = typeof returnCommOn === 'function' && returnCommOn();
+  const fallback = ret ? -130 : -230;
+  const away = (typeof tune === 'function') ? tune(ret ? 'commCalloutAngleReturnDeg' : 'commCalloutAngleDeg') : fallback;
+  const th = (brg - (Number.isFinite(away) ? away : fallback)) * Math.PI / 180;
   const cosLat = Math.max(0.1, Math.cos(wp.lat * Math.PI / 180));
   return {
     lat: r5(wp.lat + D * Math.cos(th)),
@@ -5154,19 +5229,25 @@ function normalizeCommChangeSuppressions(raw) {
   const out = [];
   if (Array.isArray(src)) {
     for (const v of src) {
-      const key = canonicalNavWaypointName(v);
+      // A way-back deletion keeps its prefix (see RET_COMM_SUP).
+      const { ret, key: name } = commSupParts(v);
+      const key = name ? (ret ? RET_COMM_SUP : '') + name : '';
       if (key && !out.includes(key)) out.push(key);
     }
   }
   state.commChangeSuppressions = out;
   return out;
 }
+function commSupKey(name) {
+  const { ret, key } = commSupParts(name);
+  return key ? (ret ? RET_COMM_SUP : '') + key : '';
+}
 function isCommChangeSuppressed(name) {
-  const key = canonicalNavWaypointName(name);
+  const key = commSupKey(name);
   return !!key && normalizeCommChangeSuppressions().includes(key);
 }
 function suppressCommChange(name) {
-  const key = canonicalNavWaypointName(name);
+  const key = commSupKey(name);
   if (!key) return false;
   const suppressions = normalizeCommChangeSuppressions();
   if (suppressions.includes(key)) return false;
@@ -5175,10 +5256,10 @@ function suppressCommChange(name) {
   return true;
 }
 function unsuppressCommChange(name) {
-  const key = canonicalNavWaypointName(name);
+  const key = commSupKey(name);
   if (!key) return false;
   const suppressions = normalizeCommChangeSuppressions()
-    .filter(v => canonicalNavWaypointName(v) !== key);
+    .filter(v => v !== key);
   if (suppressions.length === state.commChangeSuppressions.length) return false;
   state.commChangeSuppressions = suppressions;
   return true;
@@ -5189,7 +5270,8 @@ function pruneStaleCommChangeSuppressions() {
     return false;
   }
   const before = normalizeCommChangeSuppressions();
-  const kept = before.filter(name => {
+  const kept = before.filter(v => {
+    const name = commSupParts(v).key;
     const row = commChangeMap && commChangeMap[name];
     return row && row.commChange && hasActiveCommChangeWaypoint(name);
   });
@@ -5242,7 +5324,65 @@ function pruneTurnCommChangeNotes() {
   }
   return true;
 }
+// Seeds the way out's callouts and, with the return path shown, the way back's: each pass sees
+// only its own direction's notes and deletions, so neither can claim, prune or un-delete the
+// other's at a point both cross. A note keeps its place in state.notes; new ones are appended.
 function seedCommChangeNotes() {
+  if (typeof state === 'undefined' ||
+      !Array.isArray(state.waypoints) || !Array.isArray(state.notes)) return false;
+  const all = state.notes, sel = state.selected;
+  const selNote = sel && sel.type === 'note' ? all[sel.index] : null;
+  const selFreq = sel && sel.type === 'wp' && Number.isInteger(sel.freqNoteIndex)
+    ? all[sel.freqNoteIndex] : null;
+  const sups = normalizeCommChangeSuppressions();
+  const fwdSup = [], retSup = [];
+  for (const v of sups) {
+    if (v.startsWith(RET_COMM_SUP)) retSup.push(v.slice(RET_COMM_SUP.length)); else fwdSup.push(v);
+  }
+  const retNotes = all.filter(n => n && n.ret);
+  let changed = false;
+  let outFwd, outRet = retNotes, outRetSup = retSup;
+  try {
+    state.selected = null;
+    state.notes = all.filter(n => !(n && n.ret));
+    state.commChangeSuppressions = fwdSup;
+    if (seedCommChangeNotesOneWay()) changed = true;
+    outFwd = state.notes;
+    const outFwdSup = state.commChangeSuppressions;
+    if (returnCommOn()) {
+      state.notes = retNotes;
+      state.commChangeSuppressions = retSup;
+      if (withReturnRoute(seedCommChangeNotesOneWay)) changed = true;
+      outRet = state.notes;
+      for (const n of outRet) if (n && n.cc && !n.ret) n.ret = 1;
+      outRetSup = state.commChangeSuppressions;
+    }
+    state.commChangeSuppressions = outFwdSup.concat(outRetSup.map(v => RET_COMM_SUP + v));
+  } catch (e) {
+    state.notes = all;
+    state.commChangeSuppressions = sups;
+    state.selected = sel;
+    throw e;
+  }
+  if (!changed) {
+    state.notes = all;
+    state.selected = sel;
+    return false;
+  }
+  const kept = new Set(outFwd.concat(outRet));
+  state.notes = all.filter(n => kept.has(n)).concat(outFwd.concat(outRet).filter(n => !all.includes(n)));
+  state.selected = sel;
+  if (selNote) {
+    const idx = state.notes.indexOf(selNote);
+    state.selected = idx >= 0 ? { type: 'note', index: idx } : null;
+  } else if (selFreq) {
+    const idx = state.notes.indexOf(selFreq);
+    if (idx >= 0) state.selected.freqNoteIndex = idx;
+    else delete state.selected.freqNoteIndex;
+  }
+  return true;
+}
+function seedCommChangeNotesOneWay() {
   if (typeof state === 'undefined' ||
       !Array.isArray(state.waypoints) || !Array.isArray(state.notes)) return false;
   let changed = pruneTurnCommChangeNotes();
@@ -5464,7 +5604,10 @@ function drawLegs() {
       ? !legKiteVisible(i, leg)
       : (typeof legKiteHidden === 'function' && legKiteHidden(leg));
 
-    drawMinuteMarkers(sa, sb, durH);
+    drawMinuteMarkers(sa, sb, durH, tune('minuteMarkerToColor'));
+    // The return's own minutes, counted from B back to A, on the side right of ITS direction
+    // -- the other side of the line -- in the return colour.
+    if (showReturn && durOut > 0) drawMinuteMarkers(sb, sa, durOut, tune('minuteMarkerFromColor'), true);
 
     const ang = Math.atan2(sb.y - sa.y, sb.x - sa.x);
     const mid = { x: (sa.x + sb.x) / 2, y: (sa.y + sb.y) / 2 };
@@ -5523,9 +5666,10 @@ function drawLegs() {
       ang, pad3(magIn), timeStr, kiteAltitudeLabel(leg.inboundAltitude, leg, 'inboundAltitude'),
       tune('inkColor'), tintFill(tune('legKiteFillColor'), tune('kiteNoteAlpha')), needsHalo(i, 'in'), zoomScale);
     // Cumulative inbound time: < [time], position driven by leg.cumLabel. By default it
-    // takes the side AWAY from the nav kite (cumKiteAngleDeg): sharing a side stacked
-    // the two against each other at the waypoint, and a glance had to separate them.
-    // Sign only -- the distance is the same either way, so both stay clear of the disc.
+    // sits opposite the nav kite (cumKiteAngleDeg 180). With the return path shown it joins
+    // the nav kite (cumKiteAngleReturnDeg 0): every mark of one direction -- nav kite,
+    // minute ticks, freq arrow, this -- on one side of the track, and the way back's all on
+    // the other. The distance is the same at any angle, so it stays clear of the disc.
     const defCum = { a: 0, _default: 1, _m: 1 };
     // Default placement of the cumulative kite around its waypoint: an angle FROM the nav
     // kite's side (cumKiteAngleDeg), turned towards the direction of flight. The nav kite
@@ -5554,7 +5698,10 @@ function drawLegs() {
         mid.y + dy * outAlong + ny * outPerp, ang + Math.PI,
         pad3(magOut), timeStrOut, kiteAltitudeLabel(leg.outboundAltitude, leg, 'outboundAltitude'),
         tune('inkColor'), tintFill(tune('returnKiteFillColor'), tune('kiteNoteAlpha')), needsHalo(i, 'out'), zoomScale);
-      if (showCumTime) {
+      // Inside a CTR the way back is off its clock too (cumOutArr '---'), and draws no
+      // cumulative kite there, as the way out does not. Only the CTR: a leg before the
+      // start-timer point is off the way OUT's clock but still on the way home's.
+      if (showCumTime && cumOutArr[i] !== '---') {
         // Cumulative return time kite at A waypoint (return destination).
         // Own offset (cumLabelRet), anchored at A with the same +dx/+nx frame
         // as the inbound kite so its drag math is identical; default sits on
@@ -5567,7 +5714,7 @@ function drawLegs() {
         const cumRetY = sa.y + dy * cumRetAlong + ny * cumRetPerp;
         queueCumTimeArrow(cumRetX, cumRetY,
           Math.atan2(sa.y - cumRetY, sa.x - cumRetX),
-          cumOutArr[i], tune('inkColor'), tintFill(tune('returnCumKiteFillColor'), tune('kiteNoteAlpha')), zoomScale);
+          cumOutArr[i], tune('inkColor'), tintFill(tune('returnCumKiteFillColor'), tune('kiteNoteAlpha')), zoomScale, true);
       }
     }
     if (showMidLeg) drawDistanceBadge(mid.x, mid.y, dist);
@@ -5629,7 +5776,7 @@ function drawWindArrow(x, y, latlng, wind, emphasis) {
   octx.moveTo(x - cx * len / 2, y - cy * len / 2);
   octx.lineTo(x1, y1);
   octx.save();
-  octx.strokeStyle = colorWithAlpha(tune('windArrowHaloColor'), 0.85);
+  octx.strokeStyle = colorWithAlpha(tune('windArrowHaloColor'), tune('windArrowHaloAlpha'));
   octx.lineWidth = (emphasis ? 3 : 2) + 3;
   octx.stroke();
   octx.restore();
@@ -5641,9 +5788,9 @@ function drawWindArrow(x, y, latlng, wind, emphasis) {
   octx.closePath();
   octx.fill();
   const label = pad3(wind.dir) + '/' + wind.speed;
-  octx.font = 'bold 11px sans-serif';
-  octx.lineWidth = 3;                                 // text halo
-  octx.strokeStyle = colorWithAlpha(tune('windTextHaloColor'), 0.9);
+  octx.font = 'bold ' + tune('windLabelFontPx') + 'px sans-serif';
+  octx.lineWidth = tune('windTextHaloWidthPx');                                 // text halo
+  octx.strokeStyle = colorWithAlpha(tune('windTextHaloColor'), tune('windTextHaloAlpha'));
   octx.strokeText(label, x1 + 6, y1 + 3);
   octx.fillText(label, x1 + 6, y1 + 3);
   octx.restore();
@@ -5670,14 +5817,19 @@ function drawDriftLines(sa, sb) {
   octx.restore();
 }
 
-function drawMinuteMarkers(sa, sb, durH) {
+// `flip`: the way back's digits, turned 180 degrees -- upright for a chart turned round to fly
+// home, the same as the return kites' text.
+function drawMinuteMarkers(sa, sb, durH, color, flip) {
   const totalMin = durH * 60;
   if (totalMin < 1) return;
   let dx = sb.x - sa.x, dy = sb.y - sa.y;
   const len = Math.hypot(dx, dy) || 1;
   dx /= len; dy /= len;
   const nx = -dy, ny = dx;
-  octx.font = `bold ${tune('minuteMarkerFontPx')}px sans-serif`;
+  const k = (typeof minuteMarkerSize === 'number' && minuteMarkerSize > 0) ? minuteMarkerSize : 1;
+  const ink = color || tune('inkColor');
+  const fontPx = tune('minuteMarkerFontPx') * k;
+  octx.font = `bold ${fontPx}px sans-serif`;
   octx.textAlign = 'center';
   octx.textBaseline = 'middle';
   const count = Math.floor(totalMin);
@@ -5686,9 +5838,9 @@ function drawMinuteMarkers(sa, sb, durH) {
     const px = sa.x + (sb.x - sa.x) * f;
     const py = sa.y + (sb.y - sa.y) * f;
     const even = m % 2 === 0;
-    const tick = even ? tune('minuteTickEvenPx') : tune('minuteTickOddPx');
-    octx.strokeStyle = tune('inkColor');
-    octx.lineWidth = even ? tune('minuteTickEvenWidthPx') : tune('minuteTickOddWidthPx');
+    const tick = (even ? tune('minuteTickEvenPx') : tune('minuteTickOddPx')) * k;
+    octx.strokeStyle = ink;
+    octx.lineWidth = (even ? tune('minuteTickEvenWidthPx') : tune('minuteTickOddWidthPx')) * k;
     octx.beginPath();
     // CAAI standard: minute ticks sit on the RIGHT side of the leg (relative to
     // the direction of flight), starting on the track line and extending out to
@@ -5698,11 +5850,19 @@ function drawMinuteMarkers(sa, sb, durH) {
     octx.lineTo(px + nx * tick, py + ny * tick);
     octx.stroke();
     if (even) {                         // minute number past the tick end
-      const tx = px + nx * (tick + tune('minuteLabelOffsetPx'));
-      const ty = py + ny * (tick + tune('minuteLabelOffsetPx'));
-      octx.fillStyle = tune('inkColor');
-      octx.font = `bold ${tune('minuteMarkerFontPx')}px sans-serif`;
-      octx.fillText(String(m), tx, ty);
+      const tx = px + nx * (tick + tune('minuteLabelOffsetPx') * k);
+      const ty = py + ny * (tick + tune('minuteLabelOffsetPx') * k);
+      octx.fillStyle = ink;
+      octx.font = `bold ${fontPx}px sans-serif`;
+      if (flip) {
+        octx.save();
+        octx.translate(tx, ty);
+        octx.rotate(Math.PI);
+        octx.fillText(String(m), 0, 0);
+        octx.restore();
+      } else {
+        octx.fillText(String(m), tx, ty);
+      }
     }
   }
   octx.textAlign = 'left';
@@ -5711,17 +5871,26 @@ function drawMinuteMarkers(sa, sb, durH) {
 // Highlight when altitude OR speed differs from the adjacent leg.
 // 'in'  -> compare with previous leg's inbound altitude/speed.
 // 'out' -> compare with next leg's outbound altitude/speed (return direction).
+// The highlight says "this differs from the kite before it", so it compares with the nearest
+// leg whose kite is actually drawn -- not one hidden inside a CTR. A route out of LLMG lit up
+// AFULA -> TAVOR, the first kite on the chart, for differing from the departure leg nobody
+// can see. No drawn kite before it (the way back: after it), nothing to differ from.
 function needsHalo(i, which) {
   if (!highlightDiff) return false;
   const cur = state.legs[i];
+  const shown = (j) => typeof legKiteVisible !== 'function' || legKiteVisible(j, state.legs[j]);
   if (which === 'in') {
-    if (i === 0) return false;
-    const prev = state.legs[i - 1];
+    let j = i - 1;
+    while (j >= 0 && !shown(j)) j--;
+    if (j < 0) return false;
+    const prev = state.legs[j];
     return !sameAltitudeValue(cur.inboundAltitude, prev.inboundAltitude) ||
            cur.flightSpeed     !== prev.flightSpeed;
   }
-  if (i === state.legs.length - 1) return false;
-  const next = state.legs[i + 1];
+  let j = i + 1;
+  while (j < state.legs.length && !shown(j)) j++;
+  if (j >= state.legs.length) return false;
+  const next = state.legs[j];
   return !sameAltitudeValue(cur.outboundAltitude, next.outboundAltitude) ||
          cur.outboundSpeed    !== next.outboundSpeed;
 }
@@ -5758,7 +5927,8 @@ function traceArrowBox(ctx, width, height, headLength) {
   ctx.lineTo(-width / 2, height / 2);
   ctx.closePath();
 }
-function drawCumTimeArrow(cx, cy, flightAng, cumTime, accent, fill, sc) {
+// `ret`: a way-back kite, its time upright for the chart turned round to fly home.
+function drawCumTimeArrow(cx, cy, flightAng, cumTime, accent, fill, sc, ret) {
   sc = sc ?? 1;
   // Fixed GROUND size — cumKitePrintHeightMm tall at the 1:250,000 scale (× the
   // legArrowSize selector) — so it scales with the map like its position and
@@ -5794,7 +5964,7 @@ function drawCumTimeArrow(cx, cy, flightAng, cumTime, accent, fill, sc) {
   octx.translate(p.x, p.y);
   // Text orientation matches the navigation kite (flightAng+π = ang+π/2 when kite is at ang-π/2).
   let textAng = flightAng + Math.PI;
-  if (Math.cos(textAng) < 0) textAng += Math.PI;
+  if (ret ? Math.cos(textAng) > 0 : Math.cos(textAng) < 0) textAng += Math.PI;
   octx.rotate(textAng);
   octx.font = `bold ${fontPx}px sans-serif`;
   octx.textAlign = 'center';
@@ -6183,7 +6353,8 @@ function commCalloutGeom(n) {
   const ty = textSeg ? textSeg.a.y + (textSeg.b.y - textSeg.a.y) * textT : fp.y;
   let textAngle = textSeg ? Math.atan2(textSeg.b.y - textSeg.a.y, textSeg.b.x - textSeg.a.x)
                           : Math.atan2(uy, ux);
-  if (Math.cos(textAngle) < 0) textAngle += Math.PI;
+  // Upright to read -- for a way-back callout, upright on the chart turned round to fly home.
+  if (n && n.ret ? Math.cos(textAngle) > 0 : Math.cos(textAngle) < 0) textAngle += Math.PI;
   const textGap = tune('commChangeTextGapPx');
   return {
     target: tp, targetCenter, targetRadius, startGap, tail: fp, bends, bend1, bend2,
@@ -6261,7 +6432,7 @@ function drawCommCalloutText(g) {
   octx.restore();
 }
 
-function drawCommCallout(n, selected) {
+function drawCommCallout(n, selected, arrowColor) {
   const g = commCalloutGeom(n);
   if (!g) return;
   octx.save();
@@ -6273,9 +6444,53 @@ function drawCommCallout(n, selected) {
     const halo = colorWithAlpha(tune('commChangeArrowHaloColor'), tune('commChangeArrowHaloAlpha'));
     strokeCommCalloutShape(g, g.width + g.halo * 2, halo, 1);
   }
-  strokeCommCalloutShape(g, g.width, tune('commChangeArrowColor'), 1);
+  strokeCommCalloutShape(g, g.width, arrowColor || tune('commChangeArrowColor'), 1);
   drawCommCalloutText(g);
   octx.restore();
+}
+
+// The way back's frequency changes. The callouts are chosen walking the route FORWARD: at a
+// change point, the station flown INTO. Flying home the same point can call for another one,
+// or none (LLHA -> LLIB: GILAM is Pluto East going, Haifa coming back; DESHE Rosh Pina going,
+// Pluto East coming back). With the return path shown they are seeded the same way on the
+// route reversed and kept as ordinary comm-change notes tagged `ret: 1` -- so the pilot drags,
+// edits and deletes them exactly like the way out's. A deleted one is remembered in the same
+// suppression list, prefixed RET_COMM_SUP. The way-out logic never sees them: every pass that
+// seeds or prunes runs on one direction's notes at a time (seedCommChangeNotes).
+const RET_COMM_SUP = '<';
+function returnCommOn() {
+  return typeof showReturn !== 'undefined' && !!showReturn
+    && (typeof showReturnFeatureOn !== 'function' || showReturnFeatureOn());
+}
+// Run fn with the route reversed: the way home, as the comm-change code reads a route.
+function withReturnRoute(fn) {
+  const wps = state.waypoints;
+  if (!Array.isArray(wps)) return fn();
+  try {
+    state.waypoints = wps.slice().reverse();
+    return fn();
+  } finally {
+    state.waypoints = wps;
+  }
+}
+// The suppression key a deleted callout leaves behind: its point, prefixed when on the way back.
+function commNoteSupKey(note) {
+  if (!note || !note.cc) return '';
+  const key = canonicalNavWaypointName(note.cc);
+  return key ? (note.ret ? RET_COMM_SUP : '') + key : '';
+}
+function commSupParts(v) {
+  const s = String(v || '');
+  const ret = s.startsWith(RET_COMM_SUP);
+  return { ret, key: canonicalNavWaypointName(ret ? s.slice(RET_COMM_SUP.length) : s) };
+}
+window.returnCommOn = returnCommOn;
+window.withReturnRoute = withReturnRoute;
+window.commNoteSupKey = commNoteSupKey;
+// A callout's default spot, worked out for the direction it is flown in.
+function commNoteDefaultTail(note, wp) {
+  return note && note.ret
+    ? withReturnRoute(() => commCalloutDefaultTail(wp)) : commCalloutDefaultTail(wp);
 }
 
 function selectedCommCallout(i) {
@@ -6333,7 +6548,7 @@ function drawNotes() {
     // A black-and-white print draws every note white, whatever colour it was given on screen.
     const color = (NavAid.printOverride ? null : n.color) || tune('noteDefaultFillColor') || NOTE_DEFAULT_COLOR;
     if (n.cc) {
-      if (!commCalloutDragging(i)) drawCommCallout(n, selected);
+      if (!commCalloutDragging(i)) drawCommCallout(n, selected, n.ret ? tune('commChangeReturnArrowColor') : undefined);
       continue;
     }
     octx.fillStyle = tintFill(color, tune('kiteNoteAlpha'));   // notes share the gist-tuned kite opacity
@@ -6650,7 +6865,7 @@ function routeInkRects() {
       if (!offClockHere && typeof cumLabelCenter === 'function') {
         pushRotated(cumLabelCenter(i), kB.x, kB.y, cum.halfL, cum.halfW);
       }
-      if (inkReturnOn && typeof cumLabelRetCenter === 'function') {
+      if (inkReturnOn && !(typeof legInsideCtr === 'function' && legInsideCtr(i)) && typeof cumLabelRetCenter === 'function') {
         pushRotated(cumLabelRetCenter(i), kA.x, kA.y, cum.halfL, cum.halfW);
       }
     }
@@ -6948,9 +7163,9 @@ function drawFlightPlanTable(ctx, x, y, w, h, align) {
     rowY[tr] + (rowY[tr + 1] - rowY[tr]) / 2 + fontSize * 0.08);
   for (let c4 = 0; c4 < numCols; c4++) if (totVals[c4] !== undefined) cell(tr, c4, String(totVals[c4]), true, null);
   ctx.strokeStyle = GRID;
-  ctx.lineWidth = 1;
+  ctx.lineWidth = tune('fpTableBorderWidthPx');
   ctx.strokeRect(x + 0.5, y + 0.5, totalW - 1, tableHActual - 1);
-  ctx.lineWidth = 0.75;
+  ctx.lineWidth = tune('fpTableGridWidthPx');
   for (let gc = 1; gc < numCols; gc++) {
     const gx = Math.round(x + (rtl ? totalW - colX[gc] : colX[gc])) + 0.5;
     ctx.beginPath(); ctx.moveTo(gx, y); ctx.lineTo(gx, y + tableHActual); ctx.stroke();
@@ -6986,7 +7201,7 @@ function drawPlanCard() {
   octx.closePath();
   octx.fill();
   octx.strokeStyle = tune('planCardGripLineColor');
-  octx.lineWidth = 1.5;
+  octx.lineWidth = tune('planCardGripLineWidthPx');
   for (let i = 1; i <= 3; i++) {
     octx.beginPath();
     octx.moveTo(ex - i * 5, ey - 2);
@@ -7141,7 +7356,7 @@ function drawGraphLegs() {
   octx.save();
   octx.lineWidth = tune('graphLegWidthPx');
   octx.lineCap = 'round';
-  octx.font = 'bold 12px sans-serif';
+  octx.font = 'bold ' + tune('graphLegLabelFontPx') + 'px sans-serif';
   octx.textAlign = 'center';
   octx.textBaseline = 'middle';
   const seen = new Set();
@@ -7161,7 +7376,7 @@ function drawGraphLegs() {
       const kind = flown.armyAirway ? 'army' : flown.onAtcApproval ? 'atc'
         : flown.closedHint ? 'closed' : (fwdOpen && revOpen) ? 'plain' : 'oneWay';
       octx.strokeStyle = graphLegColor(kind);
-      octx.setLineDash(kind === 'closed' ? [9, 7] : []);
+      octx.setLineDash(kind === 'closed' ? [tune('graphLegClosedDashOnPx'), tune('graphLegClosedDashOffPx')] : []);
       octx.beginPath(); octx.moveTo(p.x, p.y); octx.lineTo(q.x, q.y); octx.stroke();
       octx.setLineDash([]);
       // Arrowheads: one per travellable direction, so a two-way leg reads <---> and a

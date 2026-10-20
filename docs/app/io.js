@@ -680,6 +680,10 @@ function validateRoute(d) {
           typeof n.freqAuto !== 'boolean') {
         errs.push(p + '.freqAuto: expected boolean, got ' + _vKind(n.freqAuto));
       }
+      if (Object.prototype.hasOwnProperty.call(n, 'ret') &&
+          n.ret !== 1 && typeof n.ret !== 'boolean') {
+        errs.push(p + '.ret: expected 1 or boolean, got ' + _vKind(n.ret));
+      }
       if (Object.prototype.hasOwnProperty.call(n, 'size') &&
           typeof n.size !== 'number') {
         errs.push(p + '.size: expected number, got ' + _vKind(n.size));
@@ -1184,6 +1188,7 @@ function serializeRoute() {
       ...(n.freqName ? { freqName: n.freqName } : {}),
       ...(n.freq ? { freq: n.freq } : {}),
       ...(n.freqAuto === true ? { freqAuto: true } : {}),
+      ...(n.cc && n.ret ? { ret: 1 } : {}),   // a way-back callout (Show return path)
       ...(Number.isFinite(n.size) && n.size !== 1 ? { size: n.size } : {}),
       ...(Number.isFinite(n.rot) && n.rot ? { rot: n.rot } : {}),   // the note's own angle; 0 is the default and is omitted
       ...(n.rp && Number.isInteger(n.rp.leg) ? { rp: { leg: n.rp.leg, t: r5(n.rp.t) } } : {}),
@@ -3269,6 +3274,7 @@ function applyRouteData(d) {
     ...(n.freqName ? { freqName: n.freqName } : {}),
     ...(n.freq ? { freq: n.freq } : {}),
     ...(n.freqAuto === true ? { freqAuto: true } : {}),
+    ...(n.cc && n.ret ? { ret: 1 } : {}),
     ...(Number.isFinite(n.size) && n.size !== 1 ? { size: n.size } : {}),
     ...(Number.isFinite(n.rot) && n.rot ? { rot: n.rot } : {}),
     ...(n.rp && Number.isInteger(n.rp.leg)
@@ -3935,7 +3941,7 @@ function exportNavLog(scrollArea) {
       wpi: (n && n.cc && typeof commCalloutWaypointIndex === 'function')
         ? commCalloutWaypointIndex(n) : -1,
     }))
-    .filter(item => item.n && item.n.cc)
+    .filter(item => item.n && item.n.cc && !item.n.ret)
     .sort((a, b) => routeNoteOrder(a) - routeNoteOrder(b) || a.idx - b.idx)
     .map(({ n }) => {
     const wp = (typeof navName === 'function' ? navName(n.cc) : n.cc) || n.cc;
@@ -6542,9 +6548,9 @@ function drawA4x2TileMarks(cx, t, total, pxPerMm) {
   cx.fillStyle = tune('a4x2MarkLabelInkColor');
   cx.fillText(label, pad * 2, pad * 2);
   // dashed guide along the shared (seam) edge
-  cx.strokeStyle = 'rgba(0,0,0,0.7)';
+  cx.strokeStyle = colorWithAlpha(tune('a4x2MarkGuideColor'), tune('a4x2MarkGuideAlpha'));
   cx.lineWidth = Math.max(1, tune('a4x2MarkGuideMm') * mm);
-  cx.setLineDash([Math.round(4 * mm), Math.round(2.5 * mm)]);
+  cx.setLineDash([Math.round(tune('a4x2MarkGuideDashMm') * mm), Math.round(tune('a4x2MarkGuideGapMm') * mm)]);
   cx.beginPath();
   if (t.seam === 'right')       { cx.moveTo(W - 1, 0); cx.lineTo(W - 1, H); }
   else if (t.seam === 'left')   { cx.moveTo(1, 0);     cx.lineTo(1, H); }
@@ -7644,6 +7650,7 @@ function restoreRoute() {
     ...(n.freqName ? { freqName: n.freqName } : {}),
     ...(n.freq ? { freq: n.freq } : {}),
     ...(n.freqAuto === true ? { freqAuto: true } : {}),
+    ...(n.cc && n.ret ? { ret: 1 } : {}),
     ...(Number.isFinite(n.size) && n.size !== 1 ? { size: n.size } : {}),
     ...(Number.isFinite(n.rot) && n.rot ? { rot: n.rot } : {}),
     ...(n.rp && Number.isInteger(n.rp.leg)
@@ -9768,14 +9775,16 @@ function buildShareUrl() {
   const hotspotOverrides = state.waypoints.map(w =>
     Object.prototype.hasOwnProperty.call(w, 'hotspot') ? (w.hotspot ? '1' : '0') : '_').join('');
   if (/[01]/.test(hotspotOverrides)) params.set('h', hotspotOverrides);
-  const freqNotes = state.notes.filter(n => n && n.cc);
+  // The way out's only: a share link's receiver seeds the way back for themselves.
+  const freqNotes = state.notes.filter(n => n && n.cc && !n.ret);
   if (freqNotes.length) {
     const f = _b64UrlEncode(freqNotes.map(n =>
       [n.cc, n.freqName || '', n.freq || ''].join(',')).join(';'));
     params.set('f', f);
   }
-  const supps = state.commChangeSuppressions;
-  if (Array.isArray(supps) && supps.length) {
+  const supps = (state.commChangeSuppressions || [])
+    .filter(v => !(typeof v === 'string' && v.startsWith(RET_COMM_SUP)));
+  if (supps.length) {
     params.set('x', _b64UrlEncode(supps.join(',')));
   }
   return { url: base + '?' + params.toString() };
@@ -11359,7 +11368,8 @@ function showFplDialog(opts) {
     typeBox.className = 'fpl-type-box';
     typeBox.append(typeSel, type, backToList);
 
-    const storedType = String(profile.type || '').toUpperCase();
+    // The aircraft chosen in Settings when the form has none of its own yet.
+    const storedType = String(profile.type || (aircraft && aircraft.type) || '').toUpperCase();
     const typeListed = !storedType || TYPE_SUGGESTIONS.includes(storedType);
     const showType = other => {
       typeSel.hidden = other;
@@ -11375,9 +11385,16 @@ function showFplDialog(opts) {
       if (!other) type.value = typeSel.value;
       else type.value = '';
       showType(other);
+      // A listed type is the aircraft: Settings, its figures and the plan follow, and stay.
+      // "Other…" here is "Other…" in Settings too: the figures stay as they are, set by hand.
+      if (typeof window.applyAircraftType === 'function' && window.AIRCRAFT_TYPES) {
+        if (!other && window.AIRCRAFT_TYPES[typeSel.value]) window.applyAircraftType(typeSel.value);
+        else if (other) window.applyAircraftType('');
+      }
     };
     backToList.onclick = () => {
-      typeSel.value = TYPE_SUGGESTIONS[0];
+      const settingsType = aircraft && aircraft.type;
+      typeSel.value = settingsType && TYPE_SUGGESTIONS.includes(settingsType) ? settingsType : TYPE_SUGGESTIONS[0];
       type.value = typeSel.value;
       showType(false);
     };
@@ -11410,7 +11427,16 @@ function showFplDialog(opts) {
       endurance.appendChild(o);
     }
     // Five hours is the usual tankful; the pilot's own choice wins once made.
-    endurance.value = /^[0-9]{4}$/.test(profile.endurance) ? profile.endurance : FPL_DEFAULT_ENDURANCE;
+    // With none chosen yet, the aircraft's own: usable fuel less taxi, at its burn, rounded DOWN to
+    // the half hour the list offers (never more endurance than the tanks hold).
+    const acEndurance = () => {
+      const u = aircraft && Number(aircraft.usableGal), g = aircraft && Number(aircraft.gph);
+      if (!(u > 0 && g > 0)) return null;
+      const mins = Math.floor(((u - (Number(aircraft.taxiGal) || 0)) / g) * 60 / 30) * 30;
+      const m = Math.max(30, Math.min(480, mins));
+      return hhmmFromMinutes(m);
+    };
+    endurance.value = /^[0-9]{4}$/.test(profile.endurance) ? profile.endurance : (acEndurance() || FPL_DEFAULT_ENDURANCE);
     if (!endurance.value || endurance.selectedIndex < 0) endurance.value = FPL_DEFAULT_ENDURANCE;
     body.appendChild(row(S.fplEndurance || 'Fuel endurance', endurance));
 
@@ -12563,7 +12589,7 @@ function showFplXcForm(opts) {
     pad.style.height = cssH + 'px';
     const ctx = pad.getContext('2d');
     ctx.scale(2, 2);
-    ctx.lineWidth = 1.6;
+    ctx.lineWidth = tune('fplSignatureWidthPx');
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
     // Presentation values come from the tuning registry, not from literals in here.

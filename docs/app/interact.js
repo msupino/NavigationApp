@@ -108,7 +108,9 @@ function selectedFreqNoteIndex() {
       return sel.freqNoteIndex;
     }
   }
-  const idx = state.notes.findIndex(n => n && n.cc && commCalloutWaypointIndex(n) === sel.index);
+  // The way out's callout first: a way-back one is reached by tapping it (freqNoteIndex above).
+  let idx = state.notes.findIndex(n => n && n.cc && !n.ret && commCalloutWaypointIndex(n) === sel.index);
+  if (idx < 0) idx = state.notes.findIndex(n => n && n.cc && commCalloutWaypointIndex(n) === sel.index);
   if (idx >= 0) sel.freqNoteIndex = idx;
   return idx;
 }
@@ -284,7 +286,7 @@ function linkedCommChangeNoteForKey(note, ccKey) {
 }
 function freqChangeNoteForKey(ccKey) {
   if (!ccKey || !Array.isArray(state.notes)) return null;
-  return state.notes.find(n => linkedCommChangeNoteForKey(n, ccKey)) || null;
+  return state.notes.find(n => n && !n.ret && linkedCommChangeNoteForKey(n, ccKey)) || null;
 }
 function isKnownCommChangeKey(ccKey) {
   const cc = commChangeMap && ccKey ? commChangeMap[ccKey] : null;
@@ -1108,6 +1110,7 @@ function hitCumLabelRet(px, py) {
   for (let i = 0; i < state.legs.length; i++) {
     if (typeof legDirVisible === 'function' && !legDirVisible(i)) continue;
     if (!legAllowsReturn(i)) continue;
+    if (typeof legInsideCtr === 'function' && legInsideCtr(i)) continue;   // not drawn inside a CTR
     const c = cumLabelRetCenter(i);
     const retEnds = (typeof legScreenEnds === 'function') ? legScreenEnds(i) : null;
     const a = retEnds ? retEnds.a : (state.waypoints[i] && proj(state.waypoints[i]));   // return kite points toward A
@@ -1248,7 +1251,7 @@ function deleteSelectedWpOrNote() {
     draw(); showInspector();
   } else if (state.selected.type === 'note') {
     const note = state.notes[state.selected.index];
-    if (note && note.cc && typeof suppressCommChange === 'function') suppressCommChange(note.cc);
+    if (note && note.cc && typeof suppressCommChange === 'function') suppressCommChange(commNoteSupKey(note));
     state.notes.splice(state.selected.index, 1);
     state.selected = null;
     draw(); showInspector();
@@ -1455,7 +1458,8 @@ function appendSurfaceWxRow(body, lat, lng) {
   const parts = [];
   if (s.t !== null && s.td !== null) parts.push(Math.round(s.t) + '°/' + Math.round(s.td) + '°');
   if (s.spread !== null) parts.push('Δ' + Math.round(s.spread) + '°');
-  if (s.p !== null) parts.push('Q' + Math.round(s.p));
+  // QNH in the pilot's unit (Settings -> Pressure unit), as every other pressure in the app.
+  if (s.p !== null) parts.push('Q ' + (typeof fmtPressure === 'function' ? fmtPressure(s.p) : Math.round(s.p)));
   val.textContent = parts.join(' · ');
   val.title = (S.tbSurfaceWxTitle || '');
   row.append(label, val);
@@ -4227,7 +4231,7 @@ function showInspector() {
     del.className = 'insp-btn insp-btn-danger';
     del.textContent = note.cc ? (S.deleteFreqChange || S.deleteNote) : S.deleteNote;
     del.onclick = () => {
-      if (note.cc && typeof suppressCommChange === 'function') suppressCommChange(note.cc);
+      if (note.cc && typeof suppressCommChange === 'function') suppressCommChange(commNoteSupKey(note));
       state.notes.splice(state.selected.index, 1);
       state.selected = null;
       draw(); showInspector();
@@ -4517,7 +4521,10 @@ function showInspector() {
     // linked callout can still add a manual frequency-change arrow.
     if (showCommChange) {
       let ccKey = waypointFreqChangeKey(wp);
-      let linkedNote = ccKey ? freqChangeNoteForKey(ccKey) : null;
+      // A way-back callout that was tapped is the one to edit, not the way out's at this point.
+      const tappedIndex = state.selected && state.selected.freqNoteIndex;
+      const tapped = Number.isInteger(tappedIndex) ? state.notes[tappedIndex] : null;
+      let linkedNote = tapped && tapped.ret ? tapped : (ccKey ? freqChangeNoteForKey(ccKey) : null);
       if (!linkedNote) {
         const linkedIndex = selectedFreqNoteIndex();
         linkedNote = linkedIndex >= 0 ? state.notes[linkedIndex] : null;
@@ -4974,7 +4981,7 @@ function textRow(label, value) {
 function appendFreqEdit(body, note, editOptions) {
   if (!note.freqName) {
     note.freqName = (typeof commCalloutDefaults === 'function'
-      ? commCalloutDefaults(note.cc).freqName : commNoteName(note));
+      ? commCalloutDefaults(note.cc, note).freqName : commNoteName(note));
   }
   if (!note.freq) note.freq = commNoteFreq(note);
   const opts = typeof commCallSignOptions === 'function'
@@ -5008,7 +5015,7 @@ function appendFreqEdit(body, note, editOptions) {
   }
   function autoDefault() {
     if (!note || !note.cc || typeof commCalloutDefaults !== 'function') return null;
-    const def = commCalloutDefaults(note.cc);
+    const def = commCalloutDefaults(note.cc, note);
     return def && def.freqName ? def : null;
   }
   function normalizedFreq(value) {
@@ -5088,6 +5095,16 @@ function appendFreqEdit(body, note, editOptions) {
         : '';
     }
     syncCallSignSelect();
+  }
+  // A way-back callout says so: the same point has its own callout for the way out.
+  if (note.ret) {
+    const dirRow = document.createElement('div');
+    dirRow.className = 'row col commchange-row freq-way-back';
+    const dirLbl = document.createElement('label');
+    dirLbl.className = 'commchange-label';
+    dirLbl.textContent = S.freqWayBack || 'On the way back';
+    dirRow.appendChild(dirLbl);
+    body.appendChild(dirRow);
   }
   if (opts.length) {
     const current = (note.freqName || '').trim();
@@ -5275,7 +5292,7 @@ function appendFreqEdit(body, note, editOptions) {
     reset.title = S.resetFreqLocationTitle || 'Reset callout location';
     reset.setAttribute('aria-label', reset.title);
     reset.onclick = () => {
-      const tail = commCalloutDefaultTail(target);
+      const tail = commNoteDefaultTail(note, target);
       note.lat = tail.lat;
       note.lng = tail.lng;
       draw();
@@ -5294,7 +5311,7 @@ function appendFreqEdit(body, note, editOptions) {
     del.onclick = () => {
       if (note.cc && isKnownCommChangeKey(waypointFreqChangeKey({ name: note.cc })) &&
           typeof suppressCommChange === 'function') {
-        suppressCommChange(note.cc);
+        suppressCommChange(commNoteSupKey(note));
       }
       const idx = state.notes.indexOf(note);
       if (idx >= 0) state.notes.splice(idx, 1);
@@ -6146,7 +6163,7 @@ window.addEventListener('keydown', e => {
       const note = state.notes[freqNote];
       // Suppress so seedCommChangeNotes() doesn't re-seed it on the next
       // drag/add/toggle — matches the other freq-note delete paths.
-      if (note && note.cc && typeof suppressCommChange === 'function') suppressCommChange(note.cc);
+      if (note && note.cc && typeof suppressCommChange === 'function') suppressCommChange(commNoteSupKey(note));
       state.notes.splice(freqNote, 1);
       delete state.selected.freqNoteIndex;
       draw(); showInspector();
@@ -6177,7 +6194,7 @@ window.addEventListener('keydown', e => {
     const freqNote = selectedFreqNoteIndex();
     if (freqNote >= 0) {
       const note = state.notes[freqNote];
-      if (note && note.cc && typeof suppressCommChange === 'function') suppressCommChange(note.cc);
+      if (note && note.cc && typeof suppressCommChange === 'function') suppressCommChange(commNoteSupKey(note));
       state.notes.splice(freqNote, 1);
       delete state.selected.freqNoteIndex;
       draw(); showInspector();

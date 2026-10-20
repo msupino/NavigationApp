@@ -354,7 +354,7 @@ const GDRIVE_SETTINGS_KEYS = [
   'navaid.highlightDiff', 'navaid.limitLegKites', 'navaid.showMsa',
   'navaid.showReporting', 'navaid.forceSnap', 'navaid.showReturn',
   'navaid.legDirFilter',
-  'navaid.showWind', 'navaid.windField', 'navaid.airfieldWind', 'navaid.surfaceWx', 'navaid.surfaceWxField', 'navaid.imsPwx',
+  'navaid.showWind', 'navaid.windField', 'navaid.airfieldWind', 'navaid.surfaceWx', 'navaid.surfaceWxField', 'navaid.surfaceWxPoints', 'navaid.surfaceWxIsobars', 'navaid.imsPwx',
   // NOTAM visibility is remembered per chart (see notamPrefKey), so the shared
   // 'navaid.showNotam' this list used to carry is no longer written by anything —
   // syncing it silently stopped carrying the pilot's choice between devices.
@@ -382,7 +382,8 @@ const GDRIVE_SETTINGS_KEYS = [
   // Colours picked in the Display menu. Written by wireColorPicker with the key
   // passed as an ARGUMENT, which is exactly why the drift guard could not see
   // them and they sat unsynced.
-  'navaid.waypointColor', 'navaid.legArrowColor',
+  'navaid.waypointColor', 'navaid.legArrowColor', 'navaid.returnArrowColor',
+  'navaid.minuteMarkerSize', 'navaid.minuteToColor', 'navaid.minuteFromColor',
   'navaid.trainingOpacity',
   'navaid.cvfrOpacity', 'navaid.heliOpacity', 'navaid.circuitOpacity',
   'navaid.plateOpacity', 'navaid.ifrOpacity', 'navaid.commfailOpacity', 'navaid.mapOpacity.v2',
