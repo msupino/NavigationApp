@@ -87,7 +87,9 @@ test('LLHZ -> LLIB and back: the way back matches the route flown home', async (
   const back = await page.evaluate(() => state.notes.filter(n => n.cc && n.ret).map(n => [n.cc, n.freqName, n.freq, n.lat, n.lng]));
   console.log('LLHZ-LLIB out:', JSON.stringify(out), ' back:', JSON.stringify(back.map(b => b.slice(0, 3))));
   expect(homeAt.length).toBeGreaterThan(0);
-  expect(back).toEqual(homeAt);
+  // Stations and frequencies: the flown-home route here is drawn one way, so its callouts sit
+  // on the one-way side; where the return path puts them is checked on LLHA <-> LLIB above.
+  expect(back.map(b => b.slice(0, 3))).toEqual(homeAt.map(h => h.slice(0, 3)));
   expect(await page.evaluate(() => state.waypoints.map(w => w.name))).toEqual(OUT);   // plan untouched
 });
 
@@ -160,4 +162,43 @@ test('Reverse with the return path shown: the two directions trade places', asyn
   const flip = before.map(([cc, ret, f, lat, lng]) => [cc, !ret, f, lat, lng]);
   expect(after.slice().sort()).toEqual(flip.slice().sort());
   expect(await page.evaluate(() => state.waypoints.map(w => w.name))).toEqual(ROUTE.slice().reverse());
+});
+
+// One way, the freq arrow and the cumulative kite sit opposite the nav kite, as they always
+// have. With the return path shown, every mark of a direction goes to that direction's own
+// side: the arrow behind-right (commCalloutAngleReturnDeg) and the cumulative kite on the nav
+// kite's side (cumKiteAngleReturnDeg). A callout still at its default spot moves with the
+// switch; a dragged one stays put.
+test('the side swap happens only with the return path shown', async ({ page }) => {
+  await boot(page);
+  const read = () => page.evaluate(() => {
+    const wp = state.waypoints[1];
+    const tail = commCalloutDefaultTail(wp, 1);
+    const note = state.notes.find(n => n.cc === 'MID');
+    return { tailDLng: tail.lng - wp.lng, noteDLng: note.lng - wp.lng, dragged: state.notes[1].lng, cumPerp: cumDefaultLabelOffset().perp };
+  });
+  await page.evaluate(() => {
+    NavAid.tuning.featureShowReturn = true;
+    // Southbound through MID: left of travel is east (+lng), right is west.
+    state.waypoints = [{ lat: 32.7, lng: 35.0, name: 'N' }, { lat: 32.4, lng: 35.0, name: 'MID' }, { lat: 32.1, lng: 35.0, name: 'S' }];
+    state.legs = []; syncLegs();
+    const def = commCalloutDefaultTail(state.waypoints[1], 1);
+    state.notes = [
+      { lat: def.lat, lng: def.lng, text: 'Freq change', color: '#fff6aa', shape: 'rect', cc: 'MID', freqName: 'X', freq: '118.40' },
+      { lat: 32.45, lng: 35.3, text: 'Freq change', color: '#fff6aa', shape: 'rect', cc: 'S', freqName: 'Y', freq: '119.00' },
+    ];
+  });
+  const off = await read();
+  expect(off.tailDLng).toBeGreaterThan(0);         // one way: behind-left, opposite the kites
+  expect(off.cumPerp).toBeLessThan(0);             // and the cumulative kite opposite too
+  await setReturn(page, true);
+  const on = await read();
+  expect(on.tailDLng).toBeLessThan(0);             // return shown: behind-right, the kites' side
+  expect(on.noteDLng).toBeCloseTo(on.tailDLng, 4); // the default-placed callout moved with it
+  expect(on.dragged).toBeCloseTo(35.3, 5);         // the dragged one did not
+  expect(on.cumPerp).toBeGreaterThan(0);           // cumulative kite on the nav kite's side
+  await setReturn(page, false);
+  const back = await read();
+  expect(back.noteDLng).toBeCloseTo(off.tailDLng, 4);
+  expect(back.cumPerp).toBeLessThan(0);
 });
