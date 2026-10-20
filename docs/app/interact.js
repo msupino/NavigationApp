@@ -1110,7 +1110,7 @@ function hitCumLabelRet(px, py) {
   for (let i = 0; i < state.legs.length; i++) {
     if (typeof legDirVisible === 'function' && !legDirVisible(i)) continue;
     if (!legAllowsReturn(i)) continue;
-    if (typeof legOffCumClock === 'function' && legOffCumClock(i)) continue;   // not drawn inside a CTR
+    if (typeof legInsideCtr === 'function' && legInsideCtr(i)) continue;   // not drawn inside a CTR
     const c = cumLabelRetCenter(i);
     const retEnds = (typeof legScreenEnds === 'function') ? legScreenEnds(i) : null;
     const a = retEnds ? retEnds.a : (state.waypoints[i] && proj(state.waypoints[i]));   // return kite points toward A

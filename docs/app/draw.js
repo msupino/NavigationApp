@@ -5692,9 +5692,10 @@ function drawLegs() {
         mid.y + dy * outAlong + ny * outPerp, ang + Math.PI,
         pad3(magOut), timeStrOut, kiteAltitudeLabel(leg.outboundAltitude, leg, 'outboundAltitude'),
         tune('inkColor'), tintFill(tune('returnKiteFillColor'), tune('kiteNoteAlpha')), needsHalo(i, 'out'), zoomScale);
-      // Off the clock inside a CTR both ways: the way out draws no cumulative kite there,
-      // and the way back drew a '---' one in its place.
-      if (showCumTime && !offClock) {
+      // Inside a CTR the way back is off its clock too (cumOutArr '---'), and draws no
+      // cumulative kite there, as the way out does not. Only the CTR: a leg before the
+      // start-timer point is off the way OUT's clock but still on the way home's.
+      if (showCumTime && cumOutArr[i] !== '---') {
         // Cumulative return time kite at A waypoint (return destination).
         // Own offset (cumLabelRet), anchored at A with the same +dx/+nx frame
         // as the inbound kite so its drag math is identical; default sits on
@@ -6849,7 +6850,7 @@ function routeInkRects() {
       if (!offClockHere && typeof cumLabelCenter === 'function') {
         pushRotated(cumLabelCenter(i), kB.x, kB.y, cum.halfL, cum.halfW);
       }
-      if (inkReturnOn && !offClockHere && typeof cumLabelRetCenter === 'function') {
+      if (inkReturnOn && !(typeof legInsideCtr === 'function' && legInsideCtr(i)) && typeof cumLabelRetCenter === 'function') {
         pushRotated(cumLabelRetCenter(i), kA.x, kA.y, cum.halfL, cum.halfW);
       }
     }
