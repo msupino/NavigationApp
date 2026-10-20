@@ -1219,6 +1219,8 @@ window.navaidEvent = navaidEvent;
 // the chart. Set and cleared around the export's overlay draw only: the screen never sees it.
 const PRINT_BW_TUNES = {
   inkColor: '#000000', kiteTextColor: '#000000', selectedColor: '#000000',
+  // Minute marks in ink both ways: the two directions sit on opposite sides of the leg.
+  minuteMarkerToColor: '#000000', minuteMarkerFromColor: '#000000',
   legKiteFillColor: '#ffffff', cumKiteFillColor: '#ffffff', legKiteHaloColor: '#000000',
   // The way home stays told apart from the way out, in grey instead of pink.
   returnKiteFillColor: '#dcdcdc', returnCumKiteFillColor: '#dcdcdc',
