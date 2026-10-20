@@ -261,7 +261,7 @@
       ctx.arc(p.x, p.y, r, 0, Math.PI * 2);
       ctx.fillStyle = c;
       ctx.fill();
-      ctx.lineWidth = 1.5;
+      ctx.lineWidth = tn('swxDotRingWidthPx', 1.5);
       ctx.strokeStyle = tn('overlayLabelHaloColor', '#ffffff');
       ctx.stroke();
       if (station) {

@@ -680,6 +680,10 @@ function validateRoute(d) {
           typeof n.freqAuto !== 'boolean') {
         errs.push(p + '.freqAuto: expected boolean, got ' + _vKind(n.freqAuto));
       }
+      if (Object.prototype.hasOwnProperty.call(n, 'ret') &&
+          n.ret !== 1 && typeof n.ret !== 'boolean') {
+        errs.push(p + '.ret: expected 1 or boolean, got ' + _vKind(n.ret));
+      }
       if (Object.prototype.hasOwnProperty.call(n, 'size') &&
           typeof n.size !== 'number') {
         errs.push(p + '.size: expected number, got ' + _vKind(n.size));
@@ -1184,6 +1188,7 @@ function serializeRoute() {
       ...(n.freqName ? { freqName: n.freqName } : {}),
       ...(n.freq ? { freq: n.freq } : {}),
       ...(n.freqAuto === true ? { freqAuto: true } : {}),
+      ...(n.cc && n.ret ? { ret: 1 } : {}),   // a way-back callout (Show return path)
       ...(Number.isFinite(n.size) && n.size !== 1 ? { size: n.size } : {}),
       ...(Number.isFinite(n.rot) && n.rot ? { rot: n.rot } : {}),   // the note's own angle; 0 is the default and is omitted
       ...(n.rp && Number.isInteger(n.rp.leg) ? { rp: { leg: n.rp.leg, t: r5(n.rp.t) } } : {}),
@@ -3269,6 +3274,7 @@ function applyRouteData(d) {
     ...(n.freqName ? { freqName: n.freqName } : {}),
     ...(n.freq ? { freq: n.freq } : {}),
     ...(n.freqAuto === true ? { freqAuto: true } : {}),
+    ...(n.cc && n.ret ? { ret: 1 } : {}),
     ...(Number.isFinite(n.size) && n.size !== 1 ? { size: n.size } : {}),
     ...(Number.isFinite(n.rot) && n.rot ? { rot: n.rot } : {}),
     ...(n.rp && Number.isInteger(n.rp.leg)
@@ -3935,7 +3941,7 @@ function exportNavLog(scrollArea) {
       wpi: (n && n.cc && typeof commCalloutWaypointIndex === 'function')
         ? commCalloutWaypointIndex(n) : -1,
     }))
-    .filter(item => item.n && item.n.cc)
+    .filter(item => item.n && item.n.cc && !item.n.ret)
     .sort((a, b) => routeNoteOrder(a) - routeNoteOrder(b) || a.idx - b.idx)
     .map(({ n }) => {
     const wp = (typeof navName === 'function' ? navName(n.cc) : n.cc) || n.cc;
@@ -6542,9 +6548,9 @@ function drawA4x2TileMarks(cx, t, total, pxPerMm) {
   cx.fillStyle = tune('a4x2MarkLabelInkColor');
   cx.fillText(label, pad * 2, pad * 2);
   // dashed guide along the shared (seam) edge
-  cx.strokeStyle = 'rgba(0,0,0,0.7)';
+  cx.strokeStyle = colorWithAlpha(tune('a4x2MarkGuideColor'), tune('a4x2MarkGuideAlpha'));
   cx.lineWidth = Math.max(1, tune('a4x2MarkGuideMm') * mm);
-  cx.setLineDash([Math.round(4 * mm), Math.round(2.5 * mm)]);
+  cx.setLineDash([Math.round(tune('a4x2MarkGuideDashMm') * mm), Math.round(tune('a4x2MarkGuideGapMm') * mm)]);
   cx.beginPath();
   if (t.seam === 'right')       { cx.moveTo(W - 1, 0); cx.lineTo(W - 1, H); }
   else if (t.seam === 'left')   { cx.moveTo(1, 0);     cx.lineTo(1, H); }
@@ -7644,6 +7650,7 @@ function restoreRoute() {
     ...(n.freqName ? { freqName: n.freqName } : {}),
     ...(n.freq ? { freq: n.freq } : {}),
     ...(n.freqAuto === true ? { freqAuto: true } : {}),
+    ...(n.cc && n.ret ? { ret: 1 } : {}),
     ...(Number.isFinite(n.size) && n.size !== 1 ? { size: n.size } : {}),
     ...(Number.isFinite(n.rot) && n.rot ? { rot: n.rot } : {}),
     ...(n.rp && Number.isInteger(n.rp.leg)
@@ -9768,14 +9775,16 @@ function buildShareUrl() {
   const hotspotOverrides = state.waypoints.map(w =>
     Object.prototype.hasOwnProperty.call(w, 'hotspot') ? (w.hotspot ? '1' : '0') : '_').join('');
   if (/[01]/.test(hotspotOverrides)) params.set('h', hotspotOverrides);
-  const freqNotes = state.notes.filter(n => n && n.cc);
+  // The way out's only: a share link's receiver seeds the way back for themselves.
+  const freqNotes = state.notes.filter(n => n && n.cc && !n.ret);
   if (freqNotes.length) {
     const f = _b64UrlEncode(freqNotes.map(n =>
       [n.cc, n.freqName || '', n.freq || ''].join(',')).join(';'));
     params.set('f', f);
   }
-  const supps = state.commChangeSuppressions;
-  if (Array.isArray(supps) && supps.length) {
+  const supps = (state.commChangeSuppressions || [])
+    .filter(v => !(typeof v === 'string' && v.startsWith(RET_COMM_SUP)));
+  if (supps.length) {
     params.set('x', _b64UrlEncode(supps.join(',')));
   }
   return { url: base + '?' + params.toString() };
@@ -12580,7 +12589,7 @@ function showFplXcForm(opts) {
     pad.style.height = cssH + 'px';
     const ctx = pad.getContext('2d');
     ctx.scale(2, 2);
-    ctx.lineWidth = 1.6;
+    ctx.lineWidth = tune('fplSignatureWidthPx');
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
     // Presentation values come from the tuning registry, not from literals in here.

@@ -101,9 +101,8 @@
     if (on && !map.hasLayer(relief)) relief.addTo(map);
     else if (!on && map.hasLayer(relief)) map.removeLayer(relief);
   }
-  const SEA = '#cddbe6';
-  const LAND = '#f1ede3';
-  const BORDER = '#9a948a';
+  // Read on every paint, so a gist that lands after this file still recolours the world.
+  const tn = (k, d) => (typeof tune === 'function' ? tune(k) : d) || d;
   let labels = [];
   let loaded = null;
   // The outlines live here, in this closure, pre-projected to Web Mercator on the unit square
@@ -131,7 +130,7 @@
     const flat = flatAlpha > 0;
     if (flat) {
       ctx.globalAlpha = flatAlpha;
-      ctx.fillStyle = SEA;
+      ctx.fillStyle = tn('worldSeaColor', '#cddbe6');
       ctx.fillRect(b.min.x, b.min.y, b.max.x - b.min.x, b.max.y - b.min.y);
       ctx.globalAlpha = 1;
     }
@@ -153,12 +152,12 @@
     }
     if (flat) {
       ctx.globalAlpha = flatAlpha;
-      ctx.fillStyle = LAND;
+      ctx.fillStyle = tn('worldLandColor', '#f1ede3');
       ctx.fill('evenodd');
       ctx.globalAlpha = 1;
     }
-    ctx.lineWidth = 0.8;
-    ctx.strokeStyle = BORDER;
+    ctx.lineWidth = tn('worldBorderWidthPx', 0.8);
+    ctx.strokeStyle = tn('worldBorderColor', '#9a948a');
     ctx.stroke();
   }
   // Painted from the renderer's own draw step: on 'update' it would be wiped straight away,
