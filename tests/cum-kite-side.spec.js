@@ -120,7 +120,7 @@ test('a dragged kite is untouched by the setting', async ({ page }) => {
 // The frequency callout used to be pinned 90 degrees left of track -- the quarter the
 // cumulative kite now occupies -- so it covered the time it was meant to sit beside.
 test.describe('the frequency callout has its own angle', () => {
-  test('defaults right and behind, clear of the cumulative kite', async ({ page }) => {
+  test('defaults behind and to the right, the nav kites\' side', async ({ page }) => {
     await boot(page);
     const out = await page.evaluate(() => {
       const ang = tune('commCalloutAngleDeg');
@@ -134,7 +134,7 @@ test.describe('the frequency callout has its own angle', () => {
       const rel = -(((out - brg + 540) % 360) - 180);
       return { ang, rel };
     });
-    expect(out.ang).toBe(-230);
+    expect(out.ang).toBe(-130);
     // The knob may run past a half turn; the measurement wraps to (-180, 180], so compare
     // the two in the same terms rather than expecting -230 to come back verbatim.
     const wrapped = ((out.ang + 540) % 360) - 180;
@@ -149,7 +149,7 @@ test.describe('the frequency callout has its own angle', () => {
       const tail = commCalloutDefaultTail(wp, 1);
       const brg = geo(state.waypoints[0], wp).brg;
       const out = geo(wp, { lat: tail.lat, lng: tail.lng }).brg;
-      setTune('commCalloutAngleDeg', -230);
+      setTune('commCalloutAngleDeg', -130);
       return -(((out - brg + 540) % 360) - 180);
     });
     expect(Math.round(rel)).toBe(90);                   // back to square left

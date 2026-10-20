@@ -4962,8 +4962,29 @@ document.getElementById('reverse').onclick = () => {
   // depends on travel direction — so before reversing, note which callouts are
   // still on their (pre-reverse) default tail; those get re-defaulted after the
   // reversal so they flip with the route. User-dragged callouts are left put.
+  // With the return path shown, the way out and the way back simply trade places: each
+  // callout keeps its spot and its station, and only its direction tag flips (below). Hidden,
+  // the way-back callouts were for the old direction's way home -- dropped, they are seeded
+  // afresh for the new one when the return path is next shown.
+  const flipCommDir = typeof returnCommOn === 'function' && returnCommOn();
+  if (!flipCommDir && state.notes.some(n => n && n.ret)) {
+    const sel0 = state.selected;
+    const selNote0 = sel0 && sel0.type === 'note' ? state.notes[sel0.index] : null;
+    const selFreq0 = sel0 && sel0.type === 'wp' && Number.isInteger(sel0.freqNoteIndex)
+      ? state.notes[sel0.freqNoteIndex] : null;
+    state.notes = state.notes.filter(n => !(n && n.ret));
+    state.commChangeSuppressions = (state.commChangeSuppressions || [])
+      .filter(v => !(typeof v === 'string' && v.startsWith(RET_COMM_SUP)));
+    if (selNote0) {
+      const i = state.notes.indexOf(selNote0);
+      state.selected = i >= 0 ? { type: 'note', index: i } : null;
+    } else if (sel0 && sel0.type === 'wp' && Number.isInteger(sel0.freqNoteIndex)) {
+      const i = state.notes.indexOf(selFreq0);
+      if (i >= 0) sel0.freqNoteIndex = i; else delete sel0.freqNoteIndex;
+    }
+  }
   const commOnDefault = new Set();
-  if (typeof commCalloutTarget === 'function' && typeof commCalloutDefaultTail === 'function') {
+  if (!flipCommDir && typeof commCalloutTarget === 'function' && typeof commCalloutDefaultTail === 'function') {
     for (const n of state.notes) {
       if (!n || !n.cc) continue;
       const wp = commCalloutTarget(n);
@@ -5032,6 +5053,15 @@ document.getElementById('reverse').onclick = () => {
     };
   });
   applyLegAltitudesToRoute();
+  if (flipCommDir) {
+    for (const n of state.notes) {
+      if (!n || !n.cc) continue;
+      if (n.ret) delete n.ret; else n.ret = 1;
+    }
+    state.commChangeSuppressions = (state.commChangeSuppressions || []).map(v =>
+      typeof v !== 'string' ? v
+        : (v.startsWith(RET_COMM_SUP) ? v.slice(RET_COMM_SUP.length) : RET_COMM_SUP + v));
+  }
   // Identification-point ovals are anchored to (leg, t); reversing flips both
   // so the oval stays on the same geographic spot instead of jumping to the
   // mirrored end. new leg = (M-1) - leg; new t = 1 - t.
@@ -6464,8 +6494,11 @@ document.getElementById('limit-kites-cb').onchange = e => {
 document.getElementById('ret-cb').onchange = e => {
   window.showReturn =e.target.checked;
   try { localStorage.setItem(RETURN_KEY, showReturn ? '1' : '0'); } catch (err) { /* */ }
+  // The way back's frequency changes come with it (kept, but hidden, while it is off).
+  const seeded = showCommChange && typeof seedCommChangeNotes === 'function' && seedCommChangeNotes();
   if (fpOpen) { closeFlightPlan(); setTimeout(showFlightPlan, 0); }
   draw();
+  if (seeded && state.selected) showInspector();
 };
 document.getElementById('mid-cb').onchange = e => {
   window.showMidLeg =e.target.checked;
@@ -11211,7 +11244,7 @@ document.getElementById('tool-reset-all-markers').onclick = async () => {
     if (!note || !note.cc) continue;
     const target = typeof commCalloutTarget === 'function' ? commCalloutTarget(note) : null;
     if (target && typeof commCalloutDefaultTail === 'function') {
-      const tail = commCalloutDefaultTail(target);
+      const tail = commNoteDefaultTail(note, target);
       note.lat = tail.lat;
       note.lng = tail.lng;
     }

@@ -1524,6 +1524,7 @@ window.S = {
   addFreqChange: 'הוסף שינוי תדר (Z)',
   addFreqChangeAtTurn: 'מנקודת החזרה ממשיכים בתדר שבו הגעתם, ולכן אין כאן שינוי תדר לקרוא.',
   deleteFreqChange: 'מחק שינוי תדר (X)',
+  freqWayBack: 'בדרך חזרה (מסלול החזרה)',
   resetFreqLocation: '↻ אפס מיקום תווית',
   resetFreqLocationTitle: 'איפוס מיקום תווית שינוי התדר',
   resetFreqOverride: 'שחזר לברירת המחדל',
