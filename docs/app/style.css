@@ -9901,3 +9901,9 @@ body.theme-light #export-progress { background: #fafcff; color: #1d2430; border-
   .route-template-row select,
   .route-template-row input { min-height: 44px; font-size: 15px; }
 }
+
+/* Settings -> Aircraft: a figure changed from the type's carries a small dot after its name. */
+.ac-field.ac-overridden > span::after {
+  content: ' \2022'; color: #b45309; font-weight: 700;
+}
+#settings-ac-restore { margin-block: 4px 2px; }

@@ -2149,6 +2149,18 @@ window.S = Object.assign({
   tocTitle: 'Top of climb',
   todTitle: 'Top of descent',
   tbAircraft: 'Aircraft',
+  tbAircraftType: 'Aircraft type',
+  tbAircraftTypeTitle: 'Fills the figures below with the type\u2019s typical values, and is the type the flight plan files',
+  tbAircraftTypeNone: '\u2014 not set \u2014',
+  tbCruiseTas: 'Cruise TAS (kt)',
+  tbCruiseTasTitle: 'The speed new legs start at',
+  tbUsableFuel: 'Usable fuel (gal)',
+  tbUsableFuelTitle: 'Sets the flight plan form\u2019s fuel endurance',
+  tbClimbKt: 'Climb speed (kt)',
+  tbClimbKtTitle: 'For the climb on the vertical profile',
+  tbAircraftRestore: function (type) { return 'Restore ' + type + ' figures'; },
+  whyAircraftAsType: 'Every figure is the type\u2019s already',
+  aircraftChangedFrom: function (v) { return 'Changed from the type\u2019s ' + v; },
   tbGph: 'Gallons per hour',
   tbGphTitle: 'Fuel consumption, gallons per hour',
   tbTaxiGal: 'Taxi and takeoff (gal)',
@@ -3759,7 +3771,62 @@ let pageSize = null;        // null | 'A3' | 'A4'
 // CVFR routes are tall (north–south Israel airspace).
 var pageOrient = 'portrait';
 let pageOffset = { x: 0, y: 0 };   // page-frame drag offset from viewport centre
-var aircraft = null;               // null | {gph, taxiGal}
+var aircraft = null;               // null | {gph, taxiGal, type?, tasKt?, climbFpm?, climbKt?, usableGal?}
+// Typical figures per type (Settings -> Aircraft type), from the manuals and common use: a
+// starting point the pilot overrides for their own aircraft, field by field, and can restore.
+// The codes are the filing form's ICAO types, so choosing one also files as that type.
+// C172: 1.1 gal taxi and take-off is the C172N/P manual figure.
+const AIRCRAFT_TYPES = {
+  C152: { tasKt: 95, gph: 6, taxiGal: 0.8, climbFpm: 600, climbKt: 70, usableGal: 24.5 },
+  C172: { tasKt: 115, gph: 8.5, taxiGal: 1.1, climbFpm: 700, climbKt: 75, usableGal: 53 },
+  PA28: { tasKt: 110, gph: 8.5, taxiGal: 1.2, climbFpm: 650, climbKt: 79, usableGal: 48 },
+  DA40: { tasKt: 125, gph: 8.5, taxiGal: 1.0, climbFpm: 900, climbKt: 75, usableGal: 40 },
+  SR22: { tasKt: 170, gph: 16, taxiGal: 2.0, climbFpm: 1000, climbKt: 110, usableGal: 81 },
+  AT3: { tasKt: 100, gph: 4.5, taxiGal: 0.3, climbFpm: 800, climbKt: 65, usableGal: 20 },
+  C42: { tasKt: 90, gph: 4, taxiGal: 0.3, climbFpm: 800, climbKt: 60, usableGal: 17 },
+  EV97: { tasKt: 95, gph: 4, taxiGal: 0.3, climbFpm: 800, climbKt: 60, usableGal: 16 },
+  ULAC: { tasKt: 70, gph: 3.5, taxiGal: 0.3, climbFpm: 600, climbKt: 55, usableGal: 13 },
+};
+const AIRCRAFT_FIELDS = ['tasKt', 'gph', 'taxiGal', 'climbFpm', 'climbKt', 'usableGal'];
+window.AIRCRAFT_TYPES = AIRCRAFT_TYPES;
+window.AIRCRAFT_FIELDS = AIRCRAFT_FIELDS;
+// The chosen type's figure for a field (null with no type, or a type it does not know).
+function aircraftTypeDefault(field) {
+  const t = aircraft && aircraft.type && AIRCRAFT_TYPES[aircraft.type];
+  return t && Number.isFinite(t[field]) ? t[field] : null;
+}
+// A field the pilot has changed from the type's figure.
+function aircraftFieldOverridden(field) {
+  const d = aircraftTypeDefault(field);
+  return d !== null && aircraft && Number(aircraft[field]) !== d;
+}
+// Choose a type: every figure from the table (so a type change is a fresh start), the climb
+// rate also into the flight plan's V/S. '' leaves the figures as they are, untyped.
+function setAircraftType(code) {
+  const t = AIRCRAFT_TYPES[code];
+  const base = aircraft || { gph: tune('defaultGph'), taxiGal: tune('defaultTaxiGal') };
+  aircraft = t ? Object.assign({}, base, t, { type: code }) : Object.assign({}, base, { type: '' });
+  saveAircraft();
+  if (t) {
+    window.profileVS = t.climbFpm;
+    try { localStorage.setItem('navaid.profileVS', String(t.climbFpm)); } catch (e) { /* storage off */ }
+  }
+}
+// Back to the type's figures, all of them or one field.
+function restoreAircraftDefaults(field) {
+  if (!aircraft || !AIRCRAFT_TYPES[aircraft.type]) return;
+  const t = AIRCRAFT_TYPES[aircraft.type];
+  for (const f of (field ? [field] : AIRCRAFT_FIELDS)) aircraft[f] = t[f];
+  saveAircraft();
+  if (!field || field === 'climbFpm') {
+    window.profileVS = t.climbFpm;
+    try { localStorage.setItem('navaid.profileVS', String(t.climbFpm)); } catch (e) { /* storage off */ }
+  }
+}
+window.setAircraftType = setAircraftType;
+window.restoreAircraftDefaults = restoreAircraftDefaults;
+window.aircraftFieldOverridden = aircraftFieldOverridden;
+window.aircraftTypeDefault = aircraftTypeDefault;
 // Flight-plan card placed on the PNG export. null = off; otherwise
 // { x, y } top-left in container pixels. planCardRect holds the last rendered
 // bounds for hit-testing the drag.
@@ -3908,6 +3975,9 @@ function routeExportAltitudeFt(legIdx, opts) {
 }
 
 const _defaultLegSpeedKt = () => {
+  // The aircraft's cruise TAS when one is set (Settings -> Aircraft), else the tunable default.
+  const tas = aircraft && Number(aircraft.tasKt);
+  if (tas > 0) return tas;
   const v = (typeof tune === 'function') ? Number(tune('defaultLegSpeedKt')) : NaN;
   return Number.isFinite(v) && v > 0 ? v : 90;
 };
