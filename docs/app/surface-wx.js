@@ -60,6 +60,10 @@
   function setIsobars(on) { lsWrite(ISOBARS_KEY, on ? '1' : '0'); }
   // The single value a point style colours by (and labels, for spread / base).
   const field = () => (points() === 'base' ? 'base' : 'spread');
+  // The pilot's pressure unit (Settings -> Pressure unit), as the rest of the app reads it.
+  const HPA_PER_IN = 33.8639;
+  const pressureInches = () => typeof pressureUnit === 'function' && pressureUnit() === 'inHg';
+  const pressureUnitText = () => (pressureInches() ? 'inHg' : 'hPa');
 
   // --- the grid -----------------------------------------------------------------
   // Over Israel and its approaches, the area the Israeli charts cover. A fixed grid, not the
@@ -190,7 +194,7 @@
     return String(Math.round(v)) + '°';
   }
   function unitText(f) {
-    if (f === 'msl') return 'hPa';
+    if (f === 'msl') return pressureUnitText();
     if (f === 'base') return str('swxBaseUnit', 'ft above ground');
     return '°C';
   }
@@ -263,7 +267,10 @@
     let lo = Infinity, hiP = -Infinity;
     for (let i = 0; i < R; i++) for (let j = 0; j < C; j++) { const v = P(i, j); if (v !== null) { lo = Math.min(lo, v); hiP = Math.max(hiP, v); } }
     if (!Number.isFinite(lo)) return;
-    const step = tn('swxIsobarStepHpa', 2);
+    // In the pilot's pressure unit (Settings): every 2 hPa, or every 0.05 inch, labelled as it is
+    // written on the altimeter -- 1013, or 29.92.
+    const inch = pressureInches();
+    const step = inch ? tn('swxIsobarStepInHg', 0.05) * HPA_PER_IN : tn('swxIsobarStepHpa', 2);
     const color = tn('swxIsobarColor', '#5b2a86');
     const w = ctx.canvas.width / (window.devicePixelRatio || 1), h = ctx.canvas.height / (window.devicePixelRatio || 1);
     const pt = (i, j) => proj({ lat: g.lats[i], lng: g.lngs[j] });
@@ -302,7 +309,7 @@
         const d = (m.x - w / 2) ** 2 + (m.y - h / 2) ** 2;
         if (d < bd) { bd = d; best = m; }
       }
-      if (best) haloText(ctx, String(Math.round(L)), best.x, best.y, color);
+      if (best) haloText(ctx, inch ? (L / HPA_PER_IN).toFixed(2) : String(Math.round(L)), best.x, best.y, color);
     }
     // Centres: H / L only where the pressure really peaks. A point counts when it is the
     // highest (lowest) within two grid steps every way -- about 60 km -- and stands out from
@@ -384,7 +391,7 @@
       base: str('swxFieldBase', 'Cloud base (estimate)') };
     const parts = [];
     if (pts !== 'none') parts.push(names[pts] + (pts === 'base' ? ' (' + unitText('base') + ')' : ' (°C)'));
-    if (isobars()) parts.push(str('swxCapIsobars', 'isobars') + ' (hPa)');
+    if (isobars()) parts.push(str('swxCapIsobars', 'isobars') + ' (' + pressureUnitText() + ')');
     if (!parts.length) return '';
     const t = new Date(store.times[hi]);
     const z = String(t.getUTCHours()).padStart(2, '0') + ':00Z';

@@ -80,7 +80,9 @@ test('isobars with the station plot together; the choices are remembered', async
   await page.evaluate(() => { const c = document.getElementById('surface-wx-isobars'); c.checked = true; c.dispatchEvent(new Event('change')); });
   await expect(page.locator('#surface-wx-chip')).toContainText('T / Td');
   await expect(page.locator('#surface-wx-chip')).toContainText('isobars');
-  await expect(page.locator('#surface-wx-legend')).toContainText('Isobars every 2 hPa');
+  // In the pilot's pressure unit (the app's default is inches).
+  await expect(page.locator('#surface-wx-legend')).toContainText('Isobars every 0.05″ (inHg)');
+  await expect(page.locator('#surface-wx-chip')).toContainText('isobars (inHg)');
   await expect(page.locator('#surface-wx-legend')).toContainText('Temperature above');
   await page.evaluate(() => { const r = document.querySelector('#surface-wx-controls input[value="none"]'); r.checked = true; r.dispatchEvent(new Event('change')); });
   await expect(page.locator('#surface-wx-chip')).not.toContainText('T / Td');
@@ -104,7 +106,8 @@ test('a waypoint inspector shows the surface there while the layer is on', async
   // The estimated cloud base: 400 ft above the ground there, plus the model's 800 m (2,625 ft)
   // of ground = 3,000 ft above sea level.
   await expect(page.locator('#inspector .swx-base-row .val')).toHaveText('400 ft AGL · 3,000 ft AMSL');
-  await expect(page.locator('#inspector .swx-row:not(.swx-base-row) .val')).toHaveText('20°/19° · Δ1° · Q' + await page.evaluate(() => Math.round(NavAid.surfaceWx.sampleNear(32.18, 34.83, 0).p)));
+  const p = await page.evaluate(() => NavAid.surfaceWx.sampleNear(32.18, 34.83, 0).p);
+  await expect(page.locator('#inspector .swx-row:not(.swx-base-row) .val')).toHaveText('20°/19° · Δ1° · Q ' + (p / 33.8639).toFixed(2) + '″');
 });
 
 test('no data: the switch goes back off and says why; it is in the quick layers list', async ({ page }) => {
@@ -209,4 +212,21 @@ test('readable: warning colours hold 4.5:1 on their white halo; field rows are f
   // The row sits in a menu section closed here: its rule, as the phone applies it.
   const h = await page.evaluate(() => parseFloat(getComputedStyle(document.querySelector('#surface-wx-controls .swx-field')).minHeight));
   expect(h).toBeGreaterThanOrEqual(44);
+});
+
+test('pressure follows Settings -> Pressure unit: hPa labels, legend, chip and QNH', async ({ page }) => {
+  await page.addInitScript(() => { try { localStorage.setItem('navaid.pressureUnit', 'hPa'); localStorage.setItem('navaid.surfaceWxIsobars', '1'); } catch (e) {} });
+  await boot(page);
+  await switchOn(page);
+  await page.waitForFunction(() => !!NavAid.surfaceWx._store());
+  await expect(page.locator('#surface-wx-legend')).toContainText('Isobars every 2 hPa');
+  await expect(page.locator('#surface-wx-chip')).toContainText('isobars (hPa)');
+  await page.evaluate(() => { state.waypoints = [{ lat: 32.18, lng: 34.83, name: 'H' }, { lat: 32.4, lng: 34.95, name: 'B' }];
+    syncLegs(); draw(); state.selected = { type: 'wp', index: 0 }; showInspector(); });
+  const p = await page.evaluate(() => NavAid.surfaceWx.sampleNear(32.18, 34.83, 0).p);
+  await expect(page.locator('#inspector .swx-row:not(.swx-base-row) .val')).toContainText('Q ' + Math.round(p) + ' hPa');
+  // Switching the setting carries over at once.
+  await page.evaluate(() => { const s = document.getElementById('pressure-unit'); s.value = 'inHg'; s.dispatchEvent(new Event('change', { bubbles: true })); });
+  await expect(page.locator('#surface-wx-chip')).toContainText('isobars (inHg)');
+  await expect(page.locator('#inspector .swx-row:not(.swx-base-row) .val')).toContainText('″');
 });

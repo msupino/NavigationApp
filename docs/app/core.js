@@ -2481,6 +2481,7 @@ window.S = Object.assign({
   swxLegendDew: 'Dew point at 2 m, °C',
   swxLegendTemp: 'Temperature at 2 m, °C',
   swxLegendMsl: 'Isobars every 2 hPa · H high, L low',
+  swxLegendMslIn: 'Isobars every 0.05″ (inHg) · H high, L low',
   inspSurface: 'Surface',
   inspCloudBase: 'Cloud base (est.)',
   unitAgl: 'AGL',

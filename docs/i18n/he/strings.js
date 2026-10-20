@@ -996,6 +996,7 @@ window.S = {
   swxLegendDew: 'נקודת טל בגובה 2 מ׳, °C',
   swxLegendTemp: 'טמפרטורה בגובה 2 מ׳, °C',
   swxLegendMsl: 'קווי לחץ שווה כל ⁦2 hPa⁩ · ⁦H⁩ גבוה, ⁦L⁩ נמוך',
+  swxLegendMslIn: 'קווי לחץ שווה כל ⁦0.05″ (inHg)⁩ · ⁦H⁩ גבוה, ⁦L⁩ נמוך',
   inspSurface: 'קרקע',
   inspCloudBase: 'בסיס עננים (הערכה)',
   unitAgl: 'AGL',

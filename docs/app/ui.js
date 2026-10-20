@@ -7447,7 +7447,9 @@ if (windDepartSlider) {
       legendEl.hidden = !cb.checked;
       const lines = [];
       if (LEGEND[pts]) lines.push(S[LEGEND[pts][0]] || LEGEND[pts][1]);
-      if (a && a.isobars()) lines.push(S.swxLegendMsl || 'Isobars every 2 hPa · H high, L low');
+      if (a && a.isobars()) lines.push(typeof pressureUnit === 'function' && pressureUnit() === 'inHg'
+        ? (S.swxLegendMslIn || 'Isobars every 0.05″ (inHg) · H high, L low')
+        : (S.swxLegendMsl || 'Isobars every 2 hPa · H high, L low'));
       legendEl.textContent = cb.checked ? lines.join(' · ') : '';
     }
     if (fieldsEl) fieldsEl.hidden = !cb.checked;
@@ -7542,6 +7544,15 @@ if (windDepartSlider) {
   const start = () => {
     buildFields();
     refreshFeature();
+    // The pressure unit is a setting of its own: the isobars, the chip and the legend follow it.
+    const unitSel = document.getElementById('pressure-unit');
+    // Next tick: the setting's own handler stores the new unit first.
+    if (unitSel) unitSel.addEventListener('change', () => setTimeout(() => {
+      if (!window.showSurfaceWx) return;
+      legend();
+      if (typeof draw === 'function') draw();
+      refreshSurfaceWxRows(true);
+    }, 0));
     try { if (lsGet(KEY) === '1' && featureOn()) cb.checked = true; } catch (e) { /* storage blocked */ }
     window.showSurfaceWx = !!cb.checked;
     legend();
