@@ -55,9 +55,9 @@ test('one request on switch-on; the moist patch reads as a low spread, in red, w
   expect(r.quiet).not.toBe(r.red);
   expect(r.label).toBe('1°');
   expect(r.base).toBe('400');                                  // (20 − 19) × 400 ft
-  // The field picker is there, spread chosen; the chip on the map says what and when.
-  await expect(page.locator('#surface-wx-controls input[value="spread"]')).toBeChecked();
-  await expect(page.locator('#surface-wx-chip')).toContainText('Dew point spread');
+  // The picker is there, the station plot chosen; the chip on the map says what and when.
+  await expect(page.locator('#surface-wx-controls input[value="station"]')).toBeChecked();
+  await expect(page.locator('#surface-wx-chip')).toContainText('T / Td');
   await expect(page.locator('#surface-wx-chip')).toContainText('now');
 });
 
@@ -72,18 +72,27 @@ test('the look-ahead slider moves it to the forecast hour, with no new request',
   expect(calls.n).toBe(1);
 });
 
-test('fields: sea-level pressure draws isobars and a low; the choice is remembered', async ({ page }) => {
+test('isobars with the station plot together; the choices are remembered', async ({ page }) => {
   await boot(page);
   await switchOn(page);
   await page.waitForFunction(() => !!NavAid.surfaceWx._store());
-  // The radio lives in the menu's Extra layers section, closed here: chosen as the pilot would.
-  await page.evaluate(() => { const r = document.querySelector('#surface-wx-controls input[value="msl"]'); r.checked = true; r.dispatchEvent(new Event('change')); });
-  await expect(page.locator('#surface-wx-chip')).toContainText('Sea-level pressure');
+  // The controls live in the menu's Extra layers section, closed here: chosen as the pilot would.
+  await page.evaluate(() => { const c = document.getElementById('surface-wx-isobars'); c.checked = true; c.dispatchEvent(new Event('change')); });
+  await expect(page.locator('#surface-wx-chip')).toContainText('T / Td');
+  await expect(page.locator('#surface-wx-chip')).toContainText('isobars');
   await expect(page.locator('#surface-wx-legend')).toContainText('Isobars every 2 hPa');
-  expect(await page.evaluate(() => localStorage.getItem('navaid.surfaceWxField'))).toBe('msl');
+  await expect(page.locator('#surface-wx-legend')).toContainText('Temperature above');
+  await page.evaluate(() => { const r = document.querySelector('#surface-wx-controls input[value="none"]'); r.checked = true; r.dispatchEvent(new Event('change')); });
+  await expect(page.locator('#surface-wx-chip')).not.toContainText('T / Td');
   await page.reload();
   await page.waitForFunction(() => window.NavAid && NavAid.surfaceWx);
-  expect(await page.evaluate(() => NavAid.surfaceWx.field())).toBe('msl');
+  expect(await page.evaluate(() => [NavAid.surfaceWx.points(), NavAid.surfaceWx.isobars()])).toEqual(['none', true]);
+});
+
+test('a pilot who chose one field before keeps what it showed', async ({ page }) => {
+  await page.addInitScript(() => { try { if (!sessionStorage.getItem('m')) { localStorage.setItem('navaid.surfaceWxField', 'msl'); sessionStorage.setItem('m', '1'); } } catch (e) {} });
+  await boot(page);
+  expect(await page.evaluate(() => [NavAid.surfaceWx.points(), NavAid.surfaceWx.isobars()])).toEqual(['none', true]);
 });
 
 test('a waypoint inspector shows the surface there while the layer is on', async ({ page }) => {
@@ -115,7 +124,7 @@ test('Hebrew: its names, and the chip isolates them from the times', async ({ pa
   await boot(page, 'he', { width: 390, height: 844 });
   await switchOn(page);
   await page.waitForFunction(() => !!NavAid.surfaceWx._store());
-  await expect(page.locator('#surface-wx-chip')).toContainText('פער נקודת טל');
+  await expect(page.locator('#surface-wx-chip')).toContainText('T / Td');
   await expect(page.locator('#surface-wx-chip')).toContainText('עכשיו');
 });
 
@@ -153,7 +162,7 @@ test('left on, it comes back on after a reload: switch, map and data together', 
   await page.reload();
   await page.waitForFunction(() => window.NavAid && NavAid.surfaceWx && NavAid.surfaceWx._store(), null, { timeout: 15000 });
   expect(await page.evaluate(() => [document.getElementById('surface-wx-cb').checked, window.showSurfaceWx])).toEqual([true, true]);
-  await expect(page.locator('#surface-wx-chip')).toContainText('Dew point spread');
+  await expect(page.locator('#surface-wx-chip')).toContainText('T / Td');
 });
 
 test('the inspector\'s rows follow the slider; a stale forecast is fetched again', async ({ page }) => {

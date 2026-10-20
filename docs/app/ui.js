@@ -7405,16 +7405,18 @@ if (windDepartSlider) {
     if (body) body.scrollTop = top;
   }
   window.refreshSurfaceWxRows = refreshSurfaceWxRows;
+  // The point styles, and what the legend says for each (the isobars add their own line).
   const NAMES = {
-    spread: ['swxFieldSpread', 'Dew point spread'], dew: ['swxFieldDew', 'Dew point'],
-    temp: ['swxFieldTemp', 'Temperature'], msl: ['swxFieldMsl', 'Sea-level pressure'],
+    station: ['swxPtsStation', 'Station plot: temperature / dew point'],
+    spread: ['swxFieldSpread', 'Dew point spread'],
     base: ['swxFieldBase', 'Cloud base (estimate)'],
+    none: ['swxPtsNone', 'No points'],
   };
   const LEGEND = {
+    station: ['swxLegendStation', 'Temperature above, dew point below (°C); the dot red when they are 2 °C apart or less, amber at 4 °C'],
     spread: ['swxLegendSpread', 'Red: spread 2 °C or less, fog and low cloud likely · amber: 4 °C or less'],
     base: ['swxLegendBase', 'Red: 1,000 ft or lower · amber: 2,000 ft or lower · (T − Td) × 400 ft, an estimate'],
-    dew: ['swxLegendDew', 'Dew point at 2 m, °C'], temp: ['swxLegendTemp', 'Temperature at 2 m, °C'],
-    msl: ['swxLegendMsl', 'Isobars every 2 hPa · H high, L low'],
+    none: null,
   };
   function say(msg, loading) {
     if (!statusEl) return;
@@ -7440,40 +7442,51 @@ if (windDepartSlider) {
   }
   function legend() {
     const a = sw();
-    const f = a ? a.field() : 'spread';
+    const pts = a ? a.points() : 'station';
     if (legendEl) {
       legendEl.hidden = !cb.checked;
-      legendEl.textContent = cb.checked ? (S[LEGEND[f][0]] || LEGEND[f][1]) : '';
+      const lines = [];
+      if (LEGEND[pts]) lines.push(S[LEGEND[pts][0]] || LEGEND[pts][1]);
+      if (a && a.isobars()) lines.push(S.swxLegendMsl || 'Isobars every 2 hPa · H high, L low');
+      legendEl.textContent = cb.checked ? lines.join(' · ') : '';
     }
     if (fieldsEl) fieldsEl.hidden = !cb.checked;
     updateChip();
   }
-  // The field picker: one of five, as radio buttons in the menu's own style.
+  // The picker: a point style (radio) and the isobars (their own switch), so a station plot can
+  // sit on the pressure pattern the way a surface chart shows them.
   function buildFields() {
     if (!fieldsEl) return;
     const a = sw();
-    let cur = a ? a.field() : null;
-    if (!cur) { try { cur = localStorage.getItem('navaid.surfaceWxField'); } catch (e) { /* storage blocked */ } }
-    cur = NAMES[cur] ? cur : 'spread';
+    const cur = a ? a.points() : 'station';
     fieldsEl.textContent = '';
+    const changed = () => { legend(); if (typeof draw === 'function') draw(); };
     for (const f of Object.keys(NAMES)) {
       const l = document.createElement('label');
       l.className = 'navtoggle swx-field';
       const r = document.createElement('input');
-      r.type = 'radio'; r.name = 'surface-wx-field'; r.value = f; r.checked = f === cur;
+      r.type = 'radio'; r.name = 'surface-wx-points'; r.value = f; r.checked = f === cur;
       r.addEventListener('change', () => {
         // Looked up now, not when the picker was built: ui.js runs before surface-wx.js loads.
         const m = sw();
         if (!r.checked || !m) return;
-        m.setField(f);
-        legend();
-        if (typeof draw === 'function') draw();
+        m.setPoints(f);
+        changed();
       });
-      const s = document.createElement('span');
-      s.textContent = S[NAMES[f][0]] || NAMES[f][1];
-      l.append(r, ' ', s);
+      const s2 = document.createElement('span');
+      s2.textContent = S[NAMES[f][0]] || NAMES[f][1];
+      l.append(r, ' ', s2);
       fieldsEl.appendChild(l);
     }
+    const il = document.createElement('label');
+    il.className = 'navtoggle swx-field swx-isobars';
+    const ic = document.createElement('input');
+    ic.type = 'checkbox'; ic.id = 'surface-wx-isobars'; ic.checked = !!(a && a.isobars());
+    ic.addEventListener('change', () => { const m = sw(); if (!m) return; m.setIsobars(ic.checked); changed(); });
+    const is = document.createElement('span');
+    is.textContent = S.swxIsobars || 'Isobars (sea-level pressure)';
+    il.append(ic, ' ', is);
+    fieldsEl.appendChild(il);
   }
   function refreshFeature() {
     const on = featureOn();
