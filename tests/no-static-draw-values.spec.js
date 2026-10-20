@@ -8,7 +8,7 @@
 // as a literal: a colour or font assigned straight to the context, a numeric line width,
 // opacity, dash or radius. The fix is a tunable (core.js registry + a menu group), not an entry
 // in ALLOWED below -- that list is only for things that are not a look at all.
-const { test, expect } = require('@playwright/test');
+const { test, expect } = require('./_setup');
 const fs = require('fs');
 const path = require('path');
 
