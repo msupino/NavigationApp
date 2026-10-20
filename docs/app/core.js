@@ -330,6 +330,10 @@ NavAid.tuningDefaults = {
   cumKiteTextPx: { value: 15, min: 4, max: 36, step: 1, label: 'Cumulative-time box text size (px)' },
 
   minuteMarkerFontPx: { value: 10, min: 4, max: 28, step: 1, label: 'Minute label text size (px)' },
+  // The minute marks of each direction in their own colour, so with the return path shown the two
+  // sets along one leg cannot be read for each other: blue going, red coming back.
+  minuteMarkerToColor: { value: '#1565c0', type: 'color', label: 'Minute markers colour, to (outbound)' },
+  minuteMarkerFromColor: { value: '#c62828', type: 'color', label: 'Minute markers colour, from (return)' },
   minuteTickEvenPx: { value: 9, min: 1, max: 30, step: 1, label: 'Even minute tick length (px)' },
   minuteTickOddPx: { value: 4, min: 1, max: 30, step: 1, label: 'Odd minute tick length (px)' },
   minuteTickEvenWidthPx: { value: 2, min: 0.25, max: 8, step: 0.25, label: 'Even minute tick width (px)' },
@@ -1122,7 +1126,7 @@ NavAid.tuningGroups = [
   { name: 'Default marker locations', keys: ['defaultLabelMarginPx', 'defaultKiteHalfWidthPx'] },
   { name: 'Leg kites', keys: ['legKiteFillColor', 'returnKiteFillColor', 'legKiteHeightPx', 'legKiteCellWidthPx', 'legKiteTriangleLenPx', 'kitePrintHeightMm', 'legKiteBorderPx', 'legKiteDividerPx', 'legKiteHaloPx', 'legKiteTextPx', 'legKiteHeadingTextPx', 'legKiteHeadingAnchor'] },
   { name: 'Cumulative kites', keys: ['cumKiteAngleDeg', 'cumKiteFillColor', 'returnCumKiteFillColor', 'cumKiteHeightPx', 'cumKiteCellWidthPx', 'cumKiteTriangleLenPx', 'cumKitePrintHeightMm', 'cumKiteBorderPx', 'cumKiteTextPx'] },
-  { name: 'Minute markers', keys: ['minuteMarkerFontPx', 'minuteTickEvenPx', 'minuteTickOddPx', 'minuteTickEvenWidthPx', 'minuteTickOddWidthPx', 'minuteLabelOffsetPx'] },
+  { name: 'Minute markers', keys: ['minuteMarkerToColor', 'minuteMarkerFromColor', 'minuteMarkerFontPx', 'minuteTickEvenPx', 'minuteTickOddPx', 'minuteTickEvenWidthPx', 'minuteTickOddWidthPx', 'minuteLabelOffsetPx'] },
   { name: 'Distance badges', keys: ['distanceBadgeRadiusPx', 'distanceBadgeBorderPx', 'distanceBadgeFontPx', 'distanceBadgeFillColor'] },
   { name: 'Route waypoints', keys: ['waypointBaseRadiusPx', 'waypointPrintDiaMm', 'waypointFontPx', 'waypointTextFitFactor', 'waypointMinZoomScale', 'waypointSelectedRadiusAddPx', 'waypointStrokeWidthPx', 'waypointFillColor', 'waypointHotspotFillColor', 'waypointHotspotRingColor', 'waypointHotspotRingWidthPx', 'waypointHotspotRingGapPx'] },
   { name: 'Chart symbols by zoom', keys: ['symbolScaleSmallest', 'symbolScaleMinZoom', 'symbolScaleFullZoom', 'airfieldMinZoom', 'navWpMinZoom', 'vorMinZoom', 'commChangeMinZoom', 'activityMinZoom', 'activitySymbolPx', 'activityParachuteColor', 'activityParagliderColor'] },
@@ -1215,6 +1219,8 @@ window.navaidEvent = navaidEvent;
 // the chart. Set and cleared around the export's overlay draw only: the screen never sees it.
 const PRINT_BW_TUNES = {
   inkColor: '#000000', kiteTextColor: '#000000', selectedColor: '#000000',
+  // Minute marks in ink both ways: the two directions sit on opposite sides of the leg.
+  minuteMarkerToColor: '#000000', minuteMarkerFromColor: '#000000',
   legKiteFillColor: '#ffffff', cumKiteFillColor: '#ffffff', legKiteHaloColor: '#000000',
   // The way home stays told apart from the way out, in grey instead of pink.
   returnKiteFillColor: '#dcdcdc', returnCumKiteFillColor: '#dcdcdc',
@@ -2878,7 +2884,7 @@ window.S = Object.assign({
   tbFmsExportTitle: 'Export route as an X-Plane FMS flight plan to load and fly',
   tbFdrExport: '🎬 FDR — X-Plane replay',
   tbFdrExportTitle: 'Export route as an X-Plane Flight Data Recorder file that replays the flight',
-  tbShowReturn: 'Show return path',
+  tbShowReturn: 'Show return path (B)',
   tbShowReturnTitle: 'Show return-direction (outbound) info',
   tbShowCumTime: 'Show cumulative time',
   tbShowCumTimeTitle: 'Show running total flight time kite after each leg',
@@ -3150,6 +3156,16 @@ window.S = Object.assign({
   tbTransparencyTitle: 'Opacity of the waypoint discs and their label backgrounds',
   tbLegArrowAlpha: 'Leg arrow opacity',
   tbLegArrowAlphaTitle: 'Fill opacity of the leg / cumulative arrows and notes — on screen and in print/export alike',
+  tbReturnArrowColor: 'Return arrow color',
+  tbReturnArrowColorTitle: 'Fill color of the return path\u2019s leg arrows (Show return path)',
+  whyReturnColorOff: 'Shown with Show return path (B)',
+  tbMinuteMarkers: 'Minute markers',
+  tbMinuteSize: 'Size',
+  tbMinuteSizeTitle: 'Size of the minute ticks and numbers along each leg',
+  tbMinuteToColor: 'To color',
+  tbMinuteToColorTitle: 'Minute markers of the way out',
+  tbMinuteFromColor: 'From color',
+  tbMinuteFromColorTitle: 'Minute markers of the way back (Show return path)',
   tbLegArrowColor: 'Leg arrow color',
   tbLegArrowColorTitle: 'Fill color of the leg arrows — applies to print/export too',
   tbWaypointColor: 'Waypoint color',
@@ -3717,6 +3733,7 @@ var yellowAlpha = 0.5;    // opacity of waypoint label backgrounds (Label-opacit
 // tune key `kiteNoteAlpha` (see tuningDefaults), read via tune() in draw.js.
 var wpSize = 1;             // waypoint name / number text size scale
 var legArrowSize = 1;       // leg arrow (rectangle+triangle) size scale
+var minuteMarkerSize = 1;   // minute marks (ticks and numbers) size scale, Display -> Minute markers
 var legLineWidth = 0.5;     // leg route line width scale (0.5 ≈ 1.75 px of the 3.5 px route width)
 var driftLineWidth = 1;     // drift reference line width scale (1 = default 1.5 px)
 
