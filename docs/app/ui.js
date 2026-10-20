@@ -549,9 +549,10 @@ function paintLegendPoints() {
   const bubble = (weekend) => ctx => {
     ctx.beginPath();
     ctx.moveTo(5, 3); ctx.lineTo(16, 3); ctx.lineTo(13, 15); ctx.lineTo(2, 15); ctx.closePath();
-    ctx.fillStyle = weekend ? 'rgba(201,178,138,0.55)' : 'rgba(60,160,60,0.25)';
+    ctx.fillStyle = weekend ? colorWithAlpha(tune('lsaWeekendFillColor'), tune('lsaLegendWeekendFillAlpha'))
+      : colorWithAlpha(tune('lsaAreaFillColor'), tune('lsaLegendFillAlpha'));
     ctx.fill();
-    ctx.lineWidth = 1.6;
+    ctx.lineWidth = tune('lsaLegendLineWidthPx');
     ctx.strokeStyle = tune(weekend ? 'lsaWeekendColor' : 'lsaAlwaysColor');
     ctx.stroke();
   };
@@ -932,7 +933,6 @@ window.orderMapControls = orderMapControls;
 // One line-icon set for the whole in-flight column: 24-unit box, 2-unit round strokes in
 // currentColor, so the button's state colour (style.css, "The in-flight column") drives them.
 // The follow target's centre fills while it is holding the map on the aircraft.
-const NEEDLE_COLOR = '#ff5a45';        // compass north half: red, readable on dark and on blue
 const MAP_ICON_OPEN = '<svg viewBox="0 0 24 24" width="26" height="26" aria-hidden="true"'
   + ' focusable="false" fill="none" stroke="currentColor" stroke-width="2"'
   + ' stroke-linecap="round" stroke-linejoin="round">';
@@ -1064,7 +1064,7 @@ function compassIconSvg(deg, hdg) {
     + '<svg viewBox="0 0 24 24" width="26" height="26" aria-hidden="true" focusable="false">'
     + '<circle cx="12" cy="12" r="9.3" fill="none" stroke="currentColor" stroke-width="2"/>'
     + '<g transform="rotate(' + (Number.isFinite(deg) ? compassDeg(deg) : 0) + ' 12 12)">'
-    + '<path d="M12 4.6 15 12H9z" fill="' + NEEDLE_COLOR + '"/>'
+    + '<path d="M12 4.6 15 12H9z" fill="' + tune('compassNeedleColor') + '"/>'
     + '<path d="M12 19.4 9 12h6z" fill="currentColor" fill-opacity=".55"/>'
     + '</g></svg>' + readout + '</span>';
 }
@@ -3469,7 +3469,7 @@ if (typeof window !== 'undefined') window.showProfileModal = showProfileModal;
 function exportProfilePng(title, subtitle, paint) {
   const w = Math.round((typeof tune === 'function' && tune('profileExportWidthPx')) || 1200);
   const h = Math.round((typeof tune === 'function' && tune('profileExportHeightPx')) || 420);
-  const head = 46;
+  const head = Math.round(tune('profileExportHeaderPx'));
   const canvas = document.createElement('canvas');
   canvas.width = w;
   canvas.height = h;
@@ -3484,15 +3484,15 @@ function exportProfilePng(title, subtitle, paint) {
   ctx.textBaseline = 'top';
   ctx.direction = rtl ? 'rtl' : 'ltr';
   ctx.textAlign = rtl ? 'right' : 'left';
-  const tx = rtl ? w - 12 : 12;
+  const tx = rtl ? w - tune('profileExportInsetPx') : tune('profileExportInsetPx');
   ctx.fillStyle = (typeof tune === 'function' && tune('profileTextColor')) || '#e8e8e8';
-  ctx.font = 'bold 16px sans-serif';
-  ctx.fillText(String(title || ''), tx, 10, w - 24);
+  ctx.font = 'bold ' + tune('profileExportTitleFontPx') + 'px sans-serif';
+  ctx.fillText(String(title || ''), tx, tune('profileExportTitleTopPx'), w - 2 * tune('profileExportInsetPx'));
   if (subtitle) {
     ctx.direction = 'ltr';
-    ctx.font = '12px sans-serif';
+    ctx.font = tune('profileExportSubtitleFontPx') + 'px sans-serif';
     ctx.fillStyle = (typeof tune === 'function' && tune('profileNmTextColor')) || '#bdb7b7';
-    ctx.fillText(String(subtitle), tx, 30, w - 24);
+    ctx.fillText(String(subtitle), tx, tune('profileExportSubtitleTopPx'), w - 2 * tune('profileExportInsetPx'));
   }
   ctx.direction = rtl ? 'rtl' : 'ltr';
   paint(ctx, 0, head, w, h - head);
@@ -14429,7 +14429,7 @@ window.makeImageZoomable = makeImageZoomable;
           const o = document.createElement('canvas');
           o.width = w; o.height = outH;
           const octx = o.getContext('2d');
-          octx.fillStyle = '#fff';
+          octx.fillStyle = tune('sigwxPaperColor');
           octx.fillRect(0, 0, w, outH);
           let y = pad;
           for (const b of merged) {
@@ -14698,7 +14698,7 @@ window.makeImageZoomable = makeImageZoomable;
       const c = document.createElement('canvas');
       c.width = cw; c.height = ch;
       const ctx = c.getContext('2d');
-      ctx.fillStyle = '#fff';
+      ctx.fillStyle = tune('sigwxPaperColor');
       ctx.fillRect(0, 0, cw, ch);
       const x = Math.round((cw - W) / 2);
       if (h) ctx.drawImage(h, x, 0, W, hh);
