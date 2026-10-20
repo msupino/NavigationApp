@@ -996,21 +996,42 @@
         <div class="tb-group-separator" aria-hidden="true"></div>
         <!-- The aircraft's fuel figures, the same two the flight plan shows: one profile, so a
              change in either place is a change in both (ui.js, wireSettingsAircraft). -->
-        <label class="navtoggle" data-i18n-title="tbGphTitle">
+        <!-- The aircraft type fills every figure below from its manual's typical values, and is the
+             type the flight plan form files (ui.js, wireSettingsAircraft). Each figure can be
+             changed; a dot marks one that differs from the type, and Restore puts them back. -->
+        <label class="navtoggle" data-i18n-title="tbAircraftTypeTitle">
+          <span data-i18n="tbAircraftType"></span>
+          <select id="settings-ac-type"></select>
+        </label>
+        <!-- The figures themselves, folded away: the type sets them, and most pilots never open
+             this. A changed figure is marked inside, and on the summary. -->
+        <details class="ac-custom" id="settings-ac-custom">
+          <summary data-i18n="tbAircraftCustom"></summary>
+        <label class="navtoggle ac-field" data-field="gph" data-i18n-title="tbGphTitle">
           <span data-i18n="tbGph"></span>
           <input type="number" id="settings-gph" min="1" max="50" step="0.5" inputmode="decimal">
         </label>
-        <label class="navtoggle" data-i18n-title="tbTaxiGalTitle">
+        <label class="navtoggle ac-field" data-field="taxiGal" data-i18n-title="tbTaxiGalTitle">
           <span data-i18n="tbTaxiGal"></span>
           <input type="number" id="settings-taxi" min="0" max="20" step="0.1" inputmode="decimal">
         </label>
+        <label class="navtoggle ac-field" data-field="usableGal" data-i18n-title="tbUsableFuelTitle">
+          <span data-i18n="tbUsableFuel"></span>
+          <input type="number" id="settings-usable" min="1" max="300" step="0.5" inputmode="decimal">
+        </label>
+        <label class="navtoggle ac-field" data-field="climbKt" data-i18n-title="tbClimbKtTitle">
+          <span data-i18n="tbClimbKt"></span>
+          <input type="number" id="settings-climb-kt" min="30" max="200" step="1" inputmode="numeric">
+        </label>
         <!-- Vertical speed, shared with the flight plan's profile strip. Said in words what it
              changes, because a rate field reads as if it moves times and fuel, and it does not. -->
-        <label class="navtoggle" data-i18n-title="profileVsTitle">
+        <label class="navtoggle ac-field" data-field="climbFpm" data-i18n-title="profileVsTitle">
           <span data-i18n="profileVs"></span>
           <input type="number" id="settings-vs" min="50" step="50" inputmode="numeric">
         </label>
         <div class="settings-hint" id="settings-vs-hint" data-i18n="profileVsHint"></div>
+        </details>
+        <button type="button" id="settings-ac-restore"></button>
         <!-- Reference tables a pilot sets up once and consults: the frequency table and the
              altitude pairs, moved here from Charts. -->
         <div class="tb-group-separator" aria-hidden="true"></div>

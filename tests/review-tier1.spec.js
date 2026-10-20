@@ -190,10 +190,10 @@ test('a poisoned aircraft value from an older build is ignored on load', async (
     }
     return out;
   });
-  expect(r['null']).toBeFalsy();
-  expect(r['{}']).toBeFalsy();
-  expect(r['{"gph":0}']).toBeFalsy();
-  expect(r['not json']).toBeFalsy();
+  expect(r['null']).toBe(8.5);       // ignored: the default C172, not the bad value
+  expect(r['{}']).toBe(8.5);       // ignored: the default C172, not the bad value
+  expect(r['{"gph":0}']).toBe(8.5);       // ignored: the default C172, not the bad value
+  expect(r['not json']).toBe(8.5);       // ignored: the default C172, not the bad value
   expect(r['{"gph":8,"taxiGal":1}']).toBe(8);   // a usable profile still loads
 });
 
