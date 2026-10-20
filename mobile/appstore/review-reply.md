@@ -28,12 +28,13 @@ every launch.
 
 **3. How to use it (no login, no sample files needed)**
 1. Launch, read the safety notice and tap "I understand".
-2. Type `LLHZ BAZRA DEROR SHARO HADRA FRDIS LLHA` in the search box at the top and press Return,
-   or tap the map to place waypoints. The route appears with headings, times and fuel.
+2. Tap Menu in the bottom bar, type `LLHZ BAZRA DEROR SHARO HADRA FRDIS LLHA` in the search box
+   at the top of the menu and press Return (or tap the map to place waypoints). The route appears
+   with headings, times and fuel.
 3. Tap a waypoint for its details; tap Plan (bottom bar) for the navigation log.
 4. The tick button on the left runs the route check; the layers button above it switches the
    chart and turns on weather, NOTAM and airspace layers.
-5. Tap Location to show the device's position (location permission is asked then; declining
+5. Tap Location (bottom bar) to show the device's position (location permission is asked then; declining
    leaves everything else working).
 6. Turn on Airplane Mode and relaunch: the chart, the route and planning still work.
 
