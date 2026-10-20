@@ -5598,7 +5598,10 @@ function drawLegs() {
       ? !legKiteVisible(i, leg)
       : (typeof legKiteHidden === 'function' && legKiteHidden(leg));
 
-    drawMinuteMarkers(sa, sb, durH);
+    drawMinuteMarkers(sa, sb, durH, tune('minuteMarkerToColor'));
+    // The return's own minutes, counted from B back to A, on the side right of ITS direction
+    // -- the other side of the line -- in the return colour.
+    if (showReturn && durOut > 0) drawMinuteMarkers(sb, sa, durOut, tune('minuteMarkerFromColor'));
 
     const ang = Math.atan2(sb.y - sa.y, sb.x - sa.x);
     const mid = { x: (sa.x + sb.x) / 2, y: (sa.y + sb.y) / 2 };
@@ -5806,14 +5809,17 @@ function drawDriftLines(sa, sb) {
   octx.restore();
 }
 
-function drawMinuteMarkers(sa, sb, durH) {
+function drawMinuteMarkers(sa, sb, durH, color) {
   const totalMin = durH * 60;
   if (totalMin < 1) return;
   let dx = sb.x - sa.x, dy = sb.y - sa.y;
   const len = Math.hypot(dx, dy) || 1;
   dx /= len; dy /= len;
   const nx = -dy, ny = dx;
-  octx.font = `bold ${tune('minuteMarkerFontPx')}px sans-serif`;
+  const k = (typeof minuteMarkerSize === 'number' && minuteMarkerSize > 0) ? minuteMarkerSize : 1;
+  const ink = color || tune('inkColor');
+  const fontPx = tune('minuteMarkerFontPx') * k;
+  octx.font = `bold ${fontPx}px sans-serif`;
   octx.textAlign = 'center';
   octx.textBaseline = 'middle';
   const count = Math.floor(totalMin);
@@ -5822,9 +5828,9 @@ function drawMinuteMarkers(sa, sb, durH) {
     const px = sa.x + (sb.x - sa.x) * f;
     const py = sa.y + (sb.y - sa.y) * f;
     const even = m % 2 === 0;
-    const tick = even ? tune('minuteTickEvenPx') : tune('minuteTickOddPx');
-    octx.strokeStyle = tune('inkColor');
-    octx.lineWidth = even ? tune('minuteTickEvenWidthPx') : tune('minuteTickOddWidthPx');
+    const tick = (even ? tune('minuteTickEvenPx') : tune('minuteTickOddPx')) * k;
+    octx.strokeStyle = ink;
+    octx.lineWidth = (even ? tune('minuteTickEvenWidthPx') : tune('minuteTickOddWidthPx')) * k;
     octx.beginPath();
     // CAAI standard: minute ticks sit on the RIGHT side of the leg (relative to
     // the direction of flight), starting on the track line and extending out to
@@ -5834,10 +5840,10 @@ function drawMinuteMarkers(sa, sb, durH) {
     octx.lineTo(px + nx * tick, py + ny * tick);
     octx.stroke();
     if (even) {                         // minute number past the tick end
-      const tx = px + nx * (tick + tune('minuteLabelOffsetPx'));
-      const ty = py + ny * (tick + tune('minuteLabelOffsetPx'));
-      octx.fillStyle = tune('inkColor');
-      octx.font = `bold ${tune('minuteMarkerFontPx')}px sans-serif`;
+      const tx = px + nx * (tick + tune('minuteLabelOffsetPx') * k);
+      const ty = py + ny * (tick + tune('minuteLabelOffsetPx') * k);
+      octx.fillStyle = ink;
+      octx.font = `bold ${fontPx}px sans-serif`;
       octx.fillText(String(m), tx, ty);
     }
   }

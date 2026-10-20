@@ -50,7 +50,8 @@ test('Display rows run map -> waypoint trio -> leg-arrow trio', async ({ page })
   expect(r.legColor).toBe(r.legAlpha + 1);
   expect(r.lineWidth).toBeGreaterThan(r.legColor);
   // and the groups are separated by rules
-  expect(r.separators).toBe(3);
+  // waypoints | leg arrows | minute markers | line widths
+  expect(r.separators).toBe(4);
   expect(r.sepVisible).toBe(true);
   expect([r.min, r.max, r.step]).toEqual(['0', '100', '5']);
   expect(r.wpAlphaText).toMatch(/Waypoint opacity/);
