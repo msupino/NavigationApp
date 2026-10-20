@@ -1378,7 +1378,7 @@ window.S = {
   tbFmsExportTitle: 'ייצא מסלול כתוכנית טיסה FMS לטעינה וטיסה ב-X-Plane',
   tbFdrExport: '🎬 FDR — שחזור טיסה ב-X-Plane',
   tbFdrExportTitle: 'ייצא מסלול כקובץ הקלטת טיסה (FDR) שמשחזר את הטיסה ב-X-Plane',
-  tbShowReturn: 'הצג מסלול חזרה',
+  tbShowReturn: 'הצג מסלול חזרה (B)',
   tbShowReturnTitle: 'הצג מידע על מסלול חזרה',
   tbShowCumTime: 'הצג זמן מצטבר',
   tbShowCumTimeTitle: 'הצג מחוון זמן טיסה מצטבר אחרי כל קטע',

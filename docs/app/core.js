@@ -2878,7 +2878,7 @@ window.S = Object.assign({
   tbFmsExportTitle: 'Export route as an X-Plane FMS flight plan to load and fly',
   tbFdrExport: '🎬 FDR — X-Plane replay',
   tbFdrExportTitle: 'Export route as an X-Plane Flight Data Recorder file that replays the flight',
-  tbShowReturn: 'Show return path',
+  tbShowReturn: 'Show return path (B)',
   tbShowReturnTitle: 'Show return-direction (outbound) info',
   tbShowCumTime: 'Show cumulative time',
   tbShowCumTimeTitle: 'Show running total flight time kite after each leg',
