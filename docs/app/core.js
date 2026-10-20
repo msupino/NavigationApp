@@ -3156,6 +3156,7 @@ window.S = Object.assign({
   tbLegArrowAlphaTitle: 'Fill opacity of the leg / cumulative arrows and notes — on screen and in print/export alike',
   tbReturnArrowColor: 'Return arrow color',
   tbReturnArrowColorTitle: 'Fill color of the return path\u2019s leg arrows (Show return path)',
+  whyReturnColorOff: 'Shown with Show return path (B)',
   tbMinuteMarkers: 'Minute markers',
   tbMinuteSize: 'Size',
   tbMinuteSizeTitle: 'Size of the minute ticks and numbers along each leg',

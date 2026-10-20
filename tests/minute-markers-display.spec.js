@@ -59,3 +59,14 @@ test('the Show return path toggle names its shortcut', async ({ page }) => {
   await page.goto('?lang=en&nogist');
   await expect(page.locator('label:has(#ret-cb) span')).toHaveText('Show return path (B)');
 });
+
+test('the way-back colours are dimmed, saying why, while the return path is off', async ({ page }) => {
+  await boot(page);
+  const from = page.locator('#minute-from-color');
+  await expect(from).toHaveAttribute('aria-disabled', 'true');
+  await expect(from).toHaveAttribute('data-why', /return path/);
+  await expect(page.locator('#return-arrow-color')).toHaveAttribute('aria-disabled', 'true');
+  await page.evaluate(() => { const c = document.getElementById('ret-cb'); c.checked = true; c.dispatchEvent(new Event('change')); });
+  await expect(from).not.toHaveAttribute('aria-disabled', 'true');
+  await expect(page.locator('#minute-to-color')).not.toHaveAttribute('aria-disabled', 'true');   // the way out, always
+});

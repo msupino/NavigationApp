@@ -10999,6 +10999,24 @@ wireColorPicker('leg-arrow-color', ['legKiteFillColor', 'cumKiteFillColor'], 'na
 wireColorPicker('return-arrow-color', ['returnKiteFillColor', 'returnCumKiteFillColor'], 'navaid.returnArrowColor');
 wireColorPicker('minute-to-color', ['minuteMarkerToColor'], 'navaid.minuteToColor');
 wireColorPicker('minute-from-color', ['minuteMarkerFromColor'], 'navaid.minuteFromColor');
+// The way-back colours act only while the return path shows: dimmed otherwise, saying so
+// (dim, never hide -- the pilot still finds them where they belong).
+function refreshReturnColorRows() {
+  for (const id of ['minute-from-color', 'return-arrow-color']) {
+    const el = document.getElementById(id);
+    const row = el && el.closest('label');
+    if (!row) continue;
+    const off = !showReturn;
+    row.classList.toggle('navtoggle-idle', off);
+    if (typeof setButtonWhy === 'function') setButtonWhy(el, off ? (S.whyReturnColorOff || 'Shown with Show return path (B)') : null);
+  }
+}
+window.refreshReturnColorRows = refreshReturnColorRows;
+refreshReturnColorRows();
+{
+  const rc = document.getElementById('ret-cb');
+  if (rc) rc.addEventListener('change', () => setTimeout(refreshReturnColorRows, 0));
+}
 
 const MAPOPACITY_KEY = 'navaid.mapOpacity.v2';
 // `var` (not `let`) so writes from any module via window.mapOpacity reach

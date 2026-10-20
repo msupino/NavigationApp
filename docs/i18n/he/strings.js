@@ -1649,6 +1649,7 @@ window.S = {
   tbLegArrowAlphaTitle: 'אטימות המילוי של חצי הקטע/המצטבר והפתקים — במסך ובהדפסה/ייצוא באותה מידה',
   tbReturnArrowColor: 'צבע חץ החזרה',
   tbReturnArrowColorTitle: 'צבע המילוי של חצי הקטע במסלול החזרה (הצג מסלול חזרה)',
+  whyReturnColorOff: 'מוצג עם הצג מסלול חזרה (B)',
   tbMinuteMarkers: 'סימוני דקות',
   tbMinuteSize: 'גודל',
   tbMinuteSizeTitle: 'גודל סימוני הדקות והמספרים לאורך כל קטע',
