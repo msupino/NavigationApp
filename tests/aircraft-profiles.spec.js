@@ -41,6 +41,7 @@ test('Custom figures opens over the plan: the plan window keeps its size', async
     await page.setViewportSize(size);
     await boot(page);
     await openPlan(page);
+    await page.waitForTimeout(150);                     // the window takes its size once filled
     const box = () => page.evaluate(() => {
       const r = document.querySelector('.modal-back.flight-plan .modal').getBoundingClientRect();
       return [Math.round(r.width), Math.round(r.height), Math.round(r.top)];
@@ -200,3 +201,30 @@ test('Hebrew: 4X- reads left to right inside the Hebrew question', async ({ page
   const ask = await page.locator('.follow-me-ask-text').last().textContent();
   expect(ask).toContain('\u20664X-\u2069');                    // isolated, or it is drawn as -4X
 });
+
+// Reported from the iPad, with two screenshots: typing Gal/h across the type's value moved the
+// text after it -- the "changed" dot took room as it appeared. And a reference VOR or a departure
+// time made the whole window jump. Nothing in the row moves, and the window keeps its size.
+for (const size of [{ width: 1366, height: 900 }, { width: 1024, height: 1366 }, { width: 390, height: 844 }]) {
+  test('typing and choosing in the plan moves nothing, at ' + size.width, async ({ page }) => {
+    await page.setViewportSize(size);
+    await boot(page, 'he');
+    await openPlan(page);
+    await page.waitForTimeout(150);                     // measured once filled
+    const geo = () => page.evaluate(() => {
+      const r = e => { const b = document.querySelector(e).getBoundingClientRect(); return [Math.round(b.left), Math.round(b.top)]; };
+      const m = document.querySelector('.modal-back.flight-plan .modal').getBoundingClientRect();
+      return { win: [Math.round(m.width), Math.round(m.height)], taxi: r('#aircraft-taxi'), vor: r('#fp-vor-select') };
+    });
+    const before = await geo();
+    for (const v of ['8', '8.5', '9', '12.5', '8.5']) {
+      await page.locator('#aircraft-gph').fill(v);
+      expect(await geo(), 'Gal/h ' + v).toEqual(before);
+    }
+    await page.selectOption('#fp-vor-select', { index: 1 });
+    expect((await geo()).win, 'VOR').toEqual(before.win);
+    await page.evaluate(() => { const h = document.querySelector('.qtime-h'); if (h) { h.value = h.options[2].value; h.dispatchEvent(new Event('change', { bubbles: true })); } });
+    await page.waitForTimeout(150);
+    expect((await geo()).win, 'departure time').toEqual(before.win);
+  });
+}

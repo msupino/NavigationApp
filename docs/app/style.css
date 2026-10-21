@@ -9933,10 +9933,13 @@ body.theme-light .ac-profile-btn { border-color: #c9c4bc; }
 body.theme-light .ac-profile-btn.ac-profile-delete:not([aria-disabled="true"]) { color: #b3261e; border-color: #e0a9a5; }
 /* A phone: targets a finger can hit (44 px). */
 body.deck-on .ac-profile-btn, body.deck-on .fp-aircraft .ac-custom > summary { min-height: 44px; }
-/* A figure changed from the type's carries a small dot after its name. */
-.ac-field.ac-overridden > span::after {
-  content: ' \2022'; color: #b45309; font-weight: 700;
+/* A figure changed from the type's carries a small dot after its name. Its room is always kept
+   (hidden while unchanged): a dot that took room as it appeared moved every box after it, and the
+   plan with them, at each keystroke that crossed the type's value (reported). */
+.ac-field > span::after {
+  content: ' \2022'; font-weight: 700; visibility: hidden;
 }
+.ac-field.ac-overridden > span::after { visibility: visible; color: #b45309; }
 /* Filing form: the type comes from the flight plan, read-only, with where to change it. */
 .fpl-type-box { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; }
 .fpl-readonly { opacity: .85; }

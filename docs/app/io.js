@@ -5544,6 +5544,23 @@ function showFlightPlan() {
   if (typeof drawProfileStripIfOpen === 'function') {
     requestAnimationFrame(drawProfileStripIfOpen);
   }
+  // The plan keeps the size it opened at. Choosing a reference VOR added two columns and widened
+  // it; a departure time added the ETA column and made it taller -- the window jumped under the
+  // pilot's hand at each change (reported). Measured once it is filled; what grows after that
+  // scrolls inside it (the table on a desktop, the whole window on a phone). A rotation or a
+  // resized window measures it again.
+  const lockPlanSize = () => {
+    if (!box.isConnected) return;
+    box.style.width = ''; box.style.height = '';
+    const r = box.getBoundingClientRect();
+    if (r.width > 0 && r.height > 0) {
+      box.style.width = Math.round(r.width) + 'px';
+      box.style.height = Math.round(r.height) + 'px';
+    }
+  };
+  requestAnimationFrame(() => requestAnimationFrame(lockPlanSize));
+  const onPlanWindowResize = () => { if (box.isConnected) lockPlanSize(); else window.removeEventListener('resize', onPlanWindowResize); };
+  window.addEventListener('resize', onPlanWindowResize);
   // The Freq column's airfield primary needs the comm call-sign catalog; it's
   // not loaded eagerly, so pull it (and airfields) then recompute the column so
   // the first leg from an airfield shows its tower frequency.
