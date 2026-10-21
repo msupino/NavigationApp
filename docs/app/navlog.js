@@ -143,7 +143,8 @@
       depElevFt: wps.length ? (elevationOf(wps[0]) || 0) : 0,
       destElevFt: wps.length > 1 ? (elevationOf(wps[wps.length - 1]) || 0) : 0,
       cas: { climb: 70, cruise: cruiseSpeed || t('defaultSpeed', 90), descent: 100 },
-      rates: { climbFpm: t('profileClimbFpm', 800), descentFpm: 1000 },
+      // The descent at the aircraft's own rate (Flight plan -> Aircraft), unless set here.
+      rates: { climbFpm: t('profileClimbFpm', 800), descentFpm: Number(ac.descentFpm) > 0 ? Number(ac.descentFpm) : 1000 },
       fuel: { climbGal: 7, cruiseGph: Number(ac.gph) > 0 ? Number(ac.gph) : t('defaultGph', 8) },
       // Where in the climb and the descent the met data is read -- the exercise's two thirds
       // and one half. Written as fractions of the height gained or lost, measured from the field.
