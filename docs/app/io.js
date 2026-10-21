@@ -1693,7 +1693,7 @@ function showParkingRequestModal(res, park, opts) {
   };
   const fuelEl = document.createElement('input');
   fuelEl.type = 'checkbox';
-  field(S.fplParkingFuel || 'Refuelling requested', fuelEl);
+  field(S.fplParkingFuel || 'Refuelling requested', fuelEl).parentNode.classList.add('parking-check');
   const notesEl = document.createElement('textarea');
   notesEl.rows = 2;
   notesEl.dir = 'auto';
@@ -1723,6 +1723,9 @@ function showParkingRequestModal(res, park, opts) {
     // An edited message is the pilot's; the options stop rewriting it under them.
     if (edited) return;
     preview.value = compose().body;
+    // An English body pads its labels into a column, which only lines up in a fixed-width face;
+    // a Hebrew one is not padded and reads in the app's own font.
+    preview.classList.toggle('is-ltr', !/[\u0590-\u05FF]/.test(preview.value));
   };
   refresh();
   for (const el of [kindSel, untilDate, untilTime, fuelEl, notesEl]) {

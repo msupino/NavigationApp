@@ -8342,6 +8342,8 @@ body.theme-light .follow-me-banner.holding { color: #4a3608; background: rgba(25
 /* A phone: each name over its control, the controls the dialog's whole width. */
 @media (max-width: 480px) {
   .parking-form { grid-template-columns: minmax(0, 1fr); gap: 4px; }
+  /* A checkbox stays beside its name: alone on a line it read as belonging to nothing. */
+  .parking-row.parking-check { display: flex; align-items: center; gap: 10px; min-height: 44px; }
   .parking-row select, .parking-row .parking-when, .parking-row textarea { margin-bottom: 6px; min-height: 44px; }
 }
 .parking-preview { width: 100%; box-sizing: border-box; line-height: 1.5; resize: vertical; }
@@ -8388,7 +8390,11 @@ body.theme-light .parking-preview { color-scheme: light; }
 }
 /* The message in the reading font, not a monospace one: Hebrew in a monospace face is spread
    letter from letter (reported), and the mail it opens is read in a proportional one anyway. */
-.parking-preview { font-size: 12.5px; }
+/* The modal text is bold; a whole message in bold reads as shouting. */
+.parking-preview { font-size: 12.5px; font-weight: 400; }
+/* An English body is padded into columns, which line up only in a fixed-width face and only
+   unwrapped -- a long value scrolls sideways rather than breaking its row in two. */
+.parking-preview.is-ltr { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 11px; white-space: pre; overflow-x: auto; }
 body.theme-light .parking-form select,
 body.theme-light .parking-form input[type="date"],
 body.theme-light .parking-form input[type="time"],
