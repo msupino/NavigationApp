@@ -83,3 +83,12 @@ test('on a phone the plan is the whole window and has no grip', async ({ page })
   await expect(page.locator('body')).toHaveClass(/deck-on/);
   await expect(page.locator('.fp-grip')).toBeHidden();
 });
+
+test('a click on the corner that does not drag stores no size', async ({ page }) => {
+  await boot(page);
+  await page.waitForTimeout(100);
+  const g = await page.locator('.fp-grip').boundingBox();
+  if (!g) throw new Error('no grip');
+  await page.mouse.click(g.x + g.width / 2, g.y + g.height / 2);
+  expect(await page.evaluate(() => localStorage.getItem('navaid.fpUserSize'))).toBe(null);
+});
