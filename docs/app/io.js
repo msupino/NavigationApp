@@ -4183,8 +4183,10 @@ function showFlightPlan() {
   fpAircraft.appendChild(acLbl);
   const acInputDiv = document.createElement('div');
   acInputDiv.id = 'aircraft-custom';
-  acInputDiv.appendChild(mkAcInput('aircraft-gph', S.tbGph, S.tbGphTitle, 1, 50, 0.5));
-  acInputDiv.appendChild(mkAcInput('aircraft-taxi', S.tbTaxiGal, S.tbTaxiGalTitle, 0, 20, 0.1));
+  // Short names here, the full ones as the tooltip: with the aircraft picker on the row above,
+  // both boxes fit one line on a phone, and the plan still fits the chart space.
+  acInputDiv.appendChild(mkAcInput('aircraft-gph', S.fpGphShort || S.tbGph, S.tbGphTitle, 1, 50, 0.5));
+  acInputDiv.appendChild(mkAcInput('aircraft-taxi', S.fpTaxiShort || S.tbTaxiGal, S.tbTaxiGalTitle, 0, 20, 0.1));
   fpAircraft.appendChild(acInputDiv);
   const gphInp  = acInputDiv.querySelector('#aircraft-gph');
   const taxiInp = acInputDiv.querySelector('#aircraft-taxi');
@@ -11340,10 +11342,18 @@ function showFplDialog(opts) {
     // Call sign: the one field that changes most, so it leads and it is big.
     // "4X-" is fixed for every Israeli registration, so it is printed beside the
     // field instead of being something to type (or to forget).
-    const reg = input(profile.reg.replace(/^4X-?/i, ''), 'text',
+    // One of the pilot's own aircraft IS its call sign (Flight plan -> Aircraft): filed as it is,
+    // read-only here like its type. With a listed type in use, typed here as before.
+    const ownAc = typeof activeAircraftProfile === 'function' ? activeAircraftProfile() : null;
+    const reg = input(ownAc ? ownAc.name : profile.reg.replace(/^4X-?/i, ''), 'text',
       { maxlength: '4', placeholder: 'HLH', autocapitalize: 'characters', 'aria-label': S.fplReg || 'Call sign' });
     reg.id = 'fpl-reg';
-    reg.className = 'fpl-reg-input';
+    reg.className = 'fpl-reg-input' + (ownAc ? ' fpl-readonly' : '');
+    if (ownAc) {
+      reg.readOnly = true;
+      reg.title = S.fplRegFromPlan || 'From the flight plan\u2019s Aircraft';
+      reg.setAttribute('aria-describedby', 'fpl-type-hint');
+    }
     const regBox = document.createElement('span');
     regBox.className = 'fpl-reg-box';
     const regPrefix = document.createElement('span');

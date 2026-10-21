@@ -1462,16 +1462,27 @@
         <span class="sr-only" data-i18n="tbAircraftType"></span>
         <select id="ac-type" data-i18n-aria="tbAircraftType"></select>
       </label>
-      <button type="button" id="ac-profile-rename" class="ac-profile-btn" data-i18n="acRename"></button>
-      <button type="button" id="ac-profile-delete" class="ac-profile-btn ac-profile-delete" data-i18n="acDelete"></button>
-      <!-- The rest of the figures, folded away: the type sets them. A figure changed from the
-           type's is marked inside. -->
-      <details class="ac-custom" id="ac-custom">
+      <!-- The aircraft's own details, folded away. Your own aircraft is its call sign (the code the
+           flight plan form files, after 4X-) and the type selected for it; a listed type is just
+           its figures. A figure changed from the type's is marked. -->
+      <details class="ac-custom fp-when" id="ac-custom">
         <summary data-i18n="tbAircraftCustom"></summary>
+        <!-- A popover over the plan, like Columns and the departure time: opening it does not
+             make the plan taller (on a phone the plan only just fits the chart space). -->
+        <div class="fp-columns-menu fp-when-menu ac-menu" role="group" data-i18n-aria="tbAircraftCustom">
+        <div class="fp-when-head">
+          <span class="fp-when-label" data-i18n="tbAircraftCustom"></span>
+          <button type="button" class="fp-when-close" id="ac-custom-close" data-i18n-title="modalCloseTitle" data-i18n-aria="modalCloseTitle">✕</button>
+        </div>
         <div class="ac-custom-grid">
-          <label class="ac-field ac-icao-row" data-i18n-title="acIcaoTypeTitle">
-            <span data-i18n="acIcaoType"></span>
-            <input type="text" id="ac-icao" maxlength="4" autocapitalize="characters" spellcheck="false">
+          <label class="ac-own-row" id="ac-callsign-row" data-i18n-title="acCallSignTitle">
+            <span data-i18n="acCallSign"></span>
+            <span class="ac-callsign-box" dir="ltr"><span class="ac-callsign-prefix">4X-</span><input type="text" id="ac-callsign" maxlength="4" autocapitalize="characters" spellcheck="false" dir="ltr"></span>
+          </label>
+          <label class="ac-own-row" id="ac-model-row" data-i18n-title="acIcaoTypeTitle">
+            <span data-i18n="tbAircraftType"></span>
+            <select id="ac-model"></select>
+            <input type="text" id="ac-icao" maxlength="4" autocapitalize="characters" spellcheck="false" dir="ltr" data-i18n-aria="acIcaoType" hidden>
           </label>
           <label class="ac-field" data-field="usableGal" data-i18n-title="tbUsableFuelTitle">
             <span data-i18n="tbUsableFuel"></span>
@@ -1486,7 +1497,11 @@
             <input type="number" id="ac-descent" min="100" max="3000" step="50" inputmode="numeric">
           </label>
         </div>
-        <button type="button" id="ac-restore" class="ac-profile-btn"></button>
+        <div class="ac-actions">
+          <button type="button" id="ac-restore" class="ac-profile-btn"></button>
+          <button type="button" id="ac-profile-delete" class="ac-profile-btn ac-profile-delete" data-i18n="acDelete"></button>
+        </div>
+        </div>
       </details>
     </div>
   </div>

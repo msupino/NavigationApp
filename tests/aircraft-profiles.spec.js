@@ -1,7 +1,9 @@
 // @ts-check
 // #671, aircraft profiles. The aircraft lives in the flight plan's Aircraft row: a listed type, or
-// one of the pilot's own aircraft (a name, the ICAO type it files as, its own figures). The filing
-// form shows the type read-only. Descent rate is one of the figures, and the nav log plans with it.
+// one of the pilot's own aircraft -- its call sign (the code the flight plan form files, after
+// 4X-) and the type selected for it. The rest of its figures are in a popover, which never makes
+// the plan taller. The filing form shows the call sign and type read-only. Descent rate is one of
+// the figures, and the nav log plans with it.
 const { test, expect } = require('./_setup');
 
 async function boot(page, lang) {
@@ -15,7 +17,8 @@ async function boot(page, lang) {
     syncLegs(); draw();
   });
 }
-const openPlan = (page) => page.evaluate(() => { showFlightPlan(); document.getElementById('ac-custom').open = true; });
+const openPlan = (page) => page.evaluate(() => showFlightPlan());
+const openFigures = (page) => page.locator('#ac-custom > summary').click();
 const answer = async (page, text) => {
   if (text !== undefined) await page.locator('.app-ask-input').fill(text);
   await page.locator('.follow-me-ask-ok').last().click();
@@ -27,9 +30,32 @@ test('the aircraft is chosen in the flight plan, not in Settings', async ({ page
   await openPlan(page);
   await expect(page.locator('.fp-aircraft #ac-type')).toBeVisible();
   await expect(page.locator('#ac-type')).toHaveValue('C172');                  // the default
-  // Back home, hidden, once the plan is closed.
   await page.evaluate(() => closeFlightPlan());
   expect(await page.evaluate(() => document.getElementById('ac-panel').parentNode.id)).toBe('ac-panel-home');
+});
+
+test('Custom figures opens over the plan: the plan window keeps its size', async ({ page }) => {
+  for (const size of [{ width: 1280, height: 800 }, { width: 390, height: 844 }]) {
+    await page.setViewportSize(size);
+    await boot(page);
+    await openPlan(page);
+    const box = () => page.evaluate(() => {
+      const r = document.querySelector('.modal-back.flight-plan .modal').getBoundingClientRect();
+      return [Math.round(r.width), Math.round(r.height), Math.round(r.top)];
+    });
+    const before = await box();
+    await openFigures(page);
+    await expect(page.locator('.ac-menu')).toBeVisible();
+    expect(await box()).toEqual(before);
+    // And it is on the screen, whichever side the row starts from.
+    const m = await page.locator('.ac-menu').boundingBox();
+    expect(m.x).toBeGreaterThanOrEqual(0);
+    expect(m.x + m.width).toBeLessThanOrEqual(size.width + 1);
+    await page.keyboard.press('Escape');                                        // closes it, not the plan
+    await expect(page.locator('.ac-menu')).toBeHidden();
+    await expect(page.locator('.modal-back.flight-plan')).toBeVisible();
+    await page.evaluate(() => closeFlightPlan());
+  }
 });
 
 test('a listed type fills its figures, descent included; a change is marked and Restore puts it back', async ({ page }) => {
@@ -37,74 +63,99 @@ test('a listed type fills its figures, descent included; a change is marked and 
   await openPlan(page);
   await page.selectOption('#ac-type', 'PA28');
   expect(await page.evaluate(() => [aircraft.type, aircraft.gph, aircraft.taxiGal, aircraft.descentFpm,
-    document.getElementById('aircraft-gph').value, document.getElementById('ac-descent').value]))
-    .toEqual(['PA28', 8.5, 1.2, 500, '8.5', '500']);
+    document.getElementById('aircraft-gph').value]))
+    .toEqual(['PA28', 8.5, 1.2, 500, '8.5']);
+  await openFigures(page);
+  await expect(page.locator('#ac-descent')).toHaveValue('500');
   await page.locator('#ac-descent').fill('700');
   await expect(page.locator('.ac-field[data-field="descentFpm"]')).toHaveClass(/ac-overridden/);
   await page.locator('#ac-restore').click();
   expect(await page.evaluate(() => aircraft.descentFpm)).toBe(500);
-  // A listed type files as itself: its ICAO box is not editable.
-  expect(await page.locator('#ac-icao').evaluate(el => el.readOnly)).toBe(true);
+  // A listed type has no call sign or type of its own: those rows are dimmed, saying why.
+  await expect(page.locator('#ac-callsign-row')).toHaveClass(/is-dim/);
+  await expect(page.locator('#ac-model')).toBeDisabled();
   await expect(page.locator('#ac-profile-delete')).toHaveAttribute('aria-disabled', 'true');
 });
 
-test('New aircraft... names one of your own; its figures are its own and survive a reload', async ({ page }) => {
+test('New aircraft is its call sign; its type is selected for it, and its figures are its own', async ({ page }) => {
   await boot(page);
   await openPlan(page);
-  await page.selectOption('#ac-type', 'C152');
   await page.selectOption('#ac-type', '__new');
-  await answer(page, '4X-CRW');
-  await expect(page.locator('#ac-type option:checked')).toHaveText('4X-CRW (C152)');
-  await expect(page.locator('#ac-profile-rename')).not.toHaveAttribute('aria-disabled', 'true');
-  // Its ICAO type and figures are the pilot's to change, and the changes are that aircraft's.
-  await page.locator('#ac-icao').fill('c150');
-  await page.locator('#aircraft-gph').fill('5.5');
+  await answer(page, '4x-crw');
+  await expect(page.locator('#ac-type option:checked')).toHaveText('4X-CRW (C172)');
+  await expect(page.locator('.ac-menu')).toBeVisible();                       // opened where its type is chosen
+  await expect(page.locator('#ac-callsign')).toHaveValue('CRW');
+  // Selecting its type brings that type's figures; they are this aircraft's to change.
+  await page.selectOption('#ac-model', 'C152');
+  expect(await page.evaluate(() => [aircraft.type, aircraft.gph, aircraft.profile ? 1 : 0])).toEqual(['C152', 6, 1]);
   await page.locator('#ac-descent').fill('400');
+  await page.locator('#aircraft-gph').fill('5.5');
+  // A type not on the list: Other, and its ICAO code.
+  await page.selectOption('#ac-model', '__other');
+  await page.locator('#ac-icao').fill('c150');
   const stored = await page.evaluate(() => JSON.parse(localStorage.getItem('navaid.aircraftProfiles')));
   expect(stored).toHaveLength(1);
-  expect([stored[0].name, stored[0].type, stored[0].gph, stored[0].descentFpm]).toEqual(['4X-CRW', 'C150', 5.5, 400]);
-  // A listed type and back: the aircraft comes back with its own numbers.
+  expect([stored[0].name, stored[0].type, stored[0].gph, stored[0].descentFpm]).toEqual(['CRW', 'C150', 5.5, 400]);
+  // The call sign is the name: changing it renames the aircraft.
+  await page.locator('#ac-callsign').fill('CRX');
+  await page.locator('#ac-callsign').dispatchEvent('change');
+  await expect(page.locator('#ac-type option:checked')).toHaveText('4X-CRX (C150)');
+  // A listed type and back, and a reload: the aircraft comes back with its own numbers.
   await page.selectOption('#ac-type', 'C172');
   expect(await page.evaluate(() => aircraft.gph)).toBe(8.5);
   await page.selectOption('#ac-type', 'profile:' + stored[0].id);
   expect(await page.evaluate(() => [aircraft.type, aircraft.gph, aircraft.descentFpm])).toEqual(['C150', 5.5, 400]);
   await page.reload();
   await boot(page);
-  expect(await page.evaluate(() => [aircraft.profile, aircraft.type, aircraft.gph])).toEqual([stored[0].id, 'C150', 5.5]);
+  expect(await page.evaluate(() => [aircraft.profile, aircraft.type, aircraftProfiles[0].name])).toEqual([stored[0].id, 'C150', 'CRX']);
 });
 
-test('Rename and Delete, asked in the app; deleting the one in use goes back to its type', async ({ page }) => {
+test('the same call sign twice is the same aircraft', async ({ page }) => {
   await boot(page);
-  await page.evaluate(() => createAircraftProfile('4X-AAA', 'C172'));
+  const n = await page.evaluate(() => { createAircraftProfile('CRW', 'C172'); createAircraftProfile('4X-CRW', 'PA28'); return aircraftProfiles.length; });
+  expect(n).toBe(1);
+});
+
+test('Delete is asked in the app; deleting the one in use goes back to its type', async ({ page }) => {
+  await boot(page);
+  await page.evaluate(() => createAircraftProfile('AAA', 'PA28'));
   await openPlan(page);
-  await page.locator('#ac-profile-rename').click();
-  await answer(page, '4X-BBB');
-  await expect(page.locator('#ac-type option:checked')).toHaveText('4X-BBB (C172)');
+  await openFigures(page);
   await page.locator('#ac-profile-delete').click();
-  await expect(page.locator('.follow-me-ask-text').last()).toContainText('4X-BBB');
+  await expect(page.locator('.follow-me-ask-text').last()).toContainText('4X-AAA');
   await answer(page);
-  await expect(page.locator('#ac-type')).toHaveValue('C172');
+  await expect(page.locator('#ac-type')).toHaveValue('PA28');
   expect(await page.evaluate(() => [aircraftProfiles.length, aircraft.profile || null])).toEqual([0, null]);
-  await expect(page.locator('.toast').last()).toContainText('4X-BBB');
+  await expect(page.locator('.toast').last()).toContainText('4X-AAA');
 });
 
-test('the filing form files the aircraft\'s type, read-only, and says where it comes from', async ({ page }) => {
+test('the filing form files the aircraft\'s call sign and type, read-only, and says where they come from', async ({ page }) => {
   await boot(page);
-  await page.evaluate(() => createAircraftProfile('4X-CRW', 'P28A'));
+  await page.evaluate(() => createAircraftProfile('CRW', 'P28A'));
   await page.evaluate(() => showFplDialog());
+  await expect(page.locator('#fpl-reg')).toHaveValue('CRW');
   await expect(page.locator('#fpl-type')).toHaveValue('P28A');
+  expect(await page.locator('#fpl-reg').evaluate(el => el.readOnly)).toBe(true);
   expect(await page.locator('#fpl-type').evaluate(el => el.readOnly)).toBe(true);
-  await expect(page.locator('#fpl-type-hint')).toContainText('4X-CRW');
+  await expect(page.locator('#fpl-type-hint')).toContainText('CRW');
 });
 
-test('an aircraft set by hand before profiles (Other..., filing P28A) becomes one of your own', async ({ page }) => {
+test('a listed type: the call sign is typed in the filing form as before', async ({ page }) => {
+  await boot(page);
+  await page.evaluate(() => setAircraftType('C172'));
+  await page.evaluate(() => showFplDialog());
+  expect(await page.locator('#fpl-reg').evaluate(el => el.readOnly)).toBe(false);
+});
+
+test('an aircraft set by hand before profiles (Other..., filing P28A as 4X-ABC) becomes one of your own', async ({ page }) => {
   await page.addInitScript(() => {
     localStorage.setItem('navaid.aircraft', JSON.stringify({ gph: 9.2, taxiGal: 1, type: '' }));
     localStorage.setItem('navaid.fpl.type', 'P28A');
+    localStorage.setItem('navaid.fpl.reg', 'ABC');
   });
   await boot(page);
   expect(await page.evaluate(() => [aircraftProfiles.length, aircraftProfiles[0].name, aircraft.type, aircraft.gph]))
-    .toEqual([1, 'P28A', 'P28A', 9.2]);
+    .toEqual([1, 'ABC', 'P28A', 9.2]);
 });
 
 test('the nav log plans the descent at the aircraft\'s rate unless set there', async ({ page }) => {
@@ -118,7 +169,8 @@ test('the nav log plans the descent at the aircraft\'s rate unless set there', a
 test('Hebrew: the panel speaks Hebrew', async ({ page }) => {
   await boot(page, 'he');
   await openPlan(page);
-  await expect(page.locator('#ac-profile-rename')).toHaveText('שנה שם');
+  await openFigures(page);
+  await expect(page.locator('label:has(#ac-callsign) > span').first()).toHaveText('אות קריאה');
   await expect(page.locator('label:has(#ac-descent) span')).toHaveText('ירידה (רגל/דקה)');
   await expect(page.locator('#ac-type option[value="__new"]')).toHaveText('מטוס חדש…');
 });

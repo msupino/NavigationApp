@@ -936,11 +936,11 @@ test('the aircraft type is one read-only row, from the flight plan\'s aircraft',
   // One of the pilot's own aircraft files its own ICAO type, and says which aircraft it is.
   await page.evaluate(() => {
     document.querySelector('.modal-back.fpl-modal')._navaidClose();
-    createAircraftProfile('4X-ABC', 'P28A');
+    createAircraftProfile('ABC', 'P28A');
     showFplDialog();
   });
   await expect(page.locator('#fpl-type')).toHaveValue('P28A');
-  await expect(page.locator('#fpl-type-hint')).toContainText('4X-ABC');
+  await expect(page.locator('#fpl-type-hint')).toContainText('ABC');
 });
 
 test('a cross-country plan never reaches a submit button', async ({ page }) => {

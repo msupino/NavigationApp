@@ -2337,14 +2337,18 @@ window.S = Object.assign({
   tbAircraftRestore: function (type) { return 'Restore ' + type + ' figures'; },
   whyAircraftAsType: 'Every figure is the type\u2019s already',
   aircraftChangedFrom: function (v) { return 'Changed from the type\u2019s ' + v; },
+  acCallSign: 'Call sign',
+  acCallSignTitle: 'The aircraft\u2019s call sign, after 4X-: its name here, and what the flight plan form files',
+  whyAcListedType: 'A listed type has no call sign or type of its own: choose New aircraft\u2026',
+  fplRegFromPlan: 'From the flight plan\u2019s Aircraft',
+  fpGphShort: 'Gal/h',
+  fpTaxiShort: 'Taxi + T/O (gal)',
   acMyAircraft: 'My aircraft',
   acNewProfile: 'New aircraft\u2026',
   acNewProfileTitle: 'New aircraft',
-  acNewProfileName: 'A name for it, e.g. its registration',
+  acNewProfileName: 'Its call sign: the letters after 4X-, as the flight plan files it',
   acCreate: 'Create',
   acProfileSaved: function (n) { return n + ' saved: its figures are yours to change'; },
-  acRename: 'Rename',
-  acRenameTitle: 'Rename aircraft',
   acDelete: 'Delete',
   acDeleteConfirm: function (n) { return 'Delete ' + n + '? Its figures go with it.'; },
   acProfileDeleted: function (n) { return n + ' deleted'; },
@@ -4034,8 +4038,9 @@ function restoreAircraftDefaults(field) {
 window.setAircraftType = setAircraftType;
 window.restoreAircraftDefaults = restoreAircraftDefaults;
 
-// The pilot's own aircraft (Flight plan -> Aircraft -> New aircraft...): a name, the ICAO type it
-// files as, and its own figures. `aircraft` is the one in use; `aircraft.profile` says which of
+// The pilot's own aircraft (Flight plan -> Aircraft -> New aircraft...): its call sign (`name`:
+// the code the flight plan form files after 4X-, e.g. CRW), the type selected for it (ICAO, the
+// form's field 9), and its own figures. `aircraft` is the one in use; `aircraft.profile` says which of
 // these it is, and saving it (saveAircraft) writes its figures back here, so a changed figure is
 // a change to that aircraft.
 const AIRCRAFT_PROFILES_KEY = 'navaid.aircraftProfiles';
@@ -4059,10 +4064,19 @@ function activeAircraftProfile() {
   return aircraft && aircraft.profile ? (aircraftProfiles.find(p => p.id === aircraft.profile) || null) : null;
 }
 function aircraftIcao(code) { return String(code || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 4); }
-// Made from the aircraft in use: its figures and its type, under the pilot's name for it.
+// A call sign as the flight plan form takes it: the letters after 4X-, upper case, at most four.
+function aircraftCallSign(raw) {
+  return String(raw || '').toUpperCase().replace(/[^A-Z0-9]/g, '').replace(/^4X/, '').slice(0, 4);
+}
+// Made from the aircraft in use (its figures and its type), under its call sign. A call sign
+// already listed selects that aircraft instead of making a second one.
 function createAircraftProfile(name, type) {
+  const cs = aircraftCallSign(name);
+  if (!cs) return null;
+  const same = aircraftProfiles.find(x => x.name === cs);
+  if (same) { selectAircraftProfile(same.id); return same; }
   const id = 'ac' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
-  const p = Object.assign({ id, name: String(name).trim().slice(0, 40), type: aircraftIcao(type) },
+  const p = Object.assign({ id, name: cs, type: aircraftIcao(type) },
     aircraftFigures(aircraft || AIRCRAFT_TYPES.C172));
   aircraftProfiles.push(p);
   saveAircraftProfiles();
@@ -4082,10 +4096,25 @@ function selectAircraftProfile(id) {
 }
 function renameAircraftProfile(id, name) {
   const p = aircraftProfiles.find(x => x.id === id);
-  const n = String(name || '').trim().slice(0, 40);
-  if (!p || !n) return false;
+  const n = aircraftCallSign(name);
+  if (!p || !n || aircraftProfiles.some(x => x !== p && x.name === n)) return false;
   p.name = n;
   saveAircraftProfiles();
+  return true;
+}
+// The type selected for one of the pilot's own aircraft: a listed type brings its figures (a fresh
+// start, as choosing a type always is; each can still be changed), any other ICAO code just files.
+function setAircraftProfileType(code) {
+  const p = activeAircraftProfile();
+  const icao = aircraftIcao(code);
+  if (!p || icao.length < 2) return false;
+  const t = AIRCRAFT_TYPES[icao];
+  aircraft = Object.assign({}, aircraft, t || {}, { type: icao, profile: p.id });
+  saveAircraft();
+  if (t) {
+    window.profileVS = t.climbFpm;
+    try { localStorage.setItem('navaid.profileVS', String(t.climbFpm)); } catch (e) { /* storage off */ }
+  }
   return true;
 }
 // Gone from the list; in use, the aircraft falls back to its type (a C172 if that is not listed).
@@ -4104,6 +4133,8 @@ window.selectAircraftProfile = selectAircraftProfile;
 window.renameAircraftProfile = renameAircraftProfile;
 window.deleteAircraftProfile = deleteAircraftProfile;
 window.aircraftIcao = aircraftIcao;
+window.aircraftCallSign = aircraftCallSign;
+window.setAircraftProfileType = setAircraftProfileType;
 window.aircraftFieldOverridden = aircraftFieldOverridden;
 window.aircraftTypeDefault = aircraftTypeDefault;
 // Flight-plan card placed on the PNG export. null = off; otherwise

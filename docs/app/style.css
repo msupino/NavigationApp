@@ -9905,11 +9905,24 @@ body.theme-light #export-progress { background: #fafcff; color: #1d2430; border-
   .route-template-row input { min-height: 44px; font-size: 15px; }
 }
 
-/* Flight plan -> Aircraft. The panel's parts join the row (display: contents): the picker and its
-   Rename / Delete before the fuel boxes, the folded figures on a line of their own below. */
+/* Flight plan -> Aircraft. The panel's parts join the row (display: contents): the picker, then
+   the figures as a popover like Columns and the departure time. The popover hangs from the row,
+   not from its button, so it stays on screen on a phone in Hebrew; opening it never makes the
+   plan taller. */
+.fp-aircraft { position: relative; }
 .fp-aircraft .ac-panel { display: contents; }
 #ac-panel-home { display: none; }
 .ac-type-row { display: inline-flex; align-items: center; }
+.fp-aircraft .ac-custom.fp-when { position: static; margin: 0; align-self: center; }
+.fp-columns-menu.fp-when-menu.ac-menu { max-width: min(440px, calc(92vw - 28px)); }
+.ac-custom-grid { display: flex; flex-wrap: wrap; gap: 8px 14px; }
+.ac-custom-grid > label { display: inline-flex; align-items: center; gap: 6px; }
+.ac-custom-grid input[type="number"] { width: 64px; }
+.ac-callsign-box { display: inline-flex; align-items: center; gap: 2px; }
+.ac-callsign-prefix { opacity: .8; font-variant-numeric: tabular-nums; }
+#ac-callsign, #ac-icao { width: 56px; text-transform: uppercase; }
+.ac-own-row.is-dim > :not(span:first-child) { opacity: .55; }
+.ac-actions { display: flex; flex-wrap: wrap; gap: 8px; }
 .ac-profile-btn {
   font: inherit; font-size: 12px; min-height: 28px; padding: 2px 10px; border-radius: 6px;
   border: 1px solid #4a4545; background: transparent; color: inherit; cursor: pointer;
@@ -9918,17 +9931,8 @@ body.theme-light #export-progress { background: #fafcff; color: #1d2430; border-
 .ac-profile-btn.ac-profile-delete:not([aria-disabled="true"]) { color: #e57373; border-color: #8a3a3a; }
 body.theme-light .ac-profile-btn { border-color: #c9c4bc; }
 body.theme-light .ac-profile-btn.ac-profile-delete:not([aria-disabled="true"]) { color: #b3261e; border-color: #e0a9a5; }
-.ac-custom { flex-basis: 100%; order: 10; }   /* after the fuel boxes and VOR */
-.ac-custom > summary { cursor: pointer; padding: 4px 2px; font-weight: 600; min-height: 28px; }
-.ac-custom-grid { display: flex; flex-wrap: wrap; gap: 6px 14px; padding: 4px 0 2px; }
-.ac-custom-grid > label { display: inline-flex; align-items: center; gap: 6px; }
-.ac-custom-grid input { width: 64px; }
-.ac-custom-grid .ac-icao-row input { width: 56px; text-transform: uppercase; }
-.ac-icao-row.is-dim input { opacity: .6; }
-#ac-restore { margin-block: 6px 2px; }
 /* A phone: targets a finger can hit (44 px). */
-body.deck-on .ac-profile-btn, body.deck-on .ac-custom > summary { min-height: 44px; }
-body.deck-on .ac-custom > summary { display: flex; align-items: center; }
+body.deck-on .ac-profile-btn, body.deck-on .fp-aircraft .ac-custom > summary { min-height: 44px; }
 /* A figure changed from the type's carries a small dot after its name. */
 .ac-field.ac-overridden > span::after {
   content: ' \2022'; color: #b45309; font-weight: 700;
