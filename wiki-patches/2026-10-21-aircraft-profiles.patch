@@ -1,29 +1,28 @@
-From d274ff99b9c9547d6a9eb5d1f27488b81e696fc4 Mon Sep 17 00:00:00 2001
+From 52233a29bfaa6d2844842f4dcf1c30c14d08e01c Mon Sep 17 00:00:00 2001
 From: Marco <marco@supino.org>
 Date: Wed, 21 Oct 2026 06:54:31 +0000
 Subject: [PATCH] Aircraft profiles (#671): the aircraft in the flight plan's
- Aircraft row -- a listed type or your own aircraft (its call sign and the
- type selected for it); Custom figures popover; descent rate; read-only call
- sign and type in the filing form
+ Aircraft row, keyed by its call sign, its type selected for it; Figures
+ popover; descent rate; read-only call sign and type in the filing form
 
 ---
- Flight-Plan-he.md         | 29 ++++++++++++++++++++++-------
- Flight-Plan.md            | 31 ++++++++++++++++++++++++-------
+ Flight-Plan-he.md         | 33 ++++++++++++++++++++++++++-------
+ Flight-Plan.md            | 35 ++++++++++++++++++++++++++++-------
  Fuel-Calculator-he.md     | 11 +++++------
  Fuel-Calculator.md        | 11 +++++------
  LocalStorage-Schema-he.md |  2 +-
  LocalStorage-Schema.md    |  5 +++--
  Submit-Flight-Plan-he.md  |  8 +++++---
- Submit-Flight-Plan.md     | 10 +++++++---
+ Submit-Flight-Plan.md     |  9 ++++++---
  Toolbar-he.md             |  6 +++---
  Toolbar.md                |  6 +++---
- 10 files changed, 78 insertions(+), 41 deletions(-)
+ 10 files changed, 85 insertions(+), 41 deletions(-)
 
 diff --git a/Flight-Plan-he.md b/Flight-Plan-he.md
-index 78cf2d1..152a8dc 100644
+index 78cf2d1..4c88fe7 100644
 --- a/Flight-Plan-he.md
 +++ b/Flight-Plan-he.md
-@@ -62,16 +62,31 @@
+@@ -62,16 +62,35 @@
  
  ## קלטי כלי טיס
  
@@ -35,16 +34,20 @@ index 78cf2d1..152a8dc 100644
 -  אחד מופיע מיד בשני.
 +מעל הטבלה, שורת **כלי טיס**:
 +
-+- **המטוס** — סוג מהרשימה (C152, C172, PA28, DA40, SR22, AT3, C42, EV97, ULAC; **C172** כברירת
-+  מחדל), או אחד **מהמטוסים שלכם**. בחירת סוג ממלאת את כל הנתונים מהערכים הטיפוסיים שבספר המטוס.
-+- **המטוסים שלכם** — **מטוס חדש…** שואל את **אות הקריאה** שלו: הקוד ש[טופס תוכנית הטיסה](Submit-Flight-Plan-he)
-+  מגיש אחרי <span dir="ltr"><code>4X-</code></span> (למשל <span dir="ltr"><code>CRW</code></span>). הוא מופיע ברשימה כ-<span dir="ltr"><code>4X-CRW (C172)</code></span>; אותה אות
-+  קריאה פעמיים היא אותו מטוס. את **הסוג** שלו בוחרים אחר כך ב**נתונים מותאמים** (סוג מהרשימה מביא
-+  את הנתונים שלו; **אחר…** מקבל כל קוד ICAO), וכל נתון שמשנים בזמן שהוא בשימוש נשמר בו.
-+- **נתונים מותאמים** — חלון קופץ מעל התוכנית, כמו **עמודות** ושעת ההמראה, כך שפתיחתו אף פעם לא
-+  מגדילה את התוכנית: אות קריאה וסוג (רק למטוסים שלכם; מעומעמים, עם הסבר, לסוג מהרשימה), דלק שמיש,
-+  מהירות טיפוס, **קצב ירידה**, **שחזר את נתוני C172** ו**מחק** (נשאל באפליקציה). ה-✕, Escape (החלון
-+  הקופץ, לא התוכנית) או הקשה מחוץ לו סוגרים אותו.
++- **המטוס** — מזוהה לפי **אות הקריאה** שלו: הקוד ש[טופס תוכנית הטיסה](Submit-Flight-Plan-he) מגיש
++  אחרי <span dir="ltr"><code>4X-</code></span> (למשל <span dir="ltr"><code>CRW</code></span>), ומופיע ברשימה כ-<span dir="ltr"><code>4X-CRW (C172)</code></span>. אותה אות קריאה פעמיים
++  היא אותו מטוס. עד שנותנים לו אות קריאה הוא **ללא אות קריאה (C172)** — C172 כברירת מחדל.
++- **מטוס חדש…** שואל אות קריאה ומתחיל מהנתונים שבשימוש; הקלדת אות קריאה ב**נתונים** עושה אותו דבר
++  למטוס ללא אות קריאה, ובמטוס שיש לו אות קריאה משנה אותה.
++- **נתונים** (*נתונים מותאמים*) — חלון קופץ מעל התוכנית, כמו **עמודות** ושעת ההמראה, כך שפתיחתו אף
++  פעם לא מגדילה את התוכנית:
++  - **אות קריאה** ו**סוג** — הסוג נבחר למטוס: סוג מהרשימה (C152, C172, PA28, DA40, SR22, AT3, C42,
++    EV97, ULAC) ממלא את הנתונים הטיפוסיים שלו מספר המטוס, **אחר…** מקבל כל קוד ICAO;
++  - דלק שמיש, מהירות טיפוס, **קצב ירידה**;
++  - **שחזר את נתוני C172**, ו**מחק** (נשאל באפליקציה; המטוס חוזר להיות ללא אות קריאה, עם הסוג שלו).
++
++  כל נתון שמשנים בזמן שמטוס בשימוש נשמר בו. ה-✕, Escape (החלון הקופץ, לא התוכנית) או הקשה מחוץ לו
++  סוגרים אותו.
 +- **גל׳/שעה** ו**הסעה + המראה (גל׳)** — נתוני הדלק של המטוס. ההסעה מתווספת רק כשנקודת המוצא היא
 +  שדה ב-<span dir="ltr"><code>airfields.json</code></span> (לפי שם או בטווח ~100 מ'). נתון ששונה מערך הסוג מסומן בנקודה,
 +  והחלונית הקטנה שלו מראה את ערך הסוג.
@@ -63,10 +66,10 @@ index 78cf2d1..152a8dc 100644
  
  כאשר נבחרת תחנת VOR כללית או עקיפה לקטע, הטבלה מציגה עמודות **רדיאל** ו-**DME**.
 diff --git a/Flight-Plan.md b/Flight-Plan.md
-index 079afbe..7c8a3ee 100644
+index 079afbe..220564a 100644
 --- a/Flight-Plan.md
 +++ b/Flight-Plan.md
-@@ -63,17 +63,34 @@ above the table. The return-route table has no ETAs: it is a separate flight.
+@@ -63,17 +63,38 @@ above the table. The return-route table has no ETAs: it is a separate flight.
  
  ## Aircraft inputs
  
@@ -78,18 +81,22 @@ index 079afbe..7c8a3ee 100644
 -  profile, so a change in either place shows in the other at once.
 +Above the table, the **Aircraft** row:
 +
-+- **The aircraft** — a listed type (C152, C172, PA28, DA40, SR22, AT3, C42, EV97, ULAC; **C172** by
-+  default), or one of **your own aircraft**. Choosing a type fills every figure from its typical
-+  manual values.
-+- **Your own aircraft** — **New aircraft…** asks for its **call sign**: the code the
-+  [flight plan form](Submit-Flight-Plan) files after `4X-` (e.g. `CRW`). It is listed as
-+  `4X-CRW (C172)`; the same call sign twice is the same aircraft. Its **type** is then selected for
-+  it in **Custom figures** (a listed type brings its figures; **Other…** takes any ICAO code), and
-+  every figure changed while it is in use is saved into it.
-+- **Custom figures** — a popover over the plan, like **Columns** and the departure time, so opening
-+  it never makes the plan taller: call sign and type (your own aircraft only; dimmed, saying why,
-+  for a listed type), usable fuel, climb speed, **descent rate**, **Restore C172 figures** and
-+  **Delete** (asked in the app). Its ✕, Escape (the popover, not the plan) or a tap outside closes it.
++- **The aircraft** — keyed by its **call sign**: the code the [flight plan form](Submit-Flight-Plan)
++  files after `4X-` (e.g. `CRW`), listed as `4X-CRW (C172)`. The same call sign twice is the same
++  aircraft. Until you give it one it is **No call sign (C172)** — C172 by default.
++- **New aircraft…** asks for a call sign and starts from the figures in use; typing a call sign in
++  **Figures** does the same for the unnamed aircraft, and on one that has a call sign renames it.
++- **Figures** (*Custom figures*) — a popover over the plan, like **Columns** and the departure time,
++  so opening it never makes the plan taller:
++  - **call sign** and **type** — the type is selected for the aircraft: a listed type (C152, C172,
++    PA28, DA40, SR22, AT3, C42, EV97, ULAC) fills its typical manual figures, **Other…** takes any
++    ICAO code;
++  - usable fuel, climb speed, **descent rate**;
++  - **Restore C172 figures**, and **Delete** (asked in the app; the aircraft goes back to having no
++    call sign, with its type).
++
++  Every figure changed while an aircraft is in use is saved into it. Its ✕, Escape (the popover,
++  not the plan) or a tap outside closes it.
 +- **Gal/h** and **Taxi + T/O (gal)** — the aircraft's fuel figures. Taxi is added only when the
 +  origin waypoint is an airfield in `airfields.json` (by name or within ~100 m). A figure changed
 +  from the type's carries a dot, and its tooltip gives the type's value.
@@ -109,7 +116,7 @@ index 079afbe..7c8a3ee 100644
  
  When a global VOR reference or a per-leg VOR override is selected, the table shows **Radial** and **DME** columns.
 diff --git a/Fuel-Calculator-he.md b/Fuel-Calculator-he.md
-index 0535a50..50c8746 100644
+index 0535a50..158947c 100644
 --- a/Fuel-Calculator-he.md
 +++ b/Fuel-Calculator-he.md
 @@ -9,13 +9,12 @@
@@ -121,8 +128,8 @@ index 0535a50..50c8746 100644
 -ומהירות הטיפוס שבפרופיל האנכי. הם נמצאים ב**נתונים מותאמים**: שינוי של אחד מהם מסומן בנקודה,
 -החלונית הקטנה שלו מראה את ערך הסוג, ו**שחזר את נתוני C172** מחזיר את כולם. מהירות הקטע אינה
 -חלק מהמטוס; יש לה הגדרה משלה.
-+בחרו את המטוס בשורת **כלי טיס** שבראש **📋 תוכנית טיסה**: סוג מהרשימה (C172 כברירת מחדל) או אחד
-+מהמטוסים שלכם — ראו [תכנית טיסה](Flight-Plan-he#קלטי-כלי-טיס). הוא ממלא את שני הנתונים שלמטה, את
++בחרו את המטוס בשורת **כלי טיס** שבראש **📋 תוכנית טיסה**: המטוס (לפי אות הקריאה שלו)
++והסוג שנבחר לו (C172 כברירת מחדל) — ראו [תכנית טיסה](Flight-Plan-he#קלטי-כלי-טיס). הוא ממלא את שני הנתונים שלמטה, את
 +הדלק השמיש שטופס תוכנית הטיסה מחשב ממנו סיבולת, ואת נתוני הטיפוס והירידה. מהירות הקטע אינה חלק
 +מהמטוס; יש לה הגדרה משלה.
  
@@ -132,7 +139,7 @@ index 0535a50..50c8746 100644
  | שדה | משמעות |
  | --- | --- |
 diff --git a/Fuel-Calculator.md b/Fuel-Calculator.md
-index 9ef0a39..eb9f1ff 100644
+index 9ef0a39..f1ae683 100644
 --- a/Fuel-Calculator.md
 +++ b/Fuel-Calculator.md
 @@ -6,13 +6,12 @@ NavAid's fuel figures are part of the **Flight Plan** — there is no separate f
@@ -144,8 +151,8 @@ index 9ef0a39..eb9f1ff 100644
 -endurance, and the climb rate and speed the vertical profile uses. They sit in **Custom figures**:
 -change any of them and a dot marks it, its tooltip gives the type's value, and **Restore C172
 -figures** puts them all back. Leg speed is not part of the aircraft; it keeps its own setting.
-+Choose the aircraft in the **Aircraft** row at the top of **📋 Flight plan**: a listed type (C172
-+by default) or one of your own aircraft — see [Flight Plan](Flight-Plan#aircraft-inputs). It fills
++Choose the aircraft in the **Aircraft** row at the top of **📋 Flight plan**: the aircraft (by its call sign)
++and the type selected for it (C172 by default) — see [Flight Plan](Flight-Plan#aircraft-inputs). It fills
 +the two figures below, the usable fuel the flight plan form uses for endurance, and the climb and
 +descent figures. Leg speed is not part of the aircraft; it keeps its own setting.
  
@@ -184,7 +191,7 @@ index 9c495b1..7f52347 100644
    The checkbox says so in place: ticking **Sync settings too** names the pilot
    details (name, licence, phone) and aircraft profile it uploads, since "settings"
 diff --git a/Submit-Flight-Plan-he.md b/Submit-Flight-Plan-he.md
-index c4cc4d1..d00e618 100644
+index c4cc4d1..be177e6 100644
 --- a/Submit-Flight-Plan-he.md
 +++ b/Submit-Flight-Plan-he.md
 @@ -32,9 +32,11 @@ NavAid בונה את הודעת **תוכנית הטיסה בתקן ICAO** עבו
@@ -194,30 +201,29 @@ index c4cc4d1..d00e618 100644
 -- **אות קריאה** — שלוש אותיות מספיקות; הקידומת <span dir="ltr"><code>4X-</code></span> מודפסת ליד השדה ואינה מוקלדת.
 -- **סוג כלי הטיס** — קוד ICAO (<span dir="ltr"><code>C172</code></span>, <span dir="ltr"><code>PA28</code></span>, <span dir="ltr"><code>ULAC</code></span> וכדומה). הנפוצים מוצעים. הוא נלקח מ**הגדרות ← סוג מטוס**, ובחירה בסוג
 -  מהרשימה כאן קובעת אותו גם שם; **אחר…** מגיש כל סוג אחר.
-+- **אות קריאה** — שלוש אותיות מספיקות; הקידומת <span dir="ltr"><code>4X-</code></span> מודפסת ליד השדה ואינה מוקלדת. כשאחד
-+  [המטוסים שלכם](Flight-Plan-he#קלטי-כלי-טיס) בשימוש, זו אות הקריאה שלו, לקריאה בלבד כאן.
++- **אות קריאה** — שלוש אותיות מספיקות; הקידומת <span dir="ltr"><code>4X-</code></span> מודפסת ליד השדה ואינה מוקלדת. כשלמטוס
++  [שבשימוש](Flight-Plan-he#קלטי-כלי-טיס) יש אות קריאה, זו אות הקריאה שלו, לקריאה בלבד כאן.
 +- **סוג כלי הטיס** — סוג ה-ICAO של המטוס שבתוכנית הטיסה, **לקריאה בלבד**: נבחר בשורת **כלי טיס**
-+  שבתוכנית (סוג מהרשימה, או הסוג שנבחר למטוס שלכם), ושורה מתחתיו אומרת זאת. מקום אחד לבחור בו,
++  שבתוכנית (הסוג שנבחר למטוס), ושורה מתחתיו אומרת זאת. מקום אחד לבחור בו,
 +  וסוג מוגש שלא יכול לסתור את הנתונים שהתוכנית חושבה איתם.
  - **דלק בכלי הטיס** — בשעות: הדלק השמיש של המטוס פחות תוספת ההסעה, חלקי הצריכה, מעוגל כלפי מטה
    לחצי שעה (ראו [דלק](Fuel-Calculator-he)).
  - **נפשות בכלי הטיס** — בצורת "טייס + n".
 diff --git a/Submit-Flight-Plan.md b/Submit-Flight-Plan.md
-index d996dcd..fae693b 100644
+index d996dcd..1006f7d 100644
 --- a/Submit-Flight-Plan.md
 +++ b/Submit-Flight-Plan.md
-@@ -30,9 +30,13 @@ The **total time is filed rounded up to the next 5 minutes** — nobody files `0
+@@ -30,9 +30,12 @@ The **total time is filed rounded up to the next 5 minutes** — nobody files `0
  
  Aircraft and pilot details persist on the device. They sync through Google Drive only when you separately enable **Sync settings too**, so this is usually a one-time setup. The same details serve **both** plan types — the ICAO message and the cross-country form:
  
 -- **Call sign** — three letters is enough; `4X-` is printed beside the field, not typed.
 -- **Aircraft type** — ICAO designator (`C172`, `PA28`, `ULAC`…). Common ones are offered. It comes from **Settings → Aircraft type**, and
 -  choosing a listed type here sets it there too; **Other…** files anything else.
-+- **Call sign** — three letters is enough; `4X-` is printed beside the field, not typed. With one of
-+  [your own aircraft](Flight-Plan#aircraft-inputs) in use it is that aircraft's call sign,
-+  read-only here.
++- **Call sign** — three letters is enough; `4X-` is printed beside the field, not typed. Once the
++  [aircraft](Flight-Plan#aircraft-inputs) in use has a call sign, it is that one, read-only here.
 +- **Aircraft type** — the ICAO type of the flight plan's aircraft, **read-only**: chosen in the
-+  plan's **Aircraft** row (a listed type, or the type selected for your own aircraft), with a line
++  plan's **Aircraft** row (the type selected for the aircraft), with a line
 +  under it saying so. One place to choose it, and a filed type that cannot disagree with the
 +  figures the plan was worked out with.
  - **Fuel endurance** — in hours: the aircraft's usable fuel less the taxi allowance, over its

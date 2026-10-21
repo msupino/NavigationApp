@@ -1,7 +1,7 @@
 // @ts-check
-// #671, aircraft profiles. The aircraft lives in the flight plan's Aircraft row: a listed type, or
-// one of the pilot's own aircraft -- its call sign (the code the flight plan form files, after
-// 4X-) and the type selected for it. The rest of its figures are in a popover, which never makes
+// #671, aircraft profiles. The aircraft lives in the flight plan's Aircraft row, keyed by its call
+// sign (the code the flight plan form files, after 4X-); its type is selected for it. Until it has
+// a call sign it is the unnamed aircraft, which has a type all the same. The rest of its figures are in a popover, which never makes
 // the plan taller. The filing form shows the call sign and type read-only. Descent rate is one of
 // the figures, and the nav log plans with it.
 const { test, expect } = require('./_setup');
@@ -29,7 +29,9 @@ test('the aircraft is chosen in the flight plan, not in Settings', async ({ page
   expect(await page.evaluate(() => !!document.querySelector('.tb-section[data-sec="settings"] #ac-type'))).toBe(false);
   await openPlan(page);
   await expect(page.locator('.fp-aircraft #ac-type')).toBeVisible();
-  await expect(page.locator('#ac-type')).toHaveValue('C172');                  // the default
+  await expect(page.locator('#ac-type option:checked')).toHaveText('No call sign (C172)');   // the default
+  // The picker lists aircraft, not types.
+  expect(await page.locator('#ac-type option').evaluateAll(os => os.map(o => o.value))).toEqual(['', '__new']);
   await page.evaluate(() => closeFlightPlan());
   expect(await page.evaluate(() => document.getElementById('ac-panel').parentNode.id)).toBe('ac-panel-home');
 });
@@ -58,23 +60,25 @@ test('Custom figures opens over the plan: the plan window keeps its size', async
   }
 });
 
-test('a listed type fills its figures, descent included; a change is marked and Restore puts it back', async ({ page }) => {
+test('the type selected fills its figures, descent included; a change is marked and Restore puts it back', async ({ page }) => {
   await boot(page);
   await openPlan(page);
-  await page.selectOption('#ac-type', 'PA28');
+  await openFigures(page);
+  await page.selectOption('#ac-model', 'PA28');
   expect(await page.evaluate(() => [aircraft.type, aircraft.gph, aircraft.taxiGal, aircraft.descentFpm,
     document.getElementById('aircraft-gph').value]))
     .toEqual(['PA28', 8.5, 1.2, 500, '8.5']);
-  await openFigures(page);
   await expect(page.locator('#ac-descent')).toHaveValue('500');
   await page.locator('#ac-descent').fill('700');
   await expect(page.locator('.ac-field[data-field="descentFpm"]')).toHaveClass(/ac-overridden/);
   await page.locator('#ac-restore').click();
   expect(await page.evaluate(() => aircraft.descentFpm)).toBe(500);
-  // A listed type has no call sign or type of its own: those rows are dimmed, saying why.
-  await expect(page.locator('#ac-callsign-row')).toHaveClass(/is-dim/);
-  await expect(page.locator('#ac-model')).toBeDisabled();
+  // No call sign yet: nothing to delete. Typing one makes it one of your own, its type kept.
   await expect(page.locator('#ac-profile-delete')).toHaveAttribute('aria-disabled', 'true');
+  await page.locator('#ac-callsign').fill('DEF');
+  await page.locator('#ac-callsign').dispatchEvent('change');
+  await expect(page.locator('#ac-type option:checked')).toHaveText('4X-DEF (PA28)');
+  expect(await page.locator('#ac-type option').evaluateAll(os => os.map(o => o.value).includes(''))).toBe(false);
 });
 
 test('New aircraft is its call sign; its type is selected for it, and its figures are its own', async ({ page }) => {
@@ -100,9 +104,10 @@ test('New aircraft is its call sign; its type is selected for it, and its figure
   await page.locator('#ac-callsign').fill('CRX');
   await page.locator('#ac-callsign').dispatchEvent('change');
   await expect(page.locator('#ac-type option:checked')).toHaveText('4X-CRX (C150)');
-  // A listed type and back, and a reload: the aircraft comes back with its own numbers.
-  await page.selectOption('#ac-type', 'C172');
+  // Another aircraft and back, and a reload: each comes back with its own numbers.
+  await page.evaluate(() => { createAircraftProfile('ZZZ', 'C172'); setAircraftProfileType('C172'); });
   expect(await page.evaluate(() => aircraft.gph)).toBe(8.5);
+  await page.evaluate(() => refreshSettingsAircraft());
   await page.selectOption('#ac-type', 'profile:' + stored[0].id);
   expect(await page.evaluate(() => [aircraft.type, aircraft.gph, aircraft.descentFpm])).toEqual(['C150', 5.5, 400]);
   await page.reload();
@@ -124,7 +129,7 @@ test('Delete is asked in the app; deleting the one in use goes back to its type'
   await page.locator('#ac-profile-delete').click();
   await expect(page.locator('.follow-me-ask-text').last()).toContainText('4X-AAA');
   await answer(page);
-  await expect(page.locator('#ac-type')).toHaveValue('PA28');
+  await expect(page.locator('#ac-type option:checked')).toHaveText('No call sign (PA28)');
   expect(await page.evaluate(() => [aircraftProfiles.length, aircraft.profile || null])).toEqual([0, null]);
   await expect(page.locator('.toast').last()).toContainText('4X-AAA');
 });
@@ -140,7 +145,7 @@ test('the filing form files the aircraft\'s call sign and type, read-only, and s
   await expect(page.locator('#fpl-type-hint')).toContainText('CRW');
 });
 
-test('a listed type: the call sign is typed in the filing form as before', async ({ page }) => {
+test('no call sign yet: it is typed in the filing form as before', async ({ page }) => {
   await boot(page);
   await page.evaluate(() => setAircraftType('C172'));
   await page.evaluate(() => showFplDialog());

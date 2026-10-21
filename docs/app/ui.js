@@ -7850,9 +7850,10 @@ const notamCb = document.getElementById('notam-cb');
 // The five things that can say "not this plan, not at this time", asked together and against
 // the clock. Each of them already knew its own half; none of them looked at the plan, and none
 // of them looked at when. See routecheck.js.
-// The aircraft panel (index.html #ac-panel), in the flight plan's Aircraft row: a listed type, or
-// one of the pilot's own aircraft -- its call sign (the code the flight plan form files, after
-// 4X-) and the type selected for it. One aircraft (`aircraft`, navaid.aircraft): the plan's
+// The aircraft panel (index.html #ac-panel), in the flight plan's Aircraft row. The aircraft is
+// keyed by its call sign (the code the flight plan form files, after 4X-); its type is one of its
+// properties, selected for it. Until a call sign is given it is the unnamed aircraft, with a type
+// all the same. One aircraft (`aircraft`, navaid.aircraft): the plan's
 // Gal/hour and Taxi boxes are its fuel figures, the Custom figures popover the rest. The filing
 // form shows its call sign and type read-only (io.js).
 const AC_PROFILE_OPT = 'profile:';
@@ -7886,34 +7887,17 @@ function refreshSettingsAircraft() {
     o.value = value; o.textContent = text;
     parent.appendChild(o);
   };
+  // The aircraft, by call sign: the unnamed one first while it is in use, then the pilot's own.
   const typeSel = acEl('ac-type');
   if (typeSel) {
     typeSel.replaceChildren();
-    if (!prof && !listed) add(typeSel, '', a.type || '—');      // set by hand before profiles
-    for (const code of types) add(typeSel, code, code);
-    if (aircraftProfiles.length) {
-      const group = document.createElement('optgroup');
-      group.label = S.acMyAircraft || 'My aircraft';
-      for (const p of aircraftProfiles) add(group, AC_PROFILE_OPT + p.id, acLabel(p));
-      typeSel.appendChild(group);
-    }
-    add(typeSel, AC_NEW_OPT, S.acNewProfile || 'New aircraft…');
-    typeSel.value = prof ? AC_PROFILE_OPT + prof.id : (listed ? a.type : '');
-  }
-  // Call sign and type belong to the pilot's own aircraft: dimmed, saying so, for a listed type.
-  const why = S.whyAcListedType || 'A listed type has no call sign: choose New aircraft…';
-  for (const id of ['ac-callsign-row', 'ac-model-row']) {
-    const row = acEl(id);
-    if (!row) continue;
-    row.classList.toggle('is-dim', !prof);
-    if (row.dataset.baseTitle === undefined) row.dataset.baseTitle = row.title || '';
-    row.title = prof ? row.dataset.baseTitle : why;
+    if (!prof) add(typeSel, '', (S.acNoCallSign || 'No call sign') + ' (' + (a.type || '\u2014') + ')');
+    for (const p of aircraftProfiles) add(typeSel, AC_PROFILE_OPT + p.id, acLabel(p));
+    add(typeSel, AC_NEW_OPT, S.acNewProfile || 'New aircraft\u2026');
+    typeSel.value = prof ? AC_PROFILE_OPT + prof.id : '';
   }
   const cs = acEl('ac-callsign');
-  if (cs) {
-    if (document.activeElement !== cs) cs.value = prof ? prof.name : '';
-    cs.readOnly = !prof;
-  }
+  if (cs && document.activeElement !== cs) cs.value = prof ? prof.name : '';
   const model = acEl('ac-model');
   const icao = acEl('ac-icao');
   if (model) {
@@ -7922,10 +7906,8 @@ function refreshSettingsAircraft() {
     add(model, AC_OTHER_OPT, S.fplTypeOther || 'Other…');
     const other = !!(a.type && !listed);
     model.value = listed ? a.type : (other ? AC_OTHER_OPT : (types[0] || ''));
-    model.disabled = !prof;
     if (icao) {
       icao.hidden = !other;
-      icao.readOnly = !prof;
       if (document.activeElement !== icao) icao.value = other ? a.type : '';
     }
   }
@@ -8010,16 +7992,23 @@ window.refreshSettingsAircraft = refreshSettingsAircraft;
       pushToPlan();
       return;
     }
-    if (v) applyAircraftType(v);
   });
-  // The call sign is the aircraft's name: changing it renames the aircraft.
+  // The call sign is the aircraft's key: given to the unnamed aircraft it makes it one of the
+  // pilot's own (with its type and figures); changed on one of them it renames it.
   const cs = acEl('ac-callsign');
   if (cs) cs.addEventListener('change', () => {
     const p = activeAircraftProfile();
-    if (p && renameAircraftProfile(p.id, cs.value)) saveFilingAircraft();
+    const v = aircraftCallSign(cs.value);
+    if (p) { if (renameAircraftProfile(p.id, v)) saveFilingAircraft(); }
+    else if (v) {
+      createAircraftProfile(v, aircraft && aircraft.type);
+      pushToPlan();
+      if (typeof showToast === 'function') showToast(typeof S.acProfileSaved === 'function' ? S.acProfileSaved('4X-' + v) : v);
+      return;
+    }
     refreshSettingsAircraft();
   });
-  // The type selected for one's own aircraft: a listed one brings its figures; Other files any code.
+  // The aircraft's type, selected for it: a listed one brings its figures; Other files any code.
   const model = acEl('ac-model');
   const icao = acEl('ac-icao');
   if (model) model.addEventListener('change', () => {
@@ -8027,12 +8016,16 @@ window.refreshSettingsAircraft = refreshSettingsAircraft;
       if (icao) { icao.hidden = false; icao.focus(); }
       return;
     }
-    if (setAircraftProfileType(model.value)) pushToPlan();
+    if (activeAircraftProfile()) { if (setAircraftProfileType(model.value)) pushToPlan(); }
+    else applyAircraftType(model.value);
   });
   if (icao) icao.addEventListener('input', () => {
     const v = aircraftIcao(icao.value);
     if (icao.value !== v) icao.value = v;
-    if (v.length >= 2 && setAircraftProfileType(v)) { saveFilingAircraft(); }
+    if (v.length < 2) return;
+    if (activeAircraftProfile()) setAircraftProfileType(v);
+    else { aircraft = Object.assign({}, aircraft, { type: v }); delete aircraft.profile; saveAircraft(); }
+    saveFilingAircraft();
   });
   const del = acEl('ac-profile-delete');
   if (del) del.addEventListener('click', async () => {
