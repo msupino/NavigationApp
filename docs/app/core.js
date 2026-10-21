@@ -4071,8 +4071,42 @@ function activeAircraftProfile() {
 function aircraftIcao(code) { return String(code || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 4); }
 // A call sign as the flight plan form takes it: the letters after 4X-, upper case, at most four.
 function aircraftCallSign(raw) {
-  return String(raw || '').toUpperCase().replace(/[^A-Z0-9]/g, '').replace(/^4X/, '').slice(0, 4);
+  return callSignLatin(raw).replace(/^4X/, '').slice(0, 4);
 }
+// The Hebrew keyboard's letters by the Latin key they sit on (the standard Israeli layout), so a
+// call sign typed with the Hebrew keyboard still on comes out as the letters the pilot pressed,
+// not as an empty box or a Hebrew registration.
+const HE_KEY_LATIN = {
+  'ק': 'E', 'ר': 'R', 'א': 'T', 'ט': 'Y', 'ו': 'U', 'ן': 'I', 'ם': 'O', 'פ': 'P',
+  'ש': 'A', 'ד': 'S', 'ג': 'D', 'כ': 'F', 'ע': 'G', 'י': 'H', 'ח': 'J', 'ל': 'K', 'ך': 'L',
+  'ז': 'Z', 'ס': 'X', 'ב': 'C', 'ה': 'V', 'נ': 'B', 'מ': 'N', 'צ': 'M',
+};
+function callSignLatin(raw) {
+  return String(raw || '').replace(/[\u05D0-\u05EA]/g, c => HE_KEY_LATIN[c] || '')
+    .toUpperCase().replace(/[^A-Z0-9]/g, '');
+}
+// A call sign box takes only upper-case English letters and digits, as they are typed: lower case
+// is raised, a Hebrew letter becomes the Latin key it is on, anything else is dropped. The caret
+// stays where the pilot is typing.
+function latinCallSignInput(el) {
+  if (!el || el.dataset.latinCallSign) return el;
+  el.dataset.latinCallSign = '1';
+  el.lang = 'en';
+  el.setAttribute('autocapitalize', 'characters');
+  el.setAttribute('autocorrect', 'off');
+  el.spellcheck = false;
+  el.addEventListener('input', () => {
+    const v = el.value;
+    const clean = callSignLatin(v);
+    if (clean === v) return;
+    const caret = callSignLatin(v.slice(0, el.selectionStart == null ? v.length : el.selectionStart)).length;
+    el.value = clean;
+    try { el.setSelectionRange(caret, caret); } catch (e) { /* not focused */ }
+  });
+  return el;
+}
+window.callSignLatin = callSignLatin;
+window.latinCallSignInput = latinCallSignInput;
 // Made from the aircraft in use (its figures and its type), under its call sign. A call sign
 // already listed selects that aircraft instead of making a second one.
 function createAircraftProfile(name, type) {

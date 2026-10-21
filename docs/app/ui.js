@@ -6024,7 +6024,7 @@ window.appConfirm = appConfirm;
 
 // The app's prompt(): one line of text, or null when cancelled. Same reasons as askYesNo:
 // bilingual buttons, the app's theme and RTL, and a field that writes as typed.
-function askText(title, label, value, okLabel) {
+function askText(title, label, value, okLabel, prepare) {
   return new Promise((resolve) => {
     if (typeof createDraggableModal !== 'function') {
       try { resolve(window.prompt(label, value || '')); } catch (e) { resolve(null); }
@@ -6042,6 +6042,7 @@ function askText(title, label, value, okLabel) {
     input.dir = 'auto';
     input.value = value || '';
     input.setAttribute('aria-label', label);
+    if (typeof prepare === 'function') prepare(input);       // e.g. a call sign: Latin capitals only
     const row = document.createElement('div');
     row.className = 'follow-me-ask-actions';
     const cancel = document.createElement('button');
@@ -7980,7 +7981,8 @@ window.refreshSettingsAircraft = refreshSettingsAircraft;
   // starting from the type in use.
   async function newAircraft() {
     const name = typeof askText === 'function'
-      ? await askText(S.acNewProfileTitle || 'New aircraft', S.acNewProfileName || 'Call sign (after 4X-)', '', S.acCreate || 'Create')
+      ? await askText(S.acNewProfileTitle || 'New aircraft', S.acNewProfileName || 'Call sign (after 4X-)', '', S.acCreate || 'Create',
+        el => { latinCallSignInput(el); el.dir = 'ltr'; })
       : null;
     const cs = aircraftCallSign(name);
     if (!cs) { refreshSettingsAircraft(); return; }        // cancelled: the picker shows what is in use
@@ -8002,6 +8004,7 @@ window.refreshSettingsAircraft = refreshSettingsAircraft;
   // The call sign is the aircraft's key: given to the unnamed aircraft it makes it one of the
   // pilot's own (with its type and figures); changed on one of them it renames it.
   const cs = acEl('ac-callsign');
+  latinCallSignInput(cs);
   if (cs) cs.addEventListener('change', () => {
     const p = activeAircraftProfile();
     const v = aircraftCallSign(cs.value);

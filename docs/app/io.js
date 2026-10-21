@@ -11360,6 +11360,7 @@ function showFplDialog(opts) {
     const reg = input(ownAc ? ownAc.name : profile.reg.replace(/^4X-?/i, ''), 'text',
       { maxlength: '4', placeholder: 'HLH', autocapitalize: 'characters', 'aria-label': S.fplReg || 'Call sign' });
     reg.id = 'fpl-reg';
+    latinCallSignInput(reg);
     reg.className = 'fpl-reg-input' + (ownAc ? ' fpl-readonly' : '');
     if (ownAc) {
       reg.readOnly = true;
