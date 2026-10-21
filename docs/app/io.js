@@ -183,7 +183,11 @@ function attachResizeGrip(el, opts) {
     window.removeEventListener('pointermove', onMove);
     window.removeEventListener('pointerup', onUp);
     window.removeEventListener('pointercancel', onUp);
-    if (enabled() && o.onEnd) o.onEnd();
+    // Only a gesture that changed the size is one to save: a stray click on the corner stored
+    // the size the box happened to have as the pilot's own, and it then opened at that size.
+    const r = el.getBoundingClientRect();
+    const changed = Math.abs(r.width - sw) >= 1 || Math.abs(r.height - sh) >= 1;
+    if (changed && enabled() && o.onEnd) o.onEnd();
   };
   grip.addEventListener('pointerdown', e => {
     if (!enabled()) return;
