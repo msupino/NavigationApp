@@ -37,9 +37,18 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           applied=0
+          # A patch is on the wiki once a commit carries its subject: git am keeps it. Checked by the
+          # subject first -- reversing the patch stops matching as soon as a later patch edits the
+          # same lines, and an applied patch was then reported as one that no longer applies. A
+          # patch that truly does not apply is reported, but does not keep the ones that did from
+          # being pushed (it stopped the loop before the push).
+          failed=0
           for p in ../wiki-patches/*.patch; do
             [ -e "$p" ] || continue
-            if git apply --check "$p" 2>/dev/null; then
+            subj=$(git mailinfo /dev/null /dev/null < "$p" | sed -n 's/^Subject: //p')
+            if [ -n "$subj" ] && git log --format=%s | grep -Fxq -- "$subj"; then
+              echo "already on the wiki: $(basename "$p")"
+            elif git apply --check "$p" 2>/dev/null; then
               git am --keep-cr "$p"
               echo "applied $(basename "$p")"
               applied=$((applied + 1))
@@ -47,7 +56,8 @@ jobs:
               echo "already on the wiki: $(basename "$p")"
             else
               echo "::error::$(basename "$p") neither applies nor is already applied -- the wiki moved under it; regenerate the patch"
-              exit 1
+              failed=1
             fi
           done
           if [ "$applied" -gt 0 ]; then git push; else echo "nothing new"; fi
+          exit "$failed"
