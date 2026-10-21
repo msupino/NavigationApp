@@ -2521,6 +2521,7 @@ window.S = Object.assign({
   fplParkingNoAddress: 'no published address — you will need to fill it in',
   fplParkingKindBlank: '[ transit over 1 h / overnight / maintenance ]',
   fplParkingUntilBlank: '[ date / time ]',
+  fpResizeTitle: 'Resize (double-click: fit to the plan)',
   fplParkingKind: 'Parking',
   fplParkingTransit: 'Transit (over 1 hour)',
   fplParkingOvernight: 'Overnight',

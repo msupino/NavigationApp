@@ -5538,8 +5538,23 @@ function showFlightPlan() {
   // pilot's hand at each change (reported). Measured once it is filled; what grows after that
   // scrolls inside it (the table on a desktop, the whole window on a phone). A rotation or a
   // resized window measures it again.
+  // The pilot can size it by its corner (desktop; on a phone it is the whole window): that size
+  // is kept across openings and IS the lock, clamped to the window it opens in.
+  const planResizable = () => !document.body.classList.contains('deck-on');
+  const storedPlanSize = () => {
+    try {
+      const sz = JSON.parse(localStorage.getItem(PLAN_SIZE_KEY) || 'null');
+      return sz && sz.w > 0 && sz.h > 0 ? sz : null;
+    } catch (e) { return null; }
+  };
   const lockPlanSize = () => {
     if (!box.isConnected) return;
+    const own = planResizable() ? storedPlanSize() : null;
+    if (own) {
+      box.style.width = Math.round(Math.min(Math.max(PLAN_MIN_W, own.w), window.innerWidth - 16)) + 'px';
+      box.style.height = Math.round(Math.min(Math.max(PLAN_MIN_H, own.h), window.innerHeight - 16)) + 'px';
+      return;
+    }
     box.style.width = ''; box.style.height = '';
     const r = box.getBoundingClientRect();
     if (r.width > 0 && r.height > 0) {
@@ -5548,6 +5563,22 @@ function showFlightPlan() {
     }
   };
   requestAnimationFrame(() => requestAnimationFrame(lockPlanSize));
+  const planGrip = attachResizeGrip(box, {
+    className: 'fp-grip', minW: PLAN_MIN_W, minH: PLAN_MIN_H,
+    enabled: planResizable,
+    onEnd: () => {
+      try {
+        localStorage.setItem(PLAN_SIZE_KEY, JSON.stringify({
+          w: Math.round(box.offsetWidth), h: Math.round(box.offsetHeight) }));
+      } catch (e) { /* storage unavailable */ }
+    },
+  });
+  // A double click on the corner gives the plan back the size it fits.
+  planGrip.title = S.fpResizeTitle || 'Resize (double-click: fit to the plan)';
+  planGrip.addEventListener('dblclick', () => {
+    try { localStorage.removeItem(PLAN_SIZE_KEY); } catch (e) { /* storage unavailable */ }
+    lockPlanSize();
+  });
   const onPlanWindowResize = () => { if (box.isConnected) lockPlanSize(); else window.removeEventListener('resize', onPlanWindowResize); };
   window.addEventListener('resize', onPlanWindowResize);
   // The Freq column's airfield primary needs the comm call-sign catalog; it's
@@ -5560,6 +5591,10 @@ function showFlightPlan() {
     ]).then(() => { if (fpOpen) { refresh(); if (typeof retRefresh === 'function') retRefresh(); } });
   }
 }
+
+// Not navaid.fpSize: that held the old four-grip window's size and stays ignored (fp-resize.spec).
+const PLAN_SIZE_KEY = 'navaid.fpUserSize';
+const PLAN_MIN_W = 420, PLAN_MIN_H = 260;
 
 function planCell(text) {
   const td = document.createElement('td');

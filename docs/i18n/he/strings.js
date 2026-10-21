@@ -871,6 +871,7 @@ window.S = {
   fplParkingNoAddress: 'אין כתובת מפורסמת — יש למלא אותה',
   fplParkingKindBlank: '[ מעבר מעל שעה / לילה / תחזוקה ]',
   fplParkingUntilBlank: '[ תאריך / שעה ]',
+  fpResizeTitle: 'שינוי גודל (לחיצה כפולה: התאמה לתוכנית)',
   fplParkingKind: 'חנייה',
   fplParkingTransit: 'מעבר (מעל שעה)',
   fplParkingOvernight: 'לילה',
