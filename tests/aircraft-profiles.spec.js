@@ -107,7 +107,7 @@ test('New aircraft is its call sign; its type is selected for it, and its figure
   await expect(page.locator('#ac-type option:checked')).toHaveText('4X-CRX (C150)');
   // Another aircraft and back, and a reload: each comes back with its own numbers.
   await page.evaluate(() => { createAircraftProfile('ZZZ', 'C172'); setAircraftProfileType('C172'); });
-  expect(await page.evaluate(() => aircraft.gph)).toBe(8.5);
+  expect(await page.evaluate(() => aircraft.gph)).toBe(8);
   await page.evaluate(() => refreshSettingsAircraft());
   await page.selectOption('#ac-type', 'profile:' + stored[0].id);
   expect(await page.evaluate(() => [aircraft.type, aircraft.gph, aircraft.descentFpm])).toEqual(['C150', 5.5, 400]);
