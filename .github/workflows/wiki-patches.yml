@@ -46,13 +46,19 @@ jobs:
           # patch that truly does not apply is reported, but does not keep the ones that did from
           # being pushed (it stopped the loop before the push).
           failed=0
+          # The wiki's commit subjects, read once into a file: `git log | grep -q` under pipefail
+          # fails whenever grep stops at its first match and git log is cut off mid-write, so an
+          # applied patch was reported as one that no longer applies -- sometimes.
+          subjects=$(mktemp)
+          git log --format=%s > "$subjects"
           for p in ../wiki-patches/*.patch; do
             [ -e "$p" ] || continue
             subj=$(git mailinfo /dev/null /dev/null < "$p" | sed -n 's/^Subject: //p')
-            if [ -n "$subj" ] && git log --format=%s | grep -Fxq -- "$subj"; then
+            if [ -n "$subj" ] && grep -Fxq -- "$subj" "$subjects"; then
               echo "already on the wiki: $(basename "$p")"
             elif git apply --check "$p" 2>/dev/null; then
               git am --keep-cr "$p"
+              git log -1 --format=%s >> "$subjects"
               echo "applied $(basename "$p")"
               applied=$((applied + 1))
             elif git apply --reverse --check "$p" 2>/dev/null; then
