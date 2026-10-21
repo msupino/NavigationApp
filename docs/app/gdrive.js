@@ -389,7 +389,7 @@ const GDRIVE_SETTINGS_KEYS = [
   'navaid.plateOpacity', 'navaid.ifrOpacity', 'navaid.commfailOpacity', 'navaid.mapOpacity.v2',
   'navaid.wxOpacity',   // one slider fades both the PWX and SIGWX overlays
   // flight-plan columns, aircraft profile, user data corrections
-  'navaid.fpColumns', 'navaid.aircraft', 'navaid.airfieldFreqOverrides',
+  'navaid.fpColumns', 'navaid.aircraft', 'navaid.aircraftProfiles', 'navaid.airfieldFreqOverrides',
   'navaid.commFreqOverrides', 'navaid.overlayBoundsOverrides',
   // Siblings of the above that were never added: the VOR corrections belong with
   // the other freq overrides, the nav-data source with the base layer, and the

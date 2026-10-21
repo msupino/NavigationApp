@@ -4169,6 +4169,10 @@ function showFlightPlan() {
   flightPlanCleanup = function () {
     stopPlanDrag();
     restoreInspector();          // put the inspector back if it was open
+    // The aircraft panel goes back to its home, ready for the next plan.
+    const panel = document.getElementById('ac-panel');
+    const home = document.getElementById('ac-panel-home');
+    if (panel && home && panel.parentNode !== home) home.appendChild(panel);
   };
 
   loadAircraft();
@@ -4179,11 +4183,22 @@ function showFlightPlan() {
   fpAircraft.appendChild(acLbl);
   const acInputDiv = document.createElement('div');
   acInputDiv.id = 'aircraft-custom';
-  acInputDiv.appendChild(mkAcInput('aircraft-gph', S.tbGph, S.tbGphTitle, 1, 50, 0.5));
-  acInputDiv.appendChild(mkAcInput('aircraft-taxi', S.tbTaxiGal, S.tbTaxiGalTitle, 0, 20, 0.1));
+  // Short names here, the full ones as the tooltip: with the aircraft picker on the row above,
+  // both boxes fit one line on a phone, and the plan still fits the chart space.
+  acInputDiv.appendChild(mkAcInput('aircraft-gph', S.fpGphShort || S.tbGph, S.tbGphTitle, 1, 50, 0.5));
+  acInputDiv.appendChild(mkAcInput('aircraft-taxi', S.fpTaxiShort || S.tbTaxiGal, S.tbTaxiGalTitle, 0, 20, 0.1));
   fpAircraft.appendChild(acInputDiv);
   const gphInp  = acInputDiv.querySelector('#aircraft-gph');
   const taxiInp = acInputDiv.querySelector('#aircraft-taxi');
+  // The fuel figures are the aircraft's too: marked when changed from its type's, like the rest.
+  for (const [inp, f] of [[gphInp, 'gph'], [taxiInp, 'taxiGal']]) {
+    const lab = inp.closest('label');
+    if (lab) { lab.classList.add('ac-field'); lab.dataset.field = f; }
+  }
+  // The aircraft itself, before its fuel figures: a listed type or one of the pilot's own, and
+  // the rest of its figures (index.html #ac-panel, wired once in ui.js). Back home on close.
+  const acPanel = document.getElementById('ac-panel');
+  if (acPanel) fpAircraft.insertBefore(acPanel, acInputDiv);
   function syncAircraftUI() {
     if (!aircraft) { aircraft = { gph: tune('defaultGph'), taxiGal: tune('defaultTaxiGal') }; saveAircraft(); }
     gphInp.value  = aircraft.gph;
@@ -4202,13 +4217,15 @@ function showFlightPlan() {
       // must NOT do is PERSIST that: saving null wrote the string "null", which loadAircraft
       // read back as truthy for good, so the pilot's gph/taxi were gone after a reload and
       // every fuel figure stayed '--'. Storage keeps the last usable profile.
-      aircraft = a;
-      if (a) saveAircraft();
+      // The two fuel figures of the aircraft in use: its type and its other figures stay.
+      aircraft = a ? Object.assign({}, aircraft || {}, a) : null;
+      if (aircraft) saveAircraft();
       if (typeof window.refreshSettingsAircraft === 'function') window.refreshSettingsAircraft();
       draw(); refresh();
     };
   });
   syncAircraftUI();
+  if (typeof window.refreshSettingsAircraft === 'function') window.refreshSettingsAircraft();
   // Reference VOR picker — drives the per-leg Radial / DME columns. Shares the
   // global `vorRef` with the map overlay so both stay in sync.
   const vorWrap = document.createElement('label');
@@ -4247,13 +4264,18 @@ function showFlightPlan() {
   };
   vorWrap.appendChild(vorSel);
   vorWrap.appendChild(vorFreqSpan);
-  fpAircraft.appendChild(vorWrap);
+  // The reference VOR is the route's, not the aircraft's: a line of its own under the Aircraft row
+  // (asked). Styled as that row (fp-aircraft), so both themes, the phone sizes and printing hold.
+  const fpVorRow = document.createElement('div');
+  fpVorRow.className = 'fp-aircraft fp-vor-row';
+  fpVorRow.appendChild(vorWrap);
   if (vors === null && typeof loadVors === 'function') {
     loadVors().then(() => { fillFpVorSelect(); refresh(); if (retRefresh) retRefresh(); });
   } else {
     fillFpVorSelect();
   }
   box.appendChild(fpAircraft);
+  box.appendChild(fpVorRow);
 
   // Departure time (#667): the ETA column and the last-light check count from it. The same
   // stored departure the filing dialog uses (etdRead/etdWrite in core.js), typed in local
@@ -4411,41 +4433,17 @@ function showFlightPlan() {
   const profTitle = document.createElement('span');
   profTitle.textContent = S.profileTitle || 'Vertical profile';
   profLbl.appendChild(profTitle);
-  // V/S input — vertical speed (ft/min) driving the climb/descent ramp slope.
-  // Default 500; persisted so the pilot's preferred rate sticks.
+  // The climb rate (window.profileVS, navaid.profileVS) the ramp is drawn with: the aircraft's
+  // climb figure, set in Figures. Default 500 until one is stored.
   if (!(window.profileVS > 0)) {
     let stored = 0;
     try { stored = parseInt(localStorage.getItem('navaid.profileVS'), 10); } catch (e) { /* ignore */ }
     window.profileVS = stored > 0 ? stored : 500;
   }
-  const vsLbl = document.createElement('label');
-  vsLbl.className = 'fp-profile-vs';
-  vsLbl.textContent = (S.profileVs || 'V/S (ft/min)') + ' ';
-  // Say so out loud: this number shapes the drawn climb, it does not buy or spend ETE.
-  if (S.profileVsTitle) vsLbl.title = S.profileVsTitle;
-  const vsInput = document.createElement('input');
-  vsInput.type = 'number'; vsInput.min = '50'; vsInput.step = '50';
-  vsInput.value = String(window.profileVS);
-  vsInput.className = 'fp-profile-vs-input';
-  vsInput.oninput = () => {
-    const v = parseInt(vsInput.value, 10);
-    if (v > 0) {
-      window.profileVS = v;
-      try { localStorage.setItem('navaid.profileVS', String(v)); } catch (e) { /* ignore */ }
-      if (typeof window.refreshSettingsAircraft === 'function') window.refreshSettingsAircraft();
-      draw();        // the map TOC marker moves with the new ramp
-      refresh();     // redraw the profile strip (leg times do not depend on V/S)
-    }
-  };
-  vsLbl.appendChild(vsInput);
-  profLbl.appendChild(vsLbl);
+  // The climb rate the strip is drawn with is the aircraft's own figure now (Flight plan ->
+  // Aircraft -> Figures -> Climb rate), with what it changes said beside it. It was a box here too:
+  // two places for one number.
   profWrap.appendChild(profLbl);
-  // What the number changes, on screen rather than only in a tooltip (asked: "show the
-  // affect text"): a rate field reads as if it moves times and fuel, and it does not.
-  const vsHint = document.createElement('div');
-  vsHint.className = 'fp-profile-vs-hint';
-  vsHint.textContent = S.profileVsHint || '';
-  profWrap.appendChild(vsHint);
   // Direction indicator above the strip — the profile/X-axis mirrors in RTL
   // (Hebrew), so spell out the flow: departure → destination with a centred
   // arrow, oriented to match the axis (arrow points the way it's flown).
@@ -5500,6 +5498,12 @@ function showFlightPlan() {
     // A dialog opened FROM this panel (the FPL builder) owns Escape while it is
     // up; closing the plan underneath it would take the pilot's work with it.
     if (fplDialogOpen || document.querySelector('.modal-back.fpl-modal')) return;
+    // Nor while any other of the app's dialogs is up over it (New aircraft, Delete...): those
+    // listen on window, which this document listener runs before -- so Escape closed the plan
+    // and the dialog stayed (reported from the New aircraft question).
+    const above = [...document.querySelectorAll('.modal-back')].some(b => b !== flightPlanBack
+      && !b.classList.contains('hidden') && b.getClientRects().length);
+    if (above) return;
     closeFlightPlan();
     // The global window-level Escape handler in interact.js otherwise runs
     // after this one and toggles the magnifier off whenever the plan is
@@ -5521,6 +5525,23 @@ function showFlightPlan() {
   if (typeof drawProfileStripIfOpen === 'function') {
     requestAnimationFrame(drawProfileStripIfOpen);
   }
+  // The plan keeps the size it opened at. Choosing a reference VOR added two columns and widened
+  // it; a departure time added the ETA column and made it taller -- the window jumped under the
+  // pilot's hand at each change (reported). Measured once it is filled; what grows after that
+  // scrolls inside it (the table on a desktop, the whole window on a phone). A rotation or a
+  // resized window measures it again.
+  const lockPlanSize = () => {
+    if (!box.isConnected) return;
+    box.style.width = ''; box.style.height = '';
+    const r = box.getBoundingClientRect();
+    if (r.width > 0 && r.height > 0) {
+      box.style.width = Math.round(r.width) + 'px';
+      box.style.height = Math.round(r.height) + 'px';
+    }
+  };
+  requestAnimationFrame(() => requestAnimationFrame(lockPlanSize));
+  const onPlanWindowResize = () => { if (box.isConnected) lockPlanSize(); else window.removeEventListener('resize', onPlanWindowResize); };
+  window.addEventListener('resize', onPlanWindowResize);
   // The Freq column's airfield primary needs the comm call-sign catalog; it's
   // not loaded eagerly, so pull it (and airfields) then recompute the column so
   // the first leg from an airfield shows its tower frequency.
@@ -11075,7 +11096,6 @@ function showFplDialog(opts) {
   // real units, and the raw ICAO fields sit under Advanced with working defaults.
   const ENDURANCE_CHOICES = [];
   for (let m = 30; m <= 480; m += 30) ENDURANCE_CHOICES.push(m);
-  const TYPE_SUGGESTIONS = ['C172', 'C152', 'PA28', 'DA40', 'SR22', 'AT3', 'C42', 'EV97', 'ULAC'];
   const hhmmFromMinutes = m => fplPad(Math.floor(m / 60), 2) + fplPad(m % 60, 2);
   function enduranceLabel(mins) {
     const h = Math.floor(mins / 60), m = mins % 60;
@@ -11326,10 +11346,18 @@ function showFplDialog(opts) {
     // Call sign: the one field that changes most, so it leads and it is big.
     // "4X-" is fixed for every Israeli registration, so it is printed beside the
     // field instead of being something to type (or to forget).
-    const reg = input(profile.reg.replace(/^4X-?/i, ''), 'text',
+    // One of the pilot's own aircraft IS its call sign (Flight plan -> Aircraft): filed as it is,
+    // read-only here like its type. With a listed type in use, typed here as before.
+    const ownAc = typeof activeAircraftProfile === 'function' ? activeAircraftProfile() : null;
+    const reg = input(ownAc ? ownAc.name : profile.reg.replace(/^4X-?/i, ''), 'text',
       { maxlength: '4', placeholder: 'HLH', autocapitalize: 'characters', 'aria-label': S.fplReg || 'Call sign' });
     reg.id = 'fpl-reg';
-    reg.className = 'fpl-reg-input';
+    reg.className = 'fpl-reg-input' + (ownAc ? ' fpl-readonly' : '');
+    if (ownAc) {
+      reg.readOnly = true;
+      reg.title = S.fplRegFromPlan || 'From the flight plan\u2019s Aircraft';
+      reg.setAttribute('aria-describedby', 'fpl-type-hint');
+    }
     const regBox = document.createElement('span');
     regBox.className = 'fpl-reg-box';
     const regPrefix = document.createElement('span');
@@ -11343,61 +11371,27 @@ function showFplDialog(opts) {
     // Aircraft type: ONE row. The dropdown covers the common designators; picking
     // "Other…" turns that same row into a text box for any other ICAO code, rather than
     // adding a second field asking for what the dropdown already asked for.
-    const typeSel = document.createElement('select');
-    typeSel.id = 'fpl-type-select';
-    for (const t of TYPE_SUGGESTIONS) {
-      const o = document.createElement('option');
-      o.value = t; o.textContent = t;
-      typeSel.appendChild(o);
-    }
-    const otherOpt = document.createElement('option');
-    otherOpt.value = '_other';
-    otherOpt.textContent = fplIsolate(S.fplTypeOther || 'Other…');
-    typeSel.appendChild(otherOpt);
-    const type = input(profile.type, 'text',
-      { maxlength: '4', placeholder: 'C172', autocapitalize: 'characters',
-        'aria-label': S.fplType || 'Aircraft type' });
+    // The type filed is the flight plan's aircraft, read-only here: one place to choose the
+    // aircraft, and a filed type that cannot disagree with the figures the plan was worked out
+    // with. Changed in the flight plan's Aircraft row (a listed type, or one of the pilot's own).
+    const prof = typeof activeAircraftProfile === 'function' ? activeAircraftProfile() : null;
+    const filedType = String((aircraft && aircraft.type) || profile.type || '').toUpperCase();
+    const type = input(filedType, 'text',
+      { maxlength: '4', readonly: 'readonly', 'aria-label': S.fplType || 'Aircraft type',
+        'aria-describedby': 'fpl-type-hint' });
     type.id = 'fpl-type';
-    const backToList = document.createElement('button');
-    backToList.type = 'button';
-    backToList.className = 'fpl-link';
-    backToList.id = 'fpl-type-list';
-    backToList.textContent = S.fplTypeFromList || '☰';
-    backToList.title = fplIsolate(S.fplTypeFromListTip || '');
+    type.readOnly = true;
+    type.className = (type.className ? type.className + ' ' : '') + 'fpl-readonly';
+    const typeHint = document.createElement('span');
+    typeHint.id = 'fpl-type-hint';
+    typeHint.className = 'fpl-type-hint';
+    // Not fplIsolate: it isolates Latin runs one by one and split a name like 4X-CRW in two;
+    // the Hebrew string isolates the whole name itself.
+    typeHint.textContent = typeof S.fplTypeFromPlan === 'function'
+      ? S.fplTypeFromPlan(prof ? prof.name : '') : 'From the flight plan\u2019s Aircraft';
     const typeBox = document.createElement('span');
     typeBox.className = 'fpl-type-box';
-    typeBox.append(typeSel, type, backToList);
-
-    // The aircraft chosen in Settings when the form has none of its own yet.
-    const storedType = String(profile.type || (aircraft && aircraft.type) || '').toUpperCase();
-    const typeListed = !storedType || TYPE_SUGGESTIONS.includes(storedType);
-    const showType = other => {
-      typeSel.hidden = other;
-      type.hidden = !other;
-      backToList.hidden = !other;
-      if (other) type.focus();
-    };
-    typeSel.value = typeListed ? (storedType || TYPE_SUGGESTIONS[0]) : '_other';
-    type.value = typeListed ? typeSel.value : storedType;
-    showType(!typeListed);
-    typeSel.onchange = () => {
-      const other = typeSel.value === '_other';
-      if (!other) type.value = typeSel.value;
-      else type.value = '';
-      showType(other);
-      // A listed type is the aircraft: Settings, its figures and the plan follow, and stay.
-      // "Other…" here is "Other…" in Settings too: the figures stay as they are, set by hand.
-      if (typeof window.applyAircraftType === 'function' && window.AIRCRAFT_TYPES) {
-        if (!other && window.AIRCRAFT_TYPES[typeSel.value]) window.applyAircraftType(typeSel.value);
-        else if (other) window.applyAircraftType('');
-      }
-    };
-    backToList.onclick = () => {
-      const settingsType = aircraft && aircraft.type;
-      typeSel.value = settingsType && TYPE_SUGGESTIONS.includes(settingsType) ? settingsType : TYPE_SUGGESTIONS[0];
-      type.value = typeSel.value;
-      showType(false);
-    };
+    typeBox.append(type, typeHint);
     body.appendChild(row(S.fplType || 'Aircraft type', typeBox));
 
     // Cruise speed for field 15. Pre-filled with the route's OWN speed (the first leg's,

@@ -94,24 +94,31 @@ test('a panel comes back where it was dragged, not a strip lower', async ({ page
   expect(Math.abs(reopened - dragged)).toBeLessThan(2);
 });
 
-test('a panel placed before it is filled is re-clamped once it has grown', async ({ page }) => {
+// The plan keeps the size it opened at, once it is filled (it used to grow and jump as columns
+// came and went). What arrives after that -- here a block of 400 px -- scrolls inside it, and the
+// window stays where it was, whole, inside the chart space.
+test('content added after the plan has opened scrolls inside it; the window keeps its size and place', async ({ page }) => {
   await boot(page);
   await openPlan(page);
+  await page.waitForTimeout(150);
   const grew = await page.evaluate(async () => {
     const back = document.querySelector('.modal-back.flight-plan');
     const box = back.querySelector('.modal');
-    const frame = back.getBoundingClientRect();
-    // Park it near the bottom of the chart space, then make it taller than what is left.
-    box.style.top = Math.round(frame.height - 80) + 'px';
+    const before = box.getBoundingClientRect();
     const filler = document.createElement('div');
     filler.style.height = '400px';
+    filler.style.flex = 'none';                       // content keeps its height, as real rows do
     box.appendChild(filler);
     await new Promise(r => setTimeout(r, 200));
     const m = box.getBoundingClientRect();
-    return { top: m.top, bottom: m.bottom, frameTop: frame.top, frameBottom: frame.bottom };
+    const frame = back.getBoundingClientRect();
+    return { dh: Math.round(m.height - before.height), dtop: Math.round(m.top - before.top),
+      top: m.top, bottom: m.bottom, frameTop: frame.top, frameBottom: frame.bottom,
+      scrolls: box.scrollHeight > box.clientHeight };
   });
-  // Either it was pulled up to fit, or -- taller than the space -- it sits at the top of it
-  // and scrolls. What it may not do is hang off the bottom with its buttons under the deck.
+  expect(grew.dh).toBe(0);
+  expect(grew.dtop).toBe(0);
   expect(grew.top).toBeGreaterThanOrEqual(grew.frameTop - 1);
   expect(grew.bottom - grew.frameBottom).toBeLessThan(2);
+  expect(grew.scrolls).toBe(true);
 });
