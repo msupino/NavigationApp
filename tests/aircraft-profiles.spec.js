@@ -179,3 +179,24 @@ test('Hebrew: the panel speaks Hebrew', async ({ page }) => {
   await expect(page.locator('label:has(#ac-descent) span')).toHaveText('ירידה (רגל/דקה)');
   await expect(page.locator('#ac-type option[value="__new"]')).toHaveText('מטוס חדש…');
 });
+
+test('Escape in the New aircraft question closes the question, not the plan', async ({ page }) => {
+  await boot(page);
+  await openPlan(page);
+  await page.selectOption('#ac-type', '__new');
+  await expect(page.locator('.app-ask-input')).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(page.locator('.app-ask-input')).toHaveCount(0);
+  await expect(page.locator('.modal-back.flight-plan')).toBeVisible();
+  await expect(page.locator('#ac-type option:checked')).toHaveText('No call sign (C172)');   // nothing made
+  await page.keyboard.press('Escape');                                                       // then the plan
+  await expect(page.locator('.modal-back.flight-plan')).toHaveCount(0);
+});
+
+test('Hebrew: 4X- reads left to right inside the Hebrew question', async ({ page }) => {
+  await boot(page, 'he');
+  await openPlan(page);
+  await page.selectOption('#ac-type', '__new');
+  const ask = await page.locator('.follow-me-ask-text').last().textContent();
+  expect(ask).toContain('\u20664X-\u2069');                    // isolated, or it is drawn as -4X
+});

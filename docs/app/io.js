@@ -5517,6 +5517,12 @@ function showFlightPlan() {
     // A dialog opened FROM this panel (the FPL builder) owns Escape while it is
     // up; closing the plan underneath it would take the pilot's work with it.
     if (fplDialogOpen || document.querySelector('.modal-back.fpl-modal')) return;
+    // Nor while any other of the app's dialogs is up over it (New aircraft, Delete...): those
+    // listen on window, which this document listener runs before -- so Escape closed the plan
+    // and the dialog stayed (reported from the New aircraft question).
+    const above = [...document.querySelectorAll('.modal-back')].some(b => b !== flightPlanBack
+      && !b.classList.contains('hidden') && b.getClientRects().length);
+    if (above) return;
     closeFlightPlan();
     // The global window-level Escape handler in interact.js otherwise runs
     // after this one and toggles the magnifier off whenever the plan is
