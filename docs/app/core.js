@@ -2519,6 +2519,8 @@ window.S = Object.assign({
   fplParkingAsk: 'Please confirm the assigned stand and any restrictions.',
   fplParkingTo: 'To',
   fplParkingNoAddress: 'no published address — you will need to fill it in',
+  fplParkingKindBlank: '[ transit over 1 h / overnight / maintenance ]',
+  fplParkingUntilBlank: '[ date / time ]',
   fplParkingKind: 'Parking',
   fplParkingTransit: 'Transit (over 1 hour)',
   fplParkingOvernight: 'Overnight',

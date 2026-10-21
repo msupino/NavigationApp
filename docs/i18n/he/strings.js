@@ -869,6 +869,8 @@ window.S = {
   fplParkingAsk: 'נא לאשר את עמדת החנייה והמגבלות.',
   fplParkingTo: 'אל',
   fplParkingNoAddress: 'אין כתובת מפורסמת — יש למלא אותה',
+  fplParkingKindBlank: '[ מעבר מעל שעה / לילה / תחזוקה ]',
+  fplParkingUntilBlank: '[ תאריך / שעה ]',
   fplParkingKind: 'חנייה',
   fplParkingTransit: 'מעבר (מעל שעה)',
   fplParkingOvernight: 'לילה',
