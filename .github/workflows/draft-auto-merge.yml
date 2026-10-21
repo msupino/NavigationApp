@@ -235,6 +235,14 @@ jobs:
                     FAILED=1
                   }
                 fi
+                # The wiki follows main: its patches go in when the code they describe is live.
+                # A bot merge would not start the wiki workflow on its own (see Deploy above).
+                if [ "$BASE" = "main" ]; then
+                  gh workflow run "Apply wiki patches" --ref main || {
+                    echo "::error::Failed to dispatch Apply wiki patches -- run it by hand"
+                    FAILED=1
+                  }
+                fi
                 # The merge itself succeeded, but a dropped dispatch means the promo PR
                 # never appears. Fail loudly rather than reporting success.
                 exit $FAILED
