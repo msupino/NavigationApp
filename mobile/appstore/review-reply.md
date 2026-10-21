@@ -2,7 +2,7 @@
 
 Paste the section below the line as the reply in App Store Connect (Resolution Center), (no recording attached yet: item 1 asks App Review whether an iPad Simulator recording will do), and paste the same text into App Review Information → Notes.
 
-App Store Connect takes at most 4000 characters here; the text below is 3,584. Plain text:
+App Store Connect takes at most 4000 characters here; the text below is 3,662. Plain text:
 no markdown, the field does not render it.
 
 ---
@@ -36,4 +36,4 @@ A VFR flight-planning and navigation aid for private and student pilots flying l
 The app works the same in every region. Its aviation content covers Israel, its intended area of use; OpenFlightMaps adds some European charts. The interface is in English and Hebrew.
 
 6. Regulated / third-party material
-NavAid is a pilot's planning aid, not a certified avionics or air-navigation service, and makes no regulatory claim. The VFR charts are published publicly by the CAAI and shown with attribution to the CAAI and flight-maps.com. We have requested written permission from both to display and cache them in the app and will provide it when received. OpenStreetMap (ODbL), OpenFlightMaps and Esri imagery are used under their published terms, with attribution on the map.
+NavAid is a pilot's planning aid, not a certified avionics or air-navigation service, and makes no regulatory claim. The VFR charts are aeronautical information published publicly by the Civil Aviation Authority of Israel (CAAI), and are shown with attribution to the CAAI and flight-maps.com. The operator of flight-maps.com, which serves these charts, has told us in writing that he has no objection to NavAid using them. OpenStreetMap (ODbL), OpenFlightMaps and Esri imagery are used under their published terms, with attribution on the map.
