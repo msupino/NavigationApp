@@ -4264,13 +4264,18 @@ function showFlightPlan() {
   };
   vorWrap.appendChild(vorSel);
   vorWrap.appendChild(vorFreqSpan);
-  fpAircraft.appendChild(vorWrap);
+  // The reference VOR is the route's, not the aircraft's: a line of its own under the Aircraft row
+  // (asked). Styled as that row (fp-aircraft), so both themes, the phone sizes and printing hold.
+  const fpVorRow = document.createElement('div');
+  fpVorRow.className = 'fp-aircraft fp-vor-row';
+  fpVorRow.appendChild(vorWrap);
   if (vors === null && typeof loadVors === 'function') {
     loadVors().then(() => { fillFpVorSelect(); refresh(); if (retRefresh) retRefresh(); });
   } else {
     fillFpVorSelect();
   }
   box.appendChild(fpAircraft);
+  box.appendChild(fpVorRow);
 
   // Departure time (#667): the ETA column and the last-light check count from it. The same
   // stored departure the filing dialog uses (etdRead/etdWrite in core.js), typed in local

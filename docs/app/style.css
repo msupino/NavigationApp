@@ -9910,6 +9910,10 @@ body.theme-light #export-progress { background: #fafcff; color: #1d2430; border-
    not from its button, so it stays on screen on a phone in Hebrew; opening it never makes the
    plan taller. */
 .fp-aircraft { position: relative; }
+/* The VOR row sits right under the Aircraft row: one separator below both. */
+.fp-aircraft:has(+ .fp-vor-row) { border-bottom: 0; margin-bottom: 0; padding-bottom: 4px; }
+.fp-vor-row { padding-top: 0; }
+.fp-vor-row .fp-vor { margin-left: 0; }
 .fp-aircraft .ac-panel { display: contents; }
 #ac-panel-home { display: none; }
 .ac-type-row { display: inline-flex; align-items: center; }
