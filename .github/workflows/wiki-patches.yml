@@ -2,12 +2,15 @@ name: Apply wiki patches
 
 # The wiki is its own git repo (<repo>.wiki.git) and has no pull requests. A wiki edit that
 # should be reviewed like code goes in as a `git format-patch` file under wiki-patches/; once
-# it reaches dev or main this applies it with the workflow token, the same credential the
+# it reaches main this applies it with the workflow token, the same credential the
 # changelog and screenshot workflows push with. Idempotent: a patch the wiki already carries
 # is skipped, so every later run (and the dev -> main promotion) is a no-op for it.
+# The wiki describes the live app, so it follows main: a patch goes in when the code it documents
+# reaches main. A human push to main starts it here; a bot merge (the dev -> main promotion) does
+# not start workflows, so Draft + auto-merge dispatches it after merging into main.
 on:
   push:
-    branches: [dev, main]
+    branches: [main]
     paths: ['wiki-patches/**']
   workflow_dispatch:
 
