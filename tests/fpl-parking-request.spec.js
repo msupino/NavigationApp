@@ -189,7 +189,7 @@ test('the departure line carries no aerodrome code, and dates read the same way'
   expect(out).not.toMatch(/Expected departure from destination: *LLHZ/);
   // ...and the date of flight is written the way a person reads it, not as the raw ICAO DOF
   // sitting next to an already-formatted date in the same message.
-  expect(out).toContain('02/09/2026,  departure');
+  expect(out).toContain('02/09/2026, departure');
   expect(out).not.toContain('260902');
 });
 
