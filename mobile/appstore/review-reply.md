@@ -1,9 +1,8 @@
 # Reply to App Review: Guideline 2.1 – Information Needed
 
-Paste the section below the line as the reply in App Store Connect (Resolution Center), attach
-the screen recording (made in the Xcode iPad Simulator; the text asks App Review whether that is acceptable), and paste the same text into App Review Information → Notes.
+Paste the section below the line as the reply in App Store Connect (Resolution Center), (no recording attached yet: item 1 asks App Review whether an iPad Simulator recording will do), and paste the same text into App Review Information → Notes.
 
-App Store Connect takes at most 4000 characters here; the text below is 3,655. Plain text:
+App Store Connect takes at most 4000 characters here; the text below is 3,584. Plain text:
 no markdown, the field does not render it.
 
 ---
@@ -11,8 +10,8 @@ no markdown, the field does not render it.
 Thank you for reviewing NavAid. The requested information follows.
 
 1. Screen recording
-We do not have a physical iPad available at the moment, so the attached recording was made in the Xcode iPad Simulator running the current iPadOS, with the same build. Could you let us know whether a Simulator recording is acceptable? If you need one from a physical iPad, we will record it on a device and send it as soon as we can.
-The recording shows launch and the safety notice, building a route, waypoint details, the navigation log, the route check, map layers and weather, and the app working with no network (the CVFR chart is built in). The live GPS position appears at the Simulator's simulated location. NavAid has no account or login, no user-generated content shared with others, and no paid content or In-App Purchases.
+We do not have a physical iPad available at the moment. Would a screen recording made in the Xcode iPad Simulator, running the current iPadOS with the same build, be acceptable? If so, we will send it right away; if you need one from a physical iPad, we will record it on a device as soon as one is available.
+The recording will show launch and the safety notice, building a route, waypoint details, the navigation log, the route check, map layers and weather, the GPS position, and the app working with no network (the CVFR chart is built in). NavAid has no account or login, no user-generated content shared with others, and no paid content or In-App Purchases.
 
 2. Purpose and audience
 A VFR flight-planning and navigation aid for private and student pilots flying light aircraft in Israel. The pilot draws a route on the official Israeli VFR chart and gets per-leg heading, distance, time, fuel and altitude, radio frequency changes, a printable navigation log, and a pre-flight check against airspace, NOTAMs, SIGMET/AIRMET and forecast weather. In flight it shows the GPS position on the chart with spoken and on-screen alerts, and works offline. It is a planning aid, not certified for primary navigation; the app says so at every launch.
