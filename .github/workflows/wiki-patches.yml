@@ -2,12 +2,15 @@ name: Apply wiki patches
 
 # The wiki is its own git repo (<repo>.wiki.git) and has no pull requests. A wiki edit that
 # should be reviewed like code goes in as a `git format-patch` file under wiki-patches/; once
-# it reaches dev or main this applies it with the workflow token, the same credential the
+# it reaches main this applies it with the workflow token, the same credential the
 # changelog and screenshot workflows push with. Idempotent: a patch the wiki already carries
 # is skipped, so every later run (and the dev -> main promotion) is a no-op for it.
+# The wiki describes the live app, so it follows main: a patch goes in when the code it documents
+# reaches main. A human push to main starts it here; a bot merge (the dev -> main promotion) does
+# not start workflows, so Draft + auto-merge dispatches it after merging into main.
 on:
   push:
-    branches: [dev, main]
+    branches: [main]
     paths: ['wiki-patches/**']
   workflow_dispatch:
 
@@ -37,9 +40,18 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           applied=0
+          # A patch is on the wiki once a commit carries its subject: git am keeps it. Checked by the
+          # subject first -- reversing the patch stops matching as soon as a later patch edits the
+          # same lines, and an applied patch was then reported as one that no longer applies. A
+          # patch that truly does not apply is reported, but does not keep the ones that did from
+          # being pushed (it stopped the loop before the push).
+          failed=0
           for p in ../wiki-patches/*.patch; do
             [ -e "$p" ] || continue
-            if git apply --check "$p" 2>/dev/null; then
+            subj=$(git mailinfo /dev/null /dev/null < "$p" | sed -n 's/^Subject: //p')
+            if [ -n "$subj" ] && git log --format=%s | grep -Fxq -- "$subj"; then
+              echo "already on the wiki: $(basename "$p")"
+            elif git apply --check "$p" 2>/dev/null; then
               git am --keep-cr "$p"
               echo "applied $(basename "$p")"
               applied=$((applied + 1))
@@ -47,7 +59,8 @@ jobs:
               echo "already on the wiki: $(basename "$p")"
             else
               echo "::error::$(basename "$p") neither applies nor is already applied -- the wiki moved under it; regenerate the patch"
-              exit 1
+              failed=1
             fi
           done
           if [ "$applied" -gt 0 ]; then git push; else echo "nothing new"; fi
+          exit "$failed"

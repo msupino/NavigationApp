@@ -10,13 +10,19 @@ const { join } = require('path');
 const root = join(__dirname, '..');
 const wf = () => readFileSync(join(root, '.github/workflows/wiki-patches.yml'), 'utf8');
 
-test('the wiki-patch workflow runs only from dev / main, never for a pull request', () => {
+// The wiki follows main: a patch goes in when the code it documents is live -- on a push to main,
+// or dispatched by Draft + auto-merge after it merges into main (a bot merge starts no workflow).
+test('the wiki-patch workflow runs only from main, never for a pull request', () => {
   const src = wf();
-  expect(src).toMatch(/push:\s*\n\s*branches: \[dev, main\]/);
+  expect(src).toMatch(/push:\s*\n\s*branches: \[main\]/);
   expect(src).not.toMatch(/pull_request/);
-  // Applied-already patches are skipped, so re-runs and the promotion to main are no-ops.
+  // Applied-already patches are skipped, so re-runs are no-ops: by the subject git am keeps, and
+  // by reversing the patch as the fallback.
+  expect(src).toMatch(/git mailinfo/);
   expect(src).toMatch(/git apply --reverse --check/);
   expect(src).toMatch(/persist-credentials: false/);
+  const auto = readFileSync(join(root, '.github/workflows/draft-auto-merge.yml'), 'utf8');
+  expect(auto).toMatch(/\$BASE" = "main"[\s\S]*?gh workflow run "Apply wiki patches" --ref main/);
 });
 
 test('every wiki patch is a format-patch commit that touches wiki pages only', () => {
