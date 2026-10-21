@@ -1,0 +1,649 @@
+From e056823db2eb44fbc30c8be069c5521e92b8a3da Mon Sep 17 00:00:00 2001
+From: Marco <marco@supino.org>
+Date: Wed, 21 Oct 2026 01:51:37 +0000
+Subject: [PATCH] Wiki sweep: surface weather, quick layers, runways up close,
+ aircraft type, minute markers, return path sides and way-back callouts, iPad
+ deck, iOS CVFR ask; Hebrew video page RTL; sidebar video links
+
+---
+ Extra-Layers-he.md       | 23 +++++++++++++++++++++++
+ Extra-Layers.md          | 26 ++++++++++++++++++++++++++
+ Frequency-Changes-he.md  | 17 ++++++++++++++++-
+ Frequency-Changes.md     | 20 +++++++++++++++++++-
+ Fuel-Calculator-he.md    | 12 +++++++++---
+ Fuel-Calculator.md       | 12 +++++++++---
+ Keyboard-and-Touch-he.md |  6 ++++--
+ Keyboard-and-Touch.md    |  6 ++++--
+ Offline-and-PWA-he.md    |  6 ++++++
+ Offline-and-PWA.md       |  7 +++++++
+ Phone-Layout-he.md       |  5 +++++
+ Phone-Layout.md          |  6 ++++++
+ Route-and-Legs-he.md     | 19 +++++++++++++++++++
+ Route-and-Legs.md        | 24 +++++++++++++++++++++++-
+ Submit-Flight-Plan-he.md |  6 ++++--
+ Submit-Flight-Plan.md    |  6 ++++--
+ The-Map-he.md            | 21 +++++++++++++++++++++
+ The-Map.md               | 22 ++++++++++++++++++++++
+ Tuning-Panel-he.md       | 12 ++++++++++--
+ Tuning-Panel.md          | 13 +++++++++++--
+ Video-Tutorials-he.md    | 15 ++++++++++-----
+ _Sidebar.md              |  3 ++-
+ 22 files changed, 260 insertions(+), 27 deletions(-)
+
+diff --git a/Extra-Layers-he.md b/Extra-Layers-he.md
+index 2b66ee4..45b25c9 100644
+--- a/Extra-Layers-he.md
++++ b/Extra-Layers-he.md
+@@ -143,6 +143,29 @@ SIGMET בינלאומיים (מערבולות, קרח, גל הרים, אפר ג
+ **יורשת** את הבחירה האחרונה שלך, כך ששום דבר לא נעלם במעבר הראשון; ההפרדה מתרחשת רק
+ אחרי שינוי מפורש. במפות לוויין / OSM / ניווט הבחירה עוקבת אחרי **ציוני ניווט מתוך**.
+ 
++## מזג אוויר על הקרקע
++
++**הצג מזג אוויר על הקרקע** (מזג אוויר) מציג על המפה את התחזית בגובה הקרקע, עכשיו ול-48 השעות
++הבאות: Open-Meteo, ברשת של 0.25° מעל ישראל, בבקשה אחת כשמדליקים. מחוון הזמן דוגם אותה מחדש בלי
++לבקש שוב.
++
++- **נקודות**, אחת מאלה:
++  - **תחנה: טמפרטורה / נקודת טל** (ברירת מחדל): הטמפרטורה למעלה, נקודת הטל למטה, והנקודה
++    ביניהן צבועה לפי הפער: אדום ב-2 °C ומטה, כתום ב-4 °C ומטה. נקודת הטל מקבלת את צבע הנקודה,
++    כך שזוג אדום נקרא במבט אחד כערפל.
++  - **פער נקודת טל**: הפער בכל נקודה, והמספר תמיד לצדה.
++  - **בסיס עננים (הערכה)**: (T − Td) × 400 רגל מעל הקרקע, אותו כלל כמו ב[בדיקת מסלול](Route-Check-he).
++  - **ללא נקודות**.
++- **קווי לחץ שווה (לחץ בגובה פני הים)**: מתג משלהם, מצוירים מתחת לכל סוג נקודות, כל 2 hPa ועם
++  תוויות. **H** ו-**L** מסמנים רק מרכזים אמיתיים (קיצון בטווח של כ-60 ק"מ, ולפחות 1.5 hPa
++  מהטבעת שסביבו), כך שביום שטוח לא מופיע אף אחד.
++- תווית על המפה אומרת מה מוצג, את השעה ואת היחידות, ובמקרא יש שורה לכל חלק.
++- כשהשכבה דולקת, [החלונית](Inspector-he) של נקודת ציון מוסיפה שורת **קרקע** (T / Td, פער, QNH)
++  ו**בסיס עננים (הערכה)** גם מעל הקרקע וגם מעל פני הים, למשל
++  <span dir="ltr"><code>1,200 ft AGL · 3,800 ft AMSL</code></span>. מעל פני הים הוא המספר להשוואה
++  עם מד גובה על QNH, וההבדל הגדול ביותר הוא מעל ההרים.
++- כבוי כברירת מחדל (<span dir="ltr"><code>defaultSurfaceWx</code></span>); ה-gist יכול לבטל אותו (<span dir="ltr"><code>featureSurfaceWx</code></span>). הוא גם ב[שכבות המהירות](The-Map-he#שכבות-מהירות) של המפה.
++
+ ## השפעת רוח
+ 
+ מתג **הצג השפעת רוח** מצייר חצי רוח לכל קטע, קריאת רוח כלל-מסלולית, ושורת משולש
+diff --git a/Extra-Layers.md b/Extra-Layers.md
+index 47a13e0..dcb95fc 100644
+--- a/Extra-Layers.md
++++ b/Extra-Layers.md
+@@ -153,6 +153,32 @@ The feed is FIR-wide (one `LLLL` source, ~120 NOTAMs) with no per-chart field, b
+ 
+ **Show NOTAMs is remembered per chart** (`navaid.showNotam.<cvfr|lsa|heli>`): CVFR cross-country can keep the airspace NOTAMs up while an LSA or helicopter chart is flown without them. A chart you have never set **inherits** whatever you chose last, so nothing disappears the first time you switch; the charts diverge only once you actually toggle one. On Satellite / OSM / Navigation the choice follows whatever **Nav waypoints from** is showing.
+ 
++## Surface weather
++
++**Show surface weather** (Weather) puts the forecast at the surface on the chart, now and for the
++next 48 hours: Open-Meteo, on a 0.25° grid over Israel, in one request when it is switched on. The
++time slider re-samples it without asking again.
++
++- **Points**, one of:
++  - **Station plot: temperature / dew point** (default): the temperature above, the dew point
++    below, and the dot between them coloured by the spread: red at 2 °C or less, amber at 4 °C or
++    less. The dew point takes the dot's colour, so a red pair reads as fog at a glance.
++  - **Dew point spread**: the spread at each point, the number always beside its dot.
++  - **Cloud base (estimate)**: (T − Td) × 400 ft above the ground, the same rule as
++    [Route check](Route-Check).
++  - **No points**.
++- **Isobars (sea-level pressure)**: a switch of their own, drawn under any point style, every
++  2 hPa and labelled. **H** and **L** mark only real centres (the extreme within about 60 km, and
++  at least 1.5 hPa off the ring around it), so a flat day shows none.
++- A chip on the map names what is shown, the hour and the units, and the legend has a line for
++  each part.
++- While it is on, the waypoint [inspector](Inspector) adds a **Surface** row (T / Td, spread,
++  QNH) and **Cloud base (est.)** both above the ground and above sea level, e.g.
++  `1,200 ft AGL · 3,800 ft AMSL`. Above sea level is the figure to compare with an altimeter on
++  QNH, and over the hills it differs most.
++- Off by default (`defaultSurfaceWx`); the gist can withdraw it (`featureSurfaceWx`). It is also
++  in the map's [quick layers](The-Map#quick-layers).
++
+ ## Wind effect
+ 
+ Toggle **Show wind effect** to draw per-leg wind arrows, the route-wide wind
+diff --git a/Frequency-Changes-he.md b/Frequency-Changes-he.md
+index 65153ba..58129d0 100644
+--- a/Frequency-Changes-he.md
++++ b/Frequency-Changes-he.md
+@@ -42,6 +42,19 @@ NavAid יכול לסמן נקודות דיווח שבהן נדרש מעבר תד
+ **היפוך** מחשב מחדש כל קריאה לכיוון החדש, כי התחנה שנקודה קוראת לה תלויה בכיוון הטיסה (היפוך LLIB → LLHZ
+ נותן ב-ZMGID **פלוטו מזרח**, ולא את פלוטו מערב של הכיוון דרומה). תחנה שבחרתם ידנית נשארת בדיוק כפי שבחרתם.
+ 
++### בדרך חזרה
++
++כש**הצג מסלול חזרה** דולק, הדרך הביתה מקבלת קריאות משלה: בכל נקודת שינוי, התחנה שנכנסים אליה
++בחזרה, מחושבת על המסלול ההפוך. ב-LLHA → LLIB, ב-GILAM זה פלוטו מזרח בהלוך וחיפה בחזור; ב-DESHE
++ראש פינה בהלוך ופלוטו מזרח בחזור.
++
++- אלה קריאות רגילות: אפשר לגרור, לשנות תחנה, לאפס או למחוק. הקשה על אחת פותחת את חלונית הנקודה
++  עם הכיתוב *בדרך חזרה (מסלול החזרה)*. הקריאה של ההלוך באותה נקודה לא משתנה.
++- הן יושבות בצד של הדרך חזרה (ראו [מסלול וקטעי טיסה](Route-and-Legs-he#כשמסלול-החזרה-מוצג)),
++  והטקסט שלהן מסובב כך שייקרא במפה שסובבה. צבע: <span dir="ltr"><code>commChangeReturnArrowColor</code></span> (שחור, כמו בהלוך).
++- נשמרות, אך מוסתרות, כשמסלול החזרה כבוי. **היפוך** כשהוא דולק מחליף בין שתי הקבוצות.
++- תוכנית הטיסה, קישור השיתוף וההתראות הקוליות משתמשים בקריאות ההלוך בלבד.
++
+ ### מתי לא נזרעת קריאה
+ 
+ קריאה מסמנת קריאה אמיתית בקשר, ולכן שני מקרים נשארים שקטים:
+@@ -186,7 +199,9 @@ NavAid יכול לסמן נקודות דיווח שבהן נדרש מעבר תד
+ תווית הקריאה יושבת הרחק מנקודת הציון בזווית קבועה ביחס למסלול הקטע — **230°-** כברירת מחדל
+ (<span dir="ltr"><code>commCalloutAngleDeg</code></span>, חיובי = שמאלה מהמסלול): מאחור ומשמאל, מחוץ לרביע שבו יושב עפיפון הזמן
+ המצטבר ומחוץ לעפיפון הניווט שלפנים. גרירה של קריאה משאירה אותה במקום שקבעתם; הזווית קובעת רק
+-היכן מתחילה קריאה שלא נגעו בה.
++היכן מתחילה קריאה שלא נגעו בה. כשמסלול החזרה מוצג היא **130°-** (<span dir="ltr"><code>commCalloutAngleReturnDeg</code></span>):
++מאחור ומימין, בצד של עפיפוני הניווט, כך שהחץ של כל כיוון יושב בצד שלו. הדלקה או כיבוי של מסלול
++החזרה מזיזים קריאה שעדיין במקום ברירת המחדל שלה; קריאה שנגררה נשארת.
+ 
+ בזמן שגוררים את **נקודת הציון** שאליה הקריאה מצביעה, הקריאה מוסתרת — אחרת החץ שלה סורק קו כבד
+ בדיוק מעל השטח שאליו הנקודה נגררת. גרירת התווית עצמה משאירה אותה מצוירת, כי היא הדבר שמכוונים.
+diff --git a/Frequency-Changes.md b/Frequency-Changes.md
+index 0da93ec..321be32 100644
+--- a/Frequency-Changes.md
++++ b/Frequency-Changes.md
+@@ -43,6 +43,21 @@ in use since TYONA.
+ depends on which way it is flown (reversing LLIB → LLHZ gives ZMGID **Pluto East**, not the
+ southbound Pluto West). A station you picked by hand stays exactly as you chose it.
+ 
++### On the way back
++
++With **Show return path** on, the way home gets its own callouts: at each change point, the
++station flown *into* coming back, worked out on the route reversed. On LLHA → LLIB, GILAM is
++Pluto East going and Haifa coming back; DESHE is Rosh Pina going and Pluto East coming back.
++
++- They are ordinary callouts: drag, re-tune, reset or delete them. Tapping one opens the waypoint
++  panel marked *On the way back (return path)*. The way out's callout at the same point is never
++  touched.
++- They sit on the way back's side of the track (see
++  [Route and Legs](Route-and-Legs#with-the-return-path-shown)), their text turned to read on a
++  chart turned round. Colour: `commChangeReturnArrowColor` (black, like the way out).
++- Kept, but hidden, while the return path is off. **Reverse** with it on swaps the two sets.
++- The flight plan, the share link and the voice alerts use the way out's callouts only.
++
+ ### When no callout is seeded
+ 
+ A callout marks a radio call you actually make, so two cases stay silent:
+@@ -184,7 +199,10 @@ The repo also keeps human-readable summaries:
+ The callout's label sits away from its waypoint at a fixed angle from the leg's track —
+ **-230°** by default (`commCalloutAngleDeg`, positive is left of track): behind and to the left,
+ clear of the quarter the cumulative-time kite occupies and of the nav kite ahead. Drag a callout and
+-it stays where you put it; the angle only decides where an untouched one starts.
++it stays where you put it; the angle only decides where an untouched one starts. With the return
++path shown it is **-130°** (`commCalloutAngleReturnDeg`): behind and to the right, the nav kites'
++side, so each direction's arrow sits on its own side. Switching the return path on or off moves
++a callout still at its default spot; a dragged one stays.
+ 
+ While the **waypoint** it points at is being dragged, the callout is hidden — its arrow otherwise
+ sweeps a heavy line across the very ground the point is being dragged towards. Dragging the label
+diff --git a/Fuel-Calculator-he.md b/Fuel-Calculator-he.md
+index a61e097..0535a50 100644
+--- a/Fuel-Calculator-he.md
++++ b/Fuel-Calculator-he.md
+@@ -9,12 +9,18 @@
+ 
+ ## מה מגדירים
+ 
+-פתחו **📋 תוכנית טיסה** והשתמשו בשורת **כלי טיס** שבראש החלון:
++בחרו **סוג מטוס** ב**הגדרות** (C172 כברירת מחדל; C152, C172, PA28, DA40, SR22, AT3, C42, EV97,
++ULAC). הוא ממלא את שני הנתונים שלמטה, את הדלק השמיש שטופס תוכנית הטיסה מחשב ממנו סיבולת, ואת קצב
++ומהירות הטיפוס שבפרופיל האנכי. הם נמצאים ב**נתונים מותאמים**: שינוי של אחד מהם מסומן בנקודה,
++החלונית הקטנה שלו מראה את ערך הסוג, ו**שחזר את נתוני C172** מחזיר את כולם. מהירות הקטע אינה
++חלק מהמטוס; יש לה הגדרה משלה.
++
++שני נתוני הדלק נמצאים גם בשורת **כלי טיס** שבראש **📋 תוכנית טיסה**:
+ 
+ | שדה | משמעות |
+ | --- | --- |
+-| **גלונים לשעה** | צריכה בשיוט. נטען מברירת המחדל <span dir="ltr"><code>defaultGph</code></span> בפעם הראשונה. |
+-| **הסעה והמראה (גל')** | תוספת חד-פעמית, ורק כשהקטע מתחיל בשדה תעופה בפועל. |
++| **גלונים לשעה** | צריכה בשיוט. מסוג המטוס (C172: 8.5). |
++| **הסעה והמראה (גל')** | תוספת חד-פעמית, ורק כשהקטע מתחיל בשדה תעופה בפועל. מסוג המטוס (C172: 1.1). |
+ 
+ שני השדות נשמרים למכשיר תחת <span dir="ltr"><code>navaid.aircraft</code></span> (<span dir="ltr"><code>{ gph, taxiGal }</code></span>) ומסונכרנים בין
+ המכשירים כשסנכרון ההגדרות ל-Drive פעיל — ראו [הגדרות ושמירה](Settings-and-Persistence-he).
+diff --git a/Fuel-Calculator.md b/Fuel-Calculator.md
+index fdf4ae5..9ef0a39 100644
+--- a/Fuel-Calculator.md
++++ b/Fuel-Calculator.md
+@@ -6,12 +6,18 @@ NavAid's fuel figures are part of the **Flight Plan** — there is no separate f
+ 
+ ## What you set
+ 
+-Open **📋 Flight plan** and use the **Aircraft** row at the top:
++Choose the **Aircraft type** in **Settings** (C172 by default; C152, C172, PA28, DA40, SR22, AT3,
++C42, EV97, ULAC). It fills the two figures below, the usable fuel the flight plan form uses for
++endurance, and the climb rate and speed the vertical profile uses. They sit in **Custom figures**:
++change any of them and a dot marks it, its tooltip gives the type's value, and **Restore C172
++figures** puts them all back. Leg speed is not part of the aircraft; it keeps its own setting.
++
++The two fuel figures are also in the **Aircraft** row at the top of **📋 Flight plan**:
+ 
+ | Field | Meaning |
+ | --- | --- |
+-| **Gallons per hour** | Cruise burn. Seeds from the `defaultGph` tuning key on first use. |
+-| **Taxi and Takeoff (gal)** | A flat allowance added once, and only when the leg actually starts at an airfield. |
++| **Gallons per hour** | Cruise burn. From the aircraft type (C172: 8.5). |
++| **Taxi and Takeoff (gal)** | A flat allowance added once, and only when the leg actually starts at an airfield. From the aircraft type (C172: 1.1). |
+ 
+ Both persist per device under `navaid.aircraft` (`{ gph, taxiGal }`) and sync across your devices if Drive settings sync is on — see [Settings and Persistence](Settings-and-Persistence).
+ 
+diff --git a/Keyboard-and-Touch-he.md b/Keyboard-and-Touch-he.md
+index b2e0849..6e1cec3 100644
+--- a/Keyboard-and-Touch-he.md
++++ b/Keyboard-and-Touch-he.md
+@@ -13,14 +13,15 @@ NavAid הוא בעיקר אפליקציית **מפה** — רוב האינטרא
+ | --- | --- |
+ | לחיצה על נקודת ציון / הערה / עפיפון / קו קטע | בוחרת בלחיצה; החלונית נפתחת **בשחרור**, ורק אם הסמן לא זז. ראו [החלונית למידע נוסף](Inspector-he) |
+ | לחיצה כפולה על קטע מסלול | פיצול הקטע במיקום הלחיצה ובחירת נקודת <span dir="ltr"><code>WP #</code></span> החדשה |
++| לחיצה כפולה על המפה, על נקודת ציון או על נקודת מפה | התקרבות. החלונית לא נפתחת, וחלונית שכבר פתוחה נשארת. |
+ | גרירת נקודת ציון / הערה | הזזה |
+ | גרירת המפה | הזזה |
+ | גלגל | התקרבות/התרחקות |
+ | לחיצה ימנית | פעולות מהירות למה שמתחת לסמן — ראו [תפריט לחיצה ימנית](#תפריט-לחיצה-ימנית). **Shift** + לחיצה ימנית פותח את תפריט הדפדפן |
+ | לחיצה במצב הוספת נקודת ציון | הוספת נקודת ציון |
+ | לחיצה במצב הוספת הערה | הוספת הערה |
+-| גרירת ידית סרגל הכלים (⋯) | הזזת הסרגל |
+-| לחיצה על ☰ | כיווץ/הרחבת הסרגל |
++| גרירת ידית סרגל הכלים (⋯) | הזזת הסרגל. (התפריט הצף; כש[פריסת הטלפון](Phone-Layout-he) פעילה, התפריט נמצא במגירה.) |
++| לחיצה על ☰ | כיווץ/הרחבת הסרגל (בתפריט הצף בלבד) |
+ | גרירת חוגת סיבוב | סיבוב המפה |
+ | לחיצה על חוגת סיבוב | שינוי כיוון ב-90° |
+ 
+@@ -33,6 +34,7 @@ NavAid הוא בעיקר אפליקציית **מפה** — רוב האינטרא
+ | מפה ריקה | הוסף למסלול (*התחל מסלול כאן* כשאין מסלול) · ישר לשם · הוסף הערה כאן · מה יש כאן · מרחק מהמטוס |
+ | נקודת ציון במסלול | הוסף נקודה אחרי · שנה שם · ואז כפתורי החלונית של הנקודה: איפוס שם, הוספה / מחיקה של שינוי תדר, נקודה חמה, נקודת חזרה, ישר לשם, התחלת השעון, מחיקה |
+ | קטע | הוסף נקודה כאן (במקום הלחיצה) · ואז כפתורי הקטע |
++| עפיפון הקטע (תיבת כיוון / זמן) | התפריט של הקטע, כמו על קו הקטע |
+ | נקודת מפה, שדה תעופה, VOR | כפתורי החלונית שלה: ישר לשם, הוסף למסלול, … |
+ | הערה | ערוך טקסט · מחק הערה |
+ 
+diff --git a/Keyboard-and-Touch.md b/Keyboard-and-Touch.md
+index c68cbc3..4d1b766 100644
+--- a/Keyboard-and-Touch.md
++++ b/Keyboard-and-Touch.md
+@@ -10,14 +10,15 @@ NavAid is primarily a **map** app — most interaction is mouse / touch on the c
+ | --- | --- |
+ | Click waypoint / note / kite / leg line | Selects on the press; the inspector opens **on the release**, and only if the pointer never moved. See [Inspector](Inspector#opening-and-closing). |
+ | Double-click route leg | Split the leg at the clicked map coordinate and select the inserted `WP #` waypoint. |
++| Double-click the map, a waypoint or a chart point | Zoom in. It does not open the inspector, and a panel already open stays. |
+ | Drag waypoint / note | Move it. Drag a waypoint near a published navigation waypoint or airfield to snap it. |
+ | Drag map (no element under cursor) | Pan. |
+ | Wheel | Zoom. |
+ | Right-click | Quick actions for whatever is under the pointer — see [Right-click menu](#right-click-menu). **Shift** + right-click opens the browser's own menu. |
+ | Click in **Add Waypoint** mode | Drop a new waypoint. |
+ | Click in **Add Note** mode | Drop a new note. |
+-| Drag the toolbar handle (⋯) | Move the toolbar. |
+-| Click the hamburger (☰) | Collapse / expand the toolbar. |
++| Drag the toolbar handle (⋯) | Move the toolbar. (The floating menu; with the [phone deck](Phone-Layout) on, the menu is in the deck's sheet.) |
++| Click the hamburger (☰) | Collapse / expand the toolbar (floating menu only). |
+ | Drag the rotate dial | Rotate the map. |
+ | Tap the rotate dial | Cycle bearing 0° / 90° / 180° / 270°. |
+ 
+@@ -30,6 +31,7 @@ On a computer with a mouse, a right-click on the map opens a small menu at the p
+ | Open map | Add to route (*Start route here* on an empty route) · Direct to · Add note here · Point details · Distance from the aircraft |
+ | Route waypoint | Insert waypoint after · Rename · then the waypoint panel's own buttons: reset name, add / delete frequency change, hotspot, turning point, Direct to, start the clock, Delete |
+ | Leg | Insert waypoint here (where you clicked) · then the leg's own buttons |
++| Leg kite (heading / time box) | The leg's menu, as on the leg line |
+ | Chart point, airfield, VOR | Its panel's buttons: Direct to, Add to route, … |
+ | Note | Edit text · Delete note |
+ 
+diff --git a/Offline-and-PWA-he.md b/Offline-and-PWA-he.md
+index e6f9c1e..1767061 100644
+--- a/Offline-and-PWA-he.md
++++ b/Offline-and-PWA-he.md
+@@ -26,6 +26,12 @@
+ - **היא ממתינה לחיבור מתאים.** כש-<span dir="ltr"><code>offlineCvfrUnmeteredOnly</code></span> פעיל (ברירת מחדל), ההורדה
+   האוטומטית נמנעת ברשת סלולרית, בחיבור שמדווח 2G/3G, וכשמצב חיסכון בנתונים פעיל. הסטטוס אז
+   מציג *ממתין לחיבור*.
++- **אייפון או אייפד בדפדפן שואלים קודם.** ספארי לא מספר לאפליקציית רשת אם היא על Wi-Fi, ולכן
++  במכשיר מגע שלא מדווח על החיבור שלו, ההורדה האוטומטית הראשונה שואלת פעם אחת: **לשמור את מפת
++  ה-CVFR במכשיר?**, עם הגודל שנותר להוריד, ו**הורד עכשיו** או אחר כך. כן נזכר, ומאז המפה נשמרת
++  כמתואר למעלה. אחר כך משאיר את שורת הסטטוס ככפתור ההורדה הידני, ושואל שוב בהפעלה מאוחרת יותר.
++  על כפתור ה-CVFR הלא מקוון לא שואלים (זו בקשה שלכם), וגם לא באפליקציית האנדרואיד או בדפדפן
++  שמדווח על החיבור שלו.
+ - **המסלול קודם.** אריחים במרחק של כ-1.5 אריחים מהמסלול המתוכנן נמשכים לפני שאר הארץ, תוך
+   שמירת הסדר מזום רחב לצר בתוך כל קבוצה. שינוי המסלול מסדר את התור מחדש סביב החדש — כך
+   שהמסדרון שעומדים לטוס בו מושלם ראשון, גם אם ההורדה נקטעת.
+diff --git a/Offline-and-PWA.md b/Offline-and-PWA.md
+index 8769eab..83ee949 100644
+--- a/Offline-and-PWA.md
++++ b/Offline-and-PWA.md
+@@ -27,6 +27,13 @@ start and fetches only what is missing.
+ - **It waits for a suitable connection.** With `offlineCvfrUnmeteredOnly` on (default), the
+   automatic transfer holds off on cellular, on a connection reporting 2G/3G, and when the
+   browser's data-saver is on. The status then reads *waiting for connection*.
++- **An iPhone or iPad in the browser asks first.** Safari does not tell a web app whether it is
++  on Wi-Fi, so on a touch device that does not report its connection the first automatic download
++  asks once: **Keep the CVFR chart offline?**, with the size still to fetch, and **Download now**
++  or later. Yes is remembered, and from then on the chart is kept as above. Later leaves the
++  status line as the manual *Download CVFR offline* button and asks again on a later start. The
++  Offline CVFR button is never asked about (it is your own request), and neither is the APK nor a
++  browser that reports its connection.
+ - **The route goes first.** Tiles within about 1.5 tiles of the planned route are fetched
+   before the rest of the country, keeping the low-to-high zoom order inside each group. Change
+   the route and the queue is re-prioritised around the new one — so the corridor you are about
+diff --git a/Phone-Layout-he.md b/Phone-Layout-he.md
+index ca34bb8..f56dbec 100644
+--- a/Phone-Layout-he.md
++++ b/Phone-Layout-he.md
+@@ -14,6 +14,11 @@
+ פעיל כברירת מחדל במסכים צרים ובמכשירי מגע. <span dir="ltr"><code>?deck=0</code></span> בכתובת מחזיר את תפריט־החלון הצף (וזה גם
+ מה שמסך שולחני מקבל), וה-gist יכול לבטל את הפריסה לכולם דרך <span dir="ltr"><code>featureMobileDeck</code></span>.
+ 
++כשהסרגל פעיל, התפריט הצף כבוי לגמרי: התפריט נמצא רק במגירה של הסרגל. זה כולל מסך מגע בכל רוחב,
++כך שאייפד מקבל את הסרגל ואף פעם לא את שני התפריטים. חיפוש שמוקלד במגירה של **תפריט** סוגר את
++המגירה ברגע שעשה את שלו (מסלול שנבנה ב-Return, או תוצאה שנבחרה), כולל המקלדת. באפליקציית
++האנדרואיד, כפתור **חזרה** כשהתפריט פתוח סוגר את התפריט, לא את האפליקציה.
++
+ ## הרצועה
+ 
+ <span dir="ltr"><code>LLBS → LLHZ</code></span> ואחר כך המספרים: <span dir="ltr"><code>104 kt · 2450 ft · 075°</code></span>. שורה שנייה נושאת את שעון ה-Zulu ואת
+diff --git a/Phone-Layout.md b/Phone-Layout.md
+index 7b88641..927377e 100644
+--- a/Phone-Layout.md
++++ b/Phone-Layout.md
+@@ -12,6 +12,12 @@ It is on by default on narrow screens and on touch devices. `?deck=0` in the add
+ back the floating menu card (which is also what a desktop gets), and the gist can withdraw it
+ for everyone with `featureMobileDeck`.
+ 
++With the deck on, the floating menu is off entirely: the menu is only in the deck's sheet. That
++includes a touch screen of any width, so an iPad gets the deck and never both menus. A search
++typed in the **Menu** sheet puts the sheet away once it has done its job (a route built with
++Return, or a result picked), keyboard and all. In the Android app, **Back** with the Menu open
++closes the Menu, not the app.
++
+ ## The strip
+ 
+ `LLBS → LLHZ` and then the numbers: `104 kt · 2450 ft · 075°`. A second line carries the Zulu
+diff --git a/Route-and-Legs-he.md b/Route-and-Legs-he.md
+index c3e8d7c..c211608 100644
+--- a/Route-and-Legs-he.md
++++ b/Route-and-Legs-he.md
+@@ -87,6 +87,11 @@
+ - **חץ** — כיוון הטיסה, עם תווית מרחק.
+ - **סימון אמצע קטע** — תווית המציגה מרחק (ניתן להפעיל/לכבות).
+ - **עפיפון זמן מצטבר** — הקצה שלו מצביע על נקודת הציון שאליה הוא סופר, ומיקום ברירת המחדל שלו מפנה את מעגל הנקודה. קטע הנטוס בתוך ה-CTR של שדה היציאה אינו מצייר עפיפון זמן מצטבר: הוא נטוס לפי הנוהל של השדה ולא לפי שעון העצר של המסלול.
++- **סימוני דקות** לאורך הקטע, לפי המהירות המתוכננת: סימון בכל דקה, וכל שני ארוך יותר ועם מספר.
++  **מראה ← סימוני דקות** קובע את ה**גודל** ואת הצבעים (**צבע הלוך** כחול, **צבע חזור** אדום לדרך חזרה).
++- **מסגרת שינוי גובה / מהירות**: כש**הדגש הפרש גובה/מהירות** דולק, עפיפון שהגובה או המהירות שלו
++  שונים מהעפיפון המצויר הקרוב שלפניו מקבל מסגרת. עפיפון שלא מצויר (בתוך CTR, או שהוסתר ידנית)
++  אינו נכנס להשוואה, ולכן העפיפון הראשון במפה אף פעם אינו ממוסגר.
+ - **קטע הלוך-חזור מצויר בשני קווים** — אחד מכל צד של המסלול המשותף, במרחק כמה פיקסלים,
+   וכל אחד עם החצים שלו, כך שההלוך והחזור נקראים בנפרד ולא מודפסים זה על זה. רק הזוג הזה
+   מופרד: מסלול נטס פעמיים לכל היותר (ראו [כמה פעמים אפשר לטוס מסלול](#כמה-פעמים-אפשר-לטוס-מסלול)),
+@@ -95,6 +100,20 @@
+   עם <span dir="ltr"><code>splitRetracedLegs</code></span>, או לשנות את המרווח עם <span dir="ltr"><code>retracedLegOffsetPx</code></span> (5 פיקסלים), שניהם
+   בקבוצה **Route line** בחלון הכוונון.
+ 
++### כשמסלול החזרה מוצג
++
++**הצג מסלול חזרה (B)** מצייר ליד מסלול חד-כיווני את הדרך הביתה (תכונת gist, כבויה כברירת מחדל:
++ראו [סרגל הכלים](Toolbar-he)). כשהיא דולקת, כל כיוון שומר את כל הסימנים שלו בצד שלו, מימין לכיוון
++הטיסה: עפיפון הניווט, עפיפון הזמן המצטבר, סימוני הדקות ו[חץ שינוי התדר](Frequency-Changes-he#בדרך-חזרה).
++סימני ההלוך בצד אחד של המסלול, וסימני החזור בצד השני.
++
++- הטקסט של הדרך חזרה (עפיפונים, זמנים מצטברים, מספרי דקות, קריאות) מסובב ב-180°, כך שהוא נקרא
++  ישר במפה שסובבה לטיסה הביתה.
++- סימוני הדקות שלו נספרים מהקצה הרחוק, ב**צבע חזור**; החצים שלו ב**צבע חץ החזרה** (מראה).
++- בתוך CTR אף כיוון אינו מצייר עפיפון.
++- כשמסלול החזרה כבוי, חץ התדר ועפיפון הזמן המצטבר נשארים היכן שתמיד היו, מול עפיפון הניווט. שני
++  הצדדים הם כוונונים נפרדים: <span dir="ltr"><code>commCalloutAngleDeg</code></span> / <span dir="ltr"><code>commCalloutAngleReturnDeg</code></span> ו-<span dir="ltr"><code>cumKiteAngleDeg</code></span> / <span dir="ltr"><code>cumKiteAngleReturnDeg</code></span>.
++
+ ## מסלול הפוך
+ 
+ לחצו על ↩️ בסרגל הכלים להיפוך סדר נקודות הציון והקטעים. שימושי לטיסת חזור.
+diff --git a/Route-and-Legs.md b/Route-and-Legs.md
+index 11e1d15..d114b75 100644
+--- a/Route-and-Legs.md
++++ b/Route-and-Legs.md
+@@ -79,9 +79,31 @@ A leg with **no altitude** is flown level for timing, and drawn dashed on the pr
+   tuning panel's **Route line** group.
+ - **Leg kite** — heading / time / altitude, per leg.
+ - **Cumulative kite** — running time. Its tip points at the waypoint it counts to, and its default offset clears that waypoint's circle. A leg inside the departure field's CTR draws no cumulative kite: it is flown on the field's procedure, not the route's stopwatch.
+-- **Minute ticks** along the leg, from the planned speed.
++- **Minute ticks** along the leg, from the planned speed: a tick every minute, every second one
++  longer and numbered. **Display → Minute markers** sets their **Size** and colours (**To color**
++  blue, **From color** red for the way back).
++- **Altitude / speed change outline**: with **Highlight alt/speed diff** on, a kite whose altitude
++  or speed differs from the nearest drawn kite before it is outlined. A kite not drawn (inside a
++  CTR, or hidden by hand) is not compared with, so the first kite on the chart is never outlined.
+ - **Drift lines** and **distance badges** are toggles in the Map menu.
+ 
++### With the return path shown
++
++**Show return path (B)** draws a one-way route's way home beside it (a gist feature, off by
++default: see [Toolbar](Toolbar)). With it on, each direction keeps all its marks on its own side,
++the right of the way it is flown: the nav kite, the cumulative-time kite, the minute ticks and the
++[frequency-change arrow](Frequency-Changes#on-the-way-back). The way out's sit on one side of the
++track and the way back's on the other.
++
++- The way back's text (kites, cumulative times, minute numbers, callouts) is turned 180°, so it
++  reads upright on a chart turned round to fly home.
++- Its minute ticks are counted from the far end, in **From color**; its arrows take **Return arrow
++  color** (Display).
++- Inside a CTR neither direction draws a kite.
++- With the return path off, the frequency arrow and the cumulative kite stay where they always
++  were, opposite the nav kite. The two sides are separate tunables: `commCalloutAngleDeg` /
++  `commCalloutAngleReturnDeg` and `cumKiteAngleDeg` / `cumKiteAngleReturnDeg`.
++
+ ## Turning point
+ 
+ Where the sortie turns for home. NavAid needs to know because an out-and-back is **one
+diff --git a/Submit-Flight-Plan-he.md b/Submit-Flight-Plan-he.md
+index f80b2bd..c4cc4d1 100644
+--- a/Submit-Flight-Plan-he.md
++++ b/Submit-Flight-Plan-he.md
+@@ -33,8 +33,10 @@ NavAid בונה את הודעת **תוכנית הטיסה בתקן ICAO** עבו
+ פרטי כלי הטיס והטייס נשמרים במכשיר. הם מסתנכרנים דרך Google Drive רק כאשר מפעילים בנפרד את **סנכרן גם הגדרות**, כך שבדרך כלל זו הגדרה חד־פעמית. אותם פרטים משמשים את **שני** סוגי התוכניות — הודעת ה־ICAO וטופס טיסת המרחב:
+ 
+ - **אות קריאה** — שלוש אותיות מספיקות; הקידומת <span dir="ltr"><code>4X-</code></span> מודפסת ליד השדה ואינה מוקלדת.
+-- **סוג כלי הטיס** — קוד ICAO (<span dir="ltr"><code>C172</code></span>, <span dir="ltr"><code>PA28</code></span>, <span dir="ltr"><code>ULAC</code></span> וכדומה). הנפוצים מוצעים.
+-- **דלק בכלי הטיס** — בשעות (ברירת המחדל 5).
++- **סוג כלי הטיס** — קוד ICAO (<span dir="ltr"><code>C172</code></span>, <span dir="ltr"><code>PA28</code></span>, <span dir="ltr"><code>ULAC</code></span> וכדומה). הנפוצים מוצעים. הוא נלקח מ**הגדרות ← סוג מטוס**, ובחירה בסוג
++  מהרשימה כאן קובעת אותו גם שם; **אחר…** מגיש כל סוג אחר.
++- **דלק בכלי הטיס** — בשעות: הדלק השמיש של המטוס פחות תוספת ההסעה, חלקי הצריכה, מעוגל כלפי מטה
++  לחצי שעה (ראו [דלק](Fuel-Calculator-he)).
+ - **נפשות בכלי הטיס** — בצורת "טייס + n".
+ - **טייס מפקד, מספר רישיון, טלפון נייד** — **באותיות לטיניות**. ההודעה היא מסר טלקס ב־ASCII, ועברית תגיע משובשת. שדות הרישיון והנייד מבקשים ספרות, ולכן בטלפון עולה מקלדת הספרות ולא המקלדת המלאה.
+ - **הדואל שלכם** — חובה, ל**שני** סוגי התוכניות. האישור חוזר בדואל, ואם אתם מגישים ממחשב שחשבון הדואל בו אינו שלכם הוא היה מגיע לבעל המחשב. הכתובת שלכם מקבלת עותק (CC) — בתוכנית ה־ICAO, וגם בדואל שטופס טיסת המרחב פותח לדלפק.
+diff --git a/Submit-Flight-Plan.md b/Submit-Flight-Plan.md
+index 3c8d3d8..d996dcd 100644
+--- a/Submit-Flight-Plan.md
++++ b/Submit-Flight-Plan.md
+@@ -31,8 +31,10 @@ The **total time is filed rounded up to the next 5 minutes** — nobody files `0
+ Aircraft and pilot details persist on the device. They sync through Google Drive only when you separately enable **Sync settings too**, so this is usually a one-time setup. The same details serve **both** plan types — the ICAO message and the cross-country form:
+ 
+ - **Call sign** — three letters is enough; `4X-` is printed beside the field, not typed.
+-- **Aircraft type** — ICAO designator (`C172`, `PA28`, `ULAC`…). Common ones are offered.
+-- **Fuel endurance** — in hours (default 5).
++- **Aircraft type** — ICAO designator (`C172`, `PA28`, `ULAC`…). Common ones are offered. It comes from **Settings → Aircraft type**, and
++  choosing a listed type here sets it there too; **Other…** files anything else.
++- **Fuel endurance** — in hours: the aircraft's usable fuel less the taxi allowance, over its
++  burn, rounded down to the half hour (see [Fuel](Fuel-Calculator)).
+ - **Persons on board** — as "pilot + n".
+ - **Pilot in command, licence number, mobile** — in **Latin letters**. The message is an ASCII telex; Hebrew would arrive as mojibake. The licence and mobile fields ask for digits, so a phone offers its keypad rather than the full keyboard.
+ - **Your email** — required, for **both** plan types. The approval comes back by mail, and if you are filing from a machine whose mail account is not yours it would otherwise reach that machine's owner. Your address is copied (CC) on the message — on the ICAO plan, and on the mail the cross-country form opens to the FPL desk.
+diff --git a/The-Map-he.md b/The-Map-he.md
+index 000945c..ede27a7 100644
+--- a/The-Map-he.md
++++ b/The-Map-he.md
+@@ -144,6 +144,27 @@ NavAid משתמש ב-[Leaflet](https://leafletjs.com/) להצגת מפות אי
+ וסמל מוסתר אינו ניתן להקשה. ברירות המחדל משאירות כל סמל בגודל מלא בכל זום; קבעו אותן ב-gist או
+ ב[לוח הכוונון](Tuning-Panel-he).
+ 
++## שכבות מהירות
++
++הכפתור **שכבות** (גיליונות מוערמים) עומד בראש עמודת העריכה, מעל בדיקת המסלול. הוא פותח רשימה
++קצרה ליד העמודה:
++
++- **מפה**: מפות הבסיס. בחירה באחת מחליפה את המפה וסוגרת את הרשימה.
++- **שכבות**: מתגים ל-NOTAM, מרחב אווירי, SIGMET, AIRMET, רוח לכל קטע, מפות שדות, תנועה
++  ו[מזג אוויר על הקרקע](Extra-Layers-he#מזג-אוויר-על-הקרקע), כל אחד אותו מתג כמו בתפריט. מתג
++  משאיר את הרשימה פתוחה, כך שאפשר להפוך כמה בביקור אחד.
++- שכבה שהמכשיר לא יכול להציג (תנועה בדפדפן), או שאין בה דבר בתוקף (AIRMET או SIGMET שקטים),
++  מעומעמת ואומרת למה כשלוחצים. רק שכבה שה-gist הסיר אינה מוצעת.
++- Escape, הקשה מחוץ לרשימה, כפתור החזרה באנדרואיד או הכפתור שוב סוגרים אותה.
++
++## שדות תעופה מקרוב
++
++מרחוק, שדה תעופה הוא הסמל שלו בגודל קבוע. בזום קרוב, כשהמסלול שלו היה מצויר ארוך מהסמל, המסלול
++עצמו מצויר בין קצותיו האמיתיים. ב-13 שדות (LLHZ, LLHA, LLER, LLBO, LLES, LLEY, LLFK, LLKS,
++LLKZ, LLMG, LLMZ, LLAR, LLRS) הוא מונח על פס המסלול המודפס במפה עצמה, כך שהוא תואם את מפת
++ה-CVFR. LLBS ו-LLBG ושאר השדות האזרחיים מציגים את המסלול האמיתי מ-OpenStreetMap, שמעל צילום
++לוויין יושב על המסלול עצמו, ובמפה יושב ליד הפס המודפס. שדות צבאיים נשארים עיגול.
++
+ ## סימון המסלול
+ 
+ כשהמסלול מחושב:
+diff --git a/The-Map.md b/The-Map.md
+index 35ba676..0fd415e 100644
+--- a/The-Map.md
++++ b/The-Map.md
+@@ -97,6 +97,28 @@ callouts can shrink as you zoom out (`symbolScaleSmallest`, between `symbolScale
+ symbol has a smaller tap area, and a hidden one cannot be tapped. The defaults keep every symbol
+ full size at every zoom; set them in the gist or the [Tuning Panel](Tuning-Panel).
+ 
++## Quick layers
++
++The **Layers** button (stacked sheets) heads the edit column, above Route check. It opens a short
++list beside the column:
++
++- **Chart**: the base maps. Picking one switches the map and closes the list.
++- **Overlays**: switches for NOTAMs, airspace, SIGMET, AIRMET, per-leg wind, airfield charts,
++  traffic and [surface weather](Extra-Layers#surface-weather), each the same switch as in the
++  menu. A switch leaves the list open, so several can be flipped in one visit.
++- A layer this device cannot show (traffic in a browser), or with nothing in force (an idle AIRMET
++  or SIGMET), is dimmed and says why when pressed. Only a layer the gist removed is left out.
++- Escape, a tap outside, Android Back or the button again closes it.
++
++## Airfields up close
++
++Far out, an airfield is its fixed-size symbol. Zoomed in, once its runway would draw longer than
++the symbol, the runway itself is drawn between its true ends. For 13 fields (LLHZ, LLHA, LLER,
++LLBO, LLES, LLEY, LLFK, LLKS, LLKZ, LLMG, LLMZ, LLAR, LLRS) it is laid on the chart's own printed
++runway bar, so it lines up with the CVFR chart. LLBS and LLBG, and the other civil fields, use the
++real runway from OpenStreetMap, which over satellite imagery lies on the tarmac and on the chart
++sits beside the printed bar. Military fields keep their circle.
++
+ ## How the route is drawn
+ 
+ - **Solid line** between waypoints, with direction arrows.
+diff --git a/Tuning-Panel-he.md b/Tuning-Panel-he.md
+index 67d0069..d8551ba 100644
+--- a/Tuning-Panel-he.md
++++ b/Tuning-Panel-he.md
+@@ -34,8 +34,9 @@
+   הניווט** (<span dir="ltr"><code>cumKiteAngleDeg</code></span>, ברירת מחדל 180°): נמדדת סביב נקודת הציון מצד עפיפון הניווט לכיוון
+   הטיסה, כך ש-0 מניח את השניים זה על זה, 90 מציב את עפיפון הזמן קדימה לאורך הקטע ו-180 מנגד.
+   המרחק זהה בכל זווית, ולכן העפיפון נשאר מחוץ לעיגול נקודת הציון לכל כיוון, ועפיפון מסלול החזרה
+-  משקף אותו.
+-- **סמני דקות** — גופן תווית, אורך/עובי סימון זוגי/אי-זוגי, היסט תווית.
++  משקף אותו. כשמסלול החזרה מוצג נעשה שימוש ב-<span dir="ltr"><code>cumKiteAngleReturnDeg</code></span> (0: בצד של עפיפון הניווט).
++- **סימוני דקות** — גופן תווית, אורך/עובי סימון זוגי/אי-זוגי (סימון הדקה הבודדת 6 פיקסלים, כדי
++  שייצא מקו המסלול), היסט תווית, וצבעי ההלוך / החזור.
+ - **תג מרחק** — רדיוס, עובי גבול, גודל טקסט.
+ - **נקודות ציון** — רדיוס בסיס, גודל טקסט, מקדם ריפוד טקסט, סקאלת זום מינימלי, תוספת רדיוס לנבחר, עובי קו, וכן צבע/עובי/מרווח טבעת ה[נקודה החמה](Waypoints-and-Notes-he) והמילוי שלה (משמשים גם את <span dir="ltr"><code>?hotspots=1</code></span>).
+ - **שדות תעופה** — גודל הסמל, עובי קו המסלול וה־ARP, צבע המסלול, צבע פנים/הילה, גופן/היסט/הילה של תווית.
+@@ -83,6 +84,13 @@
+ 
+ כל שורה מציעה **שדה מספר** בתוספת **מחוון טווח** (או בורר צבע / שדה טקסט / תפריט נפתח לקבועים שאינם מספריים) וכפתור **↻** לאיפוס הערך הבודד לברירת המחדל במקור.
+ 
++### כל ערך ציור נמצא כאן
++
++כל צבע, עובי קו, מקף, שקיפות, גודל גופן והיסט תווית שהמפה והחלוניות שלה מציירות בהם הוא קבוע
++בפאנל הזה; אף אחד מהם אינו כתוב בתוך קוד הציור. gist שלא קובע ערך מצייר את המראה המקורי, כי ברירת
++המחדל של כל אחד היא הערך שהאפליקציה תמיד השתמשה בו. בדיקה, <span dir="ltr"><code>no-static-draw-values.spec.js</code></span>,
++נכשלת על ערך ציור שנכתב כקבוע בקוד, ועל מפתח שהקוד קורא ואינו רשום.
++
+ ## קבועי הטיסה
+ 
+ קבוצת **ניווט** מרכזת את מה ש[ההתראות](GPS-Track-Recording-he) והמטוס על המפה נמדדים לפיו. כל
+diff --git a/Tuning-Panel.md b/Tuning-Panel.md
+index 3f36f76..cbf6107 100644
+--- a/Tuning-Panel.md
++++ b/Tuning-Panel.md
+@@ -33,8 +33,9 @@ Constants are grouped into collapsible sections. Each control edits one constant
+   the nav kite's side towards the direction of flight, so 0 stacks the two together, 90 puts the
+   cumulative kite ahead along the leg and 180 opposite. The distance is the same at every angle, so
+   the kite clears the waypoint disc whichever way it is pointed, and the return route's kite mirrors
+-  it.
+-- **Minute markers** — label font, even/odd tick length & width, label offset.
++  it. With the return path shown it uses `cumKiteAngleReturnDeg` (0: on the nav kite's side).
++- **Minute markers** — label font, even/odd tick length & width (the 1-minute tick is 6 px, so it
++  clears the route line), label offset, and the to / from colours.
+ - **Distance badge** — radius, border width, text size.
+ - **Waypoints** — base radius, text size, text-pad factor, min-zoom scale, selected radius add, stroke width, and the [hotspot](Waypoints-and-Notes#hotspots) ring colour / width / gap and fill (used by `?hotspots=1` too).
+ - **Airfields** — symbol size, runway / ARP line width, runway colour, inside / halo colour, label font / offset / halo.
+@@ -96,6 +97,14 @@ Constants are grouped into collapsible sections. Each control edits one constant
+ 
+ Each row offers a **number input** plus a **range slider** (or a color picker / text field / dropdown for non-numeric constants) and a **↻** button to reset that single value to its source default.
+ 
++### Every drawing value is here
++
++Every colour, line width, dash, opacity, font size and label offset the map and its panels draw
++with is a constant in this panel; none is written into the drawing code. A gist that does not set
++one draws the shipped look, because each default is the value the app has always used. A test,
++`no-static-draw-values.spec.js`, fails on a drawing value written as a literal, and on a key the
++code reads that is not registered.
++
+ ## In-flight constants
+ 
+ The **Navigation** group carries what the [alerts](GPS-Track-Recording#in-flight-alerts) and the
+diff --git a/Video-Tutorials-he.md b/Video-Tutorials-he.md
+index 36c6c6a..98f6e87 100644
+--- a/Video-Tutorials-he.md
++++ b/Video-Tutorials-he.md
+@@ -1,8 +1,11 @@
++<div dir="rtl">
++
++
+ 🇬🇧 [English](Video-Tutorials)
+ 
+ # סרטוני הדרכה
+ 
+-שני סרטוני מסך קצרים של NavAid במחשב, בעברית, עם כתוביות (ללא קול). לחצו על תמונה כדי להוריד את הסרטון (MP4, כ-12MB); הוא מתנגן בכל דפדפן או נגן.
++שני סרטוני מסך קצרים של NavAid במחשב, בעברית, עם כתוביות (ללא קול). לחצו על תמונה כדי להוריד את הסרטון (<span dir="ltr">MP4</span>, בערך <span dir="ltr">12 MB</span>); הוא מתנגן בכל דפדפן או נגן.
+ 
+ ## הכפתורים על המפה (1:29)
+ 
+@@ -14,11 +17,13 @@
+ 
+ [![תכנון טיסה, ממסלול ועד הגשה](img/video-plan-he.jpg)](https://raw.githubusercontent.com/wiki/msupino/NavigationApp/files/videos/navaid-plan-he.mp4)
+ 
+-1. בונים מסלול: מקלידים קודים של נקודות בחיפוש (<span dir="ltr"><code>LLHZ BAZRA DEROR SHARO HADRA FRDIS LLHA</code></span>) ולוחצים Enter — ראו [מסלול וקטעים](Route-and-Legs-he).
+-2. לחיצה על נקודה מציגה את כל המידע עליה — ראו [חלונית הפרטים](Inspector-he).
++1. בונים מסלול: מקלידים קודים של נקודות בחיפוש (<span dir="ltr"><code>LLHZ BAZRA DEROR SHARO HADRA FRDIS LLHA</code></span>) ולוחצים Enter — ראו [מסלול וקטעי טיסה](Route-and-Legs-he).
++2. לחיצה על נקודה מציגה את כל המידע עליה — ראו [החלונית למידע נוסף](Inspector-he).
+ 3. [תכנית הטיסה](Flight-Plan-he): זמנים, דלק ותדרים; שעת המראה נותנת ETA לכל נקודה, אור אחרון ושעות הפעילות של השדות.
+-4. [הגשת תכנית הטיסה](Submit-Flight-Plan-he) מתוך האפליקציה.
++4. [הגשת תוכנית הטיסה](Submit-Flight-Plan-he) מתוך האפליקציה.
+ 5. [בדיקת מסלול](Route-Check-he): מרחב אווירי, NOTAM, SIGMET ומזג אוויר בשעה שבה טסים.
+-6. [הדפסה](Print-and-Export-he): בוחרים גודל דף, והכפתור <span dir="ltr">[ ]</span> מתאים אותו למסך.
++6. [הדפסה וייצוא](Print-and-Export-he): בוחרים גודל דף, והכפתור <span dir="ltr">[ ]</span> מתאים אותו למסך.
+ 
+ הורדה: [navaid-tour-he.mp4](https://raw.githubusercontent.com/wiki/msupino/NavigationApp/files/videos/navaid-tour-he.mp4) · [navaid-plan-he.mp4](https://raw.githubusercontent.com/wiki/msupino/NavigationApp/files/videos/navaid-plan-he.mp4)
++
++</div>
+diff --git a/_Sidebar.md b/_Sidebar.md
+index ec8ee27..4eabf9b 100644
+--- a/_Sidebar.md
++++ b/_Sidebar.md
+@@ -2,7 +2,7 @@
+ 
+ **For pilots**
+ - [Quick Start](Quick-Start)
+-- [Video tutorials](Video-Tutorials) · [סרטונים](Video-Tutorials-he)
++- [Video tutorials](Video-Tutorials) (in Hebrew)
+ - [Features](Features)
+ - [The Map](The-Map)
+ - [Auto zoom](Auto-Zoom)
+@@ -58,6 +58,7 @@
+ 
+ **לטייסים**
+ - [התחלה מהירה](Quick-Start-he)
++- [סרטוני הדרכה](Video-Tutorials-he)
+ - [תכונות](Features-he)
+ - [עוזר AI](AI-Assistant-he)
+ - [מדריך למשתמש](User-Guide-he)
+-- 
+2.43.0
+
