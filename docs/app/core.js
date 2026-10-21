@@ -2344,6 +2344,8 @@ window.S = Object.assign({
   fpGphShort: 'Gal/h',
   fpTaxiShort: 'Taxi + T/O (gal)',
   acFigures: 'Figures',
+  tbClimbFpm: 'Climb rate (fpm)',
+  acClimbHint: 'The climb rate shapes the departure climb on the profile and the TOC on the map; it does not change times or fuel.',
   acMyAircraft: 'My aircraft',
   acNewProfile: 'New aircraft\u2026',
   acNewProfileTitle: 'New aircraft',

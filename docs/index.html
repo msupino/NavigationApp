@@ -1494,11 +1494,17 @@
             <span data-i18n="tbClimbKt"></span>
             <input type="number" id="ac-climb-kt" min="30" max="200" step="1" inputmode="numeric">
           </label>
+          <!-- The climb rate the vertical profile and the map's TOC are drawn with. -->
+          <label class="ac-field" data-field="climbFpm" data-i18n-title="profileVsTitle">
+            <span data-i18n="tbClimbFpm"></span>
+            <input type="number" id="ac-climb-fpm" min="100" max="3000" step="50" inputmode="numeric">
+          </label>
           <label class="ac-field" data-field="descentFpm" data-i18n-title="tbDescentFpmTitle">
             <span data-i18n="tbDescentFpm"></span>
             <input type="number" id="ac-descent" min="100" max="3000" step="50" inputmode="numeric">
           </label>
         </div>
+        <div class="settings-hint ac-hint" data-i18n="acClimbHint"></div>
         <div class="ac-actions">
           <button type="button" id="ac-restore" class="ac-profile-btn"></button>
           <button type="button" id="ac-profile-delete" class="ac-profile-btn ac-profile-delete" data-i18n="acDelete"></button>

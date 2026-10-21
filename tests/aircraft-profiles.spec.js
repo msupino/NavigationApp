@@ -228,3 +228,18 @@ for (const size of [{ width: 1366, height: 900 }, { width: 1024, height: 1366 },
     expect((await geo()).win, 'departure time').toEqual(before.win);
   });
 }
+
+test('the climb rate is one of the aircraft\'s figures, not a second box on the profile', async ({ page }) => {
+  await boot(page);
+  await openPlan(page);
+  await expect(page.locator('.fp-profile-vs-input')).toHaveCount(0);
+  await openFigures(page);
+  await expect(page.locator('#ac-climb-fpm')).toHaveValue('700');                 // the C172's
+  await expect(page.locator('.ac-menu .ac-hint')).toContainText('TOC');            // what it changes, said
+  await page.locator('#ac-climb-fpm').fill('900');
+  expect(await page.evaluate(() => [window.profileVS, aircraft.climbFpm, localStorage.getItem('navaid.profileVS')])).toEqual([900, 900, '900']);
+  await expect(page.locator('.ac-field[data-field="climbFpm"]')).toHaveClass(/ac-overridden/);
+  await page.locator('#ac-model').focus();                                          // as a tap on it does
+  await page.selectOption('#ac-model', 'PA28');
+  await expect(page.locator('#ac-climb-fpm')).toHaveValue('650');                 // the type's, with it
+});

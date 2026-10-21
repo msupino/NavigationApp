@@ -1,4 +1,4 @@
-From 52233a29bfaa6d2844842f4dcf1c30c14d08e01c Mon Sep 17 00:00:00 2001
+From 91d3f73caced5f30138c6f14ded24d9991872453 Mon Sep 17 00:00:00 2001
 From: Marco <marco@supino.org>
 Date: Wed, 21 Oct 2026 06:54:31 +0000
 Subject: [PATCH] Aircraft profiles (#671): the aircraft in the flight plan's
@@ -6,8 +6,8 @@ Subject: [PATCH] Aircraft profiles (#671): the aircraft in the flight plan's
  popover; descent rate; read-only call sign and type in the filing form
 
 ---
- Flight-Plan-he.md         | 33 ++++++++++++++++++++++++++-------
- Flight-Plan.md            | 35 ++++++++++++++++++++++++++++-------
+ Flight-Plan-he.md         | 36 ++++++++++++++++++++++++++---------
+ Flight-Plan.md            | 40 +++++++++++++++++++++++++++++----------
  Fuel-Calculator-he.md     | 11 +++++------
  Fuel-Calculator.md        | 11 +++++------
  LocalStorage-Schema-he.md |  2 +-
@@ -16,13 +16,13 @@ Subject: [PATCH] Aircraft profiles (#671): the aircraft in the flight plan's
  Submit-Flight-Plan.md     |  9 ++++++---
  Toolbar-he.md             |  6 +++---
  Toolbar.md                |  6 +++---
- 10 files changed, 85 insertions(+), 41 deletions(-)
+ 10 files changed, 88 insertions(+), 46 deletions(-)
 
 diff --git a/Flight-Plan-he.md b/Flight-Plan-he.md
-index 78cf2d1..4c88fe7 100644
+index 78cf2d1..8c52d58 100644
 --- a/Flight-Plan-he.md
 +++ b/Flight-Plan-he.md
-@@ -62,16 +62,35 @@
+@@ -62,15 +62,33 @@
  
  ## קלטי כלי טיס
  
@@ -32,6 +32,9 @@ index 78cf2d1..4c88fe7 100644
 -- **הסעה והמראה (גאל)** — קצבת הפעלה + נסיעה + המראה; ברירת מחדל <span dir="ltr"><code>1.1</code></span>. מתווסף לסה"כ רק כאשר ציון הדרך הראשון מתאים לרשומה ב-<span dir="ltr"><code>airfields.json</code></span> (לפי שם או לפי קואורדינטות בטווח ~100 מ').
 -- אותם שני ערכים נמצאים גם ב**הגדרות** (*גלון/שעה*, *הסעה והמראה (גאל)*): פרופיל אחד, כך ששינוי במקום
 -  אחד מופיע מיד בשני.
+-- **מהירות אנכית (ft/min)** מעל הפרופיל האנכי — קובעת את **הטיפוס מהשדה** בפרופיל ואת סמן ה-**TOC** במפה;
+-  היא **אינה** משנה זמני קטעים או דלק (אלה מרחק ומהירות בלבד), ושורה מתחתיה אומרת זאת. גם בהגדרות, אותו ערך.
+-- **VOR** — תחנת ייחוס אופציונלית לעמודות רדיאל/DME. מסונכרנת עם בורר **תחנת ייחוס** בסרגל הכלים ונשמרת ב-<span dir="ltr"><code>navaid.vorRef</code></span>.
 +מעל הטבלה, שורת **כלי טיס**:
 +
 +- **המטוס** — מזוהה לפי **אות הקריאה** שלו: הקוד ש[טופס תוכנית הטיסה](Submit-Flight-Plan-he) מגיש
@@ -40,10 +43,11 @@ index 78cf2d1..4c88fe7 100644
 +- **מטוס חדש…** שואל אות קריאה ומתחיל מהנתונים שבשימוש; הקלדת אות קריאה ב**נתונים** עושה אותו דבר
 +  למטוס ללא אות קריאה, ובמטוס שיש לו אות קריאה משנה אותה.
 +- **נתונים** (*נתונים מותאמים*) — חלון קופץ מעל התוכנית, כמו **עמודות** ושעת ההמראה, כך שפתיחתו אף
-+  פעם לא מגדילה את התוכנית:
++  פעם לא מגדילה את התוכנית (התוכנית שומרת על הגודל שבו נפתחה; שום דבר בה לא זז בזמן הקלדה):
 +  - **אות קריאה** ו**סוג** — הסוג נבחר למטוס: סוג מהרשימה (C152, C172, PA28, DA40, SR22, AT3, C42,
 +    EV97, ULAC) ממלא את הנתונים הטיפוסיים שלו מספר המטוס, **אחר…** מקבל כל קוד ICAO;
-+  - דלק שמיש, מהירות טיפוס, **קצב ירידה**;
++  - דלק שמיש, מהירות טיפוס, **קצב טיפוס** (הקצב שבו מצוירים הפרופיל האנכי ונקודת ה-**TOC** במפה;
++    הוא אינו משנה זמני קטעים או דלק, ושורה מתחתיו אומרת זאת), **קצב ירידה**;
 +  - **שחזר את נתוני C172**, ו**מחק** (נשאל באפליקציה; המטוס חוזר להיות ללא אות קריאה, עם הסוג שלו).
 +
 +  כל נתון שמשנים בזמן שמטוס בשימוש נשמר בו. ה-✕, Escape (החלון הקופץ, לא התוכנית) או הקשה מחוץ לו
@@ -51,25 +55,21 @@ index 78cf2d1..4c88fe7 100644
 +- **גל׳/שעה** ו**הסעה + המראה (גל׳)** — נתוני הדלק של המטוס. ההסעה מתווספת רק כשנקודת המוצא היא
 +  שדה ב-<span dir="ltr"><code>airfields.json</code></span> (לפי שם או בטווח ~100 מ'). נתון ששונה מערך הסוג מסומן בנקודה,
 +  והחלונית הקטנה שלו מראה את ערך הסוג.
- - **מהירות אנכית (ft/min)** מעל הפרופיל האנכי — קובעת את **הטיפוס מהשדה** בפרופיל ואת סמן ה-**TOC** במפה;
--  היא **אינה** משנה זמני קטעים או דלק (אלה מרחק ומהירות בלבד), ושורה מתחתיה אומרת זאת. גם בהגדרות, אותו ערך.
-+  היא **אינה** משנה זמני קטעים או דלק (אלה מרחק ומהירות בלבד), ושורה מתחתיה אומרת זאת.
- - **VOR** — תחנת ייחוס אופציונלית לעמודות רדיאל/DME. מסונכרנת עם בורר **תחנת ייחוס** בסרגל הכלים ונשמרת ב-<span dir="ltr"><code>navaid.vorRef</code></span>.
- 
++- **VOR**, בשורה משלו מתחת לשורת כלי הטיס (הוא של המסלול, לא של המטוס) — תחנת ייחוס אופציונלית לעמודות רדיאל/DME. מסונכרנת עם בורר **תחנת ייחוס** בסרגל הכלים ונשמרת ב-<span dir="ltr"><code>navaid.vorRef</code></span>.
++
 +קצב הירידה הוא הקצב שבו [יומן הניווט](Print-and-Export-he) מתכנן את הירידה, אלא אם נקבע קצב ביומן
 +עצמו (500 רגל/דקה לכל סוג מהרשימה).
 +
 +נשמר ב-<span dir="ltr"><code>navaid.aircraft</code></span> (המטוס שבשימוש) וב-<span dir="ltr"><code>navaid.aircraftProfiles</code></span> (המטוסים
 +שלכם); שניהם מסתנכרנים עם Drive כש**סנכרן גם הגדרות** דולק.
-+
+ 
  ## רדיאל / DME
  
- כאשר נבחרת תחנת VOR כללית או עקיפה לקטע, הטבלה מציגה עמודות **רדיאל** ו-**DME**.
 diff --git a/Flight-Plan.md b/Flight-Plan.md
-index 079afbe..220564a 100644
+index 079afbe..9a56d0c 100644
 --- a/Flight-Plan.md
 +++ b/Flight-Plan.md
-@@ -63,17 +63,38 @@ above the table. The return-route table has no ETAs: it is a separate flight.
+@@ -63,16 +63,36 @@ above the table. The return-route table has no ETAs: it is a separate flight.
  
  ## Aircraft inputs
  
@@ -79,6 +79,10 @@ index 079afbe..220564a 100644
 -- **Taxi and Takeoff (gal)** — startup + taxi + takeoff allowance; defaults to `1.1`. Only added to the total when the origin waypoint matches an entry in `airfields.json` (by name OR by coordinates within ~100 m).
 -- The same two figures are in **Settings** (*Gallons per hour*, *Taxi and takeoff (gal)*): one
 -  profile, so a change in either place shows in the other at once.
+-- **V/S (ft/min)** above the vertical profile — shapes the **departure climb** on the profile and
+-  the **TOC** marker on the map; it does **not** change leg times or fuel (those are distance and
+-  speed only), and a line under it says so. Also in Settings, the same value.
+-- **VOR** — optional reference VOR for Radial/DME columns. It syncs with the toolbar's **VOR ref** selector and persists to `navaid.vorRef`.
 +Above the table, the **Aircraft** row:
 +
 +- **The aircraft** — keyed by its **call sign**: the code the [flight plan form](Submit-Flight-Plan)
@@ -87,11 +91,13 @@ index 079afbe..220564a 100644
 +- **New aircraft…** asks for a call sign and starts from the figures in use; typing a call sign in
 +  **Figures** does the same for the unnamed aircraft, and on one that has a call sign renames it.
 +- **Figures** (*Custom figures*) — a popover over the plan, like **Columns** and the departure time,
-+  so opening it never makes the plan taller:
++  so opening it never makes the plan taller (the plan keeps the size it opened at; nothing in it
++  moves as you type):
 +  - **call sign** and **type** — the type is selected for the aircraft: a listed type (C152, C172,
 +    PA28, DA40, SR22, AT3, C42, EV97, ULAC) fills its typical manual figures, **Other…** takes any
 +    ICAO code;
-+  - usable fuel, climb speed, **descent rate**;
++  - usable fuel, climb speed, **climb rate** (the rate the vertical profile and the map's **TOC**
++    are drawn with; it does not change leg times or fuel, and a line under it says so), **descent rate**;
 +  - **Restore C172 figures**, and **Delete** (asked in the app; the aircraft goes back to having no
 +    call sign, with its type).
 +
@@ -100,21 +106,16 @@ index 079afbe..220564a 100644
 +- **Gal/h** and **Taxi + T/O (gal)** — the aircraft's fuel figures. Taxi is added only when the
 +  origin waypoint is an airfield in `airfields.json` (by name or within ~100 m). A figure changed
 +  from the type's carries a dot, and its tooltip gives the type's value.
- - **V/S (ft/min)** above the vertical profile — shapes the **departure climb** on the profile and
-   the **TOC** marker on the map; it does **not** change leg times or fuel (those are distance and
--  speed only), and a line under it says so. Also in Settings, the same value.
-+  speed only), and a line under it says so.
- - **VOR** — optional reference VOR for Radial/DME columns. It syncs with the toolbar's **VOR ref** selector and persists to `navaid.vorRef`.
- 
++- **VOR**, on its own line under the Aircraft row (it is the route's, not the aircraft's) — optional reference VOR for Radial/DME columns. It syncs with the toolbar's **VOR ref** selector and persists to `navaid.vorRef`.
++
 +The descent rate is what the [nav log](Print-and-Export) plans the descent with, unless a rate is
 +set in the nav log itself (500 fpm for every listed type).
 +
 +Stored as `navaid.aircraft` (the aircraft in use) and `navaid.aircraftProfiles` (your own aircraft);
 +both sync with Drive when **Sync settings too** is on.
-+
+ 
  ## Radial / DME
  
- When a global VOR reference or a per-leg VOR override is selected, the table shows **Radial** and **DME** columns.
 diff --git a/Fuel-Calculator-he.md b/Fuel-Calculator-he.md
 index 0535a50..158947c 100644
 --- a/Fuel-Calculator-he.md

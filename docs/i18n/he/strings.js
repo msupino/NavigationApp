@@ -698,6 +698,8 @@ window.S = {
   fpGphShort: 'גל׳/שעה',
   fpTaxiShort: 'הסעה + המראה (גל׳)',
   acFigures: 'נתונים',
+  tbClimbFpm: 'קצב טיפוס (רגל/דקה)',
+  acClimbHint: 'קצב הטיפוס קובע את הטיפוס מהשדה בפרופיל ואת נקודת סוף הטיפוס (TOC) במפה; הוא אינו משנה זמנים או דלק.',
   acMyAircraft: 'המטוסים שלי',
   acNewProfile: 'מטוס חדש\u2026',
   acNewProfileTitle: 'מטוס חדש',

@@ -7915,6 +7915,12 @@ function refreshSettingsAircraft() {
     const el = acEl(id);
     if (el && document.activeElement !== el) el.value = Number(a[f]) > 0 ? a[f] : '';
   }
+  // The climb rate: the one the profile is drawn with (window.profileVS), the aircraft's otherwise.
+  const climb = acEl('ac-climb-fpm');
+  if (climb && document.activeElement !== climb) {
+    const v = window.profileVS > 0 ? window.profileVS : Number(a.climbFpm);
+    climb.value = v > 0 ? String(v) : '';
+  }
   // A dot on each figure changed from the type's, saying what the type gives; Restore when any is.
   let any = false;
   for (const lab of acRoot().querySelectorAll('.ac-field[data-field]')) {
@@ -7959,8 +7965,8 @@ window.refreshSettingsAircraft = refreshSettingsAircraft;
     const fpG = document.getElementById('aircraft-gph');
     const fpT = document.getElementById('aircraft-taxi');
     if (fpG && fpT && aircraft) { fpG.value = aircraft.gph; fpT.value = aircraft.taxiGal; fpG.dispatchEvent(new Event('input')); }
-    const fpVs = document.querySelector('.fp-profile-vs-input');
-    if (fpVs && window.profileVS > 0) { fpVs.value = String(window.profileVS); fpVs.dispatchEvent(new Event('input')); }
+    // The strip is drawn at the aircraft's climb rate: redraw it with the new one.
+    if (typeof refreshFlightPlan === 'function' && refreshFlightPlan) refreshFlightPlan();
     saveFilingAircraft();
     refreshSettingsAircraft();
     draw();
@@ -8053,6 +8059,19 @@ window.refreshSettingsAircraft = refreshSettingsAircraft;
       draw();
     });
   }
+  // Climb rate: the aircraft's figure and the rate the profile and the map's TOC are drawn with.
+  const climb = acEl('ac-climb-fpm');
+  if (climb) climb.addEventListener('input', () => {
+    const v = parseInt(climb.value, 10);
+    if (!(v > 0)) return;
+    window.profileVS = v;
+    try { localStorage.setItem('navaid.profileVS', String(v)); } catch (e) { /* storage off */ }
+    aircraft = Object.assign({}, aircraft || { gph: tune('defaultGph'), taxiGal: tune('defaultTaxiGal') }, { climbFpm: v });
+    if (typeof saveAircraft === 'function') saveAircraft();
+    refreshSettingsAircraft();
+    draw();                                                   // the map's TOC moves with the climb
+    if (typeof refreshFlightPlan === 'function' && refreshFlightPlan) refreshFlightPlan();   // and the strip
+  });
   // The popover closes as the plan's other popovers do: its X, Escape, a tap outside. On window,
   // capturing, so Escape closes the popover and not the plan behind it. Each acts only while open.
   const fig = acEl('ac-custom');

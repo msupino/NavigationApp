@@ -4433,41 +4433,17 @@ function showFlightPlan() {
   const profTitle = document.createElement('span');
   profTitle.textContent = S.profileTitle || 'Vertical profile';
   profLbl.appendChild(profTitle);
-  // V/S input — vertical speed (ft/min) driving the climb/descent ramp slope.
-  // Default 500; persisted so the pilot's preferred rate sticks.
+  // The climb rate (window.profileVS, navaid.profileVS) the ramp is drawn with: the aircraft's
+  // climb figure, set in Figures. Default 500 until one is stored.
   if (!(window.profileVS > 0)) {
     let stored = 0;
     try { stored = parseInt(localStorage.getItem('navaid.profileVS'), 10); } catch (e) { /* ignore */ }
     window.profileVS = stored > 0 ? stored : 500;
   }
-  const vsLbl = document.createElement('label');
-  vsLbl.className = 'fp-profile-vs';
-  vsLbl.textContent = (S.profileVs || 'V/S (ft/min)') + ' ';
-  // Say so out loud: this number shapes the drawn climb, it does not buy or spend ETE.
-  if (S.profileVsTitle) vsLbl.title = S.profileVsTitle;
-  const vsInput = document.createElement('input');
-  vsInput.type = 'number'; vsInput.min = '50'; vsInput.step = '50';
-  vsInput.value = String(window.profileVS);
-  vsInput.className = 'fp-profile-vs-input';
-  vsInput.oninput = () => {
-    const v = parseInt(vsInput.value, 10);
-    if (v > 0) {
-      window.profileVS = v;
-      try { localStorage.setItem('navaid.profileVS', String(v)); } catch (e) { /* ignore */ }
-      if (typeof window.refreshSettingsAircraft === 'function') window.refreshSettingsAircraft();
-      draw();        // the map TOC marker moves with the new ramp
-      refresh();     // redraw the profile strip (leg times do not depend on V/S)
-    }
-  };
-  vsLbl.appendChild(vsInput);
-  profLbl.appendChild(vsLbl);
+  // The climb rate the strip is drawn with is the aircraft's own figure now (Flight plan ->
+  // Aircraft -> Figures -> Climb rate), with what it changes said beside it. It was a box here too:
+  // two places for one number.
   profWrap.appendChild(profLbl);
-  // What the number changes, on screen rather than only in a tooltip (asked: "show the
-  // affect text"): a rate field reads as if it moves times and fuel, and it does not.
-  const vsHint = document.createElement('div');
-  vsHint.className = 'fp-profile-vs-hint';
-  vsHint.textContent = S.profileVsHint || '';
-  profWrap.appendChild(vsHint);
   // Direction indicator above the strip — the profile/X-axis mirrors in RTL
   // (Hebrew), so spell out the flow: departure → destination with a centred
   // arrow, oriented to match the axis (arrow points the way it's flown).
