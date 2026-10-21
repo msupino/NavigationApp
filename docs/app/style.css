@@ -3396,6 +3396,10 @@ body.printing-plan .ac-custom { display: none !important; }
    does at 2325. The backdrop is pointer-events:none, so raising it captures nothing.
    The flight plan itself carries no data-chart-modal and keeps 2000 deliberately. */
 .modal-back.flight-plan[data-chart-modal] { z-index: 2325; }
+/* The plan's corner grip: a desktop gesture. On a phone the plan is the whole window and there
+   is nothing to size, so there is no grip rather than a dead one. */
+body.deck-on .modal-back.flight-plan .fp-grip { display: none; }
+body.printing-plan .fp-grip { display: none; }
 /* Export modal while placing the flight-plan card: clear the backdrop so the
    map (and the draggable card) stays reachable underneath the dialog. */
 .modal-back.export-place {

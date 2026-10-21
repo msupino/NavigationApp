@@ -49,7 +49,7 @@ test.describe('Flight-plan modal table print', () => {
     await boot(page);
   });
 
-  test('plan window has no resize grips or size persistence', async ({ page }) => {
+  test('plan window has none of the old four grips, and a drag stores no size', async ({ page }) => {
     const modal = await openFlightPlan(page);
     await expect(modal.locator('.resize-handle')).toHaveCount(0);
 
