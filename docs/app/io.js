@@ -4169,6 +4169,10 @@ function showFlightPlan() {
   flightPlanCleanup = function () {
     stopPlanDrag();
     restoreInspector();          // put the inspector back if it was open
+    // The aircraft panel goes back to its home, ready for the next plan.
+    const panel = document.getElementById('ac-panel');
+    const home = document.getElementById('ac-panel-home');
+    if (panel && home && panel.parentNode !== home) home.appendChild(panel);
   };
 
   loadAircraft();
@@ -4184,6 +4188,15 @@ function showFlightPlan() {
   fpAircraft.appendChild(acInputDiv);
   const gphInp  = acInputDiv.querySelector('#aircraft-gph');
   const taxiInp = acInputDiv.querySelector('#aircraft-taxi');
+  // The fuel figures are the aircraft's too: marked when changed from its type's, like the rest.
+  for (const [inp, f] of [[gphInp, 'gph'], [taxiInp, 'taxiGal']]) {
+    const lab = inp.closest('label');
+    if (lab) { lab.classList.add('ac-field'); lab.dataset.field = f; }
+  }
+  // The aircraft itself, before its fuel figures: a listed type or one of the pilot's own, and
+  // the rest of its figures (index.html #ac-panel, wired once in ui.js). Back home on close.
+  const acPanel = document.getElementById('ac-panel');
+  if (acPanel) fpAircraft.insertBefore(acPanel, acInputDiv);
   function syncAircraftUI() {
     if (!aircraft) { aircraft = { gph: tune('defaultGph'), taxiGal: tune('defaultTaxiGal') }; saveAircraft(); }
     gphInp.value  = aircraft.gph;
@@ -4202,13 +4215,15 @@ function showFlightPlan() {
       // must NOT do is PERSIST that: saving null wrote the string "null", which loadAircraft
       // read back as truthy for good, so the pilot's gph/taxi were gone after a reload and
       // every fuel figure stayed '--'. Storage keeps the last usable profile.
-      aircraft = a;
-      if (a) saveAircraft();
+      // The two fuel figures of the aircraft in use: its type and its other figures stay.
+      aircraft = a ? Object.assign({}, aircraft || {}, a) : null;
+      if (aircraft) saveAircraft();
       if (typeof window.refreshSettingsAircraft === 'function') window.refreshSettingsAircraft();
       draw(); refresh();
     };
   });
   syncAircraftUI();
+  if (typeof window.refreshSettingsAircraft === 'function') window.refreshSettingsAircraft();
   // Reference VOR picker — drives the per-leg Radial / DME columns. Shares the
   // global `vorRef` with the map overlay so both stay in sync.
   const vorWrap = document.createElement('label');
@@ -11075,7 +11090,6 @@ function showFplDialog(opts) {
   // real units, and the raw ICAO fields sit under Advanced with working defaults.
   const ENDURANCE_CHOICES = [];
   for (let m = 30; m <= 480; m += 30) ENDURANCE_CHOICES.push(m);
-  const TYPE_SUGGESTIONS = ['C172', 'C152', 'PA28', 'DA40', 'SR22', 'AT3', 'C42', 'EV97', 'ULAC'];
   const hhmmFromMinutes = m => fplPad(Math.floor(m / 60), 2) + fplPad(m % 60, 2);
   function enduranceLabel(mins) {
     const h = Math.floor(mins / 60), m = mins % 60;
@@ -11343,61 +11357,27 @@ function showFplDialog(opts) {
     // Aircraft type: ONE row. The dropdown covers the common designators; picking
     // "Other…" turns that same row into a text box for any other ICAO code, rather than
     // adding a second field asking for what the dropdown already asked for.
-    const typeSel = document.createElement('select');
-    typeSel.id = 'fpl-type-select';
-    for (const t of TYPE_SUGGESTIONS) {
-      const o = document.createElement('option');
-      o.value = t; o.textContent = t;
-      typeSel.appendChild(o);
-    }
-    const otherOpt = document.createElement('option');
-    otherOpt.value = '_other';
-    otherOpt.textContent = fplIsolate(S.fplTypeOther || 'Other…');
-    typeSel.appendChild(otherOpt);
-    const type = input(profile.type, 'text',
-      { maxlength: '4', placeholder: 'C172', autocapitalize: 'characters',
-        'aria-label': S.fplType || 'Aircraft type' });
+    // The type filed is the flight plan's aircraft, read-only here: one place to choose the
+    // aircraft, and a filed type that cannot disagree with the figures the plan was worked out
+    // with. Changed in the flight plan's Aircraft row (a listed type, or one of the pilot's own).
+    const prof = typeof activeAircraftProfile === 'function' ? activeAircraftProfile() : null;
+    const filedType = String((aircraft && aircraft.type) || profile.type || '').toUpperCase();
+    const type = input(filedType, 'text',
+      { maxlength: '4', readonly: 'readonly', 'aria-label': S.fplType || 'Aircraft type',
+        'aria-describedby': 'fpl-type-hint' });
     type.id = 'fpl-type';
-    const backToList = document.createElement('button');
-    backToList.type = 'button';
-    backToList.className = 'fpl-link';
-    backToList.id = 'fpl-type-list';
-    backToList.textContent = S.fplTypeFromList || '☰';
-    backToList.title = fplIsolate(S.fplTypeFromListTip || '');
+    type.readOnly = true;
+    type.className = (type.className ? type.className + ' ' : '') + 'fpl-readonly';
+    const typeHint = document.createElement('span');
+    typeHint.id = 'fpl-type-hint';
+    typeHint.className = 'fpl-type-hint';
+    // Not fplIsolate: it isolates Latin runs one by one and split a name like 4X-CRW in two;
+    // the Hebrew string isolates the whole name itself.
+    typeHint.textContent = typeof S.fplTypeFromPlan === 'function'
+      ? S.fplTypeFromPlan(prof ? prof.name : '') : 'From the flight plan\u2019s Aircraft';
     const typeBox = document.createElement('span');
     typeBox.className = 'fpl-type-box';
-    typeBox.append(typeSel, type, backToList);
-
-    // The aircraft chosen in Settings when the form has none of its own yet.
-    const storedType = String(profile.type || (aircraft && aircraft.type) || '').toUpperCase();
-    const typeListed = !storedType || TYPE_SUGGESTIONS.includes(storedType);
-    const showType = other => {
-      typeSel.hidden = other;
-      type.hidden = !other;
-      backToList.hidden = !other;
-      if (other) type.focus();
-    };
-    typeSel.value = typeListed ? (storedType || TYPE_SUGGESTIONS[0]) : '_other';
-    type.value = typeListed ? typeSel.value : storedType;
-    showType(!typeListed);
-    typeSel.onchange = () => {
-      const other = typeSel.value === '_other';
-      if (!other) type.value = typeSel.value;
-      else type.value = '';
-      showType(other);
-      // A listed type is the aircraft: Settings, its figures and the plan follow, and stay.
-      // "Other…" here is "Other…" in Settings too: the figures stay as they are, set by hand.
-      if (typeof window.applyAircraftType === 'function' && window.AIRCRAFT_TYPES) {
-        if (!other && window.AIRCRAFT_TYPES[typeSel.value]) window.applyAircraftType(typeSel.value);
-        else if (other) window.applyAircraftType('');
-      }
-    };
-    backToList.onclick = () => {
-      const settingsType = aircraft && aircraft.type;
-      typeSel.value = settingsType && TYPE_SUGGESTIONS.includes(settingsType) ? settingsType : TYPE_SUGGESTIONS[0];
-      type.value = typeSel.value;
-      showType(false);
-    };
+    typeBox.append(type, typeHint);
     body.appendChild(row(S.fplType || 'Aircraft type', typeBox));
 
     // Cruise speed for field 15. Pre-filled with the route's OWN speed (the first leg's,

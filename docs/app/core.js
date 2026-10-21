@@ -2337,6 +2337,24 @@ window.S = Object.assign({
   tbAircraftRestore: function (type) { return 'Restore ' + type + ' figures'; },
   whyAircraftAsType: 'Every figure is the type\u2019s already',
   aircraftChangedFrom: function (v) { return 'Changed from the type\u2019s ' + v; },
+  acMyAircraft: 'My aircraft',
+  acNewProfile: 'New aircraft\u2026',
+  acNewProfileTitle: 'New aircraft',
+  acNewProfileName: 'A name for it, e.g. its registration',
+  acCreate: 'Create',
+  acProfileSaved: function (n) { return n + ' saved: its figures are yours to change'; },
+  acRename: 'Rename',
+  acRenameTitle: 'Rename aircraft',
+  acDelete: 'Delete',
+  acDeleteConfirm: function (n) { return 'Delete ' + n + '? Its figures go with it.'; },
+  acProfileDeleted: function (n) { return n + ' deleted'; },
+  whyAcNoProfile: 'Choose one of your own aircraft first (or New aircraft\u2026)',
+  acIcaoType: 'ICAO type',
+  acIcaoTypeTitle: 'The type this aircraft files as (field 9 of the flight plan)',
+  whyAcIcaoListed: 'A listed type files as itself; make it one of your own aircraft to change it',
+  tbDescentFpm: 'Descent (fpm)',
+  tbDescentFpmTitle: 'The rate the nav log plans the descent at',
+  fplTypeFromPlan: function (n) { return (n ? n + ': ' : '') + 'from the flight plan\u2019s Aircraft. Change it there.'; },
   tbGph: 'Gallons per hour',
   tbGphTitle: 'Fuel consumption, gallons per hour',
   tbTaxiGal: 'Taxi and takeoff (gal)',
@@ -3959,23 +3977,24 @@ let pageSize = null;        // null | 'A3' | 'A4'
 // CVFR routes are tall (north–south Israel airspace).
 var pageOrient = 'portrait';
 let pageOffset = { x: 0, y: 0 };   // page-frame drag offset from viewport centre
-var aircraft = null;               // null | {gph, taxiGal, type?, climbFpm?, climbKt?, usableGal?}
+var aircraft = null;               // null | {gph, taxiGal, type?, profile?, climbFpm?, climbKt?, descentFpm?, usableGal?}
 // Typical figures per type (Settings -> Aircraft type), from the manuals and common use: a
 // starting point the pilot overrides for their own aircraft, field by field, and can restore.
 // The codes are the ICAO types of the filing form, so choosing one also files as that type.
-// C172: 1.1 gal taxi and take-off is the C172N/P manual figure.
+// C172: 1.1 gal taxi and take-off is the C172N/P manual figure. Descent: 500 fpm, the usual
+// planning figure for a light single (the nav log's own default was the exercise's 1000).
 const AIRCRAFT_TYPES = {
-  C152: { gph: 6, taxiGal: 0.8, climbFpm: 600, climbKt: 70, usableGal: 24.5 },
-  C172: { gph: 8.5, taxiGal: 1.1, climbFpm: 700, climbKt: 75, usableGal: 53 },
-  PA28: { gph: 8.5, taxiGal: 1.2, climbFpm: 650, climbKt: 79, usableGal: 48 },
-  DA40: { gph: 8.5, taxiGal: 1.0, climbFpm: 900, climbKt: 75, usableGal: 40 },
-  SR22: { gph: 16, taxiGal: 2.0, climbFpm: 1000, climbKt: 110, usableGal: 81 },
-  AT3: { gph: 4.5, taxiGal: 0.3, climbFpm: 800, climbKt: 65, usableGal: 20 },
-  C42: { gph: 4, taxiGal: 0.3, climbFpm: 800, climbKt: 60, usableGal: 17 },
-  EV97: { gph: 4, taxiGal: 0.3, climbFpm: 800, climbKt: 60, usableGal: 16 },
-  ULAC: { gph: 3.5, taxiGal: 0.3, climbFpm: 600, climbKt: 55, usableGal: 13 },
+  C152: { gph: 6, taxiGal: 0.8, climbFpm: 600, climbKt: 70, usableGal: 24.5, descentFpm: 500 },
+  C172: { gph: 8.5, taxiGal: 1.1, climbFpm: 700, climbKt: 75, usableGal: 53, descentFpm: 500 },
+  PA28: { gph: 8.5, taxiGal: 1.2, climbFpm: 650, climbKt: 79, usableGal: 48, descentFpm: 500 },
+  DA40: { gph: 8.5, taxiGal: 1.0, climbFpm: 900, climbKt: 75, usableGal: 40, descentFpm: 500 },
+  SR22: { gph: 16, taxiGal: 2.0, climbFpm: 1000, climbKt: 110, usableGal: 81, descentFpm: 500 },
+  AT3: { gph: 4.5, taxiGal: 0.3, climbFpm: 800, climbKt: 65, usableGal: 20, descentFpm: 500 },
+  C42: { gph: 4, taxiGal: 0.3, climbFpm: 800, climbKt: 60, usableGal: 17, descentFpm: 500 },
+  EV97: { gph: 4, taxiGal: 0.3, climbFpm: 800, climbKt: 60, usableGal: 16, descentFpm: 500 },
+  ULAC: { gph: 3.5, taxiGal: 0.3, climbFpm: 600, climbKt: 55, usableGal: 13, descentFpm: 500 },
 };
-const AIRCRAFT_FIELDS = ['gph', 'taxiGal', 'climbFpm', 'climbKt', 'usableGal'];
+const AIRCRAFT_FIELDS = ['gph', 'taxiGal', 'climbFpm', 'climbKt', 'descentFpm', 'usableGal'];
 window.AIRCRAFT_TYPES = AIRCRAFT_TYPES;
 window.AIRCRAFT_FIELDS = AIRCRAFT_FIELDS;
 // The figure of the chosen type for a field (null with no type, or a type it does not know).
@@ -3994,6 +4013,7 @@ function setAircraftType(code) {
   const t = AIRCRAFT_TYPES[code];
   const base = aircraft || { gph: tune('defaultGph'), taxiGal: tune('defaultTaxiGal') };
   aircraft = t ? Object.assign({}, base, t, { type: code }) : Object.assign({}, base, { type: '' });
+  delete aircraft.profile;           // a listed type is not one of the pilot's own aircraft
   saveAircraft();
   if (t) {
     window.profileVS = t.climbFpm;
@@ -4013,6 +4033,77 @@ function restoreAircraftDefaults(field) {
 }
 window.setAircraftType = setAircraftType;
 window.restoreAircraftDefaults = restoreAircraftDefaults;
+
+// The pilot's own aircraft (Flight plan -> Aircraft -> New aircraft...): a name, the ICAO type it
+// files as, and its own figures. `aircraft` is the one in use; `aircraft.profile` says which of
+// these it is, and saving it (saveAircraft) writes its figures back here, so a changed figure is
+// a change to that aircraft.
+const AIRCRAFT_PROFILES_KEY = 'navaid.aircraftProfiles';
+var aircraftProfiles = [];
+function loadAircraftProfiles() {
+  try {
+    const raw = JSON.parse(localStorage.getItem(AIRCRAFT_PROFILES_KEY) || '[]');
+    aircraftProfiles = Array.isArray(raw) ? raw.filter(p => p && typeof p.id === 'string'
+      && typeof p.name === 'string' && p.name.trim() && Number(p.gph) > 0) : [];
+  } catch (e) { aircraftProfiles = []; }
+}
+function saveAircraftProfiles() {
+  try { localStorage.setItem(AIRCRAFT_PROFILES_KEY, JSON.stringify(aircraftProfiles)); } catch (e) { /* storage off */ }
+}
+function aircraftFigures(src) {
+  const out = {};
+  for (const f of AIRCRAFT_FIELDS) if (src && Number(src[f]) > 0 || (f === 'taxiGal' && src && Number(src[f]) === 0)) out[f] = Number(src[f]);
+  return out;
+}
+function activeAircraftProfile() {
+  return aircraft && aircraft.profile ? (aircraftProfiles.find(p => p.id === aircraft.profile) || null) : null;
+}
+function aircraftIcao(code) { return String(code || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 4); }
+// Made from the aircraft in use: its figures and its type, under the pilot's name for it.
+function createAircraftProfile(name, type) {
+  const id = 'ac' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+  const p = Object.assign({ id, name: String(name).trim().slice(0, 40), type: aircraftIcao(type) },
+    aircraftFigures(aircraft || AIRCRAFT_TYPES.C172));
+  aircraftProfiles.push(p);
+  saveAircraftProfiles();
+  selectAircraftProfile(id);
+  return p;
+}
+function selectAircraftProfile(id) {
+  const p = aircraftProfiles.find(x => x.id === id);
+  if (!p) return false;
+  aircraft = Object.assign({}, aircraftFigures(p), { type: p.type, profile: p.id });
+  saveAircraft();
+  if (Number(p.climbFpm) > 0) {
+    window.profileVS = Number(p.climbFpm);
+    try { localStorage.setItem('navaid.profileVS', String(p.climbFpm)); } catch (e) { /* storage off */ }
+  }
+  return true;
+}
+function renameAircraftProfile(id, name) {
+  const p = aircraftProfiles.find(x => x.id === id);
+  const n = String(name || '').trim().slice(0, 40);
+  if (!p || !n) return false;
+  p.name = n;
+  saveAircraftProfiles();
+  return true;
+}
+// Gone from the list; in use, the aircraft falls back to its type (a C172 if that is not listed).
+function deleteAircraftProfile(id) {
+  const i = aircraftProfiles.findIndex(x => x.id === id);
+  if (i < 0) return false;
+  const p = aircraftProfiles.splice(i, 1)[0];
+  saveAircraftProfiles();
+  if (aircraft && aircraft.profile === id) setAircraftType(AIRCRAFT_TYPES[p.type] ? p.type : 'C172');
+  return true;
+}
+window.loadAircraftProfiles = loadAircraftProfiles;
+window.activeAircraftProfile = activeAircraftProfile;
+window.createAircraftProfile = createAircraftProfile;
+window.selectAircraftProfile = selectAircraftProfile;
+window.renameAircraftProfile = renameAircraftProfile;
+window.deleteAircraftProfile = deleteAircraftProfile;
+window.aircraftIcao = aircraftIcao;
 window.aircraftFieldOverridden = aircraftFieldOverridden;
 window.aircraftTypeDefault = aircraftTypeDefault;
 // Flight-plan card placed on the PNG export. null = off; otherwise
@@ -4041,10 +4132,17 @@ function loadAircraft() {
 
 function saveAircraft() {
   try { localStorage.setItem('navaid.aircraft', JSON.stringify(aircraft)); } catch (e) {}
+  // One of the pilot's own aircraft: what changed is that aircraft's now.
+  const p = typeof activeAircraftProfile === 'function' ? activeAircraftProfile() : null;
+  if (p && aircraft) {
+    Object.assign(p, aircraftFigures(aircraft), { type: aircraftIcao(aircraft.type) });
+    saveAircraftProfiles();
+  }
 }
 
 // Route totals are visible before the Flight plan modal is ever opened, so the
 // persisted performance profile must be available to the first draw.
+loadAircraftProfiles();
 loadAircraft();
 
 const DEFAULT_LABEL_FILL_COLOR = '#fff6aa';

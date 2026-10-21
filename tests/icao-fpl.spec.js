@@ -912,7 +912,9 @@ test('the Latin-letters note sits under the fields it describes', async ({ page 
   await expect(page.locator('#fpl-cell')).toHaveCount(1);
 });
 
-test('the aircraft type is one row, not a dropdown plus a duplicate code field', async ({ page }) => {
+// The type filed is the flight plan's aircraft, shown read-only: chosen in one place (the plan's
+// Aircraft row), so it cannot disagree with the figures the plan was worked out with.
+test('the aircraft type is one read-only row, from the flight plan\'s aircraft', async ({ page }) => {
   await boot(page);
   await route(page);
   await page.evaluate(() => {
@@ -920,36 +922,25 @@ test('the aircraft type is one row, not a dropdown plus a duplicate code field',
     showFlightPlan();
     document.getElementById('fpl-open').click();
   });
-  // Exactly one visible row mentions the type.
   const typeRows = await page.evaluate(() =>
     [...document.querySelectorAll('.fpl-body .fpl-row')]
       .filter(r => !r.hidden && /type/i.test((r.querySelector('span') || {}).textContent || ''))
       .length);
   expect(typeRows).toBe(2);        // "Flight type" and "Aircraft type", nothing else
-  await expect(page.locator('#fpl-type-select')).toBeVisible();
-  await expect(page.locator('#fpl-type')).toBeHidden();
-  await expect(page.locator('#fpl-type-select')).toHaveValue('C172');
-
-  // Other turns that row into a text box, in place.
-  await page.selectOption('#fpl-type-select', '_other');
-  await expect(page.locator('#fpl-type-select')).toBeHidden();
   await expect(page.locator('#fpl-type')).toBeVisible();
-  await expect(page.locator('#fpl-type')).toHaveValue('');
-  await page.fill('#fpl-type', 'AT3');
-  // ...and the way back to the list is right there.
-  await page.locator('#fpl-type-list').click();
-  await expect(page.locator('#fpl-type-select')).toBeVisible();
-  await expect(page.locator('#fpl-type')).toBeHidden();
+  await expect(page.locator('#fpl-type')).toHaveValue('C172');
+  expect(await page.locator('#fpl-type').evaluate(el => el.readOnly)).toBe(true);
+  await expect(page.locator('#fpl-type-select')).toHaveCount(0);
+  await expect(page.locator('#fpl-type-hint')).toContainText('flight plan');
 
-  // A stored designator outside the list reopens straight into the text box.
+  // One of the pilot's own aircraft files its own ICAO type, and says which aircraft it is.
   await page.evaluate(() => {
-    localStorage.setItem('navaid.fpl.type', 'P28A');
     document.querySelector('.modal-back.fpl-modal')._navaidClose();
+    createAircraftProfile('4X-ABC', 'P28A');
     showFplDialog();
   });
-  await expect(page.locator('#fpl-type')).toBeVisible();
   await expect(page.locator('#fpl-type')).toHaveValue('P28A');
-  await expect(page.locator('#fpl-type-select')).toBeHidden();
+  await expect(page.locator('#fpl-type-hint')).toContainText('4X-ABC');
 });
 
 test('a cross-country plan never reaches a submit button', async ({ page }) => {
@@ -1322,7 +1313,7 @@ test('both plans demand exactly the same details', async ({ page }) => {
     document.querySelectorAll('.modal-back').forEach(b => b._navaidClose ? b._navaidClose() : b.remove());
     showFplDialog();
   });
-  for (const id of ['fpl-type-select', 'fpl-endurance', 'fpl-persons']) {
+  for (const id of ['fpl-type', 'fpl-endurance', 'fpl-persons']) {
     expect(await page.evaluate(i => document.getElementById(i).value, id), id).toBeTruthy();
   }
 

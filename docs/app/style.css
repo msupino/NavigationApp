@@ -9463,16 +9463,13 @@ body.deck-on #deck-sheet .tb-section[data-sec="settings"] .tb-section-body > lab
    controls sit together at the row's end, so they line up whatever the name's length -- a
    fixed name column (it was 9.5em / 12.5em) broke under a phone's larger font: the Hebrew
    names outgrew it, the controls stepped out of line, and Magnetic variation wrapped. */
-#toolbar .tb-section[data-sec="settings"] .tb-section-body > .navtoggle,
-#toolbar .tb-section[data-sec="settings"] #settings-ac-custom > .navtoggle {
+#toolbar .tb-section[data-sec="settings"] .tb-section-body > .navtoggle {
   display: flex; flex-wrap: nowrap; align-items: center; gap: 6px;
 }
-#toolbar .tb-section[data-sec="settings"] .tb-section-body > .navtoggle > span:first-child,
-#toolbar .tb-section[data-sec="settings"] #settings-ac-custom > .navtoggle > span:first-child {
+#toolbar .tb-section[data-sec="settings"] .tb-section-body > .navtoggle > span:first-child {
   flex: 1 1 auto; min-width: 0;
 }
-#toolbar .tb-section[data-sec="settings"] .tb-section-body > .navtoggle > :not(span:first-child),
-#toolbar .tb-section[data-sec="settings"] #settings-ac-custom > .navtoggle > :not(span:first-child) { flex: 0 0 auto; }
+#toolbar .tb-section[data-sec="settings"] .tb-section-body > .navtoggle > :not(span:first-child) { flex: 0 0 auto; }
 
 /* ---- Menu fields: one family ------------------------------------------------------------
    UI/UX audit of every select, field, swatch and reset button in the menus, both themes:
@@ -9908,13 +9905,35 @@ body.theme-light #export-progress { background: #fafcff; color: #1d2430; border-
   .route-template-row input { min-height: 44px; font-size: 15px; }
 }
 
-/* Settings -> Aircraft: a figure changed from the type's carries a small dot after its name. */
+/* Flight plan -> Aircraft. The panel's parts join the row (display: contents): the picker and its
+   Rename / Delete before the fuel boxes, the folded figures on a line of their own below. */
+.fp-aircraft .ac-panel { display: contents; }
+#ac-panel-home { display: none; }
+.ac-type-row { display: inline-flex; align-items: center; }
+.ac-profile-btn {
+  font: inherit; font-size: 12px; min-height: 28px; padding: 2px 10px; border-radius: 6px;
+  border: 1px solid #4a4545; background: transparent; color: inherit; cursor: pointer;
+}
+.ac-profile-btn:focus-visible { outline: 2px solid #1f5f9e; outline-offset: 2px; }
+.ac-profile-btn.ac-profile-delete:not([aria-disabled="true"]) { color: #e57373; border-color: #8a3a3a; }
+body.theme-light .ac-profile-btn { border-color: #c9c4bc; }
+body.theme-light .ac-profile-btn.ac-profile-delete:not([aria-disabled="true"]) { color: #b3261e; border-color: #e0a9a5; }
+.ac-custom { flex-basis: 100%; order: 10; }   /* after the fuel boxes and VOR */
+.ac-custom > summary { cursor: pointer; padding: 4px 2px; font-weight: 600; min-height: 28px; }
+.ac-custom-grid { display: flex; flex-wrap: wrap; gap: 6px 14px; padding: 4px 0 2px; }
+.ac-custom-grid > label { display: inline-flex; align-items: center; gap: 6px; }
+.ac-custom-grid input { width: 64px; }
+.ac-custom-grid .ac-icao-row input { width: 56px; text-transform: uppercase; }
+.ac-icao-row.is-dim input { opacity: .6; }
+#ac-restore { margin-block: 6px 2px; }
+/* A phone: targets a finger can hit (44 px). */
+body.deck-on .ac-profile-btn, body.deck-on .ac-custom > summary { min-height: 44px; }
+body.deck-on .ac-custom > summary { display: flex; align-items: center; }
+/* A figure changed from the type's carries a small dot after its name. */
 .ac-field.ac-overridden > span::after {
   content: ' \2022'; color: #b45309; font-weight: 700;
 }
-#settings-ac-restore { margin-block: 4px 2px; }
-
-/* Custom figures: a fold inside the settings column, as wide as the rows around it. */
-#settings-ac-custom { display: block; width: 100%; }
-#settings-ac-custom > summary { cursor: pointer; padding: 6px 2px; font-weight: 600; min-height: 32px; }
-body.deck-on #settings-ac-custom > summary { min-height: 44px; display: flex; align-items: center; }
+/* Filing form: the type comes from the flight plan, read-only, with where to change it. */
+.fpl-type-box { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; }
+.fpl-readonly { opacity: .85; }
+.fpl-type-hint { font-size: 12px; opacity: .8; }

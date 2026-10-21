@@ -992,46 +992,6 @@
             <option value="baro" data-i18n="tbAltSourceBaro"></option>
           </select>
         </label>
-        <!-- The aircraft's own numbers start here, set apart from the pilot/app settings above. -->
-        <div class="tb-group-separator" aria-hidden="true"></div>
-        <!-- The aircraft's fuel figures, the same two the flight plan shows: one profile, so a
-             change in either place is a change in both (ui.js, wireSettingsAircraft). -->
-        <!-- The aircraft type fills every figure below from its manual's typical values, and is the
-             type the flight plan form files (ui.js, wireSettingsAircraft). Each figure can be
-             changed; a dot marks one that differs from the type, and Restore puts them back. -->
-        <label class="navtoggle" data-i18n-title="tbAircraftTypeTitle">
-          <span data-i18n="tbAircraftType"></span>
-          <select id="settings-ac-type"></select>
-        </label>
-        <!-- The figures themselves, folded away: the type sets them, and most pilots never open
-             this. A changed figure is marked inside, and on the summary. -->
-        <details class="ac-custom" id="settings-ac-custom">
-          <summary data-i18n="tbAircraftCustom"></summary>
-        <label class="navtoggle ac-field" data-field="gph" data-i18n-title="tbGphTitle">
-          <span data-i18n="tbGph"></span>
-          <input type="number" id="settings-gph" min="1" max="50" step="0.5" inputmode="decimal">
-        </label>
-        <label class="navtoggle ac-field" data-field="taxiGal" data-i18n-title="tbTaxiGalTitle">
-          <span data-i18n="tbTaxiGal"></span>
-          <input type="number" id="settings-taxi" min="0" max="20" step="0.1" inputmode="decimal">
-        </label>
-        <label class="navtoggle ac-field" data-field="usableGal" data-i18n-title="tbUsableFuelTitle">
-          <span data-i18n="tbUsableFuel"></span>
-          <input type="number" id="settings-usable" min="1" max="300" step="0.5" inputmode="decimal">
-        </label>
-        <label class="navtoggle ac-field" data-field="climbKt" data-i18n-title="tbClimbKtTitle">
-          <span data-i18n="tbClimbKt"></span>
-          <input type="number" id="settings-climb-kt" min="30" max="200" step="1" inputmode="numeric">
-        </label>
-        <!-- Vertical speed, shared with the flight plan's profile strip. Said in words what it
-             changes, because a rate field reads as if it moves times and fuel, and it does not. -->
-        <label class="navtoggle ac-field" data-field="climbFpm" data-i18n-title="profileVsTitle">
-          <span data-i18n="profileVs"></span>
-          <input type="number" id="settings-vs" min="50" step="50" inputmode="numeric">
-        </label>
-        <div class="settings-hint" id="settings-vs-hint" data-i18n="profileVsHint"></div>
-        </details>
-        <button type="button" id="settings-ac-restore"></button>
         <!-- Reference tables a pilot sets up once and consults: the frequency table and the
              altitude pairs, moved here from Charts. -->
         <div class="tb-group-separator" aria-hidden="true"></div>
@@ -1492,5 +1452,43 @@
       }
     }());
   </script>
+  <!-- The aircraft: its type or one of the pilot's own aircraft, and the figures it brings.
+       Lives in the flight plan's Aircraft row (io.js showFlightPlan moves it in and back); kept
+       here, hidden, while the plan is closed, so its wiring (ui.js wireAircraftPanel) is set up
+       once. The filing form shows the type read-only. -->
+  <div id="ac-panel-home" hidden>
+    <div id="ac-panel" class="ac-panel">
+      <label class="ac-type-row" data-i18n-title="tbAircraftTypeTitle">
+        <span class="sr-only" data-i18n="tbAircraftType"></span>
+        <select id="ac-type" data-i18n-aria="tbAircraftType"></select>
+      </label>
+      <button type="button" id="ac-profile-rename" class="ac-profile-btn" data-i18n="acRename"></button>
+      <button type="button" id="ac-profile-delete" class="ac-profile-btn ac-profile-delete" data-i18n="acDelete"></button>
+      <!-- The rest of the figures, folded away: the type sets them. A figure changed from the
+           type's is marked inside. -->
+      <details class="ac-custom" id="ac-custom">
+        <summary data-i18n="tbAircraftCustom"></summary>
+        <div class="ac-custom-grid">
+          <label class="ac-field ac-icao-row" data-i18n-title="acIcaoTypeTitle">
+            <span data-i18n="acIcaoType"></span>
+            <input type="text" id="ac-icao" maxlength="4" autocapitalize="characters" spellcheck="false">
+          </label>
+          <label class="ac-field" data-field="usableGal" data-i18n-title="tbUsableFuelTitle">
+            <span data-i18n="tbUsableFuel"></span>
+            <input type="number" id="ac-usable" min="1" max="300" step="0.5" inputmode="decimal">
+          </label>
+          <label class="ac-field" data-field="climbKt" data-i18n-title="tbClimbKtTitle">
+            <span data-i18n="tbClimbKt"></span>
+            <input type="number" id="ac-climb-kt" min="30" max="200" step="1" inputmode="numeric">
+          </label>
+          <label class="ac-field" data-field="descentFpm" data-i18n-title="tbDescentFpmTitle">
+            <span data-i18n="tbDescentFpm"></span>
+            <input type="number" id="ac-descent" min="100" max="3000" step="50" inputmode="numeric">
+          </label>
+        </div>
+        <button type="button" id="ac-restore" class="ac-profile-btn"></button>
+      </details>
+    </div>
+  </div>
 </body>
 </html>
