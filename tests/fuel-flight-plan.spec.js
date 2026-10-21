@@ -77,12 +77,12 @@ test.describe('Fuel/endurance flight plan modal', () => {
     await expect(page.locator('#aircraft-taxi')).toBeVisible();
   });
 
-  // The default aircraft is a C172 (Settings -> Aircraft type): 8.5 gal/h, 1.1 gal taxi.
-  test('default C172: GPH=8.5 and taxi=1.1 applied on open: fuel cells show numbers', async ({ page }) => {
+  // The default aircraft is a C172 (Settings -> Aircraft type): 8 gal/h, 1.1 gal taxi.
+  test('default C172: GPH=8 and taxi=1.1 applied on open: fuel cells show numbers', async ({ page }) => {
     await boot(page);
     await openFlightPlan(page);
 
-    expect(parseFloat(await page.locator('#aircraft-gph').inputValue())).toBe(8.5);
+    expect(parseFloat(await page.locator('#aircraft-gph').inputValue())).toBe(8);
     expect(parseFloat(await page.locator('#aircraft-taxi').inputValue())).toBeCloseTo(1.1, 1);
 
     const { legFuel, totalFuel } = await readFuelCells(page);
