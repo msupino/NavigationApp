@@ -3060,7 +3060,8 @@ body.theme-light .shortcuts-help-keys kbd {
   body.printing-plan .modal-close-x,
   body.printing-plan .fp-aircraft,
   body.printing-plan .fp-columns,
-  body.printing-plan .fp-when { display: none !important; }
+  body.printing-plan .fp-when,
+body.printing-plan .ac-custom { display: none !important; }
   body.printing-plan .fp-last-light-short,
   body.printing-plan .fp-dest-closed { color: #111 !important; }
   body.printing-plan .modal.wide .fp-scroll {
@@ -3962,7 +3963,8 @@ body.theme-light .route-library-row { border-color: #c6ccd6; }
    menu anchored there ran off the screen's edge on a phone in Hebrew. */
 .fp-tools { position: relative; }
 .fp-tools .fp-when { position: static; }
-.fp-columns-menu.fp-when-menu {
+.fp-columns-menu.fp-when-menu,
+.ac-menu {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
@@ -3971,14 +3973,19 @@ body.theme-light .route-library-row { border-color: #c6ccd6; }
   width: max-content;
   max-width: min(360px, calc(92vw - 28px));
 }
-.fp-when-label { font-weight: 600; }
-.fp-when-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; width: 100%; }
-.fp-when-close {
+.fp-when-label,
+.ac-label { font-weight: 600; }
+.fp-when-head,
+.ac-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; width: 100%; }
+.fp-when-close,
+.ac-close {
   font: inherit; font-size: 15px; line-height: 1; cursor: pointer; color: inherit; opacity: 0.8;
   background: transparent; border: 0; border-radius: 6px; min-width: 24px; min-height: 24px; padding: 2px 4px;
 }
-.fp-when-close:hover { opacity: 1; background: rgba(127, 127, 127, 0.18); }
-body.deck-on .fp-when-close { min-width: 30px; min-height: 30px; }
+.fp-when-close:hover,
+.ac-close:hover { opacity: 1; background: rgba(127, 127, 127, 0.18); }
+body.deck-on .fp-when-close,
+body.deck-on .ac-close { min-width: 30px; min-height: 30px; }
 /* The one findings line: amber with a moon for night, red with a warning sign for a shut field. */
 .fp-dest-closed.fp-finding-night { color: #ffcc80; }
 .fp-dest-closed.fp-finding-night::before { content: '\263E  '; }
@@ -3997,7 +4004,8 @@ body.theme-light .fp-etd-soon { color: #1d5fbf; border-color: #9fb3cf; }
   50% { box-shadow: 0 0 0 4px rgba(229, 72, 77, 0.9); }
 }
 .fp-attn { animation: fp-attn-pulse 0.6s ease-in-out 3; border-radius: 6px; }
-details.fp-when summary.fp-attn { border-color: #e5484d; }
+details.fp-when summary.fp-attn,
+details.ac-custom summary.fp-attn { border-color: #e5484d; }
 @media (prefers-reduced-motion: reduce) {
   .fp-attn { animation: none; box-shadow: 0 0 0 3px #e5484d; }
 }
@@ -4028,7 +4036,8 @@ details.fp-when summary.fp-attn { border-color: #e5484d; }
    switch changes the text and nothing moves (it re-flowed the table and the row above it). */
 .flight-table th.fp-col-eta,
 .flight-table td.fp-col-eta { min-width: 9.5ch; white-space: nowrap; font-variant-numeric: tabular-nums; }
-.fp-when summary { font-variant-numeric: tabular-nums; }
+.fp-when summary,
+.ac-custom summary { font-variant-numeric: tabular-nums; }
 .fp-z-ghost { visibility: hidden; }
 .fp-etd-utc { display: inline-block; min-width: 9ch; }
 .fp-last-light {
@@ -4129,7 +4138,8 @@ body.deck-on .qtime select { min-height: 30px; font-size: 16px; }
 .fp-profile-dir .fp-dir-arrow { flex: 1; text-align: center; letter-spacing: 1px; color: #7fa8d0; }
 .fp-profile-canvas { width: 100%; height: 104px; display: block; border-radius: 4px; }
 .fp-columns,
-.fp-when {
+.fp-when,
+.ac-custom {
   position: relative;
   align-self: flex-start;
   margin: 0 0 8px;
@@ -4137,7 +4147,8 @@ body.deck-on .qtime select { min-height: 30px; font-size: 16px; }
   color: #b9b3b3;
 }
 .fp-columns summary,
-.fp-when summary {
+.fp-when summary,
+.ac-custom summary {
   display: inline-flex;
   align-items: center;
   gap: 6px;
@@ -4151,19 +4162,23 @@ body.deck-on .qtime select { min-height: 30px; font-size: 16px; }
   user-select: none;
 }
 .fp-columns summary::-webkit-details-marker,
-.fp-when summary::-webkit-details-marker { display: none; }
+.fp-when summary::-webkit-details-marker,
+.ac-custom summary::-webkit-details-marker { display: none; }
 .fp-columns summary::after,
-.fp-when summary::after {
+.fp-when summary::after,
+.ac-custom summary::after {
   content: '▾';
   font-size: 10px;
   color: #b9b3b3;
 }
 .fp-columns[open] summary,
-.fp-when[open] summary {
+.fp-when[open] summary,
+.ac-custom[open] summary {
   border-color: #1d6fe0;
   background: #332f2f;
 }
-.fp-columns-menu {
+.fp-columns-menu,
+.ac-menu {
   position: absolute;
   z-index: 1600;
   inset-block-start: calc(100% + 4px);
@@ -6150,7 +6165,8 @@ body.theme-light #tuning-panel button,
 body.theme-light #tuning-panel input[type="number"],
 body.theme-light #tuning-panel input[type="text"],
 body.theme-light #tuning-panel select,
-body.theme-light #tuning-panel input[type="color"] {
+body.theme-light #tuning-panel input[type="color"],
+body.theme-light .ac-custom summary {
   color: #1f252c;
   background: #fff;
   border-color: #b8c0cc;
@@ -6377,15 +6393,19 @@ body.theme-light .flight-table tfoot td {
   background: rgba(29, 111, 224, 0.07);
 }
 body.theme-light .fp-columns,
-body.theme-light .fp-when { color: #647184; }
+body.theme-light .fp-when,
+body.theme-light .ac-custom { color: #647184; }
 body.theme-light .fp-columns summary::after,
-body.theme-light .fp-when summary::after { color: #647184; }
+body.theme-light .fp-when summary::after,
+body.theme-light .ac-custom summary::after { color: #647184; }
 body.theme-light .fp-columns[open] summary,
-body.theme-light .fp-when[open] summary {
+body.theme-light .fp-when[open] summary,
+body.theme-light .ac-custom[open] summary {
   background: #eef3f9;
   border-color: #1d6fe0;
 }
-body.theme-light .fp-columns-menu {
+body.theme-light .fp-columns-menu,
+body.theme-light .ac-menu {
   color: #1f252c;
   background: #fff;
   border-color: #c6ccd6;
@@ -9917,8 +9937,14 @@ body.theme-light #export-progress { background: #fafcff; color: #1d2430; border-
 .fp-aircraft .ac-panel { display: contents; }
 #ac-panel-home { display: none; }
 .ac-type-row { display: inline-flex; align-items: center; }
-.fp-aircraft .ac-custom.fp-when { position: static; margin: 0; align-self: center; }
-.fp-columns-menu.fp-when-menu.ac-menu { max-width: min(440px, calc(92vw - 28px)); }
+.fp-aircraft .ac-custom { position: static; margin: 0; align-self: center; }
+.fp-columns-menu.fp-when-menu.ac-menu,
+/* Its own layout, last so it wins: one column, like the departure popover (the Columns menu's
+   two-column grid, whose look it shares, would split the figures from their note). */
+.ac-menu {
+  display: flex; flex-direction: column; align-items: flex-start; gap: 8px;
+  min-width: 0; width: max-content; max-width: min(440px, calc(92vw - 28px));
+}
 .ac-custom-grid { display: flex; flex-wrap: wrap; gap: 8px 14px; }
 .ac-custom-grid > label { display: inline-flex; align-items: center; gap: 6px; }
 .ac-custom-grid input[type="number"] { width: 64px; }

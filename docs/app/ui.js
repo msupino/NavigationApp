@@ -13001,8 +13001,9 @@ function backButtonStep() {
   // The tour sits over everything: Back ends it, as its own Skip does.
   if (document.getElementById('map-tour') && window.NavAid && NavAid.tour) { NavAid.tour.close(); return true; }
   if (typeof closeQuickLayers === 'function' && closeQuickLayers()) return true;
-  // A popover inside a panel closes before the panel (the flight plan's departure / Columns).
-  const pop = document.querySelector('details.fp-when[open], details.fp-columns[open]');
+  // A popover inside a panel closes before the panel (the flight plan's departure / Columns /
+  // the aircraft's Figures).
+  const pop = document.querySelector('details.fp-when[open], details.fp-columns[open], details.ac-custom[open]');
   if (pop) { pop.open = false; return true; }
   const modals = Array.from(document.querySelectorAll('.modal-back'));
   const top = modals.reverse().find(el => !el.hidden &&

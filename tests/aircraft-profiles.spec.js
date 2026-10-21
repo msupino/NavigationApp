@@ -243,3 +243,14 @@ test('the climb rate is one of the aircraft\'s figures, not a second box on the 
   await page.selectOption('#ac-model', 'PA28');
   await expect(page.locator('#ac-climb-fpm')).toHaveValue('650');                 // the type's, with it
 });
+
+test('Android Back closes Figures before the plan', async ({ page }) => {
+  await boot(page);
+  await openPlan(page);
+  await openFigures(page);
+  const consumed = await page.evaluate(() => typeof backButtonStep === 'function' ? backButtonStep() : null);
+  test.skip(consumed === null, 'backButtonStep not exposed');
+  expect(consumed).toBe(true);
+  await expect(page.locator('.ac-menu')).toBeHidden();
+  await expect(page.locator('.modal-back.flight-plan')).toBeVisible();
+});

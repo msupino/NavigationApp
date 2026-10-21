@@ -1465,16 +1465,16 @@
       <!-- The aircraft's own details, folded away. Your own aircraft is its call sign (the code the
            flight plan form files, after 4X-) and the type selected for it; a listed type is just
            its figures. A figure changed from the type's is marked. -->
-      <details class="ac-custom fp-when" id="ac-custom">
+      <details class="ac-custom" id="ac-custom">
         <!-- A short name on the button, so it shares the picker's line on a phone; the full one
              is its tooltip and the popover's heading. -->
         <summary data-i18n="acFigures" data-i18n-title="tbAircraftCustom"></summary>
         <!-- A popover over the plan, like Columns and the departure time: opening it does not
              make the plan taller (on a phone the plan only just fits the chart space). -->
-        <div class="fp-columns-menu fp-when-menu ac-menu" role="group" data-i18n-aria="tbAircraftCustom">
-        <div class="fp-when-head">
-          <span class="fp-when-label" data-i18n="tbAircraftCustom"></span>
-          <button type="button" class="fp-when-close" id="ac-custom-close" data-i18n-title="modalCloseTitle" data-i18n-aria="modalCloseTitle">✕</button>
+        <div class="ac-menu" role="group" data-i18n-aria="tbAircraftCustom">
+        <div class="ac-head">
+          <span class="ac-label" data-i18n="tbAircraftCustom"></span>
+          <button type="button" class="ac-close" id="ac-custom-close" data-i18n-title="modalCloseTitle" data-i18n-aria="modalCloseTitle">✕</button>
         </div>
         <div class="ac-custom-grid">
           <label class="ac-own-row" id="ac-callsign-row" data-i18n-title="acCallSignTitle">
