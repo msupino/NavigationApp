@@ -16,9 +16,9 @@ test('choosing C172 fills the figures from its table (taxi 1.1, the C172N/P manu
   await chooseType(page, 'C172');
   const v = await page.evaluate(() => ({ a: aircraft, vs: window.profileVS,
     ui: ['settings-gph', 'settings-taxi', 'settings-usable', 'settings-climb-kt'].map(id => document.getElementById(id).value) }));
-  expect(v.a).toMatchObject({ type: 'C172', gph: 8.5, taxiGal: 1.1, usableGal: 53, climbKt: 75 });
+  expect(v.a).toMatchObject({ type: 'C172', gph: 8, taxiGal: 1.1, usableGal: 53, climbKt: 75 });
   expect(v.vs).toBe(700);
-  expect(v.ui).toEqual(['8.5', '1.1', '53', '75']);
+  expect(v.ui).toEqual(['8', '1.1', '53', '75']);
   // The leg speed is its own setting: a type does not change it.
   const speed = await page.evaluate(() => { state.waypoints = [{ lat: 32.1, lng: 34.8, name: 'A' }, { lat: 32.3, lng: 34.9, name: 'B' }]; syncLegs(); return state.legs[0].flightSpeed; });
   expect(speed).toBe(await page.evaluate(() => tune('defaultLegSpeedKt')));
@@ -78,7 +78,7 @@ test('C172 by default; a profile from before types keeps its numbers as changes;
   await page.evaluate(() => { localStorage.removeItem('navaid.aircraft'); });
   await page.reload();
   await page.waitForFunction(() => typeof setAircraftType === 'function');
-  expect(await page.evaluate(() => [aircraft.type, aircraft.gph, document.getElementById('settings-ac-type').value])).toEqual(['C172', 8.5, 'C172']);
+  expect(await page.evaluate(() => [aircraft.type, aircraft.gph, document.getElementById('settings-ac-type').value])).toEqual(['C172', 8, 'C172']);
 });
 
 test('Settings lists the types, then Other… last, as the flight plan form does; Other keeps the figures', async ({ page }) => {
