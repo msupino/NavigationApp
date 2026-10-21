@@ -3966,7 +3966,7 @@ var aircraft = null;               // null | {gph, taxiGal, type?, climbFpm?, cl
 // C172: 1.1 gal taxi and take-off is the C172N/P manual figure.
 const AIRCRAFT_TYPES = {
   C152: { gph: 6, taxiGal: 0.8, climbFpm: 600, climbKt: 70, usableGal: 24.5 },
-  C172: { gph: 8.5, taxiGal: 1.1, climbFpm: 700, climbKt: 75, usableGal: 53 },
+  C172: { gph: 8, taxiGal: 1.1, climbFpm: 700, climbKt: 75, usableGal: 53 },
   PA28: { gph: 8.5, taxiGal: 1.2, climbFpm: 650, climbKt: 79, usableGal: 48 },
   DA40: { gph: 8.5, taxiGal: 1.0, climbFpm: 900, climbKt: 75, usableGal: 40 },
   SR22: { gph: 16, taxiGal: 2.0, climbFpm: 1000, climbKt: 110, usableGal: 81 },
