@@ -347,3 +347,6 @@ AIRMETs
 adws
 commfail
 Obtainium
+קומולונימבוס
+היקרחות
+rotateend

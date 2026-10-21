@@ -1,0 +1,279 @@
+From 91d3f73caced5f30138c6f14ded24d9991872453 Mon Sep 17 00:00:00 2001
+From: Marco <marco@supino.org>
+Date: Wed, 21 Oct 2026 06:54:31 +0000
+Subject: [PATCH] Aircraft profiles (#671): the aircraft in the flight plan's
+ Aircraft row, keyed by its call sign, its type selected for it; Figures
+ popover; descent rate; read-only call sign and type in the filing form
+
+---
+ Flight-Plan-he.md         | 36 ++++++++++++++++++++++++++---------
+ Flight-Plan.md            | 40 +++++++++++++++++++++++++++++----------
+ Fuel-Calculator-he.md     | 11 +++++------
+ Fuel-Calculator.md        | 11 +++++------
+ LocalStorage-Schema-he.md |  2 +-
+ LocalStorage-Schema.md    |  5 +++--
+ Submit-Flight-Plan-he.md  |  8 +++++---
+ Submit-Flight-Plan.md     |  9 ++++++---
+ Toolbar-he.md             |  6 +++---
+ Toolbar.md                |  6 +++---
+ 10 files changed, 88 insertions(+), 46 deletions(-)
+
+diff --git a/Flight-Plan-he.md b/Flight-Plan-he.md
+index 78cf2d1..8c52d58 100644
+--- a/Flight-Plan-he.md
++++ b/Flight-Plan-he.md
+@@ -62,15 +62,33 @@
+ 
+ ## קלטי כלי טיס
+ 
+-מעל הטבלה:
+-
+-- **גלון/שעה** — ברירת מחדל <span dir="ltr"><code>8</code></span>; נשמר ב-<span dir="ltr"><code>localStorage['navaid.aircraft']</code></span>.
+-- **הסעה והמראה (גאל)** — קצבת הפעלה + נסיעה + המראה; ברירת מחדל <span dir="ltr"><code>1.1</code></span>. מתווסף לסה"כ רק כאשר ציון הדרך הראשון מתאים לרשומה ב-<span dir="ltr"><code>airfields.json</code></span> (לפי שם או לפי קואורדינטות בטווח ~100 מ').
+-- אותם שני ערכים נמצאים גם ב**הגדרות** (*גלון/שעה*, *הסעה והמראה (גאל)*): פרופיל אחד, כך ששינוי במקום
+-  אחד מופיע מיד בשני.
+-- **מהירות אנכית (ft/min)** מעל הפרופיל האנכי — קובעת את **הטיפוס מהשדה** בפרופיל ואת סמן ה-**TOC** במפה;
+-  היא **אינה** משנה זמני קטעים או דלק (אלה מרחק ומהירות בלבד), ושורה מתחתיה אומרת זאת. גם בהגדרות, אותו ערך.
+-- **VOR** — תחנת ייחוס אופציונלית לעמודות רדיאל/DME. מסונכרנת עם בורר **תחנת ייחוס** בסרגל הכלים ונשמרת ב-<span dir="ltr"><code>navaid.vorRef</code></span>.
++מעל הטבלה, שורת **כלי טיס**:
++
++- **המטוס** — מזוהה לפי **אות הקריאה** שלו: הקוד ש[טופס תוכנית הטיסה](Submit-Flight-Plan-he) מגיש
++  אחרי <span dir="ltr"><code>4X-</code></span> (למשל <span dir="ltr"><code>CRW</code></span>), ומופיע ברשימה כ-<span dir="ltr"><code>4X-CRW (C172)</code></span>. אותה אות קריאה פעמיים
++  היא אותו מטוס. עד שנותנים לו אות קריאה הוא **ללא אות קריאה (C172)** — C172 כברירת מחדל.
++- **מטוס חדש…** שואל אות קריאה ומתחיל מהנתונים שבשימוש; הקלדת אות קריאה ב**נתונים** עושה אותו דבר
++  למטוס ללא אות קריאה, ובמטוס שיש לו אות קריאה משנה אותה.
++- **נתונים** (*נתונים מותאמים*) — חלון קופץ מעל התוכנית, כמו **עמודות** ושעת ההמראה, כך שפתיחתו אף
++  פעם לא מגדילה את התוכנית (התוכנית שומרת על הגודל שבו נפתחה; שום דבר בה לא זז בזמן הקלדה):
++  - **אות קריאה** ו**סוג** — הסוג נבחר למטוס: סוג מהרשימה (C152, C172, PA28, DA40, SR22, AT3, C42,
++    EV97, ULAC) ממלא את הנתונים הטיפוסיים שלו מספר המטוס, **אחר…** מקבל כל קוד ICAO;
++  - דלק שמיש, מהירות טיפוס, **קצב טיפוס** (הקצב שבו מצוירים הפרופיל האנכי ונקודת ה-**TOC** במפה;
++    הוא אינו משנה זמני קטעים או דלק, ושורה מתחתיו אומרת זאת), **קצב ירידה**;
++  - **שחזר את נתוני C172**, ו**מחק** (נשאל באפליקציה; המטוס חוזר להיות ללא אות קריאה, עם הסוג שלו).
++
++  כל נתון שמשנים בזמן שמטוס בשימוש נשמר בו. ה-✕, Escape (החלון הקופץ, לא התוכנית) או הקשה מחוץ לו
++  סוגרים אותו.
++- **גל׳/שעה** ו**הסעה + המראה (גל׳)** — נתוני הדלק של המטוס. ההסעה מתווספת רק כשנקודת המוצא היא
++  שדה ב-<span dir="ltr"><code>airfields.json</code></span> (לפי שם או בטווח ~100 מ'). נתון ששונה מערך הסוג מסומן בנקודה,
++  והחלונית הקטנה שלו מראה את ערך הסוג.
++- **VOR**, בשורה משלו מתחת לשורת כלי הטיס (הוא של המסלול, לא של המטוס) — תחנת ייחוס אופציונלית לעמודות רדיאל/DME. מסונכרנת עם בורר **תחנת ייחוס** בסרגל הכלים ונשמרת ב-<span dir="ltr"><code>navaid.vorRef</code></span>.
++
++קצב הירידה הוא הקצב שבו [יומן הניווט](Print-and-Export-he) מתכנן את הירידה, אלא אם נקבע קצב ביומן
++עצמו (500 רגל/דקה לכל סוג מהרשימה).
++
++נשמר ב-<span dir="ltr"><code>navaid.aircraft</code></span> (המטוס שבשימוש) וב-<span dir="ltr"><code>navaid.aircraftProfiles</code></span> (המטוסים
++שלכם); שניהם מסתנכרנים עם Drive כש**סנכרן גם הגדרות** דולק.
+ 
+ ## רדיאל / DME
+ 
+diff --git a/Flight-Plan.md b/Flight-Plan.md
+index 079afbe..9a56d0c 100644
+--- a/Flight-Plan.md
++++ b/Flight-Plan.md
+@@ -63,16 +63,36 @@ above the table. The return-route table has no ETAs: it is a separate flight.
+ 
+ ## Aircraft inputs
+ 
+-Above the table:
+-
+-- **Gallons per Hour** — defaults to `8`; persisted to `localStorage['navaid.aircraft']`.
+-- **Taxi and Takeoff (gal)** — startup + taxi + takeoff allowance; defaults to `1.1`. Only added to the total when the origin waypoint matches an entry in `airfields.json` (by name OR by coordinates within ~100 m).
+-- The same two figures are in **Settings** (*Gallons per hour*, *Taxi and takeoff (gal)*): one
+-  profile, so a change in either place shows in the other at once.
+-- **V/S (ft/min)** above the vertical profile — shapes the **departure climb** on the profile and
+-  the **TOC** marker on the map; it does **not** change leg times or fuel (those are distance and
+-  speed only), and a line under it says so. Also in Settings, the same value.
+-- **VOR** — optional reference VOR for Radial/DME columns. It syncs with the toolbar's **VOR ref** selector and persists to `navaid.vorRef`.
++Above the table, the **Aircraft** row:
++
++- **The aircraft** — keyed by its **call sign**: the code the [flight plan form](Submit-Flight-Plan)
++  files after `4X-` (e.g. `CRW`), listed as `4X-CRW (C172)`. The same call sign twice is the same
++  aircraft. Until you give it one it is **No call sign (C172)** — C172 by default.
++- **New aircraft…** asks for a call sign and starts from the figures in use; typing a call sign in
++  **Figures** does the same for the unnamed aircraft, and on one that has a call sign renames it.
++- **Figures** (*Custom figures*) — a popover over the plan, like **Columns** and the departure time,
++  so opening it never makes the plan taller (the plan keeps the size it opened at; nothing in it
++  moves as you type):
++  - **call sign** and **type** — the type is selected for the aircraft: a listed type (C152, C172,
++    PA28, DA40, SR22, AT3, C42, EV97, ULAC) fills its typical manual figures, **Other…** takes any
++    ICAO code;
++  - usable fuel, climb speed, **climb rate** (the rate the vertical profile and the map's **TOC**
++    are drawn with; it does not change leg times or fuel, and a line under it says so), **descent rate**;
++  - **Restore C172 figures**, and **Delete** (asked in the app; the aircraft goes back to having no
++    call sign, with its type).
++
++  Every figure changed while an aircraft is in use is saved into it. Its ✕, Escape (the popover,
++  not the plan) or a tap outside closes it.
++- **Gal/h** and **Taxi + T/O (gal)** — the aircraft's fuel figures. Taxi is added only when the
++  origin waypoint is an airfield in `airfields.json` (by name or within ~100 m). A figure changed
++  from the type's carries a dot, and its tooltip gives the type's value.
++- **VOR**, on its own line under the Aircraft row (it is the route's, not the aircraft's) — optional reference VOR for Radial/DME columns. It syncs with the toolbar's **VOR ref** selector and persists to `navaid.vorRef`.
++
++The descent rate is what the [nav log](Print-and-Export) plans the descent with, unless a rate is
++set in the nav log itself (500 fpm for every listed type).
++
++Stored as `navaid.aircraft` (the aircraft in use) and `navaid.aircraftProfiles` (your own aircraft);
++both sync with Drive when **Sync settings too** is on.
+ 
+ ## Radial / DME
+ 
+diff --git a/Fuel-Calculator-he.md b/Fuel-Calculator-he.md
+index 0535a50..158947c 100644
+--- a/Fuel-Calculator-he.md
++++ b/Fuel-Calculator-he.md
+@@ -9,13 +9,12 @@
+ 
+ ## מה מגדירים
+ 
+-בחרו **סוג מטוס** ב**הגדרות** (C172 כברירת מחדל; C152, C172, PA28, DA40, SR22, AT3, C42, EV97,
+-ULAC). הוא ממלא את שני הנתונים שלמטה, את הדלק השמיש שטופס תוכנית הטיסה מחשב ממנו סיבולת, ואת קצב
+-ומהירות הטיפוס שבפרופיל האנכי. הם נמצאים ב**נתונים מותאמים**: שינוי של אחד מהם מסומן בנקודה,
+-החלונית הקטנה שלו מראה את ערך הסוג, ו**שחזר את נתוני C172** מחזיר את כולם. מהירות הקטע אינה
+-חלק מהמטוס; יש לה הגדרה משלה.
++בחרו את המטוס בשורת **כלי טיס** שבראש **📋 תוכנית טיסה**: המטוס (לפי אות הקריאה שלו)
++והסוג שנבחר לו (C172 כברירת מחדל) — ראו [תכנית טיסה](Flight-Plan-he#קלטי-כלי-טיס). הוא ממלא את שני הנתונים שלמטה, את
++הדלק השמיש שטופס תוכנית הטיסה מחשב ממנו סיבולת, ואת נתוני הטיפוס והירידה. מהירות הקטע אינה חלק
++מהמטוס; יש לה הגדרה משלה.
+ 
+-שני נתוני הדלק נמצאים גם בשורת **כלי טיס** שבראש **📋 תוכנית טיסה**:
++שני נתוני הדלק נמצאים בשורה הזו כ**גל׳/שעה** ו**הסעה + המראה (גל׳)**:
+ 
+ | שדה | משמעות |
+ | --- | --- |
+diff --git a/Fuel-Calculator.md b/Fuel-Calculator.md
+index 9ef0a39..f1ae683 100644
+--- a/Fuel-Calculator.md
++++ b/Fuel-Calculator.md
+@@ -6,13 +6,12 @@ NavAid's fuel figures are part of the **Flight Plan** — there is no separate f
+ 
+ ## What you set
+ 
+-Choose the **Aircraft type** in **Settings** (C172 by default; C152, C172, PA28, DA40, SR22, AT3,
+-C42, EV97, ULAC). It fills the two figures below, the usable fuel the flight plan form uses for
+-endurance, and the climb rate and speed the vertical profile uses. They sit in **Custom figures**:
+-change any of them and a dot marks it, its tooltip gives the type's value, and **Restore C172
+-figures** puts them all back. Leg speed is not part of the aircraft; it keeps its own setting.
++Choose the aircraft in the **Aircraft** row at the top of **📋 Flight plan**: the aircraft (by its call sign)
++and the type selected for it (C172 by default) — see [Flight Plan](Flight-Plan#aircraft-inputs). It fills
++the two figures below, the usable fuel the flight plan form uses for endurance, and the climb and
++descent figures. Leg speed is not part of the aircraft; it keeps its own setting.
+ 
+-The two fuel figures are also in the **Aircraft** row at the top of **📋 Flight plan**:
++The two fuel figures sit in that row as **Gal/h** and **Taxi + T/O (gal)**:
+ 
+ | Field | Meaning |
+ | --- | --- |
+diff --git a/LocalStorage-Schema-he.md b/LocalStorage-Schema-he.md
+index 790df0e..5af84e1 100644
+--- a/LocalStorage-Schema-he.md
++++ b/LocalStorage-Schema-he.md
+@@ -25,7 +25,7 @@
+ - <span dir="ltr"><code>navaid.altSource</code></span>, <span dir="ltr"><code>navaid.brightness</code></span> — גובה לפי GPS או ברומטר, ובהירות המסך. מקומיים למכשיר:
+   אם יש לטלפון ברומטר שמיש, וכמה בהיר צריך להיות המסך שלו בתא הזה, הן עובדות על הטלפון הזה.
+ - <span dir="ltr"><code>navaid.etd</code></span> — שעת ההמראה המתוכננת <span dir="ltr">{date, time}</span>, מקומית, משותפת לתכנית הטיסה ולטופס ההגשה. נשארת במכשיר: עובדה על טיסה אחת, לא הגדרה. <span dir="ltr"><code>navaid.etaZulu</code></span> — הצגת שעות ב-UTC (מסתנכרן).
+-- <span dir="ltr"><code>navaid.fpl.&lt;field&gt;</code></span>, <span dir="ltr"><code>navaid.aircraft</code></span>, <span dir="ltr"><code>navaid.profileVS</code></span> — פרופיל ותכנית טיסה.
++- <span dir="ltr"><code>navaid.fpl.&lt;field&gt;</code></span>, <span dir="ltr"><code>navaid.aircraft</code></span>, <span dir="ltr"><code>navaid.aircraftProfiles</code></span>, <span dir="ltr"><code>navaid.profileVS</code></span> — פרופיל ותכנית טיסה (<span dir="ltr"><code>aircraftProfiles</code></span>: המטוסים שלכם, כל אחד אות קריאה, סוג והנתונים שלו).
+   <span dir="ltr"><code>aisEmail</code></span> נשאר במכשיר כי הוא קובע את יעד ההגשה; <span dir="ltr"><code>replyTo</code></span> יכול להסתנכרן.
+   התיבה אומרת זאת במקום: סימון **סנכרן גם הגדרות** מפרט את פרטי הטייס
+   (שם, רישיון, טלפון) ואת פרופיל המטוס שמועלים, מפני ש"הגדרות" נקרא אחרת
+diff --git a/LocalStorage-Schema.md b/LocalStorage-Schema.md
+index 9c495b1..7f52347 100644
+--- a/LocalStorage-Schema.md
++++ b/LocalStorage-Schema.md
+@@ -18,8 +18,9 @@ human-readable map; the complete enforceable registry is
+ - `navaid.etd` — the planned departure `{date, time}`, local, shared by the flight plan and the
+   filing dialog. Device-local: a fact about one flight, not a setting. `navaid.etaZulu` — show
+   times in UTC (synced).
+-- `navaid.fpl.<field>`, `navaid.aircraft`, `navaid.profileVS` — flight-plan and
+-  aircraft profile values. `aisEmail` is device-local because it controls the
++- `navaid.fpl.<field>`, `navaid.aircraft`, `navaid.aircraftProfiles`, `navaid.profileVS` —
++  flight-plan and aircraft values (`aircraftProfiles`: your own aircraft, each a call sign, a type
++  and its figures). `aisEmail` is device-local because it controls the
+   filing destination; the user's `replyTo` may sync.
+   The checkbox says so in place: ticking **Sync settings too** names the pilot
+   details (name, licence, phone) and aircraft profile it uploads, since "settings"
+diff --git a/Submit-Flight-Plan-he.md b/Submit-Flight-Plan-he.md
+index c4cc4d1..be177e6 100644
+--- a/Submit-Flight-Plan-he.md
++++ b/Submit-Flight-Plan-he.md
+@@ -32,9 +32,11 @@ NavAid בונה את הודעת **תוכנית הטיסה בתקן ICAO** עבו
+ 
+ פרטי כלי הטיס והטייס נשמרים במכשיר. הם מסתנכרנים דרך Google Drive רק כאשר מפעילים בנפרד את **סנכרן גם הגדרות**, כך שבדרך כלל זו הגדרה חד־פעמית. אותם פרטים משמשים את **שני** סוגי התוכניות — הודעת ה־ICAO וטופס טיסת המרחב:
+ 
+-- **אות קריאה** — שלוש אותיות מספיקות; הקידומת <span dir="ltr"><code>4X-</code></span> מודפסת ליד השדה ואינה מוקלדת.
+-- **סוג כלי הטיס** — קוד ICAO (<span dir="ltr"><code>C172</code></span>, <span dir="ltr"><code>PA28</code></span>, <span dir="ltr"><code>ULAC</code></span> וכדומה). הנפוצים מוצעים. הוא נלקח מ**הגדרות ← סוג מטוס**, ובחירה בסוג
+-  מהרשימה כאן קובעת אותו גם שם; **אחר…** מגיש כל סוג אחר.
++- **אות קריאה** — שלוש אותיות מספיקות; הקידומת <span dir="ltr"><code>4X-</code></span> מודפסת ליד השדה ואינה מוקלדת. כשלמטוס
++  [שבשימוש](Flight-Plan-he#קלטי-כלי-טיס) יש אות קריאה, זו אות הקריאה שלו, לקריאה בלבד כאן.
++- **סוג כלי הטיס** — סוג ה-ICAO של המטוס שבתוכנית הטיסה, **לקריאה בלבד**: נבחר בשורת **כלי טיס**
++  שבתוכנית (הסוג שנבחר למטוס), ושורה מתחתיו אומרת זאת. מקום אחד לבחור בו,
++  וסוג מוגש שלא יכול לסתור את הנתונים שהתוכנית חושבה איתם.
+ - **דלק בכלי הטיס** — בשעות: הדלק השמיש של המטוס פחות תוספת ההסעה, חלקי הצריכה, מעוגל כלפי מטה
+   לחצי שעה (ראו [דלק](Fuel-Calculator-he)).
+ - **נפשות בכלי הטיס** — בצורת "טייס + n".
+diff --git a/Submit-Flight-Plan.md b/Submit-Flight-Plan.md
+index d996dcd..1006f7d 100644
+--- a/Submit-Flight-Plan.md
++++ b/Submit-Flight-Plan.md
+@@ -30,9 +30,12 @@ The **total time is filed rounded up to the next 5 minutes** — nobody files `0
+ 
+ Aircraft and pilot details persist on the device. They sync through Google Drive only when you separately enable **Sync settings too**, so this is usually a one-time setup. The same details serve **both** plan types — the ICAO message and the cross-country form:
+ 
+-- **Call sign** — three letters is enough; `4X-` is printed beside the field, not typed.
+-- **Aircraft type** — ICAO designator (`C172`, `PA28`, `ULAC`…). Common ones are offered. It comes from **Settings → Aircraft type**, and
+-  choosing a listed type here sets it there too; **Other…** files anything else.
++- **Call sign** — three letters is enough; `4X-` is printed beside the field, not typed. Once the
++  [aircraft](Flight-Plan#aircraft-inputs) in use has a call sign, it is that one, read-only here.
++- **Aircraft type** — the ICAO type of the flight plan's aircraft, **read-only**: chosen in the
++  plan's **Aircraft** row (the type selected for the aircraft), with a line
++  under it saying so. One place to choose it, and a filed type that cannot disagree with the
++  figures the plan was worked out with.
+ - **Fuel endurance** — in hours: the aircraft's usable fuel less the taxi allowance, over its
+   burn, rounded down to the half hour (see [Fuel](Fuel-Calculator)).
+ - **Persons on board** — as "pilot + n".
+diff --git a/Toolbar-he.md b/Toolbar-he.md
+index db681a0..9c39917 100644
+--- a/Toolbar-he.md
++++ b/Toolbar-he.md
+@@ -133,14 +133,14 @@
+ | **🧭 נתיבים** | טבלה הניתנת לחיפוש של זוגות הגובה הנלמדים של CVFR; העתק JSON ללוח. |
+ | **יחידת לחץ** | **inHg** או **hPa**. הרצועה בטיסה מציגה בה את ה-QNH (<span dir="ltr">`29.91″` / `1013 hPa`</span>); שורות METAR ושדות שומרות את שתי הסקאלות, הנבחרת ראשונה; לחץ התא בפרטי ה-GPS הולך אחריה. מסונכרנת עם שאר הגדרות הטייס (<span dir="ltr"><code>navaid.pressureUnit</code></span>; ברירת מחדל ב-gist: <span dir="ltr"><code>defaultPressureUnit</code></span>, inHg). |
+ | **גובה לפי** | **GPS** (מתוקן למחוון, כמו קודם) או **ברומטר + QNH** — חיישן הלחץ של הטלפון עם ה-QNH שהאפליקציה כבר מביאה, החישוב של מד הגובה עצמו <span dir="ltr">`145366 × (1 − (p / QNH)^0.19)`</span> רגל. הגובה בטיסה והתראות הגובה הולכים אחריו. בלי קריאה עדכנית (5 שנ׳) או QNH — חוזר ל-GPS. לא לתא מופעל לחץ. מקומי למכשיר (<span dir="ltr"><code>navaid.altSource</code></span>; ב-gist: <span dir="ltr"><code>defaultAltSource</code></span>, gps). |
+-| *(קו מפריד)* | מעליו: הגדרות הטייס והאפליקציה. מתחתיו: נתוני כלי הטיס. |
+-| **גלון/שעה** / **הסעה והמראה (גאל)** | נתוני הדלק של כלי הטיס, אותו פרופיל כמו ב[תכנית הטיסה](Flight-Plan-he) (<span dir="ltr"><code>navaid.aircraft</code></span>): שינוי במקום אחד מופיע בשני. |
+-| **מהירות אנכית (ft/min)** | קצב הטיפוס שבו מצוירים הפרופיל האנכי וה-TOC במפה — לא זמנים ולא דלק, כמו שהשורה מתחתיו אומרת. אותו ערך כמו בתכנית הטיסה (<span dir="ltr"><code>navaid.profileVS</code></span>). |
+ | **הצג את הסיור** | מנגן שוב את סיור המפה. |
+ | **בהירות מסך** | *(אפליקציית אנדרואיד)* מחוון לתא הטייס בלילה, גם מתחת למינימום של הטלפון (מסך כהה משלים את השאר; בדפדפן יש רק אותו). **בהירות: חזרה להגדרת הטלפון** מחזירה לטלפון. מקומי למכשיר (<span dir="ltr"><code>navaid.brightness</code></span>). ב-gist: <span dir="ltr"><code>featureBrightness</code></span>. |
+ | **חיבור GPS בבלוטות׳** | *(אפליקציית אנדרואיד, כבוי כברירת מחדל — <span dir="ltr"><code>featureBleGps</code></span>)* GPS חיצוני ב-Bluetooth LE (NMEA $..RMC/$..GGA). כשהוא מספק מיקום, המיקום של הטלפון זז הצידה ושורת ה-GPS מראה **BT**. מחוץ לאפליקציה הוא מעומעם, עם הסיבה. |
+ | **גרסת האפליקציה** | הגרסה המותקנת, וב-APK למה עדכון מחכה — ראו [לא מקוון ו-PWA](Offline-and-PWA-he#אפליקציית-מובייל-android-apk). |
+ 
++המטוס והנתונים שלו נמצאים עכשיו בשורת **כלי טיס** שבתוכנית הטיסה, לא כאן — ראו
++[תכנית טיסה](Flight-Plan-he#קלטי-כלי-טיס).
++
+ ## ייצוא / ייבוא
+ 
+ | פקד | פעולה |
+diff --git a/Toolbar.md b/Toolbar.md
+index 1609d17..5cf4d5e 100644
+--- a/Toolbar.md
++++ b/Toolbar.md
+@@ -141,14 +141,14 @@ The NOTAM, SIGMET and AIRMET lists move by their title bar and open again where
+ | **🧭 Alt pairs** | Searchable table of the learned CVFR altitude pairs; Copy JSON to clipboard. |
+ | **Pressure unit** | **inHg** or **hPa**. The in-flight strip shows the QNH in it (`29.91″` / `1013 hPa`); METAR and airfield lines keep both scales with the chosen one first; the cabin pressure in the GPS details follows it. Syncs with the other pilot settings (`navaid.pressureUnit`; gist default `defaultPressureUnit`, `inHg`). |
+ | **Altitude from** | **GPS** (corrected to indicated, as before) or **Barometer + QNH** — the phone's pressure sensor with the QNH the app already fetches, the altimeter's own sum `145366 × (1 − (p / QNH)^0.19)` ft. The in-flight altitude and the altitude alerts follow it. Without a fresh reading (5 s) or a QNH it falls back to GPS. Not for a pressurised cabin. Device-local (`navaid.altSource`; gist `defaultAltSource`, `gps`). |
+-| *(separator)* | Above: the pilot's and the app's settings. Below: the aircraft's numbers. |
+-| **Gallons per hour** / **Taxi and takeoff (gal)** | The aircraft's fuel figures, the same profile as the [flight plan's](Flight-Plan#aircraft-inputs) (`navaid.aircraft`): a change in either place shows in the other. |
+-| **V/S (ft/min)** | The climb rate the vertical profile and the map's TOC are drawn with — not times or fuel, as the line under it says. Same value as the flight plan's (`navaid.profileVS`). |
+ | **Show the tour** | Plays the map tour again. |
+ | **Screen brightness** | *(Android app)* A slider for the cockpit at night, below the phone's own minimum if needed (a dark veil does the rest; in a browser the veil is all there is). **Brightness: back to the phone's setting** hands it back. Device-local (`navaid.brightness`). Gist: `featureBrightness`. |
+ | **Connect Bluetooth GPS** | *(Android app, off by default — `featureBleGps`)* An external GPS over Bluetooth LE (NMEA $..RMC/$..GGA). While it delivers, the phone's own fixes step aside and the GPS line shows **BT**. Dimmed, with its reason, outside the app. |
+ | **App version** | The installed version, and in the APK what an update is waiting for — see [Offline and PWA](Offline-and-PWA#mobile-app-android-apk). |
+ 
++The aircraft and its figures are in the flight plan's **Aircraft** row now, not here — see
++[Flight Plan](Flight-Plan#aircraft-inputs).
++
+ ## Export/import
+ 
+ | Control | What it does |
+-- 
+2.43.0
+

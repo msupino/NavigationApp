@@ -73,7 +73,11 @@ test.describe('Flight-plan modal table print', () => {
       maxWidth: el.style.maxWidth,
       maxHeight: el.style.maxHeight,
     }));
-    expect(inlineSize).toEqual({ width: '', height: '', maxWidth: '', maxHeight: '' });
+    // The window does take an inline size now -- the one it measured itself at once filled, so it
+    // does not jump as columns come and go -- but never the stored one.
+    expect(inlineSize.width).not.toBe('760px');
+    expect(inlineSize.height).not.toBe('540px');
+    expect([inlineSize.maxWidth, inlineSize.maxHeight]).toEqual(['', '']);
   });
 
   test('print mode is a white table document without modal controls', async ({ page }) => {

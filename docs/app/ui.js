@@ -7850,43 +7850,80 @@ const notamCb = document.getElementById('notam-cb');
 // The five things that can say "not this plan, not at this time", asked together and against
 // the clock. Each of them already knew its own half; none of them looked at the plan, and none
 // of them looked at when. See routecheck.js.
-// Settings -> Gallons per hour / Taxi and takeoff: the flight plan's two aircraft fields, in
-// the place a pilot sets things once. One profile (`aircraft`, navaid.aircraft): typing here
-// while the flight plan is open goes through ITS fields, so its fuel column and the route
-// totals follow at once; with it closed, the profile is saved and the map redrawn.
-// The flight plan, in turn, calls refreshSettingsAircraft() so this row follows it.
+// The aircraft panel (index.html #ac-panel), in the flight plan's Aircraft row. The aircraft is
+// keyed by its call sign (the code the flight plan form files, after 4X-); its type is one of its
+// properties, selected for it. Until a call sign is given it is the unnamed aircraft, with a type
+// all the same. One aircraft (`aircraft`, navaid.aircraft): the plan's
+// Gal/hour and Taxi boxes are its fuel figures, the Custom figures popover the rest. The filing
+// form shows its call sign and type read-only (io.js).
+const AC_PROFILE_OPT = 'profile:';
+const AC_NEW_OPT = '__new';
+const AC_OTHER_OPT = '__other';
+// Found through the panel itself, not the document: the flight plan builds its box before it is on
+// the page, and the panel is refreshed while it sits in that box.
+const AC_PANEL = document.getElementById('ac-panel');
+const acRoot = () => (AC_PANEL && AC_PANEL.parentNode ? AC_PANEL.getRootNode() : document);
+const acEl = id => (AC_PANEL && AC_PANEL.querySelector('#' + id)) || acRoot().querySelector('#' + id);
+const acLabel = p => '4X-' + p.name + (p.type ? ' (' + p.type + ')' : '');
+// What the filing form files: kept with the form's own fields (io.js FPL_PROFILE_PREFIX).
+function saveFilingAircraft() {
+  try {
+    if (aircraft && aircraft.type) localStorage.setItem(FPL_PROFILE_PREFIX + 'type', aircraft.type);
+    const p = typeof activeAircraftProfile === 'function' ? activeAircraftProfile() : null;
+    if (p) localStorage.setItem(FPL_PROFILE_PREFIX + 'reg', p.name);
+  } catch (e) { /* storage off */ }
+}
 function refreshSettingsAircraft() {
-  const g = document.getElementById('settings-gph');
-  const t = document.getElementById('settings-taxi');
-  if (!g || !t) return;
   // Read only: an empty flight-plan box leaves `aircraft` null on purpose (fuel shows '--'),
   // and loading the stored profile here would quietly undo that.
   let a = aircraft;
   if (!a) { try { a = JSON.parse(localStorage.getItem('navaid.aircraft') || 'null'); } catch (e) { a = null; } }
   if (!a || !(Number(a.gph) > 0)) a = { gph: tune('defaultGph'), taxiGal: tune('defaultTaxiGal') };
-  if (document.activeElement !== g) g.value = a.gph;
-  if (document.activeElement !== t) t.value = a.taxiGal;
-  // The type and its other figures; empty where no type gives one and the pilot set none.
-  const typeSel = document.getElementById('settings-ac-type');
+  const prof = typeof activeAircraftProfile === 'function' ? activeAircraftProfile() : null;
+  const types = Object.keys(window.AIRCRAFT_TYPES || {});
+  const listed = !!(a.type && window.AIRCRAFT_TYPES[a.type]);
+  const add = (parent, value, text) => {
+    const o = document.createElement('option');
+    o.value = value; o.textContent = text;
+    parent.appendChild(o);
+  };
+  // The aircraft, by call sign: the unnamed one first while it is in use, then the pilot's own.
+  const typeSel = acEl('ac-type');
   if (typeSel) {
-    if (!typeSel.options.length) {
-      for (const code of Object.keys(window.AIRCRAFT_TYPES || {})) {
-        const o = document.createElement('option'); o.value = code; o.textContent = code; typeSel.appendChild(o);
-      }
-      // Last, as in the flight plan form: any other aircraft, with the figures set by hand.
-      const other = document.createElement('option');
-      other.value = ''; other.textContent = S.fplTypeOther || 'Other\u2026';
-      typeSel.appendChild(other);
-    }
-    typeSel.value = (a.type && window.AIRCRAFT_TYPES[a.type]) ? a.type : '';
+    typeSel.replaceChildren();
+    if (!prof) add(typeSel, '', (S.acNoCallSign || 'No call sign') + ' (' + (a.type || '\u2014') + ')');
+    for (const p of aircraftProfiles) add(typeSel, AC_PROFILE_OPT + p.id, acLabel(p));
+    add(typeSel, AC_NEW_OPT, S.acNewProfile || 'New aircraft\u2026');
+    typeSel.value = prof ? AC_PROFILE_OPT + prof.id : '';
   }
-  for (const [id, f] of [['settings-usable', 'usableGal'], ['settings-climb-kt', 'climbKt']]) {
-    const el = document.getElementById(id);
+  const cs = acEl('ac-callsign');
+  if (cs && document.activeElement !== cs) cs.value = prof ? prof.name : '';
+  const model = acEl('ac-model');
+  const icao = acEl('ac-icao');
+  if (model) {
+    model.replaceChildren();
+    for (const code of types) add(model, code, code);
+    add(model, AC_OTHER_OPT, S.fplTypeOther || 'Other…');
+    const other = !!(a.type && !listed);
+    model.value = listed ? a.type : (other ? AC_OTHER_OPT : (types[0] || ''));
+    if (icao) {
+      icao.hidden = !other;
+      if (document.activeElement !== icao) icao.value = other ? a.type : '';
+    }
+  }
+  for (const [id, f] of [['ac-usable', 'usableGal'], ['ac-climb-kt', 'climbKt'], ['ac-descent', 'descentFpm']]) {
+    const el = acEl(id);
     if (el && document.activeElement !== el) el.value = Number(a[f]) > 0 ? a[f] : '';
+  }
+  // The climb rate: the one the profile is drawn with (window.profileVS), the aircraft's otherwise.
+  const climb = acEl('ac-climb-fpm');
+  if (climb && document.activeElement !== climb) {
+    const v = window.profileVS > 0 ? window.profileVS : Number(a.climbFpm);
+    climb.value = v > 0 ? String(v) : '';
   }
   // A dot on each figure changed from the type's, saying what the type gives; Restore when any is.
   let any = false;
-  for (const lab of document.querySelectorAll('.ac-field[data-field]')) {
+  for (const lab of acRoot().querySelectorAll('.ac-field[data-field]')) {
     const f = lab.dataset.field;
     const d = typeof aircraftTypeDefault === 'function' ? aircraftTypeDefault(f) : null;
     const cur = f === 'climbFpm' ? (window.profileVS > 0 ? window.profileVS : a.climbFpm) : a[f];
@@ -7895,73 +7932,126 @@ function refreshSettingsAircraft() {
     lab.dataset.typeValue = changed ? String(d) : '';
     if (lab.dataset.baseTitle === undefined) lab.dataset.baseTitle = lab.title || '';
     lab.title = changed && typeof S.aircraftChangedFrom === 'function'
-      ? lab.dataset.baseTitle + ' \u2014 ' + S.aircraftChangedFrom(d) : lab.dataset.baseTitle;
+      ? lab.dataset.baseTitle + ' — ' + S.aircraftChangedFrom(d) : lab.dataset.baseTitle;
     if (changed) any = true;
   }
-  const restore = document.getElementById('settings-ac-restore');
+  const restore = acEl('ac-restore');
   if (restore) {
-    const has = !!(a.type && window.AIRCRAFT_TYPES[a.type]);
-    restore.hidden = !has;
-    restore.textContent = has ? (typeof S.tbAircraftRestore === 'function' ? S.tbAircraftRestore(a.type) : 'Restore ' + a.type + ' figures') : '';
-    if (typeof setButtonWhy === 'function') setButtonWhy(restore, any ? null : (S.whyAircraftAsType || 'Every figure is the type\u2019s already'));
+    restore.hidden = !listed;
+    restore.textContent = listed ? (typeof S.tbAircraftRestore === 'function' ? S.tbAircraftRestore(a.type) : 'Restore ' + a.type + ' figures') : '';
+    if (typeof setButtonWhy === 'function') setButtonWhy(restore, any ? null : (S.whyAircraftAsType || 'Every figure is the type’s already'));
   }
-  // Vertical speed: the flight plan's V/S, the same window.profileVS / navaid.profileVS.
-  const vs = document.getElementById('settings-vs');
-  if (vs && document.activeElement !== vs) {
-    let v = window.profileVS > 0 ? window.profileVS : 0;
-    if (!v) { try { v = parseInt(localStorage.getItem('navaid.profileVS'), 10) || 0; } catch (e) { v = 0; } }
-    vs.value = String(v > 0 ? v : 500);
-  }
+  const del = acEl('ac-profile-delete');
+  if (del && typeof setButtonWhy === 'function') setButtonWhy(del, prof ? null : (S.whyAcNoProfile || 'Choose one of your own aircraft first'));
 }
 window.refreshSettingsAircraft = refreshSettingsAircraft;
-(function wireSettingsAircraft() {
-  const g = document.getElementById('settings-gph');
-  const t = document.getElementById('settings-taxi');
-  if (!g || !t) return;
-  const onInput = () => {
-    const fpG = document.getElementById('aircraft-gph');
-    const fpT = document.getElementById('aircraft-taxi');
-    if (fpG && fpT) {
-      fpG.value = g.value; fpT.value = t.value;
-      fpG.dispatchEvent(new Event('input'));
-      return;
+(function wireAircraftPanel() {
+  const typeSel = acEl('ac-type');
+  if (!typeSel) return;
+  // An aircraft set by hand before there were profiles (the type "Other...", with the form
+  // filing some other ICAO type) becomes one of the pilot's own aircraft: its call sign from the
+  // form (or the type, without one), that type selected for it. The filing form no longer takes a
+  // type of its own, and that type would otherwise be lost.
+  try {
+    const filed = aircraftIcao(localStorage.getItem(FPL_PROFILE_PREFIX + 'type'));
+    const reg = aircraftCallSign(localStorage.getItem(FPL_PROFILE_PREFIX + 'reg'));
+    if (aircraft && !aircraft.profile && !window.AIRCRAFT_TYPES[aircraft.type] && filed.length >= 2
+        && !window.AIRCRAFT_TYPES[filed]) {
+      createAircraftProfile(reg || filed, filed);
     }
-    const gph = parseFloat(g.value);
-    if (!(gph > 0)) return;            // an empty box is not a profile; storage keeps the last one
-    // Only the two fuel figures change here; the type and its other figures stay.
-    aircraft = Object.assign({}, aircraft || {}, { gph, taxiGal: parseFloat(t.value) || 0 });
-    if (typeof saveAircraft === 'function') saveAircraft();
-    refreshSettingsAircraft();
-    draw();
-  };
-  // The type: every figure from its table, the flight plan's fields and the filing type with it.
-  const typeSel = document.getElementById('settings-ac-type');
+  } catch (e) { /* storage off */ }
+  // The plan's own boxes and its profile strip follow whatever changed here.
   const pushToPlan = () => {
     const fpG = document.getElementById('aircraft-gph');
     const fpT = document.getElementById('aircraft-taxi');
     if (fpG && fpT && aircraft) { fpG.value = aircraft.gph; fpT.value = aircraft.taxiGal; fpG.dispatchEvent(new Event('input')); }
-    const fpVs = document.querySelector('.fp-profile-vs-input');
-    if (fpVs && window.profileVS > 0) { fpVs.value = String(window.profileVS); fpVs.dispatchEvent(new Event('input')); }
+    // The strip is drawn at the aircraft's climb rate: redraw it with the new one.
+    if (typeof refreshFlightPlan === 'function' && refreshFlightPlan) refreshFlightPlan();
+    saveFilingAircraft();
     refreshSettingsAircraft();
     draw();
   };
-  // One aircraft, two places to choose it: Settings and the flight plan form's type. Either one
-  // sets the type, its figures and the type filed, and it is remembered.
   function applyAircraftType(code) {
     setAircraftType(code);
-    // The form's own profile field (io.js FPL_PROFILE_PREFIX + 'type'), synced with that profile.
-    if (code) { try { localStorage.setItem(FPL_PROFILE_PREFIX + 'type', code); } catch (e) { /* storage off */ } }
     pushToPlan();
   }
   window.applyAircraftType = applyAircraftType;
-  if (typeSel) typeSel.addEventListener('change', () => applyAircraftType(typeSel.value));
-  const restore = document.getElementById('settings-ac-restore');
+  // New aircraft: its call sign is asked; the type is then selected for it in Custom figures,
+  // starting from the type in use.
+  async function newAircraft() {
+    const name = typeof askText === 'function'
+      ? await askText(S.acNewProfileTitle || 'New aircraft', S.acNewProfileName || 'Call sign (after 4X-)', '', S.acCreate || 'Create')
+      : null;
+    const cs = aircraftCallSign(name);
+    if (!cs) { refreshSettingsAircraft(); return; }        // cancelled: the picker shows what is in use
+    createAircraftProfile(cs, aircraft && aircraft.type);
+    pushToPlan();
+    const fig = acEl('ac-custom');
+    if (fig) fig.open = true;                                 // where its type is selected
+    if (typeof showToast === 'function') showToast(typeof S.acProfileSaved === 'function' ? S.acProfileSaved('4X-' + cs) : cs);
+  }
+  typeSel.addEventListener('change', () => {
+    const v = typeSel.value;
+    if (v === AC_NEW_OPT) { newAircraft(); return; }
+    if (v.startsWith(AC_PROFILE_OPT)) {
+      selectAircraftProfile(v.slice(AC_PROFILE_OPT.length));
+      pushToPlan();
+      return;
+    }
+  });
+  // The call sign is the aircraft's key: given to the unnamed aircraft it makes it one of the
+  // pilot's own (with its type and figures); changed on one of them it renames it.
+  const cs = acEl('ac-callsign');
+  if (cs) cs.addEventListener('change', () => {
+    const p = activeAircraftProfile();
+    const v = aircraftCallSign(cs.value);
+    if (p) { if (renameAircraftProfile(p.id, v)) saveFilingAircraft(); }
+    else if (v) {
+      createAircraftProfile(v, aircraft && aircraft.type);
+      pushToPlan();
+      if (typeof showToast === 'function') showToast(typeof S.acProfileSaved === 'function' ? S.acProfileSaved('4X-' + v) : v);
+      return;
+    }
+    refreshSettingsAircraft();
+  });
+  // The aircraft's type, selected for it: a listed one brings its figures; Other files any code.
+  const model = acEl('ac-model');
+  const icao = acEl('ac-icao');
+  if (model) model.addEventListener('change', () => {
+    if (model.value === AC_OTHER_OPT) {
+      if (icao) { icao.hidden = false; icao.focus(); }
+      return;
+    }
+    if (activeAircraftProfile()) { if (setAircraftProfileType(model.value)) pushToPlan(); }
+    else applyAircraftType(model.value);
+  });
+  if (icao) icao.addEventListener('input', () => {
+    const v = aircraftIcao(icao.value);
+    if (icao.value !== v) icao.value = v;
+    if (v.length < 2) return;
+    if (activeAircraftProfile()) setAircraftProfileType(v);
+    else { aircraft = Object.assign({}, aircraft, { type: v }); delete aircraft.profile; saveAircraft(); }
+    saveFilingAircraft();
+  });
+  const del = acEl('ac-profile-delete');
+  if (del) del.addEventListener('click', async () => {
+    const p = activeAircraftProfile();
+    if (!p) return;
+    const label = '4X-' + p.name;
+    const text = typeof S.acDeleteConfirm === 'function' ? S.acDeleteConfirm(label) : 'Delete ' + label + '?';
+    const ok = typeof appConfirm === 'function' ? await appConfirm(text, S.acDelete || 'Delete') : false;
+    if (!ok) return;
+    deleteAircraftProfile(p.id);
+    pushToPlan();
+    if (typeof showToast === 'function') showToast(typeof S.acProfileDeleted === 'function' ? S.acProfileDeleted(label) : label);
+  });
+  const restore = acEl('ac-restore');
   if (restore) restore.addEventListener('click', () => { restoreAircraftDefaults(); pushToPlan(); });
-  for (const [id, f, parse] of [['settings-usable', 'usableGal', parseFloat], ['settings-climb-kt', 'climbKt', parseFloat]]) {
-    const el = document.getElementById(id);
+  for (const [id, f] of [['ac-usable', 'usableGal'], ['ac-climb-kt', 'climbKt'], ['ac-descent', 'descentFpm']]) {
+    const el = acEl(id);
     if (!el) continue;
     el.addEventListener('input', () => {
-      const v = parse(el.value);
+      const v = parseFloat(el.value);
       if (!(v > 0)) return;
       aircraft = Object.assign({}, aircraft || { gph: tune('defaultGph'), taxiGal: tune('defaultTaxiGal') }, { [f]: v });
       if (typeof saveAircraft === 'function') saveAircraft();
@@ -7969,19 +8059,38 @@ window.refreshSettingsAircraft = refreshSettingsAircraft;
       draw();
     });
   }
-  g.addEventListener('input', onInput);
-  t.addEventListener('input', onInput);
-  const vs = document.getElementById('settings-vs');
-  if (vs) vs.addEventListener('input', () => {
-    const v = parseInt(vs.value, 10);
+  // Climb rate: the aircraft's figure and the rate the profile and the map's TOC are drawn with.
+  const climb = acEl('ac-climb-fpm');
+  if (climb) climb.addEventListener('input', () => {
+    const v = parseInt(climb.value, 10);
     if (!(v > 0)) return;
-    const fpVs = document.querySelector('.fp-profile-vs-input');
-    if (fpVs) { fpVs.value = String(v); fpVs.dispatchEvent(new Event('input')); return; }
     window.profileVS = v;
-    try { localStorage.setItem('navaid.profileVS', String(v)); } catch (e) { /* ignore */ }
+    try { localStorage.setItem('navaid.profileVS', String(v)); } catch (e) { /* storage off */ }
+    aircraft = Object.assign({}, aircraft || { gph: tune('defaultGph'), taxiGal: tune('defaultTaxiGal') }, { climbFpm: v });
+    if (typeof saveAircraft === 'function') saveAircraft();
     refreshSettingsAircraft();
-    draw();            // the map's TOC marker moves with the climb
+    draw();                                                   // the map's TOC moves with the climb
+    if (typeof refreshFlightPlan === 'function' && refreshFlightPlan) refreshFlightPlan();   // and the strip
   });
+  // The popover closes as the plan's other popovers do: its X, Escape, a tap outside. On window,
+  // capturing, so Escape closes the popover and not the plan behind it. Each acts only while open.
+  const fig = acEl('ac-custom');
+  const figClose = acEl('ac-custom-close');
+  const closeFig = () => {
+    if (!fig || !fig.open) return;
+    fig.open = false;
+    try { fig.querySelector('summary').focus(); } catch (e) { /* not focusable */ }
+  };
+  if (figClose) figClose.addEventListener('click', closeFig);
+  window.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && fig && fig.open && fig.isConnected && fig.closest('.fp-aircraft')) {
+      e.stopImmediatePropagation(); e.preventDefault(); closeFig();
+    }
+  }, true);
+  document.addEventListener('pointerdown', (e) => {
+    // The app's own dialogs (New aircraft, Delete) are not "outside": the popover waits for them.
+    if (fig && fig.open && !fig.contains(e.target) && !(e.target.closest && e.target.closest('.modal-back:not(.flight-plan)'))) fig.open = false;
+  }, true);
   refreshSettingsAircraft();
 })();
 
@@ -12892,8 +13001,9 @@ function backButtonStep() {
   // The tour sits over everything: Back ends it, as its own Skip does.
   if (document.getElementById('map-tour') && window.NavAid && NavAid.tour) { NavAid.tour.close(); return true; }
   if (typeof closeQuickLayers === 'function' && closeQuickLayers()) return true;
-  // A popover inside a panel closes before the panel (the flight plan's departure / Columns).
-  const pop = document.querySelector('details.fp-when[open], details.fp-columns[open]');
+  // A popover inside a panel closes before the panel (the flight plan's departure / Columns /
+  // the aircraft's Figures).
+  const pop = document.querySelector('details.fp-when[open], details.fp-columns[open], details.ac-custom[open]');
   if (pop) { pop.open = false; return true; }
   const modals = Array.from(document.querySelectorAll('.modal-back'));
   const top = modals.reverse().find(el => !el.hidden &&
