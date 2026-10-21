@@ -11420,14 +11420,16 @@ function showFplDialog(opts) {
       o.textContent = enduranceLabel(mins);
       endurance.appendChild(o);
     }
-    // Five hours is the usual tankful; the pilot's own choice wins once made.
-    // With none chosen yet, the aircraft's own: usable fuel less taxi, at its burn, rounded DOWN to
-    // the half hour the list offers (never more endurance than the tanks hold).
+    // Five hours is the usual tankful, and the default; the pilot's own choice wins once made.
+    // Never more than the aircraft's tanks hold, though: usable fuel less taxi, at its burn, rounded
+    // DOWN to the half hour the list offers. A C152 or a microlight files what it can fly. It used to
+    // be the tanks' figure itself, which filed a C172 at 6 h (asked: the default is 5).
     const acEndurance = () => {
+      const fiveH = 5 * 60;
       const u = aircraft && Number(aircraft.usableGal), g = aircraft && Number(aircraft.gph);
       if (!(u > 0 && g > 0)) return null;
-      const mins = Math.floor(((u - (Number(aircraft.taxiGal) || 0)) / g) * 60 / 30) * 30;
-      const m = Math.max(30, Math.min(480, mins));
+      const tanks = Math.floor(((u - (Number(aircraft.taxiGal) || 0)) / g) * 60 / 30) * 30;
+      const m = Math.max(30, Math.min(fiveH, tanks));
       return hhmmFromMinutes(m);
     };
     endurance.value = /^[0-9]{4}$/.test(profile.endurance) ? profile.endurance : (acEndurance() || FPL_DEFAULT_ENDURANCE);

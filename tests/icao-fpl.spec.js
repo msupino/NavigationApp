@@ -2570,3 +2570,19 @@ test('a licence with a leading zero survives being typed', async ({ page }) => {
   await page.fill('#fpl-license', '0451');
   expect(await page.inputValue('#fpl-license')).toBe('0451');
 });
+
+// Five hours is the default endurance (asked: it had become the C172's tank figure, 6 h). Never
+// more than the aircraft's tanks hold: a C152 files what it can fly.
+test('default endurance: five hours, or less where the tanks hold less', async ({ page }) => {
+  await boot(page);
+  await route(page);
+  for (const [type, want] of [['C172', '0500'], ['C152', '0330']]) {
+    await page.evaluate((t) => {
+      localStorage.removeItem('navaid.fpl.endurance');
+      document.querySelectorAll('.modal-back.fpl-modal').forEach(b => b._navaidClose ? b._navaidClose() : b.remove());
+      setAircraftType(t);
+      showFplDialog();
+    }, type);
+    await expect(page.locator('#fpl-endurance'), type).toHaveValue(want);
+  }
+});
