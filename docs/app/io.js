@@ -1447,9 +1447,11 @@ function fplParkingText(res, park, opts) {
     // a plan with a departure time but no date read "Date of flight:  ,  departure 12:00 LT".
     [S.fplParkingFDof || 'Date of flight',
       blank([dofDisp, dep ? (S.fplParkingFDep || 'departure') + ' ' + fplClockPair(o.depDateIso, dep) : '']
-        .filter(Boolean).join(',  '))],
-    [S.fplParkingKind || 'Parking', o.kind || '[ transit over 1 h / overnight / maintenance ]'],
-    [fplParkingUntilLabel(), o.until || '[ date / time ]'],
+        .filter(Boolean).join(', '))],
+    // The blanks the pilot has not filled yet, in the message's own language: an English
+    // "[ date / time ]" sat in the middle of a Hebrew mail.
+    [S.fplParkingKind || 'Parking', o.kind || (S.fplParkingKindBlank || '[ transit over 1 h / overnight / maintenance ]')],
+    [fplParkingUntilLabel(), o.until || (S.fplParkingUntilBlank || '[ date / time ]')],
   ];
   if (o.handling) rows.push([S.fplParkingFHandling || 'Handling', o.handling]);
   // Pad the labels into a column only for a left-to-right message. In Hebrew the padding is
@@ -1691,7 +1693,7 @@ function showParkingRequestModal(res, park, opts) {
   };
   const fuelEl = document.createElement('input');
   fuelEl.type = 'checkbox';
-  field(S.fplParkingFuel || 'Refuelling requested', fuelEl);
+  field(S.fplParkingFuel || 'Refuelling requested', fuelEl).parentNode.classList.add('parking-check');
   const notesEl = document.createElement('textarea');
   notesEl.rows = 2;
   notesEl.dir = 'auto';
@@ -1721,6 +1723,9 @@ function showParkingRequestModal(res, park, opts) {
     // An edited message is the pilot's; the options stop rewriting it under them.
     if (edited) return;
     preview.value = compose().body;
+    // An English body pads its labels into a column, which only lines up in a fixed-width face;
+    // a Hebrew one is not padded and reads in the app's own font.
+    preview.classList.toggle('is-ltr', !/[\u0590-\u05FF]/.test(preview.value));
   };
   refresh();
   for (const el of [kindSel, untilDate, untilTime, fuelEl, notesEl]) {
@@ -1737,8 +1742,10 @@ function showParkingRequestModal(res, park, opts) {
   }
   box.appendChild(preview);
 
+  // The app's own button row: one filled main action (open the mail), Copy outlined beside it,
+  // Back muted -- they were three plain browser buttons with nothing to say which one sends.
   const btns = document.createElement('div');
-  btns.className = 'fpl-actions';
+  btns.className = 'modal-btns fpl-actions';
   const send = document.createElement('button');
   send.type = 'button';
   send.className = 'fpl-primary';
@@ -1767,6 +1774,7 @@ function showParkingRequestModal(res, park, opts) {
   };
   const copy = document.createElement('button');
   copy.type = 'button';
+  copy.className = 'btn-secondary';
   copy.textContent = S.fplCopy || 'Copy';
   copy.onclick = () => {
     const text = preview.value;

@@ -8325,29 +8325,38 @@ body.theme-light .follow-me-banner.holding { color: #4a3608; background: rgba(25
    parking, until when, fuel), so they are chosen here and the message is shown -- and
    editable -- before it is handed to the mail client. */
 .parking-modal { max-width: 560px; }
-.parking-form { display: flex; flex-direction: column; gap: 6px; margin: 8px 0; }
-.parking-row { display: flex; align-items: center; gap: 8px; }
-.parking-label { flex: 0 0 42%; font-size: 12px; opacity: 0.85; }
+/* One grid: the names in one column, every control the full width of the other, so the rows
+   line up (reported: the select, the date, the time and the notes were four different widths,
+   the checkbox adrift between them). Each row is a <label> laid out by the grid itself. */
+.parking-form {
+  display: grid; grid-template-columns: minmax(7.5em, 34%) minmax(0, 1fr);
+  gap: 8px 12px; align-items: center; margin: 10px 0;
+}
+.parking-row { display: contents; }
+.parking-label { font-size: 13px; opacity: 0.85; }
 .parking-row select,
 .parking-row input[type="text"],
-.parking-row textarea { flex: 1 1 auto; min-width: 0; }
-.parking-row input[type="checkbox"] { margin-inline-end: auto; }
-.parking-preview {
-  width: 100%; box-sizing: border-box; font-family: ui-monospace, Menlo, Consolas, monospace;
-  font-size: 11px; line-height: 1.4; resize: vertical;
+.parking-row textarea,
+.parking-row .parking-when { width: 100%; min-width: 0; min-height: 34px; }
+.parking-row input[type="checkbox"] { justify-self: start; width: 20px; height: 20px; margin: 0; }
+/* A phone: each name over its control, the controls the dialog's whole width. */
+@media (max-width: 480px) {
+  .parking-form { grid-template-columns: minmax(0, 1fr); gap: 4px; }
+  /* A checkbox stays beside its name: alone on a line it read as belonging to nothing. */
+  .parking-row.parking-check { display: flex; align-items: center; gap: 10px; min-height: 44px; }
+  .parking-row select, .parking-row .parking-when, .parking-row textarea { margin-bottom: 6px; min-height: 44px; }
 }
+.parking-preview { width: 100%; box-sizing: border-box; line-height: 1.5; resize: vertical; }
 /* The dialog's own action row: .fpl-actions is laid out for the filing step's wider modal,
    and without this the three buttons ran together with no gap. */
 .parking-modal .fpl-actions {
-  display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; align-items: center;
+  display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; align-items: center;
 }
+body.deck-on .parking-modal .fpl-actions button { min-height: 44px; }
 /* Date + time sit on one line, and wrap together rather than splitting across the row. The
    date needs the room -- at an even split its picker was clipped mid-year ("09/02/202"). */
-.parking-when { display: flex; gap: 6px; flex: 1 1 auto; min-width: 0; }
-.parking-when input[type="date"] { flex: 3 1 0; min-width: 0; }
-.parking-when input[type="time"] { flex: 2 1 0; min-width: 0; }
-/* The label column is generous on a wide dialog and starves the controls on a narrow one. */
-@media (max-width: 560px) { .parking-label { flex-basis: 34%; } }
+.parking-when { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); gap: 8px; }
+.parking-when input { width: 100%; min-width: 0; min-height: inherit; }
 /* The filing step's action row gained a fourth button and wrapped, dropping Back onto a line
    of its own. Keep it one row and let the labels shrink instead. */
 .fpl-actions { flex-wrap: nowrap; }
@@ -8379,7 +8388,13 @@ body.theme-light .parking-preview { color-scheme: light; }
   padding: 4px 6px;
   box-sizing: border-box;
 }
-.parking-preview { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 11px; }
+/* The message in the reading font, not a monospace one: Hebrew in a monospace face is spread
+   letter from letter (reported), and the mail it opens is read in a proportional one anyway. */
+/* The modal text is bold; a whole message in bold reads as shouting. */
+.parking-preview { font-size: 12.5px; font-weight: 400; }
+/* An English body is padded into columns, which line up only in a fixed-width face and only
+   unwrapped -- a long value scrolls sideways rather than breaking its row in two. */
+.parking-preview.is-ltr { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 11px; white-space: pre; overflow-x: auto; }
 body.theme-light .parking-form select,
 body.theme-light .parking-form input[type="date"],
 body.theme-light .parking-form input[type="time"],
