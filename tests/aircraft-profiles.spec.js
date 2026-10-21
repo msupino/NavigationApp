@@ -254,3 +254,26 @@ test('Android Back closes Figures before the plan', async ({ page }) => {
   await expect(page.locator('.ac-menu')).toBeHidden();
   await expect(page.locator('.modal-back.flight-plan')).toBeVisible();
 });
+
+test('a call sign is upper-case English as it is typed, even on the Hebrew keyboard', async ({ page }) => {
+  // The call sign goes into an ASCII telex: lower case was only raised on leaving the box, and a
+  // Hebrew keyboard left on wrote Hebrew letters that the filing then threw away to nothing.
+  await boot(page, 'he');
+  expect(await page.evaluate(() => [callSignLatin('abc'), callSignLatin('\u05D9\u05D7\u05E7'),
+    callSignLatin('4x-c1a'), aircraftCallSign('\u05E9\u05D3\u05D2\u05DB\u05E2')])).toEqual(['ABC', 'HJE', '4XC1A', 'ASDF']);
+  await openPlan(page);
+  await page.locator('details.ac-custom > summary').click();
+  const cs = page.locator('#ac-callsign');
+  await expect(cs).toBeVisible();
+  await cs.click();
+  await cs.pressSequentially('h\u05D7e-');
+  await expect(cs).toHaveValue('HJE');
+  await expect(cs).toHaveAttribute('lang', 'en');
+  // The new-aircraft prompt filters the same way.
+  await page.evaluate(() => { askText('t', 'l', '', 'ok', latinCallSignInput); });
+  const ask = page.locator('.app-ask-input');
+  await expect(ask).toBeVisible();
+  await ask.click();
+  await ask.pressSequentially('xy\u05D6');
+  await expect(ask).toHaveValue('XYZ');
+});
