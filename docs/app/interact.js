@@ -849,12 +849,29 @@ function setLegLabelFromPoint(dragState, px, py) {
   o.p = ((px - f.mx) * f.nx + (py - f.my) * f.ny) / sc - (dragState.grabP || 0);
   return true;
 }
+// Where draw.js's overlap pass moved a box this frame, if it did.
+function _kiteMovedTo(key) {
+  return typeof kitePlacedAt === 'function' ? kitePlacedAt(key) : null;
+}
+// A time box's stored offset ({a, p} in the leg's frame about its waypoint) for a painted spot.
+function _cumOffsetOf(legIdx, pt, isReturn, sc) {
+  const a = proj(state.waypoints[legIdx]), b = proj(state.waypoints[legIdx + 1]);
+  let dx = b.x - a.x, dy = b.y - a.y;
+  const len = Math.hypot(dx, dy) || 1;
+  dx /= len; dy /= len;
+  const o = isReturn ? a : b;
+  const rx = pt.x - o.x, ry = pt.y - o.y;
+  return { a: (rx * dx + ry * dy) / sc, p: (rx * -dy + ry * dx) / sc, _m: 1 };
+}
 function legLabelCenter(i, which) {
   if (!state.waypoints[i] || !state.waypoints[i + 1]) return null;
   const f = legFrame(i);
   if (!f) return null;                 // zero-length leg → no kite position
   const o = (which === 'in' ? state.legs[i].inLabel : state.legs[i].outLabel)
             || { a: 0, p: 0 };
+  // A kite moved off another one (draw.js declutterKites) is where it was painted.
+  const moved = o._default ? _kiteMovedTo(which + ':' + i) : null;
+  if (moved) return moved;
   const sc = legZoomScale();
   // A default (unmodified) label has no stored `p`; its
   // perpendicular is computed at render time from the live leg length
@@ -892,6 +909,15 @@ function _materialiseDefaultLegLabel(legIdx, which) {
   if (!a || !b) return;
   const legLen = Math.hypot(b.x - a.x, b.y - a.y);
   const sc = legZoomScale() || 1;          // never let scale be 0 here
+  // Moved off another kite: the drag starts from where it is painted, not from where it
+  // would have been, or it jumps under the pilot's finger.
+  const moved = _kiteMovedTo(which + ':' + legIdx);
+  const f = moved && legFrame(legIdx);
+  if (f) {
+    leg[key] = { a: ((moved.x - f.mx) * f.dx + (moved.y - f.my) * f.dy) / sc,
+                 p: ((moved.x - f.mx) * f.nx + (moved.y - f.my) * f.ny) / sc, _m: 1 };
+    return;
+  }
   const sign = which === 'in' ? 1 : -1;
   const perpPx = sign * legDefaultLabelPerp(legLen);
   leg[key] = { a: o.a || 0, p: perpPx / sc, _m: 1 };
@@ -956,6 +982,8 @@ function cumLabelCenter(i) {
   const nx = -dy, ny = dx;
   const leg = state.legs[i];
   const o = (leg && leg.cumLabel) || { a: 0, _default: 1, _m: 1 };
+  const moved = o._default ? _kiteMovedTo('cum:' + i) : null;
+  if (moved) return moved;
   const sc = legZoomScale();
   // Use own driftPerp (not inLabel's perp) so the cum kite is independent
   // of the navigation kite position when in default state.
@@ -977,6 +1005,8 @@ function _materialiseDefaultCumLabel(legIdx) {
   const b = proj(state.waypoints[legIdx + 1]);
   if (!a || !b) return;
   const sc = legZoomScale() || 1;
+  const moved = _kiteMovedTo('cum:' + legIdx);
+  if (moved) { leg.cumLabel = _cumOffsetOf(legIdx, moved, false, sc); return; }
   const def = cumDefaultLabelOffset();
   leg.cumLabel = { a: def.along / sc, p: def.perp / sc, _m: 1 };
 }
@@ -1041,6 +1071,8 @@ function cumLabelRetCenter(i) {
   const nx = -dy, ny = dx;
   const leg = state.legs[i];
   const o = (leg && leg.cumLabelRet) || { a: 0, _default: 1, _m: 1 };
+  const moved = o._default ? _kiteMovedTo('cumret:' + i) : null;
+  if (moved) return moved;
   const sc = legZoomScale();
   const def = cumDefaultLabelOffset();            // mirrored, as the renderer mirrors it
   const perp  = o._default ? -def.perp : (o.p || 0) * sc;
@@ -1057,6 +1089,8 @@ function _materialiseDefaultCumLabelRet(legIdx) {
   const b = proj(state.waypoints[legIdx + 1]);
   if (!a || !b) return;
   const sc = legZoomScale() || 1;
+  const moved = _kiteMovedTo('cumret:' + legIdx);
+  if (moved) { leg.cumLabelRet = _cumOffsetOf(legIdx, moved, true, sc); return; }
   const def = cumDefaultLabelOffset();
   leg.cumLabelRet = { a: -def.along / sc, p: -def.perp / sc, _m: 1 };  // mirror of the inbound one
 }
