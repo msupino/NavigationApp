@@ -1,0 +1,139 @@
+From 5c9df67e4b5af3d438efcf5c2b3c91bbfd4e633c Mon Sep 17 00:00:00 2001
+From: Marco <marco@supino.org>
+Date: Thu, 22 Oct 2026 07:32:40 +0000
+Subject: [PATCH] Sweep 2026-10-22: C172 8 gal/h, 5 h endurance capped by the
+ tanks, call sign in English capitals, parking blanks, flight plan resize
+
+---
+ Flight-Plan-he.md        |  3 +++
+ Flight-Plan.md           |  3 +++
+ Fuel-Calculator-he.md    |  2 +-
+ Fuel-Calculator.md       |  2 +-
+ Submit-Flight-Plan-he.md | 11 ++++++++---
+ Submit-Flight-Plan.md    | 11 ++++++++---
+ 6 files changed, 24 insertions(+), 8 deletions(-)
+
+diff --git a/Flight-Plan-he.md b/Flight-Plan-he.md
+index 8c52d58..bf292c7 100644
+--- a/Flight-Plan-he.md
++++ b/Flight-Plan-he.md
+@@ -114,6 +114,9 @@
+ 
+ ## גרירה ושמירה
+ 
++- **שנו את גודלו** מהפינה הימנית התחתונה (במחשב; בטלפון התוכנית ממלאת את המסך). הגודל שנתתם נשמר
++  לפעם הבאה, מוגבל לגודל החלון, ושינוי קלטים אינו משנה אותו. **לחיצה כפולה** על הפינה מחזירה את
++  הגודל שמתאים לתוכנית.
+ - גררו את החלון משורת הכותרת. המיקום נשמר בנפרד לכל שפה — <span dir="ltr"><code>navaid.fpPos.en</code></span> או <span dir="ltr"><code>navaid.fpPos.he</code></span> — מכיוון שפריסת RTL היא תמונת מראה של LTR, ולכן מקום שנגרר בשפה אחת שגוי בשנייה. המפתח החשוף <span dir="ltr"><code>navaid.fpPos</code></span> נקרא פעם אחת בלבד, כדי לאמץ מיקום שנשמר לפני ההפרדה.
+ - החלון נשאר פתוח גם אחרי החלפת שפה (<span dir="ltr"><code>sessionStorage['navaid.fpOpen']</code></span>).
+ - הוספת / הסרת ציון דרך כאשר החלון פתוח בונה את הטבלה מחדש במקום — אין צורך לפתוח שוב.
+diff --git a/Flight-Plan.md b/Flight-Plan.md
+index 9a56d0c..54d0cd7 100644
+--- a/Flight-Plan.md
++++ b/Flight-Plan.md
+@@ -118,6 +118,9 @@ The return table also shows Radial/DME when a VOR is active, calculated to the s
+ 
+ ## Drag and persistence
+ 
++- **Resize** it by its bottom-right corner (desktop; on a phone the plan is the whole screen).
++  The size you give it is kept for next time, clamped to the window, and changing inputs does
++  not resize it. **Double-click** the corner to fit it back to the plan.
+ - Drag the modal by its title bar. Position persists per language, to `navaid.fpPos.en` or `navaid.fpPos.he` — the RTL layout mirrors the LTR one, so a spot dragged in one language would be wrong in the other. The bare `navaid.fpPos` is only read once, to adopt a position stored before the split.
+ - The modal stays open across a language switch (`sessionStorage['navaid.fpOpen']`).
+ - Adding / removing a waypoint while the modal is open rebuilds the table in place — no need to reopen.
+diff --git a/Fuel-Calculator-he.md b/Fuel-Calculator-he.md
+index 158947c..ce931b5 100644
+--- a/Fuel-Calculator-he.md
++++ b/Fuel-Calculator-he.md
+@@ -18,7 +18,7 @@
+ 
+ | שדה | משמעות |
+ | --- | --- |
+-| **גלונים לשעה** | צריכה בשיוט. מסוג המטוס (C172: 8.5). |
++| **גלונים לשעה** | צריכה בשיוט. מסוג המטוס (C172: 8). |
+ | **הסעה והמראה (גל')** | תוספת חד-פעמית, ורק כשהקטע מתחיל בשדה תעופה בפועל. מסוג המטוס (C172: 1.1). |
+ 
+ שני השדות נשמרים למכשיר תחת <span dir="ltr"><code>navaid.aircraft</code></span> (<span dir="ltr"><code>{ gph, taxiGal }</code></span>) ומסונכרנים בין
+diff --git a/Fuel-Calculator.md b/Fuel-Calculator.md
+index f1ae683..8969ea7 100644
+--- a/Fuel-Calculator.md
++++ b/Fuel-Calculator.md
+@@ -15,7 +15,7 @@ The two fuel figures sit in that row as **Gal/h** and **Taxi + T/O (gal)**:
+ 
+ | Field | Meaning |
+ | --- | --- |
+-| **Gallons per hour** | Cruise burn. From the aircraft type (C172: 8.5). |
++| **Gallons per hour** | Cruise burn. From the aircraft type (C172: 8). |
+ | **Taxi and Takeoff (gal)** | A flat allowance added once, and only when the leg actually starts at an airfield. From the aircraft type (C172: 1.1). |
+ 
+ Both persist per device under `navaid.aircraft` (`{ gph, taxiGal }`) and sync across your devices if Drive settings sync is on — see [Settings and Persistence](Settings-and-Persistence).
+diff --git a/Submit-Flight-Plan-he.md b/Submit-Flight-Plan-he.md
+index be177e6..33620de 100644
+--- a/Submit-Flight-Plan-he.md
++++ b/Submit-Flight-Plan-he.md
+@@ -32,13 +32,16 @@ NavAid בונה את הודעת **תוכנית הטיסה בתקן ICAO** עבו
+ 
+ פרטי כלי הטיס והטייס נשמרים במכשיר. הם מסתנכרנים דרך Google Drive רק כאשר מפעילים בנפרד את **סנכרן גם הגדרות**, כך שבדרך כלל זו הגדרה חד־פעמית. אותם פרטים משמשים את **שני** סוגי התוכניות — הודעת ה־ICAO וטופס טיסת המרחב:
+ 
+-- **אות קריאה** — שלוש אותיות מספיקות; הקידומת <span dir="ltr"><code>4X-</code></span> מודפסת ליד השדה ואינה מוקלדת. כשלמטוס
++- **אות קריאה** — שלוש אותיות מספיקות; הקידומת <span dir="ltr"><code>4X-</code></span> מודפסת ליד השדה ואינה מוקלדת.
++  השדה מקבל רק אותיות גדולות באנגלית וספרות, תוך כדי הקלדה: אות קטנה הופכת לגדולה, וכשהמקלדת
++  העברית עדיין פעילה כל אות הופכת לאות האנגלית שעל אותו מקש. כשלמטוס
+   [שבשימוש](Flight-Plan-he#קלטי-כלי-טיס) יש אות קריאה, זו אות הקריאה שלו, לקריאה בלבד כאן.
+ - **סוג כלי הטיס** — סוג ה-ICAO של המטוס שבתוכנית הטיסה, **לקריאה בלבד**: נבחר בשורת **כלי טיס**
+   שבתוכנית (הסוג שנבחר למטוס), ושורה מתחתיו אומרת זאת. מקום אחד לבחור בו,
+   וסוג מוגש שלא יכול לסתור את הנתונים שהתוכנית חושבה איתם.
+-- **דלק בכלי הטיס** — בשעות: הדלק השמיש של המטוס פחות תוספת ההסעה, חלקי הצריכה, מעוגל כלפי מטה
+-  לחצי שעה (ראו [דלק](Fuel-Calculator-he)).
++- **דלק בכלי הטיס** — בשעות: **5 שעות** כברירת מחדל, אבל לעולם לא יותר ממה שהמכלים מחזיקים (הדלק
++  השמיש של המטוס פחות תוספת ההסעה, חלקי הצריכה, מעוגל כלפי מטה לחצי שעה — ראו [דלק](Fuel-Calculator-he)),
++  כך ש-C152 או מטוס קל מגישים את מה שהם יכולים לטוס. הבחירה שלכם נשמרת אחרי שנעשתה.
+ - **נפשות בכלי הטיס** — בצורת "טייס + n".
+ - **טייס מפקד, מספר רישיון, טלפון נייד** — **באותיות לטיניות**. ההודעה היא מסר טלקס ב־ASCII, ועברית תגיע משובשת. שדות הרישיון והנייד מבקשים ספרות, ולכן בטלפון עולה מקלדת הספרות ולא המקלדת המלאה.
+ - **הדואל שלכם** — חובה, ל**שני** סוגי התוכניות. האישור חוזר בדואל, ואם אתם מגישים ממחשב שחשבון הדואל בו אינו שלכם הוא היה מגיע לבעל המחשב. הכתובת שלכם מקבלת עותק (CC) — בתוכנית ה־ICAO, וגם בדואל שטופס טיסת המרחב פותח לדלפק.
+@@ -219,6 +222,8 @@ NavAid בונה את הודעת **תוכנית הטיסה בתקן ICAO** עבו
+ דורס את מה שכתבת. השעות נושאות את השעון שלהן (`19:30 מקומי (16:50Z)`), מכיוון שאתה מקליד שעון
+ מקומי והדסק קורא זולו.
+ 
++מה שעוד לא מולא מופיע בהודעה כמקום ריק בשפת ההודעה (<span dir="ltr"><code>[ תאריך / שעה ]</code></span>).
++
+ **פתח בדוא״ל** מעביר את ההודעה לתוכנת הדוא״ל; **העתק** קיים למכשיר שאין בו תוכנת דוא״ל מוגדרת.
+ 
+ הכפתור **מוצג תמיד בשדה תעופה**, גם כזה שאינו מופיע בטבלה שלמעלה — היעדרו היה נקרא כ*אין מה
+diff --git a/Submit-Flight-Plan.md b/Submit-Flight-Plan.md
+index 1006f7d..a01c783 100644
+--- a/Submit-Flight-Plan.md
++++ b/Submit-Flight-Plan.md
+@@ -30,14 +30,18 @@ The **total time is filed rounded up to the next 5 minutes** — nobody files `0
+ 
+ Aircraft and pilot details persist on the device. They sync through Google Drive only when you separately enable **Sync settings too**, so this is usually a one-time setup. The same details serve **both** plan types — the ICAO message and the cross-country form:
+ 
+-- **Call sign** — three letters is enough; `4X-` is printed beside the field, not typed. Once the
++- **Call sign** — three letters is enough; `4X-` is printed beside the field, not typed. It takes
++  English capitals and digits only, as you type: lower case is raised, and with the Hebrew
++  keyboard still on each letter becomes the English key it sits on. Once the
+   [aircraft](Flight-Plan#aircraft-inputs) in use has a call sign, it is that one, read-only here.
+ - **Aircraft type** — the ICAO type of the flight plan's aircraft, **read-only**: chosen in the
+   plan's **Aircraft** row (the type selected for the aircraft), with a line
+   under it saying so. One place to choose it, and a filed type that cannot disagree with the
+   figures the plan was worked out with.
+-- **Fuel endurance** — in hours: the aircraft's usable fuel less the taxi allowance, over its
+-  burn, rounded down to the half hour (see [Fuel](Fuel-Calculator)).
++- **Fuel endurance** — in hours: **5 h** by default, but never more than the aircraft's tanks
++  hold (usable fuel less the taxi allowance, over its burn, rounded down to the half hour — see
++  [Fuel](Fuel-Calculator)), so a C152 or a microlight files what it can fly. Your own choice is
++  kept once made.
+ - **Persons on board** — as "pilot + n".
+ - **Pilot in command, licence number, mobile** — in **Latin letters**. The message is an ASCII telex; Hebrew would arrive as mojibake. The licence and mobile fields ask for digits, so a phone offers its keypad rather than the full keyboard.
+ - **Your email** — required, for **both** plan types. The approval comes back by mail, and if you are filing from a machine whose mail account is not yours it would otherwise reach that machine's owner. Your address is copied (CC) on the message — on the ICAO plan, and on the mail the cross-country form opens to the FPL desk.
+@@ -217,6 +221,7 @@ for things the plan cannot know:
+ Everything else is written from the plan you have already filled in — registration, type,
+ pilot, licence, mobile, persons on board, both aerodromes and the date. The message is shown
+ in full and **you can edit it**; once you do, changing the options above stops rewriting it.
++Anything still to fill in shows as a blank in the message's own language (`[ date / time ]`).
+ Times carry the clock they are on (`19:30 LT (16:30Z)`), since you type local and the desk
+ reads Zulu.
+ 
+-- 
+2.43.0
+
