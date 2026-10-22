@@ -1,46 +1,48 @@
-From 38787fee5b6d1d46fc8b6ec5e8bf7ffa28bab702 Mon Sep 17 00:00:00 2001
+From d449543a80b77824e768a6622c81395154732859 Mon Sep 17 00:00:00 2001
 From: Marco <marco@supino.org>
 Date: Wed, 21 Oct 2026 18:17:04 +0000
 Subject: [PATCH] Route and legs: kites and cumulative times are moved off each
  other
 
 ---
- Route-and-Legs-he.md | 6 ++++++
- Route-and-Legs.md    | 7 +++++++
- 2 files changed, 13 insertions(+)
+ Route-and-Legs-he.md | 7 +++++++
+ Route-and-Legs.md    | 8 ++++++++
+ 2 files changed, 15 insertions(+)
 
 diff --git a/Route-and-Legs-he.md b/Route-and-Legs-he.md
-index c211608..8371e2f 100644
+index c211608..83d6e12 100644
 --- a/Route-and-Legs-he.md
 +++ b/Route-and-Legs-he.md
-@@ -87,6 +87,12 @@
+@@ -87,6 +87,13 @@
  - **חץ** — כיוון הטיסה, עם תווית מרחק.
  - **סימון אמצע קטע** — תווית המציגה מרחק (ניתן להפעיל/לכבות).
  - **עפיפון זמן מצטבר** — הקצה שלו מצביע על נקודת הציון שאליה הוא סופר, ומיקום ברירת המחדל שלו מפנה את מעגל הנקודה. קטע הנטוס בתוך ה-CTR של שדה היציאה אינו מצייר עפיפון זמן מצטבר: הוא נטוס לפי הנוהל של השדה ולא לפי שעון העצר של המסלול.
-+- **עפיפונים אינם מודפסים זה על זה.** כשקטעים קצרים או קטעים צמודים היו מניחים שני עפיפונים,
-+  או שני זמנים מצטברים, באותו מקום, כל אחד שלא הזזתם בעצמכם מוזז למקום הפנוי הקרוב -- לאורך
-+  הקטע או הרחק ממנו לעפיפון ניווט, סביב נקודת הציון לזמן מצטבר. עפיפון שהוזז רחוק מקבל קו דק
-+  חזרה לקטע או לנקודה שלו. עפיפון שגררתם נשאר בדיוק היכן ששמתם אותו, ושום דבר אינו מוסתר כדי
-+  לפנות מקום. הקבוצה <span dir="ltr"><code>Kite overlap</code></span> בלוח הכוונון מכבה זאת וקובעת
++- **עפיפונים מוזזים זה מעל זה.** כשקטעים קצרים או קטעים צמודים היו מניחים עפיפון, או זמן מצטבר,
++  ברובו מעל אחר, זה שמתחת מוזז למקום הפנוי הקרוב -- לאורך הקטע או הרחק ממנו לעפיפון ניווט, סביב
++  נקודת הציון לזמן מצטבר. עפיפון שהוזז רחוק מקבל קו דק חזרה לקטע או לנקודה שלו. חלק מהכיסוי
++  נשאר כמו שהוא: חפיפה קלה בשוליים; עפיפון שגררתם, וזה שגררתם אותו עליו; ועפיפון שאין לו מקום
++  פנוי בהישג יד, שנשאר במקומו הרגיל. שום דבר אינו מוסתר כדי לפנות מקום. הקבוצה
++  <span dir="ltr"><code>Kite overlap</code></span> בלוח הכוונון מכבה זאת וקובעת כמה מותר לכסות,
 +  כמה רחוק עפיפון יכול לזוז, את הרווח ואת הקו.
  - **סימוני דקות** לאורך הקטע, לפי המהירות המתוכננת: סימון בכל דקה, וכל שני ארוך יותר ועם מספר.
    **מראה ← סימוני דקות** קובע את ה**גודל** ואת הצבעים (**צבע הלוך** כחול, **צבע חזור** אדום לדרך חזרה).
  - **מסגרת שינוי גובה / מהירות**: כש**הדגש הפרש גובה/מהירות** דולק, עפיפון שהגובה או המהירות שלו
 diff --git a/Route-and-Legs.md b/Route-and-Legs.md
-index d114b75..77132e7 100644
+index d114b75..2b2e12b 100644
 --- a/Route-and-Legs.md
 +++ b/Route-and-Legs.md
-@@ -79,6 +79,13 @@ A leg with **no altitude** is flown level for timing, and drawn dashed on the pr
+@@ -79,6 +79,14 @@ A leg with **no altitude** is flown level for timing, and drawn dashed on the pr
    tuning panel's **Route line** group.
  - **Leg kite** — heading / time / altitude, per leg.
  - **Cumulative kite** — running time. Its tip points at the waypoint it counts to, and its default offset clears that waypoint's circle. A leg inside the departure field's CTR draws no cumulative kite: it is flown on the field's procedure, not the route's stopwatch.
-+- **Kites never print over each other.** Where short legs or legs side by side would put two
-+  kites, or two cumulative times, on the same spot, each one you have not moved yourself is
-+  shifted to the nearest clear place -- along its leg or further out for a nav kite, round its
-+  waypoint for a cumulative time. One moved far gets a thin line back to its leg or waypoint.
-+  A kite you dragged stays exactly where you put it, and nothing is hidden to make room. The
-+  tuning panel's **Kite overlap** group switches it off and sets how far a kite may move, the
-+  gap kept and the line.
++- **Kites are moved off each other.** Where short legs or legs side by side would put one kite,
++  or cumulative time, mostly over another, the one underneath is shifted to the nearest clear
++  place -- along its leg or further out for a nav kite, round its waypoint for a cumulative time.
++  One moved far gets a thin line back to its leg or waypoint. Some covering is left as it is:
++  a slight overlap at the edge; a kite you dragged, and the one you dragged it onto; and a kite
++  with no clear place within reach, which stays where it normally sits. Nothing is hidden to
++  make room. The tuning panel's **Kite overlap** group switches it off and sets how much may be
++  covered, how far a kite may move, the gap kept and the line.
  - **Minute ticks** along the leg, from the planned speed: a tick every minute, every second one
    longer and numbered. **Display → Minute markers** sets their **Size** and colours (**To color**
    blue, **From color** red for the way back).

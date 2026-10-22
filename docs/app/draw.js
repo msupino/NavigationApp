@@ -5925,11 +5925,16 @@ function flushKites() {
 // --- Overlap: kites and time boxes moved off each other ----------------------------------
 // Short legs and near-parallel legs (an out-and-back, two passes down one valley) put two
 // kites, or two time boxes, on the same patch of chart, one printed over the other (reported).
-// Before painting, each box the pilot has not placed tries a few nearby spots and takes the
-// first that touches nothing already placed: along its own leg and further out from it for a
-// nav kite, round its waypoint and further out for a time box. Boxes the pilot dragged are
-// placed first and never moved. Where no spot is free the least crowded one wins -- a box is
-// never dropped. One moved far from its leg gets a thin line back to it.
+// Before painting, a box the pilot has not placed that is covered by more than
+// kiteDeclutterAllowPct of its area tries a few nearby spots and takes the nearest clear one:
+// along its own leg and further out from it for a nav kite, round its waypoint and further out
+// for a time box. Some covering is wanted, so:
+//  - a slight overlap at the edge is left alone;
+//  - a box the pilot dragged is never moved, and one it was dragged ONTO is not pushed away
+//    from it either -- the pilot put them together;
+//  - where no clear spot is within reach the box stays where it would have been, covered,
+//    rather than wandering off to the least bad place.
+// A box is never dropped. One moved far from its leg gets a thin line back to it.
 //
 // Where each moved box ended up, by key ('in:3', 'out:3', 'cum:3', 'cumret:3'): the hit tests
 // and the drag read it (interact.js), so a moved kite is grabbed where it is painted.
@@ -5952,6 +5957,39 @@ function cumKiteBoxSize(sc) {
 }
 
 // Rotated boxes { x, y, ang, hl, hw }: separating-axis test.
+function _kiteBoxCorners(b) {
+  const c = Math.cos(b.ang), s = Math.sin(b.ang);
+  return [[-1, -1], [1, -1], [1, 1], [-1, 1]].map(([u, v]) =>
+    ({ x: b.x + u * b.hl * c - v * b.hw * s, y: b.y + u * b.hl * s + v * b.hw * c }));
+}
+function _polyArea(p) {
+  let a = 0;
+  for (let i = 0; i < p.length; i++) { const q = p[i], r = p[(i + 1) % p.length]; a += q.x * r.y - r.x * q.y; }
+  return Math.abs(a) / 2;
+}
+// The share of the smaller box that the other covers (0..1): one box clipped by the other.
+function _kiteBoxCover(a, b) {
+  if (!_kiteBoxesOverlap(a, b)) return 0;
+  let poly = _kiteBoxCorners(a);
+  const clip = _kiteBoxCorners(b);
+  for (let i = 0; i < 4 && poly.length; i++) {
+    const p1 = clip[i], p2 = clip[(i + 1) % 4];
+    const side = (q) => (p2.x - p1.x) * (q.y - p1.y) - (p2.y - p1.y) * (q.x - p1.x);
+    const out = [];
+    for (let j = 0; j < poly.length; j++) {
+      const cur = poly[j], prev = poly[(j + poly.length - 1) % poly.length];
+      const sc = side(cur), sp = side(prev);
+      if ((sc >= 0) !== (sp >= 0)) {
+        const t = sp / (sp - sc);
+        out.push({ x: prev.x + (cur.x - prev.x) * t, y: prev.y + (cur.y - prev.y) * t });
+      }
+      if (sc >= 0) out.push(cur);
+    }
+    poly = out;
+  }
+  const smaller = Math.min(4 * a.hl * a.hw, 4 * b.hl * b.hw);
+  return smaller > 0 ? _polyArea(poly) / smaller : 0;
+}
 function _kiteBoxesOverlap(a, b) {
   const axes = [a.ang, a.ang + Math.PI / 2, b.ang, b.ang + Math.PI / 2];
   for (const t of axes) {
@@ -5981,16 +6019,29 @@ function declutterKites(queued) {
     const p = proj(state.waypoints[i]);
     const g = typeof waypointGeom === 'function' ? waypointGeom(i) : null;
     const r = g && Number.isFinite(g.r) ? g.r : 6;
-    placed.push({ x: p.x, y: p.y, ang: 0, hl: r, hw: r });
+    placed.push({ x: p.x, y: p.y, ang: 0, hl: r, hw: r, wp: true });
   }
   const box = (it, x, y, ang) => ({ x, y, ang, hl: it.size.L / 2 + gap, hw: it.size.W / 2 + gap });
   // Pilot-placed first, then nav kites, then time boxes, each in route order.
   const rank = (it) => (it.meta.fixed ? 0 : it.meta.cum ? 2 : 1);
   items.sort((a, b) => rank(a) - rank(b));
   const leaders = [];
+  const allow = tune('kiteDeclutterAllowPct') / 100;
+  // How many placed boxes cover this one past the allowance. At its own spot, a box the pilot
+  // placed does not count: they were put together on purpose.
+  const conflicts = (b, home) => {
+    let n = 0;
+    for (const p of placed) {
+      if (home && p.fixed) continue;
+      if (_kiteBoxCover(b, p) > allow) n++;
+    }
+    return n;
+  };
   for (const it of items) {
     const m = it.meta;
-    if (m.fixed) { placed.push(box(it, it.x, it.y, it.ang)); continue; }
+    if (m.fixed) { placed.push(Object.assign(box(it, it.x, it.y, it.ang), { fixed: true })); continue; }
+    const home = box(it, it.x, it.y, it.ang);
+    if (conflicts(home, true) === 0) { placed.push(home); continue; }
     const maxMove = tune('kiteDeclutterMaxShift') * Math.max(it.size.L, it.size.W);
     const cands = [];
     if (m.cum) {
@@ -6012,19 +6063,16 @@ function declutterKites(queued) {
         }
       }
     }
+    // The nearest spot that is clear; none within reach, and it stays home, covered.
     let best = null;
     for (const c of cands) {
       const moved = Math.hypot(c.x - it.x, c.y - it.y);
-      if (moved > maxMove + 0.5) continue;
+      if (moved < 0.5 || moved > maxMove + 0.5 || (best && moved >= best.moved)) continue;
       const b = box(it, c.x, c.y, c.ang);
-      let hits = 0;
-      for (const p of placed) if (_kiteBoxesOverlap(b, p)) hits++;
-      if (!best || hits < best.hits || (hits === best.hits && moved < best.moved)) best = { c, b, hits, moved };
-      if (hits === 0 && moved === 0) break;
+      if (conflicts(b, false) === 0) best = { c, b, moved };
     }
-    if (!best) { placed.push(box(it, it.x, it.y, it.ang)); continue; }
+    if (!best) { placed.push(home); continue; }
     placed.push(best.b);
-    if (best.moved < 0.5) continue;
     const args = it.q[1];
     args[0] = best.c.x; args[1] = best.c.y; args[2] = best.c.ang;
     _kitePlaced.set(m.key, { x: best.c.x, y: best.c.y });
