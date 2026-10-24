@@ -1,0 +1,32 @@
+{
+ "generatedAt": "2026-10-24T16:00:50.115Z",
+ "source": "IMS area warnings (ims.gov.il)",
+ "airmets": [
+  {
+   "id": "43589",
+   "hazard": "MT OBSC",
+   "validFrom": "2026-10-24T16:00:00.000Z",
+   "validTo": "2026-10-24T19:00:00.000Z",
+   "coords": [
+    [
+     32.51667,
+     35.13333
+    ],
+    [
+     32.43333,
+     35.51667
+    ],
+    [
+     30.3,
+     34.58333
+    ],
+    [
+     30.7,
+     34.43333
+    ]
+   ],
+   "raw": "LLLL AIRMET 8 VALID 241600/241900 LLBD- LLLL TEL AVIV FIR MT OBSC FCST WI N3231 E03508 - N3226 E03531 - N3018 E03435 - N3042 E03426 - N3231 E03508 STNR INTSF="
+  }
+ ],
+ "airfieldWarnings": {}
+}
