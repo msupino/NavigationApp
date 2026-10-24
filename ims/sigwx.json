@@ -1,0 +1,31 @@
+{
+ "generatedAt": "2026-10-24T15:17:52.305Z",
+ "source": "IMS significantly_weather_maps",
+ "times": [
+  {
+   "valid": "18:00",
+   "day": "24/10/2026",
+   "png": "ims/sigwx/PGX_202610240010_202610241800.png"
+  },
+  {
+   "valid": "00:00",
+   "day": "25/10/2026",
+   "png": "ims/sigwx/PGX_202610240619_202610250000.png"
+  },
+  {
+   "valid": "03:00",
+   "day": "25/10/2026",
+   "png": "ims/sigwx/PGX_202610240944_202610250300.png"
+  },
+  {
+   "valid": "06:00",
+   "day": "25/10/2026",
+   "png": "ims/sigwx/PGX_202610241339_202610250600.png"
+  },
+  {
+   "valid": "12:00",
+   "day": "25/10/2026",
+   "png": "ims/sigwx/PGX_202610241812_202610251200.png"
+  }
+ ]
+}
