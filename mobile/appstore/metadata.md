@@ -4,11 +4,13 @@ Copy for App Store Connect. Keep it in the repo so a resubmission is not a rewri
 
 ## Name
 
-NavAid
+`NavAid Israel` — 13. The App Store listing only: the home-screen name stays **NavAid**
+(`CFBundleDisplayName`), and so does the Android app.
 
 ## Subtitle (30 characters max)
 
-`VFR flight planning, Israel` — 27
+`VFR flight planning & charts` — 28 (Israel is in the name now; repeating it here spends
+characters the search index already has)
 
 ## Promotional text (170 max)
 
@@ -39,7 +41,7 @@ command is responsible for the safe conduct of every flight.
 
 ## Keywords (100 characters max, comma separated, no spaces)
 
-`vfr,aviation,flight,plan,navigation,chart,notam,metar,pilot,israel,cvfr,aeronautical`
+`vfr,aviation,flight,plan,navigation,chart,notam,metar,taf,pilot,cvfr,aeronautical`
 
 ## URLs
 
