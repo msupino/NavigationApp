@@ -277,3 +277,67 @@ test('a call sign is upper-case English as it is typed, even on the Hebrew keybo
   await ask.pressSequentially('xy\u05D6');
   await expect(ask).toHaveValue('XYZ');
 });
+
+test('review fixes: Q and W on the Hebrew keyboard, an emptied Gal/h, the one-time migration, the descent rate', async ({ page }) => {
+  await boot(page);
+  // The Q and W keys type / and ' on the Israeli layout.
+  expect(await page.evaluate(() => callSignLatin("/'ק"))).toBe('QWE');
+  // Retyping Gal/h starts by emptying it: the aircraft, its call sign and figures survive.
+  await page.evaluate(() => { createAircraftProfile('ABC', 'C172'); });
+  await openPlan(page);
+  const gph = page.locator('#aircraft-gph');
+  await gph.fill('');
+  await gph.fill('9');
+  expect(await page.evaluate(() => [aircraft.gph, activeAircraftProfile() && activeAircraftProfile().name, aircraft.type]))
+    .toEqual([9, 'ABC', 'C172']);
+});
+
+test('an unnamed aircraft of an unlisted type is not turned into one called after its type', async ({ page }) => {
+  await boot(page);
+  await page.evaluate(() => {
+    aircraft = Object.assign({}, aircraft, { type: 'C182', profile: undefined }); saveAircraft();
+    localStorage.setItem('navaid.fpl.type', 'C182');
+  });
+  await page.reload();
+  await page.waitForFunction(() => typeof aircraftProfiles !== 'undefined' && typeof createAircraftProfile === 'function');
+  expect(await page.evaluate(() => aircraftProfiles.length)).toBe(0);
+});
+
+test('an aircraft stored before the descent rate takes its type\'s', async ({ page }) => {
+  await boot(page);
+  await page.evaluate(() => {
+    const a = Object.assign({}, aircraft); delete a.descentFpm;
+    localStorage.setItem('navaid.aircraft', JSON.stringify(a));
+  });
+  await page.reload();
+  await page.waitForFunction(() => typeof aircraft !== 'undefined' && aircraft);
+  expect(await page.evaluate(() => aircraft.descentFpm)).toBe(500);
+});
+
+test('Escape closes the plan over a panel that was opened before it', async ({ page }) => {
+  await boot(page);
+  await page.evaluate(() => {
+    const b = document.createElement('div');
+    b.className = 'modal-back test-earlier-panel';
+    b.innerHTML = '<div class="modal">earlier</div>';
+    document.body.appendChild(b);
+  });
+  await openPlan(page);
+  await expect(page.locator('.modal-back.flight-plan')).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(page.locator('.modal-back.flight-plan')).toHaveCount(0);
+});
+
+test('a saved aircraft stored before the descent rate takes its type\'s too', async ({ page }) => {
+  await boot(page);
+  await page.evaluate(() => {
+    const p = createAircraftProfile('OLD', 'C172');
+    const list = JSON.parse(localStorage.getItem('navaid.aircraftProfiles'));
+    for (const x of list) delete x.descentFpm;
+    localStorage.setItem('navaid.aircraftProfiles', JSON.stringify(list));
+    return p && p.id;
+  });
+  await page.reload();
+  await page.waitForFunction(() => typeof aircraftProfiles !== 'undefined' && aircraftProfiles.length);
+  expect(await page.evaluate(() => { selectAircraftProfile(aircraftProfiles[0].id); return aircraft.descentFpm; })).toBe(500);
+});

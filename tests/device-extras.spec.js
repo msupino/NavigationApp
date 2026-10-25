@@ -12,6 +12,7 @@ async function boot(page, opts = {}) {
       window.__calls.push(name + '.' + String(fn) + (arg !== undefined ? ' ' + JSON.stringify(arg) : ''));
       if (fn === 'addListener') { (window.__cbs = window.__cbs || {})[name + ':' + arg] = arguments[1]; return { remove() {} }; }
       if (fn === 'isAvailable') return { available: true };
+      if (fn === 'getBrightness') return { brightness: 0.7 };
       if (fn === 'getBatteryInfo') return { batteryLevel: o.battery == null ? 0.9 : o.battery, isCharging: false };
       return undefined;
     }) });
@@ -62,6 +63,20 @@ test('brightness: a browser dims with a veil, the app sets the screen; System gi
   expect(await calls(page)).toContain('ScreenBrightness.setBrightness {"brightness":0.6}');
   await page.evaluate(() => NavAid.device.setBrightness(null));
   expect(await calls(page)).toContain('ScreenBrightness.setBrightness {"brightness":-1}');
+});
+
+test('iPhone: System leaves the screen alone at start, and gives back its own level after a change', async ({ page }) => {
+  // -1 means "the phone's own" to the plugin on Android only; iOS set the screen to its lowest
+  // at every start of the app (reported).
+  await boot(page, { native: true, platform: 'ios' });
+  expect((await calls(page)).filter(c => c.startsWith('ScreenBrightness.setBrightness'))).toEqual([]);
+  await page.evaluate(() => NavAid.device.setBrightness(30));
+  await expect.poll(async () => (await calls(page)).filter(c => c.startsWith('ScreenBrightness.setBrightness')))
+    .toEqual(['ScreenBrightness.setBrightness {"brightness":0.3}']);
+  await page.evaluate(() => NavAid.device.setBrightness(null));
+  await expect.poll(async () => (await calls(page)).filter(c => c.startsWith('ScreenBrightness.setBrightness')))
+    .toEqual(['ScreenBrightness.setBrightness {"brightness":0.3}', 'ScreenBrightness.setBrightness {"brightness":0.7}']);
+  expect((await calls(page)).some(c => c.includes('"brightness":-1'))).toBe(false);
 });
 
 test('barometer: pressure altitude and vertical speed, in the GPS details', async ({ page }) => {
@@ -180,4 +195,53 @@ test('iOS app: the dimmed Bluetooth GPS button does not point to Android', async
   const why = await btn.getAttribute('data-why');
   expect(why).not.toMatch(/Android/i);
   expect(why).toMatch(/latest version of the app/);
+});
+
+test('iPhone: System chosen while the first change is still asking the phone wins', async ({ page }) => {
+  await boot(page, { native: true, platform: 'ios' });
+  await page.evaluate(async () => {
+    const sb = window.Capacitor.Plugins.ScreenBrightness;
+    let release;
+    const slow = new Promise(r => { release = r; });
+    window.Capacitor.Plugins.ScreenBrightness = new Proxy(sb, { get: (t, fn) => (fn === 'getBrightness'
+      ? async () => { await slow; return { brightness: 0.7 }; } : t[fn]) });
+    NavAid.device.setBrightness(20);
+    NavAid.device.setBrightness(null);
+    release();
+    await new Promise(r => setTimeout(r, 50));
+  });
+  expect((await calls(page)).filter(c => c.startsWith('ScreenBrightness.setBrightness'))).toEqual([]);
+});
+
+test('iPhone: after a restart at the app\'s level, System still gives back the phone\'s own', async ({ page }) => {
+  await boot(page, { native: true, platform: 'ios' });
+  await page.evaluate(() => NavAid.device.setBrightness(30));
+  await expect.poll(async () => (await calls(page)).length).toBeGreaterThan(0);
+  await page.reload();                                // iOS still holds the screen at 30%
+  await page.waitForFunction(() => NavAid.device);
+  await page.evaluate(() => { window.__calls = []; NavAid.device.setBrightness(null); });
+  await expect.poll(async () => (await calls(page)).filter(c => c.startsWith('ScreenBrightness.setBrightness')))
+    .toEqual(['ScreenBrightness.setBrightness {"brightness":0.7}']);
+});
+
+test('brightness: the phone\'s own is a switch; the slider is dimmed while it is on, and moving it switches it off', async ({ page }) => {
+  // A slider at 100% beside a "System" button read as the app holding the screen at full (reported).
+  await boot(page);
+  const sys = page.locator('#brightness-system');
+  const row = page.locator('#brightness-row');
+  await expect(sys).toBeChecked();
+  await expect(row).toHaveClass(/brightness-dimmed/);
+  await expect(page.locator('#brightness-val')).toHaveText('System');
+  // Moving the slider chooses a level.
+  await page.evaluate(() => { const r = document.getElementById('brightness-range'); r.value = '40'; r.dispatchEvent(new Event('input')); });
+  await expect(sys).not.toBeChecked();
+  await expect(row).not.toHaveClass(/brightness-dimmed/);
+  await expect(page.locator('#brightness-val')).toHaveText('40%');
+  // Back on: System, and the slider keeps the level it would set next.
+  await page.evaluate(() => { const c = document.getElementById('brightness-system'); c.checked = true; c.dispatchEvent(new Event('change')); });
+  await expect(row).toHaveClass(/brightness-dimmed/);
+  expect(await page.evaluate(() => document.getElementById('brightness-range').value)).toBe('40');
+  // ...and off again: that level, not full.
+  await page.evaluate(() => { const c = document.getElementById('brightness-system'); c.checked = false; c.dispatchEvent(new Event('change')); });
+  await expect(page.locator('#brightness-val')).toHaveText('40%');
 });

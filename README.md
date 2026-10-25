@@ -10,8 +10,16 @@ building iOS and Android apps from the same static `docs/` app.
 
 - **Live (production):** https://navaid.supino.org/
 - **Live (staging):** https://navaid.supino.org/staging/
+- **iPhone / iPad (App Store):** https://apps.apple.com/app/id6824476911
 - **Repo:** https://github.com/msupino/NavigationApp
 - **Wiki:** https://github.com/msupino/NavigationApp/wiki — full documentation / תיעוד מלא
+
+## Install the iPhone / iPad app
+
+NavAid is on the App Store: https://apps.apple.com/app/id6824476911 — search **NavAid** in the
+App Store app, or open the link on the iPhone or iPad. Updates come through the App Store like
+any other app. The App Store build carries the whole app and the CVFR chart tiles, so it opens
+without a connection.
 
 ## Install the Android app
 

@@ -60,23 +60,66 @@
     if (!el) { el = document.createElement('div'); el.id = 'dim-veil'; el.setAttribute('aria-hidden', 'true'); document.body.appendChild(el); }
     el.style.opacity = op.toFixed(2);
   }
+  // "System" is -1 to the plugin, and only on Android: there it hands the screen back to the
+  // phone. iOS takes the number as it is -- the screen at its very lowest, at every start of
+  // the app (reported on iPhone). There, System leaves the screen alone, and gives back the
+  // level the phone had only if the app changed it, read just before it first did.
+  const ios = () => { const C = window.Capacitor; return !!(C && typeof C.getPlatform === 'function' && C.getPlatform() === 'ios'); };
+  // The phone's own level is kept on the device while the app holds the screen, so a restart at
+  // the app's level does not read that back as the phone's own (and System then restore it).
+  const OWN_KEY = 'navaid.brightnessOwn';
+  const ownStored = () => { try { const v = localStorage.getItem(OWN_KEY); return v === null ? null : Number(v); } catch (e) { return null; } };
+  let iosOwnLevel = ownStored(), iosChanged = iosOwnLevel != null, iosGen = 0;
+  async function setScreen(sb, v) {
+    if (!ios()) { call(sb, 'setBrightness', { brightness: v == null ? -1 : Math.max(0.01, v) }); return; }
+    // The newest setting wins: System chosen while the first change still waits on the phone's
+    // own level must not be overtaken by that change landing afterwards (review).
+    const gen = ++iosGen;
+    if (v == null) {
+      if (iosChanged && iosOwnLevel != null) call(sb, 'setBrightness', { brightness: iosOwnLevel });
+      iosChanged = false;
+      iosOwnLevel = null;
+      try { localStorage.removeItem(OWN_KEY); } catch (e) { /* storage off */ }
+      return;
+    }
+    if (!iosChanged) {
+      let own = null;
+      try {
+        const r = await sb.getBrightness();
+        own = r && Number.isFinite(r.brightness) && r.brightness >= 0 ? r.brightness : null;
+      } catch (e) { own = null; }
+      if (gen !== iosGen) return;                   // overtaken while it was asked
+      iosOwnLevel = own;
+      try { if (own != null) localStorage.setItem(OWN_KEY, String(own)); } catch (e) { /* storage off */ }
+    }
+    iosChanged = true;
+    call(sb, 'setBrightness', { brightness: Math.max(0.01, v) });
+  }
   function applyBrightness() {
     const on = feat('featureBrightness');
     const v = on ? brightness() : null;
     const sb = native('ScreenBrightness');
     if (sb) {
-      call(sb, 'setBrightness', { brightness: v == null ? -1 : Math.max(0.01, v) });
+      setScreen(sb, v);
       veil(v != null && v < 0.05 ? v / 0.05 * 0.3 + 0.7 : null);   // below the screen's floor: a light veil on top
     } else veil(v);
     const range = document.getElementById('brightness-range');
     const out = document.getElementById('brightness-val');
-    if (range) range.value = String(Math.round((v == null ? 1 : v) * 100));
+    // On System the slider is dimmed, and sits where it would set the screen next (the last level
+    // the pilot chose) -- not at a 100% that read as the app holding the screen at full.
+    if (range) range.value = String(Math.round((v == null ? lastManual : v) * 100));
     if (out) out.textContent = v == null ? str('tbBrightnessAuto', 'System') : Math.round(v * 100) + '%';
-    const row = document.getElementById('brightness-row'), sys = document.getElementById('brightness-system');
-    if (row) row.hidden = !on;
-    if (sys) sys.hidden = !on;
+    const row = document.getElementById('brightness-row'), sysRow = document.getElementById('brightness-system-row');
+    const sys = document.getElementById('brightness-system');
+    if (sys) sys.checked = v == null;
+    if (row) { row.hidden = !on; row.classList.toggle('brightness-dimmed', v == null); }
+    if (sysRow) sysRow.hidden = !on;
   }
+  // The level the slider comes back to when the phone's own brightness is switched off.
+  let lastManual = 0.6;
+  try { const m = Number(localStorage.getItem(BRIGHT_KEY)); if (m > 0) lastManual = m / 100; } catch (e) { /* storage off */ }
   function setBrightness(pct) {
+    if (pct != null) lastManual = Math.max(0, Math.min(1, pct / 100));
     try {
       if (pct == null) localStorage.removeItem(BRIGHT_KEY);
       else localStorage.setItem(BRIGHT_KEY, String(Math.round(pct)));
@@ -85,8 +128,9 @@
   }
   const range = document.getElementById('brightness-range');
   if (range) range.addEventListener('input', () => setBrightness(Number(range.value)));
-  const sysBtn = document.getElementById('brightness-system');
-  if (sysBtn) sysBtn.addEventListener('click', () => setBrightness(null));
+  // Moving the dimmed slider is choosing a level: it switches the phone's own brightness off.
+  const sysCb = document.getElementById('brightness-system');
+  if (sysCb) sysCb.addEventListener('change', () => setBrightness(sysCb.checked ? null : Math.round(lastManual * 100)));
 
   // --- battery ------------------------------------------------------------------------
   let warnedAt = 1;                 // the lowest level already warned about this flight
