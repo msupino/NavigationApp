@@ -76,15 +76,23 @@ export function parseAirmetCoords(text) {
 // "VALID ddhhmm/ddhhmm" is UTC, and it is the authoritative validity -- the IMS item's own
 // valid_from/valid_to are LOCAL (Israel), an hour or three off. Anchor the day-of-month to
 // the issue date so a window that crosses midnight (or a month) resolves.
+// The issue date is LOCAL, so it can be a day ahead of UTC across a month boundary: issued
+// 00:30 local on Nov 1 with VALID 312230/010230 starts on Oct 31 UTC. Each DD therefore
+// resolves to the month (previous, same or next) where that day exists and lies nearest the
+// issue date -- never by letting Date.UTC overflow "Nov 31" into Dec 1.
 export function parseAirmetValidity(text, issueDate) {
   const m = /VALID\s+(\d{2})(\d{2})(\d{2})\/(\d{2})(\d{2})(\d{2})/.exec(String(text || ''));
   if (!m) return { validFrom: null, validTo: null };
   const base = new Date((issueDate || new Date().toISOString().slice(0, 10)) + 'T00:00:00Z');
   if (isNaN(base)) return { validFrom: null, validTo: null };
   const mk = (dd, hh, mm) => {
-    const d = new Date(Date.UTC(base.getUTCFullYear(), base.getUTCMonth(), Number(dd), Number(hh), Number(mm)));
-    if (d.getUTCDate() < base.getUTCDate() - 2) d.setUTCMonth(d.getUTCMonth() + 1);
-    return d.toISOString();
+    let best = null;
+    for (const off of [-1, 0, 1]) {
+      const d = new Date(Date.UTC(base.getUTCFullYear(), base.getUTCMonth() + off, Number(dd), Number(hh), Number(mm)));
+      if (d.getUTCDate() !== Number(dd)) continue;             // that month has no such day
+      if (!best || Math.abs(d - base) < Math.abs(best - base)) best = d;
+    }
+    return best ? best.toISOString() : null;
   };
   return { validFrom: mk(m[1], m[2], m[3]), validTo: mk(m[4], m[5], m[6]) };
 }
