@@ -9997,3 +9997,46 @@ body.deck-on .ac-profile-btn, body.deck-on .fp-aircraft .ac-custom > summary { m
 .fpl-type-box { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; }
 .fpl-readonly { opacity: .85; }
 .fpl-type-hint { font-size: 12px; opacity: .8; }
+
+/* Digital compass (compass.js): hold the rotation dial. A card that turns under a fixed lubber
+   line, the heading big and magnetic under it, and the caveat in small print. */
+.modal.compass-modal { width: min(420px, 96vw); text-align: center; }
+.compass-body { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+.compass-rose { width: min(380px, 88vw); height: auto; }
+.compass-card { transition: transform 120ms linear; }
+@media (prefers-reduced-motion: reduce) { .compass-card { transition: none; } }
+.compass-face { fill: #fdfdfd; stroke: #888; stroke-width: 1.5; }
+.compass-guide { fill: none; stroke: #d9d9d9; stroke-width: 1; }
+.compass-ring { fill: none; stroke: #222; stroke-width: 2.5; }
+.compass-tick { stroke: #222; stroke-width: 1.2; }
+.compass-tick.minor { stroke-width: 0.6; }
+.compass-tick.major { stroke-width: 2; }
+.compass-num { fill: #222; font: 700 10.5px sans-serif; text-anchor: middle; dominant-baseline: central; }
+.compass-num.cardinal { font-size: 12px; font-weight: 800; }
+.compass-pt { stroke: #111; stroke-width: 0.8; }
+.compass-hub { fill: #d6d6d6; stroke: #333; stroke-width: 2; }
+.compass-card-letter { font: 800 24px sans-serif; text-anchor: middle; dominant-baseline: central; }
+.compass-card-name { fill: #333; font: 700 11.5px sans-serif; text-anchor: middle; dominant-baseline: central; }
+.compass-inter { font: 800 13px sans-serif; text-anchor: middle; }
+.compass-inter-deg { fill: #333; font-size: 11px; font-weight: 700; }
+.compass-lubber { fill: #ffb300; stroke: #111; stroke-width: 1; }
+.compass-plane { fill: #ffb300; stroke: #111; stroke-width: 1; opacity: 0.92; }
+.compass-ac { transition: transform 120ms linear; }
+@media (prefers-reduced-motion: reduce) { .compass-ac { transition: none; } }
+.compass-modes { display: inline-flex; border: 1.5px solid #1d6fe0; border-radius: 8px; overflow: hidden; }
+.compass-modes button { min-height: 40px; padding: 6px 14px; font-weight: 700; border: none;
+  background: transparent; color: inherit; cursor: pointer; }
+.compass-modes button[aria-pressed="true"] { background: #1d6fe0; color: #fff; }
+.compass-readout { display: flex; align-items: baseline; gap: 6px; font-variant-numeric: tabular-nums; }
+.compass-deg { font: 800 44px sans-serif; letter-spacing: 1px; }
+.compass-ref { font: 700 14px sans-serif; opacity: 0.75; }
+.compass-var { margin: -4px 0 0; font: 700 14px sans-serif; opacity: 0.8; font-variant-numeric: tabular-nums; }
+.compass-modes button.is-dim { opacity: 0.45; }
+.compass-status { margin: 0; font-size: 14px; color: #ffcc80; }
+.compass-start { min-height: 44px; padding: 8px 18px; font-weight: 700; border-radius: 8px;
+  background: #1d6fe0; color: #fff; border: none; cursor: pointer; }
+.compass-note { margin: 0; font-size: 12px; opacity: 0.75; max-width: 32ch; }
+body.theme-light .compass-status { color: #a15c00; }
+
+/* The dial's long press is the compass: no text selection, callout or magnifier from the phone. */
+#rotate-dial { -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; touch-action: none; }

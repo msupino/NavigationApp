@@ -1790,7 +1790,7 @@ function refreshDial() {
   // field, which mirrors it -- a chart turned to fly 354 has north 6 degrees RIGHT of up, and
   // the needle leaned 6 degrees left.
   rotNeedle.style.transform = 'rotate(' + ((Math.round(mapBearing()) % 360) + 360) % 360 + 'deg)';
-  rotDial.title = S.dialTitle(b);
+  rotDial.title = S.dialTitle(b) + (tune('featureCompass') !== false ? ' \u00b7 ' + (S.compassHoldHint || 'hold for the compass') : '');
   rotDial.setAttribute('aria-valuenow', String(b));
   // In flight the number beside the dial is the heading up the screen, magnetic like every
   // heading a pilot reads -- it said 209 beside a strip saying 204. While planning it is the
@@ -1824,9 +1824,14 @@ function dialAngle(ev) {                 // 0 = north (up), clockwise positive
 }
 let rotDragging = false;
 let rotMoved = false;
-let rotStartX = 0, rotStartY = 0;
+let rotStartX = 0, rotStartY = 0, rotDownAt = 0, rotSlop = 0;
 rotDial.addEventListener('pointerdown', e => {
   rotDragging = true;
+  // A finger drifts a few pixels while it is held still; with the mouse's few-pixel slop that
+  // started a drag, which turns the chart to the finger's angle -- the hold for the compass
+  // rotated the map (reported on Android). A finger gets the touch slop.
+  rotSlop = e.pointerType === 'touch' ? Math.max(tune('rotDragPx'), tune('touchDragPx'), tune('compassHoldSlopPx')) : tune('rotDragPx');
+  rotDownAt = Date.now();
   rotMoved = false;
   rotStartX = e.clientX;
   rotStartY = e.clientY;
@@ -1836,15 +1841,22 @@ rotDial.addEventListener('pointerdown', e => {
 rotDial.addEventListener('pointermove', e => {
   if (!rotDragging) return;
   if (!rotMoved) {
-    if (Math.hypot(e.clientX - rotStartX, e.clientY - rotStartY) < tune('rotDragPx')) return;
+    if (Math.hypot(e.clientX - rotStartX, e.clientY - rotStartY) < rotSlop) return;
     rotMoved = true;
   }
   orientNoteManualRotation();
   // Drag the north arrow: the needle follows the finger, and north goes where it is dropped.
   map.setBearing(((dialAngle(e)) % 360 + 360) % 360);
 });
+// The compass (compass.js) takes over a hold on the dial: the release that ends it must not
+// also step the chart.
+window.rotDialCancelGesture = () => { rotDragging = false; rotDial.classList.remove('dragging'); };
 function rotEnd(cycle) {
-  if (cycle && rotDragging && !rotMoved) {
+  // A tap is short: a press held as long as the compass's hold is never a 90° step, whether or
+  // not the compass opened (reported: the long press turned the chart by 90°).
+  // ...and never one that opened the compass, however soon (rotDialCancelGesture ends it).
+  const tap = !rotDownAt || Date.now() - rotDownAt < tune('compassHoldMs');
+  if (cycle && rotDragging && !rotMoved && tap) {
     // Tap steps the chart through TRUE 0° / 90° / 180° / 270°: 0 is the chart square with
     // real north up, in flight too (magnetic steps left it a few degrees askew). The tap ends
     // heading-up, so the number then reads the same true rotation. Off-axis, the first tap goes to 0.
@@ -1854,6 +1866,7 @@ function rotEnd(cycle) {
     map.setBearing((360 - next) % 360);
   }
   rotDragging = false;
+  rotDownAt = 0;
   rotDial.classList.remove('dragging');
 }
 rotDial.addEventListener('pointerup', () => rotEnd(true));

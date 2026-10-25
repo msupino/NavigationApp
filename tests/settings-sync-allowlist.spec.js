@@ -164,6 +164,7 @@ const NOT_A_SYNCED_SETTING = [
   [/^navaid\.etd$/,              'the planned departure of one flight (#667), not a setting -- a stale ETD on another device would put wrong ETAs on its plan'],
   [/^navaid\.printBw$/,          'whether the printer HERE prints in colour -- about this device\'s printer, not the pilot'],
   [/^navaid\.measure$/,            'the measurement on screen comes back after a reload of THIS device'],
+  [/^navaid\.compass(Mode|Source)$/, 'how the compass is turned and read is this phone in this cockpit'],
   [/^navaid\.brightness(Own)?$/,   'screen brightness is this phone in this cockpit, not the pilot’s other devices'],
   [/^navaid\.altSource$/,          'whether THIS phone has a usable barometer is a fact about the phone'],
   [/^navaid\.tourSeen$/,           'the map tour plays once per device: a new phone gets it too'],
