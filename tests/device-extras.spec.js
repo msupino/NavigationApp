@@ -196,3 +196,19 @@ test('iOS app: the dimmed Bluetooth GPS button does not point to Android', async
   expect(why).not.toMatch(/Android/i);
   expect(why).toMatch(/latest version of the app/);
 });
+
+test('iPhone: System chosen while the first change is still asking the phone wins', async ({ page }) => {
+  await boot(page, { native: true, platform: 'ios' });
+  await page.evaluate(async () => {
+    const sb = window.Capacitor.Plugins.ScreenBrightness;
+    let release;
+    const slow = new Promise(r => { release = r; });
+    window.Capacitor.Plugins.ScreenBrightness = new Proxy(sb, { get: (t, fn) => (fn === 'getBrightness'
+      ? async () => { await slow; return { brightness: 0.7 }; } : t[fn]) });
+    NavAid.device.setBrightness(20);
+    NavAid.device.setBrightness(null);
+    release();
+    await new Promise(r => setTimeout(r, 50));
+  });
+  expect((await calls(page)).filter(c => c.startsWith('ScreenBrightness.setBrightness'))).toEqual([]);
+});

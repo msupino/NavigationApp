@@ -65,19 +65,25 @@
   // the app (reported on iPhone). There, System leaves the screen alone, and gives back the
   // level the phone had only if the app changed it, read just before it first did.
   const ios = () => { const C = window.Capacitor; return !!(C && typeof C.getPlatform === 'function' && C.getPlatform() === 'ios'); };
-  let iosOwnLevel = null, iosChanged = false;
+  let iosOwnLevel = null, iosChanged = false, iosGen = 0;
   async function setScreen(sb, v) {
     if (!ios()) { call(sb, 'setBrightness', { brightness: v == null ? -1 : Math.max(0.01, v) }); return; }
+    // The newest setting wins: System chosen while the first change still waits on the phone's
+    // own level must not be overtaken by that change landing afterwards (review).
+    const gen = ++iosGen;
     if (v == null) {
       if (iosChanged && iosOwnLevel != null) call(sb, 'setBrightness', { brightness: iosOwnLevel });
       iosChanged = false;
       return;
     }
     if (!iosChanged) {
+      let own = null;
       try {
         const r = await sb.getBrightness();
-        iosOwnLevel = r && Number.isFinite(r.brightness) && r.brightness >= 0 ? r.brightness : null;
-      } catch (e) { iosOwnLevel = null; }
+        own = r && Number.isFinite(r.brightness) && r.brightness >= 0 ? r.brightness : null;
+      } catch (e) { own = null; }
+      if (gen !== iosGen) return;                   // overtaken while it was asked
+      iosOwnLevel = own;
     }
     iosChanged = true;
     call(sb, 'setBrightness', { brightness: Math.max(0.01, v) });
