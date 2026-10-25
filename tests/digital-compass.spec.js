@@ -117,3 +117,56 @@ test('a long press never steps the chart by 90°, even when the compass does not
   expect(await bearing(page)).toBe(0);
   await expect(page.locator('.compass-modal')).toHaveCount(0);
 });
+
+test('heading up turns the card; north up keeps N up and turns the aircraft; the choice is kept', async ({ page }) => {
+  await boot(page);
+  await page.evaluate(() => { setTune('compassSmoothing', 1); NavAid.compass.show();
+    window.dispatchEvent(Object.assign(new Event('deviceorientation'), { webkitCompassHeading: 70 })); });
+  await expect(page.locator('.compass-modes button[data-mode="heading"]')).toHaveAttribute('aria-pressed', 'true');
+  expect(await page.locator('.compass-card').getAttribute('transform')).toContain('rotate(-70.0');
+  expect(await page.locator('.compass-ac').getAttribute('transform')).toContain('rotate(0.0');
+  await page.locator('.compass-modes button[data-mode="north"]').click();
+  expect(await page.locator('.compass-card').getAttribute('transform')).toContain('rotate(0.0');
+  expect(await page.locator('.compass-ac').getAttribute('transform')).toContain('rotate(70.0');
+  await expect(page.locator('.compass-deg')).toHaveText('070°');          // same heading either way
+  await page.reload();
+  await page.waitForFunction(() => window.NavAid && NavAid.compass && typeof clearBootLoading === 'function');
+  await page.evaluate(() => { clearBootLoading(); NavAid.compass.show(); });
+  await expect(page.locator('.compass-modes button[data-mode="north"]')).toHaveAttribute('aria-pressed', 'true');
+});
+
+test('Android Chrome: a permission call that answers by itself shows no iPhone message, and the compass just runs', async ({ page }) => {
+  // Reported on Android web: "iPhone asks before reading the compass". Chrome on Android has the
+  // call too; the events come without it.
+  await page.addInitScript(() => {
+    window.DeviceOrientationEvent = window.DeviceOrientationEvent || function () {};
+    window.DeviceOrientationEvent.requestPermission = () => Promise.resolve('granted');
+  });
+  await boot(page);
+  await page.evaluate(() => { setTune('compassSmoothing', 1); NavAid.compass.show();
+    window.dispatchEvent(Object.assign(new Event('deviceorientationabsolute'), { alpha: 300 })); });
+  await expect(page.locator('.compass-deg')).toHaveText('060°');
+  await page.waitForTimeout(1500);
+  await expect(page.locator('.compass-start')).toBeHidden();
+  await expect(page.locator('.compass-status')).not.toContainText('iPhone');
+});
+
+test('a finger drifting a few pixels while held opens the compass and does not turn the map', async ({ page }) => {
+  // Reported on Android: the long press still rotated the map -- the finger's small drift was
+  // taken for a drag, which turns the chart to the finger's angle.
+  await boot(page);
+  await page.evaluate(() => map.setBearing(0));
+  const r = await page.evaluate(async () => {
+    const d = document.getElementById('rotate-dial');
+    const b = d.getBoundingClientRect();
+    const x = b.left + b.width / 2 + 2, y = b.top + 3;     // near the top edge, like a thumb
+    const ev = (type, dx, dy) => d.dispatchEvent(new PointerEvent(type, { bubbles: true, pointerId: 7, pointerType: 'touch', clientX: x + dx, clientY: y + dy, isPrimary: true }));
+    ev('pointerdown', 0, 0);
+    for (const [dx, dy] of [[3, 1], [-6, 8], [11, -4], [2, 13]]) { await new Promise(r => setTimeout(r, 120)); ev('pointermove', dx, dy); }
+    await new Promise(r => setTimeout(r, 400));
+    ev('pointerup', 2, 13);
+    return Math.round(map.getBearing());
+  });
+  expect(r).toBe(0);
+  await expect(page.locator('.compass-modal')).toBeVisible();
+});
