@@ -208,7 +208,8 @@ test('sw.js exempts the tile cache from activate cleanup and serves tiles cache-
   // staging worker wipe the PRODUCTION app-shell cache (Cache Storage is per origin).
   // Cleanup is now scope-owned; the tile bucket is still skipped outright, which is what
   // this test is really about -- a 100+ MB user download must never be collateral.
-  expect(sw).toMatch(/if \(k === CACHE \|\| k === TILE_CACHE\) continue;/);
+  // SHELL_CACHE is this scope's own app-shell cache (see sw.js).
+  expect(sw).toMatch(/if \(k === SHELL_CACHE \|\| k === TILE_CACHE\) continue;/);
   expect(sw).toContain('ownedByThisScope');
   expect(sw).toMatch(/TILE_HOST = 'flight-maps\.com'/);
   const tileBranch = sw.indexOf('url.host === TILE_HOST');
