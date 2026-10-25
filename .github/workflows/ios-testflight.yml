@@ -17,7 +17,7 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: 'Marketing version; empty = the Android versionName, so both apps match'
+        description: 'Marketing version; empty = the Android versionName (anything else must equal it)'
         required: false
         default: ''
       charts:
@@ -91,7 +91,7 @@ jobs:
           npm run bundle:check
           npm run embed
 
-      - name: Version (same as the Android app unless given)
+      - name: Version (always the Android app's)
         env:
           # Through the environment, never pasted into the script: an input is text, not code.
           INPUT_VERSION: ${{ inputs.version }}
@@ -100,8 +100,15 @@ jobs:
           if [ -n "$v" ] && ! printf '%s' "$v" | grep -Eq '^[0-9]+(\.[0-9]+){1,2}$'; then
             echo "::error::Version must look like 1.26 or 1.26.1"; exit 1
           fi
-          [ -n "$v" ] || v=$(sed -n 's/.*versionName "\(.*\)".*/\1/p' mobile/android/app/build.gradle)
-          [ -n "$v" ] || { echo "::error::No version"; exit 1; }
+          android=$(sed -n 's/.*versionName "\(.*\)".*/\1/p' mobile/android/app/build.gradle)
+          [ -n "$android" ] || { echo "::error::No versionName in build.gradle"; exit 1; }
+          # The two apps carry one version: a typed one that differs from the APK's is refused
+          # (1.26.1 was nearly shipped beside APK 1.26). Bump build.gradle and the Xcode project
+          # together instead -- tests/app-versions-match.spec.js holds them to each other.
+          if [ -n "$v" ] && [ "$v" != "$android" ]; then
+            echo "::error::Version $v differs from the Android app's $android -- bump both apps to one version"; exit 1
+          fi
+          v="$android"
           echo "APP_VERSION=$v" >> "$GITHUB_ENV"
           echo "Version $v" >> "$GITHUB_STEP_SUMMARY"
 
