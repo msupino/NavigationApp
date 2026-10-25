@@ -5943,20 +5943,16 @@ function kitePlacedAt(key) { return _kitePlaced.get(key) || null; }
 
 // The Auto arrange button (the edit column): the pass above, once, on the pilot's say-so. Each box
 // it moves is written as an ordinary dragged position, so the pilot can go on adjusting it by
-// hand and Undo puts the lot back in one step. Run on purpose, it also moves boxes off ones the
-// pilot placed earlier -- the "placed together" exemption is for the automatic pass.
+// hand and Undo puts the lot back in one step. Run on purpose, every box may move -- ones the
+// pilot dragged and ones an earlier press placed (they never moved, so a second press after a
+// drag said "nothing moved", reported) -- except the one dragged LAST, which stays put and the
+// others make room for.
 let _arranging = false;
 function autoArrangeKites() {
   _arranging = true;
   try { draw(); } finally { _arranging = false; }
   const moved = [..._kitePlaced.keys()];
-  for (const key of moved) {
-    const [k, n] = key.split(':');
-    const i = Number(n);
-    if (k === 'in' || k === 'out') _materialiseDefaultLegLabel(i, k);
-    else if (k === 'cum') _materialiseDefaultCumLabel(i);
-    else if (k === 'cumret') _materialiseDefaultCumLabelRet(i);
-  }
+  for (const key of moved) _writeLabelAt(key, _kitePlaced.get(key));
   _kitePlaced = new Map();
   if (moved.length && typeof persist === 'function') persist();
   draw();
@@ -6029,9 +6025,11 @@ function declutterKites(queued) {
   _kitePlaced = new Map();
   const gap = tune('kiteDeclutterGapPx') / 2;
   const items = [];
+  const keep = _arranging && typeof kiteLastTouchedKey === 'function' ? kiteLastTouchedKey() : null;
   for (const q of queued) {
     const [fn, args, meta] = q;
     if (!meta) continue;
+    if (_arranging) meta.fixed = meta.key === keep;
     const size = fn === drawLegArrow ? legKiteBoxSize(args[9]) : cumKiteBoxSize(args[6]);
     items.push({ q, meta, size, x: args[0], y: args[1], ang: args[2] });
   }

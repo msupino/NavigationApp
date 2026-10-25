@@ -849,6 +849,22 @@ function setLegLabelFromPoint(dragState, px, py) {
   o.p = ((px - f.mx) * f.nx + (py - f.my) * f.ny) / sc - (dragState.grabP || 0);
   return true;
 }
+// Store a label at a painted spot, as a dragged one is stored: its offset in the leg's frame.
+function _writeLabelAt(key, pt) {
+  const [k, n] = key.split(':');
+  const i = Number(n);
+  const leg = state.legs[i];
+  if (!leg) return;
+  const sc = legZoomScale() || 1;
+  if (k === 'in' || k === 'out') {
+    const f = legFrame(i);
+    if (!f) return;
+    leg[k === 'in' ? 'inLabel' : 'outLabel'] = { a: ((pt.x - f.mx) * f.dx + (pt.y - f.my) * f.dy) / sc,
+      p: ((pt.x - f.mx) * f.nx + (pt.y - f.my) * f.ny) / sc, _m: 1 };
+  } else if (k === 'cum') leg.cumLabel = _cumOffsetOf(i, pt, false, sc);
+  else if (k === 'cumret') leg.cumLabelRet = _cumOffsetOf(i, pt, true, sc);
+}
+function kiteLastTouchedKey() { return kiteLastTouched; }
 // Where draw.js's overlap pass moved a box this frame, if it did.
 function _kiteMovedTo(key) {
   return typeof kitePlacedAt === 'function' ? kitePlacedAt(key) : null;
@@ -898,7 +914,10 @@ function legLabelCenter(i, which) {
 // have a real starting point. Keeps the user-dragged path identical
 // to the stored-offset design — only the seed value comes from the drift-cone
 // formula instead of a fixed `±44 / legArrowSize`.
+// The label the pilot dragged last: Auto arrange leaves that one where it was put.
+let kiteLastTouched = null;
 function _materialiseDefaultLegLabel(legIdx, which) {
+  kiteLastTouched = which + ':' + legIdx;
   const leg = state.legs[legIdx];
   if (!leg) return;
   const key = which === 'in' ? 'inLabel' : 'outLabel';
@@ -996,6 +1015,7 @@ function cumLabelCenter(i) {
            y: b.y + dy * along + ny * perp };
 }
 function _materialiseDefaultCumLabel(legIdx) {
+  kiteLastTouched = 'cum:' + legIdx;
   const leg = state.legs[legIdx];
   if (!leg) return;
   // Create default label if missing (legs loaded before this feature was added).
@@ -1081,6 +1101,7 @@ function cumLabelRetCenter(i) {
            y: a.y + dy * along + ny * perp };
 }
 function _materialiseDefaultCumLabelRet(legIdx) {
+  kiteLastTouched = 'cumret:' + legIdx;
   const leg = state.legs[legIdx];
   if (!leg) return;
   const o = leg.cumLabelRet || { a: 0, _default: 1, _m: 1 };

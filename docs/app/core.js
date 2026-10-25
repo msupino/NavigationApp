@@ -1818,7 +1818,7 @@ window.S = Object.assign({
   tourCheckTitle: 'Check the route',
   tourCheckText: 'Airspace, NOTAMs, SIGMET/AIRMET and ceiling against the route, at the time you plan to fly it. Dimmed until there is a route. Above it, Layers switches the chart and its overlays.',
   tourEditTitle: 'Edit the route',
-  tourEditText: 'Add a waypoint or a note, undo, clear the map; [ ] fits the page or the route to the screen. Tap a lit button again to stop.',
+  tourEditText: 'Add a waypoint or a note, undo, clear the map; [ ] fits the page or the route to the screen, and the last button moves labels that cover each other apart. Tap a lit button again to stop.',
   tourMeasureTitle: 'Measure',
   tourMeasureText: 'With your position showing, tap the ruler, then a point: distance, bearing and time from the aircraft. Nothing is added to the route.',
   tourLockTitle: 'Edit lock',

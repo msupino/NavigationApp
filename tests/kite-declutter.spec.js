@@ -170,3 +170,28 @@ test('Auto arrange: dimmed with no route, and says so when nothing covers anythi
   await page.evaluate(() => { state.waypoints = []; syncLegs(); draw(); refreshEditColumn(); });
   await expect(page.locator('#edit-col-arrange')).toHaveAttribute('aria-disabled', 'true');
 });
+
+test('Auto arrange after a drag: the one dragged last stays, the one it covers moves -- also when both were placed before', async ({ page }) => {
+  // Reported: after moving a kite by hand onto another, Auto arrange said nothing moved -- a
+  // label once dragged (or placed by an earlier press) was never moved again.
+  await boot(page, OPEN, [[32.75, 35.05], 10]);
+  const r = await page.evaluate(() => {
+    setTune('kiteDeclutter', false);
+    draw();
+    // Leg 0's kite placed by hand where it is (so it is not a default any more)...
+    _materialiseDefaultLegLabel(0, 'in');
+    const home0 = legLabelCenter(0, 'in');
+    // ...then leg 1's kite dragged onto it: the last one touched.
+    _materialiseDefaultLegLabel(1, 'in');
+    const f = legFrame(1), sc = legZoomScale();
+    state.legs[1].inLabel = { a: ((home0.x - f.mx) * f.dx + (home0.y - f.my) * f.dy) / sc,
+                              p: ((home0.x - f.mx) * f.nx + (home0.y - f.my) * f.ny) / sc, _m: 1 };
+    draw();
+    const at1 = legLabelCenter(1, 'in');
+    const n = autoArrangeKites();
+    return { n, home0, at1, now0: legLabelCenter(0, 'in'), now1: legLabelCenter(1, 'in') };
+  });
+  expect(r.n).toBeGreaterThan(0);
+  expect(Math.hypot(r.now1.x - r.at1.x, r.now1.y - r.at1.y)).toBeLessThan(0.5);     // stays where put
+  expect(Math.hypot(r.now0.x - r.home0.x, r.now0.y - r.home0.y)).toBeGreaterThan(5); // made room
+});
