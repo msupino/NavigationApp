@@ -302,6 +302,8 @@ test.describe('workflow trust and integrity gates', () => {
     expect(pin).toBeTruthy();
     expect(String(pin.if)).toContain("github.ref == 'refs/heads/dev'");
     expect(pin.run).toContain('git -C d checkout --detach FETCH_HEAD');
+    // ...but never back from a clone that is already NEWER than this run's commit (review).
+    expect(pin.run).toMatch(/merge-base --is-ancestor "\$WANT" "\$HAVE"[\s\S]*?exit 0[\s\S]*?checkout --detach FETCH_HEAD/);
   });
 
   test('the e2e gates fail when scope failed instead of reading skipped shards as green', () => {

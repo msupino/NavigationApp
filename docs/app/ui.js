@@ -2949,6 +2949,7 @@ async function buildRouteFromQuery(raw) {
   if (typeof autoRouteChain === 'function' && window.autoRouteCorridors) {
     (async () => {
       const built = state.waypoints;
+      let closed = false;
       for (let i = built.length - 1; i > 0; i--) {
         if (state.waypoints !== built) return;              // route replaced meanwhile
         const prev = built[i - 1], next = built[i];
@@ -2958,7 +2959,9 @@ async function buildRouteFromQuery(raw) {
         const at = state.waypoints.indexOf(next);
         if (at < 1 || state.waypoints[at - 1] !== prev) continue;
         state.waypoints.splice(at, 0, ...mid);
+        if (mid.closedCorridor) closed = true;
       }
+      if (closed && typeof warnAutoRouteClosedCorridor === 'function') warnAutoRouteClosedCorridor();
       syncLegs();
       if (typeof seedCommChangeNotes === 'function') seedCommChangeNotes();
       draw();

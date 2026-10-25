@@ -191,6 +191,16 @@
     if (Number.isFinite(ownFt) && Number.isFinite(a.alt)) return Math.abs(a.alt - ownFt) <= OWN_SHIP_FT;
     return true;
   }
+  // Our altitude on the feed's reference: transponders report PRESSURE altitude (1013.25 hPa),
+  // ours is on the day's QNH -- about 27 ft per hPa apart, so at QNH 1025 or 1002 the gap alone
+  // passed the 300 ft gate and our own target came back as traffic (review). With no QNH known,
+  // ours is taken as on the standard setting -- the gate still keeps traffic over and under.
+  function ownPressureFt(ownFt) {
+    if (!Number.isFinite(ownFt)) return null;
+    const q = typeof gpsQnh !== 'undefined' ? Number(gpsQnh) : NaN;
+    if (!(q > 900 && q < 1100)) return ownFt;
+    return ownFt + (1013.25 - q) * 27.3;
+  }
   function render() {
     const byHex = new Map();
     for (const a of polled) byHex.set(a.hex || (a.lat + ',' + a.lon), a);
@@ -205,7 +215,8 @@
     let ownFt = null;
     try { ownFt = (mine && typeof gpsAltitudeForCompare === 'function') ? gpsAltitudeForCompare() : null; }
     catch (e) { ownFt = null; }
-    window.trafficAircraft = [...byHex.values()].filter(a => !isOwnShip(a, mine, ownHex, ownFt));
+    const ownPa = ownPressureFt(ownFt);
+    window.trafficAircraft = [...byHex.values()].filter(a => !isOwnShip(a, mine, ownHex, ownPa));
     if (window.trafficAircraft.length) draw(window.trafficAircraft);
     else if (group) { group.clearLayers(); if (map.hasLayer(group)) map.removeLayer(group); }
     dropSelectionIfGone();

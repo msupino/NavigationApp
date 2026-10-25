@@ -128,13 +128,21 @@ test('auto-route warns when only a closed corridor connects the two points', asy
     const real = window.fplGraphChain;
     window.fplGraphChain = (g, a, b, o) => (o && o.ignoreAvailability) ? real(g, a, b, o) : null;
     const closed = await autoRouteChain(A, B);
+    // The chain carries the flag; nothing is said until a caller draws it (review: a discarded
+    // reply warned about a route nobody saw).
+    const saidBeforeDraw = window.__said.length;
+    warnAutoRouteClosedCorridor();
     window.fplGraphChain = real;
     window.showToast = realToast;
-    return { open: !!open, saidOpen, closed: !!closed, said: window.__said };
+    return { open: !!open, openFlag: !!(open && open.closedCorridor), saidOpen, closed: !!closed,
+      closedFlag: !!(closed && closed.closedCorridor), saidBeforeDraw, said: window.__said };
   });
   expect(out.open).toBe(true);
+  expect(out.openFlag).toBe(false);
   expect(out.saidOpen).toBe(0);
   expect(out.closed).toBe(true);
+  expect(out.closedFlag).toBe(true);
+  expect(out.saidBeforeDraw).toBe(0);
   expect(out.said.length).toBe(1);
   expect(out.said[0].warn).toBe(true);
   expect(out.said[0].m).toContain('NOTAM');

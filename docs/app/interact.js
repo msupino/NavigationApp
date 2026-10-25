@@ -5511,6 +5511,7 @@ function autoRouteSpliceAfterAdd(prevWp, newWp) {
     const sel = state.selected;
     const selWp = (sel && sel.type === 'wp') ? state.waypoints[sel.index] : null;
     state.waypoints.splice(idx, 0, ...mid);
+    if (mid.closedCorridor && typeof warnAutoRouteClosedCorridor === 'function') warnAutoRouteClosedCorridor();
     syncLegs();
     if (typeof seedCommChangeNotes === 'function') seedCommChangeNotes();
     if (selWp) {

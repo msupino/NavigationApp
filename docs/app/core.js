@@ -1551,12 +1551,15 @@ function applyRemoteConfigValues(o) {
 // until the next deploy rebuilt the snapshot. The live gist is the whole truth: a key it no
 // longer has goes back to the built-in default -- but only while the value is still the one a
 // gist set, so a pilot's or ?tune's own value is left alone.
+// Returns how many keys went back to their default, so the caller repaints for them too.
 function dropKeysMissingFromGist(o) {
+  let reverted = 0;
   for (const k of Object.keys(NavAid.gistApplied)) {
     if (Object.prototype.hasOwnProperty.call(o, k)) continue;
-    if (NavAid.tuning[k] === NavAid.gistApplied[k]) delete NavAid.tuning[k];
+    if (NavAid.tuning[k] === NavAid.gistApplied[k]) { delete NavAid.tuning[k]; reverted++; }
     delete NavAid.gistApplied[k];
   }
+  return reverted;
 }
 // The gist arrives over the network, so the first paint used to be the SHIPPED defaults and
 // everything the gist changes -- colours, sizes, which layers are on -- visibly jumped a
@@ -1632,8 +1635,10 @@ async function loadRemoteConfig() {
     // Cache what the server said, not what this build understood: a key added in a later
     // build must still be there for it, and the file is a few KB.
     try { localStorage.setItem(GIST_CACHE_KEY, JSON.stringify(o)); } catch (e) { /* full/blocked */ }
-    dropKeysMissingFromGist(o);
-    return applyRemoteConfigValues(o);
+    // Counted with the applied keys: a gist whose only change was a deleted key returned 0 and
+    // the caller skipped the repaint, leaving the old colours and layers on screen (review).
+    const reverted = dropKeysMissingFromGist(o);
+    return applyRemoteConfigValues(o) + reverted;
   } catch (e) {
     return 0;                                    // network/parse error → defaults
   }

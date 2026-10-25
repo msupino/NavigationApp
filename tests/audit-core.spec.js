@@ -121,3 +121,16 @@ test.describe('gist: a key deleted from the live gist', () => {
     expect(got.base).toBe(got.shipped);
   });
 });
+
+test('a key deleted from the live gist counts as a change, so the screen repaints for it', async ({ page }) => {
+  // Review: only the keys still in the gist were counted; a gist whose one change was a deleted
+  // key returned 0 and the caller skipped the repaint.
+  await page.goto('?lang=en&nogist');
+  await page.waitForFunction(() => typeof dropKeysMissingFromGist === 'function' && window.NavAid && NavAid.gistApplied);
+  const n = await page.evaluate(() => {
+    const k = Object.keys(NavAid.tuningDefaults).find(x => NavAid.tuningDefaults[x].type === 'color');
+    NavAid.tuning[k] = '#123456'; NavAid.gistApplied[k] = '#123456';
+    return dropKeysMissingFromGist({});
+  });
+  expect(n).toBeGreaterThanOrEqual(1);
+});

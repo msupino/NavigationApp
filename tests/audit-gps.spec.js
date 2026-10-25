@@ -185,6 +185,22 @@ test('traffic overhead is not taken for the own-ship', async ({ page }) => {
   expect(names).toEqual(['ABOVE', 'FAR']);
 });
 
+test('own-ship altitude is compared on the feed\'s pressure reference, not the day\'s QNH', async ({ page }) => {
+  // Review: at QNH 1025 our QNH altitude and our transponder's pressure altitude differ by ~320 ft
+  // on their own, and our own target came back as traffic.
+  await bootTraffic(page);
+  const names = await page.evaluate(() => {
+    _gpsLivePrev = { lat: 32.05, lng: 34.92, t: Date.now() };
+    gpsLastAlt = 2000; gpsAltIsGeometric = false; gpsQnh = 1025;
+    window.trafficSetExternal([
+      { hex: 'aaa111', flight: 'SELF', lat: 32.0502, lon: 34.9201, alt: 1680 },   // 2000 - 11.75*27.3
+      { hex: 'bbb222', flight: 'ABOVE', lat: 32.0501, lon: 34.9199, alt: 2700 },
+    ]);
+    return window.trafficAircraft.map(a => a.flight).sort();
+  });
+  expect(names).toEqual(['ABOVE']);
+});
+
 // clear() re-drew the receiver's targets and trafficSetExternal never asked the switch, so a
 // pilot who turned traffic off still had the GDL90 aeroplanes on the map.
 test('turning traffic off hides the receiver\'s targets too', async ({ page }) => {

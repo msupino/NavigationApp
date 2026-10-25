@@ -189,6 +189,14 @@ jobs:
             echo "staging checkout is already $WANT"
             exit 0
           fi
+          # Only move BACK to this run's commit when the clone is behind it. A clone that raced
+          # ahead (a later dev merge landed first) is the fresher staging; pinning it back let a
+          # slower earlier run publish last and leave /staging/ behind dev's head (review).
+          git -C d fetch --depth=200 origin "$WANT" "$HAVE" || true
+          if git -C d merge-base --is-ancestor "$WANT" "$HAVE" 2>/dev/null; then
+            echo "staging checkout $HAVE is newer than $WANT -- keeping it"
+            exit 0
+          fi
           echo "staging checkout is $HAVE but this run is for $WANT -- re-pinning"
           git -C d fetch --depth=1 origin "$WANT"
           git -C d checkout --detach FETCH_HEAD

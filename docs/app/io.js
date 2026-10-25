@@ -2281,15 +2281,23 @@ async function autoRouteChain(prev, next) {
   }
   if (!chain || chain.length <= 2) return null;
   // The fallback above can splice in a corridor that is closed right now. Filing warns about
-  // that (warnFplClosedCorridor); drawing put it on the map without a word.
-  if (usedClosed && typeof showToast === 'function') {
-    showToast(S.autoRouteClosedCorridor || 'Auto-route may run through a closed corridor. Check the NOTAMs.', { warn: true });
-  }
-  return chain.slice(1, -1).map(name => {
+  // that (warnFplClosedCorridor); drawing put it on the map without a word. The chain says so,
+  // and the caller warns once it has actually drawn it -- a reply discarded because the route
+  // changed meanwhile must not warn about a route nobody sees (review).
+  const mid = chain.slice(1, -1).map(name => {
     const n = graph.nodes[name];
     return { lat: r5(n.lat), lng: r5(n.lng), name, _autoRouted: 1 };
   });
+  if (usedClosed) mid.closedCorridor = true;
+  return mid;
 }
+// One warning per drawing action, however many gaps it filled through closed corridors.
+function warnAutoRouteClosedCorridor() {
+  if (typeof showToast === 'function') {
+    showToast(S.autoRouteClosedCorridor || 'Auto-route may run through a closed corridor. Check the NOTAMs.', { warn: true });
+  }
+}
+if (typeof window !== 'undefined') window.warnAutoRouteClosedCorridor = warnAutoRouteClosedCorridor;
 
 function fplExpandRoute(graph, wps, opts) {
   const o = opts || {};
