@@ -151,6 +151,24 @@
   const MODE_KEY = 'navaid.compassMode';
   const getMode = () => { try { return localStorage.getItem(MODE_KEY) === 'north' ? 'north' : 'heading'; } catch (e) { return 'heading'; } };
   const setMode = (m) => { try { localStorage.setItem(MODE_KEY, m); } catch (e) { /* storage off */ } };
+  // What the number is: the phone's sensor read magnetic (as the kites' headings are), the same
+  // sensor turned to true with the app's magnetic variation, or the GPS track -- the direction of
+  // movement from the fixes, which metal and radios cannot bend; shown magnetic. Kept on this device.
+  const SOURCE_KEY = 'navaid.compassSource';
+  const getSource = () => { try { const v = localStorage.getItem(SOURCE_KEY); return v === 'true' || v === 'gps' ? v : 'mag'; } catch (e) { return 'mag'; } };
+  const setSource = (v) => { try { localStorage.setItem(SOURCE_KEY, v); } catch (e) { /* storage off */ } };
+  // The GPS track while a fresh fix says the aircraft is moving, true degrees; null otherwise.
+  function gpsTrackTrue() {
+    const own = typeof gpsOwn !== 'undefined' ? gpsOwn : null;
+    const t = (k, d) => (typeof tune === 'function' ? tune(k) : d);
+    if (!own || !Number.isFinite(own.hdg) || own.hdgCompass) return null;
+    if (!own.t || Date.now() - own.t > t('compassGpsMaxAgeS', 5) * 1000) return null;
+    const kt = typeof gpsLastGS !== 'undefined' ? gpsLastGS : null;
+    if (!(kt >= t('compassGpsMinKt', 5))) return null;
+    return own.hdg;
+  }
+  const mag = (tr) => (typeof toMagnetic === 'function' ? toMagnetic(tr) : tr);
+  const tru = (mg) => (typeof fromMagnetic === 'function' ? fromMagnetic(mg) : mg);
   let open = null;
   function close() { if (open) open.close(); }
   function showCompass() {
@@ -186,7 +204,7 @@
       b.type = 'button';
       b.dataset.mode = m;
       b.textContent = label;
-      b.addEventListener('click', () => { setMode(m); paintModes(); if (lastHeading != null) onReading(lastHeading); });
+      b.addEventListener('click', () => { setMode(m); paintModes(); if (lastHeading != null) paint(lastHeading); });
       return b;
     };
     modes.append(modeBtn('heading', str('compassHeadingUp', 'Heading up')), modeBtn('north', str('compassNorthUp', 'North up')));
@@ -196,15 +214,41 @@
       m.box.dataset.compassMode = cur;
     };
     paintModes();
-    body.append(modes, read, status, start, note);
+    // Where the number comes from, as a second switch.
+    const sources = document.createElement('div');
+    sources.className = 'compass-modes compass-sources';
+    sources.setAttribute('role', 'group');
+    sources.setAttribute('aria-label', str('compassSourceLabel', 'Heading from'));
+    const srcBtn = (v, label) => {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.dataset.source = v;
+      b.textContent = label;
+      b.addEventListener('click', () => { setSource(v); paintSources(); refresh(); });
+      return b;
+    };
+    sources.append(srcBtn('mag', str('compassSrcMag', 'Magnetic')), srcBtn('true', str('compassSrcTrue', 'True')),
+      srcBtn('gps', str('compassSrcGps', 'GPS track')));
+    const paintSources = () => {
+      const cur = getSource();
+      for (const b of sources.children) b.setAttribute('aria-pressed', String(b.dataset.source === cur));
+      m.box.dataset.compassSource = cur;
+    };
+    paintSources();
+    body.append(modes, sources, read, status, start, note);
     m.box.appendChild(body);
     const card = body.querySelector('.compass-card');
     const ac = body.querySelector('.compass-ac');
     let lastHeading = null;
     const deg = read.querySelector('.compass-deg');
+    const ref = read.querySelector('.compass-ref');
     const say = (t) => { status.textContent = t || ''; status.hidden = !t; };
     say('');
-    onReading = (h) => {
+    const REF = { mag: str('compassMag', 'MAG'), true: str('compassTrue', 'TRUE'), gps: str('compassGpsRef', 'GPS TRK') };
+    const blank = () => { deg.textContent = '---°'; delete m.box.dataset.heading; };
+    // The sensor's magnetic reading, kept so a switch of source repaints at once.
+    let lastMag = null;
+    const paint = (h) => {
       lastHeading = h;
       const north = getMode() === 'north';
       card.setAttribute('transform', 'rotate(' + (north ? 0 : -h).toFixed(1) + ' 180 180)');
@@ -212,14 +256,28 @@
       const n = Math.round(h) % 360;
       deg.textContent = String(n === 0 ? 360 : n).padStart(3, '0') + '°';
       m.box.dataset.heading = String(n);
-      say('');
     };
+    const refresh = () => {
+      const src = getSource();
+      ref.textContent = REF[src];
+      if (src === 'gps') {
+        const tr = gpsTrackTrue();
+        if (tr == null) { blank(); say(str('compassGpsWait', 'GPS track needs Location on and the aircraft moving.')); return; }
+        say(''); paint(mag(tr)); return;
+      }
+      if (lastMag == null) { blank(); return; }
+      say(''); paint(src === 'true' ? tru(lastMag) : lastMag);
+    };
+    onReading = (h) => { lastMag = h; if (getSource() !== 'gps') refresh(); };
+    // The GPS track has no event of its own here: look once a second while the window is open.
+    const gpsTimer = setInterval(() => { if (open !== m) { clearInterval(gpsTimer); return; } if (getSource() === 'gps') refresh(); }, 1000);
+    refresh();
     const begin = () => {
       const n = nativeCompass();
       if (n) listenNative(n); else listen();
       // Nothing within a few seconds: this device has no compass (a computer), or it is off --
       // unless it is waiting for the Start tap, which says so itself.
-      setTimeout(() => { if (open === m && !lastAt && start.hidden) say(str('compassNoSensor', 'No compass reading on this device.')); }, 3000);
+      setTimeout(() => { if (open === m && !lastAt && start.hidden && getSource() !== 'gps') say(str('compassNoSensor', 'No compass reading on this device.')); }, 3000);
     };
     // Some browsers want the request from a tap (iOS Safari; Chrome on Android now has the call
     // too, but answers it without asking -- and showed the iPhone message, reported). So: listen

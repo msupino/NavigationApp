@@ -171,6 +171,33 @@ test('a finger drifting a few pixels while held opens the compass and does not t
   await expect(page.locator('.compass-modal')).toBeVisible();
 });
 
+test('source: magnetic, true (with the app\'s variation) or the GPS track; kept on the device', async ({ page }) => {
+  await boot(page);
+  await page.evaluate(() => { setTune('compassSmoothing', 1); NavAid.compass.show();
+    window.dispatchEvent(Object.assign(new Event('deviceorientation'), { webkitCompassHeading: 100 })); });
+  await expect(page.locator('.compass-deg')).toHaveText('100°');
+  await expect(page.locator('.compass-ref')).toHaveText('MAG');
+  await page.locator('.compass-sources button[data-source="true"]').click();
+  const want = await page.evaluate(() => String(Math.round(fromMagnetic(100)) % 360).padStart(3, '0') + '°');
+  await expect(page.locator('.compass-deg')).toHaveText(want);
+  await expect(page.locator('.compass-ref')).toHaveText('TRUE');
+  // GPS track: nothing until a fresh fix says the aircraft is moving.
+  await page.locator('.compass-sources button[data-source="gps"]').click();
+  await expect(page.locator('.compass-deg')).toHaveText('---°');
+  await expect(page.locator('.compass-status')).toContainText('GPS track needs');
+  await page.evaluate(() => { new Function('gpsOwn = { lat: 32, lng: 35, hdg: 200, t: Date.now(), hdgCompass: false }; gpsLastGS = 90;')(); });
+  const gpsWant = await page.evaluate(() => String(Math.round(toMagnetic(200)) % 360).padStart(3, '0') + '°');
+  await expect(page.locator('.compass-deg')).toHaveText(gpsWant, { timeout: 3000 });
+  await expect(page.locator('.compass-ref')).toHaveText('GPS TRK');
+  // The sensor does not override the GPS track.
+  await page.evaluate(() => window.dispatchEvent(Object.assign(new Event('deviceorientation'), { webkitCompassHeading: 10 })));
+  await expect(page.locator('.compass-deg')).toHaveText(gpsWant);
+  await page.reload();
+  await page.waitForFunction(() => window.NavAid && NavAid.compass && typeof clearBootLoading === 'function');
+  await page.evaluate(() => { clearBootLoading(); NavAid.compass.show(); });
+  await expect(page.locator('.compass-sources button[data-source="gps"]')).toHaveAttribute('aria-pressed', 'true');
+});
+
 test('iPhone app: the native compass is used when the app has it -- no Start, no prompt', async ({ page }) => {
   await page.addInitScript(() => {
     window.DeviceOrientationEvent = window.DeviceOrientationEvent || function () {};
