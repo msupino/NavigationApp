@@ -327,3 +327,17 @@ test('Escape closes the plan over a panel that was opened before it', async ({ p
   await page.keyboard.press('Escape');
   await expect(page.locator('.modal-back.flight-plan')).toHaveCount(0);
 });
+
+test('a saved aircraft stored before the descent rate takes its type\'s too', async ({ page }) => {
+  await boot(page);
+  await page.evaluate(() => {
+    const p = createAircraftProfile('OLD', 'C172');
+    const list = JSON.parse(localStorage.getItem('navaid.aircraftProfiles'));
+    for (const x of list) delete x.descentFpm;
+    localStorage.setItem('navaid.aircraftProfiles', JSON.stringify(list));
+    return p && p.id;
+  });
+  await page.reload();
+  await page.waitForFunction(() => typeof aircraftProfiles !== 'undefined' && aircraftProfiles.length);
+  expect(await page.evaluate(() => { selectAircraftProfile(aircraftProfiles[0].id); return aircraft.descentFpm; })).toBe(500);
+});

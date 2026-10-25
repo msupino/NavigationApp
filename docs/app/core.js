@@ -4057,6 +4057,14 @@ function loadAircraftProfiles() {
     aircraftProfiles = Array.isArray(raw) ? raw.filter(p => p && typeof p.id === 'string'
       && typeof p.name === 'string' && p.name.trim() && Number(p.gph) > 0) : [];
   } catch (e) { aircraftProfiles = []; }
+  // Saved before the descent rate was one of an aircraft's figures: its type's, as for the
+  // aircraft in use (loadAircraft) -- or picking it brought back "changed" and the flat default.
+  let filled = false;
+  for (const p of aircraftProfiles) {
+    const t = AIRCRAFT_TYPES[p.type];
+    if (t && !(Number(p.descentFpm) > 0) && Number(t.descentFpm) > 0) { p.descentFpm = t.descentFpm; filled = true; }
+  }
+  if (filled) saveAircraftProfiles();
 }
 function saveAircraftProfiles() {
   try { localStorage.setItem(AIRCRAFT_PROFILES_KEY, JSON.stringify(aircraftProfiles)); } catch (e) { /* storage off */ }
