@@ -219,3 +219,24 @@ test('iPhone app: the native compass is used when the app has it -- no Start, no
   await page.keyboard.press('Escape');
   await expect.poll(() => page.evaluate(() => window.__calls)).toEqual(['add heading', 'start', 'remove', 'stop']);
 });
+
+test('Android: the long-touch contextmenu (before the hold timer) opens the compass and the release does not step the chart', async ({ page }) => {
+  // Reported: the map still turned 90° on a long press. Android fires contextmenu at ~400 ms, before
+  // the 550 ms hold; the release came under the tap limit and stepped the chart.
+  await boot(page);
+  await page.evaluate(() => map.setBearing(0));
+  const r = await page.evaluate(async () => {
+    const d = document.getElementById('rotate-dial');
+    const b = d.getBoundingClientRect();
+    const x = b.left + b.width / 2, y = b.top + b.height / 2;
+    const pe = (type) => d.dispatchEvent(new PointerEvent(type, { bubbles: true, pointerId: 9, pointerType: 'touch', clientX: x, clientY: y, isPrimary: true }));
+    pe('pointerdown');
+    await new Promise(r => setTimeout(r, 400));
+    d.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, cancelable: true, clientX: x, clientY: y }));
+    await new Promise(r => setTimeout(r, 80));
+    pe('pointerup');
+    return Math.round(map.getBearing());
+  });
+  expect(r).toBe(0);
+  await expect(page.locator('.compass-modal')).toBeVisible();
+});
