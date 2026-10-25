@@ -141,16 +141,21 @@
       // Nothing within a few seconds: this device has no compass (a computer), or it is off.
       setTimeout(() => { if (open === m && !lastAt) say(str('compassNoSensor', 'No compass reading on this device.')); }, 3000);
     };
+    // iOS: the request has to come from a tap. The finger lifting at the end of the hold is one
+    // (wireDial asks then); in the app the shell grants it with no prompt at all, so the compass
+    // simply starts. The Start button is only the fallback -- opened some other way, or the lift
+    // was not taken as a tap.
+    const ask = () => askPermission().then(ok => {
+      if (open !== m) return ok;
+      if (ok) { start.hidden = true; say(''); begin(); }
+      else { start.hidden = false; say(str('compassDenied', 'Compass access was refused. Allow Motion & Orientation for NavAid in Settings.')); }
+      return ok;
+    });
+    m.askFromGesture = ask;
     if (needsPermission()) {
       start.hidden = false;
       say(str('compassAsk', 'iPhone asks before an app reads the compass.'));
-      start.addEventListener('click', () => {
-        askPermission().then(ok => {
-          if (open !== m) return;
-          if (ok) { start.hidden = true; say(''); begin(); }
-          else say(str('compassDenied', 'Compass access was refused. Allow Motion & Orientation for NavAid in Settings.'));
-        });
-      });
+      start.addEventListener('click', ask);
     } else begin();
     m.show();
     return m;
@@ -165,15 +170,17 @@
     const dial = document.getElementById('rotate-dial');
     if (!dial || dial === wiredDial) return;
     wiredDial = dial;
-    let timer = null, sx = 0, sy = 0;
+    let timer = null, sx = 0, sy = 0, held = false;
     const cancel = () => { if (timer) { clearTimeout(timer); timer = null; } };
     dial.addEventListener('pointerdown', (e) => {
       cancel();
+      held = false;
       if (!feat()) return;
       sx = e.clientX; sy = e.clientY;
       const ms = typeof tune === 'function' ? tune('compassHoldMs') : 550;
       timer = setTimeout(() => {
         timer = null;
+        held = true;
         if (typeof window.rotDialCancelGesture === 'function') window.rotDialCancelGesture();
         if (navigator.vibrate) { try { navigator.vibrate(15); } catch (err) { /* no motor */ } }
         showCompass();
@@ -183,7 +190,12 @@
       const px = typeof tune === 'function' ? tune('rotDragPx') : 6;
       if (timer && Math.hypot(e.clientX - sx, e.clientY - sy) >= px) cancel();
     });
-    dial.addEventListener('pointerup', cancel);
+    dial.addEventListener('pointerup', () => {
+      cancel();
+      // The lift that ends the hold is the tap iOS wants before the compass may be read.
+      if (held && open && open.askFromGesture && needsPermission()) open.askFromGesture();
+      held = false;
+    });
     dial.addEventListener('pointercancel', cancel);
     // A computer's right click is the same request.
     dial.addEventListener('contextmenu', (e) => { if (!feat()) return; e.preventDefault(); cancel(); showCompass(); });

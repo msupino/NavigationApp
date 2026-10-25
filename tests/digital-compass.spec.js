@@ -91,3 +91,29 @@ test('Hebrew: the window speaks Hebrew; switched off by the gist, holding does n
   await hold(page, 800);
   await expect(page.locator('.compass-modal')).toHaveCount(0);
 });
+
+test('iPhone app: the finger lifting at the end of the hold asks, so the compass starts with no Start button', async ({ page }) => {
+  // The app's shell grants motion access without a prompt; WebKit still wants the request from a
+  // tap, and the lift that ends the hold is one.
+  await page.addInitScript(() => {
+    window.DeviceOrientationEvent = window.DeviceOrientationEvent || function () {};
+    window.__asked = 0;
+    window.DeviceOrientationEvent.requestPermission = () => { window.__asked++; return Promise.resolve('granted'); };
+  });
+  await boot(page);
+  await hold(page, 800);
+  await expect(page.locator('.compass-modal')).toBeVisible();
+  expect(await page.evaluate(() => window.__asked)).toBe(1);
+  await expect(page.locator('.compass-start')).toBeHidden();
+  await page.evaluate(() => { setTune('compassSmoothing', 1); window.dispatchEvent(Object.assign(new Event('deviceorientation'), { webkitCompassHeading: 45 })); });
+  await expect(page.locator('.compass-deg')).toHaveText('045°');
+});
+
+test('a long press never steps the chart by 90°, even when the compass does not open', async ({ page }) => {
+  // Reported: the long press counted as a 90° turn.
+  await boot(page);
+  await page.evaluate(() => { setTune('featureCompass', false); map.setBearing(0); });
+  await hold(page, 800);
+  expect(await bearing(page)).toBe(0);
+  await expect(page.locator('.compass-modal')).toHaveCount(0);
+});

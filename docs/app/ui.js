@@ -1806,9 +1806,10 @@ function dialAngle(ev) {                 // 0 = north (up), clockwise positive
 }
 let rotDragging = false;
 let rotMoved = false;
-let rotStartX = 0, rotStartY = 0;
+let rotStartX = 0, rotStartY = 0, rotDownAt = 0;
 rotDial.addEventListener('pointerdown', e => {
   rotDragging = true;
+  rotDownAt = Date.now();
   rotMoved = false;
   rotStartX = e.clientX;
   rotStartY = e.clientY;
@@ -1829,7 +1830,10 @@ rotDial.addEventListener('pointermove', e => {
 // also step the chart.
 window.rotDialCancelGesture = () => { rotDragging = false; rotDial.classList.remove('dragging'); };
 function rotEnd(cycle) {
-  if (cycle && rotDragging && !rotMoved) {
+  // A tap is short: a press held as long as the compass's hold is never a 90° step, whether or
+  // not the compass opened (reported: the long press turned the chart by 90°).
+  const tap = !rotDownAt || Date.now() - rotDownAt < tune('compassHoldMs');
+  if (cycle && rotDragging && !rotMoved && tap) {
     // Tap steps the chart through TRUE 0° / 90° / 180° / 270°: 0 is the chart square with
     // real north up, in flight too (magnetic steps left it a few degrees askew). The tap ends
     // heading-up, so the number then reads the same true rotation. Off-axis, the first tap goes to 0.
@@ -1839,6 +1843,7 @@ function rotEnd(cycle) {
     map.setBearing((360 - next) % 360);
   }
   rotDragging = false;
+  rotDownAt = 0;
   rotDial.classList.remove('dragging');
 }
 rotDial.addEventListener('pointerup', () => rotEnd(true));

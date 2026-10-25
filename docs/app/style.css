@@ -10031,3 +10031,6 @@ body.theme-light .compass-num { fill: #222; }
 body.theme-light .compass-card-letter { fill: #111; }
 body.theme-light .compass-card-letter.north { fill: #d32f2f; }
 body.theme-light .compass-status { color: #a15c00; }
+
+/* The dial's long press is the compass: no text selection, callout or magnifier from the phone. */
+#rotate-dial { -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; touch-action: none; }
