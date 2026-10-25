@@ -117,3 +117,25 @@ test('a long press never steps the chart by 90°, even when the compass does not
   expect(await bearing(page)).toBe(0);
   await expect(page.locator('.compass-modal')).toHaveCount(0);
 });
+
+test('iPhone app: the native compass is used when the app has it -- no Start, no prompt', async ({ page }) => {
+  await page.addInitScript(() => {
+    window.DeviceOrientationEvent = window.DeviceOrientationEvent || function () {};
+    window.DeviceOrientationEvent.requestPermission = () => { window.__asked = 1; return Promise.resolve('granted'); };
+    window.__cb = null; window.__calls = [];
+    window.Capacitor = { isNativePlatform: () => true, getPlatform: () => 'ios', Plugins: {
+      CompassHeading: {
+        addListener: (ev, cb) => { window.__calls.push('add ' + ev); window.__cb = cb; return Promise.resolve({ remove() { window.__calls.push('remove'); } }); },
+        start: () => { window.__calls.push('start'); return Promise.resolve(); },
+        stop: () => { window.__calls.push('stop'); return Promise.resolve(); },
+      } } };
+  });
+  await boot(page);
+  await page.evaluate(() => { setTune('compassSmoothing', 1); NavAid.compass.show(); });
+  await expect(page.locator('.compass-start')).toBeHidden();
+  await page.evaluate(() => window.__cb({ magnetic: 212.4, true: 216, accuracy: 5 }));
+  await expect(page.locator('.compass-deg')).toHaveText('212°');
+  expect(await page.evaluate(() => window.__asked || 0)).toBe(0);
+  await page.keyboard.press('Escape');
+  await expect.poll(() => page.evaluate(() => window.__calls)).toEqual(['add heading', 'start', 'remove', 'stop']);
+});

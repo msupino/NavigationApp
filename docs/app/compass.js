@@ -109,13 +109,33 @@
     window.addEventListener('deviceorientationabsolute', onAbsolute, true);
     window.addEventListener('deviceorientation', onRelative, true);
   }
+  // The iPhone app's own compass (CompassHeadingPlugin, Core Location): preferred where it is
+  // there -- no permission, no tap, Apple's fused heading. A web page, Android and an older app
+  // build without the plugin use the orientation events.
+  const nativeCompass = () => {
+    const C = window.Capacitor;
+    return (C && typeof C.isNativePlatform === 'function' && C.isNativePlatform() && C.Plugins && C.Plugins.CompassHeading) || null;
+  };
+  let nativeSub = null;
+  function listenNative(plugin) {
+    if (listening) return;
+    listening = true;
+    Promise.resolve(plugin.addListener('heading', (e) => { if (e && Number.isFinite(e.magnetic)) feed(e.magnetic); }))
+      .then((sub) => { nativeSub = sub; if (!listening && sub && sub.remove) sub.remove(); })
+      .catch(() => {});
+    Promise.resolve(plugin.start()).catch(() => { listening = false; listen(); });    // no compass: the web events
+  }
   function stop() {
+    const n = nativeCompass();
+    if (n && nativeSub) { try { nativeSub.remove(); } catch (e) { /* gone */ } try { n.stop(); } catch (e) { /* gone */ } }
+    nativeSub = null;
     listening = false; smooth = null; lastAt = 0; onReading = null;
     window.removeEventListener('deviceorientationabsolute', onAbsolute, true);
     window.removeEventListener('deviceorientation', onRelative, true);
   }
-  // iOS asks; everything else just listens.
-  const needsPermission = () => !!(window.DeviceOrientationEvent && typeof window.DeviceOrientationEvent.requestPermission === 'function');
+  // iOS asks; everything else just listens. The app's native compass never asks.
+  const needsPermission = () => !nativeCompass()
+    && !!(window.DeviceOrientationEvent && typeof window.DeviceOrientationEvent.requestPermission === 'function');
   function askPermission() {
     return window.DeviceOrientationEvent.requestPermission().then(r => r === 'granted').catch(() => false);
   }
@@ -160,7 +180,8 @@
       say('');
     };
     const begin = () => {
-      listen();
+      const n = nativeCompass();
+      if (n) listenNative(n); else listen();
       // Nothing within a few seconds: this device has no compass (a computer), or it is off.
       setTimeout(() => { if (open === m && !lastAt) say(str('compassNoSensor', 'No compass reading on this device.')); }, 3000);
     };
