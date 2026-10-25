@@ -212,3 +212,14 @@ test('iPhone: System chosen while the first change is still asking the phone win
   });
   expect((await calls(page)).filter(c => c.startsWith('ScreenBrightness.setBrightness'))).toEqual([]);
 });
+
+test('iPhone: after a restart at the app\'s level, System still gives back the phone\'s own', async ({ page }) => {
+  await boot(page, { native: true, platform: 'ios' });
+  await page.evaluate(() => NavAid.device.setBrightness(30));
+  await expect.poll(async () => (await calls(page)).length).toBeGreaterThan(0);
+  await page.reload();                                // iOS still holds the screen at 30%
+  await page.waitForFunction(() => NavAid.device);
+  await page.evaluate(() => { window.__calls = []; NavAid.device.setBrightness(null); });
+  await expect.poll(async () => (await calls(page)).filter(c => c.startsWith('ScreenBrightness.setBrightness')))
+    .toEqual(['ScreenBrightness.setBrightness {"brightness":0.7}']);
+});

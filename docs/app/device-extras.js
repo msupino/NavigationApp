@@ -65,7 +65,11 @@
   // the app (reported on iPhone). There, System leaves the screen alone, and gives back the
   // level the phone had only if the app changed it, read just before it first did.
   const ios = () => { const C = window.Capacitor; return !!(C && typeof C.getPlatform === 'function' && C.getPlatform() === 'ios'); };
-  let iosOwnLevel = null, iosChanged = false, iosGen = 0;
+  // The phone's own level is kept on the device while the app holds the screen, so a restart at
+  // the app's level does not read that back as the phone's own (and System then restore it).
+  const OWN_KEY = 'navaid.brightnessOwn';
+  const ownStored = () => { try { const v = localStorage.getItem(OWN_KEY); return v === null ? null : Number(v); } catch (e) { return null; } };
+  let iosOwnLevel = ownStored(), iosChanged = iosOwnLevel != null, iosGen = 0;
   async function setScreen(sb, v) {
     if (!ios()) { call(sb, 'setBrightness', { brightness: v == null ? -1 : Math.max(0.01, v) }); return; }
     // The newest setting wins: System chosen while the first change still waits on the phone's
@@ -74,6 +78,8 @@
     if (v == null) {
       if (iosChanged && iosOwnLevel != null) call(sb, 'setBrightness', { brightness: iosOwnLevel });
       iosChanged = false;
+      iosOwnLevel = null;
+      try { localStorage.removeItem(OWN_KEY); } catch (e) { /* storage off */ }
       return;
     }
     if (!iosChanged) {
@@ -84,6 +90,7 @@
       } catch (e) { own = null; }
       if (gen !== iosGen) return;                   // overtaken while it was asked
       iosOwnLevel = own;
+      try { if (own != null) localStorage.setItem(OWN_KEY, String(own)); } catch (e) { /* storage off */ }
     }
     iosChanged = true;
     call(sb, 'setBrightness', { brightness: Math.max(0.01, v) });
