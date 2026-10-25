@@ -1533,15 +1533,30 @@ NavAid.gistDisabled = (function () {
 }());
 // Applies one gist object over the defaults. Unknown keys are ignored: the gist outlives any
 // one build, and a key this build has never heard of must not become a tunable by arriving.
+// What each key was last set to by a gist (bundled snapshot, cached or live copy), so the live
+// fetch can tell a value the gist put there from one the pilot or ?tune put there.
+NavAid.gistApplied = {};
 function applyRemoteConfigValues(o) {
   if (!o || typeof o !== 'object') return 0;
   let n = 0;
   for (const k in o) {
     if (!NavAid.tuningDefaults[k]) continue;
     setTune(k, o[k]);                          // per-spec validation + clamp
-    if (NavAid.tuning[k] !== undefined) n++;
+    if (NavAid.tuning[k] !== undefined) { n++; NavAid.gistApplied[k] = NavAid.tuning[k]; }
   }
   return n;
+}
+// A key deleted from the live gist used to stay in force: the snapshot or the cached copy had
+// set it at boot, and applying the live gist only ever adds keys, so the old value lived on
+// until the next deploy rebuilt the snapshot. The live gist is the whole truth: a key it no
+// longer has goes back to the built-in default -- but only while the value is still the one a
+// gist set, so a pilot's or ?tune's own value is left alone.
+function dropKeysMissingFromGist(o) {
+  for (const k of Object.keys(NavAid.gistApplied)) {
+    if (Object.prototype.hasOwnProperty.call(o, k)) continue;
+    if (NavAid.tuning[k] === NavAid.gistApplied[k]) delete NavAid.tuning[k];
+    delete NavAid.gistApplied[k];
+  }
 }
 // The gist arrives over the network, so the first paint used to be the SHIPPED defaults and
 // everything the gist changes -- colours, sizes, which layers are on -- visibly jumped a
@@ -1591,7 +1606,9 @@ function tuneBaseline(key) {
     if (NavAid.configUrl && !NavAid.gistDisabled) {
       const o = JSON.parse(localStorage.getItem(GIST_CACHE_KEY) || 'null');
       const snap = typeof window !== 'undefined' && !window.__navaidNoGistSnapshot ? window.__navaidGistSnapshot : null;
-      if (o && typeof o === 'object' && key in o) setTune(key, o[key]);
+      // A cached live gist is the whole truth: a key it lacks was deleted from the gist, and
+      // falling through to the snapshot would bring the deleted value back.
+      if (o && typeof o === 'object') { if (key in o) setTune(key, o[key]); }
       else if (snap && typeof snap === 'object' && key in snap) setTune(key, snap[key]);
     }
   } catch (e) { /* no cache: the built-in default */ }
@@ -1615,6 +1632,7 @@ async function loadRemoteConfig() {
     // Cache what the server said, not what this build understood: a key added in a later
     // build must still be there for it, and the file is a few KB.
     try { localStorage.setItem(GIST_CACHE_KEY, JSON.stringify(o)); } catch (e) { /* full/blocked */ }
+    dropKeysMissingFromGist(o);
     return applyRemoteConfigValues(o);
   } catch (e) {
     return 0;                                    // network/parse error → defaults
@@ -6433,7 +6451,10 @@ function parseLatLng(str) {
 
   // --- hemisphere-tagged (DMS / DM) ---
   // One coordinate = degrees, optional minutes, optional seconds, hemisphere.
-  const comp = /(-?\d+(?:\.\d+)?)\s*[°:\s]?\s*(?:(\d+(?:\.\d+)?)\s*['′M:\s]\s*)?(?:(\d+(?:\.\d+)?)\s*["″S]?\s*)?\s*([NSEW])/g;
+  // Minutes may also end right at the hemisphere letter ("32 05.5N", "32°05.5N"): without that,
+  // the minutes group needed a separator after it, so 05.5 fell through to the seconds group
+  // and the point landed ~10 km off (32.0015 instead of 32.0917) yet still inside the bounds.
+  const comp = /(-?\d+(?:\.\d+)?)\s*[°:\s]?\s*(?:(\d+(?:\.\d+)?)(?:\s*['′M:\s]\s*|(?=[NSEW])))?(?:(\d+(?:\.\d+)?)\s*["″S]?\s*)?\s*([NSEW])/g;
   const found = [];
   let m;
   while ((m = comp.exec(s)) !== null) {
@@ -7784,6 +7805,9 @@ function routeCheckAltInBand(altFt, baseFt, topFt) {
 // convective base, not an observation, and everything downstream says so -- a derived figure
 // dressed as a METAR would be a wrong number wearing the shape of a right one.
 const ROUTE_CHECK_SAMPLE_NM = 10;
+// How near a field the route does not name has to be for its weather to count; the same 15 NM
+// routecheck.js uses to choose which fields' METARs to send.
+const ROUTE_CHECK_WX_NEAR_NM = 15;
 // A base is only a CEILING when the sky is broken or worse. Broken starts at five eighths, so
 // the cover has to be at least that before a base is worth a pilot's attention: below it there
 // is a layer, but there is also a way through.
@@ -7982,8 +8006,27 @@ function routeCheckFindings(input) {
   if (!Array.isArray(o.wx)) out.unchecked.push('ceiling');
   else {
     const names = new Set(wps.map(w => (w && w.name || '').trim().toUpperCase()));
+    // The gatherer sends the fields within ROUTE_CHECK_WX_NEAR_NM of the route, not only the ones
+    // it names: a route past Haifa cares what Haifa reports. Keeping only named fields here threw
+    // those away, so BKN015 at LLHA under a 2,500 ft leg flown past it said nothing. A field the
+    // route does not name counts when it is that close, and only against the legs passing it.
+    const samples = routeCheckSamplePoints(wps, ROUTE_CHECK_SAMPLE_NM);
+    const fieldPos = (icao) => {
+      const af = (Array.isArray(window.airfields) ? window.airfields : [])
+        .find(f => f && String(f.icao || f.name || '').trim().toUpperCase() === icao);
+      return af && Number.isFinite(af.lat) && Number.isFinite(af.lng) ? af : null;
+    };
     for (const st of o.wx) {
-      if (!st || !names.has((st.icao || '').trim().toUpperCase())) continue;
+      if (!st) continue;
+      const icao = (st.icao || '').trim().toUpperCase();
+      let nearLegs = null;   // null = a field the route names: every leg, as before
+      if (!names.has(icao)) {
+        const pos = Number.isFinite(st.lat) && Number.isFinite(st.lng) ? st : fieldPos(icao);
+        if (!pos) continue;
+        nearLegs = new Set(samples
+          .filter(p => routeCheckNmBetween(p, pos) <= ROUTE_CHECK_WX_NEAR_NM).map(p => p.leg));
+        if (!nearLegs.size) continue;
+      }
       // A field that published a TAF whose periods could not be worked out is a field this
       // check has only half looked at: the METAR is current weather, and the forecast is the
       // half a PLAN needs.
@@ -8000,6 +8043,7 @@ function routeCheckFindings(input) {
       let worst = null;
       for (const set of sets) {
         for (let i = 0; i < legs.length; i++) {
+          if (nearLegs && !nearLegs.has(i)) continue;
           const altitude = altOf(i);
           const flightWindow = legWindow(i);
           if (set.forecast && (set.to <= flightWindow.from || set.from >= flightWindow.to)) continue;
