@@ -5917,7 +5917,7 @@ function queueKite(fn, args, meta) { _kiteQueue.push([fn, args, meta || null]); 
 function flushKites() {
   const queued = _kiteQueue;
   _kiteQueue = [];
-  if (tune('kiteDeclutter')) declutterKites(queued);
+  if (tune('kiteDeclutter') || _arranging) declutterKites(queued);
   else _kitePlaced = new Map();
   for (const [fn, args] of queued) fn(...args);
 }
@@ -5940,6 +5940,29 @@ function flushKites() {
 // and the drag read it (interact.js), so a moved kite is grabbed where it is painted.
 let _kitePlaced = new Map();
 function kitePlacedAt(key) { return _kitePlaced.get(key) || null; }
+
+// The Auto arrange button (the edit column): the pass above, once, on the pilot's say-so. Each box
+// it moves is written as an ordinary dragged position, so the pilot can go on adjusting it by
+// hand and Undo puts the lot back in one step. Run on purpose, it also moves boxes off ones the
+// pilot placed earlier -- the "placed together" exemption is for the automatic pass.
+let _arranging = false;
+function autoArrangeKites() {
+  _arranging = true;
+  try { draw(); } finally { _arranging = false; }
+  const moved = [..._kitePlaced.keys()];
+  for (const key of moved) {
+    const [k, n] = key.split(':');
+    const i = Number(n);
+    if (k === 'in' || k === 'out') _materialiseDefaultLegLabel(i, k);
+    else if (k === 'cum') _materialiseDefaultCumLabel(i);
+    else if (k === 'cumret') _materialiseDefaultCumLabelRet(i);
+  }
+  _kitePlaced = new Map();
+  if (moved.length && typeof persist === 'function') persist();
+  draw();
+  return moved.length;
+}
+window.autoArrangeKites = autoArrangeKites;
 
 // The painted size of each kind, the same arithmetic drawLegArrow / drawCumTimeArrow use.
 function legKiteBoxSize(sc) {
@@ -6041,7 +6064,7 @@ function declutterKites(queued) {
     const m = it.meta;
     if (m.fixed) { placed.push(Object.assign(box(it, it.x, it.y, it.ang), { fixed: true })); continue; }
     const home = box(it, it.x, it.y, it.ang);
-    if (conflicts(home, true) === 0) { placed.push(home); continue; }
+    if (conflicts(home, !_arranging) === 0) { placed.push(home); continue; }
     const maxMove = tune('kiteDeclutterMaxShift') * Math.max(it.size.L, it.size.W);
     const cands = [];
     if (m.cum) {

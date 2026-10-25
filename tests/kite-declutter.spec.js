@@ -25,6 +25,7 @@ async function boot(page, route, view) {
     const t = document.getElementById('map-tour'); if (t) t.remove();
     showReturn = true;
     showCumTime = true;
+    setTune('kiteDeclutter', true);       // the automatic pass; the button's tests switch it off
     state.waypoints = route.map(w => Object.assign({}, w));
     syncLegs();
     map.setView(view[0], view[1], { animate: false });
@@ -134,4 +135,38 @@ test('a kite the pilot placed is never moved', async ({ page }) => {
   // ...and the kite it was dragged onto is not pushed away from it: they were put together.
   const home0 = await page.evaluate(() => window._home0);
   expect(painted.filter(b => Math.abs(b.x - home0.x) < 0.5 && Math.abs(b.y - home0.y) < 0.5).length).toBe(2);
+});
+
+// --- the Auto arrange button ---------------------------------------------------------------
+// The automatic pass is off by default: the pilot arranges, and asks for help with one button.
+test('Auto arrange: off by default; the button moves what covers, as positions the pilot can drag, and Undo puts them back', async ({ page }) => {
+  await boot(page);
+  await page.evaluate(() => { setTune('kiteDeclutter', false); localStorage.removeItem('navaid.tune.kiteDeclutter'); });
+  expect(await page.evaluate(() => NavAid.tuningDefaults.kiteDeclutter.value)).toBe(false);
+  const before = await overlaps(page);
+  expect(before.n).toBeGreaterThan(0);
+  const btn = page.locator('#edit-col-arrange');
+  await expect(btn).toBeVisible();
+  await expect(btn).not.toHaveAttribute('aria-disabled', 'true');
+  await btn.click();
+  await expect(page.locator('#toast-stack > *, .toast').filter({ hasText: /Moved \d+ label/ }).first()).toBeVisible();
+  const after = await overlaps(page);
+  expect(after.n).toBeLessThan(before.n);
+  expect(after.count).toBe(before.count);
+  // Written as ordinary dragged positions: nothing is held in the automatic pass any more.
+  const placed = await page.evaluate(() => state.legs.some(l => [l.inLabel, l.cumLabel].some(o => o && !o._default)));
+  expect(placed).toBe(true);
+  // One Undo puts every label back.
+  await page.evaluate(() => undo());
+  const undone = await overlaps(page);
+  expect(undone.boxes.map(b => [Math.round(b.x), Math.round(b.y)])).toEqual(before.boxes.map(b => [Math.round(b.x), Math.round(b.y)]));
+});
+
+test('Auto arrange: dimmed with no route, and says so when nothing covers anything', async ({ page }) => {
+  await boot(page, OPEN, [[32.75, 35.05], 10]);
+  await page.evaluate(() => setTune('kiteDeclutter', false));
+  await page.locator('#edit-col-arrange').click();
+  await expect(page.locator('#toast-stack > *, .toast').filter({ hasText: 'Nothing covers anything' }).first()).toBeVisible();
+  await page.evaluate(() => { state.waypoints = []; syncLegs(); draw(); refreshEditColumn(); });
+  await expect(page.locator('#edit-col-arrange')).toHaveAttribute('aria-disabled', 'true');
 });

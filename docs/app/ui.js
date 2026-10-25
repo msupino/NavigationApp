@@ -968,6 +968,10 @@ const MAP_ICONS = {
   clearMap: '<path d="M6.2 7.5 7.3 20h9.4l1.1-12.5" fill="currentColor" fill-opacity=".18"/>'
     + '<path d="M4 7.5h16M9.5 7.5V4.5h5v3M10.3 11v5.5M13.7 11v5.5"/>',
   // Fit: the four corners of a frame, "[ ]" -- the page, or the route, brought to the screen.
+  // Auto arrange: two route kites, one drawn off the other, and the arrow they were moved along.
+  arrange: '<path d="M3 4.5h8.5l2.5 2.5-2.5 2.5H3z" fill="currentColor" fill-opacity=".18"/>'
+    + '<path d="M10 14.5h8.5l2.5 2.5-2.5 2.5H10z" fill="currentColor" fill-opacity=".18"/>'
+    + '<path d="M6 12.5v5.5h2M16 11.5V7h-2"/>',
   fitFrame: '<rect x="8" y="8" width="8" height="8" rx="1" fill="currentColor" fill-opacity=".18" stroke="none"/>'
     + '<path d="M4 9V5.5A1.5 1.5 0 0 1 5.5 4H9M15 4h3.5A1.5 1.5 0 0 1 20 5.5V9'
     + 'M20 15v3.5a1.5 1.5 0 0 1-1.5 1.5H15M9 20H5.5A1.5 1.5 0 0 1 4 18.5V15"/>',
@@ -1475,6 +1479,8 @@ editColCtrl.onAdd = function () {
     // Last, under Clear map: the F key's fit, for a phone that has no F key. The selected page
     // frame to the screen, or the route when no page is selected (fitToScreen).
     ['edit-col-fit', 'fitFrame', 'tbFitTitle', 'tbFit'],
+    // Under Fit: kites and time boxes that cover each other moved apart, once (draw.js).
+    ['edit-col-arrange', 'arrange', 'tbAutoArrangeTitle', 'tbAutoArrange'],
   ];
   // Handlers are attached HERE, on every build: Leaflet rebuilds a control when it moves corner
   // (placeEditColumn: top right on a Hebrew desktop), and buttons wired once by id after the
@@ -1487,6 +1493,14 @@ editColCtrl.onAdd = function () {
     'edit-col-undo': () => document.getElementById('undo').click(),
     'edit-col-clear': () => document.getElementById('clear').click(),
     'edit-col-fit': () => { if (typeof fitToScreen === 'function') fitToScreen(); },
+    'edit-col-arrange': (e) => {
+      if (e.currentTarget.getAttribute('aria-disabled') === 'true') return;
+      const n = typeof autoArrangeKites === 'function' ? autoArrangeKites() : 0;
+      if (typeof showToast === 'function') {
+        showToast(n ? (typeof S.autoArrangeDone === 'function' ? S.autoArrangeDone(n) : 'Moved ' + n)
+          : (S.autoArrangeNone || 'Nothing covers anything'));
+      }
+    },
   };
   for (const [id, icon, titleKey, nameKey] of items) {
     const b = document.createElement('button');
@@ -1674,6 +1688,10 @@ function refreshEditColumn() {
   // Route check reads the plan, it does not edit it, so the lock leaves it alone; it dims when
   // there is no route to check (two points, as the check itself requires) or the gist has
   // withdrawn the feature.
+  // Auto arrange moves labels, so the lock dims it like the other editing buttons; with no
+  // route there is nothing to arrange.
+  setButtonWhy(document.getElementById('edit-col-arrange'), lockWhy
+    || (!(state.waypoints && state.waypoints.length >= 2) ? (S.whyAutoArrangeNoRoute || 'Draw a route first') : null));
   const checkBtn = document.getElementById('edit-col-check');
   if (checkBtn) {
     const featureOff = typeof tune === 'function' && tune('featureRouteCheck') === false;
