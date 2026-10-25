@@ -290,8 +290,17 @@ function onLivePosition(pos) {
   if (pos.source !== 'ble' && window.NavAid && NavAid.bleGps && NavAid.bleGps.fresh()) return;
   // Every fix, before the accuracy filter below: the status line shows a coarse fix as coarse.
   if (window.NavAid && NavAid.gpsStatus) NavAid.gpsStatus.noteFix(pos);
-  if (gpsRecording) return;   // recording drives own-ship + recenter; avoid dueling
   const c = pos.coords;
+  if (gpsRecording) {
+    // Recording drives own-ship + recenter; avoid dueling. But the last-fix point is still
+    // kept current: traffic asks around gpsLastFix() and drops its own-ship by it, and the
+    // first live fix after a recording stops takes its heading and speed from it. Left
+    // alone here, it stayed wherever the recording started.
+    if (!(c.accuracy != null && c.accuracy > gpsMaxAccM())) {
+      _gpsLivePrev = { lat: r5(c.latitude), lng: r5(c.longitude), t: pos.timestamp || Date.now() };
+    }
+    return;
+  }
   if (c.accuracy != null && c.accuracy > gpsMaxAccM()) return;
   const p = { lat: r5(c.latitude), lng: r5(c.longitude) };
   const t = pos.timestamp || Date.now();
@@ -334,6 +343,7 @@ function onLivePosition(pos) {
   gpsLastGS = gsMs != null ? gsMs * 1.94384 : null;             // m/s → kt
   gpsLastAlt = c.altitude != null ? c.altitude * 3.28084 : null; // m → ft
   gpsAltIsGeometric = true;
+  gpsAltIsMsl = gpsFixAltitudeIsMsl(pos);
   _gpsLivePrev = { lat: p.lat, lng: p.lng, t };
   // Carry the fix time so everything downstream can tell live from frozen, and where the
   // heading came from so the readout can say (045m, not 045°).
@@ -602,6 +612,18 @@ var gpsLastAlt = null;  // current GPS altitude (ft), null if unknown
 // already reports the way an altimeter would. Only the former needs correcting -- running
 // the geoid and temperature terms over a sim's own altitude would invent an error.
 var gpsAltIsGeometric = true;
+// Whether that GNSS height is already above MEAN SEA LEVEL rather than the WGS84 ellipsoid.
+// Android reports the ellipsoid; iOS (CLLocation.altitude) and a Bluetooth receiver's NMEA
+// GGA sentence already report MSL. Taking the ~59 ft geoid off those as well read them that
+// much LOW. The temperature term still applies: MSL is a true altitude, not an indicated one.
+var gpsAltIsMsl = false;
+function gpsFixAltitudeIsMsl(pos) {
+  if (pos && pos.altitudeMsl === true) return true;           // ble-gps.js: NMEA GGA
+  try {
+    const C = window.Capacitor;
+    return !!(C && typeof C.getPlatform === 'function' && C.getPlatform() === 'ios');
+  } catch (e) { return false; }
+}
 
 // --- phone compass (fallback heading) --------------------------------------------
 // A GPS fix reports COURSE OVER GROUND, and only while moving: stationary, taxiing or in a
@@ -625,7 +647,19 @@ function gpsCompassOn() {
 // needs the screen's own rotation taken out, or a phone in landscape reads 90 degrees off.
 function _gpsCompassFromEvent(e) {
   if (!e) return null;
-  if (Number.isFinite(e.webkitCompassHeading)) return e.webkitCompassHeading;
+  // webkitCompassHeading is measured from the device's top edge, not the screen's: in
+  // landscape it read 90 degrees off and swung the heading-up map with it. The screen's own
+  // rotation goes back on, iOS's window.orientation first -- the same order compass.js uses
+  // (screen.orientation.angle was seen reporting 90 on an upright iPad).
+  if (Number.isFinite(e.webkitCompassHeading)) {
+    let rot = 0;
+    if (typeof window !== 'undefined') {
+      if (Number.isFinite(window.orientation)) rot = window.orientation;
+      else if (window.screen && window.screen.orientation &&
+               Number.isFinite(window.screen.orientation.angle)) rot = window.screen.orientation.angle;
+    }
+    return ((e.webkitCompassHeading + rot) % 360 + 360) % 360;
+  }
   if (!Number.isFinite(e.alpha)) return null;
   // Earth-referenced or nothing. `absolute` must be TRUE, not merely "not false": a plain
   // deviceorientation event can carry a gyro-only alpha with no `absolute` field at all,
@@ -786,10 +820,10 @@ function _gpsIsaDeviationC(q) {
   return q.tempC - isaAtStation;
 }
 // GPS height -> what the altimeter shows. Returns null when there is nothing to correct.
-function gpsIndicatedAltitudeFt(rawFt, q) {
+function gpsIndicatedAltitudeFt(rawFt, q, alreadyMsl) {
   if (!Number.isFinite(rawFt)) return null;
   if (!gpsAltimetryOn()) return rawFt;
-  const msl = rawFt - gpsGeoidFt();
+  const msl = alreadyMsl === true ? rawFt : rawFt - gpsGeoidFt();
   const dev = _gpsIsaDeviationC(q === undefined ? gpsQnh : q);
   if (dev == null) return msl;              // no temperature: the geoid part still stands
   // Warm air: true altitude exceeds indicated, so the indicated value is the lower one.
@@ -825,7 +859,7 @@ function gpsAltitudeForCompare() {
   }
   gpsAltFrom = 'gps';
   if (gpsLastAlt == null) return null;
-  return gpsAltIsGeometric ? gpsIndicatedAltitudeFt(gpsLastAlt) : gpsLastAlt;
+  return gpsAltIsGeometric ? gpsIndicatedAltitudeFt(gpsLastAlt, undefined, gpsAltIsMsl) : gpsLastAlt;
 }
 window.gpsAltSource = gpsAltSource;
 
@@ -1072,6 +1106,7 @@ function onGpsPosition(pos) {
   gpsLastGS = gsMs != null ? gsMs * 1.94384 : null;            // m/s → kt
   gpsLastAlt = c.altitude != null ? c.altitude * 3.28084 : null;  // m → ft
   gpsAltIsGeometric = true;
+  gpsAltIsMsl = gpsFixAltitudeIsMsl(pos);
   // heading: device value when moving, else bearing from the previous point.
   // NaN (not 0 -- see onLivePosition's identical fallback for why) when neither
   // is available.
@@ -2098,7 +2133,12 @@ function gpsCheckLegAlerts() {
   // The CORRECTED altitude: `planned` is a pressure altitude off the chart, and the raw
   // fix is a geometric height. See gpsIndicatedAltitudeFt.
   const flownAlt = gpsAltitudeForCompare();
-  if (_gpsAlertConfirmed && Number.isFinite(planned) && flownAlt != null) {
+  // Still inside the circle of the waypoint just captured, the cone puts the aircraft back
+  // on the completed leg every fix, which re-arms that leg's altitude latch and budget --
+  // and the capture below then advances again. Checked there, a deviation of 100 ft or more
+  // was called on EVERY fix inside the circle. The approach call already honours this
+  // latch; the altitude call does too.
+  if (_gpsAlertConfirmed && !sameTopCapture && Number.isFinite(planned) && flownAlt != null) {
     const off = Math.abs(flownAlt - planned);
     if (off >= gpsAltToleranceFt()) {
       if (!_gpsAlertAltDeviated) {
@@ -2649,6 +2689,10 @@ function gpsCheckDrift() {
   // meaningless (or actively wrong) before a real waypoint has confirmed it, same
   // "don't alert on a guess" rule gpsCheckLegAlerts' own three alert types follow.
   if (!_gpsAlertConfirmed) return;
+  // Outside every leg's cone the off-route alert has the floor, and the leg pointer is not
+  // a leg the aircraft is flying: an "off course, heading X to intercept" on top of it is a
+  // second, conflicting instruction. gpsCheckLegAlerts stands down the same way.
+  if (gpsRouteUnknown) return;
   // Just passed a waypoint: the turn onto the new leg has not settled yet (see
   // GPS_DRIFT_AFTER_TOP_MS).
   if (_gpsLastTopAt && Date.now() - _gpsLastTopAt < GPS_DRIFT_AFTER_TOP_MS) return;

@@ -488,9 +488,11 @@
   // every packet as impossibly-future and drew nothing at all.
   //
   // A LIVE packet (not the relay's retained copy) crosses in milliseconds, so the difference
-  // between its stamp and its arrival IS the clock offset. The smallest one seen is the best
-  // estimate: transit only ever adds. A retained packet says nothing about it -- its age is
-  // exactly the unknown -- so the correction stays at zero until a live fix arrives.
+  // between its stamp and its arrival IS the clock offset. Transit only ever makes a stamp
+  // look OLDER (stamp - arrival smaller), so the LARGEST offset seen is the best estimate --
+  // a packet held back minutes in a backgrounded tab must not drag it down, or a dead feed
+  // would read as live for those minutes. A retained packet says nothing about it -- its age
+  // is exactly the unknown -- so the correction stays at zero until a live fix arrives.
   function followMeSkew(state) {
     return (state && Number.isFinite(state.skew)) ? state.skew : 0;
   }
@@ -1278,15 +1280,27 @@
   }
 
   async function followMeWatch(id, rawKeyB64, opts, verifyB64) {
-    if (watch) followMeUnwatch();
-    const key = await importKey(b64url.to(rawKeyB64));
     // A link that carries a public key gets every packet verified against it -- a follower
     // can read this aeroplane, and cannot publish one. A link without it is from before
     // signing existed and is read the way it always was, unless the gist says otherwise.
-    // The link's key, or the one this device already saw for this aeroplane -- whichever
-    // exists. A link that dropped the key cannot make this viewer stop checking.
+    // The key this device already saw for this aeroplane wins over the link's: a link that
+    // dropped the key cannot make this viewer stop checking, and a link carrying a DIFFERENT
+    // one -- anyone holding the link could make one -- cannot swap in a key of its own and
+    // have forged positions accepted. Such a link is refused, and said so.
     const known = rememberedVerifyKey(id);
-    const useB64 = safeB64(verifyB64) || known;
+    const linkB64 = safeB64(verifyB64);
+    if (known && linkB64 && linkB64 !== known) {
+      const S2 = window.S || {};
+      if (typeof window.showToast === 'function') {
+        window.showToast(S2.followMeKeyMismatch || 'Follow me: this link does not match the aeroplane this'
+          + ' device already follows (a different signing key). It was not opened. Ask the pilot for a new link.',
+          { warn: true });
+      }
+      return null;
+    }
+    if (watch) followMeUnwatch();
+    const key = await importKey(b64url.to(rawKeyB64));
+    const useB64 = known || linkB64;
     const verifyKey = useB64 ? await importVerifyKey(useB64) : null;
     if (verifyKey) rememberVerifyKey(id, useB64);
     const state = { id, fix: null, at: null, skew: null, aliveAt: null, connected: false,
@@ -1312,12 +1326,13 @@
       // prevents an older retained packet replacing a newer one.
       const order = msg.seq == null ? msg.t : msg.seq;
       // A live packet is the clock comparison: it left the aeroplane milliseconds ago, so its
-      // stamp minus its arrival is how far the two devices disagree. Smallest wins -- transit
-      // only ever adds to it -- and it is learnt BEFORE the sanity check below, so a viewer
-      // whose own clock is wrong is corrected rather than left staring at an empty map.
+      // stamp minus its arrival is how far the two devices disagree. Largest wins -- transit
+      // only ever subtracts from it, so a delayed packet reads low -- and it is learnt BEFORE
+      // the sanity check below, so a viewer whose own clock is wrong is corrected rather than
+      // left staring at an empty map.
       if (!retained && Number.isFinite(msg.t)) {
         const offset = msg.t - now;
-        state.skew = Number.isFinite(state.skew) ? Math.min(state.skew, offset) : offset;
+        state.skew = Number.isFinite(state.skew) ? Math.max(state.skew, offset) : offset;
       }
       const alive = msg.hb === 1;
       if ((!alive && (!Number.isFinite(msg.lat) || msg.lat < -90 || msg.lat > 90 ||
@@ -1653,6 +1668,7 @@
     }
     if (!p.verify && !rememberedVerifyKey(p.id) && requireSignedLinks()) return null;
     const state = await followMeWatch(p.id, p.key, opts, p.verify);
+    if (!state) return null;          // refused: a signing key that is not the one remembered
     viewer = { state, marker: null, timer: 0, rotateHandler: null };
     // Following an aircraft is not route onboarding. Drop any intro that was painted before
     // this async viewer started, and begin with route edits locked just like a live own-ship.

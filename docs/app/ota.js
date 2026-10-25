@@ -200,6 +200,12 @@
     if ((running && running === manifest.version) || sameBuild(webVersion(), manifest.version)) {
       return { checked: true, updated: false, reason: 'already running it' };
     }
+    // This version was installed once and did not come up -- the plugin rolled it back.
+    // Fetching it again would be the same 26 MB and the same rollback on every launch. Only
+    // a newer manifest, or the pilot's own Download, tries again.
+    if (!o.force && failedVersion() === manifest.version) {
+      return { checked: true, updated: false, reason: 'this version failed to start before' };
+    }
     // Downloaded already and waiting for the next start (the automatic Wi-Fi check got there
     // first): not again -- it was 26 MB, and this time it might be on mobile data.
     try {
@@ -262,15 +268,42 @@
   // mid-flight and coming back to a reloaded NavAid. So the install happens here, explicitly,
   // at the one moment a reload costs nothing: while the app is still starting.
   const ATTEMPT_KEY = 'navaid.otaInstalling';
+  const ATTEMPT_VERSION_KEY = 'navaid.otaInstallingVersion';
+  // The manifest version of a bundle that was installed and rolled back. Nothing remembered it
+  // before: the pending pointer is gone after a rollback, so the next check simply downloaded
+  // the same version again, and installed it again, on every launch.
+  const FAILED_KEY = 'navaid.otaFailedVersion';
   const RELOAD_GRACE_MS = 3000;
   function alreadyTried(id) {
     try { return localStorage.getItem(ATTEMPT_KEY) === id; } catch (e) { return false; }
   }
-  function noteAttempt(id) {
-    try { localStorage.setItem(ATTEMPT_KEY, id); } catch (e) { /* private mode */ }
+  function noteAttempt(id, version) {
+    try {
+      localStorage.setItem(ATTEMPT_KEY, id);
+      localStorage.setItem(ATTEMPT_VERSION_KEY, String(version || ''));
+    } catch (e) { /* private mode */ }
   }
   function clearAttempt() {
-    try { localStorage.removeItem(ATTEMPT_KEY); } catch (e) { /* private mode */ }
+    try {
+      localStorage.removeItem(ATTEMPT_KEY);
+      localStorage.removeItem(ATTEMPT_VERSION_KEY);
+    } catch (e) { /* private mode */ }
+  }
+  function failedVersion() {
+    try { return localStorage.getItem(FAILED_KEY) || ''; } catch (e) { return ''; }
+  }
+  function noteFailedVersion(version) {
+    if (!version) return;
+    try { localStorage.setItem(FAILED_KEY, String(version)); } catch (e) { /* private mode */ }
+  }
+  // Nothing is pending any more, an install was attempted, and the bundle running is NOT the
+  // one attempted: it was rolled back. (Running it means it worked.) An unreadable current
+  // bundle proves nothing either way.
+  function noteRollback(current) {
+    let id = null, version = '';
+    try { id = localStorage.getItem(ATTEMPT_KEY); version = localStorage.getItem(ATTEMPT_VERSION_KEY) || ''; }
+    catch (e) { return; }
+    if (id && current && current.id && current.id !== id) noteFailedVersion(version);
   }
 
   async function installPendingAtStartup(opts) {
@@ -282,11 +315,18 @@
     }
     let pending;
     try { pending = await p.getNextBundle(); } catch (e) { return { installed: false, reason: 'no pending bundle' }; }
-    if (!pending || !pending.id) { clearAttempt(); return { installed: false, reason: 'no pending bundle' }; }
+    if (!pending || !pending.id) {
+      noteRollback(await currentBundle(p));
+      clearAttempt();
+      return { installed: false, reason: 'no pending bundle' };
+    }
     // A bundle the plugin has already failed on is not tried again, and neither is one this
     // device tried and did not come back from: one attempt per bundle, or a bundle that
     // cannot be set becomes a reload loop on the launch screen.
-    if (pending.status === 'error') return { installed: false, reason: 'pending bundle failed before' };
+    if (pending.status === 'error') {
+      noteFailedVersion(pending.version);
+      return { installed: false, reason: 'pending bundle failed before' };
+    }
     // Already the bundle we are running: a pending pointer that outlived its install. Nothing
     // to do, and saying so is what stops the same update being installed on every launch.
     const before = await currentBundle(p);
@@ -295,7 +335,7 @@
       return { installed: false, reason: 'pending bundle is already the one running' };
     }
     if (alreadyTried(pending.id)) return { installed: false, reason: 'already tried this bundle' };
-    noteAttempt(pending.id);
+    noteAttempt(pending.id, pending.version);
     try {
       // Installing on our terms, now -- so the condition that was holding it back goes.
       if (typeof p.cancelDelay === 'function') await p.cancelDelay();

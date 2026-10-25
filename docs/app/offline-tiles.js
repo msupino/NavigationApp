@@ -230,10 +230,21 @@
     return total ? Math.floor(present / total * 100) : 0;
   }
 
+  // A PR preview (/pr/<n>/) or staging shares the production origin, so it shares its Cache
+  // Storage too -- the very same tile cache, keyed by the same mirror URLs. Its idea of the
+  // wanted tiles is ITS build's, and pruning to it on every load deleted the pilot's real
+  // production pack just for opening a preview. A preview may add tiles; it never prunes.
+  function previewDeployment(path) {
+    try {
+      const p = path == null ? (location.pathname || '/') : String(path);
+      return p.indexOf('/pr/') === 0 || p.indexOf('/staging/') === 0;
+    } catch (e) { return false; }
+  }
+
   async function cacheUrlSet(prune) {
     if (!(await tileCaches.has(TILE_CACHE))) return null;
     const cache = await tileCaches.open(TILE_CACHE);
-    if (prune) {
+    if (prune && !previewDeployment()) {
       const wanted = wantedTileUrls();
       const keys = await cache.keys();
       await Promise.all(keys.filter(key => !wanted.has(key.url)).map(key => cache.delete(key)));
@@ -971,6 +982,6 @@
     downloadPack, fetchFloor, deletePack, packSize, auditAndMaintain, scheduleAuto,
     connectionUnknownOnPhone, automaticDownloadAgreed,
     downloadChart, deleteChart, downloadArea, deleteArea, screenArea, readPacks, wantedTileUrls, openManager,
-    offlineTileCount, TILE_CACHE, OFFLINE_MIN_Z, OFFLINE_MAX_Z, AREA_TILE_LIMIT,
+    offlineTileCount, previewDeployment, TILE_CACHE, OFFLINE_MIN_Z, OFFLINE_MAX_Z, AREA_TILE_LIMIT,
   };
 }());
