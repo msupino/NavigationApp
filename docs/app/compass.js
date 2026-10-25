@@ -345,7 +345,17 @@
     });
     dial.addEventListener('pointercancel', cancel);
     // A computer's right click is the same request.
-    dial.addEventListener('contextmenu', (e) => { if (!feat()) return; e.preventDefault(); cancel(); showCompass(); });
+    // Android fires it for a long touch too, at about 400 ms -- before the hold timer. It opened the
+    // compass without standing the dial down, and the release, still under the tap limit, stepped
+    // the chart 90° (reported). Whatever opens the compass ends the dial's gesture.
+    dial.addEventListener('contextmenu', (e) => {
+      if (!feat()) return;
+      e.preventDefault();
+      cancel();
+      held = true;
+      if (typeof window.rotDialCancelGesture === 'function') window.rotDialCancelGesture();
+      showCompass();
+    });
   }
   wireDial();
 
