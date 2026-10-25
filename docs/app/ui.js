@@ -1806,9 +1806,13 @@ function dialAngle(ev) {                 // 0 = north (up), clockwise positive
 }
 let rotDragging = false;
 let rotMoved = false;
-let rotStartX = 0, rotStartY = 0, rotDownAt = 0;
+let rotStartX = 0, rotStartY = 0, rotDownAt = 0, rotSlop = 0;
 rotDial.addEventListener('pointerdown', e => {
   rotDragging = true;
+  // A finger drifts a few pixels while it is held still; with the mouse's few-pixel slop that
+  // started a drag, which turns the chart to the finger's angle -- the hold for the compass
+  // rotated the map (reported on Android). A finger gets the touch slop.
+  rotSlop = e.pointerType === 'touch' ? Math.max(tune('rotDragPx'), tune('touchDragPx'), tune('compassHoldSlopPx')) : tune('rotDragPx');
   rotDownAt = Date.now();
   rotMoved = false;
   rotStartX = e.clientX;
@@ -1819,7 +1823,7 @@ rotDial.addEventListener('pointerdown', e => {
 rotDial.addEventListener('pointermove', e => {
   if (!rotDragging) return;
   if (!rotMoved) {
-    if (Math.hypot(e.clientX - rotStartX, e.clientY - rotStartY) < tune('rotDragPx')) return;
+    if (Math.hypot(e.clientX - rotStartX, e.clientY - rotStartY) < rotSlop) return;
     rotMoved = true;
   }
   orientNoteManualRotation();

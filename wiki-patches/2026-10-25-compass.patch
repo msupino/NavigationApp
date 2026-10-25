@@ -1,0 +1,83 @@
+From e3344ce91fbf1aae5a24cb0aa11cc62bebfd9003 Mon Sep 17 00:00:00 2001
+From: Marco <marco@supino.org>
+Date: Sun, 25 Oct 2026 13:03:07 +0000
+Subject: [PATCH] Bearing dial: hold it for the compass
+
+---
+ Bearing-Dial-he.md | 16 ++++++++++++++++
+ Bearing-Dial.md    | 18 ++++++++++++++++++
+ 2 files changed, 34 insertions(+)
+
+diff --git a/Bearing-Dial-he.md b/Bearing-Dial-he.md
+index fbfeaa5..30df72e 100644
+--- a/Bearing-Dial-he.md
++++ b/Bearing-Dial-he.md
+@@ -19,6 +19,7 @@
+ | --- | --- |
+ | **גרירת החוגה** | סיבוב רציף לכל זווית |
+ | **לחיצה על החוגה** | קפיצה של 90° בכל לחיצה: 0° → 90° → 180° → 270° → 0°, תמיד **אמיתיות**: 0 הוא המפה ישרה עם הצפון האמיתי למעלה, גם בטיסה. מזווית לא ישרה הלחיצה הראשונה מביאה ל-0. לחיצה מפסיקה את כיוון למעלה. |
++| **לחיצה ארוכה על החוגה** | פותחת את ה**מצפן** (למטה). לחיצה ארוכה אף פעם לא מסובבת את המפה. במחשב: לחיצה ימנית על החוגה |
+ | **הקלדה בשדה הכיוון** | מעבר ישיר לזווית שהוקלדה |
+ | **סיבוב בשתי אצבעות** | סיבוב במסך מגע — כבוי כברירת מחדל, מופעל במפתח הכוונון <span dir="ltr"><code>touchRotateGesture</code></span> |
+ 
+@@ -62,6 +63,21 @@
+ "מגמה למעלה" מעביר את הכפתור למצב "מסובב ידנית" במקום להיאבק בכם על הזווית. ראו
+ [המפה](The-Map-he).
+ 
++## מצפן
++
++לחיצה ארוכה על החוגה (כחצי שנייה) פותחת מעל המפה מצפן גדול שמסתובב עם הטלפון: המספר הוא הכיוון
++שאליו מצביע **ראש המסך**, **מגנטי** כמו הכיוונים בעפיפוני הקטעים, בשלוש ספרות (צפון הוא 360).
++על הכרטיס הכיוונים הראשיים והביניים, עם הזוויות והשמות שלהם. **כיוון למעלה** (הכרטיס מסתובב מתחת
++למטוס) או **צפון למעלה** (הצפון נשאר למעלה והמטוס מסתובב אל הכיוון): מתג בחלון, שנשמר במכשיר.
++
++- **באפליקציות לאייפון ולאנדרואיד** הוא מתחיל מיד, בלי שאלה. בדפדפן באייפון, iOS שואל פעם אחת אם
++  לאפשר *תנועה וכיוון*.
++- מכשיר בלי מצפן (מחשב) אומר זאת, במקום להציג כרטיס שאינו זז.
++- זה החיישן של הטלפון עצמו: גוף המטוס, מכשירי הקשר ומגנט בכיסוי הטלפון משבשים אותו. לבדיקה צולבת,
++  לא כיוון לטוס לפיו.
++- ה-gist יכול לכבות אותו (<span dir="ltr"><code>featureCompass</code></span>); זמן הלחיצה וההחלקה ניתנים לכוונון
++  (<span dir="ltr"><code>compassHoldMs</code></span>, <span dir="ltr"><code>compassSmoothing</code></span>).
++
+ ## ראו גם
+ 
+ - [המפה](The-Map-he) — הזזה, זום והקריאות שסביבן
+diff --git a/Bearing-Dial.md b/Bearing-Dial.md
+index ff5a79a..4dbd0bb 100644
+--- a/Bearing-Dial.md
++++ b/Bearing-Dial.md
+@@ -14,6 +14,7 @@ Bottom-right of the map, above the zoom buttons. The red needle is a **north arr
+ | --- | --- |
+ | **Drag the dial** | Rotate continuously to any bearing |
+ | **Click the dial** | Step 90° per click: 0° → 90° → 180° → 270° → 0°, always **true**: 0 is the chart square with real north up, in flight too. From an off-axis angle the first click goes to 0. A click ends heading-up. |
++| **Press and hold the dial** | Opens the **compass** (below). A hold never steps the chart. On a computer, right-click the dial |
+ | **Type in the heading field** | Jump straight to that bearing |
+ | **Two-finger twist** | Rotate on a touch screen — off by default, enable with the `touchRotateGesture` tuning key |
+ 
+@@ -47,6 +48,23 @@ A drag has to travel past a small threshold (`rotDragPx`, 8 px by default) befor
+ - The **wind field** overlay hides itself while the map is rotated and shows a north-up note; it returns at 0°.
+ - The bearing persists across reloads (`navaid.bearing`).
+ 
++## Compass
++
++Hold the dial (about half a second) and a large compass opens over the map, turning with the
++phone: the number is where the **top of the screen** points, **magnetic** like the headings on
++the leg kites, in three digits (north reads 360). The card shows the main and in-between
++directions with their headings and names. **Heading up** (the card turns under the aircraft) or
++**North up** (N stays at the top and the aircraft turns to the heading): a switch in the window,
++remembered on the device.
++
++- **The iPhone and Android apps** start it at once, with no question. In a browser on an
++  iPhone, iOS asks once to allow *Motion & Orientation*.
++- A device with no compass (a computer) says so, rather than showing a card that does not move.
++- It is the phone's own sensor: the airframe, the radios and a magnet in the phone's case throw
++  it off. Use it to cross-check, not as a heading to fly.
++- The gist can switch it off (`featureCompass`); the hold time and smoothing are tunable
++  (`compassHoldMs`, `compassSmoothing`).
++
+ ## See also
+ 
+ - [The Map](The-Map) — panning, zoom, and the readouts around it
+-- 
+2.43.0
+

@@ -70,9 +70,12 @@
         + `<tspan x="${f(x)}" dy="-6">${INTER[d][0]}</tspan><tspan x="${f(x)}" dy="15" class="compass-inter-deg">${String(d).padStart(3, '0')}°</tspan></text>`);
     }
     p.push('</g>');
-    // The lubber line and the aircraft: the way the phone's top points. They do not turn.
+    // The lubber line and the aircraft: the way the phone's top points. Fixed at the top with the
+    // card turning (heading up); turning over a still card (north up).
+    p.push('<g class="compass-ac">');
     p.push(`<polygon points="${C},${C - R + 2} ${C - 10},${C - R - 20} ${C + 10},${C - R - 20}" class="compass-lubber"/>`);
     p.push(`<path d="M${C} ${C - 24} l4 15 h15 l0 6 l-15 4 l-2 15 l7 4 v4 l-9 -2 l-9 2 v-4 l7 -4 l-2 -15 l-15 -4 l0 -6 h15 z" class="compass-plane"/>`);
+    p.push('</g>');
     p.push('</svg>');
     return p.join('');
   }
@@ -133,6 +136,8 @@
     window.removeEventListener('deviceorientationabsolute', onAbsolute, true);
     window.removeEventListener('deviceorientation', onRelative, true);
   }
+  const isIos = () => /iPhone|iPad|iPod/.test(navigator.userAgent)
+    || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
   // iOS asks; everything else just listens. The app's native compass never asks.
   const needsPermission = () => !nativeCompass()
     && !!(window.DeviceOrientationEvent && typeof window.DeviceOrientationEvent.requestPermission === 'function');
@@ -141,6 +146,11 @@
   }
 
   // --- the window -------------------------------------------------------------------------
+  // Heading up (the card turns, the aircraft points up) or north up (N stays up, the aircraft
+  // turns to the heading). Kept on this device.
+  const MODE_KEY = 'navaid.compassMode';
+  const getMode = () => { try { return localStorage.getItem(MODE_KEY) === 'north' ? 'north' : 'heading'; } catch (e) { return 'heading'; } };
+  const setMode = (m) => { try { localStorage.setItem(MODE_KEY, m); } catch (e) { /* storage off */ } };
   let open = null;
   function close() { if (open) open.close(); }
   function showCompass() {
@@ -166,14 +176,39 @@
     const note = document.createElement('p');
     note.className = 'compass-note';
     note.textContent = str('compassNote', 'The phone’s own compass: metal, radios and a magnet in the case throw it off. A cross-check, not a heading to fly.');
-    body.append(read, status, start, note);
+    // The two ways up, as one segmented switch.
+    const modes = document.createElement('div');
+    modes.className = 'compass-modes';
+    modes.setAttribute('role', 'group');
+    modes.setAttribute('aria-label', str('compassModeLabel', 'Compass orientation'));
+    const modeBtn = (m, label) => {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.dataset.mode = m;
+      b.textContent = label;
+      b.addEventListener('click', () => { setMode(m); paintModes(); if (lastHeading != null) onReading(lastHeading); });
+      return b;
+    };
+    modes.append(modeBtn('heading', str('compassHeadingUp', 'Heading up')), modeBtn('north', str('compassNorthUp', 'North up')));
+    const paintModes = () => {
+      const cur = getMode();
+      for (const b of modes.children) b.setAttribute('aria-pressed', String(b.dataset.mode === cur));
+      m.box.dataset.compassMode = cur;
+    };
+    paintModes();
+    body.append(modes, read, status, start, note);
     m.box.appendChild(body);
     const card = body.querySelector('.compass-card');
+    const ac = body.querySelector('.compass-ac');
+    let lastHeading = null;
     const deg = read.querySelector('.compass-deg');
     const say = (t) => { status.textContent = t || ''; status.hidden = !t; };
     say('');
     onReading = (h) => {
-      card.setAttribute('transform', 'rotate(' + (-h).toFixed(1) + ' 180 180)');
+      lastHeading = h;
+      const north = getMode() === 'north';
+      card.setAttribute('transform', 'rotate(' + (north ? 0 : -h).toFixed(1) + ' 180 180)');
+      ac.setAttribute('transform', 'rotate(' + (north ? h : 0).toFixed(1) + ' 180 180)');
       const n = Math.round(h) % 360;
       deg.textContent = String(n === 0 ? 360 : n).padStart(3, '0') + '°';
       m.box.dataset.heading = String(n);
@@ -182,25 +217,31 @@
     const begin = () => {
       const n = nativeCompass();
       if (n) listenNative(n); else listen();
-      // Nothing within a few seconds: this device has no compass (a computer), or it is off.
-      setTimeout(() => { if (open === m && !lastAt) say(str('compassNoSensor', 'No compass reading on this device.')); }, 3000);
+      // Nothing within a few seconds: this device has no compass (a computer), or it is off --
+      // unless it is waiting for the Start tap, which says so itself.
+      setTimeout(() => { if (open === m && !lastAt && start.hidden) say(str('compassNoSensor', 'No compass reading on this device.')); }, 3000);
     };
-    // iOS: the request has to come from a tap. The finger lifting at the end of the hold is one
-    // (wireDial asks then); in the app the shell grants it with no prompt at all, so the compass
-    // simply starts. The Start button is only the fallback -- opened some other way, or the lift
-    // was not taken as a tap.
+    // Some browsers want the request from a tap (iOS Safari; Chrome on Android now has the call
+    // too, but answers it without asking -- and showed the iPhone message, reported). So: listen
+    // straight away everywhere, ask on the finger lifting from the hold (wireDial), and offer
+    // Start only if no reading has come and the browser does want a tap.
     const ask = () => askPermission().then(ok => {
       if (open !== m) return ok;
-      if (ok) { start.hidden = true; say(''); begin(); }
+      if (ok) { start.hidden = true; say(''); }
       else { start.hidden = false; say(str('compassDenied', 'Compass access was refused. Allow Motion & Orientation for NavAid in Settings.')); }
       return ok;
     });
     m.askFromGesture = ask;
+    start.addEventListener('click', ask);
+    begin();
     if (needsPermission()) {
-      start.hidden = false;
-      say(str('compassAsk', 'iPhone asks before an app reads the compass.'));
-      start.addEventListener('click', ask);
-    } else begin();
+      setTimeout(() => {
+        if (open !== m || lastAt) return;
+        start.hidden = false;
+        say(isIos() ? str('compassAsk', 'iPhone asks before an app reads the compass.')
+                    : str('compassAskBrowser', 'This browser asks before it lets a page read the compass.'));
+      }, 1200);
+    }
     m.show();
     return m;
   }
@@ -221,6 +262,9 @@
       held = false;
       if (!feat()) return;
       sx = e.clientX; sy = e.clientY;
+      // The same slop the dial uses: a finger's drift neither cancels the hold nor turns the map.
+      const t = (k, d) => (typeof tune === 'function' ? tune(k) : d);
+      slop = e.pointerType === 'touch' ? Math.max(t('rotDragPx', 8), t('touchDragPx', 10), t('compassHoldSlopPx', 18)) : t('rotDragPx', 8);
       const ms = typeof tune === 'function' ? tune('compassHoldMs') : 550;
       timer = setTimeout(() => {
         timer = null;
@@ -230,8 +274,9 @@
         showCompass();
       }, ms);
     });
+    let slop = 6;
     dial.addEventListener('pointermove', (e) => {
-      const px = typeof tune === 'function' ? tune('rotDragPx') : 6;
+      const px = slop;
       if (timer && Math.hypot(e.clientX - sx, e.clientY - sy) >= px) cancel();
     });
     dial.addEventListener('pointerup', () => {
