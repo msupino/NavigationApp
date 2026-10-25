@@ -181,14 +181,19 @@ test('source: magnetic, true (with the app\'s variation) or the GPS track; kept 
   const want = await page.evaluate(() => String(Math.round(fromMagnetic(100)) % 360).padStart(3, '0') + '°');
   await expect(page.locator('.compass-deg')).toHaveText(want);
   await expect(page.locator('.compass-ref')).toHaveText('TRUE');
-  // GPS track: nothing until a fresh fix says the aircraft is moving.
+  // GPS track chosen without a track: GPS dims and the magnetic sensor answers, with the variation.
   await page.locator('.compass-sources button[data-source="gps"]').click();
-  await expect(page.locator('.compass-deg')).toHaveText('---°');
-  await expect(page.locator('.compass-status')).toContainText('GPS track needs');
+  await expect(page.locator('.compass-sources button[data-source="gps"]')).toHaveClass(/is-dim/);
+  await expect(page.locator('.compass-deg')).toHaveText('100°');
+  await expect(page.locator('.compass-ref')).toHaveText('MAG');
+  await expect(page.locator('.compass-status')).toContainText('No GPS track');
+  await expect(page.locator('.compass-var')).toHaveText(/^VAR \u2066\d+°\u2069[EW]?$/);
   await page.evaluate(() => { new Function('gpsOwn = { lat: 32, lng: 35, hdg: 200, t: Date.now(), hdgCompass: false }; gpsLastGS = 90;')(); });
   const gpsWant = await page.evaluate(() => String(Math.round(toMagnetic(200)) % 360).padStart(3, '0') + '°');
   await expect(page.locator('.compass-deg')).toHaveText(gpsWant, { timeout: 3000 });
   await expect(page.locator('.compass-ref')).toHaveText('GPS TRK');
+  await expect(page.locator('.compass-sources button[data-source="gps"]')).not.toHaveClass(/is-dim/);
+  await expect(page.locator('.compass-var')).toBeHidden();                  // not magnetic now
   // The sensor does not override the GPS track.
   await page.evaluate(() => window.dispatchEvent(Object.assign(new Event('deviceorientation'), { webkitCompassHeading: 10 })));
   await expect(page.locator('.compass-deg')).toHaveText(gpsWant);
@@ -218,6 +223,17 @@ test('iPhone app: the native compass is used when the app has it -- no Start, no
   expect(await page.evaluate(() => window.__asked || 0)).toBe(0);
   await page.keyboard.press('Escape');
   await expect.poll(() => page.evaluate(() => window.__calls)).toEqual(['add heading', 'start', 'remove', 'stop']);
+});
+
+test('the variation shows while the compass reads magnetic, and not for true', async ({ page }) => {
+  await boot(page);
+  await page.evaluate(() => { setTune('compassSmoothing', 1); localStorage.setItem('navaid.compassSource', 'mag'); NavAid.compass.show();
+    window.dispatchEvent(Object.assign(new Event('deviceorientation'), { webkitCompassHeading: 50 })); });
+  const east = await page.evaluate(() => Math.round(magVarInfo().east));
+  const side = east === 0 ? '' : (east > 0 ? 'E' : 'W');
+  await expect(page.locator('.compass-var')).toHaveText('VAR \u2066' + Math.abs(east) + '°\u2069' + side);
+  await page.locator('.compass-sources button[data-source="true"]').click();
+  await expect(page.locator('.compass-var')).toBeHidden();
 });
 
 test('Android: the long-touch contextmenu (before the hold timer) opens the compass and the release does not step the chart', async ({ page }) => {

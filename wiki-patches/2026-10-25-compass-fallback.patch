@@ -1,0 +1,43 @@
+From 92af99149bcd32e44d6333317d58fea30504c398 Mon Sep 17 00:00:00 2001
+From: Marco <marco@supino.org>
+Date: Sun, 25 Oct 2026 16:05:02 +0000
+Subject: [PATCH] Bearing dial: compass falls back to magnetic without a GPS
+ track; the variation under the number
+
+---
+ Bearing-Dial-he.md | 2 ++
+ Bearing-Dial.md    | 5 ++++-
+ 2 files changed, 6 insertions(+), 1 deletion(-)
+
+diff --git a/Bearing-Dial-he.md b/Bearing-Dial-he.md
+index 9dd8b40..7c69753 100644
+--- a/Bearing-Dial-he.md
++++ b/Bearing-Dial-he.md
+@@ -73,6 +73,8 @@
+ מתג שני קובע מאיפה המספר: **מגנטי** (החיישן של הטלפון), **אמיתי** (אותו חיישן מתוקן בסטייה המגנטית
+ של האפליקציה), או **מסלול GPS** — כיוון התנועה לפי נקודות ה-GPS, שמתכת ומכשירי קשר אינם משבשים,
+ מוצג מגנטי. מסלול GPS דורש מיקום פעיל ומטוס בתנועה (5 קשר ומעלה, <span dir="ltr"><code>compassGpsMinKt</code></span>).
++עד שיש מסלול, כפתור ה-GPS מעומעם והמצפן מציג את החיישן המגנטי ואומר זאת; כשיש מסלול הוא חוזר אליו
++מעצמו. כשהוא מציג מגנטי, ה**סטייה** בתוקף כתובה מתחת למספר (למשל *סטייה 5° מזרח*).
+ 
+ - **באפליקציות לאייפון ולאנדרואיד** הוא מתחיל מיד, בלי שאלה. בדפדפן באייפון, iOS שואל פעם אחת אם
+   לאפשר *תנועה וכיוון*.
+diff --git a/Bearing-Dial.md b/Bearing-Dial.md
+index 151afe3..62cf4de 100644
+--- a/Bearing-Dial.md
++++ b/Bearing-Dial.md
+@@ -60,7 +60,10 @@ remembered on the device.
+ A second switch sets where the number comes from: **Magnetic** (the phone's sensor), **True**
+ (the same sensor corrected with the app's magnetic variation), or **GPS track** — the direction
+ of movement from the GPS fixes, which metal and radios cannot bend, shown magnetic. GPS track
+-needs Location on and the aircraft moving (5 kt or more, `compassGpsMinKt`).
++needs Location on and the aircraft moving (5 kt or more, `compassGpsMinKt`). Until it has one,
++the GPS button is dimmed and the compass shows the magnetic sensor, saying so; it goes back to
++the GPS track by itself when there is one. While it reads magnetic, the **variation** in force
++is written under the number (e.g. *VAR 5°E*).
+ 
+ - **The iPhone and Android apps** start it at once, with no question. In a browser on an
+   iPhone, iOS asks once to allow *Motion & Orientation*.
+-- 
+2.43.0
+
