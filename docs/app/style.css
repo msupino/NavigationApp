@@ -10012,6 +10012,7 @@ body.deck-on .ac-profile-btn, body.deck-on .fp-aircraft .ac-custom > summary { m
 .compass-tick.minor { stroke-width: 0.6; }
 .compass-tick.major { stroke-width: 2; }
 .compass-num { fill: #222; font: 700 10.5px sans-serif; text-anchor: middle; dominant-baseline: central; }
+.compass-num.cardinal { font-size: 12px; font-weight: 800; }
 .compass-pt { stroke: #111; stroke-width: 0.8; }
 .compass-hub { fill: #d6d6d6; stroke: #333; stroke-width: 2; }
 .compass-card-letter { font: 800 24px sans-serif; text-anchor: middle; dominant-baseline: central; }

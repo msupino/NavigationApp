@@ -40,10 +40,10 @@
       p.push(`<line x1="${f(x1)}" y1="${f(y1)}" x2="${f(x2)}" y2="${f(y2)}" class="compass-tick${d % 10 === 0 ? ' major' : d % 5 ? ' minor' : ''}"/>`);
     }
     // Headings outside the ring, every 10°, upright to the card (they turn with it).
+    // The cardinal headings too, as in the picture -- north as 360, the way a heading is said.
     for (let d = 0; d < 360; d += 10) {
-      if (d % 90 === 0) continue;
       const [x, y] = pol(R + 14, d);
-      p.push(`<text x="${f(x)}" y="${f(y)}" class="compass-num" transform="rotate(${d} ${f(x)} ${f(y)})">${String(d).padStart(3, '0')}</text>`);
+      p.push(`<text x="${f(x)}" y="${f(y)}" class="compass-num${d % 90 === 0 ? ' cardinal' : ''}" transform="rotate(${d} ${f(x)} ${f(y)})">${d === 0 ? '360' : String(d).padStart(3, '0')}</text>`);
     }
     const point = (deg, len, half, c1, c2) => {
       const [tx, ty] = pol(len, deg), [lx, ly] = pol(half, deg - 90), [rx, ry] = pol(half, deg + 90);
