@@ -239,7 +239,11 @@
       m.box.dataset.compassSource = cur;
     };
     paintSources();
-    body.append(modes, sources, read, status, start, note);
+    // The variation in force, under the number while it reads magnetic.
+    const varLine = document.createElement('p');
+    varLine.className = 'compass-var';
+    varLine.dir = 'auto';                       // VAR 5°E; in Hebrew it reads right to left
+    body.append(modes, sources, read, varLine, status, start, note);
     m.box.appendChild(body);
     const card = body.querySelector('.compass-card');
     const ac = body.querySelector('.compass-ac');
@@ -261,18 +265,37 @@
       deg.textContent = String(n === 0 ? 360 : n).padStart(3, '0') + '°';
       m.box.dataset.heading = String(n);
     };
-    const refresh = () => {
-      const src = getSource();
-      ref.textContent = REF[src];
-      if (src === 'gps') {
-        const tr = gpsTrackTrue();
-        if (tr == null) { blank(); say(str('compassGpsWait', 'GPS track needs Location on and the aircraft moving.')); return; }
-        say(''); paint(mag(tr)); return;
-      }
-      if (lastMag == null) { blank(); return; }
-      say(''); paint(src === 'true' ? tru(lastMag) : lastMag);
+    const gpsBtn = sources.querySelector('[data-source="gps"]');
+    const showVar = (on) => {
+      const info = on && typeof magVarInfo === 'function' ? magVarInfo() : null;
+      if (!info || !Number.isFinite(info.east)) { varLine.hidden = true; return; }
+      const e = Math.round(info.east);
+      const side = e === 0 ? '' : (e > 0 ? str('compassVarE', 'E') : str('compassVarW', 'W'));
+      // The number isolated left to right: in Hebrew "5°" came out as "°5".
+      varLine.textContent = str('compassVar', 'VAR') + ' \u2066' + Math.abs(e) + '°\u2069' + side;
+      varLine.hidden = false;
     };
-    onReading = (h) => { lastMag = h; if (getSource() !== 'gps') refresh(); };
+    const refresh = () => {
+      const chosen = getSource();
+      // GPS chosen but no track (no fix, or not moving): the button dims, and the compass reads
+      // the magnetic sensor until a track comes -- then it goes back to GPS by itself. The choice
+      // stays GPS.
+      const tr = chosen === 'gps' ? gpsTrackTrue() : null;
+      const src = chosen === 'gps' && tr == null ? 'mag' : chosen;
+      if (gpsBtn) {
+        const dim = chosen === 'gps' && tr == null;
+        gpsBtn.classList.toggle('is-dim', dim);
+        gpsBtn.title = dim ? str('compassGpsWait', 'GPS track needs Location on and the aircraft moving.') : '';
+      }
+      m.box.dataset.compassShowing = src;
+      ref.textContent = REF[src];
+      showVar(src === 'mag');
+      if (src === 'gps') { say(''); paint(mag(tr)); return; }
+      say(chosen === 'gps' ? str('compassGpsFallback', 'No GPS track: showing the magnetic compass until there is one.') : '');
+      if (lastMag == null) { blank(); return; }
+      paint(src === 'true' ? tru(lastMag) : lastMag);
+    };
+    onReading = (h) => { lastMag = h; if (getSource() !== 'gps' || gpsTrackTrue() == null) refresh(); };
     // The GPS track has no event of its own here: look once a second while the window is open.
     const gpsTimer = setInterval(() => { if (open !== m) { clearInterval(gpsTimer); return; } if (getSource() === 'gps') refresh(); }, 1000);
     refresh();
@@ -281,7 +304,7 @@
       if (n) listenNative(n); else listen();
       // Nothing within a few seconds: this device has no compass (a computer), or it is off --
       // unless it is waiting for the Start tap, which says so itself.
-      setTimeout(() => { if (open === m && !lastAt && start.hidden && getSource() !== 'gps') say(str('compassNoSensor', 'No compass reading on this device.')); }, 3000);
+      setTimeout(() => { if (open === m && !lastAt && start.hidden && m.box.dataset.compassShowing !== 'gps') say(str('compassNoSensor', 'No compass reading on this device.')); }, 3000);
     };
     // Some browsers want the request from a tap (iOS Safari; Chrome on Android now has the call
     // too, but answers it without asking -- and showed the iPhone message, reported). So: listen

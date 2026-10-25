@@ -10030,6 +10030,8 @@ body.deck-on .ac-profile-btn, body.deck-on .fp-aircraft .ac-custom > summary { m
 .compass-readout { display: flex; align-items: baseline; gap: 6px; font-variant-numeric: tabular-nums; }
 .compass-deg { font: 800 44px sans-serif; letter-spacing: 1px; }
 .compass-ref { font: 700 14px sans-serif; opacity: 0.75; }
+.compass-var { margin: -4px 0 0; font: 700 14px sans-serif; opacity: 0.8; font-variant-numeric: tabular-nums; }
+.compass-modes button.is-dim { opacity: 0.45; }
 .compass-status { margin: 0; font-size: 14px; color: #ffcc80; }
 .compass-start { min-height: 44px; padding: 8px 18px; font-weight: 700; border-radius: 8px;
   background: #1d6fe0; color: #fff; border: none; cursor: pointer; }
