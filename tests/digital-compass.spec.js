@@ -269,3 +269,47 @@ test('iPad upright: iOS\'s own orientation (0) wins over a screen.orientation.an
     window.dispatchEvent(Object.assign(new Event('deviceorientation'), { webkitCompassHeading: 72 })); });
   await expect(page.locator('.compass-deg')).toHaveText('072°');
 });
+
+test('iPhone app: closing the compass before the native listener answers still stops the native heading', async ({ page }) => {
+  // Review: stop() only stopped Core Location once addListener had resolved; closed sooner, the
+  // heading kept running (and its failed start could attach the web listeners after closing).
+  await page.addInitScript(() => {
+    window.__calls = []; window.__release = null;
+    window.Capacitor = { isNativePlatform: () => true, getPlatform: () => 'ios', Plugins: { CompassHeading: {
+      addListener: () => new Promise(r => { window.__release = () => r({ remove() { window.__calls.push('remove'); } }); }),
+      start: () => { window.__calls.push('start'); return Promise.resolve(); },
+      stop: () => { window.__calls.push('stop'); return Promise.resolve(); },
+    } } };
+  });
+  await boot(page);
+  await page.evaluate(() => NavAid.compass.show());
+  await page.keyboard.press('Escape');
+  await page.evaluate(() => window.__release());
+  await expect.poll(() => page.evaluate(() => window.__calls)).toEqual(['start', 'stop', 'remove']);
+});
+
+test('iPhone app: a quick close and reopen keeps one native listener, and the old reply is removed', async ({ page }) => {
+  // Review: a reply from the closed session was stored over the new one and never removed, so
+  // every heading reached the compass twice.
+  await page.addInitScript(() => {
+    window.__calls = []; window.__releases = []; window.__cbs = [];
+    window.Capacitor = { isNativePlatform: () => true, getPlatform: () => 'ios', Plugins: { CompassHeading: {
+      addListener: (ev, cb) => { window.__cbs.push(cb); const n = window.__cbs.length;
+        return new Promise(r => { window.__releases.push(() => r({ remove() { window.__calls.push('remove' + n); } })); }); },
+      start: () => { window.__calls.push('start'); return Promise.resolve(); },
+      stop: () => { window.__calls.push('stop'); return Promise.resolve(); },
+    } } };
+  });
+  await boot(page);
+  await page.evaluate(() => { setTune('compassSmoothing', 1); NavAid.compass.show(); });
+  await page.keyboard.press('Escape');
+  await page.evaluate(() => NavAid.compass.show());
+  await page.evaluate(() => { window.__releases[0](); window.__releases[1](); });
+  await expect.poll(() => page.evaluate(() => window.__calls.includes('remove1'))).toBe(true);   // the old one, removed
+  // Only the current session's callback feeds the compass.
+  await page.evaluate(() => { window.__cbs[0]({ magnetic: 10 }); window.__cbs[1]({ magnetic: 200 }); });
+  await expect(page.locator('.compass-deg')).toHaveText('200°');
+  await page.keyboard.press('Escape');
+  await expect.poll(() => page.evaluate(() => window.__calls.filter(c => c === 'stop').length)).toBe(2);
+  expect(await page.evaluate(() => window.__calls.includes('remove2'))).toBe(true);
+});

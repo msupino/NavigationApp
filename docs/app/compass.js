@@ -123,19 +123,38 @@
     const C = window.Capacitor;
     return (C && typeof C.isNativePlatform === 'function' && C.isNativePlatform() && C.Plugins && C.Plugins.CompassHeading) || null;
   };
-  let nativeSub = null;
+  // Each opening is its own session: a reply from an earlier one (closed, then opened again before
+  // it answered) removes its own handle and touches nothing else -- it used to be stored over the
+  // new one and never removed (every heading counted twice), or clear nativeOn so a later close
+  // left Core Location running (review).
+  let nativeSub = null, nativeOn = false, nativeSession = 0;
   function listenNative(plugin) {
     if (listening) return;
     listening = true;
-    Promise.resolve(plugin.addListener('heading', (e) => { if (e && Number.isFinite(e.magnetic)) feed(e.magnetic); }))
-      .then((sub) => { nativeSub = sub; if (!listening && sub && sub.remove) sub.remove(); })
+    nativeOn = true;
+    const session = ++nativeSession;
+    const current = () => session === nativeSession && listening;
+    Promise.resolve(plugin.addListener('heading', (e) => { if (session === nativeSession && e && Number.isFinite(e.magnetic)) feed(e.magnetic); }))
+      .then((sub) => {
+        if (current()) nativeSub = sub;
+        else if (sub && sub.remove) sub.remove();
+      })
       .catch(() => {});
-    Promise.resolve(plugin.start()).catch(() => { listening = false; listen(); });    // no compass: the web events
+    // No compass: the web events -- only for this session, while it is still open.
+    Promise.resolve(plugin.start()).catch(() => {
+      if (!current()) return;
+      if (nativeSub && nativeSub.remove) { try { nativeSub.remove(); } catch (e) { /* gone */ } }
+      nativeSub = null;
+      listening = false; nativeOn = false; listen();
+    });
   }
   function stop() {
+    // Stop the native heading whenever it was started, whether or not its listener handle has
+    // come back yet: closed before that round trip, Core Location kept the heading running (review).
     const n = nativeCompass();
-    if (n && nativeSub) { try { nativeSub.remove(); } catch (e) { /* gone */ } try { n.stop(); } catch (e) { /* gone */ } }
-    nativeSub = null;
+    if (nativeSub && nativeSub.remove) { try { nativeSub.remove(); } catch (e) { /* gone */ } }
+    if (n && nativeOn) { try { Promise.resolve(n.stop()).catch(() => {}); } catch (e) { /* gone */ } }
+    nativeSub = null; nativeOn = false; nativeSession++;
     listening = false; smooth = null; lastAt = 0; onReading = null;
     window.removeEventListener('deviceorientationabsolute', onAbsolute, true);
     window.removeEventListener('deviceorientation', onRelative, true);
