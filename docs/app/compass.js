@@ -123,19 +123,26 @@
     const C = window.Capacitor;
     return (C && typeof C.isNativePlatform === 'function' && C.isNativePlatform() && C.Plugins && C.Plugins.CompassHeading) || null;
   };
-  let nativeSub = null;
+  let nativeSub = null, nativeOn = false;
   function listenNative(plugin) {
     if (listening) return;
     listening = true;
+    nativeOn = true;
     Promise.resolve(plugin.addListener('heading', (e) => { if (e && Number.isFinite(e.magnetic)) feed(e.magnetic); }))
       .then((sub) => { nativeSub = sub; if (!listening && sub && sub.remove) sub.remove(); })
       .catch(() => {});
-    Promise.resolve(plugin.start()).catch(() => { listening = false; listen(); });    // no compass: the web events
+    // No compass: the web events -- but only if the window is still open; closed meanwhile, nothing.
+    Promise.resolve(plugin.start()).catch(() => { if (!listening) return; listening = false; nativeOn = false; listen(); });
   }
   function stop() {
+    // Stop the native heading whenever it was started, whether or not its listener handle has
+    // come back yet: closed before that round trip, Core Location kept the heading running (review).
     const n = nativeCompass();
-    if (n && nativeSub) { try { nativeSub.remove(); } catch (e) { /* gone */ } try { n.stop(); } catch (e) { /* gone */ } }
-    nativeSub = null;
+    if (n && nativeOn) {
+      if (nativeSub) { try { nativeSub.remove(); } catch (e) { /* gone */ } }
+      try { Promise.resolve(n.stop()).catch(() => {}); } catch (e) { /* gone */ }
+    }
+    nativeSub = null; nativeOn = false;
     listening = false; smooth = null; lastAt = 0; onReading = null;
     window.removeEventListener('deviceorientationabsolute', onAbsolute, true);
     window.removeEventListener('deviceorientation', onRelative, true);

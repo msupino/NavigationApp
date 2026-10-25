@@ -269,3 +269,21 @@ test('iPad upright: iOS\'s own orientation (0) wins over a screen.orientation.an
     window.dispatchEvent(Object.assign(new Event('deviceorientation'), { webkitCompassHeading: 72 })); });
   await expect(page.locator('.compass-deg')).toHaveText('072°');
 });
+
+test('iPhone app: closing the compass before the native listener answers still stops the native heading', async ({ page }) => {
+  // Review: stop() only stopped Core Location once addListener had resolved; closed sooner, the
+  // heading kept running (and its failed start could attach the web listeners after closing).
+  await page.addInitScript(() => {
+    window.__calls = []; window.__release = null;
+    window.Capacitor = { isNativePlatform: () => true, getPlatform: () => 'ios', Plugins: { CompassHeading: {
+      addListener: () => new Promise(r => { window.__release = () => r({ remove() { window.__calls.push('remove'); } }); }),
+      start: () => { window.__calls.push('start'); return Promise.resolve(); },
+      stop: () => { window.__calls.push('stop'); return Promise.resolve(); },
+    } } };
+  });
+  await boot(page);
+  await page.evaluate(() => NavAid.compass.show());
+  await page.keyboard.press('Escape');
+  await page.evaluate(() => window.__release());
+  await expect.poll(() => page.evaluate(() => window.__calls)).toEqual(['start', 'stop', 'remove']);
+});
