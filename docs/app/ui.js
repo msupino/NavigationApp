@@ -3624,7 +3624,7 @@ function renderTrackProfilePanel(panel, entry) {
   const nm = (typeof trackDistanceNm === 'function') ? trackDistanceNm(pts) : 0;
   const t0 = Number(pts[0].t), t1 = Number(pts[pts.length - 1].t);
   const mins = (Number.isFinite(t0) && Number.isFinite(t1) && t1 > t0) ? (t1 - t0) / 60000 : 0;
-  const alts = pts.map(p => (typeof trackAltFt === 'function' ? trackAltFt(p.alt) : null))
+  const alts = pts.map(p => (typeof trackAltFt === 'function' ? trackAltFt(p.alt, p.msl) : null))
     .filter(v => Number.isFinite(v));
   const parts = [nm.toFixed(1) + ' NM'];
   if (mins > 0) {

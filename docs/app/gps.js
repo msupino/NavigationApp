@@ -1087,6 +1087,9 @@ function onGpsPosition(pos) {
   const pt = { lat: r5(c.latitude), lng: r5(c.longitude), t: pos.timestamp || Date.now(),
                alt: c.altitude != null ? c.altitude : null,
                acc: c.accuracy != null ? c.accuracy : null };
+  // Where the altitude is already above sea level (iOS, a Bluetooth receiver), the point says
+  // so: a saved track is drawn on other devices too, where the platform no longer tells.
+  if (pt.alt != null && gpsFixAltitudeIsMsl(pos)) pt.msl = 1;
   const prev = gpsTrack[gpsTrack.length - 1];
   // De-jitter decides whether this fix becomes a POINT ON THE LINE, and nothing more. It
   // used to return outright, so a stationary or slow-taxiing aircraft -- every fix inside
@@ -1269,7 +1272,8 @@ function stopGpsRecordingAndSave() {
     kind: 'gps',
     track: simplified.map(p => ({ lat: r5(p.lat), lng: r5(p.lng), t: p.t,
       ...(p.alt != null ? { alt: Math.round(p.alt) } : {}),
-      ...(p.acc != null ? { acc: Math.round(p.acc) } : {}) })),
+      ...(p.acc != null ? { acc: Math.round(p.acc) } : {}),
+      ...(p.msl ? { msl: 1 } : {}) })),
   };
   const list = loadRouteLibrary();
   list.unshift(entry);

@@ -446,3 +446,14 @@ test.describe('service worker scopes', () => {
     expect(got.previewStamp).toBe(got.previewScope);
   });
 });
+
+test('a track recorded already above sea level keeps that through saving, and its profile is not geoid-corrected again', async ({ page }) => {
+  await page.goto('?lang=en&nogist');
+  await page.waitForFunction(() => typeof sanitizeTrack === 'function' && typeof trackAltFt === 'function');
+  const r = await page.evaluate(() => {
+    const kept = sanitizeTrack([{ lat: 32, lng: 35, t: 1, alt: 300, msl: 1 }, { lat: 32.01, lng: 35, t: 2, alt: 310 }]);
+    return { kept: kept.map(p => p.msl || 0), msl: trackAltFt(300, 1), ell: trackAltFt(300) };
+  });
+  expect(r.kept).toEqual([1, 0]);
+  expect(r.msl).toBeGreaterThan(r.ell);           // the geoid term was not taken off the MSL point
+});

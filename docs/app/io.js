@@ -3111,6 +3111,7 @@ function sanitizeTrack(track) {
     if (p.alt != null && Number.isFinite(alt)) fix.alt = Math.round(alt);
     const acc = Number(p.acc);
     if (p.acc != null && Number.isFinite(acc)) fix.acc = Math.round(acc);
+    if (p.msl === 1) fix.msl = 1;                 // altitude already above sea level (gps.js)
     out.push(fix);
   }
   return out.length ? out : null;

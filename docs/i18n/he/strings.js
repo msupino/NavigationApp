@@ -1193,6 +1193,7 @@ window.S = {
   tbPressureUnitTitle: 'QNH ולחץ באינצ׳ כספית או בהקטופסקל',
   gpsStatusSource: 'מקור',
   gpsStatusBle: 'GPS בבלוטות׳',
+  followMeKeyMismatch: 'עקבו אחריי: הקישור הזה אינו תואם את המטוס שהמכשיר הזה כבר עוקב אחריו (מפתח חתימה אחר). הוא לא נפתח. בקשו מהטייס קישור חדש.',
   compassTitle: 'מצפן',
   compassMag: 'מגנטי',
   compassTrue: 'אמיתי',

@@ -2884,6 +2884,7 @@ window.S = Object.assign({
   tbPressureUnitTitle: 'QNH and pressure in inches of mercury or hectopascals',
   gpsStatusSource: 'Source',
   gpsStatusBle: 'Bluetooth GPS',
+  followMeKeyMismatch: 'Follow me: this link does not match the aeroplane this device already follows (a different signing key). It was not opened. Ask the pilot for a new link.',
   compassTitle: 'Compass',
   compassMag: 'MAG',
   compassTrue: 'TRUE',

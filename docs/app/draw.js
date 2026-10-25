@@ -872,10 +872,12 @@ if (typeof window !== 'undefined') window.drawProfileLegend = drawProfileLegend;
 //
 // The QNH of the day is not recorded, so the temperature term cannot be applied: passing an
 // explicit null asks for the geoid part alone, which is the half that does not need it.
-function trackAltFt(metres) {
+// `msl`: the point was recorded already above sea level (iOS, a Bluetooth receiver), so the
+// geoid is not taken off it again -- the profile read ~59 ft low there (review).
+function trackAltFt(metres, msl) {
   if (!Number.isFinite(metres)) return null;
   const ft = metres * 3.28084;
-  return (typeof gpsIndicatedAltitudeFt === 'function') ? gpsIndicatedAltitudeFt(ft, null) : ft;
+  return (typeof gpsIndicatedAltitudeFt === 'function') ? gpsIndicatedAltitudeFt(ft, null, !!msl) : ft;
 }
 if (typeof window !== 'undefined') window.trackAltFt = trackAltFt;
 
@@ -898,7 +900,7 @@ function trackProfileSamples(pts, smoothWindow) {
       const dt = (p.t - pts[i - 1].t) / 1000;
       if (dt > 0) kt = (metres(pts[i - 1], p) / dt) * 1.943844;
     }
-    raw.push({ d: cum, ft: trackAltFt(p.alt), kt: kt });
+    raw.push({ d: cum, ft: trackAltFt(p.alt, p.msl), kt: kt });
   }
   // A GPS-derived speed is noisy: one fix landing a few metres off turns into a spike of
   // tens of knots. Smoothed over a short run of fixes, which is what makes the trace
