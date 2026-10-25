@@ -20,6 +20,10 @@ test('the wiki-patch workflow runs only from main, never for a pull request', ()
   // by reversing the patch as the fallback.
   expect(src).toMatch(/git mailinfo/);
   expect(src).toMatch(/git apply --reverse --check/);
+  // ...but a subject alone does not skip a patch that still applies: a new patch can reuse a
+  // subject already in the wiki's history, and it was skipped unapplied.
+  expect(src).toMatch(/git log --format='%ad\|%s' --date=rfc2822/);
+  expect(src).toMatch(/grep -Fxq -- "\$date\|\$subj"/);
   expect(src).toMatch(/persist-credentials: false/);
   const auto = readFileSync(join(root, '.github/workflows/draft-auto-merge.yml'), 'utf8');
   expect(auto).toMatch(/\$BASE" = "main"[\s\S]*?gh workflow run "Apply wiki patches" --ref main/);
