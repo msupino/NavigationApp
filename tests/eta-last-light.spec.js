@@ -414,8 +414,11 @@ test('an odd stored departure is the quarter it shows, for the filing dialog too
   expect(await page.evaluate(() => etdRead().time)).toBe('09:45');
   await page.evaluate(() => showFplDialog());
   await expect(page.locator('#fpl-time')).toHaveValue('09:45');
-  // What the dialog would file: the time it shows.
-  await expect(page.locator('#fpl-utc-hint')).toHaveText('0645Z');
+  // What the dialog would file: the time it shows -- in Zulu by Israel's offset ON THAT DATE.
+  // A fixed 0645Z assumed summer time and failed the day the clocks went back (25 Oct).
+  const offH = Number(new Intl.DateTimeFormat('en-GB', { timeZone: 'Asia/Jerusalem', hour: '2-digit', hourCycle: 'h23' })
+    .format(new Date(iso + 'T12:00:00Z'))) - 12;
+  await expect(page.locator('#fpl-utc-hint')).toHaveText(String(9 - offH).padStart(2, '0') + '45Z');
 });
 
 test('a departure in the past is refused, and said as it is chosen', async ({ page }) => {
