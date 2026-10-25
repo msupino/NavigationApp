@@ -21,35 +21,58 @@
   // --- the rose ---------------------------------------------------------------------------
   // Drawn once; the card turns under a fixed lubber line, as a real compass card does.
   function roseSvg() {
-    const C = 160, R = 132;
+    // The picture asked for, as a card: coloured main points (N red, E yellow, S blue, W green),
+    // grey points between them, a three-digit heading every 10°, the four in-between directions
+    // with their headings, and the directions' names in the interface language.
+    const C = 180, R = 150;
     const pol = (r, d) => { const a = d * Math.PI / 180; return [C + r * Math.sin(a), C - r * Math.cos(a)]; };
+    const f = (n) => n.toFixed(1);
     const p = [];
-    p.push('<svg viewBox="0 0 320 320" class="compass-rose" aria-hidden="true" focusable="false">');
+    // Left to right: in a Hebrew page "045°" came out as "°045".
+    p.push('<svg viewBox="0 0 360 360" class="compass-rose" direction="ltr" aria-hidden="true" focusable="false">');
     p.push('<g class="compass-card">');
-    p.push(`<circle cx="${C}" cy="${C}" r="${R + 22}" class="compass-face"/>`);
+    p.push(`<circle cx="${C}" cy="${C}" r="${R + 28}" class="compass-face"/>`);
+    for (const r of [44, 78, 112]) p.push(`<circle cx="${C}" cy="${C}" r="${r}" class="compass-guide"/>`);
     p.push(`<circle cx="${C}" cy="${C}" r="${R}" class="compass-ring"/>`);
-    for (let d = 0; d < 360; d += 5) {
-      const L = d % 30 === 0 ? 16 : d % 10 === 0 ? 11 : 6;
+    for (let d = 0; d < 360; d += 1) {
+      const L = d % 10 === 0 ? 12 : d % 5 === 0 ? 8 : 4;
       const [x1, y1] = pol(R, d), [x2, y2] = pol(R - L, d);
-      p.push(`<line x1="${x1.toFixed(1)}" y1="${y1.toFixed(1)}" x2="${x2.toFixed(1)}" y2="${y2.toFixed(1)}" class="compass-tick${d % 30 === 0 ? ' major' : ''}"/>`);
+      p.push(`<line x1="${f(x1)}" y1="${f(y1)}" x2="${f(x2)}" y2="${f(y2)}" class="compass-tick${d % 10 === 0 ? ' major' : d % 5 ? ' minor' : ''}"/>`);
     }
-    for (let d = 30; d < 360; d += 30) {
+    // Headings outside the ring, every 10°, upright to the card (they turn with it).
+    for (let d = 0; d < 360; d += 10) {
       if (d % 90 === 0) continue;
-      const [x, y] = pol(R - 30, d);
-      p.push(`<text x="${x.toFixed(1)}" y="${y.toFixed(1)}" class="compass-num" transform="rotate(${d} ${x.toFixed(1)} ${y.toFixed(1)})">${String(d / 10)}</text>`);
+      const [x, y] = pol(R + 14, d);
+      p.push(`<text x="${f(x)}" y="${f(y)}" class="compass-num" transform="rotate(${d} ${f(x)} ${f(y)})">${String(d).padStart(3, '0')}</text>`);
     }
+    const point = (deg, len, half, c1, c2) => {
+      const [tx, ty] = pol(len, deg), [lx, ly] = pol(half, deg - 90), [rx, ry] = pol(half, deg + 90);
+      p.push(`<polygon points="${C},${C} ${f(lx)},${f(ly)} ${f(tx)},${f(ty)}" fill="${c1}" class="compass-pt"/>`);
+      p.push(`<polygon points="${C},${C} ${f(tx)},${f(ty)} ${f(rx)},${f(ry)}" fill="${c2}" class="compass-pt"/>`);
+    };
+    for (let d = 22.5; d < 360; d += 45) point(d, 62, 6, '#e6e6e6', '#9a9a9a');
+    for (const d of [45, 135, 225, 315]) point(d, 82, 9, '#d0d0d0', '#3a3a3a');
+    const MAIN = { 0: ['#ff5a5a', '#c62828'], 90: ['#ffd54a', '#e0a400'], 180: ['#5aa0ff', '#1e63d6'], 270: ['#6fd36f', '#1b7a2e'] };
+    for (const d of [0, 90, 180, 270]) point(d, 100, 13, MAIN[d][0], MAIN[d][1]);
+    p.push(`<circle cx="${C}" cy="${C}" r="12" class="compass-hub"/>`);
+    // Main directions: the letter at the ring and the name under it.
+    const NAME = { 0: str('compassN', 'North'), 90: str('compassE', 'East'), 180: str('compassS', 'South'), 270: str('compassW', 'West') };
     for (const [d, l] of [[0, 'N'], [90, 'E'], [180, 'S'], [270, 'W']]) {
-      const [x, y] = pol(R - 32, d);
-      p.push(`<text x="${x.toFixed(1)}" y="${y.toFixed(1)}" class="compass-card-letter${d === 0 ? ' north' : ''}" transform="rotate(${d} ${x.toFixed(1)} ${y.toFixed(1)})">${l}</text>`);
+      const [x, y] = pol(R - 25, d), [nx, ny] = pol(R - 47, d);
+      p.push(`<text x="${f(x)}" y="${f(y)}" class="compass-card-letter" fill="${MAIN[d][1]}" transform="rotate(${d} ${f(x)} ${f(y)})">${l}</text>`);
+      p.push(`<text x="${f(nx)}" y="${f(ny)}" class="compass-card-name" transform="rotate(${d} ${f(nx)} ${f(ny)})">${NAME[d]}</text>`);
     }
-    // North half of the needle red, the rest grey: points at magnetic north as the card turns.
-    const [nx, ny] = pol(R - 52, 0), [sx, sy] = pol(R - 52, 180);
-    p.push(`<polygon points="${C - 9},${C} ${nx.toFixed(1)},${ny.toFixed(1)} ${C + 9},${C}" class="compass-needle-n"/>`);
-    p.push(`<polygon points="${C - 9},${C} ${sx.toFixed(1)},${sy.toFixed(1)} ${C + 9},${C}" class="compass-needle-s"/>`);
+    // In-between directions: the letters and their heading.
+    const INTER = { 45: ['NE', '#e8770e'], 135: ['SE', '#1e63d6'], 225: ['SW', '#2e9e3e'], 315: ['NW', '#7b2fbf'] };
+    for (const d of [45, 135, 225, 315]) {
+      const [x, y] = pol(R - 40, d);
+      p.push(`<text x="${f(x)}" y="${f(y)}" class="compass-inter" fill="${INTER[d][1]}" transform="rotate(${d} ${f(x)} ${f(y)})">`
+        + `<tspan x="${f(x)}" dy="-6">${INTER[d][0]}</tspan><tspan x="${f(x)}" dy="15" class="compass-inter-deg">${String(d).padStart(3, '0')}°</tspan></text>`);
+    }
     p.push('</g>');
-    // The lubber line and a small aircraft: the way the phone's top is pointing.
-    p.push(`<polygon points="${C},${C - R - 20} ${C - 9},${C - R - 36} ${C + 9},${C - R - 36}" class="compass-lubber"/>`);
-    p.push(`<path d="M${C} ${C - 22} l4 14 h14 l0 6 l-14 4 l-2 14 l6 4 v4 l-8 -2 l-8 2 v-4 l6 -4 l-2 -14 l-14 -4 l0 -6 h14 z" class="compass-plane"/>`);
+    // The lubber line and the aircraft: the way the phone's top points. They do not turn.
+    p.push(`<polygon points="${C},${C - R + 2} ${C - 10},${C - R - 20} ${C + 10},${C - R - 20}" class="compass-lubber"/>`);
+    p.push(`<path d="M${C} ${C - 24} l4 15 h15 l0 6 l-15 4 l-2 15 l7 4 v4 l-9 -2 l-9 2 v-4 l7 -4 l-2 -15 l-15 -4 l0 -6 h15 z" class="compass-plane"/>`);
     p.push('</svg>');
     return p.join('');
   }
@@ -130,7 +153,7 @@
     const say = (t) => { status.textContent = t || ''; status.hidden = !t; };
     say('');
     onReading = (h) => {
-      card.setAttribute('transform', 'rotate(' + (-h).toFixed(1) + ' 160 160)');
+      card.setAttribute('transform', 'rotate(' + (-h).toFixed(1) + ' 180 180)');
       const n = Math.round(h) % 360;
       deg.textContent = String(n === 0 ? 360 : n).padStart(3, '0') + '°';
       m.box.dataset.heading = String(n);
