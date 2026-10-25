@@ -82,10 +82,14 @@
 
   // --- the sensor -------------------------------------------------------------------------
   let listening = false, onReading = null, smooth = null, lastAt = 0;
+  // How far the screen is turned from the device's top. iOS's own window.orientation first: on an
+  // iPad held upright screen.orientation.angle said 90, and the compass read 90° off -- 167 true
+  // beside another compass app's 72 magnetic on the same iPad on a table (reported). Both count
+  // anticlockwise, so either is added.
   const screenAngle = () => {
+    if (Number.isFinite(window.orientation)) return window.orientation;
     const o = window.screen && window.screen.orientation;
-    if (o && Number.isFinite(o.angle)) return o.angle;
-    return Number.isFinite(window.orientation) ? window.orientation : 0;
+    return o && Number.isFinite(o.angle) ? o.angle : 0;
   };
   const wrap = (v) => ((v % 360) + 360) % 360;
   function feed(raw) {
