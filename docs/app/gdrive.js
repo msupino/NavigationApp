@@ -53,6 +53,12 @@ function loadGis() {
 
 // Request an access token. `prompt:''` lets Google issue one silently when the
 // user is already signed in and has consented; otherwise it shows consent.
+//
+// A popup the user closes, or one the browser blocks (a fallback sign-in that no longer runs
+// inside the click), never reaches `callback` -- Google reports it only through
+// `error_callback`. Without one the promise never settled: Sync sat at "Syncing…", disabled,
+// until a reload. The error handler is per request, like the callback.
+let _gdriveTokenError = null;
 function gdriveRequestToken(interactive) {
   return loadGis().then(() => new Promise((resolve, reject) => {
     if (!_gdriveTokenClient) {
@@ -60,8 +66,12 @@ function gdriveRequestToken(interactive) {
         client_id: GDRIVE_CLIENT_ID,
         scope: GDRIVE_SCOPE,
         callback: () => {},   // replaced per-request below
+        error_callback: (err) => { if (_gdriveTokenError) _gdriveTokenError(err); },
       });
     }
+    _gdriveTokenError = (err) => {
+      reject(new Error((err && (err.message || err.type)) || 'Google sign-in failed'));
+    };
     _gdriveTokenClient.callback = (resp) => {
       if (resp && resp.access_token) {
         _gdriveToken = {

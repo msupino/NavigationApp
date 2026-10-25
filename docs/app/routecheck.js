@@ -45,10 +45,13 @@
     // A cap, because the URL is one line and a 400 NM route sampled every ten miles is forty
     // points. Beyond it the spacing widens rather than the tail being dropped: a check that
     // quietly stopped looking two thirds of the way along would be worse than a coarser one.
+    // Spread evenly from the first point to the LAST. Keeping every k-th point counted from the
+    // start dropped the tail whenever the count did not divide evenly -- the destination with it.
     const MAX = 25;
-    const use = points.length <= MAX
+    const n = points.length;
+    const use = n <= MAX
       ? points
-      : points.filter((_, i) => i % Math.ceil(points.length / MAX) === 0);
+      : Array.from({ length: MAX }, (_, i) => points[Math.round(i * (n - 1) / (MAX - 1))]);
     const lat = use.map(p => p.lat.toFixed(3)).join(',');
     const lng = use.map(p => p.lng.toFixed(3)).join(',');
     const url = OPEN_METEO + '?latitude=' + lat + '&longitude=' + lng
