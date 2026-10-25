@@ -12,6 +12,7 @@ async function boot(page, opts = {}) {
       window.__calls.push(name + '.' + String(fn) + (arg !== undefined ? ' ' + JSON.stringify(arg) : ''));
       if (fn === 'addListener') { (window.__cbs = window.__cbs || {})[name + ':' + arg] = arguments[1]; return { remove() {} }; }
       if (fn === 'isAvailable') return { available: true };
+      if (fn === 'getBrightness') return { brightness: 0.7 };
       if (fn === 'getBatteryInfo') return { batteryLevel: o.battery == null ? 0.9 : o.battery, isCharging: false };
       return undefined;
     }) });
@@ -62,6 +63,20 @@ test('brightness: a browser dims with a veil, the app sets the screen; System gi
   expect(await calls(page)).toContain('ScreenBrightness.setBrightness {"brightness":0.6}');
   await page.evaluate(() => NavAid.device.setBrightness(null));
   expect(await calls(page)).toContain('ScreenBrightness.setBrightness {"brightness":-1}');
+});
+
+test('iPhone: System leaves the screen alone at start, and gives back its own level after a change', async ({ page }) => {
+  // -1 means "the phone's own" to the plugin on Android only; iOS set the screen to its lowest
+  // at every start of the app (reported).
+  await boot(page, { native: true, platform: 'ios' });
+  expect((await calls(page)).filter(c => c.startsWith('ScreenBrightness.setBrightness'))).toEqual([]);
+  await page.evaluate(() => NavAid.device.setBrightness(30));
+  await expect.poll(async () => (await calls(page)).filter(c => c.startsWith('ScreenBrightness.setBrightness')))
+    .toEqual(['ScreenBrightness.setBrightness {"brightness":0.3}']);
+  await page.evaluate(() => NavAid.device.setBrightness(null));
+  await expect.poll(async () => (await calls(page)).filter(c => c.startsWith('ScreenBrightness.setBrightness')))
+    .toEqual(['ScreenBrightness.setBrightness {"brightness":0.3}', 'ScreenBrightness.setBrightness {"brightness":0.7}']);
+  expect((await calls(page)).some(c => c.includes('"brightness":-1'))).toBe(false);
 });
 
 test('barometer: pressure altitude and vertical speed, in the GPS details', async ({ page }) => {

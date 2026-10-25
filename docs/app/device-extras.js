@@ -60,12 +60,34 @@
     if (!el) { el = document.createElement('div'); el.id = 'dim-veil'; el.setAttribute('aria-hidden', 'true'); document.body.appendChild(el); }
     el.style.opacity = op.toFixed(2);
   }
+  // "System" is -1 to the plugin, and only on Android: there it hands the screen back to the
+  // phone. iOS takes the number as it is -- the screen at its very lowest, at every start of
+  // the app (reported on iPhone). There, System leaves the screen alone, and gives back the
+  // level the phone had only if the app changed it, read just before it first did.
+  const ios = () => { const C = window.Capacitor; return !!(C && typeof C.getPlatform === 'function' && C.getPlatform() === 'ios'); };
+  let iosOwnLevel = null, iosChanged = false;
+  async function setScreen(sb, v) {
+    if (!ios()) { call(sb, 'setBrightness', { brightness: v == null ? -1 : Math.max(0.01, v) }); return; }
+    if (v == null) {
+      if (iosChanged && iosOwnLevel != null) call(sb, 'setBrightness', { brightness: iosOwnLevel });
+      iosChanged = false;
+      return;
+    }
+    if (!iosChanged) {
+      try {
+        const r = await sb.getBrightness();
+        iosOwnLevel = r && Number.isFinite(r.brightness) && r.brightness >= 0 ? r.brightness : null;
+      } catch (e) { iosOwnLevel = null; }
+    }
+    iosChanged = true;
+    call(sb, 'setBrightness', { brightness: Math.max(0.01, v) });
+  }
   function applyBrightness() {
     const on = feat('featureBrightness');
     const v = on ? brightness() : null;
     const sb = native('ScreenBrightness');
     if (sb) {
-      call(sb, 'setBrightness', { brightness: v == null ? -1 : Math.max(0.01, v) });
+      setScreen(sb, v);
       veil(v != null && v < 0.05 ? v / 0.05 * 0.3 + 0.7 : null);   // below the screen's floor: a light veil on top
     } else veil(v);
     const range = document.getElementById('brightness-range');
