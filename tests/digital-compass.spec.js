@@ -256,3 +256,16 @@ test('Android: the long-touch contextmenu (before the hold timer) opens the comp
   expect(r).toBe(0);
   await expect(page.locator('.compass-modal')).toBeVisible();
 });
+
+test('iPad upright: iOS\'s own orientation (0) wins over a screen.orientation.angle of 90', async ({ page }) => {
+  // Reported: the same iPad on a table read 167 true in NavAid and 72 magnetic in another compass
+  // app -- 90° out, from adding a screen angle of 90 on an upright iPad.
+  await page.addInitScript(() => {
+    Object.defineProperty(window, 'orientation', { configurable: true, get: () => 0 });
+    try { Object.defineProperty(screen, 'orientation', { configurable: true, get: () => ({ angle: 90, type: 'portrait-primary', addEventListener() {} }) }); } catch (e) {}
+  });
+  await boot(page);
+  await page.evaluate(() => { setTune('compassSmoothing', 1); localStorage.setItem('navaid.compassSource', 'mag'); NavAid.compass.show();
+    window.dispatchEvent(Object.assign(new Event('deviceorientation'), { webkitCompassHeading: 72 })); });
+  await expect(page.locator('.compass-deg')).toHaveText('072°');
+});
