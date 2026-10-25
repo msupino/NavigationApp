@@ -1772,7 +1772,7 @@ function refreshDial() {
   // field, which mirrors it -- a chart turned to fly 354 has north 6 degrees RIGHT of up, and
   // the needle leaned 6 degrees left.
   rotNeedle.style.transform = 'rotate(' + ((Math.round(mapBearing()) % 360) + 360) % 360 + 'deg)';
-  rotDial.title = S.dialTitle(b);
+  rotDial.title = S.dialTitle(b) + (tune('featureCompass') !== false ? ' \u00b7 ' + (S.compassHoldHint || 'hold for the compass') : '');
   rotDial.setAttribute('aria-valuenow', String(b));
   // In flight the number beside the dial is the heading up the screen, magnetic like every
   // heading a pilot reads -- it said 209 beside a strip saying 204. While planning it is the
@@ -1825,6 +1825,9 @@ rotDial.addEventListener('pointermove', e => {
   // Drag the north arrow: the needle follows the finger, and north goes where it is dropped.
   map.setBearing(((dialAngle(e)) % 360 + 360) % 360);
 });
+// The compass (compass.js) takes over a hold on the dial: the release that ends it must not
+// also step the chart.
+window.rotDialCancelGesture = () => { rotDragging = false; rotDial.classList.remove('dragging'); };
 function rotEnd(cycle) {
   if (cycle && rotDragging && !rotMoved) {
     // Tap steps the chart through TRUE 0° / 90° / 180° / 270°: 0 is the chart square with

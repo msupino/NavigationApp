@@ -9997,3 +9997,37 @@ body.deck-on .ac-profile-btn, body.deck-on .fp-aircraft .ac-custom > summary { m
 .fpl-type-box { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; }
 .fpl-readonly { opacity: .85; }
 .fpl-type-hint { font-size: 12px; opacity: .8; }
+
+/* Digital compass (compass.js): hold the rotation dial. A card that turns under a fixed lubber
+   line, the heading big and magnetic under it, and the caveat in small print. */
+.modal.compass-modal { width: min(380px, 94vw); text-align: center; }
+.compass-body { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+.compass-rose { width: min(300px, 78vw); height: auto; }
+.compass-card { transition: transform 120ms linear; }
+@media (prefers-reduced-motion: reduce) { .compass-card { transition: none; } }
+.compass-face { fill: #1d1a1a; stroke: #555; stroke-width: 2; }
+.compass-ring { fill: none; stroke: #e8e8e8; stroke-width: 2.5; }
+.compass-tick { stroke: #cfcfcf; stroke-width: 1.4; }
+.compass-tick.major { stroke: #fff; stroke-width: 2.6; }
+.compass-num { fill: #e8e8e8; font: 700 15px sans-serif; text-anchor: middle; dominant-baseline: central; }
+.compass-card-letter { fill: #fff; font: 800 26px sans-serif; text-anchor: middle; dominant-baseline: central; }
+.compass-card-letter.north { fill: #ff5252; }
+.compass-needle-n { fill: #e53935; stroke: #111; stroke-width: 1; }
+.compass-needle-s { fill: #9e9e9e; stroke: #111; stroke-width: 1; }
+.compass-lubber { fill: #ffb300; stroke: #111; stroke-width: 1; }
+.compass-plane { fill: #ffb300; stroke: #111; stroke-width: 1; }
+.compass-readout { display: flex; align-items: baseline; gap: 6px; font-variant-numeric: tabular-nums; }
+.compass-deg { font: 800 44px sans-serif; letter-spacing: 1px; }
+.compass-ref { font: 700 14px sans-serif; opacity: 0.75; }
+.compass-status { margin: 0; font-size: 14px; color: #ffcc80; }
+.compass-start { min-height: 44px; padding: 8px 18px; font-weight: 700; border-radius: 8px;
+  background: #1d6fe0; color: #fff; border: none; cursor: pointer; }
+.compass-note { margin: 0; font-size: 12px; opacity: 0.75; max-width: 32ch; }
+body.theme-light .compass-face { fill: #fafafa; stroke: #b8c0cc; }
+body.theme-light .compass-ring { stroke: #333; }
+body.theme-light .compass-tick { stroke: #555; }
+body.theme-light .compass-tick.major { stroke: #111; }
+body.theme-light .compass-num { fill: #222; }
+body.theme-light .compass-card-letter { fill: #111; }
+body.theme-light .compass-card-letter.north { fill: #d32f2f; }
+body.theme-light .compass-status { color: #a15c00; }
