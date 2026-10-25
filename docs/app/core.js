@@ -4081,9 +4081,10 @@ const HE_KEY_LATIN = {
   'ק': 'E', 'ר': 'R', 'א': 'T', 'ט': 'Y', 'ו': 'U', 'ן': 'I', 'ם': 'O', 'פ': 'P',
   'ש': 'A', 'ד': 'S', 'ג': 'D', 'כ': 'F', 'ע': 'G', 'י': 'H', 'ח': 'J', 'ל': 'K', 'ך': 'L',
   'ז': 'Z', 'ס': 'X', 'ב': 'C', 'ה': 'V', 'נ': 'B', 'מ': 'N', 'צ': 'M',
+  '/': 'Q', "'": 'W',                  // the Q and W keys type punctuation on that layout
 };
 function callSignLatin(raw) {
-  return String(raw || '').replace(/[\u05D0-\u05EA]/g, c => HE_KEY_LATIN[c] || '')
+  return String(raw || '').replace(/[\u05D0-\u05EA/']/g, c => HE_KEY_LATIN[c] || '')
     .toUpperCase().replace(/[^A-Z0-9]/g, '');
 }
 // A call sign box takes only upper-case English letters and digits, as they are typed: lower case
@@ -4198,6 +4199,13 @@ function loadAircraft() {
     saveAircraft();
   } else if (!aircraft) {
     aircraft = Object.assign({}, AIRCRAFT_TYPES.C172, { type: 'C172' });
+  }
+  // Stored before the descent rate was one of its figures: take the type's, not nothing (which
+  // read as "changed from the type" and left the nav log descending at the old flat rate).
+  const t = aircraft && AIRCRAFT_TYPES[aircraft.type];
+  if (t && !(Number(aircraft.descentFpm) > 0) && Number(t.descentFpm) > 0) {
+    aircraft.descentFpm = t.descentFpm;
+    saveAircraft();
   }
 }
 

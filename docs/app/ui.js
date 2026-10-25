@@ -7946,6 +7946,7 @@ function refreshSettingsAircraft() {
   if (del && typeof setButtonWhy === 'function') setButtonWhy(del, prof ? null : (S.whyAcNoProfile || 'Choose one of your own aircraft first'));
 }
 window.refreshSettingsAircraft = refreshSettingsAircraft;
+const AC_MIGRATED_KEY = 'navaid.acProfilesMigrated';
 (function wireAircraftPanel() {
   const typeSel = acEl('ac-type');
   if (!typeSel) return;
@@ -7953,12 +7954,17 @@ window.refreshSettingsAircraft = refreshSettingsAircraft;
   // filing some other ICAO type) becomes one of the pilot's own aircraft: its call sign from the
   // form (or the type, without one), that type selected for it. The filing form no longer takes a
   // type of its own, and that type would otherwise be lost.
+  // Once: the "Other" box sets exactly that state today, and run on every load this turned an
+  // unnamed aircraft typed as C182 into one called 4X-C182 at the next reload.
   try {
-    const filed = aircraftIcao(localStorage.getItem(FPL_PROFILE_PREFIX + 'type'));
-    const reg = aircraftCallSign(localStorage.getItem(FPL_PROFILE_PREFIX + 'reg'));
-    if (aircraft && !aircraft.profile && !window.AIRCRAFT_TYPES[aircraft.type] && filed.length >= 2
-        && !window.AIRCRAFT_TYPES[filed]) {
-      createAircraftProfile(reg || filed, filed);
+    if (!localStorage.getItem(AC_MIGRATED_KEY)) {
+      const filed = aircraftIcao(localStorage.getItem(FPL_PROFILE_PREFIX + 'type'));
+      const reg = aircraftCallSign(localStorage.getItem(FPL_PROFILE_PREFIX + 'reg'));
+      if (aircraft && !aircraft.profile && !window.AIRCRAFT_TYPES[aircraft.type] && filed.length >= 2
+          && !window.AIRCRAFT_TYPES[filed]) {
+        createAircraftProfile(reg || filed, filed);
+      }
+      localStorage.setItem(AC_MIGRATED_KEY, '1');
     }
   } catch (e) { /* storage off */ }
   // The plan's own boxes and its profile strip follow whatever changed here.

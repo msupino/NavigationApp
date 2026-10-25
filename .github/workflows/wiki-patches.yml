@@ -54,14 +54,18 @@ jobs:
           for p in ../wiki-patches/*.patch; do
             [ -e "$p" ] || continue
             subj=$(git mailinfo /dev/null /dev/null < "$p" | sed -n 's/^Subject: //p')
-            if [ -n "$subj" ] && grep -Fxq -- "$subj" "$subjects"; then
-              echo "already on the wiki: $(basename "$p")"
-            elif git apply --check "$p" 2>/dev/null; then
+            seen=0
+            if [ -n "$subj" ] && grep -Fxq -- "$subj" "$subjects"; then seen=1; fi
+            # The subject alone is not proof: a new patch can reuse one already in the wiki's
+            # history (the web editor's "Updated Home (markdown)"), and it was skipped unapplied.
+            # A patch that applies is applied, unless its subject is there AND its changes are too.
+            if git apply --check "$p" 2>/dev/null \
+               && ! { [ "$seen" = 1 ] && git apply --reverse --check "$p" 2>/dev/null; }; then
               git am --keep-cr "$p"
               git log -1 --format=%s >> "$subjects"
               echo "applied $(basename "$p")"
               applied=$((applied + 1))
-            elif git apply --reverse --check "$p" 2>/dev/null; then
+            elif [ "$seen" = 1 ] || git apply --reverse --check "$p" 2>/dev/null; then
               echo "already on the wiki: $(basename "$p")"
             else
               echo "::error::$(basename "$p") neither applies nor is already applied -- the wiki moved under it; regenerate the patch"
