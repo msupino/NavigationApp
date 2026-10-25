@@ -293,6 +293,66 @@ public class LocationQualityPlugin: CAPPlugin, CAPBridgedPlugin, CLLocationManag
     public func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) { /* nothing to show */ }
 }
 
+// The phone's compass for docs/app/compass.js, read through Core Location rather than the web's
+// orientation events: no permission prompt (heading needs none), no tap needed to start it, and
+// Apple's own fused heading with its accuracy. A "heading" event { magnetic, true, accuracy, t }
+// per update while started; true is -1 until a location fix lets iOS work out the variation.
+// Reported in portrait; the page adds the screen's rotation, as it does for the web events.
+@objc(CompassHeadingPlugin)
+public class CompassHeadingPlugin: CAPPlugin, CAPBridgedPlugin, CLLocationManagerDelegate {
+    public let identifier = "CompassHeadingPlugin"
+    public let jsName = "CompassHeading"
+    public let pluginMethods: [CAPPluginMethod] = [
+        CAPPluginMethod(name: "isAvailable", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "start", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "stop", returnType: CAPPluginReturnPromise)
+    ]
+    private var manager: CLLocationManager?
+
+    @objc func isAvailable(_ call: CAPPluginCall) {
+        call.resolve(["available": CLLocationManager.headingAvailable()])
+    }
+
+    @objc func start(_ call: CAPPluginCall) {
+        guard CLLocationManager.headingAvailable() else {
+            call.reject("No compass", "UNAVAILABLE"); return
+        }
+        DispatchQueue.main.async {
+            if self.manager == nil {
+                let m = CLLocationManager()
+                m.delegate = self
+                m.headingFilter = 1
+                m.headingOrientation = .portrait
+                self.manager = m
+            }
+            self.manager?.startUpdatingHeading()
+            call.resolve()
+        }
+    }
+
+    @objc func stop(_ call: CAPPluginCall) {
+        DispatchQueue.main.async {
+            self.manager?.stopUpdatingHeading()
+            call.resolve()
+        }
+    }
+
+    public func locationManager(_ manager: CLLocationManager, didUpdateHeading h: CLHeading) {
+        guard h.headingAccuracy >= 0 else { return }       // negative: not calibrated, no reading
+        notifyListeners("heading", data: [
+            "magnetic": h.magneticHeading,
+            "true": h.trueHeading,
+            "accuracy": h.headingAccuracy,
+            "t": h.timestamp.timeIntervalSince1970 * 1000.0
+        ])
+    }
+
+    // Let iOS show its figure-eight calibration when the reading is poor.
+    public func locationManagerShouldDisplayHeadingCalibration(_ manager: CLLocationManager) -> Bool { true }
+
+    deinit { manager?.stopUpdatingHeading() }
+}
+
 // ADS-B traffic from a Wi-Fi receiver (Stratux, SkyEcho and the like), for docs/app/gdl90.js.
 // Same contract as the Android Gdl90Plugin: start({ port }) listens on UDP (4000 by default),
 // each datagram goes to the page as a "packet" event { data: base64 }, stop() closes it.
@@ -533,6 +593,7 @@ class NavAidBridgeViewController: CAPBridgeViewController {
         bridge?.registerPluginInstance(Gdl90Plugin())
         bridge?.registerPluginInstance(NavAidPrintPlugin())
         bridge?.registerPluginInstance(BackgroundGeolocationPlugin())
+        bridge?.registerPluginInstance(CompassHeadingPlugin())
     }
 }
 
