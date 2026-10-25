@@ -2586,3 +2586,13 @@ test('default endurance: five hours, or less where the tanks hold less', async (
     await expect(page.locator('#fpl-endurance'), type).toHaveValue(want);
   }
 });
+
+// An endurance with no digits at all ('--') passed the required check, stripped to '', and
+// skipped the 4-digit test -- so the message filed '-E/ P/002)'.
+test('an endurance with no digits is refused, not filed empty', async ({ page }) => {
+  await boot(page);
+  await route(page);
+  const res = await build(page, { ...PROFILE, endurance: '--' });
+  expect(res.errs).toContain('errFplEndurance');
+  expect(res.text || '').not.toContain('-E/ ');
+});

@@ -2573,6 +2573,7 @@ window.S = Object.assign({
   fplMailDeparture: (place, t) => 'Departure from ' + place + ' at ' + t + ' local time',
   fplMailRoute: (list) => 'Route: ' + list,
   fplMailArrival: (place, t) => 'Landing at ' + place + ' at ' + t,
+  autoRouteClosedCorridor: 'Auto-route: no open corridor here, so the route drawn may run through one closed or time-gated now. Check the NOTAMs.',
   warnFplClosedCorridor: 'A corridor on this route may be closed or time-gated at the chosen departure time (secondary source) — no open alternative was published, so it is filed anyway. Verify with the NOTAMs.',
   fplEtdFirst: 'Set the departure time first \u2014 the plan is filed with it.',
   fplEtdPassedFirst: function (t) { return 'The departure time (' + t + ') has passed \u2014 set a new one, then submit.'; },
