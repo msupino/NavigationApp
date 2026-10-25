@@ -141,16 +141,19 @@
       })
       .catch(() => {});
     // No compass: the web events -- only for this session, while it is still open.
-    Promise.resolve(plugin.start()).catch(() => { if (!current()) return; listening = false; nativeOn = false; listen(); });
+    Promise.resolve(plugin.start()).catch(() => {
+      if (!current()) return;
+      if (nativeSub && nativeSub.remove) { try { nativeSub.remove(); } catch (e) { /* gone */ } }
+      nativeSub = null;
+      listening = false; nativeOn = false; listen();
+    });
   }
   function stop() {
     // Stop the native heading whenever it was started, whether or not its listener handle has
     // come back yet: closed before that round trip, Core Location kept the heading running (review).
     const n = nativeCompass();
-    if (n && nativeOn) {
-      if (nativeSub) { try { nativeSub.remove(); } catch (e) { /* gone */ } }
-      try { Promise.resolve(n.stop()).catch(() => {}); } catch (e) { /* gone */ }
-    }
+    if (nativeSub && nativeSub.remove) { try { nativeSub.remove(); } catch (e) { /* gone */ } }
+    if (n && nativeOn) { try { Promise.resolve(n.stop()).catch(() => {}); } catch (e) { /* gone */ } }
     nativeSub = null; nativeOn = false; nativeSession++;
     listening = false; smooth = null; lastAt = 0; onReading = null;
     window.removeEventListener('deviceorientationabsolute', onAbsolute, true);
