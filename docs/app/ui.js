@@ -7969,13 +7969,13 @@ window.refreshSettingsAircraft = refreshSettingsAircraft;
   if (!typeSel) return;
   // An aircraft set by hand before there were profiles (the type "Other...", with the form
   // filing some other ICAO type) becomes one of the pilot's own aircraft: its call sign from the
-  // form (or the type, without one), that type selected for it. The filing form no longer takes a
-  // type of its own, and that type would otherwise be lost.
+  // form (or the type, without one), that type selected for it. Only that old state: it stored
+  // NO type (''). Today's Other box stores the code itself, and matching on "not a listed type"
+  // named an unnamed aircraft typed C182 as 4X-C182 at the next reload (review).
   try {
     const filed = aircraftIcao(localStorage.getItem(FPL_PROFILE_PREFIX + 'type'));
     const reg = aircraftCallSign(localStorage.getItem(FPL_PROFILE_PREFIX + 'reg'));
-    if (aircraft && !aircraft.profile && !window.AIRCRAFT_TYPES[aircraft.type] && filed.length >= 2
-        && !window.AIRCRAFT_TYPES[filed]) {
+    if (aircraft && !aircraft.profile && !aircraft.type && filed.length >= 2 && !window.AIRCRAFT_TYPES[filed]) {
       createAircraftProfile(reg || filed, filed);
     }
   } catch (e) { /* storage off */ }

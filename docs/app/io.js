@@ -4221,6 +4221,7 @@ function showFlightPlan() {
     if (isNaN(gph) || gph <= 0) return null;
     return { gph: gph, taxiGal: parseFloat(taxiInp.value) || 0 };
   }
+  let heldAircraft = aircraft;
   [gphInp, taxiInp].forEach(inp => {
     inp.oninput = function () {
       const a = readAircraftInputs();
@@ -4229,8 +4230,11 @@ function showFlightPlan() {
       // must NOT do is PERSIST that: saving null wrote the string "null", which loadAircraft
       // read back as truthy for good, so the pilot's gph/taxi were gone after a reload and
       // every fuel figure stayed '--'. Storage keeps the last usable profile.
-      // The two fuel figures of the aircraft in use: its type and its other figures stay.
-      aircraft = a ? Object.assign({}, aircraft || {}, a) : null;
+      // The two fuel figures of the aircraft in use: its type and its other figures stay -- also
+      // across an emptied box (retyping one starts by clearing it), which used to rebuild the
+      // aircraft from the two boxes alone and lose its type, call sign and figures.
+      if (aircraft) heldAircraft = aircraft;
+      aircraft = a ? Object.assign({}, aircraft || heldAircraft || {}, a) : null;
       if (aircraft) saveAircraft();
       if (typeof window.refreshSettingsAircraft === 'function') window.refreshSettingsAircraft();
       draw(); refresh();
@@ -5513,7 +5517,11 @@ function showFlightPlan() {
     // Nor while any other of the app's dialogs is up over it (New aircraft, Delete...): those
     // listen on window, which this document listener runs before -- so Escape closed the plan
     // and the dialog stayed (reported from the New aircraft question).
+    // Only one opened AFTER the plan is over it: a panel opened before (the frequency table, the
+    // charts) closes on Escape only when it is the last one, so counting it here left Escape
+    // doing nothing at all until one was closed by hand.
     const above = [...document.querySelectorAll('.modal-back')].some(b => b !== flightPlanBack
+      && (flightPlanBack.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING)
       && !b.classList.contains('hidden') && b.getClientRects().length);
     if (above) return;
     closeFlightPlan();

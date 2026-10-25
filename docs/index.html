@@ -1001,12 +1001,16 @@
         <!-- The phone's own hardware (device-extras.js, ble-gps.js): screen brightness for the
              cockpit, and an external Bluetooth GPS. Each is dimmed where it cannot work. -->
         <div class="tb-group-separator" aria-hidden="true"></div>
+        <!-- The phone's own brightness is a switch, and the slider is dimmed while it is on: a
+             slider at 100% beside a "System" button read as the app holding the screen at full. -->
+        <label class="navtoggle" id="brightness-system-row" data-i18n-title="tbBrightnessSystemTitle">
+          <input type="checkbox" id="brightness-system"> <span data-i18n="tbBrightnessSystem"></span>
+        </label>
         <label class="navtoggle" id="brightness-row" data-i18n-title="tbBrightnessTitle">
           <span data-i18n="tbBrightness"></span>
           <input type="range" id="brightness-range" min="0" max="100" step="5" value="100">
           <span class="slider-val" id="brightness-val"></span>
         </label>
-        <button id="brightness-system" type="button" data-i18n="tbBrightnessSystem"></button>
         <button id="ble-gps-btn" type="button" data-i18n="tbBleGps"></button>
       </div>
     </div>
