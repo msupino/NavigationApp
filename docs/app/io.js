@@ -2274,8 +2274,17 @@ async function autoRouteChain(prev, next) {
   const notamClosed = (typeof fplNotamClosedPairs === 'function')
     ? fplNotamClosedPairs(new Date()) : null;
   let chain = fplGraphChain(graph, a, b, { notamClosed });
-  if (!chain) chain = fplGraphChain(graph, a, b, { ignoreAvailability: true });
+  let usedClosed = false;
+  if (!chain) {
+    chain = fplGraphChain(graph, a, b, { ignoreAvailability: true });
+    usedClosed = !!chain;
+  }
   if (!chain || chain.length <= 2) return null;
+  // The fallback above can splice in a corridor that is closed right now. Filing warns about
+  // that (warnFplClosedCorridor); drawing put it on the map without a word.
+  if (usedClosed && typeof showToast === 'function') {
+    showToast(S.autoRouteClosedCorridor || 'Auto-route may run through a closed corridor. Check the NOTAMs.', { warn: true });
+  }
   return chain.slice(1, -1).map(name => {
     const n = graph.nodes[name];
     return { lat: r5(n.lat), lng: r5(n.lng), name, _autoRouted: 1 };
@@ -2484,7 +2493,9 @@ function buildIcaoFpl(profile, opts) {
   const utc = fplUtcFromLocal(o.dateLocal, o.timeLocal);
   if (!utc) errs.push('errFplEobt');
   const endurance = String(p.endurance || '').replace(/[^0-9]/g, '');
-  if (endurance && !/^[0-9]{4}$/.test(endurance)) errs.push('errFplEndurance');
+  // Judged on what was typed, not on what is left after stripping: '--' passes the required
+  // check, strips to '', and used to skip this test and file '-E/ P/002)'.
+  if (String(p.endurance || '').trim() && !/^[0-9]{4}$/.test(endurance)) errs.push('errFplEndurance');
   const persons = String(p.persons || '').replace(/[^0-9]/g, '');
   // An override that is not a valid address is refused rather than silently ignored --
   // the pilot meant to send it somewhere.
@@ -2957,7 +2968,7 @@ function loadGpx(file) {
     return;
   }
   const reader = new FileReader();
-  reader.onload = () => {
+  reader.onload = async () => {
     try {
       const xml = new DOMParser().parseFromString(reader.result, 'text/xml');
       const parseErr = xml.querySelector('parsererror');
@@ -2979,6 +2990,9 @@ function loadGpx(file) {
         refuse(S.errNeedWps);
         return;
       }
+      // The same question a .json route asks: this overwrites the plan on the map outright,
+      // and a GPX/PLN file used to replace it without a word.
+      if (!await askReplaceRoute()) return;
       routeAltPrefix = null;   // replacing the route unpins its altitude layer
       currentRouteLibraryId = null;   // decoded/imported route is not a saved entry
       state.waypoints = wps;
@@ -3023,7 +3037,7 @@ function loadPln(file) {
     return;
   }
   const reader = new FileReader();
-  reader.onload = () => {
+  reader.onload = async () => {
     try {
       const xml = new DOMParser().parseFromString(reader.result, 'text/xml');
       const parseErr = xml.querySelector('parsererror');
@@ -3047,6 +3061,9 @@ function loadPln(file) {
         refuse(S.errNeedWps);
         return;
       }
+      // The same question a .json route asks: this overwrites the plan on the map outright,
+      // and a GPX/PLN file used to replace it without a word.
+      if (!await askReplaceRoute()) return;
       routeAltPrefix = null;   // replacing the route unpins its altitude layer
       currentRouteLibraryId = null;   // decoded/imported route is not a saved entry
       state.waypoints = wps;
@@ -3110,6 +3127,9 @@ if (typeof window !== 'undefined') {
   window.sanitizeSavedAt = sanitizeSavedAt;
 }
 
+// A met table of 60 rows and a 72-mark compass card serialise to a few KB; far past that
+// is not a planning form.
+const ROUTE_NAVLOG_MAX_CHARS = 32768;
 function importRouteLibraryArray(arr) {
   if (!Array.isArray(arr)) return null;
   const merged = loadRouteLibrary();
@@ -3130,7 +3150,16 @@ function importRouteLibraryArray(arr) {
       name: (it.name || 'Route').toString().slice(0, 80),
       savedAt: sanitizeSavedAt(it.savedAt) };
     if (track) { entry.kind = 'gps'; entry.track = track; }
-    else { entry.data = it.data; }
+    else {
+      entry.data = it.data;
+      // The planning form (met table, compass card) Export library writes beside the route.
+      // It was dropped here while the toast still said "imported", so the round trip lost
+      // every sheet. Kept only as a plain object of sane size: applyFromRoute coerces it
+      // field by field when the route is opened, but it goes to storage and Drive first.
+      const nl = it.navlog;
+      if (nl && typeof nl === 'object' && !Array.isArray(nl) &&
+          JSON.stringify(nl).length <= ROUTE_NAVLOG_MAX_CHARS) entry.navlog = nl;
+    }
     merged.unshift(entry);
     added++;
   }
@@ -3871,6 +3900,9 @@ function flightPlanCsv(table, scrollArea) {
     rows.push([section]);
     rows.push(visibleHeaders);
     planTable.querySelectorAll('tbody tr, tfoot tr').forEach(row => {
+      // A leg the out/back filter hides is not in the Total either, so exporting it made
+      // the rows not add up to the total printed under them.
+      if (row.hidden) return;
       rows.push(rowValues(row));
     });
   };
@@ -4827,6 +4859,11 @@ function showFlightPlan() {
     tr.appendChild(fpCell('dist', distCell));
     const speedCell = numCell(leg.flightSpeed, 1,
       (S.fpSpeedInput || 'Leg speed') + ' ' + (i + 1), inp => {
+      // Re-read the leg at commit time. Undo and loading a route of the same length swap
+      // in new leg objects without rebuilding this table, so the leg captured when the
+      // plan opened is an orphan: the edit landed nowhere and the box snapped back.
+      const leg = state.legs[i];
+      if (!leg) return;
       const v = +inp.value;
       if (v > 0) {
         const oldVal = leg.flightSpeed;
@@ -4844,6 +4881,8 @@ function showFlightPlan() {
     tr.appendChild(fpCell('speed', speedCell));
     const altCell = numCell(leg.inboundAltitude, -2000,
       (S.fpAltitudeInput || 'Leg altitude') + ' ' + (i + 1), inp => {
+      const leg = state.legs[i];        // live leg, not the one captured at open (see Speed)
+      if (!leg) return;
       const raw = inp.value.trim();
       const oldVal = leg.inboundAltitude;
       if (!raw) {
@@ -5222,6 +5261,8 @@ function showFlightPlan() {
       tr.appendChild(fpCell('dist', distCell));
       const speedCell = numCell(leg.outboundSpeed, 1,
         (S.fpSpeedInput || 'Leg speed') + ' ' + (i + 1), inp => {
+        const leg = state.legs[ri];     // live leg, not the one captured at open (see above)
+        if (!leg) return;
         const v = +inp.value;
         if (v > 0) {
           const oldVal = leg.outboundSpeed;
@@ -5238,6 +5279,8 @@ function showFlightPlan() {
       tr.appendChild(fpCell('speed', speedCell));
       const altCell = numCell(leg.outboundAltitude, -2000,
         (S.fpAltitudeInput || 'Leg altitude') + ' ' + (i + 1), inp => {
+        const leg = state.legs[ri];     // live leg, not the one captured at open
+        if (!leg) return;
         const raw = inp.value.trim();
         const oldVal = leg.outboundAltitude;
         if (!raw) {
@@ -8581,9 +8624,14 @@ function renderFreqTable(freqSection) {
       resetPointerHandled = true;
       resetTableFreq();
     };
+    // The reset disables the button, so the click that trails a pointerdown often never
+    // arrives and the flag stayed set -- swallowing the next keyboard Enter/Space. A keyboard
+    // click has detail 0, so only a pointer click is suppressed, and the flag always clears.
     reset.onclick = e => {
       e.preventDefault();
-      if (resetPointerHandled) { resetPointerHandled = false; return; }
+      const trailing = resetPointerHandled && e.detail !== 0;
+      resetPointerHandled = false;
+      if (trailing) return;
       if (!reset.disabled) resetTableFreq();
     };
     actions.appendChild(reset);
@@ -8633,7 +8681,13 @@ function renderFreqTable(freqSection) {
     inp.dir = 'ltr';
     if (typeof commConfigureFreqInput === 'function') commConfigureFreqInput(inp);
     else { inp.type = 'number'; inp.inputMode = 'decimal'; inp.step = '0.005'; }
-    inp.value = (r.notam ? r.notam.freq : (part.freq || part.def)) || '';
+    // The pilot's own stored edit wins over the NOTAM, as in the inspector. Showing the NOTAM
+    // here while the row was marked overridden hid that edit: it was still what got used.
+    inp.value = (r.notam ? (part.overridden ? part.freq : r.notam.freq)
+      : (part.freq || part.def)) || '';
+    // A row only a NOTAM created has no dataset key to store an edit under: an edit was
+    // saved under '' and silently dropped. Read-only, as the comment above promises.
+    if (r.readOnly) inp.disabled = true;
     const actions = document.createElement('td');
     actions.className = 'charts-freq-actions';
     const reset = document.createElement('button');
@@ -8661,6 +8715,7 @@ function renderFreqTable(freqSection) {
     inp.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); inp.blur(); } });
     inp.addEventListener('input', syncAf);
     inp.addEventListener('change', () => {
+      if (r.readOnly) return;
       const n = normOf();
       if (n === null) { syncAf(); return; }
       setAirfieldFreqOverride(part.key, n === inForce ? '' : n);
@@ -9023,9 +9078,13 @@ function wireAltitudePairResetButton(reset, resetFn) {
     pointerHandled = true;
     resetFn();
   };
+  // resetFn disables the button, so the trailing click often never comes and the flag
+  // stayed set, swallowing the next keyboard Enter/Space. Keyboard clicks have detail 0.
   reset.onclick = e => {
     e.preventDefault();
-    if (pointerHandled) { pointerHandled = false; return; }
+    const trailing = pointerHandled && e.detail !== 0;
+    pointerHandled = false;
+    if (trailing) return;
     if (!reset.disabled) resetFn();
   };
 }
@@ -9353,6 +9412,12 @@ function renderAltitudePairsTable(altSection, opts) {
     };
     const commitInput = input => {
       const raw = input.value.trim();
+      // A number input reports '' for a half-typed '35e' or '-' as well as for a cleared box;
+      // only badInput tells them apart. Read as a clear, it wrote null over the pair on blur.
+      if (input.validity && input.validity.badInput) {
+        input.setAttribute('aria-invalid', 'true');
+        return;
+      }
       if (!raw) {
         input.setAttribute('aria-invalid', 'false');
         setLegAltitudePairValue(segment, input.dataset.altKey, null);
@@ -9961,23 +10026,36 @@ function tryLoadRouteFromUrl() {
   }
   if (Array.isArray(r.freqNotes) && r.freqNotes.length) {
     for (const fn of r.freqNotes) {
-      const idx = state.notes.push({
-        text: 'Freq change',
-        color: (typeof NOTE_DEFAULT_COLOR !== 'undefined' ? NOTE_DEFAULT_COLOR : tune('labelFillColor')),
-        shape: 'rect',
-        cc: fn.cc, freqName: fn.freqName, freq: fn.freq,
-      }) - 1;
       // Place tail at default position for the target waypoint.
       const wp = state.waypoints.find(w => w &&
         typeof canonicalNavWaypointName === 'function' &&
         canonicalNavWaypointName(w.name) === fn.cc);
-      if (wp && typeof commCalloutDefaultTail === 'function') {
-        const tail = commCalloutDefaultTail(wp);
-        state.notes[idx].lat = tail.lat;
-        state.notes[idx].lng = tail.lng;
-      }
+      // No waypoint matched (the waypoint catalogue is often not loaded yet at boot): the
+      // note used to go in WITHOUT lat/lng, and the next launch's validateRoute rejected the
+      // whole saved route as corrupt. Drop it, as route templates do; the comm-change seeding
+      // puts the callout back once the catalogue is in.
+      if (!wp || typeof commCalloutDefaultTail !== 'function') continue;
+      const tail = commCalloutDefaultTail(wp);
+      if (!tail || !Number.isFinite(tail.lat) || !Number.isFinite(tail.lng)) continue;
+      state.notes.push({
+        lat: tail.lat, lng: tail.lng,
+        text: 'Freq change',
+        color: (typeof NOTE_DEFAULT_COLOR !== 'undefined' ? NOTE_DEFAULT_COLOR : tune('labelFillColor')),
+        shape: 'rect',
+        cc: fn.cc, freqName: fn.freqName, freq: fn.freq,
+      });
     }
   }
+  // Take the share params out of the address bar now that the route is on the map. Left in,
+  // every later reload (language switch, app update) loaded the shared route again over the
+  // pilot's edits -- boot skips restoreRoute when a share loads -- and the next save then
+  // overwrote those edits. Other params (?lang=) stay.
+  try {
+    const params = new URLSearchParams(location.search);
+    for (const k of ['r', 'n', 'l', 'h', 'f', 'x']) params.delete(k);
+    const q = params.toString();
+    history.replaceState(history.state, '', location.pathname + (q ? '?' + q : '') + location.hash);
+  } catch (e) { /* no history API: the route is still loaded */ }
   return true;
 }
 

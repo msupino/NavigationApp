@@ -913,6 +913,7 @@ window.S = {
   fplMailDeparture: (place, t, isField) => 'המראה ' + (isField ? 'משדה ' : 'מ') + place + ' ב ' + t + ' זמן מקומי',
   fplMailRoute: (list) => 'נתיב: ' + list,
   fplMailArrival: (place, t, isField) => 'נחיתה ' + (isField ? 'בשדה ' : 'ב') + place + ' ב ' + t,
+  autoRouteClosedCorridor: 'ניתוב אוטומטי: אין כאן נתיב פתוח, ולכן המסלול שצויר עשוי לעבור בנתיב סגור או מוגבל בשעות כעת. יש לוודא מול הנוטאמים.',
   warnFplClosedCorridor: 'ייתכן שנתיב במסלול סגור או מוגבל בשעות במועד ההמראה שנבחר (מקור משני) — לא פורסמה חלופה פתוחה, ולכן הוא מוגש בכל זאת. יש לוודא מול הנוטאמים.',
   fplEtdFirst: 'קודם קבעו שעת המראה \u2014 התכנית מוגשת איתה.',
   fplEtdPassedFirst: function (t) { return 'שעת ההמראה (\u2066' + t + '\u2069) כבר עברה \u2014 קבעו שעה חדשה ואז הגישו.'; },
