@@ -1836,6 +1836,7 @@ window.rotDialCancelGesture = () => { rotDragging = false; rotDial.classList.rem
 function rotEnd(cycle) {
   // A tap is short: a press held as long as the compass's hold is never a 90° step, whether or
   // not the compass opened (reported: the long press turned the chart by 90°).
+  // ...and never one that opened the compass, however soon (rotDialCancelGesture ends it).
   const tap = !rotDownAt || Date.now() - rotDownAt < tune('compassHoldMs');
   if (cycle && rotDragging && !rotMoved && tap) {
     // Tap steps the chart through TRUE 0° / 90° / 180° / 270°: 0 is the chart square with
