@@ -223,3 +223,25 @@ test('iPhone: after a restart at the app\'s level, System still gives back the p
   await expect.poll(async () => (await calls(page)).filter(c => c.startsWith('ScreenBrightness.setBrightness')))
     .toEqual(['ScreenBrightness.setBrightness {"brightness":0.7}']);
 });
+
+test('brightness: the phone\'s own is a switch; the slider is dimmed while it is on, and moving it switches it off', async ({ page }) => {
+  // A slider at 100% beside a "System" button read as the app holding the screen at full (reported).
+  await boot(page);
+  const sys = page.locator('#brightness-system');
+  const row = page.locator('#brightness-row');
+  await expect(sys).toBeChecked();
+  await expect(row).toHaveClass(/brightness-dimmed/);
+  await expect(page.locator('#brightness-val')).toHaveText('System');
+  // Moving the slider chooses a level.
+  await page.evaluate(() => { const r = document.getElementById('brightness-range'); r.value = '40'; r.dispatchEvent(new Event('input')); });
+  await expect(sys).not.toBeChecked();
+  await expect(row).not.toHaveClass(/brightness-dimmed/);
+  await expect(page.locator('#brightness-val')).toHaveText('40%');
+  // Back on: System, and the slider keeps the level it would set next.
+  await page.evaluate(() => { const c = document.getElementById('brightness-system'); c.checked = true; c.dispatchEvent(new Event('change')); });
+  await expect(row).toHaveClass(/brightness-dimmed/);
+  expect(await page.evaluate(() => document.getElementById('brightness-range').value)).toBe('40');
+  // ...and off again: that level, not full.
+  await page.evaluate(() => { const c = document.getElementById('brightness-system'); c.checked = false; c.dispatchEvent(new Event('change')); });
+  await expect(page.locator('#brightness-val')).toHaveText('40%');
+});

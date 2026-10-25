@@ -105,13 +105,21 @@
     } else veil(v);
     const range = document.getElementById('brightness-range');
     const out = document.getElementById('brightness-val');
-    if (range) range.value = String(Math.round((v == null ? 1 : v) * 100));
+    // On System the slider is dimmed, and sits where it would set the screen next (the last level
+    // the pilot chose) -- not at a 100% that read as the app holding the screen at full.
+    if (range) range.value = String(Math.round((v == null ? lastManual : v) * 100));
     if (out) out.textContent = v == null ? str('tbBrightnessAuto', 'System') : Math.round(v * 100) + '%';
-    const row = document.getElementById('brightness-row'), sys = document.getElementById('brightness-system');
-    if (row) row.hidden = !on;
-    if (sys) sys.hidden = !on;
+    const row = document.getElementById('brightness-row'), sysRow = document.getElementById('brightness-system-row');
+    const sys = document.getElementById('brightness-system');
+    if (sys) sys.checked = v == null;
+    if (row) { row.hidden = !on; row.classList.toggle('brightness-dimmed', v == null); }
+    if (sysRow) sysRow.hidden = !on;
   }
+  // The level the slider comes back to when the phone's own brightness is switched off.
+  let lastManual = 0.6;
+  try { const m = Number(localStorage.getItem(BRIGHT_KEY)); if (m > 0) lastManual = m / 100; } catch (e) { /* storage off */ }
   function setBrightness(pct) {
+    if (pct != null) lastManual = Math.max(0, Math.min(1, pct / 100));
     try {
       if (pct == null) localStorage.removeItem(BRIGHT_KEY);
       else localStorage.setItem(BRIGHT_KEY, String(Math.round(pct)));
@@ -120,8 +128,9 @@
   }
   const range = document.getElementById('brightness-range');
   if (range) range.addEventListener('input', () => setBrightness(Number(range.value)));
-  const sysBtn = document.getElementById('brightness-system');
-  if (sysBtn) sysBtn.addEventListener('click', () => setBrightness(null));
+  // Moving the dimmed slider is choosing a level: it switches the phone's own brightness off.
+  const sysCb = document.getElementById('brightness-system');
+  if (sysCb) sysCb.addEventListener('change', () => setBrightness(sysCb.checked ? null : Math.round(lastManual * 100)));
 
   // --- battery ------------------------------------------------------------------------
   let warnedAt = 1;                 // the lowest level already warned about this flight
