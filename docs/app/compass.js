@@ -123,16 +123,25 @@
     const C = window.Capacitor;
     return (C && typeof C.isNativePlatform === 'function' && C.isNativePlatform() && C.Plugins && C.Plugins.CompassHeading) || null;
   };
-  let nativeSub = null, nativeOn = false;
+  // Each opening is its own session: a reply from an earlier one (closed, then opened again before
+  // it answered) removes its own handle and touches nothing else -- it used to be stored over the
+  // new one and never removed (every heading counted twice), or clear nativeOn so a later close
+  // left Core Location running (review).
+  let nativeSub = null, nativeOn = false, nativeSession = 0;
   function listenNative(plugin) {
     if (listening) return;
     listening = true;
     nativeOn = true;
-    Promise.resolve(plugin.addListener('heading', (e) => { if (e && Number.isFinite(e.magnetic)) feed(e.magnetic); }))
-      .then((sub) => { nativeSub = sub; if (!listening && sub && sub.remove) sub.remove(); })
+    const session = ++nativeSession;
+    const current = () => session === nativeSession && listening;
+    Promise.resolve(plugin.addListener('heading', (e) => { if (session === nativeSession && e && Number.isFinite(e.magnetic)) feed(e.magnetic); }))
+      .then((sub) => {
+        if (current()) nativeSub = sub;
+        else if (sub && sub.remove) sub.remove();
+      })
       .catch(() => {});
-    // No compass: the web events -- but only if the window is still open; closed meanwhile, nothing.
-    Promise.resolve(plugin.start()).catch(() => { if (!listening) return; listening = false; nativeOn = false; listen(); });
+    // No compass: the web events -- only for this session, while it is still open.
+    Promise.resolve(plugin.start()).catch(() => { if (!current()) return; listening = false; nativeOn = false; listen(); });
   }
   function stop() {
     // Stop the native heading whenever it was started, whether or not its listener handle has
@@ -142,7 +151,7 @@
       if (nativeSub) { try { nativeSub.remove(); } catch (e) { /* gone */ } }
       try { Promise.resolve(n.stop()).catch(() => {}); } catch (e) { /* gone */ }
     }
-    nativeSub = null; nativeOn = false;
+    nativeSub = null; nativeOn = false; nativeSession++;
     listening = false; smooth = null; lastAt = 0; onReading = null;
     window.removeEventListener('deviceorientationabsolute', onAbsolute, true);
     window.removeEventListener('deviceorientation', onRelative, true);
