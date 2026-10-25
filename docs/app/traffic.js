@@ -174,13 +174,38 @@
   // know -- it is what this aeroplane hears now, not what a ground station heard seconds ago.
   let polled = [];
   let external = [];
+  // The pilot's switch, where there is one to see: offered, usable, and turned off. The
+  // receiver's targets used to stay on the map with the switch off -- clear() re-drew them,
+  // and trafficSetExternal never asked.
+  const switchedOff = () => offered() && usable() && !on();
+  // Own-ship is in the feeds too. Within ~110 m of the fix is not enough to call a target
+  // "me": an aeroplane directly above or below is exactly the traffic that matters, and it
+  // was being hidden at any height. So: the receiver's own ICAO address when it reports one,
+  // and otherwise close by AND within OWN_SHIP_FT of our altitude (when both are known --
+  // without an altitude to compare, position alone is all there is, as before).
+  const OWN_SHIP_FT = 300;
+  function isOwnShip(a, mine, ownHex, ownFt) {
+    if (ownHex && a.hex && String(a.hex).toLowerCase() === ownHex) return true;
+    if (!(mine && Number.isFinite(a.lat) &&
+          Math.abs(a.lat - mine.lat) < 0.001 && Math.abs(a.lon - mine.lng) < 0.001)) return false;
+    if (Number.isFinite(ownFt) && Number.isFinite(a.alt)) return Math.abs(a.alt - ownFt) <= OWN_SHIP_FT;
+    return true;
+  }
   function render() {
     const byHex = new Map();
     for (const a of polled) byHex.set(a.hex || (a.lat + ',' + a.lon), a);
-    for (const a of external) byHex.set(a.hex || (a.lat + ',' + a.lon), a);
+    if (!switchedOff()) for (const a of external) byHex.set(a.hex || (a.lat + ',' + a.lon), a);
     const mine = typeof gpsLastFix === 'function' ? gpsLastFix() : null;
-    window.trafficAircraft = [...byHex.values()].filter(a => !(mine && Number.isFinite(a.lat) &&
-      Math.abs(a.lat - mine.lat) < 0.001 && Math.abs(a.lon - mine.lng) < 0.001));
+    let ownHex = '';
+    try {
+      const own = window.NavAid && NavAid.gdl90 && NavAid.gdl90.state && NavAid.gdl90.state.ownship;
+      // An unconfigured receiver reports address 000000 for itself: that names nobody.
+      ownHex = own && own.hex && !/^0+$/.test(String(own.hex)) ? String(own.hex).toLowerCase() : '';
+    } catch (e) { ownHex = ''; }
+    let ownFt = null;
+    try { ownFt = (mine && typeof gpsAltitudeForCompare === 'function') ? gpsAltitudeForCompare() : null; }
+    catch (e) { ownFt = null; }
+    window.trafficAircraft = [...byHex.values()].filter(a => !isOwnShip(a, mine, ownHex, ownFt));
     if (window.trafficAircraft.length) draw(window.trafficAircraft);
     else if (group) { group.clearLayers(); if (map.hasLayer(group)) map.removeLayer(group); }
     dropSelectionIfGone();
@@ -192,7 +217,7 @@
 
   function clear() {
     polled = [];
-    if (external.length) { render(); return; }
+    if (external.length && !switchedOff()) { render(); return; }
     if (group && map.hasLayer(group)) map.removeLayer(group);
     if (group) group.clearLayers();
     window.trafficAircraft = [];
