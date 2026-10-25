@@ -189,13 +189,18 @@ jobs:
             if ! grep -qxF "$C" /tmp/have.txt; then
               echo "Required context '$C' has no result on $SHA."
               # Which workflow owns it. Anything unrecognised falls to Review, which is
-              # where the static-analysis contexts live.
+              # where the static-analysis contexts live. `build`, `deploy` and
+              # `e2e-deployed` are Deploy jobs (dispatching CI for them never produces
+              # the context); `lint` exists in both CI and Deploy, so ask both.
               case "$C" in
-                e2e|build|lint) W=CI ;;
-                deploy)         W=Deploy ;;
-                *)              W=Review ;;
+                e2e|smoke|native-android|native-ios|dev-history) WS=CI ;;
+                build|deploy|e2e-deployed)                      WS=Deploy ;;
+                lint)                                            WS="CI Deploy" ;;
+                *)                                               WS=Review ;;
               esac
-              case " $WANT " in *" $W "*) ;; *) WANT="$WANT $W" ;; esac
+              for W in $WS; do
+                case " $WANT " in *" $W "*) ;; *) WANT="$WANT $W" ;; esac
+              done
             fi
           done
 

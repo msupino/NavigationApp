@@ -276,4 +276,53 @@ test.describe('workflow trust and integrity gates', () => {
     // Keyed on the head ref, so no long-lived branch can be deleted however a PR is pointed.
     expect(arm).toMatch(/case "\$HEAD_REF" in\s*\n\s*main\|dev\) DELETE= ;;/);
   });
+
+  test('a PR or staging publish built before a newer main is not published over it', () => {
+    const doc = YAML.parse(read('.github/workflows/deploy.yml'));
+    // The artifact carries a copy of main from when `build` started; PR/staging publishes sit
+    // in other concurrency groups than pages-prod, so a late one rolled production back.
+    expect(doc.jobs.build.outputs.main_sha).toContain('steps.assemble.outputs.main_sha');
+    const steps = doc.jobs.deploy.steps;
+    const fresh = steps.find(s => s.id === 'fresh');
+    expect(fresh, 'stale-publish check').toBeTruthy();
+    expect(String(fresh.if)).toContain("github.ref != 'refs/heads/main'");
+    expect(fresh.env.BUILT).toContain('needs.build.outputs.main_sha');
+    const idx = steps.indexOf(fresh);
+    const pub = steps.findIndex(s => String(s.uses || '').includes('deploy-pages'));
+    expect(idx).toBeLessThan(pub);
+    for (const s of steps.slice(pub)) {
+      expect(String(s.if || ''), s.name).toContain("steps.fresh.outputs.stale != 'true'");
+    }
+    expect(doc.jobs.deploy.permissions.contents).toBe('read');
+  });
+
+  test('staging is pinned to the dev commit the run is for', () => {
+    const steps = YAML.parse(read('.github/workflows/deploy.yml')).jobs.build.steps;
+    const pin = steps.find(s => /Pin staging/.test(s.name || ''));
+    expect(pin).toBeTruthy();
+    expect(String(pin.if)).toContain("github.ref == 'refs/heads/dev'");
+    expect(pin.run).toContain('git -C d checkout --detach FETCH_HEAD');
+  });
+
+  test('the e2e gates fail when scope failed instead of reading skipped shards as green', () => {
+    const ci = job('.github/workflows/ci.yml', 'e2e');
+    expect(ci.needs).toContain('scope');
+    expect(ci.steps[0].env.SCOPE).toContain('needs.scope.result');
+    expect(ci.steps[0].run).toMatch(/\$SCOPE" != "success"/);
+    const dep = job('.github/workflows/deploy.yml', 'e2e-deployed');
+    expect(dep.needs).toContain('scope');
+    expect(dep.steps[0].run).toContain('needs.scope.result');
+  });
+
+  test('a missing required context is re-dispatched from the workflow that owns it', () => {
+    const wf = read('.github/workflows/auto-pr-dev-to-main.yml');
+    // `build` is a Deploy job: dispatching CI for it never produced the context.
+    expect(wf).toMatch(/build\|deploy\|e2e-deployed\)\s+WS=Deploy/);
+    expect(wf).not.toMatch(/e2e\|build\|lint\) W=CI/);
+  });
+
+  test('test-scope does not hand a deleted spec to Playwright', () => {
+    const run = YAML.parse(read('.github/actions/test-scope/action.yml')).runs.steps[0].run;
+    expect(run).toMatch(/tests\/\*\.spec\.js\)\s*\n\s*if \[ -f "\$f" \]; then SPECS=/);
+  });
 });
