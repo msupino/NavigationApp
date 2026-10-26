@@ -8437,8 +8437,8 @@ body.theme-light .parking-preview {
 body.theme-light .route-library-gdrive-pii { color: #6b7787; border-inline-start-color: #c7cedb; }
 
 /* ---- Option B: the phone data strip and bottom deck ----------------------------------
-   Behind `featureMobileDeck` (off) and narrow screens only; see docs/app/deck.js for why.
-   Everything here hangs off body.deck-on, so with the feature off not one rule applies. */
+   Narrow and touch screens; see docs/app/deck.js for why. Everything here hangs off
+   body.deck-on, so on the desktop menubar not one rule applies. */
 .deck-strip {
   position: fixed;
   top: 0; left: 0; right: 0;
@@ -8713,10 +8713,12 @@ body.deck-on .overlay-loading { bottom: calc(var(--navaid-deck-bar-h, 52px) + 68
    that is now a sheet, and the hamburger closes one. The sheet has a grip and an X. */
 .deck-sheet #toolbar.deck-hosted > #toolbar-handle,
 .deck-sheet #toolbar.deck-hosted > #toolbar-toggle { display: none; }
-/* ...and so do Record, Location and the live readout: they are the deck and the strip now,
-   and a menu that repeats them says the same thing twice on a screen with no room to. */
+/* ...and so do Record, Location, Comm failure and the live readout: they are the deck and the
+   strip now, and a menu that repeats them says the same thing twice on a screen with no room to.
+   The simulator stays: the deck has no other way to it, and connecting one is how a phone tests
+   the watch alerts. */
 /* Two ids and a class, to outrank the phone rules that put this row on screen. */
-.deck-sheet #toolbar.deck-hosted > #footer-links .footer-gps-group,
+.deck-sheet #toolbar.deck-hosted > #footer-links .footer-gps-group > .gps-footer-btn:not(#sim-trigger),
 .deck-sheet #toolbar.deck-hosted > #footer-links #gps-readout { display: none !important; }
 @media (prefers-reduced-motion: reduce) {
   .deck-sheet { transition: none; }
@@ -9615,8 +9617,7 @@ body.theme-dark #aircraft-custom input { border-color: #7f7777; }
 body.theme-light #aircraft-custom input { border-color: #858f9c; }
 body.theme-light #wp-search,
 body.theme-light #search-overlay #wp-search { border-color: #858f9c; }
-/* The phone card without the deck (?deck=0): collapsed, it is one row and its links; the
-   globe there took a row of its own. It shows again when the card is open. */
+/* A collapsed menu is one row and its links; the globe there took a row of its own. */
 #toolbar.collapsed #lang-quick { display: none; }
 
 /* Slider rows. Phone: label, value and its ↻ on the first line, the slider alone on the

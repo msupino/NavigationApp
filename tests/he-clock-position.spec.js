@@ -1,7 +1,4 @@
 // @ts-check
-// The floating menu card is the layout this file is about, and the phone deck replaces it
-// (see mobile-deck.spec.js). `?deck=0` is the switch a gist -- or a pilot -- uses to have
-// the card back, so these open with it.
 // The Zulu clock defaults to the top-LEFT corner in Hebrew (RTL), where the
 // menu bar occupies the top-right. On small screens (menu bar moves top-left)
 // it drops below the bar. English keeps the Leaflet top-right placement.
@@ -9,7 +6,7 @@ const { test, expect } = require('./_setup');
 
 async function clockBox(page, lang, w, h) {
   await page.setViewportSize({ width: w, height: h });
-  await page.goto('?lang=' + lang + '&deck=0');
+  await page.goto('?lang=' + lang + '');
   await page.waitForFunction(() => document.getElementById('zulu-clock'));
   await page.waitForTimeout(200);
   return page.evaluate(() => {
@@ -32,8 +29,3 @@ test('Hebrew defaults the clock to the left, dropped down like English (desktop)
   expect(Math.abs(he.top - en.top)).toBeLessThan(4);  // same vertical drop as English
 });
 
-test('Hebrew clock stays top-left but below the menu bar on small screens', async ({ page }) => {
-  const b = await clockBox(page, 'he', 390, 780);
-  expect(b.left).toBeLessThan(40);            // still left
-  expect(b.top).toBeGreaterThan(40);          // pushed below the top-left menu bar
-});

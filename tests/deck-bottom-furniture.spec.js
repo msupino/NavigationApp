@@ -76,13 +76,3 @@ test('the update notice and the overlay spinner clear it too', async ({ page }) 
   expect(bottoms.spinner).toBeLessThanOrEqual(top);
 });
 
-test('with the deck off, the toast keeps its place at the bottom', async ({ page }) => {
-  await page.setViewportSize(PHONE);
-  await page.goto('?lang=en&nogist&deck=0');
-  await page.waitForFunction(() => typeof showToast === 'function');
-  await page.evaluate(() => showToast('Airspace unavailable'));
-  const box = await page.locator('.toast.show').boundingBox();
-  // 24px off the bottom, as it was before the deck existed: the move is the deck's doing and
-  // must not follow the feature around when the gist withdraws it.
-  expect(Math.round(844 - (box.y + box.height))).toBe(24);
-});

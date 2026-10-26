@@ -1,7 +1,4 @@
 // @ts-check
-// The floating menu card is the layout this file is about, and the phone deck replaces it
-// (see mobile-deck.spec.js). `?deck=0` is the switch a gist -- or a pilot -- uses to have
-// the card back, so these open with it.
 // Mobile-layout regressions. On phones (<=680px) the app must not blanket the
 // map: toolbar starts collapsed, the inspector is a bottom sheet, the flight
 // plan scrolls sideways, and floating chrome hides under modals.
@@ -15,7 +12,7 @@ async function freshBoot(page, { width, height }) {
       localStorage.removeItem('navaid.inspPos');
     } catch (e) {}
   });
-  await page.goto('?lang=en&deck=0');
+  await page.goto('?lang=en');
   await page.waitForFunction(() =>
     typeof map !== 'undefined' && typeof showInspector === 'function');
 }
@@ -41,7 +38,9 @@ test('mobile: inspector renders as a full-width bottom sheet', async ({ page }) 
   const box = await page.locator('#inspector').boundingBox();
   expect(box.x).toBeLessThan(20);
   expect(box.width).toBeGreaterThan(300);
-  expect(box.y + box.height).toBeGreaterThan(800);
+  // Down to the deck along the bottom edge.
+  const deck = await page.locator('#deck-bar').boundingBox();
+  expect(box.y + box.height).toBeGreaterThanOrEqual(deck.y - 1);
 });
 
 test('mobile: flight-plan table scrolls horizontally', async ({ page }) => {

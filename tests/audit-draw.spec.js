@@ -7,7 +7,7 @@ const { test, expect } = require('./_setup');
 
 async function boot(page, extra = '') {
   await page.setViewportSize({ width: 1280, height: 800 });
-  await page.goto('?lang=en&nogist&deck=0' + extra);
+  await page.goto('?lang=en&nogist' + extra);
   await page.waitForFunction(() => typeof routeInkRects === 'function' &&
     typeof legLabelCenter === 'function' && typeof map !== 'undefined');
 }

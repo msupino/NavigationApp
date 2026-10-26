@@ -21,12 +21,16 @@ async function boot(page, lang = 'en') {
       localStorage.removeItem('navaid.route');
     } catch (e) {}
   });
-  // The floating (stacked) menu: with the deck on it is shown only inside the deck's sheet, so
-  // this is the deck-off layout (?deck=0, or featureMobileDeck off in the gist).
-  await page.goto('?lang=' + lang + '&deck=0');
+  // On a phone the stacked menu lives in the deck's Menu sheet.
+  await page.goto('?lang=' + lang);
   await page.waitForFunction(() =>
     typeof state !== 'undefined' && typeof showRouteLibraryModal === 'function' &&
     document.getElementById('tool-save-route') && document.getElementById('tool-load-route'));
+  await page.evaluate(() => {
+    document.getElementById('boot-loading')?.remove();
+    document.documentElement.classList.remove('app-booting');
+  });
+  await page.locator('#deck-bar .deck-btn-menu').click();
   await expect(page.locator('#tool-save-route')).toBeVisible();
 }
 
@@ -211,6 +215,8 @@ test.describe('Edit-header Save / Load route buttons', () => {
 
     // Edit the route, then Save again from the header → overwrites in place.
     await setRoute(page, ['A', 'B', 'C']);
+    // The modal put the deck's Menu sheet away; open it again.
+    await page.locator('#deck-bar .deck-btn-menu').click();
     await page.locator('#tool-save-route').click();
     const ask = page.locator('.route-overwrite-modal');
     await expect(ask).toBeVisible();

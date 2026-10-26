@@ -1,7 +1,5 @@
 // @ts-check
-// The floating menu card is the layout this file is about, and the phone deck replaces it
-// (see mobile-deck.spec.js). `?deck=0` is the switch a gist -- or a pilot -- uses to have
-// the card back, so these open with it.
+// On a phone the menu is the deck's Menu sheet; these measure it there.
 // Two mobile toolbar defects reported from a phone:
 //  - the closed menu was four stacked ~50px rows (drag handle, ☰, language, links) and ate a
 //    quarter of the screen, when all three controls are small enough to share one row;
@@ -20,36 +18,12 @@ async function boot(page) {
         localStorage.setItem('navaid.sec.' + s, '1');
     } catch (e) {}
   });
-  await page.goto('?lang=en&nogist&deck=0');
+  await page.goto('?lang=en&nogist');
   await page.waitForFunction(() => typeof state !== 'undefined' &&
-    !!document.getElementById('toolbar'));
+    !!document.getElementById('deck-bar'));
+  await page.evaluate(() => { document.getElementById('boot-loading')?.remove(); document.documentElement.classList.remove('app-booting'); });
+  await page.locator('#deck-bar .deck-btn-menu').click();   // a phone's menu is the deck's Menu sheet
 }
-
-test('the closed menu is one row of controls plus its links, not four stacked rows', async ({ page }) => {
-  await boot(page);
-  const m = await page.evaluate(() => {
-    const tb = document.getElementById('toolbar');
-    if (!tb.classList.contains('collapsed')) document.getElementById('toolbar-toggle').click();
-    const r = tb.getBoundingClientRect();
-    const box = id => {
-      const e = document.getElementById(id);
-      const b = e.getBoundingClientRect();
-      return { top: b.top, bottom: b.bottom, mid: (b.top + b.bottom) / 2, h: b.height };
-    };
-    return { h: r.height, w: r.width, pct: r.height / innerHeight * 100,
-      handle: box('toolbar-handle'), toggle: box('toolbar-toggle'),
-      links: box('footer-links'),
-      viewportH: innerHeight };
-  });
-  // Was 203px / 25% of an iPhone screen with nothing on it.
-  expect(m.h).toBeLessThan(140);
-  expect(m.pct).toBeLessThan(20);
-  // The drag handle and the ☰ share a row (the language picker moved into Settings): their
-  // vertical centres are within one row of each other rather than stacked one per row.
-  expect(Math.abs(m.handle.mid - m.toggle.mid)).toBeLessThan(30);
-  // The links keep their own row, below all three.
-  expect(m.links.top).toBeGreaterThanOrEqual(m.toggle.bottom - 8);
-});
 
 test('the closed menu leaves the map usable and does not overflow the page', async ({ page }) => {
   await boot(page);
@@ -117,8 +91,10 @@ test('no select is cut off by the panel edge, in either language', async ({ page
           localStorage.setItem('navaid.sec.' + s, '1');
       } catch (e) {}
     });
-    await page.goto('?lang=' + lang + '&nogist&deck=0');
+    await page.goto('?lang=' + lang + '&nogist');
     await page.waitForFunction(() => !!document.getElementById('toolbar'));
+    await page.evaluate(() => { document.getElementById('boot-loading')?.remove(); document.documentElement.classList.remove('app-booting'); });
+    await page.locator('#deck-bar .deck-btn-menu').click();   // a phone's menu is the deck's Menu sheet
     const sels = await eachSectionSelects(page, (sel, tb) => {
       const b = sel.getBoundingClientRect(), p = tb.getBoundingClientRect();
       return { id: sel.id, overRight: Math.round(b.right - p.right),
@@ -166,7 +142,7 @@ test('the chevron is drawn in the theme\'s ink, both ways', async ({ page }) => 
 
 test('the closed menu does not cover the Zulu clock, in either language', async ({ page }) => {
   for (const lang of ['en', 'he']) {
-    await page.goto('?lang=' + lang + '&nogist&deck=0');
+    await page.goto('?lang=' + lang + '&nogist');
     await page.waitForFunction(() => !!document.getElementById('toolbar') &&
       !!document.getElementById('zulu-clock'));
     const r = await page.evaluate(() => {
@@ -198,7 +174,7 @@ test('the sim-trigger button (inside the GPS group, overflows the panel like its
   // is hidden, on the left of show location" (RTL mirrors the overflow direction, so
   // there it sat flush against the panel's own left edge instead).
   for (const lang of ['en', 'he']) {
-    await page.goto('?lang=' + lang + '&nogist&deck=0');
+    await page.goto('?lang=' + lang + '&nogist');
     await page.waitForFunction(() => !!document.getElementById('toolbar') &&
       !!document.getElementById('zulu-clock') && !!document.getElementById('sim-trigger'));
     const r = await page.evaluate(() => {
@@ -219,8 +195,10 @@ test('the sim-trigger button (inside the GPS group, overflows the panel like its
 
 test('the sim trigger remains visible and tappable with Android large text', async ({ page }) => {
   for (const lang of ['en', 'he']) {
-    await page.goto('?lang=' + lang + '&nogist&deck=0');
+    await page.goto('?lang=' + lang + '&nogist');
     await page.waitForFunction(() => !!document.getElementById('sim-trigger'));
+    await page.evaluate(() => { document.getElementById('boot-loading')?.remove(); document.documentElement.classList.remove('app-booting'); });
+    await page.locator('#deck-bar .deck-btn-menu').click();   // a phone's menu is the deck's Menu sheet
     const r = await page.evaluate(() => {
       // Android's accessibility font scale enlarges WebView text without widening the
       // phone viewport. Emulate that pressure directly: the two GPS labels may truncate,
@@ -228,8 +206,6 @@ test('the sim trigger remains visible and tappable with Android large text', asy
       const style = document.createElement('style');
       style.textContent = '#toolbar .footer-link { font-size: 24px !important; }';
       document.head.appendChild(style);
-      const tb = document.getElementById('toolbar');
-      if (!tb.classList.contains('collapsed')) document.getElementById('toolbar-toggle').click();
       const footer = document.getElementById('footer-links').getBoundingClientRect();
       const sim = document.getElementById('sim-trigger').getBoundingClientRect();
       return {
@@ -243,18 +219,3 @@ test('the sim trigger remains visible and tappable with Android large text', asy
   }
 });
 
-test('the closed menu keeps finger-sized targets', async ({ page }) => {
-  await page.goto('?lang=en&nogist&deck=0');
-  await page.waitForFunction(() => !!document.getElementById('toolbar'));
-  const taps = await page.evaluate(() => {
-    const tb = document.getElementById('toolbar');
-    if (!tb.classList.contains('collapsed')) document.getElementById('toolbar-toggle').click();
-    return ['toolbar-toggle'].map(id => {
-      const b = document.getElementById(id).getBoundingClientRect();
-      return { id, h: Math.round(b.height) };
-    });
-  });
-  // Shrinking the panel must not come out of the tap targets — that is the line between
-  // decluttering and making the menu unusable in the air.
-  for (const t of taps) expect(t.h, t.id).toBeGreaterThanOrEqual(40);
-});

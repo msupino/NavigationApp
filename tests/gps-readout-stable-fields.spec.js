@@ -1,6 +1,6 @@
 // @ts-check
-// The floating menu card is the surface these phone measurements are against; on a phone the
-// deck replaces it (see mobile-deck.spec.js), so they ask for the card with `?deck=0`.
+// A narrow panel is the desktop menu's readout held to the 220px the old phone card gave it:
+// on a phone the deck's strip carries these numbers instead (see mobile-deck.spec.js).
 // Reported from the cockpit: "the live location info keeps changing the info details".
 //
 // The readout drops a field when the line is too long for the panel, and every value on it
@@ -14,11 +14,16 @@
 const { test, expect } = require('./_setup');
 
 async function boot(page, width) {
-  await page.setViewportSize({ width: width || 390, height: 820 });
-  await page.goto('?lang=en&nogist&deck=0');
+  await page.setViewportSize({ width: 1280, height: 820 });
+  await page.goto('?lang=en&nogist');
   await page.waitForFunction(() => typeof gpsUpdateReadout === 'function'
     && window.NavAid && NavAid.tuningDefaults.gpsReadoutRefitPx);
+  await narrowPanel(page, (width || 390) < 681);
 }
+const narrowPanel = (page, on) => page.evaluate((v) => {
+  const el = document.getElementById('gps-readout');
+  el.style.width = el.style.maxWidth = v ? '220px' : '';
+}, on);
 
 // One second of flight: the values move, the readout is asked to redraw, the text is read.
 const frames = (page, o) => page.evaluate((opts) => {
@@ -74,7 +79,7 @@ test('what is dropped is still dropped in the order the fields matter', async ({
 test('a wider panel gives the fields back', async ({ page }) => {
   await boot(page, 390);
   await frames(page, { n: 3, pts: 128, gs: 104, alt: 2450 });
-  await page.setViewportSize({ width: 1280, height: 820 });
+  await narrowPanel(page, false);
   const after = (await frames(page, { n: 2, pts: 128, gs: 104, alt: 2450 }))[1];
   // Stickiness is hysteresis, not a one-way ratchet: room earned back is room used.
   expect(after).toMatch(/pts/);

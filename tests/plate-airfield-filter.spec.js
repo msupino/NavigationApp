@@ -169,7 +169,7 @@ for (const lang of ['en', 'he']) {
     // the menu jumped sideways under the pointer. A hidden row keeps its width now, and
     // still takes no height.
     await page.setViewportSize({ width: 1280, height: 900 });
-    await page.goto('?lang=' + lang + '&nogist&deck=0');
+    await page.goto('?lang=' + lang + '&nogist');
     await page.waitForFunction(() => typeof window.refreshPlateTypePicker === 'function');
     const box = () => page.evaluate(() => {
       const sec = document.getElementById('plate-enabled-cb').closest('.tb-section');
