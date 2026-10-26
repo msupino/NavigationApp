@@ -152,3 +152,18 @@ test('routecheck: a long route still asks for cloud at its destination', async (
   expect(lats.length).toBeLessThanOrEqual(25);
   expect(lats[lats.length - 1]).toBe(pts.last);
 });
+
+test('iOS Google sign-in: the iOS client is in the web client\'s project, and Info.plist carries its URL scheme', () => {
+  // Drive's appDataFolder is per Google Cloud project: an iOS client from another project syncs
+  // into a separate folder no other device sees.
+  const fs = require('fs'), path = require('path');
+  const js = fs.readFileSync(path.join(__dirname, '..', 'docs', 'app', 'gdrive.js'), 'utf8');
+  const webProject = (/'(\d+)-lcnmpfmk4[a-z0-9]*\.apps\.googleusercontent\.com'/.exec(js) || [])[1];
+  const iosId = (/GDRIVE_IOS_CLIENT_ID = '([^']+)'/.exec(js) || [])[1];
+  expect(iosId).toBeTruthy();
+  expect(iosId.split('-')[0]).toBe(webProject);
+  expect(js).toMatch(/iOSClientId: GDRIVE_IOS_CLIENT_ID, iOSServerClientId: GDRIVE_CLIENT_ID/);
+  const plist = fs.readFileSync(path.join(__dirname, '..', 'mobile', 'ios', 'App', 'App', 'Info.plist'), 'utf8');
+  const reversed = 'com.googleusercontent.apps.' + iosId.replace(/\.apps\.googleusercontent\.com$/, '');
+  expect(plist).toContain('<string>' + reversed + '</string>');
+});

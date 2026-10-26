@@ -17,6 +17,11 @@
  */
 var GDRIVE_CLIENT_ID = (typeof window !== 'undefined' && window.NAVAID_GDRIVE_CLIENT_ID) ||
   '1027636470762-lcnmpfmk4ef9rff2be3kg6qfd25vg7q1.apps.googleusercontent.com';
+// The iOS app's own OAuth client, in the SAME Google Cloud project as the web client above:
+// Drive's appDataFolder is per project, so a client from another project signs in fine and then
+// syncs into a separate, empty folder that no other device ever sees. Its reversed form is the
+// URL scheme in mobile/ios/App/App/Info.plist (Google hands the sign-in back through it).
+var GDRIVE_IOS_CLIENT_ID = '1027636470762-q23qd5ovab3g0j8up08jjhtsqh58foed.apps.googleusercontent.com';
 const GDRIVE_SCOPE = 'https://www.googleapis.com/auth/drive.appdata';
 const GDRIVE_FILE = 'navaid-routes.json';
 const GIS_SRC = 'https://accounts.google.com/gsi/client';
@@ -105,7 +110,9 @@ function gdriveNativeToken() {
   if (!SL) return Promise.reject(new Error('native sign-in unavailable'));
   if (!_nativeSlInit) {
     _nativeSlInit = SL.initialize({
-      google: { webClientId: GDRIVE_CLIENT_ID, mode: 'online' },
+      // iOS needs its own client ID (the web one alone cannot sign in there) and the web one
+      // as the server client; Android ignores both and uses the web client with its SHA-1.
+      google: { webClientId: GDRIVE_CLIENT_ID, iOSClientId: GDRIVE_IOS_CLIENT_ID, iOSServerClientId: GDRIVE_CLIENT_ID, mode: 'online' },
     }).catch(e => { _nativeSlInit = null; throw e; });
   }
   return _nativeSlInit
