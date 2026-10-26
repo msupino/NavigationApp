@@ -316,7 +316,7 @@ jobs:
           rm -rf site/ota
           node m/mobile/scripts/build-ota.mjs --from site --out site/ota \
             --manifest site/ota/manifest.json --version "1.0-$SHA_M" \
-            --base-url https://navaid.supino.org/ota
+            --base-url https://navaid.supino.org/ota --site-url https://navaid.supino.org
           rm -rf m/mobile/www
           test -s "site/ota/navaid-1.0-$SHA_M.zip"
 
