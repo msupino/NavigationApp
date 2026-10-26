@@ -113,6 +113,35 @@ export function bundleEntries(dir = wwwDir) {
   }));
 }
 
+// The file list for a DELTA update: every file of the bundle with its SHA-256 and where to fetch
+// it. The plugin copies a file it already holds with that hash -- built into the app, or from an
+// earlier update -- and downloads only the rest, so an update that changed the code but not the
+// 40 MB of chart images and terrain costs about the code (the iPad took minutes over the full
+// zip). A file byte-identical to the deployed site is fetched from the site itself, so nothing
+// is published twice; one that differs (index.html carries the embedded-app flag) is written
+// under <out>/<version>/ next to the zip.
+export function deltaFiles(entries, opts) {
+  const o = opts || {};
+  const enc = (n) => n.split('/').map(encodeURIComponent).join('/');
+  const files = [];
+  for (const e of entries) {
+    const hash = createHash('sha256').update(e.data).digest('hex');
+    let url = null;
+    if (o.siteDir && o.siteUrl) {
+      const onSite = path.join(o.siteDir, e.name);
+      if (fs.existsSync(onSite) && fs.readFileSync(onSite).equals(e.data)) url = o.siteUrl.replace(/\/$/, '') + '/' + enc(e.name);
+    }
+    if (!url && o.outDir && o.baseUrl && o.version) {
+      const dest = path.join(o.outDir, o.version, e.name);
+      fs.mkdirSync(path.dirname(dest), { recursive: true });
+      fs.writeFileSync(dest, e.data);
+      url = o.baseUrl.replace(/\/$/, '') + '/' + enc(o.version) + '/' + enc(e.name);
+    }
+    if (url) files.push({ file_name: e.name, file_hash: hash, download_url: url });
+  }
+  return files.length === entries.length ? files : null;   // all or nothing: a partial list cannot install
+}
+
 function arg(name, fallback) {
   const at = process.argv.indexOf('--' + name);
   return at > -1 && process.argv[at + 1] ? process.argv[at + 1] : fallback;
@@ -133,10 +162,13 @@ function main() {
   const name = 'navaid-' + version + '.zip';
   fs.mkdirSync(out, { recursive: true });
   fs.writeFileSync(path.join(out, name), zip);
+  const siteUrl = arg('site-url', null);
+  const files = deltaFiles(entries, { siteDir: from ? path.resolve(from) : null, siteUrl, outDir: out, baseUrl, version });
   const manifest = {
     version,
     url: baseUrl.replace(/\/$/, '') + '/' + name,
     checksum: createHash('sha256').update(zip).digest('hex'),
+    ...(files ? { files } : {}),
     builtAt: (process.env.SOURCE_DATE_EPOCH
       ? new Date(Number(process.env.SOURCE_DATE_EPOCH) * 1000) : new Date()).toISOString(),
     bytes: zip.length,
