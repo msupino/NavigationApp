@@ -46,9 +46,8 @@ test('page-fit ink box covers the leg kite as drawn (draw scale, along the leg)'
 test('the CVFR chart drops the LSA layer\'s activity sites', async ({ page }) => {
   await boot(page);
   const n = await page.evaluate(async () => {
-    navDataPrefix = 'cvfr';
-    activitySites = [{ lat: 32.1, lng: 34.9, kind: 'parachute' }];
-    areas = null;
+    // The app's own script globals, set the way the other specs set them.
+    new Function("navDataPrefix = 'cvfr'; activitySites = [{ lat: 32.1, lng: 34.9, kind: 'parachute' }]; areas = null;")();
     await loadAreas();
     return activitySites.length;
   });
@@ -78,10 +77,11 @@ test('recorded-track terrain is sampled at the distance it is plotted at', async
 test('a before-only route hint no longer beats a hint matching the next waypoint too', async ({ page }) => {
   await boot(page);
   const r = await page.evaluate(() => {
-    commChangeMap = { HUB: { commChange: true, routeHints: [
+    window.__ccm = { HUB: { commChange: true, routeHints: [
       { before: 'PREV', callSign: 'one' },
       { before: 'PREV', after: 'NEXT', callSign: 'two' },
     ] } };
+    new Function('commChangeMap = window.__ccm;')();
     window.commRouteContextName = () => 'PREV';
     window.commRouteAfterNames = () => ['NEXT'];
     window.commCallSignOptionById = (name, id) => ({ id });
@@ -89,7 +89,7 @@ test('a before-only route hint no longer beats a hint matching the next waypoint
     window.commCallSignDefaultFromOption = opt => opt.id;
     state.waypoints = [{ lat: 32, lng: 34.8, name: 'PREV' }, { lat: 32.1, lng: 34.8, name: 'HUB' }];
     const differing = commRouteHintDefault({ name: 'HUB', index: 1 });
-    commChangeMap.HUB.routeHints[1].callSign = 'one';
+    window.__ccm.HUB.routeHints[1].callSign = 'one';
     const agreeing = commRouteHintDefault({ name: 'HUB', index: 1 });
     return { differing, agreeing };
   });
@@ -102,8 +102,7 @@ test('?graphlegs=1 reloads the graph after a layer switch', async ({ page }) => 
   await boot(page, '&graphlegs=1');
   const got = await page.evaluate(async () => {
     window.routeGraphData = p => Promise.resolve({ nodes: {}, edges: {}, tag: p });
-    _graphLegsGraph = null; _graphLegsLoading = false;
-    navDataPrefix = 'cvfr';
+    new Function("_graphLegsGraph = null; _graphLegsLoading = false; navDataPrefix = 'cvfr';")();
     drawGraphLegs(); await new Promise(r => setTimeout(r, 0));
     const first = _graphLegsGraph && _graphLegsGraph.tag;
     navDataPrefix = 'lsa';

@@ -101,7 +101,7 @@ test('navlog: importing an exercise starts a fresh route, not the old one rename
     state.legs[0].flightSpeed = 140;
     state.notes = [{ lat: 32.5, lng: 35.1, text: 'old note' }];
     state.commChangeSuppressions = ['x'];
-    currentRouteLibraryId = 'old-entry';
+    new Function("currentRouteLibraryId = 'old-entry';")();
     await NavAid.navLog.importExercise(JSON.stringify({
       route: { waypoints: [{ lat: 31.0, lng: 34.5, name: 'P' }, { lat: 31.5, lng: 34.9, name: 'Q' }] },
       navlog: { cruiseAltFt: 3000 },
