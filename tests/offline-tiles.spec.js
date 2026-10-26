@@ -149,6 +149,9 @@ test('one compact status button opens the manager: CVFR first, then every other 
 });
 
 test('coverage is exact, complete packs cannot be redundantly repaired, and old layer tiles are pruned', async ({ page }) => {
+  // Pruning is production-only: a preview shares the origin's tile cache and never deletes from it
+  // (offline-tiles.js previewDeployment). The deployed run serves the app under /pr/<n>/.
+  test.skip(/\/(pr\/\d+|staging)\//.test(process.env.BASE_URL || ''), 'pruning runs only at the origin root');
   await boot(page);
   const r = await page.evaluate(async () => {
     const O = NavAidOfflineTiles;
