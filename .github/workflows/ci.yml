@@ -511,19 +511,35 @@ jobs:
       github.head_ref != 'dev' ||
       github.base_ref != 'main') &&
       (always())
-    needs: [e2e-shard, e2e-specs]
+    needs: [scope, e2e-shard, e2e-specs]
     runs-on: ubuntu-latest
     timeout-minutes: 2
     steps:
       - name: Check every shard passed
+        env:
+          SCOPE: ${{ needs.scope.result }}
+          WANT: ${{ needs.scope.outputs.e2e }}
+          SHARDS: ${{ needs.e2e-shard.result }}
+          SPECS: ${{ needs.e2e-specs.result }}
         run: |
-          # 'skipped' counts as a pass only when the job it depends on was skipped as a
-          # whole -- either the promotion-PR case, or a diff the `scope` job judged unable
-          # to reach a browser test. A shard that FAILS or is cancelled must fail here.
-          for r in "${{ needs.e2e-shard.result }}" "${{ needs.e2e-specs.result }}"; do
+          # 'skipped' counts as a pass only when the `scope` job ran and judged the diff
+          # unable to reach a browser test (or chose the other e2e job). If `scope` itself
+          # failed, both e2e jobs skip -- and reading that as green would pass e2e having
+          # run nothing. (The promotion-PR case skips this whole job, not just its needs.)
+          if [ "$SCOPE" != "success" ]; then
+            echo "❌ the scope job reported '$SCOPE', so no e2e job ran"; exit 1
+          fi
+          for r in "$SHARDS" "$SPECS"; do
             case "$r" in
               success|skipped) ;;
               *) echo "❌ an e2e job reported '$r'"; exit 1 ;;
             esac
           done
+          # And the job scope asked for must actually have run.
+          case "$WANT" in
+            full)  [ "$SHARDS" = success ] || { echo "❌ scope asked for the full suite but e2e-shard was '$SHARDS'"; exit 1; } ;;
+            specs) [ "$SPECS" = success ]  || { echo "❌ scope asked for changed specs but e2e-specs was '$SPECS'"; exit 1; } ;;
+            none)  ;;
+            *) echo "❌ unexpected scope output '$WANT'"; exit 1 ;;
+          esac
           echo "✅ e2e passed (shards: ${{ needs.e2e-shard.result }}, specs: ${{ needs.e2e-specs.result }})"

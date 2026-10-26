@@ -33,13 +33,25 @@ public class XPlaneDiscoveryPlugin extends Plugin {
 
   @PluginMethod
   public void discover(PluginCall call) {
-    if (!isTrustedProductionPage()) {
-      call.reject("X-Plane discovery is available only on production NavAid", "UNTRUSTED_ORIGIN");
-      return;
-    }
-    executor.execute(() -> listen(call));
+    // Plugin methods run on Capacitor's background handler thread, and WebView.getUrl() throws
+    // when called off the UI thread -- which rejected every discover() call. Read the page URL
+    // on the UI thread, then hand the blocking socket work to the executor.
+    getActivity().runOnUiThread(() -> {
+      boolean trusted;
+      try {
+        trusted = isTrustedProductionPage();
+      } catch (RuntimeException error) {
+        trusted = false;
+      }
+      if (!trusted) {
+        call.reject("X-Plane discovery is available only on production NavAid", "UNTRUSTED_ORIGIN");
+        return;
+      }
+      executor.execute(() -> listen(call));
+    });
   }
 
+  // UI thread only (WebView access); see discover().
   private boolean isTrustedProductionPage() {
     String raw = getBridge().getWebView().getUrl();
     if (raw == null) return false;

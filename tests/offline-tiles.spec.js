@@ -149,6 +149,9 @@ test('one compact status button opens the manager: CVFR first, then every other 
 });
 
 test('coverage is exact, complete packs cannot be redundantly repaired, and old layer tiles are pruned', async ({ page }) => {
+  // Pruning is production-only: a preview shares the origin's tile cache and never deletes from it
+  // (offline-tiles.js previewDeployment). The deployed run serves the app under /pr/<n>/.
+  test.skip(/\/(pr\/\d+|staging)\//.test(process.env.BASE_URL || ''), 'pruning runs only at the origin root');
   await boot(page);
   const r = await page.evaluate(async () => {
     const O = NavAidOfflineTiles;
@@ -208,7 +211,8 @@ test('sw.js exempts the tile cache from activate cleanup and serves tiles cache-
   // staging worker wipe the PRODUCTION app-shell cache (Cache Storage is per origin).
   // Cleanup is now scope-owned; the tile bucket is still skipped outright, which is what
   // this test is really about -- a 100+ MB user download must never be collateral.
-  expect(sw).toMatch(/if \(k === CACHE \|\| k === TILE_CACHE\) continue;/);
+  // SHELL_CACHE is this scope's own app-shell cache (see sw.js).
+  expect(sw).toMatch(/if \(k === SHELL_CACHE \|\| k === TILE_CACHE\) continue;/);
   expect(sw).toContain('ownedByThisScope');
   expect(sw).toMatch(/TILE_HOST = 'flight-maps\.com'/);
   const tileBranch = sw.indexOf('url.host === TILE_HOST');

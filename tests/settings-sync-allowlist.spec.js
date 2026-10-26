@@ -96,6 +96,7 @@ const NOT_A_SYNCED_SETTING = [
   [/^navaid\.notamModalSize$/,    'NOTAM sheet dimensions are device-local geometry'],
   [/^navaid\.(sigmet|airmet)ListSize$/, 'SIGMET / AIRMET list dimensions are device-local geometry'],
   [/^navaid\.fpUserSize$/,         'the flight plan window size is device-local geometry'],
+  [/^navaid\.ota(Failed|Installing)Version$/, 'which update bundle this device tried and which failed -- this device only'],
   [/^navaid\.gistCache$/,         'a copy of the remote config, refetched on every load'],
   [/^navaid\.navlog$/,            'exercise scratch: a met table and a compass card from another day are worse than none'],
   [/^navaid\.tracks\./,          'which recorded tracks are drawn locally'],
