@@ -37,9 +37,10 @@
   // The ADS-B aggregators serve data to anyone and CORS headers to nobody, so a browser
   // cannot read them at all -- verified against adsb.lol, adsb.fi, airplanes.live, adsb.one
   // and OpenSky, and against the public CORS proxies, which either time out or rate-limit
-  // long before an 8-second poll. The APK is not a browser: Capacitor's native HTTP makes
-  // the request in Java, where the same-origin rule does not apply. So this feature exists
-  // in the APK and nowhere else, rather than existing everywhere and failing on the desktop.
+  // long before an 8-second poll. The apps are not browsers: Capacitor's native HTTP makes
+  // the request in native code (Java on Android, Swift on iOS), where the same-origin rule does
+  // not apply. So this feature exists in the Android and iOS apps and nowhere else, rather than
+  // existing everywhere and failing on the desktop.
   const nativeHttp = () => {
     const C = typeof window !== 'undefined' && window.Capacitor;
     return (C && typeof C.isNativePlatform === 'function' && C.isNativePlatform()
