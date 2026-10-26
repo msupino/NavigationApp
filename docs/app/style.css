@@ -9091,6 +9091,23 @@ body.theme-light .airfield-phone-row .airfield-phone:visited { color: #1a5fb4; }
 
 .parking-contact-phone { margin-top: 8px; font-size: 1.1em; }
 
+/* Live ATC: a link out to LiveATC's player, after the radios and the phone. The host name is
+   on the link so it reads as leaving NavAid; the whole link is the target, thumb-sized. */
+.live-atc-row .live-atc-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 44px;
+  color: #6fb0ff;
+  text-decoration: none;
+}
+.live-atc-row .live-atc-link:visited { color: #6fb0ff; }
+.live-atc-row .live-atc-role { text-decoration: underline; text-underline-offset: 2px; }
+.live-atc-row .live-atc-host { opacity: .7; font-size: .9em; unicode-bidi: isolate; }
+.live-atc-row .live-atc-link:focus-visible { outline: 2px solid #4c9bff; outline-offset: 2px; border-radius: 4px; }
+body.theme-light .live-atc-row .live-atc-link,
+body.theme-light .live-atc-row .live-atc-link:visited { color: #1a5fb4; }
+
 /* Comm-failure card: read at a glance in a cockpit, so the squawk is the biggest thing on it. */
 .commfail-card { display: grid; gap: 6px; max-width: 360px; }
 .commfail-card .commfail-squawk { font-size: 1.6em; letter-spacing: .04em; }
