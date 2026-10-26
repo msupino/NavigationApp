@@ -19,7 +19,8 @@ test('featureMenubarDrag off pins the top menu in place', async ({ page }) => {
   const flip = (on) => page.evaluate((v) => { NavAid.tuning.featureMenubarDrag = v; window.refreshMenubarPin(); }, on);
   await flip(true);
   await expect(handle).toBeVisible();
-  expect(await page.evaluate(() => document.getElementById('toolbar').style.left)).not.toBe('');
+  // The saved spot is applied on the next frame.
+  await expect.poll(() => page.evaluate(() => document.getElementById('toolbar').style.left)).not.toBe('');
 
   await flip(false);
   await expect(page.locator('#toolbar')).toHaveClass(/menubar-pinned/);
