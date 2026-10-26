@@ -501,3 +501,48 @@ test('a 0% report is "started", not progress: the row stays indeterminate until 
   expect(src).toMatch(/if \(v === 0\) return;/);
   void page;
 });
+
+// --- delta updates -------------------------------------------------------------------------
+// The full zip is ~40 MB; most of it (chart images, terrain) never changes between updates.
+// With a file list the plugin reuses what it already holds and fetches the rest.
+const FILES = [
+  { file_name: 'index.html', file_hash: 'b'.repeat(64), download_url: 'https://navaid.supino.org/ota/1.0-new/index.html' },
+  { file_name: 'app/ui.js', file_hash: 'c'.repeat(64), download_url: 'https://navaid.supino.org/app/ui.js' },
+];
+
+test('a manifest with a file list downloads as a delta', async ({ page }) => {
+  await boot(page);
+  await stub(page);
+  const { result, seen } = await check(page, Object.assign({}, MANIFEST, { files: FILES }));
+  expect(result.updated).toBe(true);
+  expect(seen.downloads.length).toBe(1);
+  expect(seen.downloads[0].manifest).toEqual(FILES);
+});
+
+test('a delta that fails falls back to the full zip', async ({ page }) => {
+  await boot(page);
+  await stub(page);
+  await page.evaluate(() => {
+    const p = window.Capacitor.Plugins.CapacitorUpdater, real = p.download;
+    p.download = async (args) => { if (args.manifest) { window.__ota.downloads.push(args); throw new Error('file replaced'); } return real(args); };
+  });
+  const { result, seen } = await check(page, Object.assign({}, MANIFEST, { files: FILES }));
+  expect(result.updated).toBe(true);
+  expect(seen.downloads.length).toBe(2);
+  expect(seen.downloads[1].manifest).toBeUndefined();
+  expect(seen.downloads[1].checksum).toBe(MANIFEST.checksum);
+});
+
+test('build-ota: a file the site already serves points at the site; one that differs is published beside the zip', async () => {
+  const fs = require('fs'), os = require('os'), path = require('path');
+  const { deltaFiles } = await import(path.join(__dirname, '..', 'mobile', 'scripts', 'build-ota.mjs'));
+  const site = fs.mkdtempSync(path.join(os.tmpdir(), 'site-')), out = fs.mkdtempSync(path.join(os.tmpdir(), 'ota-'));
+  fs.mkdirSync(path.join(site, 'app'));
+  fs.writeFileSync(path.join(site, 'app', 'ui.js'), 'same');
+  fs.writeFileSync(path.join(site, 'index.html'), '<head></head>');
+  const entries = [{ name: 'app/ui.js', data: Buffer.from('same') }, { name: 'index.html', data: Buffer.from('<head><script>embedded</script></head>') }];
+  const files = deltaFiles(entries, { siteDir: site, siteUrl: 'https://navaid.supino.org', outDir: out, baseUrl: 'https://navaid.supino.org/ota', version: '1.0-x' });
+  expect(files.map(f => f.download_url)).toEqual(['https://navaid.supino.org/app/ui.js', 'https://navaid.supino.org/ota/1.0-x/index.html']);
+  expect(fs.readFileSync(path.join(out, '1.0-x', 'index.html'), 'utf8')).toContain('embedded');
+  expect(files[0].file_hash).toBe(require('crypto').createHash('sha256').update('same').digest('hex'));
+});
