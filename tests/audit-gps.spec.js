@@ -473,3 +473,10 @@ test('a track recorded already above sea level keeps that through saving, and it
   expect(r.kept).toEqual([1, 0]);
   expect(r.msl).toBeGreaterThan(r.ell);           // the geoid term was not taken off the MSL point
 });
+
+test('a preview worker never deletes any unscoped shell cache (each root deploys its own CACHE name)', () => {
+  // Review: staging's CACHE is navaid-<dev sha>, not production's navaid-<main sha>, so guarding
+  // only k === CACHE left production's shell deletable by an old /staging/ stamp.
+  const src = require('fs').readFileSync(require('path').join(__dirname, '..', 'docs', 'sw.js'), 'utf8');
+  expect(src).toMatch(/if \(SHELL_CACHE !== CACHE && \/\^navaid-\[\^:\]\+\$\/\.test\(k\)\) continue;/);
+});
