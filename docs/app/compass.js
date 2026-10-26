@@ -30,7 +30,9 @@
     const p = [];
     // Left to right: in a Hebrew page "045°" came out as "°045".
     p.push('<svg viewBox="0 0 360 360" class="compass-rose" direction="ltr" aria-hidden="true" focusable="false">');
-    p.push('<g class="compass-card">');
+    // The degree ring is fixed, 360 at the top like the bezel of a hand compass; only the star
+    // inside turns, its N on magnetic north (asked: the inner rose turns, no outside marker).
+    p.push('<g class="compass-ring-fixed">');
     p.push(`<circle cx="${C}" cy="${C}" r="${R + 28}" class="compass-face"/>`);
     for (const r of [44, 78, 112]) p.push(`<circle cx="${C}" cy="${C}" r="${r}" class="compass-guide"/>`);
     p.push(`<circle cx="${C}" cy="${C}" r="${R}" class="compass-ring"/>`);
@@ -45,6 +47,8 @@
       const [x, y] = pol(R + 14, d);
       p.push(`<text x="${f(x)}" y="${f(y)}" class="compass-num${d % 90 === 0 ? ' cardinal' : ''}" transform="rotate(${d} ${f(x)} ${f(y)})">${d === 0 ? '360' : String(d).padStart(3, '0')}</text>`);
     }
+    p.push('</g>');
+    p.push('<g class="compass-card">');
     const point = (deg, len, half, c1, c2) => {
       const [tx, ty] = pol(len, deg), [lx, ly] = pol(half, deg - 90), [rx, ry] = pol(half, deg + 90);
       p.push(`<polygon points="${C},${C} ${f(lx)},${f(ly)} ${f(tx)},${f(ty)}" fill="${c1}" class="compass-pt"/>`);
@@ -70,10 +74,9 @@
         + `<tspan x="${f(x)}" dy="-6">${INTER[d][0]}</tspan><tspan x="${f(x)}" dy="15" class="compass-inter-deg">${String(d).padStart(3, '0')}°</tspan></text>`);
     }
     p.push('</g>');
-    // The lubber line and the aircraft: the way the phone's top points. Fixed at the top with the
-    // card turning (heading up); turning over a still card (north up).
+    // The aircraft in the middle: the way the phone's top points. Still, with the star turning
+    // (heading up); turning over a still star (north up).
     p.push('<g class="compass-ac">');
-    p.push(`<polygon points="${C},${C - R + 2} ${C - 10},${C - R - 20} ${C + 10},${C - R - 20}" class="compass-lubber"/>`);
     p.push(`<path d="M${C} ${C - 24} l4 15 h15 l0 6 l-15 4 l-2 15 l7 4 v4 l-9 -2 l-9 2 v-4 l7 -4 l-2 -15 l-15 -4 l0 -6 h15 z" class="compass-plane"/>`);
     p.push('</g>');
     p.push('</svg>');
@@ -298,8 +301,12 @@
       if (!info || !Number.isFinite(info.east)) { varLine.hidden = true; return; }
       const e = Math.round(info.east);
       const side = e === 0 ? '' : (e > 0 ? str('compassVarE', 'E') : str('compassVarW', 'W'));
-      // The number isolated left to right: in Hebrew "5°" came out as "°5".
-      varLine.textContent = str('compassVar', 'VAR') + ' \u2066' + Math.abs(e) + '°\u2069' + side;
+      // The number in its own left-to-right element: in Hebrew "5°" came out as "°5", and the
+      // isolate marks alone did not hold it.
+      const num = document.createElement('bdi');
+      num.dir = 'ltr';
+      num.textContent = Math.abs(e) + '°';
+      varLine.replaceChildren(str('compassVar', 'VAR') + ' ', num, side);
       varLine.hidden = false;
     };
     const refresh = () => {

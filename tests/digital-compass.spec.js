@@ -187,7 +187,7 @@ test('source: magnetic, true (with the app\'s variation) or the GPS track; kept 
   await expect(page.locator('.compass-deg')).toHaveText('100°');
   await expect(page.locator('.compass-ref')).toHaveText('MAG');
   await expect(page.locator('.compass-status')).toContainText('No GPS track');
-  await expect(page.locator('.compass-var')).toHaveText(/^VAR \u2066\d+°\u2069[EW]?$/);
+  await expect(page.locator('.compass-var')).toHaveText(/^VAR \d+°[EW]?$/);
   await page.evaluate(() => { new Function('gpsOwn = { lat: 32, lng: 35, hdg: 200, t: Date.now(), hdgCompass: false }; gpsLastGS = 90;')(); });
   const gpsWant = await page.evaluate(() => String(Math.round(toMagnetic(200)) % 360).padStart(3, '0') + '°');
   await expect(page.locator('.compass-deg')).toHaveText(gpsWant, { timeout: 3000 });
@@ -231,7 +231,7 @@ test('the variation shows while the compass reads magnetic, and not for true', a
     window.dispatchEvent(Object.assign(new Event('deviceorientation'), { webkitCompassHeading: 50 })); });
   const east = await page.evaluate(() => Math.round(magVarInfo().east));
   const side = east === 0 ? '' : (east > 0 ? 'E' : 'W');
-  await expect(page.locator('.compass-var')).toHaveText('VAR \u2066' + Math.abs(east) + '°\u2069' + side);
+  await expect(page.locator('.compass-var')).toHaveText('VAR ' + Math.abs(east) + '°' + side);
   await page.locator('.compass-sources button[data-source="true"]').click();
   await expect(page.locator('.compass-var')).toBeHidden();
 });
@@ -328,4 +328,24 @@ test('the card turns the short way through north: 359 to 001 is +2°, not a full
   });
   expect(Math.abs(r.b - r.a)).toBeLessThan(3);
   expect(r.deg).toBe('001°');
+});
+
+test('the degree ring stays still and only the star turns; no marker outside the ring', async ({ page }) => {
+  // Asked: the inner rose rotates, the ring does not, and there is no external marker.
+  await boot(page);
+  const r = await page.evaluate(() => {
+    setTune('compassSmoothing', 1); localStorage.setItem('navaid.compassMode', 'heading'); localStorage.setItem('navaid.compassSource', 'mag');
+    NavAid.compass.show();
+    window.dispatchEvent(Object.assign(new Event('deviceorientation'), { webkitCompassHeading: 70 }));
+    return { ring: document.querySelector('.compass-ring-fixed').getAttribute('transform'),
+      star: document.querySelector('.compass-card').getAttribute('transform'),
+      ringHasTicks: !!document.querySelector('.compass-ring-fixed .compass-tick'),
+      starHasTicks: !!document.querySelector('.compass-card .compass-tick'),
+      lubber: document.querySelectorAll('.compass-lubber').length };
+  });
+  expect(r.ring).toBeNull();
+  expect(r.star).toContain('rotate(-70.0');
+  expect(r.ringHasTicks).toBe(true);
+  expect(r.starHasTicks).toBe(false);
+  expect(r.lubber).toBe(0);
 });
