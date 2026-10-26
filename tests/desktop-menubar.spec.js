@@ -19,6 +19,12 @@ async function bootDesktop(page, opts = {}) {
   await page.waitForFunction(() => typeof state !== 'undefined');
 }
 
+// The menubar is pinned by default (featureMenubarDrag off); the gist turns dragging on.
+const allowDrag = (page) => page.evaluate(() => {
+  NavAid.tuning.featureMenubarDrag = true;
+  window.refreshMenubarPin();
+});
+
 test.describe('Desktop menubar layout', () => {
   test('uses a top menubar', async ({ page }) => {
     await bootDesktop(page);
@@ -33,8 +39,8 @@ test.describe('Desktop menubar layout', () => {
     expect(box.width).toBeGreaterThan(400);
     expect(box.width).toBeLessThan(1280 - 12);
     expect(box.height).toBeLessThanOrEqual(36);
-    // The drag grip is shown on desktop (the bar is draggable).
-    await expect(page.locator('#toolbar-handle')).toBeVisible();
+    // Pinned by default: no drag grip.
+    await expect(page.locator('#toolbar-handle')).toBeHidden();
 
     const mapBox = await page.locator('#map').boundingBox();
     expect(mapBox).not.toBeNull();
@@ -44,6 +50,7 @@ test.describe('Desktop menubar layout', () => {
 
   test('drag grip repositions the floating bar and persists the position', async ({ page }) => {
     await bootDesktop(page);
+    await allowDrag(page);
     const bar = page.locator('#toolbar');
     const grip = page.locator('#toolbar-handle');
     await expect(grip).toBeVisible();
@@ -81,7 +88,10 @@ test.describe('Desktop menubar layout', () => {
       } catch (e) {}
     });
     await page.goto('?lang=en');
-    await page.waitForFunction(() => typeof state !== 'undefined');
+    await page.waitForFunction(() => typeof state !== 'undefined' && typeof window.refreshMenubarPin === 'function');
+    // Pinned by default, so the saved spot waits for dragging to be allowed.
+    expect(await page.evaluate(() => document.getElementById('toolbar').style.left)).toBe('');
+    await allowDrag(page);
     // Position is re-applied via requestAnimationFrame after load — wait for it.
     await page.waitForFunction(() => {
       const t = document.getElementById('toolbar');

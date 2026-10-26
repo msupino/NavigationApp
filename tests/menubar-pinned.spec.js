@@ -1,6 +1,6 @@
 // @ts-check
-// The gist's `featureMenubarDrag` off pins the desktop top menu: no grip to drag it by, and a
-// position saved by an earlier drag is not applied. On again, the grip and the saved spot return.
+// The gist's `featureMenubarDrag` off (the default) pins the desktop top menu: no grip to drag it
+// by, and a position saved by an earlier drag is not applied. On, the grip and the saved spot return.
 const { test, expect } = require('./_setup');
 
 test.use({ viewport: { width: 1280, height: 800 } });
@@ -13,8 +13,13 @@ test('featureMenubarDrag off pins the top menu in place', async ({ page }) => {
   await page.waitForFunction(() => typeof window.refreshMenubarPin === 'function'
     && typeof toolbarUsesDesktopMenu === 'function' && toolbarUsesDesktopMenu());
   const handle = page.locator('#toolbar-handle');
-  await expect(handle).toBeVisible();
+  // Pinned out of the box.
+  await expect(handle).toBeHidden();
+  await expect(page.locator('#toolbar')).toHaveClass(/menubar-pinned/);
   const flip = (on) => page.evaluate((v) => { NavAid.tuning.featureMenubarDrag = v; window.refreshMenubarPin(); }, on);
+  await flip(true);
+  await expect(handle).toBeVisible();
+  expect(await page.evaluate(() => document.getElementById('toolbar').style.left)).not.toBe('');
 
   await flip(false);
   await expect(page.locator('#toolbar')).toHaveClass(/menubar-pinned/);

@@ -1125,7 +1125,7 @@ NavAid.tuningDefaults = {
   featureAssistant: { value: false, type: 'bool', label: 'Feature: AI assistant button' },
   featureDisclaimer: { value: true, type: 'bool', label: 'Safety notice on first run' },
   featureOtaUpdates: { value: true, type: 'bool', label: 'Embedded build fetches web updates' },
-  featureMenubarDrag: { value: true, type: 'bool', label: 'Feature: the desktop top menu can be dragged (off pins it in place)' },
+  featureMenubarDrag: { value: false, type: 'bool', label: 'Feature: the desktop top menu can be dragged (off pins it in place)' },
   featureTabletDesktop: { value: false, type: 'bool', label: 'Feature: iPad / tablet uses the desktop layout, not the phone deck' },
   // The reverse-route warning is the one toast a pilot has to act on, so it gets its own
   // dwell time and its own attention -- 2.5s alongside 'route saved' was not enough to read
