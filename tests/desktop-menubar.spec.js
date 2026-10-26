@@ -10,8 +10,6 @@ async function bootDesktop(page, opts = {}) {
     try {
       localStorage.clear();
       sessionStorage.clear();
-      if (options.collapsed) localStorage.setItem('navaid.toolbarCollapsed', '1');
-      if (options.pos) localStorage.setItem('navaid.toolbarPos', JSON.stringify(options.pos));
       for (const sec of options.openSections || []) {
         localStorage.setItem('navaid.sec.' + sec, '1');
       }
@@ -22,8 +20,8 @@ async function bootDesktop(page, opts = {}) {
 }
 
 test.describe('Desktop menubar layout', () => {
-  test('uses a top menubar and ignores saved mobile drag/collapse state', async ({ page }) => {
-    await bootDesktop(page, { collapsed: true, pos: { x: 220, y: 180 } });
+  test('uses a top menubar', async ({ page }) => {
+    await bootDesktop(page);
 
     const toolbar = page.locator('#toolbar');
     const box = await toolbar.boundingBox();
@@ -35,11 +33,8 @@ test.describe('Desktop menubar layout', () => {
     expect(box.width).toBeGreaterThan(400);
     expect(box.width).toBeLessThan(1280 - 12);
     expect(box.height).toBeLessThanOrEqual(36);
-    await expect(toolbar).not.toHaveClass(/collapsed/);
-    // The drag grip is shown on desktop (the bar is draggable); the
-    // collapse toggle stays hidden.
+    // The drag grip is shown on desktop (the bar is draggable).
     await expect(page.locator('#toolbar-handle')).toBeVisible();
-    await expect(page.locator('#toolbar-toggle')).toBeHidden();
 
     const mapBox = await page.locator('#map').boundingBox();
     expect(mapBox).not.toBeNull();

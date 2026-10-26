@@ -2994,8 +2994,6 @@ window.S = Object.assign({
   editLockOffToast: 'Route unlocked',
   followLockOn: 'Following your aircraft — tap to stop following',
   followLockOff: 'Not following — tap to follow your aircraft',
-  expandMenu: 'Expand menu',
-  collapseMenu: 'Collapse menu',
   summaryLegs: 'Legs',
   summaryDist: 'Distance',
   summaryTime: 'Total time',

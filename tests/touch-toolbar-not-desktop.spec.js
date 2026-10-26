@@ -60,9 +60,7 @@ test('a desktop still gets the menubar', async ({ page }) => {
   const desktop = await page.evaluate(() => ({
     menubar: toolbarUsesDesktopMenu(),
     fine: window.matchMedia('(pointer: fine)').matches,
-    toggle: getComputedStyle(document.getElementById('toolbar-toggle')).display,
   }));
   expect(desktop.fine).toBe(true);
   expect(desktop.menubar).toBe(true);
-  expect(desktop.toggle).toBe('none');     // nothing to collapse in the menubar layout
 });

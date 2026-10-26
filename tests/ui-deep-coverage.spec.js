@@ -560,13 +560,6 @@ test.describe('Charts modal navigation', () => {
   });
 });
 
-// ---------------------------------------------------------------------------
-// Toolbar drag (#toolbar-handle → navaid.toolbarPos.<lang>)
-// ---------------------------------------------------------------------------
-test.describe('Toolbar drag', () => {
-  test.use({ viewport: { width: 390, height: 844 } });
-
-});
 
 // ---------------------------------------------------------------------------
 // Rotate dial (map rotation → navaid.bearing)

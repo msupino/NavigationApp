@@ -24,8 +24,6 @@ test('on an iPad the deck replaces the old menu entirely', async ({ page }) => {
   expect(await page.evaluate(() => matchMedia('(pointer: coarse)').matches)).toBe(true);
   await expect(page.locator('#deck-bar')).toBeVisible();
   await expect(page.locator('#toolbar')).toBeHidden();
-  // Even with a saved "expanded" from before the deck existed.
-  await page.evaluate(() => { localStorage.setItem('navaid.toolbarCollapsed', '0'); });
   await page.reload();
   await boot(page);
   await expect(page.locator('#toolbar')).toBeHidden();

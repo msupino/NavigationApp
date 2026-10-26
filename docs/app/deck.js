@@ -323,7 +323,6 @@
     const next = bar.nextSibling;
     const inline = bar.getAttribute('style') || '';
     bar.removeAttribute('style');              // a dragged position means nothing in a sheet
-    bar.classList.remove('collapsed');
     bar.classList.add('deck-hosted');
     body.appendChild(bar);
     restore = () => {
@@ -332,7 +331,6 @@
       if (inline) bar.setAttribute('style', inline);
       if (next && next.parentNode === parent) parent.insertBefore(bar, next);
       else parent.appendChild(bar);
-      if (typeof window.collapseToolbarForMapTool === 'function') window.collapseToolbarForMapTool();
     };
   }
 
@@ -364,7 +362,6 @@
     closeSheet();
     closeOverlays();
     if (typeof window.closeToolbarMenus === 'function') window.closeToolbarMenus();
-    if (typeof window.collapseToolbarForMapTool === 'function') window.collapseToolbarForMapTool();
     if (typeof state === 'object' && state && state.selected) {
       state.selected = null;
       if (typeof showInspector === 'function') showInspector();

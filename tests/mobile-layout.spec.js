@@ -1,6 +1,6 @@
 // @ts-check
 // Mobile-layout regressions. On phones (<=680px) the app must not blanket the
-// map: toolbar starts collapsed, the inspector is a bottom sheet, the flight
+// map: the inspector is a bottom sheet, the flight
 // plan scrolls sideways, and floating chrome hides under modals.
 const { test, expect } = require('./_setup');
 
@@ -8,7 +8,6 @@ async function freshBoot(page, { width, height }) {
   await page.setViewportSize({ width, height });
   await page.addInitScript(() => {
     try {
-      localStorage.removeItem('navaid.toolbarCollapsed');
       localStorage.removeItem('navaid.inspPos');
     } catch (e) {}
   });
@@ -19,13 +18,6 @@ async function freshBoot(page, { width, height }) {
 
 const MOBILE = { width: 390, height: 844 };
 const DESKTOP = { width: 1200, height: 800 };
-
-test('mobile: toolbar starts collapsed; desktop expanded', async ({ page }) => {
-  await freshBoot(page, MOBILE);
-  await expect(page.locator('#toolbar')).toHaveClass(/collapsed/);
-  await freshBoot(page, DESKTOP);
-  await expect(page.locator('#toolbar')).not.toHaveClass(/collapsed/);
-});
 
 test('mobile: inspector renders as a full-width bottom sheet', async ({ page }) => {
   await freshBoot(page, MOBILE);

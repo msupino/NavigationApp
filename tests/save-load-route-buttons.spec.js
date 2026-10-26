@@ -13,7 +13,6 @@ async function boot(page, lang = 'en') {
   await page.setViewportSize({ width: 600, height: 800 });
   await page.addInitScript(() => {
     try {
-      localStorage.setItem('navaid.toolbarCollapsed', '0');
       for (const s of ['build', 'view', 'display', 'charts', 'export', 'print', 'settings']) {
         localStorage.setItem('navaid.sec.' + s, '1');
       }

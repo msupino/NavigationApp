@@ -146,7 +146,7 @@ test('Map puts everything away again', async ({ page }) => {
   });
   await page.evaluate(() => document.querySelector('.deck-btn-map').click());
   const got = await page.evaluate(() => ({
-    menu: document.getElementById('toolbar').classList.contains('collapsed'),
+    menu: getComputedStyle(document.getElementById('toolbar')).display === 'none',
     panel: document.getElementById('inspector').classList.contains('hidden'),
     selected: state.selected,
   }));
@@ -255,11 +255,10 @@ test('Menu opens the menu inside the sheet, at the working height', async ({ pag
     // and not the one most taps are for.
     forced: document.querySelectorAll('.tb-section.open').length,
     pressed: document.querySelector('.deck-btn-menu').getAttribute('aria-pressed'),
-    // ...minus the two controls that belonged to the floating card.
+    // ...minus the menubar's drag grip.
     handle: document.getElementById('toolbar-handle').getClientRects().length,
-    burger: document.getElementById('toolbar-toggle').getClientRects().length,
   }));
-  expect(got).toEqual({ hosted: true, forced: 0, pressed: 'true', handle: 0, burger: 0 });
+  expect(got).toEqual({ hosted: true, forced: 0, pressed: 'true', handle: 0 });
 });
 
 test('the grip cycles the three heights', async ({ page }) => {
@@ -301,10 +300,10 @@ test('dragging it down dismisses it, and the menu goes back where it came from',
   const got = await page.evaluate(() => {
     const bar = document.getElementById('toolbar');
     return { parent: bar.parentNode.tagName, hosted: bar.classList.contains('deck-hosted'),
-             collapsed: bar.classList.contains('collapsed') };
+             shown: bar.getClientRects().length > 0 };
   });
   // Back in the body, closed, and no longer wearing the sheet's layout.
-  expect(got).toEqual({ parent: 'BODY', hosted: false, collapsed: true });
+  expect(got).toEqual({ parent: 'BODY', hosted: false, shown: false });
 });
 
 test('dragging it up snaps to the next height rather than wherever the finger stopped', async ({ page }) => {
@@ -340,7 +339,7 @@ test('Map clears the chart: the plan, the charts, the menu and the panel', async
     fpOpen: typeof fpOpen !== 'undefined' ? fpOpen : null,
     stored: sessionStorage.getItem('navaid.fpOpen'),
     sheet: document.getElementById('deck-sheet').hidden,
-    menu: document.getElementById('toolbar').classList.contains('collapsed'),
+    menu: getComputedStyle(document.getElementById('toolbar')).display === 'none',
     sections: document.querySelectorAll('.tb-section.open').length,
   }));
   expect(got).toEqual({ overlays: 0, fpOpen: false, stored: null, sheet: true, menu: true, sections: 0 });
@@ -359,7 +358,7 @@ test('Map closes the menu', async ({ page }) => {
   await page.evaluate(() => document.querySelector('.deck-btn-map').click());
   const got = await page.evaluate(() => ({
     sheet: document.getElementById('deck-sheet').hidden,
-    menu: document.getElementById('toolbar').classList.contains('collapsed'),
+    menu: getComputedStyle(document.getElementById('toolbar')).display === 'none',
     // No section left open behind the closed menu: reopening it should show the menu, not
     // whatever was being read last time.
     sections: document.querySelectorAll('.tb-section.open').length,

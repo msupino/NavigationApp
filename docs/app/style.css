@@ -673,41 +673,9 @@ body.deck-on #deck-sheet #wp-search { min-height: 48px; font-size: 16px; }
 #toolbar .drag-handle:hover { color: #e8e8e8; }
 #toolbar.dragging { opacity: 0.92; }
 #toolbar.dragging .drag-handle { cursor: grabbing; }
-
-#toolbar-toggle {
-  align-self: center;
-  display: inline-flex;
-  flex-direction: column;
-  justify-content: space-between;
-  width: 18px;
-  height: 13px;
-  cursor: pointer;
-  padding: 4px 12px;
-  box-sizing: content-box;
-  color: #b9b3b3;
-  user-select: none;
-  -webkit-user-select: none;
-}
-#toolbar-toggle span {
-  display: block;
-  width: 18px;
-  height: 2px;
-  background: currentColor;
-  border-radius: 1px;
-}
-#toolbar-toggle:hover { color: #fff; }
 /* Collapsed: keep the drag handle, the toggle, the language picker, and the footer links visible. */
-#toolbar.collapsed > *:not(#toolbar-handle):not(#toolbar-toggle):not(#lang-toggle):not(#footer-links) {
-  display: none;
-}
 /* With the sections hidden the panel kept the expanded layout's gaps and width,
    leaving ~120px of blank space around the ☰. Shrink it to its remaining rows. */
-#toolbar.collapsed {
-  gap: 2px;
-  width: max-content;
-  min-width: 0;
-}
-#toolbar.collapsed #toolbar-handle { width: auto; }
 /* ...and the four rows were still four rows: drag handle, ☰, language, links, each
    ~50px tall, so a closed menu ate a quarter of a phone screen. The handle, the ☰ and
    the language picker are all small controls -- put them on ONE row and let the links
@@ -717,21 +685,6 @@ body.deck-on #deck-sheet #wp-search { min-height: 48px; font-size: 16px; }
    a platform's font metrics made the picker a few pixels wider than the card's cap, which put
    the language on a line of its own and made a closed menu three rows tall on a phone. The
    picker's column is the flexible one, so a tight card shrinks it instead of breaking the row. */
-#toolbar.collapsed {
-  display: grid;
-  grid-template-columns: auto auto minmax(0, 1fr);
-  align-items: center;
-  justify-items: center;
-  column-gap: 6px;
-  /* Sized to the CONTROLS, not to the links: at 300px the closed menu still reached most
-     of the way across a phone and covered the Zulu clock. The links wrap underneath. */
-  width: max-content;
-  /* 232 px left the Hebrew row one pixel short of fitting the icon and both labels, so it
-     wrapped a button for the sake of that pixel. Eight more keeps the card clear of the Zulu
-     clock at 360 px and lets the short-label languages stay on one line. */
-  max-width: min(96vw, 240px);
-  padding: 4px 6px;
-}
 /* In Hebrew the clock mirrors to the LEFT, so the default floating toolbar belongs on the
    RIGHT in both states. Keeping this independent of .collapsed also prevents the toolbar
    from jumping across a touch tablet when the menu expands. A dragged position (inline
@@ -742,34 +695,8 @@ html[dir="rtl"] #toolbar {
 }
 /* The remaining height was the 44px touch minimums stacked with their own padding, on a
    panel that is closed. Keep the targets comfortable but stop them padding each other. */
-#toolbar.collapsed > #toolbar-toggle {
-  min-height: 40px;
-  padding: 2px 12px;
-}
-#toolbar.collapsed > #toolbar-handle { padding: 0 6px 2px; }
-#toolbar.collapsed > #footer-links {
-  padding: 0 4px 2px;
-  font-size: 12px;
-}
-#toolbar.collapsed > #footer-links > * { padding-top: 2px; padding-bottom: 2px; }
-#toolbar.collapsed > #footer-links {
-  grid-column: 1 / -1;     /* own row, below the controls */
-  flex: 0 1 100%;
-  margin-top: 0;
-  padding-top: 2px;
-  flex-wrap: wrap;
-  /* ...and it may wrap to two short lines rather than forcing the panel to the width of
-     both links on one line, which is what stretched a closed menu across the screen. */
-  row-gap: 0;
-  column-gap: 10px;
-}
 /* The separator under the language picker belongs to the expanded stack; on one row it
    would draw a rule through the middle of the controls. */
-#toolbar.collapsed > #lang-toggle {
-  padding-bottom: 0;
-  margin-bottom: 0;
-  border-bottom: 0;
-}
 
 /* Always-visible language picker — small separator from the sections below. */
 #toolbar > #lang-toggle {
@@ -919,7 +846,6 @@ html[dir="rtl"] #toolbar {
   /* Pinned by the gist (featureMenubarDrag off): nothing to grab. */
   :where(html.menubar) #toolbar.menubar-pinned > #toolbar-handle { display: none; }
 
-  :where(html.menubar) #toolbar-toggle,
   :where(html.menubar) #app-version {
     display: none;
   }
@@ -6274,7 +6200,6 @@ body.theme-light #insp-title.editable:focus {
 body.theme-light .tb-head-actions { border-bottom-color: #c6ccd6; }
 body.theme-light .tb-section-head,
 body.theme-light #toolbar .drag-handle,
-body.theme-light #toolbar-toggle,
 body.theme-light #toolbar .slider-val,
 body.theme-light #toolbar .slider-reset,
 body.theme-light #toolbar .navtoggle .hint,
@@ -6308,7 +6233,6 @@ body.theme-light #tuning-panel .tune-label {
 }
 body.theme-light .tb-section-head:hover,
 body.theme-light #toolbar .drag-handle:hover,
-body.theme-light #toolbar-toggle:hover,
 body.theme-light #toolbar .footer-link:hover,
 body.theme-light .charts-airport-header:hover,
 body.theme-light #insp-close:hover,
@@ -7167,18 +7091,6 @@ html[data-theme="light"] #insp-body .insp-actions {
   }
   /* The hamburger is THE way to reach every menu on a phone, and it was 42x21 --
      the smallest target in the app sat on its most-used control. */
-  :where(html:not(.menubar)) #toolbar-toggle {
-    min-width: 44px;
-    min-height: 44px;
-    display: inline-flex;
-    align-items: center;
-    /* center (for the 44px touch target) replaces the base rule's
-       space-between, which is what spaced the three bars — without a row-gap
-       they stack into one 6px smudge, and this toggle is the ONLY way into the
-       menus on a phone (it is display:none from 681px up). */
-    justify-content: center;
-    row-gap: 4px;
-  }
   /* The ☰ is the only way in and out of the menus on a phone, and it scrolled away with
      them: open Display, scroll to the bottom of a long section, and the control that
      closes it is somewhere above the top of the screen. Pin it, and pin it as the SAME
@@ -7186,30 +7098,22 @@ html[data-theme="light"] #insp-body .insp-actions {
      closing the panel does not rearrange its head. The closed card is already a
      three-column grid; this makes the open one match, with everything below spanning
      all three columns. */
-  :where(html:not(.menubar)) #toolbar:not(.collapsed) {
+  :where(html:not(.menubar)) #toolbar.deck-hosted {
     display: grid;
     grid-template-columns: auto auto minmax(0, 1fr);
     align-items: center;
     column-gap: 0;
     row-gap: 4px;
   }
-  :where(html:not(.menubar)) #toolbar:not(.collapsed) > * { grid-column: 1 / -1; }
-  :where(html:not(.menubar)) #toolbar:not(.collapsed) > #toolbar-handle { grid-column: 1; grid-row: 1; }
-  :where(html:not(.menubar)) #toolbar:not(.collapsed) > #toolbar-toggle { grid-column: 2; grid-row: 1; }
-  :where(html:not(.menubar)) #toolbar:not(.collapsed) > #lang-toggle    { grid-column: 3; grid-row: 1; }
+  :where(html:not(.menubar)) #toolbar.deck-hosted > * { grid-column: 1 / -1; }
+  :where(html:not(.menubar)) #toolbar.deck-hosted > #toolbar-handle { grid-column: 1; grid-row: 1; }
+  :where(html:not(.menubar)) #toolbar.deck-hosted > #lang-toggle    { grid-column: 3; grid-row: 1; }
   /* The language picker moved into Settings: the ☰ takes the rest of the pinned band, and
      with it the far edge's bleed into the panel padding. */
-  :where(html:not(.menubar)) #toolbar:not(.collapsed):not(:has(> #lang-toggle)) > #toolbar-toggle {
-    grid-column: 2 / -1; margin-right: -6px; padding-right: 6px;
-  }
-  html:where(:not(.menubar))[dir="rtl"] #toolbar:not(.collapsed):not(:has(> #lang-toggle)) > #toolbar-toggle {
-    margin-right: 0; padding-right: 0; margin-left: -6px; padding-left: 6px;
-  }
   /* One pinned band, not three floating chips: opaque, and stretched into the panel's
      padding on every side, or the rows sliding past show through the seams. */
-  :where(html:not(.menubar)) #toolbar:not(.collapsed) > #toolbar-handle,
-  :where(html:not(.menubar)) #toolbar:not(.collapsed) > #toolbar-toggle,
-  :where(html:not(.menubar)) #toolbar:not(.collapsed) > #lang-toggle {
+  :where(html:not(.menubar)) #toolbar.deck-hosted > #toolbar-handle,
+  :where(html:not(.menubar)) #toolbar.deck-hosted > #lang-toggle {
     position: sticky;
     top: 0;
     z-index: 3;
@@ -7221,12 +7125,12 @@ html[data-theme="light"] #insp-body .insp-actions {
     background: rgba(20, 18, 18, 0.97);
     border-bottom: 1px solid #3a3636;
   }
-  :where(html:not(.menubar)) #toolbar:not(.collapsed) > #toolbar-handle { margin-left: -6px; padding-left: 6px; }
+  :where(html:not(.menubar)) #toolbar.deck-hosted > #toolbar-handle { margin-left: -6px; padding-left: 6px; }
   /* Record and Location ride with the head, not at the far end of the menu. They are the two
      controls a pilot reaches for with the aeroplane already moving, and they used to sit
      below every section -- open Display and they are a scroll away. Pinned as the second
      band, directly under the ☰ that is always there. */
-  :where(html:not(.menubar)) #toolbar:not(.collapsed) > #footer-links {
+  :where(html:not(.menubar)) #toolbar.deck-hosted > #footer-links {
     grid-row: 2;
     position: sticky;
     top: var(--navaid-tb-head-h, 44px);
@@ -7236,24 +7140,23 @@ html[data-theme="light"] #insp-body .insp-actions {
     background: rgba(20, 18, 18, 0.97);
     border-bottom: 1px solid #3a3636;
   }
-  :where(html:not(.menubar)) body.theme-light #toolbar:not(.collapsed) > #footer-links {
+  :where(html:not(.menubar)) body.theme-light #toolbar.deck-hosted > #footer-links {
     background: rgba(250, 252, 255, 0.98);
     border-bottom-color: #cfd5df;
   }
-  :where(html:not(.menubar)) #toolbar:not(.collapsed) > #lang-toggle {
+  :where(html:not(.menubar)) #toolbar.deck-hosted > #lang-toggle {
     margin-right: -6px;
     padding-right: 6px;
     margin-bottom: 0;         /* its expanded-stack separator is the band's border now */
   }
-  html:where(:not(.menubar))[dir="rtl"] #toolbar:not(.collapsed) > #toolbar-handle {
+  html:where(:not(.menubar))[dir="rtl"] #toolbar.deck-hosted > #toolbar-handle {
     margin-left: 0; padding-left: 0; margin-right: -6px; padding-right: 6px;
   }
-  html:where(:not(.menubar))[dir="rtl"] #toolbar:not(.collapsed) > #lang-toggle {
+  html:where(:not(.menubar))[dir="rtl"] #toolbar.deck-hosted > #lang-toggle {
     margin-right: 0; padding-right: 0; margin-left: -6px; padding-left: 6px;
   }
-  :where(html:not(.menubar)) body.theme-light #toolbar:not(.collapsed) > #toolbar-handle,
-  :where(html:not(.menubar)) body.theme-light #toolbar:not(.collapsed) > #toolbar-toggle,
-  :where(html:not(.menubar)) body.theme-light #toolbar:not(.collapsed) > #lang-toggle {
+  :where(html:not(.menubar)) body.theme-light #toolbar.deck-hosted > #toolbar-handle,
+  :where(html:not(.menubar)) body.theme-light #toolbar.deck-hosted > #lang-toggle {
     background: rgba(250, 252, 255, 0.98);
     border-bottom-color: #cfd5df;
   }
@@ -8711,8 +8614,7 @@ body.deck-on .overlay-loading { bottom: calc(var(--navaid-deck-bar-h, 52px) + 68
 }
 /* Two controls belong to the floating card, not to the menu: the drag handle moves a card
    that is now a sheet, and the hamburger closes one. The sheet has a grip and an X. */
-.deck-sheet #toolbar.deck-hosted > #toolbar-handle,
-.deck-sheet #toolbar.deck-hosted > #toolbar-toggle { display: none; }
+.deck-sheet #toolbar.deck-hosted > #toolbar-handle{ display: none; }
 /* ...and so do Record, Location, Comm failure and the live readout: they are the deck and the
    strip now, and a menu that repeats them says the same thing twice on a screen with no room to.
    The simulator stays: the deck has no other way to it, and connecting one is how a phone tests
@@ -9353,15 +9255,6 @@ body.theme-light #toolbar .tb-section-body .mi-select > #export-select:hover { b
 #toolbar .follow-me-button-icon[data-icon] { display: inline-grid; place-items: center; line-height: 0; vertical-align: -3px; }
 #toolbar .follow-me-button-icon svg { display: block; }
 
-/* The open phone menu without the deck stops above the collapsed legend chip in the bottom
-   corner (its 28px plus the map margin), and scrolls under its pinned head instead: the
-   Settings section made it tall enough to reach the chip on a short phone. */
-@media (max-width: 680px) {
-  body:not(.deck-on) #toolbar:not(.collapsed) {
-    max-height: calc(100vh - 92px);
-    max-height: calc(100dvh - 92px);
-  }
-}
 
 /* Phone: the right-hand column is one family. The heading box, the rotation dial and the zoom
    buttons were white squares (in light mode) under the round dark-glass in-flight buttons;
@@ -9618,7 +9511,6 @@ body.theme-light #aircraft-custom input { border-color: #858f9c; }
 body.theme-light #wp-search,
 body.theme-light #search-overlay #wp-search { border-color: #858f9c; }
 /* A collapsed menu is one row and its links; the globe there took a row of its own. */
-#toolbar.collapsed #lang-quick { display: none; }
 
 /* Slider rows. Phone: label, value and its ↻ on the first line, the slider alone on the
    second -- the slider sat between them in the markup, so the value and ↻ fell to a third

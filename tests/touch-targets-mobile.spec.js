@@ -47,9 +47,7 @@ test('desktop is unaffected by the touch sizing', async ({ page }) => {
   await boot(page);
   const r = await page.evaluate(() => {
     const c = document.getElementById('coord-readout').getBoundingClientRect();
-    const t = document.getElementById('toolbar-toggle');
-    return { coordH: Math.round(c.height), toggleHidden: getComputedStyle(t).display === 'none' };
+    return { coordH: Math.round(c.height) };
   });
-  expect(r.toggleHidden).toBe(true);         // hamburger is mobile-only
   expect(r.coordH).toBeLessThan(44);         // desktop keeps the compact readout
 });

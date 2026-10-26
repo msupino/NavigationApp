@@ -1288,8 +1288,6 @@ window.S = {
   editLockOffToast: 'המסלול פתוח לעריכה',
   followLockOn: 'עוקב אחרי המטוס — הקישו כדי להפסיק לעקוב',
   followLockOff: 'לא עוקב — הקישו כדי לעקוב אחרי המטוס',
-  expandMenu: 'פתח תפריט',
-  collapseMenu: 'כווץ תפריט',
   summaryLegs: 'קטעים',
   summaryDist: 'מרחק',
   summaryTime: 'זמן כולל',
