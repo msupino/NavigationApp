@@ -394,6 +394,9 @@ test('a bundle that installed fine is not marked as failed', async ({ page }) =>
 // A preview shares the production origin and so its tile cache. Pruning to the preview's own
 // wanted list on load deleted the pilot's production pack.
 test('a PR preview never prunes the shared offline tile cache', async ({ page }) => {
+  // Both legs need the app at the origin ROOT: the deployed run serves it under /pr/<n>/,
+  // where the 'production' leg is itself a preview.
+  test.skip(/\/(pr\/\d+|staging)\//.test(process.env.BASE_URL || ''), 'needs the app at the origin root');
   await page.goto('?lang=en&nogist');
   await page.waitForFunction(() => window.NavAidOfflineTiles && typeof map !== 'undefined');
   const got = await page.evaluate(async () => {
@@ -430,6 +433,9 @@ test('a PR preview never prunes the shared offline tile cache', async ({ page })
 test.describe('service worker scopes', () => {
   test.use({ serviceWorkers: 'allow' });
   test('a preview-scoped worker keeps its own shell cache and leaves production\'s alone', async ({ page }) => {
+  // Both legs need the app at the origin ROOT: the deployed run serves it under /pr/<n>/,
+  // where the 'production' leg is itself a preview.
+  test.skip(/\/(pr\/\d+|staging)\//.test(process.env.BASE_URL || ''), 'needs the app at the origin root');
     test.slow();
     await page.goto('?lang=en&nogist');
     const got = await page.evaluate(async () => {
