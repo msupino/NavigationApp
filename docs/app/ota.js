@@ -232,9 +232,21 @@
         }
       } catch (e) { handle = null; }
       try {
-        const bundle = await p.download({
-          url: manifest.url, version: manifest.version, checksum: manifest.checksum,
-        });
+        // A delta first when the manifest lists the files: the plugin reuses what it already
+        // holds and fetches the rest (an update that touched the code costs about the code, not
+        // the 40 MB of images). Anything wrong with that -- a file the site replaced meanwhile,
+        // an older plugin -- and the full zip, as before.
+        let bundle = null;
+        if (Array.isArray(manifest.files) && manifest.files.length) {
+          try {
+            bundle = await p.download({ url: manifest.url, version: manifest.version, manifest: manifest.files });
+          } catch (e) { bundle = null; }
+        }
+        if (!bundle || !bundle.id) {
+          bundle = await p.download({
+            url: manifest.url, version: manifest.version, checksum: manifest.checksum,
+          });
+        }
         if (!bundle || !bundle.id) return { checked: true, updated: false, reason: 'download failed' };
         await armForColdStart(p, bundle.id);
         return { checked: true, updated: true, version: manifest.version, id: bundle.id };
