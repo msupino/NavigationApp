@@ -228,6 +228,21 @@ test('the AIRMET helpers are exported and parse the raw text', async () => {
     .toEqual({ validFrom: '2026-09-01T06:00:00.000Z', validTo: '2026-09-01T09:00:00.000Z' });
 });
 
+test('AIRMET validity resolves each day against the local issue date across month ends', async () => {
+  const mod = await import('../scripts/build-aviation-feeds.mjs');
+  // Issued 00:30 local on Nov 1 (still Oct 31 UTC): "31" is October, not an overflowed Dec 1.
+  expect(mod.parseAirmetValidity('VALID 312230/010230', '2026-11-01'))
+    .toEqual({ validFrom: '2026-10-31T22:30:00.000Z', validTo: '2026-11-01T02:30:00.000Z' });
+  // Issued late on the last day: the window runs into the next month.
+  expect(mod.parseAirmetValidity('VALID 302200/010200', '2026-09-30'))
+    .toEqual({ validFrom: '2026-09-30T22:00:00.000Z', validTo: '2026-10-01T02:00:00.000Z' });
+  // Year boundary both ways.
+  expect(mod.parseAirmetValidity('VALID 312300/010300', '2027-01-01'))
+    .toEqual({ validFrom: '2026-12-31T23:00:00.000Z', validTo: '2027-01-01T03:00:00.000Z' });
+  expect(mod.parseAirmetValidity('VALID 312300/010300', '2026-12-31'))
+    .toEqual({ validFrom: '2026-12-31T23:00:00.000Z', validTo: '2027-01-01T03:00:00.000Z' });
+});
+
 test('AD and WS warnings in the same bucket are not mislabelled as AIRMET', async () => {
   const mod = await import('../scripts/build-aviation-feeds.mjs');
   expect(mod.airmetProduct('LLLL AIRMET 1 VALID ...')).toBe('AIRMET');

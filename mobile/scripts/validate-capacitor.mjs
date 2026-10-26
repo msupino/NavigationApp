@@ -109,6 +109,9 @@ if (updater.statsUrl !== '') fail('CapacitorUpdater telemetry must be explicitly
 if (embedded && updater.appReadyTimeout !== 20000) {
   fail('embedded build must keep the rollback window docs/app/ota.js is written against');
 }
+if (embedded && !(updater.responseTimeout >= 300)) {
+  fail('embedded build needs a long CapacitorUpdater responseTimeout: on iOS it caps the whole update download');
+}
 const spm = fs.readFileSync(path.join(mobileRoot, 'ios/App/CapApp-SPM/Package.swift'), 'utf8');
 for (const plugin of ['CapgoCapacitorUpdater', 'CapacitorNetwork', 'CapacitorFilesystem', 'CapacitorShare']) {
   // An iOS plugin listed in includePlugins but absent from the Swift package is not

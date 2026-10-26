@@ -872,10 +872,12 @@ if (typeof window !== 'undefined') window.drawProfileLegend = drawProfileLegend;
 //
 // The QNH of the day is not recorded, so the temperature term cannot be applied: passing an
 // explicit null asks for the geoid part alone, which is the half that does not need it.
-function trackAltFt(metres) {
+// `msl`: the point was recorded already above sea level (iOS, a Bluetooth receiver), so the
+// geoid is not taken off it again -- the profile read ~59 ft low there (review).
+function trackAltFt(metres, msl) {
   if (!Number.isFinite(metres)) return null;
   const ft = metres * 3.28084;
-  return (typeof gpsIndicatedAltitudeFt === 'function') ? gpsIndicatedAltitudeFt(ft, null) : ft;
+  return (typeof gpsIndicatedAltitudeFt === 'function') ? gpsIndicatedAltitudeFt(ft, null, !!msl) : ft;
 }
 if (typeof window !== 'undefined') window.trackAltFt = trackAltFt;
 
@@ -898,7 +900,7 @@ function trackProfileSamples(pts, smoothWindow) {
       const dt = (p.t - pts[i - 1].t) / 1000;
       if (dt > 0) kt = (metres(pts[i - 1], p) / dt) * 1.943844;
     }
-    raw.push({ d: cum, ft: trackAltFt(p.alt), kt: kt });
+    raw.push({ d: cum, ft: trackAltFt(p.alt, p.msl), kt: kt });
   }
   // A GPS-derived speed is noisy: one fix landing a few metres off turns into a spike of
   // tens of knots. Smoothed over a short run of fixes, which is what makes the trace
@@ -950,12 +952,22 @@ function drawTrackProfile(ctx, x, y, w, h, pts, opts) {
   if (typeof terrainMaxAtLatLng === 'function' && typeof terrainHasCoverage === 'function'
       && terrainHasCoverage()) {
     const n = Math.max(2, Math.round(tune('profileTerrainSamples')));
+    // Each terrain sample is plotted at a DISTANCE, so it has to be taken at that distance
+    // along the flown line. Picking it by fix index put it wherever the fixes happened to
+    // bunch up: fixes keep coming while parked or slow, so after a long ground stop every
+    // ridge was drawn well away from where the flight trace crossed it.
+    // (samples[] is one entry per fix, in order, with the cumulative distance in `d`.)
+    let k = 1;
     for (let i = 0; i <= n; i++) {
       const frac = i / n;
-      const at = Math.min(pts.length - 1, Math.round(frac * (pts.length - 1)));
-      const ft = terrainMaxAtLatLng(pts[at].lat, pts[at].lng);
+      const want = flownDist * frac;
+      while (k < samples.length - 1 && samples[k].d < want) k++;
+      const d0 = samples[k - 1].d, d1 = samples[k].d;
+      const f = d1 > d0 ? Math.min(1, Math.max(0, (want - d0) / (d1 - d0))) : 0;
+      const a = pts[k - 1], b = pts[k];
+      const ft = terrainMaxAtLatLng(a.lat + (b.lat - a.lat) * f, a.lng + (b.lng - a.lng) * f);
       // Terrain is sampled along the FLOWN line, so it spans the flown distance.
-      terrain.push({ d: flownDist * frac, ft: Number.isFinite(ft) ? ft : null });
+      terrain.push({ d: want, ft: Number.isFinite(ft) ? ft : null });
     }
   }
   const terrainFt = terrain.filter(t => t.ft != null).map(t => t.ft);
@@ -1553,14 +1565,19 @@ function drawMeasure() {
   if (octx.roundRect) octx.roundRect(x, y, w, h, 8); else octx.rect(x, y, w, h);
   octx.fill();
   octx.fillStyle = tune('measureLabelText');
-  octx.textBaseline = 'top';
+  // Text placed from the same tunables the box above is sized from (padding, line height).
+  // It was written as +8 / +6 / 17 px, so a gist that changed the font, line height or padding
+  // grew the box while the exported lines stayed put -- overflowing it or bunched in a corner.
+  octx.textBaseline = 'middle';
+  const padX = tune('measureLabelPadXPx'), padY = tune('measureLabelPadYPx');
+  const lineH = tune('measureLabelLineHeightPx');
   // Each line in its own direction: the canvas takes the page's (rtl in Hebrew), which turned
   // "16 NM · 131°" into "NM · 131° 16". Numbers read left to right; a Hebrew line from the right.
   lines.forEach((t, i) => {
     const he = /[\u0590-\u05FF]/.test(t);
     octx.direction = he ? 'rtl' : 'ltr';
     octx.textAlign = he ? 'right' : 'left';
-    octx.fillText(t, he ? x + w - 8 : x + 8, y + 6 + i * 17);
+    octx.fillText(t, he ? x + w - padX : x + padX, y + padY + (i + 0.5) * lineH);
   });
   octx.restore();
 }
@@ -1604,6 +1621,7 @@ function draw() {
   if (window.showAirmet && typeof activeAirmets === 'function' && activeAirmets().length) drawAirmets();
   if (window.showSigmet && typeof activeSigmets === 'function' && activeSigmets().length) drawSigmets();
   drawLegs();
+  drawClosedLegs();   // over the route line, under the waypoint discs
   drawWaypoints();
   // After the route and its discs, not before: drawn underneath, the line ran straight through
   // the marker and a route shorter than the lead time hid it completely under the departure
@@ -2140,7 +2158,10 @@ function notamCirclePoints(lat, lng, nm, steps = 36) {
 // blank end = open-ended) and has already started. Used to filter the map +
 // list so expired/future NOTAMs don't clutter.
 function notamActive(n, now) {
-  const t = Number.isFinite(now) ? now : Date.now();
+  // A Date as well as ms: fplNotamClosedPairs passes one, and a Date failed Number.isFinite, so
+  // every closure was judged at NOW whatever time it was asked about -- a corridor closed this
+  // afternoon was open for a filing at 15:00 and on the map at the slider's 15:00.
+  const t = now instanceof Date ? now.getTime() : (Number.isFinite(now) ? now : Date.now());
   const ms = s => { const d = Date.parse(s); return Number.isFinite(d) ? d : NaN; };
   const end = n && n.end;
   if (end && !/PERM/i.test(end)) { const e = ms(end); if (Number.isFinite(e) && e < t) return false; }
@@ -2710,7 +2731,7 @@ function notamsAtLatLng(latlng) {
     if (pts.length >= 3 && notamPointInPoly(pt, pts)) out.push(n);
   }
   // Airport count badges (no-geom NOTAMs grouped by ICAO) — see
-  // drawNotamAirportMarkers(): a r=9 disc at proj(field) offset +14px down.
+  // drawNotamAirportMarkers(): a notamBadgeRadiusPx disc notamBadgeOffsetPx below the field.
   if (Array.isArray(airfields) && airfields.length) {
     const byIcao = {};
     for (const n of act) {
@@ -2723,14 +2744,22 @@ function notamsAtLatLng(latlng) {
       const af = airfieldByIcao(code);
       if (!af || !Number.isFinite(af.lat) || !Number.isFinite(af.lng)) continue;
       const p = proj({ lat: af.lat, lng: af.lng });
-      if (Math.hypot(pt.x - p.x, pt.y - (p.y + 14)) <= 11) out.push(...byIcao[code]);
+      if (notamBadgeHit(pt, p)) out.push(...byIcao[code]);
     }
   }
   return out;
 }
 
-// Just the airport count-badge NOTAMs under a point (the r=11 disc at
-// proj(field)+14px). Used to let the badge win a click over a route waypoint
+// Is screen point `pt` on the count badge of the airfield drawn at `p`? Read from the same
+// tunables drawNotamAirportMarkers paints with. The tap target was written as +14 px / 11 px,
+// so once a gist moved or resized the badge, tapping the visible badge missed it (and a tap
+// on empty map where it used to be opened its NOTAMs). The ring width is the touch margin.
+function notamBadgeHit(pt, p) {
+  const r = tune('notamBadgeRadiusPx') + tune('notamBadgeRingWidthPx');
+  return Math.hypot(pt.x - p.x, pt.y - (p.y + tune('notamBadgeOffsetPx'))) <= r;
+}
+
+// Just the airport count-badge NOTAMs under a point (the badge disc, see notamBadgeHit). Used to let the badge win a click over a route waypoint
 // sitting on the same field, without area NOTAMs stealing waypoint clicks.
 function notamBadgeNotamsAt(latlng) {
   if (!window.showNotam || !latlng || !Array.isArray(airfields) || !airfields.length) return [];
@@ -2747,7 +2776,7 @@ function notamBadgeNotamsAt(latlng) {
     const af = airfieldByIcao(code);
     if (!af || !Number.isFinite(af.lat) || !Number.isFinite(af.lng)) continue;
     const p = proj({ lat: af.lat, lng: af.lng });
-    if (Math.hypot(pt.x - p.x, pt.y - (p.y + 14)) <= 11) return byIcao[code];
+    if (notamBadgeHit(pt, p)) return byIcao[code];
   }
   return [];
 }
@@ -3124,6 +3153,10 @@ async function loadAreas() {
   // cache-bust version carrier, never actually fetched).
   if (layerDataPrefix() === 'cvfr') {
     areas = [];
+    // The activity sites come from the same file as the bubbles, so they go with them:
+    // leaving the previous layer's list made the LSA drop zones and launch points stay
+    // painted (and exported) on the CVFR chart.
+    activitySites = [];
     _notamBubbleGen++;
     if (typeof refreshLsaListBtn === 'function') refreshLsaListBtn();
     return areas;
@@ -3151,7 +3184,7 @@ async function loadAreas() {
   } catch (e) {
     // no areas file for this layer (or fetch failed) -- bump alongside, exactly as the
     // two success paths do, so no NOTAM keeps a match list built against the old areas.
-    if (gen === _layerGen) { areas = []; _notamBubbleGen++; }
+    if (gen === _layerGen) { areas = []; activitySites = []; _notamBubbleGen++; }
   }
   if (areas && areas.length) scheduleDraw();
   if (typeof refreshLsaListBtn === 'function') refreshLsaListBtn();
@@ -4873,9 +4906,14 @@ function commRouteHintDefault(entry) {
   // (BOVED, actually crossed first) is the leg in force right now. An unconstrained
   // before-only hint has no "after" distance to rank by, so it always stays in the running
   // alongside whichever after-based hint(s) are nearest.
+  //
+  // The before-only hints are therefore kept in a list of their own. They used to share the
+  // ranking with rank -1, which beat every real rank (0 and up) and cleared the after-based
+  // matches: a hint naming only the previous waypoint always won, even over one that also
+  // matched the next waypoint, instead of standing alongside it.
   let bestRank = Infinity;
-  const candidates = [];
-  const seen = new Set();
+  const ranked = [];          // after-based hints at the nearest rank seen so far
+  const unranked = [];        // before-only hints: no "after" distance, always in the running
   for (const hint of row.routeHints) {
     if (!hint || typeof hint !== 'object') continue;
     if (hint.before && commRouteHintName(hint.before) !== before) continue;
@@ -4884,11 +4922,18 @@ function commRouteHintDefault(entry) {
       rank = afterNames.indexOf(commRouteHintName(hint.after));
       if (rank === -1) continue;   // this hint's target isn't in range at all
     }
-    if (rank > bestRank) continue;      // a strictly-farther match than the best seen so far
+    if (rank >= 0 && rank > bestRank) continue;   // a strictly-farther match than the best seen
     const opt = commCallSignOptionById(entry.name, hint.callSign);
     const key = opt && commCallSignIdKey(opt.id);
     if (!opt || !key) continue;
-    if (rank < bestRank) { bestRank = rank; candidates.length = 0; seen.clear(); }
+    if (rank < 0) { unranked.push(opt); continue; }
+    if (rank < bestRank) { bestRank = rank; ranked.length = 0; }
+    ranked.push(opt);
+  }
+  const candidates = [];
+  const seen = new Set();
+  for (const opt of unranked.concat(ranked)) {
+    const key = commCallSignIdKey(opt.id);
     if (seen.has(key)) continue;
     seen.add(key);
     candidates.push(opt);
@@ -5524,6 +5569,55 @@ window.seedCommChangeNotes = seedCommChangeNotes;
 window.suppressCommChange = suppressCommChange;
 window.unsuppressCommChange = unsuppressCommChange;
 window.normalizeCommChangeSuppressions = normalizeCommChangeSuppressions;
+
+// Legs a NOTAM closes, painted on the route at the map's time -- the timeline slider's scrubbed
+// time, or now. Asked: "if there is an active NOTAM on a blocked route, paint it" -- without
+// having to run Route check, and following the slider as it moves. The closure rule is the
+// one filing and auto-route already use (fplNotamClosedPairs: a corridor named CLSD in a
+// NOTAM in force at that time). The NOTAM feed is fetched once if no layer has loaded it yet.
+let _closedLegsFetch = false;
+function closedLegIndexes(whenMs) {
+  if (typeof fplNotamClosedPairs !== 'function') return [];
+  const wps = state.waypoints || [];
+  if (wps.length < 2) return [];
+  if (notams === null) {
+    if (!_closedLegsFetch && typeof loadNotam === 'function') {
+      _closedLegsFetch = true;
+      loadNotam().then(() => scheduleDraw()).catch(() => {});
+    }
+    return [];
+  }
+  const closed = fplNotamClosedPairs(new Date(whenMs));
+  if (!closed.size) return [];
+  const out = [];
+  for (let i = 0; i < wps.length - 1; i++) {
+    const a = wps[i] && wps[i].name, b = wps[i + 1] && wps[i + 1].name;
+    if (a && b && closed.has([String(a).toUpperCase(), String(b).toUpperCase()].sort().join('|'))) out.push(i);
+  }
+  return out;
+}
+function drawClosedLegs() {
+  if (typeof tune === 'function' && tune('featureClosedLegs') === false) { window.closedLegs = []; return; }
+  const when = (typeof notamViewNow === 'function') ? notamViewNow() : Date.now();
+  const idx = closedLegIndexes(when);
+  window.closedLegs = idx;
+  if (!idx.length) return;
+  octx.save();
+  octx.strokeStyle = tune('closedLegColor');
+  octx.lineWidth = tune('closedLegWidthPx');
+  octx.globalAlpha = tune('closedLegAlpha');
+  octx.setLineDash([tune('closedLegDashOnPx'), tune('closedLegDashOffPx')]);
+  octx.lineCap = 'round';
+  for (const i of idx) {
+    const ends = (typeof legScreenEnds === 'function') ? legScreenEnds(i) : null;
+    const a = ends ? ends.a : proj(state.waypoints[i]);
+    const b = ends ? ends.b : proj(state.waypoints[i + 1]);
+    if (!a || !b) continue;
+    octx.beginPath(); octx.moveTo(a.x, a.y); octx.lineTo(b.x, b.y); octx.stroke();
+  }
+  octx.restore();
+}
+if (typeof window !== 'undefined') window.closedLegIndexes = closedLegIndexes;
 
 function drawLegs() {
   const zoomScale = legZoomScale();
@@ -7016,7 +7110,11 @@ function routeInkRects() {
     const r = g && Number.isFinite(g.r) ? g.r : 6;
     push(p.x - r, p.y - r, r * 2, r * 2);
   }
-  const sc = (typeof legZoomScale === 'function') ? legZoomScale() : 1;
+  // Size the leg kite at the scale drawLegArrow PAINTS it (kiteDrawScale, a fixed ground
+  // size), not the zoom scale used for its offsets: the two differ ~3x at z11-12, so the
+  // box was a third of the real kite and a kite hanging off the page went unreported.
+  const sc = (typeof kiteDrawScale === 'function') ? kiteDrawScale()
+    : ((typeof legZoomScale === 'function') ? legZoomScale() : 1);
   const halfL = (tune('legKiteCellWidthPx') * 2 + tune('legKiteTriangleLenPx')) * sc / 2;
   const halfW = tune('legKiteHeightPx') * sc / 2;
   const cum = (typeof _cumKiteHalfDims === 'function') ? _cumKiteHalfDims() : null;
@@ -7052,11 +7150,20 @@ function routeInkRects() {
     const inkReturnOn = typeof showReturn !== 'undefined' && showReturn
       && (typeof showReturnFeatureOn !== 'function' || showReturnFeatureOn())
       && (typeof legAllowsReturn !== 'function' || legAllowsReturn(i));
+    // The leg kite is drawn ALONG the leg (drawLegs rotates it to the leg's angle), so its
+    // box must be oriented along the leg too. Aiming it from the kite at the waypoint tilted
+    // it by the kite's perpendicular offset (~26 deg), so the box missed the kite's real
+    // corners and a kite crossing the page edge could still count as inside.
+    const legKiteBox = c => {
+      if (!c) return;
+      const ldx = kB.x - kA.x, ldy = kB.y - kA.y;
+      // A zero-length leg is drawn at angle 0 (screen-aligned): orient the box the same way.
+      if (Math.hypot(ldx, ldy)) pushRotated(c, c.x + ldx, c.y + ldy, halfL, halfW);
+      else pushRotated(c, c.x + 1, c.y, halfL, halfW);
+    };
     if (typeof legLabelCenter === 'function' && !kiteOff) {
-      if (!inBlocked) pushRotated(legLabelCenter(i, 'in'), kB.x, kB.y, halfL, halfW);
-      if (inkReturnOn) {
-        pushRotated(legLabelCenter(i, 'out'), kA.x, kA.y, halfL, halfW);
-      }
+      if (!inBlocked) legKiteBox(legLabelCenter(i, 'in'));
+      if (inkReturnOn) legKiteBox(legLabelCenter(i, 'out'));
     }
     // Two kites, two gates -- they were under one, which was the inbound kite's. The return
     // kite is drawn whenever the return path is (draw.js nests it in showCumTime alone, and
@@ -7527,6 +7634,9 @@ function drawHotspotOverlay() {
 // a one-way arrow points the way the chain search may actually travel.
 var _graphLegsGraph = null;
 var _graphLegsLoading = false;
+// Which layer's graph is cached above. Without it the first layer's graph was kept for the
+// whole session: after switching layer the overlay went on drawing the old dataset.
+var _graphLegsPrefix = null;
 function graphLegsEnabled() {
   try { return new URLSearchParams(location.search).get('graphlegs') === '1'; }
   catch (e) { return false; }
@@ -7544,10 +7654,14 @@ const graphLegColor = (kind) => tune(GRAPH_LEG_COLOR_KEYS[kind] || 'graphLegPlai
 function drawGraphLegs() {
   if (!graphLegsEnabled()) return;
   const prefix = (typeof layerDataPrefix === 'function') ? layerDataPrefix() : 'cvfr';
+  if (_graphLegsPrefix !== prefix) { _graphLegsGraph = null; _graphLegsPrefix = prefix; }
   if (!_graphLegsGraph && !_graphLegsLoading) {
     _graphLegsLoading = true;
     routeGraphData(prefix).then(g => {
-      _graphLegsGraph = g || null; _graphLegsLoading = false; scheduleDraw();
+      _graphLegsLoading = false;
+      // A layer switch while this was loading: the next draw fetches the right one.
+      if (_graphLegsPrefix === prefix) _graphLegsGraph = g || null;
+      scheduleDraw();
     }).catch(() => { _graphLegsLoading = false; });
     return;
   }

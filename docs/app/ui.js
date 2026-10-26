@@ -2967,6 +2967,7 @@ async function buildRouteFromQuery(raw) {
   if (typeof autoRouteChain === 'function' && window.autoRouteCorridors) {
     (async () => {
       const built = state.waypoints;
+      let closed = false;
       for (let i = built.length - 1; i > 0; i--) {
         if (state.waypoints !== built) return;              // route replaced meanwhile
         const prev = built[i - 1], next = built[i];
@@ -2976,7 +2977,9 @@ async function buildRouteFromQuery(raw) {
         const at = state.waypoints.indexOf(next);
         if (at < 1 || state.waypoints[at - 1] !== prev) continue;
         state.waypoints.splice(at, 0, ...mid);
+        if (mid.closedCorridor) closed = true;
       }
+      if (closed && typeof warnAutoRouteClosedCorridor === 'function') warnAutoRouteClosedCorridor();
       syncLegs();
       if (typeof seedCommChangeNotes === 'function') seedCommChangeNotes();
       draw();
@@ -3642,12 +3645,15 @@ function renderTrackProfilePanel(panel, entry) {
   const nm = (typeof trackDistanceNm === 'function') ? trackDistanceNm(pts) : 0;
   const t0 = Number(pts[0].t), t1 = Number(pts[pts.length - 1].t);
   const mins = (Number.isFinite(t0) && Number.isFinite(t1) && t1 > t0) ? (t1 - t0) / 60000 : 0;
-  const alts = pts.map(p => (typeof trackAltFt === 'function' ? trackAltFt(p.alt) : null))
+  const alts = pts.map(p => (typeof trackAltFt === 'function' ? trackAltFt(p.alt, p.msl) : null))
     .filter(v => Number.isFinite(v));
   const parts = [nm.toFixed(1) + ' NM'];
   if (mins > 0) {
-    parts.push(mins < 60 ? Math.round(mins) + ' min'
-      : Math.floor(mins / 60) + ':' + String(Math.round(mins % 60)).padStart(2, '0'));
+    // Round the whole minutes once, then split: rounding the remainder on its own turned
+    // 119.7 min into "1:60" (and 59.7 into "60 min").
+    const whole = Math.round(mins);
+    parts.push(whole < 60 ? whole + ' min'
+      : Math.floor(whole / 60) + ':' + String(whole % 60).padStart(2, '0'));
   }
   if (alts.length) parts.push('max ' + Math.round(Math.max.apply(null, alts)) + ' ft');
   parts.push(S.trackProfileFlown || 'flown');
@@ -4327,8 +4333,19 @@ function parseSearchLatLng(text) {
     const negative = deg < 0 || hemi === 'S' || hemi === 'W';
     return { value: negative ? -value : value, hemi };
   };
-  const a = part(m[1], m[2], m[3], m[4], m[5]);
-  const b = part(m[6], m[7], m[8], m[9], m[10]);
+  let a = part(m[1], m[2], m[3], m[4], m[5]);
+  let b = part(m[6], m[7], m[8], m[9], m[10]);
+  // With no letter between the halves the regex is greedy: the first half took up to three
+  // numbers, so "32 30 35 00" read as 32°30'35" and longitude 0 -- and "32 30 034 50" as
+  // longitude 50 -- and Enter flew there and dropped a marker. Unlettered, the only honest
+  // reading is half the numbers each; an odd count is not a coordinate.
+  if (!m[5] && !m[6]) {
+    const nums = [m[2], m[3], m[4], m[7], m[8], m[9]].filter(v => v != null);
+    if (nums.length % 2) return null;
+    const h = nums.length / 2;
+    a = part(m[1], nums[0], h > 1 ? nums[1] : undefined, h > 2 ? nums[2] : undefined, undefined);
+    b = part(undefined, nums[h], h > 1 ? nums[h + 1] : undefined, h > 2 ? nums[h + 2] : undefined, m[10]);
+  }
   if (!a || !b) return null;
   // Written the other way round -- "E035 00 N32 30" -- is still a coordinate, and the letters
   // say which is which. Without letters the first number is the latitude, as everyone writes it.
@@ -6831,6 +6848,7 @@ function refreshWindDepartLabel() {
 // departure slider re-samples from this cache locally — no refetch unless
 // the route itself changed since the fetch.
 let windFetchCache = null;   // { locs, levels, sig }
+let windFetchGen = 0;        // bumped per fetchRouteWind call; only the latest applies
 function windRouteSig() {
   return JSON.stringify(state.waypoints.map(w => [r5(w.lat), r5(w.lng)])) + '|' +
          JSON.stringify(state.legs.map(l => [legAltitudeFt(l), l.flightSpeed]));
@@ -6875,6 +6893,12 @@ async function fetchRouteWind() {
     return;
   }
   if (windFetchStatus) windFetchStatus.textContent = S.windFetching;
+  // The route can change while the request is out (a drag, an inserted waypoint): the answer
+  // is for the OLD midpoints, and applying it by index wrote the wrong wind onto the edited
+  // legs, persisted it, and stamped the cache with the NEW signature so it was never fetched
+  // again. Remember what was asked for; a later call supersedes this one.
+  const mine = ++windFetchGen;
+  const sigAsked = windRouteSig();
   try {
     // One batched request: comma-joined leg midpoints + the union of the
     // pressure-level params every leg needs; each leg reads its own level.
@@ -6893,10 +6917,16 @@ async function fetchRouteWind() {
     const res = await fetch(url);
     if (!res.ok) throw new Error(String(res.status));
     const j = await res.json();
+    if (mine !== windFetchGen) return;             // a newer fetch owns the result
+    if (windRouteSig() !== sigAsked) {              // edited mid-fetch: ask again for this route
+      if (state.legs.length) fetchRouteWind();
+      return;
+    }
     const locs = Array.isArray(j) ? j : [j];        // multi-location → array
     if (!applyRouteWindSamples(locs, levels)) throw new Error('no data');
-    windFetchCache = { locs, levels, sig: windRouteSig() };
+    windFetchCache = { locs, levels, sig: sigAsked };
   } catch (e) {
+    if (mine !== windFetchGen) return;
     if (windFetchStatus) windFetchStatus.textContent = S.windFetchErr;
   }
 }
@@ -7444,7 +7474,11 @@ if (windDepartSlider) {
     let ok = false;
     try { ok = await a.enable(); } catch (e) { ok = false; }
     busy = false;
-    if (mine !== gen || !cb.checked) return;      // superseded, or switched off meanwhile
+    // Off and on again while this was out: the switch-on skipped its own enable (busy), so
+    // returning here left the box ticked on "Loading…" -- and with no barbs at all if this
+    // fetch failed. Run once more for the current switch-on (a success is cached, so cheap).
+    if (mine !== gen) { if (cb.checked) enable(); return; }
+    if (!cb.checked) return;                        // switched off meanwhile
     say(ok ? '' : (S.afWindErr || 'Airfield wind unavailable'));
     if (!ok) { cb.checked = false; window.showAirfieldWind = false; }
   }
@@ -7605,7 +7639,11 @@ if (windDepartSlider) {
     let ok = false;
     try { ok = await a.enable(); } catch (e) { ok = false; }
     busy = false;
-    if (mine !== gen || !cb.checked) return;      // superseded, or switched off meanwhile
+    // Off and on again while this was out: the switch-on skipped its own enable (busy), so
+    // returning here left the switch on with no draw, no legend refresh -- and nothing at all,
+    // with no error, if this fetch failed. Run once more for the current switch-on.
+    if (mine !== gen) { if (cb.checked) enable(); return; }
+    if (!cb.checked) return;                        // switched off meanwhile
     say(ok ? '' : (S.swxErr || 'Surface weather unavailable'));
     if (!ok) { cb.checked = false; window.showSurfaceWx = false; }
     legend();
@@ -9697,8 +9735,13 @@ const overlayAlign = (function () {
     const wasShown = G && map.hasLayer(G);
     if (G) map.removeLayer(G);
     window[GVAR[t]] = null;
+    // A type that is switched off is only dropped -- its toggle rebuilds it when shown. Building
+    // it here without adding it counted each sheet into "Loading charts…" with no load ever to
+    // come (Reset all rebuilds every type), and rebuilding IFR put a plate's points back into
+    // navWP while IFR was off.
+    if (!wasShown) return;
     GLOAD[t]();
-    if (wasShown && grp(t)) grp(t).addTo(map);
+    if (grp(t)) grp(t).addTo(map);
   }
 
   // ── panel ──
@@ -11242,7 +11285,6 @@ function wireColorPicker(elId, tuneKeys, storageKey) {
   const keys = Array.isArray(tuneKeys) ? tuneKeys : [tuneKeys];
   const el = document.getElementById(elId);
   if (!el) return;
-  const shipped = keys.map(k => tune(k));
   const applyAll = v => keys.forEach(k => setTune(k, v));
   registerTuneOverride(storageKey, keys,
     v => (/^#[0-9a-f]{6}$/i.test(v) ? v.toLowerCase() : null));
@@ -11261,7 +11303,9 @@ function wireColorPicker(elId, tuneKeys, storageKey) {
   btn.onclick = e => {
     e.preventDefault(); e.stopPropagation();
     try { localStorage.removeItem(storageKey); } catch (err) { /* */ }
-    keys.forEach((k, i) => setTune(k, shipped[i]));
+    // Back to the gist's colour, read now: a value captured at wiring time predates the gist
+    // (which lands later, over the network), so reset used to restore the built-in colour.
+    keys.forEach(k => setTune(k, tuneBaseline(k)));
     el.value = tune(keys[0]);
     draw();
   };
@@ -15065,11 +15109,23 @@ NavAid.applyDefaultVisibility = function applyDefaultVisibility() {
     // A control with no checkbox (the voice-alerts map button) applies the value itself.
     if (!cb) { applyFn(desired); continue; }
     if (cb.checked === desired) continue;                // already matches
+    // The NOTAM handler also writes navaid.showNotam.last (what an untouched chart inherits).
+    // Left behind, notamPrefRead copied it into the per-chart key, so the gist default became
+    // a stored pilot choice and later gist changes were ignored. Put it back as it was.
+    let lastBefore = null;
+    const isNotam = cbId === 'notam-cb';
+    if (isNotam) { try { lastBefore = lsGet(NOTAM_LAST_KEY); } catch (e) { /* */ } }
     cb.checked = desired;
     cb.dispatchEvent(new Event('change'));               // run the real loader
     // The handler persisted lsKey synchronously; erase it so this toggle keeps
     // following the gist/default (rather than freezing after the first boot).
     try { localStorage.removeItem(lsKey); } catch (e) { /* */ }
+    if (isNotam) {
+      try {
+        if (lastBefore === null) localStorage.removeItem(NOTAM_LAST_KEY);
+        else localStorage.setItem(NOTAM_LAST_KEY, lastBefore);
+      } catch (e) { /* */ }
+    }
   }
 };
 // Baked defaults mirror the shipped checkbox state, so this first pass is a

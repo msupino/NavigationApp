@@ -62,6 +62,9 @@
     const kt = f[7] ? Number(f[7]) : null, trk = f[8] ? Number(f[8]) : null;
     return {
       source: 'ble',
+      // GGA's altitude is above mean sea level already. Without saying so, gps.js treated it
+      // as a phone's ellipsoid height and took the geoid off a second time (~59 ft low).
+      altitudeMsl: true,
       timestamp: Date.now(),
       coords: {
         latitude: lat, longitude: lng,

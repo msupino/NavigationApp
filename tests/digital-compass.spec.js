@@ -187,7 +187,7 @@ test('source: magnetic, true (with the app\'s variation) or the GPS track; kept 
   await expect(page.locator('.compass-deg')).toHaveText('100°');
   await expect(page.locator('.compass-ref')).toHaveText('MAG');
   await expect(page.locator('.compass-status')).toContainText('No GPS track');
-  await expect(page.locator('.compass-var')).toHaveText(/^VAR \u2066\d+°\u2069[EW]?$/);
+  await expect(page.locator('.compass-var')).toHaveText(/^VAR \d+°[EW]?$/);
   await page.evaluate(() => { new Function('gpsOwn = { lat: 32, lng: 35, hdg: 200, t: Date.now(), hdgCompass: false }; gpsLastGS = 90;')(); });
   const gpsWant = await page.evaluate(() => String(Math.round(toMagnetic(200)) % 360).padStart(3, '0') + '°');
   await expect(page.locator('.compass-deg')).toHaveText(gpsWant, { timeout: 3000 });
@@ -231,7 +231,7 @@ test('the variation shows while the compass reads magnetic, and not for true', a
     window.dispatchEvent(Object.assign(new Event('deviceorientation'), { webkitCompassHeading: 50 })); });
   const east = await page.evaluate(() => Math.round(magVarInfo().east));
   const side = east === 0 ? '' : (east > 0 ? 'E' : 'W');
-  await expect(page.locator('.compass-var')).toHaveText('VAR \u2066' + Math.abs(east) + '°\u2069' + side);
+  await expect(page.locator('.compass-var')).toHaveText('VAR ' + Math.abs(east) + '°' + side);
   await page.locator('.compass-sources button[data-source="true"]').click();
   await expect(page.locator('.compass-var')).toBeHidden();
 });
@@ -268,4 +268,97 @@ test('iPad upright: iOS\'s own orientation (0) wins over a screen.orientation.an
   await page.evaluate(() => { setTune('compassSmoothing', 1); localStorage.setItem('navaid.compassSource', 'mag'); NavAid.compass.show();
     window.dispatchEvent(Object.assign(new Event('deviceorientation'), { webkitCompassHeading: 72 })); });
   await expect(page.locator('.compass-deg')).toHaveText('072°');
+});
+
+test('iPhone app: closing the compass before the native listener answers still stops the native heading', async ({ page }) => {
+  // Review: stop() only stopped Core Location once addListener had resolved; closed sooner, the
+  // heading kept running (and its failed start could attach the web listeners after closing).
+  await page.addInitScript(() => {
+    window.__calls = []; window.__release = null;
+    window.Capacitor = { isNativePlatform: () => true, getPlatform: () => 'ios', Plugins: { CompassHeading: {
+      addListener: () => new Promise(r => { window.__release = () => r({ remove() { window.__calls.push('remove'); } }); }),
+      start: () => { window.__calls.push('start'); return Promise.resolve(); },
+      stop: () => { window.__calls.push('stop'); return Promise.resolve(); },
+    } } };
+  });
+  await boot(page);
+  await page.evaluate(() => NavAid.compass.show());
+  await page.keyboard.press('Escape');
+  await page.evaluate(() => window.__release());
+  await expect.poll(() => page.evaluate(() => window.__calls)).toEqual(['start', 'stop', 'remove']);
+});
+
+test('iPhone app: a quick close and reopen keeps one native listener, and the old reply is removed', async ({ page }) => {
+  // Review: a reply from the closed session was stored over the new one and never removed, so
+  // every heading reached the compass twice.
+  await page.addInitScript(() => {
+    window.__calls = []; window.__releases = []; window.__cbs = [];
+    window.Capacitor = { isNativePlatform: () => true, getPlatform: () => 'ios', Plugins: { CompassHeading: {
+      addListener: (ev, cb) => { window.__cbs.push(cb); const n = window.__cbs.length;
+        return new Promise(r => { window.__releases.push(() => r({ remove() { window.__calls.push('remove' + n); } })); }); },
+      start: () => { window.__calls.push('start'); return Promise.resolve(); },
+      stop: () => { window.__calls.push('stop'); return Promise.resolve(); },
+    } } };
+  });
+  await boot(page);
+  await page.evaluate(() => { setTune('compassSmoothing', 1); NavAid.compass.show(); });
+  await page.keyboard.press('Escape');
+  await page.evaluate(() => NavAid.compass.show());
+  await page.evaluate(() => { window.__releases[0](); window.__releases[1](); });
+  await expect.poll(() => page.evaluate(() => window.__calls.includes('remove1'))).toBe(true);   // the old one, removed
+  // Only the current session's callback feeds the compass.
+  await page.evaluate(() => { window.__cbs[0]({ magnetic: 10 }); window.__cbs[1]({ magnetic: 200 }); });
+  await expect(page.locator('.compass-deg')).toHaveText('200°');
+  await page.keyboard.press('Escape');
+  await expect.poll(() => page.evaluate(() => window.__calls.filter(c => c === 'stop').length)).toBe(2);
+  expect(await page.evaluate(() => window.__calls.includes('remove2'))).toBe(true);
+});
+
+test('the card turns the short way through north: 359 to 001 is +2°, not a full turn', async ({ page }) => {
+  // Reported: the compass spun all the way round going from 359 to 001.
+  await boot(page);
+  const r = await page.evaluate(() => {
+    setTune('compassSmoothing', 1); localStorage.setItem('navaid.compassSource', 'mag'); localStorage.setItem('navaid.compassMode', 'heading');
+    NavAid.compass.show();
+    const send = (v) => window.dispatchEvent(Object.assign(new Event('deviceorientation'), { webkitCompassHeading: v }));
+    const ang = () => Number(/rotate\((-?[\d.]+)/.exec(document.querySelector('.compass-card').getAttribute('transform'))[1]);
+    send(359); const a = ang();
+    send(1); const b = ang();
+    return { a, b, deg: document.querySelector('.compass-deg').textContent };
+  });
+  expect(Math.abs(r.b - r.a)).toBeLessThan(3);
+  expect(r.deg).toBe('001°');
+});
+
+test('the degree ring stays still and only the star turns; no marker outside the ring', async ({ page }) => {
+  // Asked: the inner rose rotates, the ring does not, and there is no external marker.
+  await boot(page);
+  const r = await page.evaluate(() => {
+    setTune('compassSmoothing', 1); localStorage.setItem('navaid.compassMode', 'heading'); localStorage.setItem('navaid.compassSource', 'mag');
+    NavAid.compass.show();
+    window.dispatchEvent(Object.assign(new Event('deviceorientation'), { webkitCompassHeading: 70 }));
+    return { ring: document.querySelector('.compass-ring-fixed').getAttribute('transform'),
+      star: document.querySelector('.compass-card').getAttribute('transform'),
+      ringHasTicks: !!document.querySelector('.compass-ring-fixed .compass-tick'),
+      starHasTicks: !!document.querySelector('.compass-card .compass-tick'),
+      lubber: document.querySelectorAll('.compass-lubber').length };
+  });
+  expect(r.ring).toBeNull();
+  expect(r.star).toContain('rotate(-70.0');
+  expect(r.ringHasTicks).toBe(true);
+  expect(r.starHasTicks).toBe(false);
+  expect(r.lubber).toBe(0);
+});
+
+test('North up shows the yellow heading bug on the ring, turning with the aircraft; Heading up hides it', async ({ page }) => {
+  await boot(page);
+  await page.evaluate(() => {
+    setTune('compassSmoothing', 1); localStorage.setItem('navaid.compassMode', 'heading'); localStorage.setItem('navaid.compassSource', 'mag');
+    NavAid.compass.show();
+    window.dispatchEvent(Object.assign(new Event('deviceorientation'), { webkitCompassHeading: 70 }));
+  });
+  await expect(page.locator('.compass-bug')).toBeHidden();
+  await page.locator('.compass-modes button[data-mode="north"]').click();
+  await expect(page.locator('.compass-bug')).toBeVisible();
+  expect(await page.locator('.compass-ac').getAttribute('transform')).toContain('rotate(70.0');
 });

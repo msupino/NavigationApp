@@ -131,7 +131,9 @@
       return (Number.isFinite(v) && v > 0) ? v : d;
     };
     const variation = (typeof currentMagVar === 'function') ? Number(currentMagVar()) : NaN;
-    const cruiseSpeed = legs.map(l => l && Number(l.speed)).find(s => Number.isFinite(s) && s > 0);
+    // A leg keeps its planned speed in `flightSpeed`. This read `l.speed`, which legs do not
+    // have, so a 110 kt route opened the form at the 90 kt default.
+    const cruiseSpeed = legs.map(l => l && Number(l.flightSpeed)).find(s => Number.isFinite(s) && s > 0);
     return {
       // The route's own planned level -- the number already on the leg lines. There is no field
       // for it in the form: two places to set one altitude is two numbers to disagree.
@@ -243,7 +245,7 @@
     const t = typedOnly(n);
     if (!Object.keys(t).length) return false;
     save(t);
-    routeChanged();
+    sheetReplaced();
     return true;
   }
 
@@ -345,11 +347,22 @@
     }
     if (parsed.waypoints) {
       snapshotRoute();
+      // A new route, so nothing of the old one is carried over -- the same reset every other
+      // route replacement does. Only the waypoints used to be swapped: the old legs' altitudes
+      // and speeds landed on the new legs, the old notes sat in the wrong place, and the next
+      // Save overwrote whichever saved route had been loaded before.
+      if (typeof routeAltPrefix !== 'undefined') routeAltPrefix = null;
+      if (typeof currentRouteLibraryId !== 'undefined') currentRouteLibraryId = null;
+      state.legs = [];
+      state.notes = [];
+      state.commChangeSuppressions = [];
+      state.wind = { dir: 270, speed: 0 };
       state.waypoints = parsed.waypoints;
       if (typeof syncLegs === 'function') syncLegs();
       if (typeof draw === 'function') draw();
     }
     save(parsed.navlog);
+    sheetReplaced();
     if (typeof showToast === 'function') {
       showToast((S2.navTableImported || 'Exercise loaded.') + (parsed.title ? ' — ' + parsed.title : ''));
     }
@@ -635,6 +648,14 @@
   // replaces the first's handle, and closing either clears it.
   let live = null;
   function routeChanged() { if (typeof live === 'function') live(); }
+  // A whole new sheet stored under an open window -- a saved route opened with its own, an
+  // exercise loaded. routeChanged() re-reads only what follows the route, so the window kept
+  // the OLD met table, card and speeds, and the next edit saved them over the new ones.
+  let reloadLive = null;
+  function sheetReplaced() {
+    if (typeof reloadLive === 'function') reloadLive();
+    else routeChanged();
+  }
 
   // `read` lets the window refresh a field from the config without rebuilding it: the route can
   // change under an open sheet, and rebuilding an input the pilot is typing in takes the caret
@@ -694,6 +715,7 @@
     const modal = createDraggableModal(S2.navTableTitle || 'Flight planning form', 'modal wide navlog-modal',
       () => {
         live = null;
+        reloadLive = null;
         if (typeof clearOpenChartModal === 'function') clearOpenChartModal('nav-table');
         if (NS.refreshMapClock) setTimeout(NS.refreshMapClock, 0);
       }, { nonBlocking: true });
@@ -719,9 +741,14 @@
     // says for whatever the route ends at now. (Asked for the other way round first -- the real
     // figure printed beside the box -- but it is already on the sheet, in the climb and descent
     // rows those two numbers decide.)
+    // The path can be nested ('paFraction.climb'). Writing cfg[path] made a flat key nobody
+    // reads, so resetting a met fraction left the old one in the open form.
     const restore = (path) => {
       clearField(path);
-      cfg[path] = config()[path];
+      const parts = String(path).split('.');
+      let dst = cfg, src = config();
+      for (let i = 0; i < parts.length - 1; i++) { dst = dst[parts[i]]; src = src[parts[i]]; }
+      dst[parts[parts.length - 1]] = src[parts[parts.length - 1]];
       refresh();
     };
     // Emptying the box -- which is also what a `number` input does with anything unparseable --
@@ -777,9 +804,9 @@
           onReset: () => restore('variationDeg'),
         }), c => c.variationDeg, 'variationDeg')),
       group(
-        field(S2.navLogCasClimb || 'Climb CAS', cfg.cas.climb, v => { cfg.cas.climb = num(v, 0); commit('cas.climb'); }),
-        field(S2.navLogCasCruise || 'Cruise CAS', cfg.cas.cruise, v => { cfg.cas.cruise = num(v, 0); commit('cas.cruise'); }),
-        field(S2.navLogCasDescent || 'Descent CAS', cfg.cas.descent, v => { cfg.cas.descent = num(v, 0); commit('cas.descent'); })),
+        add(field(S2.navLogCasClimb || 'Climb CAS', cfg.cas.climb, v => { cfg.cas.climb = num(v, 0); commit('cas.climb'); }), c => c.cas.climb),
+        add(field(S2.navLogCasCruise || 'Cruise CAS', cfg.cas.cruise, v => { cfg.cas.cruise = num(v, 0); commit('cas.cruise'); }), c => c.cas.cruise),
+        add(field(S2.navLogCasDescent || 'Descent CAS', cfg.cas.descent, v => { cfg.cas.descent = num(v, 0); commit('cas.descent'); }), c => c.cas.descent)),
       group(
       // Where in the climb and the descent the met data is read, as a percentage of the height
       // gained or lost: the exercise's 67% and 50%. A percentage is what a pilot can type; the
@@ -797,10 +824,10 @@
           onReset: () => restore('paFraction.descent'),
         }), c => Math.round(c.paFraction.descent * 100), 'paFraction.descent')),
       group(
-        field(S2.navLogClimbRate || 'Climb (fpm)', cfg.rates.climbFpm, v => { cfg.rates.climbFpm = num(v, 0); commit('rates.climbFpm'); }),
-        field(S2.navLogDescentRate || 'Descent (fpm)', cfg.rates.descentFpm, v => { cfg.rates.descentFpm = num(v, 0); commit('rates.descentFpm'); }),
-        field(S2.navLogClimbFuel || 'Climb fuel (gal)', cfg.fuel.climbGal, v => { cfg.fuel.climbGal = num(v, 0); commit('fuel.climbGal'); }, { step: '0.1' }),
-        field(S2.navLogCruiseGph || 'Cruise (gal/h)', cfg.fuel.cruiseGph, v => { cfg.fuel.cruiseGph = num(v, 0); commit('fuel.cruiseGph'); }, { step: '0.1' })),
+        add(field(S2.navLogClimbRate || 'Climb (fpm)', cfg.rates.climbFpm, v => { cfg.rates.climbFpm = num(v, 0); commit('rates.climbFpm'); }), c => c.rates.climbFpm),
+        add(field(S2.navLogDescentRate || 'Descent (fpm)', cfg.rates.descentFpm, v => { cfg.rates.descentFpm = num(v, 0); commit('rates.descentFpm'); }), c => c.rates.descentFpm),
+        add(field(S2.navLogClimbFuel || 'Climb fuel (gal)', cfg.fuel.climbGal, v => { cfg.fuel.climbGal = num(v, 0); commit('fuel.climbGal'); }, { step: '0.1' }), c => c.fuel.climbGal),
+        add(field(S2.navLogCruiseGph || 'Cruise (gal/h)', cfg.fuel.cruiseGph, v => { cfg.fuel.cruiseGph = num(v, 0); commit('fuel.cruiseGph'); }, { step: '0.1' }), c => c.fuel.cruiseGph)),
     );
 
     // The met table. Empty by default -- an exercise hands you one, and inventing rows would
@@ -1179,6 +1206,13 @@
     renderCard();
     refresh();
     live = refresh;
+    // Everything re-read from storage, the tables rebuilt: see sheetReplaced().
+    reloadLive = () => {
+      Object.assign(cfg, config());
+      renderMet();
+      renderCard();
+      refresh();
+    };
     const editors = document.createElement('div');
     editors.className = 'navlog-editors';
     editors.append(met, card);

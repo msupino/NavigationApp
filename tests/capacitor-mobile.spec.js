@@ -137,6 +137,10 @@ test.describe('Capacitor mobile wrapper', () => {
     expect(androidPlugin).toContain("data[0] == 'B'");
     expect(androidPlugin).toContain('UNTRUSTED_ORIGIN');
     expect(androidPlugin).toContain('probeBridge(host)');
+    // WebView.getUrl() throws off the UI thread, and plugin methods run on a background
+    // handler: the origin check has to happen inside runOnUiThread, before the executor.
+    expect(androidPlugin).toMatch(
+      /public void discover\(PluginCall call\) \{\s*(\/\/[^\n]*\n\s*)*getActivity\(\)\.runOnUiThread\(\(\) -> \{[\s\S]*isTrustedProductionPage\(\)[\s\S]*executor\.execute/);
     expect(androidActivity).toContain('registerPlugin(XPlaneDiscoveryPlugin.class)');
     expect(iosDelegate).toContain('class XPlaneDiscoveryPlugin: CAPPlugin, CAPBridgedPlugin');
     expect(iosDelegate).toContain('source": "local-bridge-scan"');

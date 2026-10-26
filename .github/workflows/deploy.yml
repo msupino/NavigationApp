@@ -132,6 +132,10 @@ jobs:
       github.base_ref != 'main'
     needs: lint
     runs-on: ubuntu-latest
+    outputs:
+      # The production commit this artifact carries; `deploy` compares it with main's tip
+      # before publishing (see "Skip a publish that would roll production back").
+      main_sha: ${{ steps.assemble.outputs.main_sha }}
     steps:
       - name: Checkout main (production)
         uses: actions/checkout@v6
@@ -171,8 +175,37 @@ jobs:
           git -C m checkout --detach FETCH_HEAD
           test "$(git -C m rev-parse HEAD)" = "$WANT"
           echo "production now at $(git -C m rev-parse --short HEAD)"
-      - name: Assemble site
+      # Same race for staging: `ref: dev` can clone the previous dev commit when this run was
+      # dispatched right after a merge, and /staging/ then goes out a commit behind (and the
+      # promotion PR's preview-SHA check fails against it). Only when this run IS about dev.
+      - name: Pin staging to the commit this run is for
+        if: github.ref == 'refs/heads/dev'
+        env:
+          WANT: ${{ github.sha }}
         run: |
+          set -euo pipefail
+          HAVE=$(git -C d rev-parse HEAD)
+          if [ "$HAVE" = "$WANT" ]; then
+            echo "staging checkout is already $WANT"
+            exit 0
+          fi
+          # Only move BACK to this run's commit when the clone is behind it. A clone that raced
+          # ahead (a later dev merge landed first) is the fresher staging; pinning it back let a
+          # slower earlier run publish last and leave /staging/ behind dev's head (review).
+          git -C d fetch --depth=200 origin "$WANT" "$HAVE" || true
+          if git -C d merge-base --is-ancestor "$WANT" "$HAVE" 2>/dev/null; then
+            echo "staging checkout $HAVE is newer than $WANT -- keeping it"
+            exit 0
+          fi
+          echo "staging checkout is $HAVE but this run is for $WANT -- re-pinning"
+          git -C d fetch --depth=1 origin "$WANT"
+          git -C d checkout --detach FETCH_HEAD
+          test "$(git -C d rev-parse HEAD)" = "$WANT"
+          echo "staging now at $(git -C d rev-parse --short HEAD)"
+      - name: Assemble site
+        id: assemble
+        run: |
+          echo "main_sha=$(git -C m rev-parse HEAD)" >> "$GITHUB_OUTPUT"
           # docs/byop/ is ~133 MB of PDFs (#105). Keep ONE copy at the
           # production root; staging and PR verification artifacts point at it
           # via an absolute path. Without this the Pages artifact balloons to
@@ -283,7 +316,7 @@ jobs:
           rm -rf site/ota
           node m/mobile/scripts/build-ota.mjs --from site --out site/ota \
             --manifest site/ota/manifest.json --version "1.0-$SHA_M" \
-            --base-url https://navaid.supino.org/ota
+            --base-url https://navaid.supino.org/ota --site-url https://navaid.supino.org
           rm -rf m/mobile/www
           test -s "site/ota/navaid-1.0-$SHA_M.zip"
 
@@ -504,6 +537,7 @@ jobs:
       id-token: write
       deployments: write        # the "View deployment" record on the PR
       pull-requests: write      # the preview-link comment
+      contents: read            # main's tip, for the stale-publish check
     # Restoring previews turned every PR event into a whole-site Pages publish, and Pages
     # deploys ONE at a time -- so with several PRs open the deploys queued behind each other
     # until actions/deploy-pages hit its own 10-minute wait and failed with
@@ -524,8 +558,32 @@ jobs:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
+      # Pages publishes the WHOLE site, and this artifact carries a copy of main taken when
+      # `build` started. PR and staging publishes are in other concurrency groups than
+      # pages-prod, so one built before a newer production deploy could finish after it and
+      # roll production (and the OTA bundle) back. If main has moved since this artifact was
+      # built, a newer main run exists and its build rebuilt staging and every preview from
+      # their current heads -- so this publish is redundant at best; skip it. Production runs
+      # always publish (pages-prod serialises them). A failed lookup publishes as before.
+      - name: Skip a publish that would roll production back
+        id: fresh
+        if: github.ref != 'refs/heads/main'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          BUILT: ${{ needs.build.outputs.main_sha }}
+        run: |
+          NOW=$(gh api "repos/$REPO/commits/main" --jq '.sha' 2>/dev/null || true)
+          if [ -n "$BUILT" ] && [ -n "$NOW" ] && [ "$NOW" != "$BUILT" ]; then
+            echo "::notice::main moved from ${BUILT:0:7} to ${NOW:0:7} since this artifact was built; not publishing it over the newer production deploy."
+            echo "stale=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "artifact carries main ${BUILT:0:7}, main is ${NOW:0:7}; publishing"
+          fi
+
       - name: Deploy to GitHub Pages
         id: deployment
+        if: steps.fresh.outputs.stale != 'true'
         # NOTE: actions/deploy-pages@v4 declares a `timeout` input but does not honour it --
         # a run with `timeout: 1800000` logged that value and still aborted after 115 status
         # polls (~606 s), i.e. the 600000 default. So the only way to keep inside its ceiling
@@ -533,7 +591,7 @@ jobs:
         uses: actions/deploy-pages@v4
 
       - name: Create PR deployment
-        if: github.event_name == 'pull_request' && github.event.action != 'closed'
+        if: github.event_name == 'pull_request' && github.event.action != 'closed' && steps.fresh.outputs.stale != 'true'
         env:
           GH_TOKEN: ${{ github.token }}
           URL: https://navaid.supino.org/pr/${{ github.event.number }}/
@@ -564,7 +622,7 @@ jobs:
           EOF
 
       - name: Post preview link comment
-        if: github.event_name == 'pull_request' && github.event.action != 'closed'
+        if: github.event_name == 'pull_request' && github.event.action != 'closed' && steps.fresh.outputs.stale != 'true'
         env:
           GH_TOKEN: ${{ github.token }}
           PR: ${{ github.event.number }}
@@ -755,7 +813,7 @@ jobs:
       (github.event_name == 'pull_request' ||
        (github.event_name == 'workflow_dispatch' &&
         github.ref_name == 'dev'))
-    needs: e2e-deployed-shard
+    needs: [scope, e2e-deployed-shard]
     runs-on: ubuntu-latest
     # Reads a job result and nothing else. It checks out no code, but a pull-request
     # workflow's token has no business being writable either way.
@@ -766,7 +824,15 @@ jobs:
       - name: Check every shard passed
         run: |
           # 'skipped' counts as a pass only when the whole matrix was skipped with the
-          # job it depends on -- a shard that fails or is cancelled must fail here.
+          # job it depends on -- a shard that fails or is cancelled must fail here. And a
+          # skip is only legitimate when `scope` ran and did not ask for the full suite:
+          # a failed scope job skips every shard, which must not read as green.
+          if [ "${{ needs.scope.result }}" != "success" ]; then
+            echo "❌ the scope job reported '${{ needs.scope.result }}', so no e2e-deployed shard ran"; exit 1
+          fi
+          if [ "${{ needs.scope.outputs.e2e }}" = "full" ] && [ "${{ needs.e2e-deployed-shard.result }}" != "success" ]; then
+            echo "❌ scope asked for the full suite but the shards reported '${{ needs.e2e-deployed-shard.result }}'"; exit 1
+          fi
           case "${{ needs.e2e-deployed-shard.result }}" in
             success|skipped) echo "✅ all e2e-deployed shards passed"; exit 0 ;;
             *) echo "❌ an e2e-deployed shard reported '${{ needs.e2e-deployed-shard.result }}'"; exit 1 ;;

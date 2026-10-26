@@ -280,6 +280,12 @@ NavAid.tuningDefaults = {
   touchDragPx: { value: 10, min: 1, max: 40, step: 1, label: 'Touch drag threshold (px)' },
   shareMaxWaypoints: { value: 64, min: 8, max: 256, step: 1, label: 'Share URL max waypoints' },
 
+  featureClosedLegs: { value: true, type: 'bool', label: 'Paint legs a NOTAM closes, at the map time (no route check needed)' },
+  closedLegColor: { value: '#e53935', type: 'color', label: 'Closed leg (NOTAM) color' },
+  closedLegWidthPx: { value: 9, min: 2, max: 24, step: 1, label: 'Closed leg width (px)' },
+  closedLegAlpha: { value: 0.8, min: 0.1, max: 1, step: 0.05, label: 'Closed leg opacity (0-1)' },
+  closedLegDashOnPx: { value: 14, min: 0, max: 60, step: 1, label: 'Closed leg dash (px)' },
+  closedLegDashOffPx: { value: 8, min: 0, max: 60, step: 1, label: 'Closed leg gap (px)' },
   routeLineWidthPx: { value: 3.5, min: 0.5, max: 12, step: 0.1, label: 'Route line width (px)' },
   routeSelectedLineWidthPx: { value: 5, min: 0.5, max: 16, step: 0.1, label: 'Selected route line width (px)' },
   splitRetracedLegs: { value: true, type: 'bool',
@@ -1303,6 +1309,7 @@ NavAid.tuningGroups = [
   { name: 'Magnifier', keys: ['magBaselineZoom', 'magMaxExp'] },
   { name: 'Behaviour', keys: ['undoLimit', 'rotDragPx', 'touchDragPx', 'shareMaxWaypoints', 'commChangeSnapPx', 'originResnapArmPx', 'bootLogoMinMs'] },
   { name: 'Route line', keys: ['routeLineWidthPx', 'routeSelectedLineWidthPx', 'splitRetracedLegs', 'retracedLegOffsetPx'] },
+  { name: 'Closed legs', keys: ['featureClosedLegs', 'closedLegColor', 'closedLegWidthPx', 'closedLegAlpha', 'closedLegDashOnPx', 'closedLegDashOffPx'] },
   { name: 'Drift lines', keys: ['driftAngleDeg', 'driftLengthFactor', 'driftDashOnPx', 'driftDashOffPx', 'driftStrokeWidthPx', 'driftLineColor', 'driftLineAlpha'] },
   { name: 'GPS track', keys: ['gpsBreadcrumbColor', 'gpsBreadcrumbWidthPx'] },
   { name: 'Wind arrows', keys: ['windArrowColor', 'windArrowHaloColor', 'windTextHaloColor', 'windArrowHaloAlpha', 'windLabelFontPx', 'windTextHaloWidthPx', 'windTextHaloAlpha'] },
@@ -1540,15 +1547,33 @@ NavAid.gistDisabled = (function () {
 }());
 // Applies one gist object over the defaults. Unknown keys are ignored: the gist outlives any
 // one build, and a key this build has never heard of must not become a tunable by arriving.
+// What each key was last set to by a gist (bundled snapshot, cached or live copy), so the live
+// fetch can tell a value the gist put there from one the pilot or ?tune put there.
+NavAid.gistApplied = {};
 function applyRemoteConfigValues(o) {
   if (!o || typeof o !== 'object') return 0;
   let n = 0;
   for (const k in o) {
     if (!NavAid.tuningDefaults[k]) continue;
     setTune(k, o[k]);                          // per-spec validation + clamp
-    if (NavAid.tuning[k] !== undefined) n++;
+    if (NavAid.tuning[k] !== undefined) { n++; NavAid.gistApplied[k] = NavAid.tuning[k]; }
   }
   return n;
+}
+// A key deleted from the live gist used to stay in force: the snapshot or the cached copy had
+// set it at boot, and applying the live gist only ever adds keys, so the old value lived on
+// until the next deploy rebuilt the snapshot. The live gist is the whole truth: a key it no
+// longer has goes back to the built-in default -- but only while the value is still the one a
+// gist set, so a pilot's or ?tune's own value is left alone.
+// Returns how many keys went back to their default, so the caller repaints for them too.
+function dropKeysMissingFromGist(o) {
+  let reverted = 0;
+  for (const k of Object.keys(NavAid.gistApplied)) {
+    if (Object.prototype.hasOwnProperty.call(o, k)) continue;
+    if (NavAid.tuning[k] === NavAid.gistApplied[k]) { delete NavAid.tuning[k]; reverted++; }
+    delete NavAid.gistApplied[k];
+  }
+  return reverted;
 }
 // The gist arrives over the network, so the first paint used to be the SHIPPED defaults and
 // everything the gist changes -- colours, sizes, which layers are on -- visibly jumped a
@@ -1598,7 +1623,9 @@ function tuneBaseline(key) {
     if (NavAid.configUrl && !NavAid.gistDisabled) {
       const o = JSON.parse(localStorage.getItem(GIST_CACHE_KEY) || 'null');
       const snap = typeof window !== 'undefined' && !window.__navaidNoGistSnapshot ? window.__navaidGistSnapshot : null;
-      if (o && typeof o === 'object' && key in o) setTune(key, o[key]);
+      // A cached live gist is the whole truth: a key it lacks was deleted from the gist, and
+      // falling through to the snapshot would bring the deleted value back.
+      if (o && typeof o === 'object') { if (key in o) setTune(key, o[key]); }
       else if (snap && typeof snap === 'object' && key in snap) setTune(key, snap[key]);
     }
   } catch (e) { /* no cache: the built-in default */ }
@@ -1622,7 +1649,10 @@ async function loadRemoteConfig() {
     // Cache what the server said, not what this build understood: a key added in a later
     // build must still be there for it, and the file is a few KB.
     try { localStorage.setItem(GIST_CACHE_KEY, JSON.stringify(o)); } catch (e) { /* full/blocked */ }
-    return applyRemoteConfigValues(o);
+    // Counted with the applied keys: a gist whose only change was a deleted key returned 0 and
+    // the caller skipped the repaint, leaving the old colours and layers on screen (review).
+    const reverted = dropKeysMissingFromGist(o);
+    return applyRemoteConfigValues(o) + reverted;
   } catch (e) {
     return 0;                                    // network/parse error → defaults
   }
@@ -1764,6 +1794,8 @@ window.S = Object.assign({
   routeCheckNeedRoute: 'Draw a route first: there is nothing to check yet.',
   routeCheckWindow: 'Checked for',
   routeCheckClear: 'Nothing found against this plan in that window.',
+  routeCheckVerdictStop: (n) => 'Route blocked: ' + (n === 1 ? 'a leg crosses active airspace at its planned altitude' : n + ' legs cross active airspace at their planned altitudes'),
+  routeCheckVerdictWarn: (n) => (n === 1 ? '1 warning' : n + ' warnings') + ' to read before you fly',
   routeCheckCouldNotAsk: 'Not checked (no data):',
   routeCheckNothing: 'nothing',
   routeCheckNotRead: 'could not be read',
@@ -2580,6 +2612,7 @@ window.S = Object.assign({
   fplMailDeparture: (place, t) => 'Departure from ' + place + ' at ' + t + ' local time',
   fplMailRoute: (list) => 'Route: ' + list,
   fplMailArrival: (place, t) => 'Landing at ' + place + ' at ' + t,
+  autoRouteClosedCorridor: 'Auto-route: no open corridor here, so the route drawn may run through one closed or time-gated now. Check the NOTAMs.',
   warnFplClosedCorridor: 'A corridor on this route may be closed or time-gated at the chosen departure time (secondary source) — no open alternative was published, so it is filed anyway. Verify with the NOTAMs.',
   fplEtdFirst: 'Set the departure time first \u2014 the plan is filed with it.',
   fplEtdPassedFirst: function (t) { return 'The departure time (' + t + ') has passed \u2014 set a new one, then submit.'; },
@@ -2877,6 +2910,7 @@ window.S = Object.assign({
   autoArrangeDone: (n) => (n === 1 ? 'Moved 1 label' : 'Moved ' + n + ' labels') + ' \u2014 drag any of them to adjust, Undo to put them back',
   autoArrangeNone: 'Nothing covers anything \u2014 no label moved',
   whyAutoArrangeNoRoute: 'Draw a route first',
+  followMeKeyMismatch: 'Follow me: this link does not match the aeroplane this device already follows (a different signing key). It was not opened. Ask the pilot for a new link.',
   compassTitle: 'Compass',
   compassMag: 'MAG',
   compassTrue: 'TRUE',
@@ -6445,7 +6479,10 @@ function parseLatLng(str) {
 
   // --- hemisphere-tagged (DMS / DM) ---
   // One coordinate = degrees, optional minutes, optional seconds, hemisphere.
-  const comp = /(-?\d+(?:\.\d+)?)\s*[°:\s]?\s*(?:(\d+(?:\.\d+)?)\s*['′M:\s]\s*)?(?:(\d+(?:\.\d+)?)\s*["″S]?\s*)?\s*([NSEW])/g;
+  // Minutes may also end right at the hemisphere letter ("32 05.5N", "32°05.5N"): without that,
+  // the minutes group needed a separator after it, so 05.5 fell through to the seconds group
+  // and the point landed ~10 km off (32.0015 instead of 32.0917) yet still inside the bounds.
+  const comp = /(-?\d+(?:\.\d+)?)\s*[°:\s]?\s*(?:(\d+(?:\.\d+)?)(?:\s*['′M:\s]\s*|(?=[NSEW])))?(?:(\d+(?:\.\d+)?)\s*["″S]?\s*)?\s*([NSEW])/g;
   const found = [];
   let m;
   while ((m = comp.exec(s)) !== null) {
@@ -7796,6 +7833,9 @@ function routeCheckAltInBand(altFt, baseFt, topFt) {
 // convective base, not an observation, and everything downstream says so -- a derived figure
 // dressed as a METAR would be a wrong number wearing the shape of a right one.
 const ROUTE_CHECK_SAMPLE_NM = 10;
+// How near a field the route does not name has to be for its weather to count; the same 15 NM
+// routecheck.js uses to choose which fields' METARs to send.
+const ROUTE_CHECK_WX_NEAR_NM = 15;
 // A base is only a CEILING when the sky is broken or worse. Broken starts at five eighths, so
 // the cover has to be at least that before a base is worth a pilot's attention: below it there
 // is a layer, but there is also a way through.
@@ -7994,8 +8034,27 @@ function routeCheckFindings(input) {
   if (!Array.isArray(o.wx)) out.unchecked.push('ceiling');
   else {
     const names = new Set(wps.map(w => (w && w.name || '').trim().toUpperCase()));
+    // The gatherer sends the fields within ROUTE_CHECK_WX_NEAR_NM of the route, not only the ones
+    // it names: a route past Haifa cares what Haifa reports. Keeping only named fields here threw
+    // those away, so BKN015 at LLHA under a 2,500 ft leg flown past it said nothing. A field the
+    // route does not name counts when it is that close, and only against the legs passing it.
+    const samples = routeCheckSamplePoints(wps, ROUTE_CHECK_SAMPLE_NM);
+    const fieldPos = (icao) => {
+      const af = (Array.isArray(window.airfields) ? window.airfields : [])
+        .find(f => f && String(f.icao || f.name || '').trim().toUpperCase() === icao);
+      return af && Number.isFinite(af.lat) && Number.isFinite(af.lng) ? af : null;
+    };
     for (const st of o.wx) {
-      if (!st || !names.has((st.icao || '').trim().toUpperCase())) continue;
+      if (!st) continue;
+      const icao = (st.icao || '').trim().toUpperCase();
+      let nearLegs = null;   // null = a field the route names: every leg, as before
+      if (!names.has(icao)) {
+        const pos = Number.isFinite(st.lat) && Number.isFinite(st.lng) ? st : fieldPos(icao);
+        if (!pos) continue;
+        nearLegs = new Set(samples
+          .filter(p => routeCheckNmBetween(p, pos) <= ROUTE_CHECK_WX_NEAR_NM).map(p => p.leg));
+        if (!nearLegs.size) continue;
+      }
       // A field that published a TAF whose periods could not be worked out is a field this
       // check has only half looked at: the METAR is current weather, and the forecast is the
       // half a PLAN needs.
@@ -8012,6 +8071,7 @@ function routeCheckFindings(input) {
       let worst = null;
       for (const set of sets) {
         for (let i = 0; i < legs.length; i++) {
+          if (nearLegs && !nearLegs.has(i)) continue;
           const altitude = altOf(i);
           const flightWindow = legWindow(i);
           if (set.forecast && (set.to <= flightWindow.from || set.from >= flightWindow.to)) continue;

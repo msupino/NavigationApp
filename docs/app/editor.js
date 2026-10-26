@@ -470,8 +470,9 @@
       else document.execCommand('copy');
     };
     box.querySelector('#ed-dl').onclick = function () {
+      // saveFile owns the blob URL (and revokes it itself); there is no anchor here. A
+      // leftover `URL.revokeObjectURL(a.href)` threw a ReferenceError on every press.
       saveFile(new Blob([json()], { type: 'application/json' }), 'editor-' + Date.now() + '.json');
-      URL.revokeObjectURL(a.href);
     };
     makeDraggable(box, box.querySelector('#ed-head'));
     render();
@@ -502,7 +503,15 @@
     buildPanel();
     redraw();
     map.on('click', function (e) { if (mode === 'polygon') addVertex(e.latlng); else addPoint(e.latlng); });
-    map.on('dblclick', function (e) { if (mode === 'polygon') { L.DomEvent.stop(e); finishPoly(); } });
+    map.on('dblclick', function (e) {
+      if (mode !== 'polygon') return;
+      L.DomEvent.stop(e);
+      // A double-click arrives as two clicks first, and each added a corner -- so the ring
+      // closed with its last corner in it twice. Drop the second click's copy before closing.
+      var n = draft.length;
+      if (n >= 2 && map.latLngToContainerPoint(draft[n - 1]).distanceTo(map.latLngToContainerPoint(draft[n - 2])) <= 4) draft.pop();
+      finishPoly();
+    });
     map.on('layeradd layerremove baselayerchange', function () { if (_redrawing) return; render(); redraw(); });
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
