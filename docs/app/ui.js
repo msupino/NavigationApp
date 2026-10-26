@@ -11880,6 +11880,10 @@ function refreshMapAfterToolbarModeChange() {
   const posKey = () => navLangPosKey(toolbarUsesDesktopMenu() ? KEY_DESKTOP : KEY);
   let dx = 0, dy = 0, dragging = false;
   let wasDesktopMenu = toolbarUsesDesktopMenu();
+  // The gist's `featureMenubarDrag` off pins the menubar where the stylesheet puts it: no grip,
+  // no drag, and a position saved from before is not applied (it stays stored for if it returns).
+  const menubarPinned = () => toolbarUsesDesktopMenu()
+    && typeof tune === 'function' && tune('featureMenubarDrag') === false;
 
   function clampPos(x, y) {
     const w = bar.offsetWidth, h = bar.offsetHeight;
@@ -11899,6 +11903,7 @@ function refreshMapAfterToolbarModeChange() {
   }
 
   function restorePos() {
+    if (menubarPinned()) return;
     try {
       const desktopMenu = toolbarUsesDesktopMenu();
       const raw = navLangPosRead(desktopMenu ? KEY_DESKTOP : KEY);
@@ -11921,6 +11926,7 @@ function refreshMapAfterToolbarModeChange() {
   }
 
   function start(cx, cy) {
+    if (menubarPinned()) return;
     const r = bar.getBoundingClientRect();
     dx = cx - r.left;
     dy = cy - r.top;
@@ -12002,7 +12008,25 @@ function refreshMapAfterToolbarModeChange() {
     }
   });
 
+  function refreshMenubarPin() {
+    const pinned = menubarPinned();
+    if (bar.classList.contains('menubar-pinned') === pinned) return;
+    bar.classList.toggle('menubar-pinned', pinned);
+    if (pinned) {
+      dragging = false;
+      bar.classList.remove('dragging');
+      clearInlineToolbarPos();
+    } else {
+      restorePos();
+    }
+    if (typeof window.reconcileLegendPosition === 'function') {
+      window.reconcileLegendPosition({ persist: false });
+    }
+  }
+  window.refreshMenubarPin = refreshMenubarPin;
+
   function applyResponsiveToolbarMode() {
+    refreshMenubarPin();
     const desktopMenu = toolbarUsesDesktopMenu();
     const enteringMobile = wasDesktopMenu && !desktopMenu;
     wasDesktopMenu = desktopMenu;
@@ -13284,6 +13308,7 @@ if (typeof loadRemoteConfig === "function") {
     if (typeof refreshFollowMeMapControl === "function") refreshFollowMeMapControl();
     if (typeof refreshAssistantFeature === "function") refreshAssistantFeature();
     if (typeof refreshToolbarDesktopMenu === "function") refreshToolbarDesktopMenu();
+    if (typeof window.refreshMenubarPin === "function") window.refreshMenubarPin();
     if (NavAid && typeof NavAid.refreshMobileDeck === "function") NavAid.refreshMobileDeck();
     if (typeof refreshEmptyRouteHint === "function") refreshEmptyRouteHint();
     if (typeof refreshTrafficFeature === "function") refreshTrafficFeature();

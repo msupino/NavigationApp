@@ -916,6 +916,9 @@ html[dir="rtl"] #toolbar {
     transform: translateY(calc(var(--navaid-toolbar-bottom, 48px) - 2px));
   }
 
+  /* Pinned by the gist (featureMenubarDrag off): nothing to grab. */
+  :where(html.menubar) #toolbar.menubar-pinned > #toolbar-handle { display: none; }
+
   :where(html.menubar) #toolbar-toggle,
   :where(html.menubar) #app-version {
     display: none;
