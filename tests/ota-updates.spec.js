@@ -494,3 +494,10 @@ test('no update is taken while the packed chart is still being copied', async ({
   }, MANIFEST);
   expect(done.updated).toBe(true);
 });
+
+test('a 0% report is "started", not progress: the row stays indeterminate until a real figure', async ({ page }) => {
+  // iOS reports 0 at the start and nothing until the whole file is in, so the row sat at "0%".
+  const src = require('fs').readFileSync(require('path').join(__dirname, '..', 'docs', 'app', 'ota.js'), 'utf8');
+  expect(src).toMatch(/if \(v === 0\) return;/);
+  void page;
+});
