@@ -9111,6 +9111,19 @@ body.theme-light .navlog-table {
   opacity: 0.85; }
 /* The window is the point of the whole panel, so it is not the quietest line on the row. */
 .route-check-when-row { opacity: 1; font-variant-numeric: tabular-nums; }
+/* The verdict, first and unmissable; and a blocking finding no longer looks like a warning. */
+.route-check-verdict { border-radius: 8px; padding: 10px 12px; font-weight: 700; line-height: 1.35; }
+.route-check-verdict-stop { background: #7f1d1d; color: #fff; border: 2px solid #ef4444; }
+.route-check-verdict-warn { background: rgba(245, 158, 11, 0.16); border: 1px solid #f59e0b; }
+.route-check-verdict-title { font-size: 15px; }
+.route-check-verdict-legs { margin-top: 4px; font-weight: 600; font-size: 13px; overflow-wrap: anywhere; }
+body.theme-light .route-check-verdict-stop { background: #fde8e8; color: #7f1d1d; border-color: #dc2626; }
+body.theme-light .route-check-verdict-warn { background: #fff7e6; color: #7a4a00; border-color: #d97706; }
+.route-check-group.route-check-group-stop { border: 2px solid #ef4444; }
+body.theme-light .route-check-group.route-check-group-stop { border-color: #dc2626; }
+.route-check-item.route-check-stop { background: rgba(239, 68, 68, 0.14); border-inline-start: 4px solid #ef4444;
+  border-radius: 6px; padding: 6px 8px; }
+body.theme-light .route-check-item.route-check-stop { background: #fdecec; border-inline-start-color: #dc2626; }
 .route-check-stop .route-check-head { color: #ffb3a7; }
 body.theme-light .route-check-stop .route-check-head { color: #8a1c00; }
 .route-check-clear, .route-check-waiting { margin: 0; opacity: 0.85; }

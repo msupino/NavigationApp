@@ -95,6 +95,8 @@ window.S = {
   routeCheckNeedRoute: 'שרטטו קודם מסלול: אין עדיין מה לבדוק.',
   routeCheckWindow: 'נבדק עבור',
   routeCheckClear: 'לא נמצא דבר נגד התוכנית הזו בחלון הזמן הזה.',
+  routeCheckVerdictStop: (n) => 'המסלול חסום: ' + (n === 1 ? 'קטע חוצה' : n + ' קטעים חוצים') + ' מרחב פעיל בגובה המתוכנן',
+  routeCheckVerdictWarn: (n) => (n === 1 ? 'אזהרה אחת' : n + ' אזהרות') + ' לקרוא לפני הטיסה',
   routeCheckCouldNotAsk: 'לא נבדק (אין נתונים):',
   routeCheckNothing: 'אין',
   routeCheckNotRead: 'לא ניתן לקריאה',
