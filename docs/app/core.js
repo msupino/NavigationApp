@@ -1780,6 +1780,8 @@ window.S = Object.assign({
   routeCheckNeedRoute: 'Draw a route first: there is nothing to check yet.',
   routeCheckWindow: 'Checked for',
   routeCheckClear: 'Nothing found against this plan in that window.',
+  routeCheckVerdictStop: (n) => 'Route blocked: ' + (n === 1 ? 'a leg crosses active airspace at its planned altitude' : n + ' legs cross active airspace at their planned altitudes'),
+  routeCheckVerdictWarn: (n) => (n === 1 ? '1 warning' : n + ' warnings') + ' to read before you fly',
   routeCheckCouldNotAsk: 'Not checked (no data):',
   routeCheckNothing: 'nothing',
   routeCheckNotRead: 'could not be read',
