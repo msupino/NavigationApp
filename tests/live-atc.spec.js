@@ -27,7 +27,7 @@ test('Herzliya links its tower feed to LiveATC, after the phone, out of the app'
   await expect(link).toHaveAttribute('rel', /noopener/);
   await expect(link).toContainText('Tower');
   await expect(link).toContainText('liveatc.net');
-  await expect(link).toHaveAttribute('aria-label', /liveatc\.net/);
+  expect(await link.getAttribute('aria-label')).toContain('on liveatc.net (opens outside NavAid)');
   // A drawn icon, not an emoji.
   await expect(link.locator('svg.nav-icon')).toHaveCount(1);
   // Thumb-sized.
