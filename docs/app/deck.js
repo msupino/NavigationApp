@@ -28,7 +28,13 @@
     if (param === '0' || param === 'false') return false;
     return typeof tune !== 'function' || tune('featureMobileDeck') !== false;
   }
-  const narrow = () => !window.matchMedia || window.matchMedia(NARROW).matches;
+  // A tablet -- a touch screen wider than a phone, the iPad -- gets the deck too, through the
+  // coarse pointer. `featureTabletDesktop` (gist, off) hands it the desktop layout instead, to
+  // compare the two there; the touch-sized controls stay, they hang off the pointer, not the deck.
+  const TABLET = '(min-width: 681px) and (pointer: coarse)';
+  const tabletDesktop = () => typeof tune === 'function' && tune('featureTabletDesktop') === true
+    && !!window.matchMedia && window.matchMedia(TABLET).matches;
+  const narrow = () => !window.matchMedia || (window.matchMedia(NARROW).matches && !tabletDesktop());
   const wanted = () => flagOn() && narrow();
 
   const txt = (id) => {
@@ -892,10 +898,11 @@
   NavAid.deckFmtBearing = fmtBearing;
   NavAid.deckNearestFieldText = nearestFieldText;
   if (window.matchMedia) {
-    const mq = window.matchMedia(NARROW);
     const onChange = () => apply();
-    if (mq.addEventListener) mq.addEventListener('change', onChange);
-    else if (mq.addListener) mq.addListener(onChange);
+    for (const mq of [window.matchMedia(NARROW), window.matchMedia(TABLET)]) {
+      if (mq.addEventListener) mq.addEventListener('change', onChange);
+      else if (mq.addListener) mq.addListener(onChange);
+    }
   }
   // The gist arrives after boot, so the first apply() runs on the code default and the
   // config's answer lands a moment later, like every other feature switch.

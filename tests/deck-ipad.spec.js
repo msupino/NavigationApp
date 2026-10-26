@@ -44,3 +44,21 @@ test('Return in the sheet search builds the route and puts the menu away', async
   await expect(page.locator('#deck-sheet')).toBeHidden();
   expect(await page.evaluate(() => document.activeElement && document.activeElement.id)).not.toBe('wp-search');
 });
+
+test('featureTabletDesktop gives the iPad the desktop layout, and back', async ({ page }) => {
+  await boot(page);
+  await expect(page.locator('#deck-bar')).toBeVisible();
+  await page.evaluate(() => {
+    NavAid.tuning.featureTabletDesktop = true;
+    NavAid.refreshMobileDeck();
+  });
+  await expect(page.locator('body')).not.toHaveClass(/deck-on/);
+  await expect(page.locator('#deck-bar')).toHaveCount(0);
+  await expect(page.locator('#toolbar')).toBeVisible();
+  await page.screenshot({ path: 'test-results/ipad-desktop-layout.png' });
+  await page.evaluate(() => {
+    NavAid.tuning.featureTabletDesktop = false;
+    NavAid.refreshMobileDeck();
+  });
+  await expect(page.locator('#deck-bar')).toBeVisible();
+});
