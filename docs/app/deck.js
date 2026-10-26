@@ -1,6 +1,6 @@
 'use strict';
 // Option B, first slice: a data strip along the top of the chart and a deck of five targets
-// along the bottom, on narrow screens only, behind `featureMobileDeck` (off).
+// along the bottom, on narrow and touch screens.
 //
 // Why: measured at 390x844, the phone screen carried six floating islands -- the menu card,
 // the Zulu clock, the look-ahead strip, the coordinate readout, the zoom column and the
@@ -17,19 +17,20 @@
 (function mobileDeck() {
   const NARROW = '(max-width: 680px), (pointer: coarse)';
 
-  // On by default now, narrow screens only. `?deck=0` puts the floating menu back without
-  // waiting for a config push, and `?deck=1` brings the deck up on a wide screen to look at
-  // it -- the same escape hatch `?tune=1` gives the tuning panel. The gist still owns the
-  // switch itself.
+  // Always on, narrow and touch screens only: the floating menu it replaced is gone there.
+  // `?deck=1` brings the deck up on a wide screen to look at it -- the same escape hatch `?tune=1`
+  // gives the tuning panel.
   function flagOn() {
     let param = null;
     try { param = new URLSearchParams(location.search).get('deck'); } catch (e) { /* no URL */ }
-    if (param === '1' || param === 'true') return true;
-    if (param === '0' || param === 'false') return false;
-    return typeof tune !== 'function' || tune('featureMobileDeck') !== false;
+    return param === '1' || param === 'true';
   }
-  const narrow = () => !window.matchMedia || window.matchMedia(NARROW).matches;
-  const wanted = () => flagOn() && narrow();
+  // A tablet gets the deck through the coarse pointer -- unless the gist's `featureTabletDesktop`
+  // gives it the desktop menubar (ui.js toolbarUsesDesktopMenu), which the deck must not cover.
+  const desktopMenu = () => !!(window.NavAid && typeof NavAid.usesDesktopMenu === 'function'
+    && NavAid.usesDesktopMenu());
+  const narrow = () => !window.matchMedia || (window.matchMedia(NARROW).matches && !desktopMenu());
+  const wanted = () => flagOn() || narrow();
 
   const txt = (id) => {
     const el = document.getElementById(id);
@@ -322,7 +323,6 @@
     const next = bar.nextSibling;
     const inline = bar.getAttribute('style') || '';
     bar.removeAttribute('style');              // a dragged position means nothing in a sheet
-    bar.classList.remove('collapsed');
     bar.classList.add('deck-hosted');
     body.appendChild(bar);
     restore = () => {
@@ -331,7 +331,6 @@
       if (inline) bar.setAttribute('style', inline);
       if (next && next.parentNode === parent) parent.insertBefore(bar, next);
       else parent.appendChild(bar);
-      if (typeof window.collapseToolbarForMapTool === 'function') window.collapseToolbarForMapTool();
     };
   }
 
@@ -363,7 +362,6 @@
     closeSheet();
     closeOverlays();
     if (typeof window.closeToolbarMenus === 'function') window.closeToolbarMenus();
-    if (typeof window.collapseToolbarForMapTool === 'function') window.collapseToolbarForMapTool();
     if (typeof state === 'object' && state && state.selected) {
       state.selected = null;
       if (typeof showInspector === 'function') showInspector();
@@ -394,6 +392,9 @@
   function showMenu() {
     if (sheet && !sheet.hidden && sheetKey === 'menu') { closeSheet(); return; }
     closeOverlays();
+    // Going to the menu is not answering the map's "tap to start a route", as the old card's
+    // hamburger was not: the onboarding stands down.
+    if (typeof dismissRoutePriming === 'function') dismissRoutePriming();
     openSheet('menu', (typeof S === 'object' && S && S.deckMenu) || 'Menu', hostToolbar);
   }
 
@@ -892,10 +893,11 @@
   NavAid.deckFmtBearing = fmtBearing;
   NavAid.deckNearestFieldText = nearestFieldText;
   if (window.matchMedia) {
-    const mq = window.matchMedia(NARROW);
     const onChange = () => apply();
-    if (mq.addEventListener) mq.addEventListener('change', onChange);
-    else if (mq.addListener) mq.addListener(onChange);
+    for (const mq of [window.matchMedia(NARROW), window.matchMedia('(min-width: 681px) and (pointer: coarse)')]) {
+      if (mq.addEventListener) mq.addEventListener('change', onChange);
+      else if (mq.addListener) mq.addListener(onChange);
+    }
   }
   // The gist arrives after boot, so the first apply() runs on the code default and the
   // config's answer lands a moment later, like every other feature switch.

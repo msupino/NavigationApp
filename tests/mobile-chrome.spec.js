@@ -68,7 +68,7 @@ test('the in-flight buttons are one family: round, same shadow', async ({ page }
 test('nothing on the chart is smaller than a thumb', async ({ page }) => {
   await boot(page);
   const small = await page.evaluate(() => {
-    const sels = ['#map-time-now', '#toolbar-handle', '#toolbar-toggle', '.attrib-toggle',
+    const sels = ['#map-time-now', '#toolbar-handle', '.attrib-toggle',
       '.leaflet-control-zoom a', '#rotate-hdg'];
     const out = [];
     for (const sel of sels) {
@@ -121,32 +121,3 @@ test('the look-ahead clock is one card on a phone, not four loose pieces', async
   expect(got.chip, 'a chip inside the card still carries its own').toBe(false);
 });
 
-test('opening the inspector puts the phone menu away', async ({ page }) => {
-  await boot(page);
-  const bar = page.locator('#toolbar');
-  await page.evaluate(() => {
-    document.getElementById('toolbar').classList.remove('collapsed');
-    try { localStorage.setItem('navaid.toolbarCollapsed', '0'); } catch (e) { /* */ }
-  });
-  await page.evaluate(() => {
-    state.waypoints = [{ lat: 32.0, lng: 34.9, name: 'A' }, { lat: 32.3, lng: 35.1, name: 'B' }];
-    syncLegs();
-    state.selected = { type: 'leg', index: 0 };
-    showInspector();
-  });
-  await expect(bar).toHaveClass(/collapsed/);
-  // Not persisted: the menu is where it was left the next time it is opened deliberately.
-  expect(await page.evaluate(() => localStorage.getItem('navaid.toolbarCollapsed'))).toBe('0');
-});
-
-test('a desktop keeps both, because both fit', async ({ page }) => {
-  await boot(page, { width: 1280, height: 900 });
-  const before = await page.evaluate(() => document.getElementById('toolbar').classList.contains('collapsed'));
-  await page.evaluate(() => {
-    state.waypoints = [{ lat: 32.0, lng: 34.9, name: 'A' }, { lat: 32.3, lng: 35.1, name: 'B' }];
-    syncLegs();
-    state.selected = { type: 'leg', index: 0 };
-    showInspector();
-  });
-  expect(await page.evaluate(() => document.getElementById('toolbar').classList.contains('collapsed'))).toBe(before);
-});

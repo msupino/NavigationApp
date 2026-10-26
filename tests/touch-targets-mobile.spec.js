@@ -1,7 +1,4 @@
 // @ts-check
-// The floating menu card is what this file is about, and the phone deck replaces it: the
-// deck's own spec covers that layout, and `?deck=0` is the switch a gist -- or a pilot --
-// can use to have the card back. So these open with the card.
 // The 44px touch-target rule, applied to the controls the earlier pass missed. An
 // earlier round covered the zoom buttons and footer links; the hamburger — the only
 // way to reach any menu on a phone — was still 42x21, the smallest target in the app
@@ -12,7 +9,7 @@ const { test, expect } = require('./_setup');
 test.use({ viewport: { width: 375, height: 812 } });
 
 async function boot(page) {
-  await page.goto('?lang=en&nogist&deck=0');
+  await page.goto('?lang=en&nogist');
   await page.waitForFunction(() => typeof syncLegs === 'function');
 }
 
@@ -20,26 +17,6 @@ const box = (page, sel) => page.evaluate(s => {
   const r = document.querySelector(s).getBoundingClientRect();
   return { w: Math.round(r.width), h: Math.round(r.height), right: r.right, left: r.left };
 }, sel);
-
-test('the mobile menu button is a full touch target', async ({ page }) => {
-  await boot(page);
-  const b = await box(page, '#toolbar-toggle');
-  expect(b.w).toBeGreaterThanOrEqual(44);
-  expect(b.h).toBeGreaterThanOrEqual(44);
-});
-
-test('the menu button still opens the menu at its new size', async ({ page }) => {
-  await boot(page);
-  const r = await page.evaluate(() => {
-    const tb = document.getElementById('toolbar');
-    const wasCollapsed = tb.classList.contains('collapsed');
-    document.getElementById('toolbar-toggle').click();
-    return { wasCollapsed, nowCollapsed: tb.classList.contains('collapsed'),
-      h: tb.getBoundingClientRect().height };
-  });
-  expect(r.nowCollapsed).not.toBe(r.wasCollapsed);
-  expect(r.h).toBeGreaterThan(100);          // the sections are actually showing
-});
 
 test('the coordinate readout is tall enough to hit', async ({ page }) => {
   await boot(page);
@@ -70,9 +47,7 @@ test('desktop is unaffected by the touch sizing', async ({ page }) => {
   await boot(page);
   const r = await page.evaluate(() => {
     const c = document.getElementById('coord-readout').getBoundingClientRect();
-    const t = document.getElementById('toolbar-toggle');
-    return { coordH: Math.round(c.height), toggleHidden: getComputedStyle(t).display === 'none' };
+    return { coordH: Math.round(c.height) };
   });
-  expect(r.toggleHidden).toBe(true);         // hamburger is mobile-only
   expect(r.coordH).toBeLessThan(44);         // desktop keeps the compact readout
 });

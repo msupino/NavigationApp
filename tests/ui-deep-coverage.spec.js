@@ -1,7 +1,4 @@
 // @ts-check
-// The floating menu card is the layout these phone cases are about, and the deck replaces
-// it (see mobile-deck.spec.js). `?deck=0` is the switch that brings the card back, so
-// they open with it.
 // Coverage for under-tested interactive UI areas:
 //   - Inspector panel (waypoint click → open, edit name, close)
 //   - Charts modal navigation (open airport row, click plate, plate viewer)
@@ -32,7 +29,7 @@ async function boot(page, lang = 'en') {
       }
     } catch (e) {}
   });
-  await page.goto('?lang=' + lang + '&deck=0');
+  await page.goto('?lang=' + lang + '');
   await page.waitForFunction(() => typeof state !== 'undefined' && typeof showInspector === 'function');
   await hideToolbarMenus(page);
 }
@@ -48,7 +45,7 @@ async function bootWithSavedSelection(page, route, selected) {
       sessionStorage.setItem('navaid.selected', JSON.stringify(selected));
     } catch (e) {}
   }, { route, selected });
-  await page.goto('?lang=en&deck=0');
+  await page.goto('?lang=en');
   await page.waitForFunction(() => typeof state !== 'undefined' && typeof showInspector === 'function');
   await hideToolbarMenus(page);
 }
@@ -383,7 +380,7 @@ test.describe('Inspector panel', () => {
     await expect.poll(() =>
       page.evaluate(() => sessionStorage.getItem('navaid.selected')))
       .toBe('{"type":"wp","index":0}');
-    await page.goto('?lang=he&deck=0');
+    await page.goto('?lang=he');
     await page.waitForFunction(() =>
       state && state.selected && state.selected.type === 'wp' && state.selected.index === 0);
     await expect(page.locator('#lang-select')).toHaveValue('he');
@@ -543,7 +540,7 @@ test.describe('Charts modal navigation', () => {
       { button: '#route-templates', marker: '.route-template-modal' },
     ];
     for (const c of cases) {
-      await page.goto('?lang=en&deck=0');
+      await page.goto('?lang=en');
       await page.waitForFunction(() => typeof state !== 'undefined' &&
         typeof showChartsModal === 'function' &&
         typeof showRouteTemplatesModal === 'function');
@@ -563,31 +560,6 @@ test.describe('Charts modal navigation', () => {
   });
 });
 
-// ---------------------------------------------------------------------------
-// Toolbar drag (#toolbar-handle → navaid.toolbarPos.<lang>)
-// ---------------------------------------------------------------------------
-test.describe('Toolbar drag', () => {
-  test.use({ viewport: { width: 390, height: 844 } });
-
-  test('dragging the handle writes navaid.toolbarPos.<lang> to localStorage', async ({ page }) => {
-    await boot(page);
-    const handle = page.locator('#toolbar-handle');
-    const handleBox = await handle.boundingBox();
-    expect(handleBox).not.toBeNull();
-    if (!handleBox) return;
-
-    await page.mouse.move(handleBox.x + handleBox.width / 2, handleBox.y + handleBox.height / 2);
-    await page.mouse.down();
-    await page.mouse.move(handleBox.x + 80, handleBox.y + 60, { steps: 4 });
-    await page.mouse.up();
-
-    const stored = await page.evaluate(() => localStorage.getItem('navaid.toolbarPos.en'));
-    expect(stored).toBeTruthy();
-    const pos = JSON.parse(stored);
-    expect(typeof pos.x).toBe('number');
-    expect(typeof pos.y).toBe('number');
-  });
-});
 
 // ---------------------------------------------------------------------------
 // Rotate dial (map rotation → navaid.bearing)

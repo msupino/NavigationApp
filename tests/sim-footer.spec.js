@@ -1,13 +1,10 @@
 // @ts-check
-// The floating menu card is the layout these phone cases are about, and the deck replaces
-// it (see mobile-deck.spec.js). `?deck=0` is the switch that brings the card back, so
-// they open with it.
 // The Simulator (SimConnect) controls moved from a toolbar section to a small
 // footer icon that opens a modal panel.
 const { test, expect } = require('./_setup');
 
 test('footer sim icon opens the simulator panel; Esc closes it', async ({ page }) => {
-  await page.goto('?lang=en&deck=0');
+  await page.goto('?lang=en');
   await page.waitForFunction(() => typeof state !== 'undefined');
 
   // No simulator toolbar section anymore.
@@ -44,7 +41,7 @@ test('footer sim icon opens the simulator panel; Esc closes it', async ({ page }
 
 test('desktop simulator panel is draggable by its title and stays in the viewport', async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 800 });
-  await page.goto('?lang=en&nogist&deck=0');
+  await page.goto('?lang=en&nogist');
   await page.locator('#sim-trigger').click();
 
   const box = page.locator('#sim-modal .modal.sim-modal');
@@ -70,13 +67,15 @@ test('desktop simulator panel is draggable by its title and stays in the viewpor
 
 test('the sim icon stays visible on a mobile viewport -- connecting one is how the watch alerts get tested there', async ({ page }) => {
   await page.setViewportSize({ width: 375, height: 812 });
-  await page.goto('?lang=en&nogist&deck=0');
+  await page.goto('?lang=en&nogist');
   await page.waitForFunction(() => !!document.getElementById('sim-trigger'));
+  await page.evaluate(() => { document.getElementById('boot-loading')?.remove(); document.documentElement.classList.remove('app-booting'); });
+  await page.locator('#deck-bar .deck-btn-menu').click();   // a phone's menu is the deck's Menu sheet
   await expect(page.locator('#sim-trigger')).toBeVisible();
 });
 
 test('simulator URL guidance distinguishes desktop, iPad browser, and native app', async ({ page }) => {
-  await page.goto('?lang=en&nogist&deck=0');
+  await page.goto('?lang=en&nogist');
   await page.waitForFunction(() => typeof window.simConnectionProblem === 'function');
   const out = await page.evaluate(() => ({
     desktopLoopback: simConnectionProblem('http://localhost:2020',
@@ -128,7 +127,7 @@ test('native iOS polls an HTTP LAN bridge through CapacitorHttp', async ({ page 
       },
     };
   });
-  await page.goto('?lang=en&nogist&deck=0');
+  await page.goto('?lang=en&nogist');
   await page.locator('#sim-trigger').click();
   await page.locator('#sim-url').fill('http://192.168.1.20:2020');
   await page.locator('#sim-connect-cb').click();
@@ -168,7 +167,7 @@ test('native Android polls an HTTP LAN bridge through CapacitorHttp', async ({ p
       },
     };
   });
-  await page.goto('?lang=en&nogist&deck=0');
+  await page.goto('?lang=en&nogist');
   await page.locator('#sim-trigger').click();
   await page.locator('#sim-url').fill('http://192.168.1.20:2020');
   await page.locator('#sim-connect-cb').click();
@@ -202,7 +201,7 @@ test('native Android discovers X-Plane and fills the bridge URL', async ({ page 
   });
   // Keep the deployed-preview base path (`/pr/NNN/`) instead of jumping to
   // the production origin root.
-  await page.goto('?lang=en&nogist&deck=0');
+  await page.goto('?lang=en&nogist');
   await page.locator('#sim-trigger').click();
   await expect(page.locator('#sim-discover')).toBeVisible();
   await page.locator('#sim-discover').click();
@@ -213,7 +212,7 @@ test('native Android discovers X-Plane and fills the bridge URL', async ({ page 
 });
 
 test('browser keeps native X-Plane discovery hidden', async ({ page }) => {
-  await page.goto('?lang=en&nogist&deck=0');
+  await page.goto('?lang=en&nogist');
   await page.locator('#sim-trigger').click();
   await expect(page.locator('#sim-discover')).toBeHidden();
 });
@@ -223,14 +222,14 @@ test('an iPad on an HTTP NavAid page is guided to the Mac LAN address, not local
     Object.defineProperty(navigator, 'platform', { value: 'MacIntel', configurable: true });
     Object.defineProperty(navigator, 'maxTouchPoints', { value: 5, configurable: true });
   });
-  await page.goto('?lang=en&nogist&deck=0');
+  await page.goto('?lang=en&nogist');
   await page.locator('#sim-trigger').click();
   await expect(page.locator('#sim-url-help')).toContainText('Mac’s HTTP LAN address');
   await expect(page.locator('#sim-url-help')).toContainText('http://192.168.1.20:2020');
 });
 
 test('an invalid simulator URL shows a clear error and never starts polling', async ({ page }) => {
-  await page.goto('?lang=en&nogist&deck=0');
+  await page.goto('?lang=en&nogist');
   await page.locator('#sim-trigger').click();
   await page.locator('#sim-url').fill('sim-pc:2020');
   await page.locator('#sim-connect-cb').click();
@@ -242,7 +241,7 @@ test('an invalid simulator URL shows a clear error and never starts polling', as
 });
 
 test('editing a connected simulator to an unusable URL disconnects with the specific error', async ({ page }) => {
-  await page.goto('?lang=en&nogist&deck=0');
+  await page.goto('?lang=en&nogist');
   await page.locator('#sim-trigger').click();
   await page.locator('#sim-url').fill('http://localhost:2020');
   await page.locator('#sim-connect-cb').click();
@@ -267,8 +266,10 @@ test('editing a connected simulator to an unusable URL disconnects with the spec
 // use, rather than markup that can silently paint nothing.
 test('the footer sim icon draws a glyph, like its GPS siblings', async ({ page }) => {
   await page.setViewportSize({ width: 360, height: 808 });
-  await page.goto('?lang=he&deck=0');
+  await page.goto('?lang=he');
   await page.waitForFunction(() => !!document.getElementById('sim-trigger'));
+  await page.evaluate(() => { document.getElementById('boot-loading')?.remove(); document.documentElement.classList.remove('app-booting'); });
+  await page.locator('#deck-bar .deck-btn-menu').click();   // a phone's menu is the deck's Menu sheet
   const out = await page.evaluate(() => {
     const btn = document.getElementById('sim-trigger');
     const icon = btn.querySelector('.footer-link-icon');

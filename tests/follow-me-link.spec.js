@@ -1,6 +1,4 @@
 // Follow me: a live position link with no server of ours.
-// The floating menu card is the surface these phone measurements are against; on a phone the
-// deck replaces it (see mobile-deck.spec.js), so they ask for the card with `?deck=0`.
 //
 // A public MQTT broker relays the bytes; the payload is encrypted before it gets there and
 // the key rides in the link's fragment, which browsers never send. So the relay carries
@@ -58,7 +56,7 @@ async function installStub(page) {
 
 async function boot(page) {
   await installStub(page);
-  await page.goto('?lang=en&nogist&deck=0');
+  await page.goto('?lang=en&nogist');
   await page.waitForFunction(() => !!(window.NavAid && window.NavAid.followMe));
 }
 
@@ -550,42 +548,9 @@ test('opening the link watches, names the aircraft and dates the position', asyn
   expect(got.after).toBe(false);                // stopping clears the banner
 });
 
-test('the viewer status stays below the toolbar as the mobile menu changes height', async ({ page }) => {
-  await page.setViewportSize({ width: 516, height: 700 });
-  await boot(page);
-  const link = await page.evaluate(async () => {
-    const F = NavAid.followMe;
-    const started = await F.start('TEST');
-    window.__sockets[0].connack();
-    await new Promise(resolve => setTimeout(resolve, 10));
-    return started;
-  });
-  await page.evaluate(async followerLink => {
-    const url = new URL(followerLink);
-    await NavAid.followMe.viewerStart({ search: url.search, hash: url.hash });
-  }, link);
-
-  const boxes = () => page.evaluate(() => {
-    const toolbar = document.getElementById('toolbar').getBoundingClientRect();
-    const banner = document.getElementById('follow-me-banner').getBoundingClientRect();
-    return { toolbarBottom: toolbar.bottom, bannerTop: banner.top };
-  });
-  let measured = await boxes();
-  expect(measured.bannerTop).toBeGreaterThanOrEqual(measured.toolbarBottom + 7);
-
-  await page.locator('#toolbar-toggle').click();
-  await page.waitForFunction(() => {
-    const toolbar = document.getElementById('toolbar').getBoundingClientRect();
-    const banner = document.getElementById('follow-me-banner').getBoundingClientRect();
-    return banner.top >= toolbar.bottom + 7;
-  });
-  measured = await boxes();
-  expect(measured.bannerTop).toBeGreaterThanOrEqual(measured.toolbarBottom + 7);
-});
-
 test('the Hebrew viewer banner keeps telemetry LTR in an RTL segment order', async ({ page }) => {
   await installStub(page);
-  await page.goto('?lang=he&nogist&deck=0');
+  await page.goto('?lang=he&nogist');
   await page.waitForFunction(() => !!(window.NavAid && window.NavAid.followMe));
   const seen = await page.evaluate(async () => {
     const F = NavAid.followMe;
@@ -749,7 +714,7 @@ test('the toolbar button keeps its decorative icon when sharing state changes', 
 // test here would pass whether or not the calls were ever hooked up, which is exactly how a
 // feature ends up switched on in the gist and invisible until a reload.
 test('the gist-landing block calls both refreshes', async ({ page }) => {
-  await page.goto('?lang=en&nogist&deck=0');
+  await page.goto('?lang=en&nogist');
   const wired = await page.evaluate(async () => {
     const src = await (await fetch('app/ui.js')).text();
     const at = src.indexOf('loadRemoteConfig().then');
@@ -1280,7 +1245,7 @@ test('publisher CONNECT installs a retained empty Last Will', async ({ page }) =
 // gist lands after that, so a feature-flag check there answered with the baked-in false and
 // the link opened an ordinary map - which is exactly what happened in the air.
 test('the viewer boot does not wait on the gist', async ({ page }) => {
-  await page.goto('?lang=en&nogist&deck=0');
+  await page.goto('?lang=en&nogist');
   const src = await page.evaluate(async () => (await fetch('app/followme.js')).text());
   const at = src.indexOf('function followMeBoot');
   const boot = src.slice(at, at + 900);
@@ -1298,7 +1263,7 @@ test('language selection preserves the follower encryption key on a clean phone'
     try { localStorage.removeItem('navaid.lang'); } catch (e) { /* storage unavailable */ }
   });
   const key = 'A'.repeat(43); // 32 zero bytes, base64url without padding
-  await page.goto('?nogist&deck=0&follow=test-viewer#k=' + key);
+  await page.goto('?nogist&follow=test-viewer#k=' + key);
   await page.waitForFunction(() => !!(window.NavAid && NavAid.followMe && NavAid.followMe.viewing()));
 
   expect(await page.evaluate(() => ({
@@ -1318,7 +1283,7 @@ test('language selection preserves the follower encryption key on a clean phone'
 test('opening a follower link skips route onboarding and locks route editing', async ({ page }) => {
   await installStub(page);
   const key = 'A'.repeat(43); // 32 zero bytes, base64url without padding
-  await page.goto('?lang=en&nogist&deck=0&follow=test-viewer#k=' + key);
+  await page.goto('?lang=en&nogist&follow=test-viewer#k=' + key);
   await page.waitForFunction(() => !!(window.NavAid && NavAid.followMe.viewing()));
 
   await expect(page.locator('#empty-route-hint')).toHaveCount(0);

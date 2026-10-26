@@ -1,6 +1,3 @@
-// The floating menu card is the layout these phone cases are about, and the deck replaces
-// it (see mobile-deck.spec.js). `?deck=0` is the switch that brings the card back, so
-// they open with it.
 // Round-7 UI review findings: three touch targets the earlier pass missed, and the
 // two CSS disclosure carets that never mirrored in RTL (io.js already mirrors the
 // arrows it builds in JS — these were the inconsistent pair).
@@ -14,38 +11,22 @@ async function bootPhone(page, lang = 'en') {
         localStorage.setItem('navaid.sec.' + s, '1');
     } catch (e) {}
   });
-  await page.goto('?lang=' + lang + '&nogist&deck=0');
+  await page.goto('?lang=' + lang + '&nogist');
   await page.waitForFunction(() => typeof draw === 'function');
 }
 
-test('the map heading entry, language picker and search dismiss are tappable', async ({ page }) => {
+test('the map heading entry is tappable', async ({ page }) => {
   await bootPhone(page);
-  // The language picker is in Settings, inside the menu: open the menu card first.
-  if (await page.locator('#toolbar.collapsed').count()) await page.locator('#toolbar-toggle').click();
-  const sizes = await page.evaluate(() => {
-    // The search panel is summoned on a phone (docked only on desktop), so its
-    // dismiss button has no box until it is up.
-    if (typeof showSearchOverlay === 'function') showSearchOverlay();
-    const out = {};
-    for (const id of ['rotate-hdg', 'lang-select', 'search-close']) {
-      const el = document.getElementById(id);
-      if (!el) { out[id] = null; continue; }
-      const r = el.getBoundingClientRect();
-      out[id] = { w: Math.round(r.width), h: Math.round(r.height) };
-    }
-    return out;
-  });
+  // The language picker and the search live in the deck's Menu sheet now, sized by its own spec.
+  const r = await page.locator('#rotate-hdg').boundingBox();
   // 44px is the minimum this codebase already adopted for the zoom + footer links.
-  expect(sizes['rotate-hdg'].h).toBeGreaterThanOrEqual(44);
-  expect(sizes['lang-select'].h).toBeGreaterThanOrEqual(44);
-  expect(sizes['search-close'].h).toBeGreaterThanOrEqual(44);
-  expect(sizes['search-close'].w).toBeGreaterThanOrEqual(44);
+  expect(r.height).toBeGreaterThanOrEqual(44);
 });
 
 test('the toolbar caret points the way the menu opens, in both languages', async ({ page }) => {
   const caret = async (lang) => {
     await page.setViewportSize({ width: 1280, height: 800 });
-    await page.goto('?lang=' + lang + '&nogist&deck=0');
+    await page.goto('?lang=' + lang + '&nogist');
     await page.waitForFunction(() => !!document.querySelector('.tb-section-head'));
     return page.evaluate(() => {
       const head = document.querySelector('.tb-section:not(.tb-standalone) .tb-section-head');
@@ -66,7 +47,7 @@ test('the toolbar caret points the way the menu opens, in both languages', async
 // to mirror is the back button's arrow, which is text and follows the paragraph direction.
 test('the Charts field tiles carry no caret to mirror', async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 800 });
-  await page.goto('?lang=he&nogist&deck=0');
+  await page.goto('?lang=he&nogist');
   await page.waitForFunction(() => typeof showChartsModal === 'function');
   const out = await page.evaluate(async () => {
     document.querySelectorAll('.modal-back').forEach(e => e.remove());

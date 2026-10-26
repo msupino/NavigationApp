@@ -1,7 +1,4 @@
 // @ts-check
-// The floating menu card is what this file is about, and the phone deck replaces it: the
-// deck's own spec covers that layout, and `?deck=0` is the switch a gist -- or a pilot --
-// can use to have the card back. So these open with the card.
 // Coverage for toolbar UI controls whose state must persist across reload.
 // Targets gaps in the existing spec suite: section headers, display checkboxes,
 // sliders, base-map layer, and toolbar collapse state.
@@ -22,7 +19,7 @@ async function boot(page) {
       }
     } catch (e) {}
   });
-  await page.goto('?lang=en&deck=0');
+  await page.goto('?lang=en');
   await page.waitForFunction(() => typeof state !== 'undefined');
 }
 
@@ -279,38 +276,3 @@ test.describe('Layer selector', () => {
   });
 });
 
-test.describe('Toolbar collapse on mobile', () => {
-  test.use({ viewport: { width: 390, height: 844 } });
-
-  test('hamburger expands/collapses the floating toolbar and persists navaid.toolbarCollapsed', async ({ page }) => {
-    await boot(page);
-    await expect(page.locator('#toolbar')).toHaveClass(/collapsed/);
-
-    await page.locator('#toolbar-toggle').click();
-    await expect(page.locator('#toolbar')).not.toHaveClass(/collapsed/);
-    let stored = await page.evaluate(() => localStorage.getItem('navaid.toolbarCollapsed'));
-    expect(stored).toBe('0');
-
-    await page.locator('#toolbar-toggle').click();
-    await expect(page.locator('#toolbar')).toHaveClass(/collapsed/);
-    stored = await page.evaluate(() => localStorage.getItem('navaid.toolbarCollapsed'));
-    expect(stored).toBe('1');
-
-    await page.reload();
-    await page.waitForFunction(() => typeof state !== 'undefined');
-    await expect(page.locator('#toolbar')).toHaveClass(/collapsed/);
-    const reloaded = await page.evaluate(() => localStorage.getItem('navaid.toolbarCollapsed'));
-    expect(reloaded).toBe('1');
-  });
-
-  test('expanded mobile toolbar persists across reload', async ({ page }) => {
-    await boot(page);
-    await page.locator('#toolbar-toggle').click();
-    const stored = await page.evaluate(() => localStorage.getItem('navaid.toolbarCollapsed'));
-    expect(stored).toBe('0');
-
-    await page.reload();
-    await page.waitForFunction(() => typeof state !== 'undefined');
-    await expect(page.locator('#toolbar')).not.toHaveClass(/collapsed/);
-  });
-});

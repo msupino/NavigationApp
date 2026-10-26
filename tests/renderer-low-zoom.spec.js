@@ -7,7 +7,7 @@ const { test, expect } = require('./_setup');
 
 test('a vector shape sits on its coordinates at every zoom and bearing', async ({ page }) => {
   await page.setViewportSize({ width: 430, height: 800 });
-  await page.goto('?lang=en&nogist&deck=0');
+  await page.goto('?lang=en&nogist');
   await page.waitForFunction(() => typeof map !== 'undefined' && map.setBearing);
   const errs = await page.evaluate(async () => {
     const svg = L.svg({ padding: 0.5 });

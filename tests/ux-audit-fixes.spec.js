@@ -139,29 +139,6 @@ test('add-mode shows a lasting cue on the map that can stop it', async ({ page }
   await expect(add).not.toHaveClass(/edit-col-on/);
 });
 
-// The floating phone menu: with the deck on (the default) it is never shown, so this is the
-// deck-off layout (?deck=0, or featureMobileDeck off in the gist).
-test('mobile: arming a map tool gets the menu off the map', async ({ page }) => {
-  await boot(page, 375, 812, '&deck=0');
-  const r = await page.evaluate(async () => {
-    const bar = document.getElementById('toolbar');
-    if (typeof window.collapseToolbarForMapTool === 'function') { /* present */ }
-    bar.classList.remove('collapsed');                    // menu open, as after tapping ☰
-    const openPct = () => {
-      const b = bar.getBoundingClientRect();
-      return Math.round((Math.min(b.bottom, innerHeight) - Math.max(b.top, 0)) / innerHeight * 100);
-    };
-    const before = openPct();
-    document.getElementById('tool-add').click();
-    await new Promise(r2 => setTimeout(r2, 150));
-    return { before, after: openPct(), mode: state.mode };
-  });
-  expect(r.mode).toBe('add');
-  // It used to cover ~98% of the height, so points went in through a narrow strip.
-  expect(r.before).toBeGreaterThan(50);
-  expect(r.after).toBeLessThan(r.before);
-});
-
 test('mobile: inspector actions stay on screen, and only delete is red', async ({ page }) => {
   await boot(page, 375, 812);
   const r = await page.evaluate(async () => {
