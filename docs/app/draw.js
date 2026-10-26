@@ -1621,6 +1621,7 @@ function draw() {
   if (window.showAirmet && typeof activeAirmets === 'function' && activeAirmets().length) drawAirmets();
   if (window.showSigmet && typeof activeSigmets === 'function' && activeSigmets().length) drawSigmets();
   drawLegs();
+  drawClosedLegs();   // over the route line, under the waypoint discs
   drawWaypoints();
   // After the route and its discs, not before: drawn underneath, the line ran straight through
   // the marker and a route shorter than the lead time hid it completely under the departure
@@ -2157,7 +2158,10 @@ function notamCirclePoints(lat, lng, nm, steps = 36) {
 // blank end = open-ended) and has already started. Used to filter the map +
 // list so expired/future NOTAMs don't clutter.
 function notamActive(n, now) {
-  const t = Number.isFinite(now) ? now : Date.now();
+  // A Date as well as ms: fplNotamClosedPairs passes one, and a Date failed Number.isFinite, so
+  // every closure was judged at NOW whatever time it was asked about -- a corridor closed this
+  // afternoon was open for a filing at 15:00 and on the map at the slider's 15:00.
+  const t = now instanceof Date ? now.getTime() : (Number.isFinite(now) ? now : Date.now());
   const ms = s => { const d = Date.parse(s); return Number.isFinite(d) ? d : NaN; };
   const end = n && n.end;
   if (end && !/PERM/i.test(end)) { const e = ms(end); if (Number.isFinite(e) && e < t) return false; }
@@ -5565,6 +5569,55 @@ window.seedCommChangeNotes = seedCommChangeNotes;
 window.suppressCommChange = suppressCommChange;
 window.unsuppressCommChange = unsuppressCommChange;
 window.normalizeCommChangeSuppressions = normalizeCommChangeSuppressions;
+
+// Legs a NOTAM closes, painted on the route at the map's time -- the timeline slider's scrubbed
+// time, or now. Asked: "if there is an active NOTAM on a blocked route, paint it" -- without
+// having to run Route check, and following the slider as it moves. The closure rule is the
+// one filing and auto-route already use (fplNotamClosedPairs: a corridor named CLSD in a
+// NOTAM in force at that time). The NOTAM feed is fetched once if no layer has loaded it yet.
+let _closedLegsFetch = false;
+function closedLegIndexes(whenMs) {
+  if (typeof fplNotamClosedPairs !== 'function') return [];
+  const wps = state.waypoints || [];
+  if (wps.length < 2) return [];
+  if (notams === null) {
+    if (!_closedLegsFetch && typeof loadNotam === 'function') {
+      _closedLegsFetch = true;
+      loadNotam().then(() => scheduleDraw()).catch(() => {});
+    }
+    return [];
+  }
+  const closed = fplNotamClosedPairs(new Date(whenMs));
+  if (!closed.size) return [];
+  const out = [];
+  for (let i = 0; i < wps.length - 1; i++) {
+    const a = wps[i] && wps[i].name, b = wps[i + 1] && wps[i + 1].name;
+    if (a && b && closed.has([String(a).toUpperCase(), String(b).toUpperCase()].sort().join('|'))) out.push(i);
+  }
+  return out;
+}
+function drawClosedLegs() {
+  if (typeof tune === 'function' && tune('featureClosedLegs') === false) { window.closedLegs = []; return; }
+  const when = (typeof notamViewNow === 'function') ? notamViewNow() : Date.now();
+  const idx = closedLegIndexes(when);
+  window.closedLegs = idx;
+  if (!idx.length) return;
+  octx.save();
+  octx.strokeStyle = tune('closedLegColor');
+  octx.lineWidth = tune('closedLegWidthPx');
+  octx.globalAlpha = tune('closedLegAlpha');
+  octx.setLineDash([tune('closedLegDashOnPx'), tune('closedLegDashOffPx')]);
+  octx.lineCap = 'round';
+  for (const i of idx) {
+    const ends = (typeof legScreenEnds === 'function') ? legScreenEnds(i) : null;
+    const a = ends ? ends.a : proj(state.waypoints[i]);
+    const b = ends ? ends.b : proj(state.waypoints[i + 1]);
+    if (!a || !b) continue;
+    octx.beginPath(); octx.moveTo(a.x, a.y); octx.lineTo(b.x, b.y); octx.stroke();
+  }
+  octx.restore();
+}
+if (typeof window !== 'undefined') window.closedLegIndexes = closedLegIndexes;
 
 function drawLegs() {
   const zoomScale = legZoomScale();

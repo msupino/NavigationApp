@@ -307,6 +307,38 @@
     head.textContent = (S2.routeCheckWindow || 'Checked for')
       + ' ' + span(result.from, result.to);
 
+    // The verdict first, in one line a pilot cannot miss. A blocking finding sat in a collapsed
+    // group, one line among warnings and drawn almost like one -- on Megiddo to Rosh Pina the
+    // blocked legs were "not very noticeable" (reported).
+    const stops = result.findings.filter(f => f.severity === 'stop');
+    const warns = result.findings.length - stops.length;
+    if (stops.length) {
+      // Named the way each finding below names its leg.
+      const legs = [...new Set(stops.map(f => (Number.isInteger(f.leg) ? legName(f.leg) : '')).filter(Boolean))];
+      const banner = document.createElement('div');
+      banner.className = 'route-check-verdict route-check-verdict-stop';
+      banner.setAttribute('role', 'alert');
+      const t = document.createElement('div');
+      t.className = 'route-check-verdict-title';
+      t.textContent = '\u26d4 ' + (typeof S2.routeCheckVerdictStop === 'function'
+        ? S2.routeCheckVerdictStop(stops.length) : 'Route blocked: ' + stops.length);
+      banner.appendChild(t);
+      if (legs.length) {
+        const l = document.createElement('div');
+        l.className = 'route-check-verdict-legs';
+        l.dir = 'auto';
+        l.textContent = legs.join(' \u00b7 ');
+        banner.appendChild(l);
+      }
+      body.appendChild(banner);
+    } else if (warns) {
+      const banner = document.createElement('div');
+      banner.className = 'route-check-verdict route-check-verdict-warn';
+      banner.setAttribute('role', 'status');
+      banner.textContent = '\u26a0 ' + (typeof S2.routeCheckVerdictWarn === 'function'
+        ? S2.routeCheckVerdictWarn(warns) : warns + ' warnings');
+      body.appendChild(banner);
+    }
     if (!result.findings.length) {
       const ok = document.createElement('p');
       ok.className = 'route-check-clear';
@@ -342,8 +374,12 @@
       const count = result.findings.filter(f => sourceFor(f) === key).length;
       const missing = result.unchecked.includes(key);
       if (!count && !missing) continue;
-      const { content } = frame(key, names[key] + ' · ' + (missing ? S2.routeCheckNotRead
-        : S2.routeCheckFound(count)));
+      const stopCount = result.findings.filter(f => sourceFor(f) === key && f.severity === 'stop').length;
+      const { section, content } = frame(key, (stopCount ? '\u26d4 ' : '') + names[key] + ' · '
+        + (missing ? S2.routeCheckNotRead : S2.routeCheckFound(count)));
+      // A group holding a blocking finding opens by itself and is outlined: closed, the block
+      // was one more summary line among the others.
+      if (stopCount) { section.open = true; section.classList.add('route-check-group-stop'); }
       const list = document.createElement('ul');
       list.className = 'route-check-list';
       content.appendChild(list);
@@ -453,7 +489,8 @@
     body.prepend(asked);
   }
 
-  async function show() {
+  // `opts.result` renders a result without asking the feeds -- for the tests.
+  async function show(opts) {
     if (!featureOn()) return null;
     const S2 = window.S || {};
     if (typeof createDraggableModal !== 'function') return null;
@@ -530,7 +567,7 @@
       return Number.isFinite(v) && v > 0 ? v : 1000;
     };
     const started = Date.now();
-    const result = await run(onStep);
+    const result = (opts && opts.result) || await run(onStep);
     const left = noticeMs() - (Date.now() - started);
     if (left > 0) await new Promise(r => setTimeout(r, left));
     if (!modal.box.isConnected) return null;      // closed while the feeds were answering
