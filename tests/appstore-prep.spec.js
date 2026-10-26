@@ -44,6 +44,9 @@ test('the updater neither updates on its own nor reports to anyone', async () =>
   }
   // The rollback window docs/app/ota.js waits inside before vouching for a bundle.
   expect(bundle.embeddedConfig().plugins.CapacitorUpdater.appReadyTimeout).toBe(20000);
+  // On iOS the plugin's responseTimeout caps the WHOLE download; its 20 s default failed every
+  // ~40 MB update on the iPad with "timeout" (reported).
+  expect(bundle.embeddedConfig().plugins.CapacitorUpdater.responseTimeout).toBeGreaterThanOrEqual(300);
   // navigator.connection does not exist in WKWebView, so the connection type has to come
   // from a native plugin or the cellular check is decoration.
   expect(bundle.remoteConfig().ios.includePlugins).toContain('@capacitor/network');
