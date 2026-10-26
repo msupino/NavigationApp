@@ -267,6 +267,10 @@
     const card = body.querySelector('.compass-card');
     const ac = body.querySelector('.compass-ac');
     let lastHeading = null;
+    // The angle each part is drawn at, unwrapped; nearest() picks the target's equivalent closest
+    // to where it is now.
+    let cardDeg = 0, acDeg = 0;
+    const nearest = (from, to) => from + ((((to - from) % 360) + 540) % 360 - 180);
     const deg = read.querySelector('.compass-deg');
     const ref = read.querySelector('.compass-ref');
     const say = (t) => { status.textContent = t || ''; status.hidden = !t; };
@@ -278,8 +282,12 @@
     const paint = (h) => {
       lastHeading = h;
       const north = getMode() === 'north';
-      card.setAttribute('transform', 'rotate(' + (north ? 0 : -h).toFixed(1) + ' 180 180)');
-      ac.setAttribute('transform', 'rotate(' + (north ? h : 0).toFixed(1) + ' 180 180)');
+      // Turned the short way: the angles are kept running rather than wrapped, so 359 -> 001
+      // moves the card 2° through north instead of animating a full turn back round (reported).
+      cardDeg = nearest(cardDeg, north ? 0 : -h);
+      acDeg = nearest(acDeg, north ? h : 0);
+      card.setAttribute('transform', 'rotate(' + cardDeg.toFixed(1) + ' 180 180)');
+      ac.setAttribute('transform', 'rotate(' + acDeg.toFixed(1) + ' 180 180)');
       const n = Math.round(h) % 360;
       deg.textContent = String(n === 0 ? 360 : n).padStart(3, '0') + '°';
       m.box.dataset.heading = String(n);

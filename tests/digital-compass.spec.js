@@ -313,3 +313,19 @@ test('iPhone app: a quick close and reopen keeps one native listener, and the ol
   await expect.poll(() => page.evaluate(() => window.__calls.filter(c => c === 'stop').length)).toBe(2);
   expect(await page.evaluate(() => window.__calls.includes('remove2'))).toBe(true);
 });
+
+test('the card turns the short way through north: 359 to 001 is +2°, not a full turn', async ({ page }) => {
+  // Reported: the compass spun all the way round going from 359 to 001.
+  await boot(page);
+  const r = await page.evaluate(() => {
+    setTune('compassSmoothing', 1); localStorage.setItem('navaid.compassSource', 'mag'); localStorage.setItem('navaid.compassMode', 'heading');
+    NavAid.compass.show();
+    const send = (v) => window.dispatchEvent(Object.assign(new Event('deviceorientation'), { webkitCompassHeading: v }));
+    const ang = () => Number(/rotate\((-?[\d.]+)/.exec(document.querySelector('.compass-card').getAttribute('transform'))[1]);
+    send(359); const a = ang();
+    send(1); const b = ang();
+    return { a, b, deg: document.querySelector('.compass-deg').textContent };
+  });
+  expect(Math.abs(r.b - r.a)).toBeLessThan(3);
+  expect(r.deg).toBe('001°');
+});
