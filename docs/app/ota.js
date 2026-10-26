@@ -227,6 +227,11 @@
         if (typeof p.addListener === 'function') {
           handle = await p.addListener('download', (e) => {
             const v = Math.max(0, Math.min(100, Math.round(Number(e && e.percent))));
+            // 0 is "started", not progress: on iOS the plugin reports 0 when the download begins
+            // and nothing more until the whole file is in (then 70, the unpacking, 100) -- so the
+            // row sat at "0%" for the whole ~40 MB (reported). Until a real figure arrives the
+            // row stays indeterminate, which it already draws as "Downloading..." with a moving bar.
+            if (v === 0) return;
             if (Number.isFinite(v) && v !== job.pct) { job.pct = v; announce(); }
           });
         }
