@@ -1125,7 +1125,8 @@ NavAid.tuningDefaults = {
   featureAssistant: { value: false, type: 'bool', label: 'Feature: AI assistant button' },
   featureDisclaimer: { value: true, type: 'bool', label: 'Safety notice on first run' },
   featureOtaUpdates: { value: true, type: 'bool', label: 'Embedded build fetches web updates' },
-  featureMobileDeck: { value: true, type: 'bool', label: 'Feature: phone data strip and bottom deck' },
+  featureMenubarDrag: { value: false, type: 'bool', label: 'Feature: the desktop top menu can be dragged (off pins it in place)' },
+  featureTabletDesktop: { value: false, type: 'bool', label: 'Feature: iPad / tablet uses the desktop layout, not the phone deck' },
   // The reverse-route warning is the one toast a pilot has to act on, so it gets its own
   // dwell time and its own attention -- 2.5s alongside 'route saved' was not enough to read
   // it, let alone weigh it. Both live here so they can be tuned from the gist without a
@@ -1363,7 +1364,7 @@ NavAid.tuningGroups = [
     'defaultViewZoom', 'defaultViewLat', 'defaultViewLng'] },
   { name: 'Export', keys: ['exportBgColor', 'fpTableBorderWidthPx', 'fpTableGridWidthPx'] },
   { name: 'Global palette', keys: ['inkColor', 'selectedColor', 'labelFillColor', 'kiteTextColor', 'legKiteHaloColor', 'kiteNoteAlpha'] },
-  { name: 'Default layer visibility', keys: ['defaultShowNavWP', 'defaultShowAirfields', 'defaultShowVor', 'defaultShowHotspots', 'defaultShowWpNames', 'defaultShowCumTime', 'defaultShowDrift', 'defaultShowCommChange', 'defaultVoiceAlerts', 'defaultShowMidLeg', 'defaultHighlightDiff', 'defaultLimitLegKites', 'defaultShowMsa', 'defaultShowReporting', 'defaultForceSnap', 'defaultShowReturn', 'featureShowReturn', 'featureFplReturnJoin', 'offlineAutoCvfr', 'offlineCvfrUnmeteredOnly', 'offlineCvfrMinZoom', 'offlineCvfrMaxZoom', 'featureRouteIntro', 'featureTour', 'defaultPressureUnit', 'defaultAltSource', 'featureGpsStatus', 'featureKeepAwake', 'featureHaptics', 'featureBrightness', 'featureBarometer', 'featureBatteryWarn', 'featureFullscreenFlight', 'featureGdl90', 'featureBleGps', 'featureSatZoomButtons', 'featureInspectorResize', 'featureInspectorWhileTracking', 'featureAssistant', 'featureMobileDeck', 'featureDisclaimer', 'featureOtaUpdates', 'featureNavLog', 'reverseWarnMs', 'notamSeenDays', 'toastReadWpm', 'toastNoticeMs', 'toastMinMs', 'toastWarnMinMs', 'toastMaxMs', 'reverseWarnBlink', 'reverseRotatesMap', 'addToRouteOpensInspector', 'defaultShowNotam', 'defaultShowAirmet', 'defaultShowSigmet', 'defaultShowWind', 'defaultWindField', 'defaultAirfieldWind', 'defaultSurfaceWx', 'defaultImsPwx', 'defaultSigwxOv', 'defaultShowLsaBubbles', 'defaultAutoRoute', 'defaultShowCircuit', 'defaultShowTraining', 'defaultShowCvfr', 'defaultShowHeli', 'defaultShowCommfail', 'defaultShowAdc', 'defaultShowIfr', 'plateFieldZoom'] },
+  { name: 'Default layer visibility', keys: ['defaultShowNavWP', 'defaultShowAirfields', 'defaultShowVor', 'defaultShowHotspots', 'defaultShowWpNames', 'defaultShowCumTime', 'defaultShowDrift', 'defaultShowCommChange', 'defaultVoiceAlerts', 'defaultShowMidLeg', 'defaultHighlightDiff', 'defaultLimitLegKites', 'defaultShowMsa', 'defaultShowReporting', 'defaultForceSnap', 'defaultShowReturn', 'featureShowReturn', 'featureFplReturnJoin', 'offlineAutoCvfr', 'offlineCvfrUnmeteredOnly', 'offlineCvfrMinZoom', 'offlineCvfrMaxZoom', 'featureRouteIntro', 'featureTour', 'defaultPressureUnit', 'defaultAltSource', 'featureGpsStatus', 'featureKeepAwake', 'featureHaptics', 'featureBrightness', 'featureBarometer', 'featureBatteryWarn', 'featureFullscreenFlight', 'featureGdl90', 'featureBleGps', 'featureSatZoomButtons', 'featureInspectorResize', 'featureInspectorWhileTracking', 'featureAssistant', 'featureTabletDesktop', 'featureMenubarDrag', 'featureDisclaimer', 'featureOtaUpdates', 'featureNavLog', 'reverseWarnMs', 'notamSeenDays', 'toastReadWpm', 'toastNoticeMs', 'toastMinMs', 'toastWarnMinMs', 'toastMaxMs', 'reverseWarnBlink', 'reverseRotatesMap', 'addToRouteOpensInspector', 'defaultShowNotam', 'defaultShowAirmet', 'defaultShowSigmet', 'defaultShowWind', 'defaultWindField', 'defaultAirfieldWind', 'defaultSurfaceWx', 'defaultImsPwx', 'defaultSigwxOv', 'defaultShowLsaBubbles', 'defaultAutoRoute', 'defaultShowCircuit', 'defaultShowTraining', 'defaultShowCvfr', 'defaultShowHeli', 'defaultShowCommfail', 'defaultShowAdc', 'defaultShowIfr', 'plateFieldZoom'] },
 ];
 // Padding pair + maxZoom for a fitBounds call, from the tuning registry. Every "frame the
 // map on X" call goes through this instead of carrying its own literals.
@@ -2993,8 +2994,6 @@ window.S = Object.assign({
   editLockOffToast: 'Route unlocked',
   followLockOn: 'Following your aircraft — tap to stop following',
   followLockOff: 'Not following — tap to follow your aircraft',
-  expandMenu: 'Expand menu',
-  collapseMenu: 'Collapse menu',
   summaryLegs: 'Legs',
   summaryDist: 'Distance',
   summaryTime: 'Total time',
@@ -3043,7 +3042,7 @@ window.S = Object.assign({
   tbShowPublicPilots: 'Show public NavAid pilots',
   tbShowPublicPilotsLocked: 'Share your position as Public to see others (Share → Public)',
   tbShowPublicPilotsTitle: 'Everyone sharing their position publicly (Share → Public), from the NavAid relay. Not ADS-B.',
-  tbShowTrafficApkOnly: 'In the app only: the ADS-B feeds refuse browser requests, so nothing could be drawn here. Install the Android app and it works there.',
+  tbShowTrafficApkOnly: 'In the app only: the ADS-B feeds refuse browser requests, so nothing could be drawn here. Install the NavAid app (Android, iPhone or iPad) and it works there.',
   tbShowTrafficTitle: 'Aircraft heard on ADS-B. It asks around your position when you have one, and otherwise around the middle of the map, so it works while planning too. The arrow points where each one is going; its callsign and altitude in hundreds of feet are beside it.',
   tbPlateOpacity: 'Chart opacity',
   tbPlateOpacityTitle: 'Adjust the airfield-plate overlay opacity (shared by all plate layers)',

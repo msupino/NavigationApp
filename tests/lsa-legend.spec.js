@@ -6,7 +6,7 @@
 const { test, expect } = require('./_setup');
 
 async function lowAlt(page) {
-  await page.goto('?lang=en&nogist&deck=0');
+  await page.goto('?lang=en&nogist');
   await page.waitForFunction(() => typeof draw === 'function' && document.getElementById('layer-select'));
   await page.evaluate(() => {
     const s = document.getElementById('layer-select');

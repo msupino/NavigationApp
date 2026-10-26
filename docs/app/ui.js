@@ -142,12 +142,6 @@ function setMode(mode) {
   noteBtn.setAttribute('aria-pressed', String(mode === 'note'));
   document.getElementById('map').classList.toggle('add', mode === 'add' || mode === 'note');
   if (typeof window.refreshEditColumn === 'function') window.refreshEditColumn();
-  // A map tool needs the map. In mobile-column mode the menu stays open over it —
-  // covering ~98% of the height, so points had to be placed through a narrow strip —
-  // so collapse it here. Desktop already closes the dropdown after a command.
-  if (mode && typeof toolbarUsesDesktopMenu === 'function' && !toolbarUsesDesktopMenu()) {
-    if (typeof window.collapseToolbarForMapTool === 'function') window.collapseToolbarForMapTool();
-  }
   if (typeof refreshEmptyRouteHint === 'function') refreshEmptyRouteHint();
 }
 // Menu section icons and the Save / My routes icons, from the shared line set (core.js
@@ -1958,15 +1952,6 @@ function applyTuningCssVars() {
   root.setProperty('--navaid-zulu-clock-shadow',
     '0 ' + tune('zuluClockShadowYPx') + 'px ' + tune('zuluClockShadowBlurPx') +
     'px rgba(0, 0, 0, ' + tune('zuluClockShadowAlpha') + ')');
-
-  // The pinned head's real height, for whatever sticks below it (the Record / Location band
-  // on a phone). Measured rather than assumed: the row grows with the language picker's font
-  // and with the platform's minimum touch target.
-  const tbToggle = document.getElementById('toolbar-toggle');
-  if (tbToggle) {
-    const h = Math.round(tbToggle.getBoundingClientRect().height);
-    if (h > 0) root.setProperty('--navaid-tb-head-h', h + 'px');
-  }
 
   // The hotspot pair, so the inspector's "marked" button can wear what the waypoint wears.
   root.setProperty('--navaid-hotspot-fill', tune('waypointHotspotFillColor'));
@@ -11820,18 +11805,40 @@ document.getElementById('insp-close').onclick = () => {
 const toolbarDesktopMenuQuery = window.matchMedia
   ? window.matchMedia('(min-width: 681px) and (hover: hover) and (pointer: fine)')
   : null;
+// The gist's `featureTabletDesktop` hands a tablet (the iPad) the menubar anyway, to try it there.
+// style.css keys the menubar off html.menubar, which index.html sets on the query at first paint
+// and refreshToolbarDesktopMenu() keeps true to this.
+const toolbarTabletQuery = window.matchMedia
+  ? window.matchMedia('(min-width: 681px) and (pointer: coarse)')
+  : null;
+const toolbarDesktopMenuListeners = [];
 
 function toolbarUsesDesktopMenu() {
-  return !!(toolbarDesktopMenuQuery && toolbarDesktopMenuQuery.matches);
+  if (toolbarDesktopMenuQuery && toolbarDesktopMenuQuery.matches) return true;
+  return !!(toolbarTabletQuery && toolbarTabletQuery.matches
+    && typeof tune === 'function' && tune('featureTabletDesktop') === true);
 }
 
+function refreshToolbarDesktopMenu() {
+  const on = toolbarUsesDesktopMenu();
+  const root = document.documentElement;
+  if (root.classList.contains('menubar') === on) return;
+  root.classList.toggle('menubar', on);
+  for (const fn of toolbarDesktopMenuListeners) fn();
+}
+window.NavAid = window.NavAid || {};
+NavAid.usesDesktopMenu = toolbarUsesDesktopMenu;
+NavAid.refreshDesktopMenu = refreshToolbarDesktopMenu;
+for (const mq of [toolbarDesktopMenuQuery, toolbarTabletQuery]) {
+  if (!mq) continue;
+  if (mq.addEventListener) mq.addEventListener('change', refreshToolbarDesktopMenu);
+  else if (mq.addListener) mq.addListener(refreshToolbarDesktopMenu);
+}
+
+refreshToolbarDesktopMenu();
+
 function onToolbarDesktopMenuChange(fn) {
-  if (!toolbarDesktopMenuQuery) return;
-  if (toolbarDesktopMenuQuery.addEventListener) {
-    toolbarDesktopMenuQuery.addEventListener('change', fn);
-  } else if (toolbarDesktopMenuQuery.addListener) {
-    toolbarDesktopMenuQuery.addListener(fn);
-  }
+  toolbarDesktopMenuListeners.push(fn);
 }
 
 function refreshMapAfterToolbarModeChange() {
@@ -11846,18 +11853,21 @@ function refreshMapAfterToolbarModeChange() {
 }
 
 (function makeToolbarDraggable() {
+  // The menubar is the only floating form of the menu left: on a phone or a tablet the menu is
+  // the deck's Menu sheet (deck.js hostToolbar). So the bar is dragged, and its position kept,
+  // only while it is the menubar.
   const bar = document.getElementById('toolbar');
   const handle = document.getElementById('toolbar-handle');
-  const KEY = 'navaid.toolbarPos';
-  // Desktop menu-bar position is stored separately from the mobile column
-  // position — they mean different things and must not clobber each other
-  // when the viewport crosses the breakpoint.
+  // The desktop key: before the floating phone card was retired it had a key of its own.
   const KEY_DESKTOP = 'navaid.toolbarPosDesktop';
-  const COLLAPSED_KEY = 'navaid.toolbarCollapsed';
   // Position is per-language (RTL mirrors LTR, so the spot differs by language).
-  const posKey = () => navLangPosKey(toolbarUsesDesktopMenu() ? KEY_DESKTOP : KEY);
+  const posKey = () => navLangPosKey(KEY_DESKTOP);
   let dx = 0, dy = 0, dragging = false;
-  let wasDesktopMenu = toolbarUsesDesktopMenu();
+  // The gist's `featureMenubarDrag` off pins the menubar where the stylesheet puts it: no grip,
+  // no drag, and a position saved from before is not applied (it stays stored for if it returns).
+  const menubarPinned = () => toolbarUsesDesktopMenu()
+    && typeof tune === 'function' && tune('featureMenubarDrag') === false;
+  const draggable = () => toolbarUsesDesktopMenu() && !menubarPinned();
 
   function clampPos(x, y) {
     const w = bar.offsetWidth, h = bar.offsetHeight;
@@ -11877,15 +11887,15 @@ function refreshMapAfterToolbarModeChange() {
   }
 
   function restorePos() {
+    if (!draggable()) return;
     try {
-      const desktopMenu = toolbarUsesDesktopMenu();
-      const raw = navLangPosRead(desktopMenu ? KEY_DESKTOP : KEY);
+      const raw = navLangPosRead(KEY_DESKTOP);
       if (raw) {
         const p = JSON.parse(raw);
         requestAnimationFrame(() => {
-          // A resize can switch modes before this frame runs. Never apply coordinates read
-          // from the other mode's storage key after that transition.
-          if (toolbarUsesDesktopMenu() !== desktopMenu) return;
+          // A resize can leave the menubar before this frame runs; its coordinates mean
+          // nothing to the deck's sheet.
+          if (!draggable()) return;
           setPos(p.x, p.y);
         });
       }
@@ -11899,6 +11909,7 @@ function refreshMapAfterToolbarModeChange() {
   }
 
   function start(cx, cy) {
+    if (!draggable()) return;
     const r = bar.getBoundingClientRect();
     dx = cx - r.left;
     dy = cy - r.top;
@@ -11949,87 +11960,39 @@ function refreshMapAfterToolbarModeChange() {
   window.addEventListener('touchend', end);
   window.addEventListener('touchcancel', end);
 
-  // collapse / expand the toolbar (keeps just the handle + toggle)
-  const toggle = document.getElementById('toolbar-toggle');
-  function setCollapsed(on, opts = {}) {
-    const effective = toolbarUsesDesktopMenu() ? false : !!on;
-    bar.classList.toggle('collapsed', effective);
-    toggle.title = effective ? S.expandMenu : S.collapseMenu;
-    if (opts.persist !== false && !toolbarUsesDesktopMenu()) {
-      try { localStorage.setItem(COLLAPSED_KEY, effective ? '1' : '0'); } catch (e) { /* */ }
-    }
-    if (bar.style.left) {                 // size changed -> keep on screen
-      requestAnimationFrame(() =>
-        setPos(parseFloat(bar.style.left), parseFloat(bar.style.top)));
-    }
-    if (typeof window.reconcileLegendPosition === 'function') {
-      window.reconcileLegendPosition();
-    }
-  }
-  toggle.addEventListener('click', () => {
-    const opening = bar.classList.contains('collapsed');
-    if (opening && typeof dismissRoutePriming === 'function') dismissRoutePriming();
-    setCollapsed(!bar.classList.contains('collapsed'));
-  });
-  toggle.addEventListener('keydown', e => {
-    if (e.key === 'Enter' || e.key === ' ') {
-      e.preventDefault();
-      const opening = bar.classList.contains('collapsed');
-      if (opening && typeof dismissRoutePriming === 'function') dismissRoutePriming();
-      setCollapsed(!bar.classList.contains('collapsed'));
-    }
-  });
-
-  function applyResponsiveToolbarMode() {
-    const desktopMenu = toolbarUsesDesktopMenu();
-    const enteringMobile = wasDesktopMenu && !desktopMenu;
-    wasDesktopMenu = desktopMenu;
-    if (desktopMenu) {
+  function refreshMenubarPin() {
+    const pinned = menubarPinned();
+    if (bar.classList.contains('menubar-pinned') === pinned) return;
+    bar.classList.toggle('menubar-pinned', pinned);
+    if (pinned) {
       dragging = false;
       bar.classList.remove('dragging');
-      clearInlineToolbarPos();       // drop any leftover mobile-column position
-      setCollapsed(false, { persist: false });
-      restorePos();                  // re-apply a saved desktop position, if any
-      refreshMapAfterToolbarModeChange();
-      if (typeof window.reclampToolbarSections === 'function') window.reclampToolbarSections();
-      return;
+      clearInlineToolbarPos();
+    } else {
+      restorePos();
     }
-    // Desktop and mobile positions have separate keys, so their live inline geometry must
-    // be separate too. Otherwise an absent mobile save makes restorePos() a no-op and the
-    // desktop menubar's coordinates leak into the floating toolbar.
-    if (enteringMobile) clearInlineToolbarPos();
-    restorePos();
-    let sc = null;
-    try { sc = lsGet(COLLAPSED_KEY); } catch (e) { /* storage unavailable */ }
-    // Default collapsed on phones — an expanded toolbar column covers ~half the
-    // map on a narrow screen. A saved phone choice wins.
-    const narrowDefault = !!(window.matchMedia && window.matchMedia('(max-width: 680px)').matches);
-    setCollapsed(sc === null ? narrowDefault : sc === '1', { persist: sc !== null });
+    if (typeof window.reconcileLegendPosition === 'function') {
+      window.reconcileLegendPosition({ persist: false });
+    }
+  }
+  window.refreshMenubarPin = refreshMenubarPin;
+
+  function applyResponsiveToolbarMode() {
+    refreshMenubarPin();
+    dragging = false;
+    bar.classList.remove('dragging');
+    clearInlineToolbarPos();
+    restorePos();                    // a saved menubar position, if the bar is the menubar
     refreshMapAfterToolbarModeChange();
     // A stale dropdown nudge from the other layout must not survive the switch.
     if (typeof window.reclampToolbarSections === 'function') window.reclampToolbarSections();
   }
 
   window.addEventListener('resize', () => {
-    // Keep a dragged bar (mobile or desktop) on-screen after a resize.
-    if (toolbarUsesDesktopMenu() && !bar.style.left) {
-      setCollapsed(false, { persist: false });
-      return;
-    }
-    if (bar.style.left) setPos(parseFloat(bar.style.left), parseFloat(bar.style.top));
+    // Keep a dragged menubar on-screen after a resize.
+    if (bar.style.left && draggable()) setPos(parseFloat(bar.style.left), parseFloat(bar.style.top));
   });
 
-  // Lets setMode() get the mobile column out of the way when a map tool is armed.
-  window.collapseToolbarForMapTool = () => {
-    if (typeof toolbarUsesDesktopMenu === 'function' && toolbarUsesDesktopMenu()) return;
-    setCollapsed(true, { persist: false });
-  };
-  // ...and the way back, for the deck's Layers and Plan buttons: on a phone the menu they
-  // open may be closed, and a button that opens a section of a closed menu does nothing.
-  window.expandToolbar = () => {
-    if (typeof dismissRoutePriming === 'function') dismissRoutePriming();
-    setCollapsed(false, { persist: false });
-  };
   onToolbarDesktopMenuChange(applyResponsiveToolbarMode);
   applyResponsiveToolbarMode();
 })();
@@ -12187,15 +12150,8 @@ function refreshMapAfterToolbarModeChange() {
   if (typeof map !== 'undefined' && map && typeof map.on === 'function') {
     map.on('click mousedown', () => {
       if (toolbarUsesDesktopMenu()) return;
-      // Two things are "the menu" on a phone: the open section (sub-menu) AND the expanded
-      // toolbar column (main menu) that covers half the map. A map tap dismisses both --
-      // closing only the section left the column sitting over the chart.
+      // An open section in the deck's Menu sheet is put away by a tap on the map.
       if (anySectionOpen()) window.closeToolbarMenus();
-      const bar = document.getElementById('toolbar');
-      if (bar && !bar.classList.contains('collapsed')
-          && typeof window.collapseToolbarForMapTool === 'function') {
-        window.collapseToolbarForMapTool();
-      }
     });
   }
   document.addEventListener('keydown', e => {
@@ -12903,7 +12859,7 @@ function watchBuildUpdateCheckTriggers() {
   document.addEventListener('click', e => {
     const target = e.target && e.target.closest ? e.target : null;
     if (!target || !target.closest('#toolbar')) return;
-    if (target.closest('button, .tb-section-head, #toolbar-toggle')) request('toolbar');
+    if (target.closest('button, .tb-section-head')) request('toolbar');
   });
   document.addEventListener('change', e => {
     const target = e.target && e.target.closest ? e.target : null;
@@ -13261,6 +13217,8 @@ if (typeof loadRemoteConfig === "function") {
     if (typeof refreshFollowMeControl === "function") refreshFollowMeControl();
     if (typeof refreshFollowMeMapControl === "function") refreshFollowMeMapControl();
     if (typeof refreshAssistantFeature === "function") refreshAssistantFeature();
+    if (typeof refreshToolbarDesktopMenu === "function") refreshToolbarDesktopMenu();
+    if (typeof window.refreshMenubarPin === "function") window.refreshMenubarPin();
     if (NavAid && typeof NavAid.refreshMobileDeck === "function") NavAid.refreshMobileDeck();
     if (typeof refreshEmptyRouteHint === "function") refreshEmptyRouteHint();
     if (typeof refreshTrafficFeature === "function") refreshTrafficFeature();

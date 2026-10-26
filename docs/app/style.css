@@ -251,9 +251,9 @@ body.theme-light .leaflet-image-layer.ims-pwx-layer {
   font-size: 11px;
   letter-spacing: 0.3px;
 }
-@media (min-width: 681px) and (hover: hover) and (pointer: fine) {
-  .map-legend-version { display: block; }
-}
+/* Desktop menubar: :where(html.menubar) (index.html head, ui.js toolbarUsesDesktopMenu). */
+  :where(html.menubar) .map-legend-version { display: block; }
+
 .legend-symbol {
   position: relative;
   display: inline-block;
@@ -522,7 +522,7 @@ body:not(.deck-on) .tb-sec-row { gap: 4px; }
 /* The stacked phone menu without the deck: icons the size of its 11px titles, so the rows
    keep their height. */
 @media (max-width: 680px), (pointer: coarse) {
-  body:not(.deck-on) .tb-sec-icon svg { width: 12px; height: 12px; }
+  :where(html:not(.menubar)) body:not(.deck-on) .tb-sec-icon svg { width: 12px; height: 12px; }
 }
 .tb-sec-text { display: flex; flex-direction: column; min-width: 0; }
 .tb-sec-hint { display: none; }
@@ -673,41 +673,9 @@ body.deck-on #deck-sheet #wp-search { min-height: 48px; font-size: 16px; }
 #toolbar .drag-handle:hover { color: #e8e8e8; }
 #toolbar.dragging { opacity: 0.92; }
 #toolbar.dragging .drag-handle { cursor: grabbing; }
-
-#toolbar-toggle {
-  align-self: center;
-  display: inline-flex;
-  flex-direction: column;
-  justify-content: space-between;
-  width: 18px;
-  height: 13px;
-  cursor: pointer;
-  padding: 4px 12px;
-  box-sizing: content-box;
-  color: #b9b3b3;
-  user-select: none;
-  -webkit-user-select: none;
-}
-#toolbar-toggle span {
-  display: block;
-  width: 18px;
-  height: 2px;
-  background: currentColor;
-  border-radius: 1px;
-}
-#toolbar-toggle:hover { color: #fff; }
 /* Collapsed: keep the drag handle, the toggle, the language picker, and the footer links visible. */
-#toolbar.collapsed > *:not(#toolbar-handle):not(#toolbar-toggle):not(#lang-toggle):not(#footer-links) {
-  display: none;
-}
 /* With the sections hidden the panel kept the expanded layout's gaps and width,
    leaving ~120px of blank space around the ☰. Shrink it to its remaining rows. */
-#toolbar.collapsed {
-  gap: 2px;
-  width: max-content;
-  min-width: 0;
-}
-#toolbar.collapsed #toolbar-handle { width: auto; }
 /* ...and the four rows were still four rows: drag handle, ☰, language, links, each
    ~50px tall, so a closed menu ate a quarter of a phone screen. The handle, the ☰ and
    the language picker are all small controls -- put them on ONE row and let the links
@@ -717,21 +685,6 @@ body.deck-on #deck-sheet #wp-search { min-height: 48px; font-size: 16px; }
    a platform's font metrics made the picker a few pixels wider than the card's cap, which put
    the language on a line of its own and made a closed menu three rows tall on a phone. The
    picker's column is the flexible one, so a tight card shrinks it instead of breaking the row. */
-#toolbar.collapsed {
-  display: grid;
-  grid-template-columns: auto auto minmax(0, 1fr);
-  align-items: center;
-  justify-items: center;
-  column-gap: 6px;
-  /* Sized to the CONTROLS, not to the links: at 300px the closed menu still reached most
-     of the way across a phone and covered the Zulu clock. The links wrap underneath. */
-  width: max-content;
-  /* 232 px left the Hebrew row one pixel short of fitting the icon and both labels, so it
-     wrapped a button for the sake of that pixel. Eight more keeps the card clear of the Zulu
-     clock at 360 px and lets the short-label languages stay on one line. */
-  max-width: min(96vw, 240px);
-  padding: 4px 6px;
-}
 /* In Hebrew the clock mirrors to the LEFT, so the default floating toolbar belongs on the
    RIGHT in both states. Keeping this independent of .collapsed also prevents the toolbar
    from jumping across a touch tablet when the menu expands. A dragged position (inline
@@ -742,34 +695,8 @@ html[dir="rtl"] #toolbar {
 }
 /* The remaining height was the 44px touch minimums stacked with their own padding, on a
    panel that is closed. Keep the targets comfortable but stop them padding each other. */
-#toolbar.collapsed > #toolbar-toggle {
-  min-height: 40px;
-  padding: 2px 12px;
-}
-#toolbar.collapsed > #toolbar-handle { padding: 0 6px 2px; }
-#toolbar.collapsed > #footer-links {
-  padding: 0 4px 2px;
-  font-size: 12px;
-}
-#toolbar.collapsed > #footer-links > * { padding-top: 2px; padding-bottom: 2px; }
-#toolbar.collapsed > #footer-links {
-  grid-column: 1 / -1;     /* own row, below the controls */
-  flex: 0 1 100%;
-  margin-top: 0;
-  padding-top: 2px;
-  flex-wrap: wrap;
-  /* ...and it may wrap to two short lines rather than forcing the panel to the width of
-     both links on one line, which is what stretched a closed menu across the screen. */
-  row-gap: 0;
-  column-gap: 10px;
-}
 /* The separator under the language picker belongs to the expanded stack; on one row it
    would draw a rule through the middle of the controls. */
-#toolbar.collapsed > #lang-toggle {
-  padding-bottom: 0;
-  margin-bottom: 0;
-  border-bottom: 0;
-}
 
 /* Always-visible language picker — small separator from the sections below. */
 #toolbar > #lang-toggle {
@@ -868,16 +795,16 @@ html[dir="rtl"] #toolbar {
 
 /* Desktop menu bar: the same toolbar sections become top-level dropdown
    menus. Phone/tablet-narrow viewports keep the floating column below. */
-@media (min-width: 681px) and (hover: hover) and (pointer: fine) {
+/* Desktop menubar: :where(html.menubar) (index.html head, ui.js toolbarUsesDesktopMenu). */
   /* Map fills the whole viewport; the menu bar floats over it. */
-  #map,
-  #overlay {
+  :where(html.menubar) #map,
+  :where(html.menubar) #overlay {
     top: 0;
   }
 
   /* Floating menu bar: a rounded pill detached from the screen edges,
      hovering over the map (not a docked, full-width Windows-style bar). */
-  #toolbar {
+  :where(html.menubar) #toolbar {
     position: fixed;
     /* Above the inspector (z 2320) so an open menu covers it, not vice-versa. */
     z-index: 2330;
@@ -912,17 +839,19 @@ html[dir="rtl"] #toolbar {
      Below the bar's REAL bottom (--navaid-toolbar-bottom, measured in ui.js): a
      fixed 46px cleared one row, and a live position's readout wraps the bar onto
      a second, which then covered the clock. */
-  .leaflet-control.zulu-clock {
+  :where(html.menubar) .leaflet-control.zulu-clock {
     transform: translateY(calc(var(--navaid-toolbar-bottom, 48px) - 2px));
   }
 
-  #toolbar-toggle,
-  #app-version {
+  /* Pinned by the gist (featureMenubarDrag off): nothing to grab. */
+  :where(html.menubar) #toolbar.menubar-pinned > #toolbar-handle { display: none; }
+
+  :where(html.menubar) #app-version {
     display: none;
   }
 
   /* Hebrew (RTL): float the menu to the top-right, above the clock. */
-  html[dir="rtl"] #toolbar {
+  html:where(.menubar)[dir="rtl"] #toolbar {
     left: auto;
     right: 12px;
   }
@@ -930,7 +859,7 @@ html[dir="rtl"] #toolbar {
   /* Hebrew (RTL): default the inspector to the LEFT (English keeps it on the
      right). Keeps it clear of the right-side menu bar + clock in RTL. Desktop
      only — on mobile the inspector is a full-width bottom sheet. */
-  html[dir="rtl"] #inspector {
+  html:where(.menubar)[dir="rtl"] #inspector {
     right: auto;
     /* Beside the edit column (top left in both languages), not over it: 12 px margin, the
        44 px buttons, a gap. */
@@ -941,7 +870,7 @@ html[dir="rtl"] #toolbar {
      flex row order flips with direction). Drag it to reposition the bar.
      Double-id selector to outrank `#toolbar .drag-handle` (the mobile ⋯
      styling) so font-size:0 hides the original glyph and only ⠿ shows. */
-  #toolbar #toolbar-handle {
+  :where(html.menubar) #toolbar #toolbar-handle {
     display: flex;
     align-items: center;
     order: -1;
@@ -953,16 +882,16 @@ html[dir="rtl"] #toolbar {
     border-inline-end: 1px solid #3a3636;
     cursor: grab;
   }
-  #toolbar-handle::before {
+  :where(html.menubar) #toolbar-handle::before {
     content: '⠿';
     font-size: 15px;
     line-height: 1;
     color: #8a8484;
   }
-  #toolbar-handle:hover::before { color: #e8e8e8; }
-  #toolbar.dragging #toolbar-handle { cursor: grabbing; }
+  :where(html.menubar) #toolbar-handle:hover::before { color: #e8e8e8; }
+  :where(html.menubar) #toolbar.dragging #toolbar-handle { cursor: grabbing; }
 
-  #toolbar > #lang-toggle {
+  :where(html.menubar) #toolbar > #lang-toggle {
     order: 30;
     align-self: stretch;
     margin: 0;
@@ -972,11 +901,11 @@ html[dir="rtl"] #toolbar {
     border-inline-start: 1px solid #3a3636;
   }
 
-  #toolbar > #lang-toggle select {
+  :where(html.menubar) #toolbar > #lang-toggle select {
     max-width: 96px;
   }
 
-  .tb-section {
+  :where(html.menubar) .tb-section {
     position: relative;
     flex: 0 0 auto;
     border-top: 0;
@@ -984,11 +913,11 @@ html[dir="rtl"] #toolbar {
     padding: 0;
   }
 
-  .tb-section:first-of-type {
+  :where(html.menubar) .tb-section:first-of-type {
     margin-inline-start: 0;
   }
 
-  .tb-section-head {
+  :where(html.menubar) .tb-section-head {
     height: 33px;
     padding: 0 12px;
     justify-content: center;
@@ -1001,7 +930,7 @@ html[dir="rtl"] #toolbar {
     text-transform: none;
   }
 
-  .tb-section-head::after {
+  :where(html.menubar) .tb-section-head::after {
     display: none;
   }
 
@@ -1010,9 +939,9 @@ html[dir="rtl"] #toolbar {
      under its click target, so hide them here and show the standalone .tb-quick
      pair beside the Edit menu instead. The in-header pair stays in the
      stacked/accordion toolbar. */
-  .tb-head-actions { display: none; }
-  #toolbar .route-file-row:not(.route-file-compact) { display: none; }
-  #toolbar .tb-quick.route-file-row {
+  :where(html.menubar) .tb-head-actions { display: none; }
+  :where(html.menubar) #toolbar .route-file-row:not(.route-file-compact) { display: none; }
+  :where(html.menubar) #toolbar .tb-quick.route-file-row {
     display: flex;
     align-items: center;
     gap: 6px;
@@ -1022,27 +951,27 @@ html[dir="rtl"] #toolbar {
   }
   /* The menubar's own height: a pill each, the label kept short (a long route name is cut
      with an ellipsis, the full one is in the tooltip and the accessible name). */
-  #toolbar .tb-quick.route-file-row .route-file-btn {
+  :where(html.menubar) #toolbar .tb-quick.route-file-row .route-file-btn {
     flex: 0 1 auto; min-height: 30px; max-width: 220px;
     padding: 3px 12px; font-size: 13px; border-radius: 15px; gap: 5px;
   }
   /* The menubar has no room to spare: at 1280 px two labeled pills wrapped it onto a second
      row. Icon, unsaved dot and route count here; the words from 1440 px; the route name is
      in the tooltip. */
-  #toolbar .tb-quick.route-file-row .rf-text,
-  #toolbar .tb-quick.route-file-row .route-file-load .rf-label { display: none; }
-  #toolbar .tb-quick.route-file-row .route-file-btn { padding: 2px 6px; gap: 3px; min-height: 26px; }
-  #toolbar .tb-quick.route-file-row .rf-count { min-width: 16px; padding: 0 4px; font-size: 11px; line-height: 14px; }
-  #toolbar .tb-quick.route-file-row .rf-dot { width: 7px; height: 7px; }
-  #toolbar .tb-quick.route-file-row { gap: 4px; padding: 0 4px; }
+  :where(html.menubar) #toolbar .tb-quick.route-file-row .rf-text,
+  :where(html.menubar) #toolbar .tb-quick.route-file-row .route-file-load .rf-label { display: none; }
+  :where(html.menubar) #toolbar .tb-quick.route-file-row .route-file-btn { padding: 2px 6px; gap: 3px; min-height: 26px; }
+  :where(html.menubar) #toolbar .tb-quick.route-file-row .rf-count { min-width: 16px; padding: 0 4px; font-size: 11px; line-height: 14px; }
+  :where(html.menubar) #toolbar .tb-quick.route-file-row .rf-dot { width: 7px; height: 7px; }
+  :where(html.menubar) #toolbar .tb-quick.route-file-row { gap: 4px; padding: 0 4px; }
 
-  .tb-section-head:hover,
-  .tb-section.open .tb-section-head {
+  :where(html.menubar) .tb-section-head:hover,
+  :where(html.menubar) .tb-section.open .tb-section-head {
     color: #fff;
     background: rgba(255, 255, 255, 0.12);
   }
 
-  .tb-section-body {
+  :where(html.menubar) .tb-section-body {
     position: absolute;
     top: 100%;
     left: 0;
@@ -1068,33 +997,33 @@ html[dir="rtl"] #toolbar {
      the VOR ref box overlapping "Show/add freq changes", and it only appeared once another
      row pushed the section past the cap.
      Every row keeps its own height; overflow-y: auto above then does what it says. */
-  .tb-section-body > * { flex-shrink: 0; }
+  :where(html.menubar) .tb-section-body > * { flex-shrink: 0; }
 
-  .tb-section[data-sec="export"] .tb-section-body,
-  .tb-section[data-sec="weather"] .tb-section-body,
-  .tb-section[data-sec="print"] .tb-section-body {
+  :where(html.menubar) .tb-section[data-sec="export"] .tb-section-body,
+  :where(html.menubar) .tb-section[data-sec="weather"] .tb-section-body,
+  :where(html.menubar) .tb-section[data-sec="print"] .tb-section-body {
     right: 0;
     left: auto;
   }
 
-  html[dir="rtl"] .tb-section-body {
+  html:where(.menubar)[dir="rtl"] .tb-section-body {
     right: 0;
     left: auto;
   }
 
-  html[dir="rtl"] .tb-section[data-sec="export"] .tb-section-body,
-  html[dir="rtl"] .tb-section[data-sec="weather"] .tb-section-body,
-  html[dir="rtl"] .tb-section[data-sec="print"] .tb-section-body {
+  html:where(.menubar)[dir="rtl"] .tb-section[data-sec="export"] .tb-section-body,
+  html:where(.menubar)[dir="rtl"] .tb-section[data-sec="weather"] .tb-section-body,
+  html:where(.menubar)[dir="rtl"] .tb-section[data-sec="print"] .tb-section-body {
     right: auto;
     left: 0;
   }
 
-  .tb-section[data-sec="print"] .tb-section-body {
+  :where(html.menubar) .tb-section[data-sec="print"] .tb-section-body {
     min-width: 260px;
     gap: 6px;
   }
 
-  .tb-print-submenu {
+  :where(html.menubar) .tb-print-submenu {
     display: grid;
     grid-template-columns: 72px minmax(0, 1fr);
     align-items: center;
@@ -1102,7 +1031,7 @@ html[dir="rtl"] #toolbar {
     padding: 2px 4px;
   }
 
-  .tb-section[data-sec="print"] .tb-print-label {
+  :where(html.menubar) .tb-section[data-sec="print"] .tb-print-label {
     display: block;
     color: #b9b3b3;
     font-size: 12px;
@@ -1110,37 +1039,37 @@ html[dir="rtl"] #toolbar {
     white-space: nowrap;
   }
 
-  .tb-section[data-sec="print"] .tb-print-separator {
+  :where(html.menubar) .tb-section[data-sec="print"] .tb-print-separator {
     display: block;
     height: 1px;
     margin: 1px 4px;
     background: #33302f;
   }
 
-  .tb-section[data-sec="print"] #page-buttons {
+  :where(html.menubar) .tb-section[data-sec="print"] #page-buttons {
     display: grid;
     grid-template-columns: 1fr 1fr 1fr;   /* A3 · A4 · A4×2 on one row */
     gap: 4px;
     min-width: 0;
   }
-  .tb-section[data-sec="print"] #page-orient { grid-column: 1 / -1; }   /* orient on its own row below */
+  :where(html.menubar) .tb-section[data-sec="print"] #page-orient { grid-column: 1 / -1; }   /* orient on its own row below */
 
-  .tb-section[data-sec="print"] #page-orient {
+  :where(html.menubar) .tb-section[data-sec="print"] #page-orient {
     grid-column: 1 / -1;
     justify-content: flex-start;
     min-height: 30px;
     font-size: 15px;
   }
 
-  .tb-section[data-sec="print"] .page-orient-label {
+  :where(html.menubar) .tb-section[data-sec="print"] .page-orient-label {
     display: inline;
   }
 
-  html[dir="rtl"] .tb-section[data-sec="print"] #page-orient {
+  html:where(.menubar)[dir="rtl"] .tb-section[data-sec="print"] #page-orient {
     justify-content: flex-start;
   }
 
-  #toolbar.multi-open .tb-section-body {
+  :where(html.menubar) #toolbar.multi-open .tb-section-body {
     position: fixed;
     top: 34px;
     right: auto;
@@ -1153,24 +1082,24 @@ html[dir="rtl"] #toolbar {
     pointer-events: none;
   }
 
-  #toolbar.multi-open .tb-section-body > * {
+  :where(html.menubar) #toolbar.multi-open .tb-section-body > * {
     pointer-events: auto;
   }
 
-  #toolbar.multi-open .tb-section[data-sec="build"] .tb-section-body { left: 8px; }
-  #toolbar.multi-open .tb-section[data-sec="view"] .tb-section-body { left: calc(14.285vw + 6px); }
-  #toolbar.multi-open .tb-section[data-sec="display"] .tb-section-body { left: calc(28.57vw + 4px); }
-  #toolbar.multi-open .tb-section[data-sec="charts"] .tb-section-body { left: calc(42.855vw + 2px); }
-  #toolbar.multi-open .tb-section[data-sec="export"] .tb-section-body { left: 57.14vw; }
-  #toolbar.multi-open .tb-section[data-sec="weather"] .tb-section-body { left: calc(71.425vw - 2px); }
-  #toolbar.multi-open .tb-section[data-sec="print"] .tb-section-body { left: calc(85.71vw - 4px); }
+  :where(html.menubar) #toolbar.multi-open .tb-section[data-sec="build"] .tb-section-body { left: 8px; }
+  :where(html.menubar) #toolbar.multi-open .tb-section[data-sec="view"] .tb-section-body { left: calc(14.285vw + 6px); }
+  :where(html.menubar) #toolbar.multi-open .tb-section[data-sec="display"] .tb-section-body { left: calc(28.57vw + 4px); }
+  :where(html.menubar) #toolbar.multi-open .tb-section[data-sec="charts"] .tb-section-body { left: calc(42.855vw + 2px); }
+  :where(html.menubar) #toolbar.multi-open .tb-section[data-sec="export"] .tb-section-body { left: 57.14vw; }
+  :where(html.menubar) #toolbar.multi-open .tb-section[data-sec="weather"] .tb-section-body { left: calc(71.425vw - 2px); }
+  :where(html.menubar) #toolbar.multi-open .tb-section[data-sec="print"] .tb-section-body { left: calc(85.71vw - 4px); }
 
   /* Full-width flat menu buttons — but NOT the inline slider-reset (↻), which
      is a small trailing control inside a flex slider row; width:100% there
      blows it up to the full row and pushes it out of the group-box frame
      (visible in RTL, where it overflows left). It keeps its base styling. */
-  #toolbar .tb-section-body button:not(.slider-reset),
-  #toolbar .tb-section-body #export-select {
+  :where(html.menubar) #toolbar .tb-section-body button:not(.slider-reset),
+  :where(html.menubar) #toolbar .tb-section-body #export-select {
     width: 100%;
     min-height: 28px;
     padding: 5px 10px;
@@ -1184,19 +1113,19 @@ html[dir="rtl"] #toolbar {
   /* Extra-layers cards mirror the buttons: flat (no border/fill) in the desktop
      dropdown; the light-theme override below re-adds the same border buttons
      get in light mode. Keeps every menu looking identical. */
-  #toolbar .tb-section-body .tb-group-box {
+  :where(html.menubar) #toolbar .tb-section-body .tb-group-box {
     border-color: transparent;
     background: transparent;
   }
 
-  #toolbar .tb-section-body button:hover,
-  #toolbar .tb-section-body #export-select:hover,
-  #toolbar .tb-section-body .navtoggle:hover {
+  :where(html.menubar) #toolbar .tb-section-body button:hover,
+  :where(html.menubar) #toolbar .tb-section-body #export-select:hover,
+  :where(html.menubar) #toolbar .tb-section-body .navtoggle:hover {
     background: rgba(255, 255, 255, 0.10);
   }
 
-  #toolbar button.tool.active,
-  #toolbar button[aria-pressed="true"] {
+  :where(html.menubar) #toolbar button.tool.active,
+  :where(html.menubar) #toolbar button[aria-pressed="true"] {
     background: #1d6fe0;
     border-color: #1d6fe0;
   }
@@ -1204,39 +1133,39 @@ html[dir="rtl"] #toolbar {
      .slider-reset) → transparent) is more specific than the active rule above,
      so a selected button (e.g. the A3/A4 page size) rendered with no fill.
      Re-assert the selected fill at matching specificity, after that rule. */
-  #toolbar .tb-section-body button.tool.active,
-  #toolbar .tb-section-body button[aria-pressed="true"] {
+  :where(html.menubar) #toolbar .tb-section-body button.tool.active,
+  :where(html.menubar) #toolbar .tb-section-body button[aria-pressed="true"] {
     background: #1d6fe0;
     border-color: #1d6fe0;
     color: #fff;
   }
 
-  #toolbar .tb-section-body .navtoggle {
+  :where(html.menubar) #toolbar .tb-section-body .navtoggle {
     min-height: 28px;
     padding: 4px 8px;
     border-radius: 3px;
   }
 
-  #toolbar .tb-section-body .navtoggle select,
-  #toolbar .tb-section-body .navtoggle input[type="number"],
-  #toolbar .tb-section-body .navtoggle input[type="text"] {
+  :where(html.menubar) #toolbar .tb-section-body .navtoggle select,
+  :where(html.menubar) #toolbar .tb-section-body .navtoggle input[type="number"],
+  :where(html.menubar) #toolbar .tb-section-body .navtoggle input[type="text"] {
     min-height: 24px;
   }
 
   /* Fixed slider width inside the dropdown so a slider never resizes when its
      value label changes length (e.g. dragging the NOTAM timeline). The menu
      sizes to content (≤340px); the value column sizes to its own text. */
-  #toolbar .tb-section-body .navtoggle input[type="range"] {
+  :where(html.menubar) #toolbar .tb-section-body .navtoggle input[type="range"] {
     flex: 0 0 96px;
     width: 96px;
     min-width: 0;
   }
 
-  .tb-group {
+  :where(html.menubar) .tb-group {
     margin-top: 7px;
   }
 
-}
+
 
 /* Hidden while a finger drags something on the map: the panel covers the half of the map
    the point is heading for. The selection is untouched, so it returns as it was. */
@@ -2717,13 +2646,13 @@ body.theme-dark #toolbar button.gps-footer-btn[aria-pressed="true"] .footer-link
   color: inherit;
 }
 
-@media (min-width: 681px) and (hover: hover) and (pointer: fine) {
-  #app-version,
-  #app-update {
+/* Desktop menubar: :where(html.menubar) (index.html head, ui.js toolbarUsesDesktopMenu). */
+  :where(html.menubar) #app-version,
+  :where(html.menubar) #app-update {
     display: none;
   }
 
-  #toolbar > #footer-links {
+  :where(html.menubar) #toolbar > #footer-links {
     order: 40;
     display: flex;
     flex: 0 0 auto;
@@ -2738,7 +2667,7 @@ body.theme-dark #toolbar button.gps-footer-btn[aria-pressed="true"] .footer-link
     border-inline-start: 1px solid #3a3636;
   }
 
-  #toolbar .footer-link {
+  :where(html.menubar) #toolbar .footer-link {
     width: 30px;
     height: 33px;
     justify-content: center;
@@ -2747,31 +2676,31 @@ body.theme-dark #toolbar button.gps-footer-btn[aria-pressed="true"] .footer-link
     color: #c6c0c0;
   }
 
-  #toolbar button.footer-link {
+  :where(html.menubar) #toolbar button.footer-link {
     width: 30px;
     height: 33px;
   }
 
-  #toolbar .footer-link:hover,
-  #toolbar button.footer-link:hover {
+  :where(html.menubar) #toolbar .footer-link:hover,
+  :where(html.menubar) #toolbar button.footer-link:hover {
     background: rgba(255, 255, 255, 0.12);
     color: #fff;
   }
 
-  #toolbar .footer-link-text {
+  :where(html.menubar) #toolbar .footer-link-text {
     display: none;
   }
   /* Keep the compact icon row clear while idle. During GPS/simulator operation,
      heading / altitude / speed are live cockpit data and remain visible on the
      desktop/full-screen map as soon as the readout has a value. */
-  #toolbar .footer-gps-readout { display: none; }
-  #toolbar .footer-gps-readout.live-active:not(:empty) {
+  :where(html.menubar) #toolbar .footer-gps-readout { display: none; }
+  :where(html.menubar) #toolbar .footer-gps-readout.live-active:not(:empty) {
     display: inline;
     flex: 0 0 auto;
     padding: 0 4px;
     white-space: nowrap;
   }
-}
+
 
 /* Keyboard-shortcuts cheat-sheet (issue #420) ---------------------- */
 .shortcuts-help-modal {
@@ -6086,8 +6015,8 @@ body.theme-light .search-ex code { color: #1d6fe0; }
   font-size: 11px;
 }
 
-@media (min-width: 681px) and (hover: hover) and (pointer: fine) {
-  #search-overlay {
+/* Desktop menubar: :where(html.menubar) (index.html head, ui.js toolbarUsesDesktopMenu). */
+  :where(html.menubar) #search-overlay {
     top: 46px;
   }
 
@@ -6096,26 +6025,26 @@ body.theme-light .search-ex code { color: #1d6fe0; }
      English, right for Hebrew) and draggable from anywhere that isn't the
      input, the results or a button. There is no room for this on mobile, where
      it stays the centred overlay that Ctrl-F / the toolbar button summons. */
-  #search-overlay.docked {
+  :where(html.menubar) #search-overlay.docked {
     left: 12px;
     right: auto;
     transform: none;
     cursor: grab;
   }
-  html[dir="rtl"] #search-overlay.docked {
+  html:where(.menubar)[dir="rtl"] #search-overlay.docked {
     left: auto;
     right: 12px;
   }
-  #search-overlay.docked.dragging { cursor: grabbing; }
+  :where(html.menubar) #search-overlay.docked.dragging { cursor: grabbing; }
   /* Dismissable here too: ✕ (or Ctrl-F while focused) puts it away, and the
      choice is remembered. Ctrl-F / the toolbar button brings it back. */
 
-  #tuning-panel {
+  :where(html.menubar) #tuning-panel {
     top: 46px;
     max-height: calc(100vh - 58px);
     max-height: calc(100dvh - 58px);
   }
-}
+
 
 /* Light mode: UI chrome only. The selected map/chart layer is unchanged. */
 body.theme-light {
@@ -6271,7 +6200,6 @@ body.theme-light #insp-title.editable:focus {
 body.theme-light .tb-head-actions { border-bottom-color: #c6ccd6; }
 body.theme-light .tb-section-head,
 body.theme-light #toolbar .drag-handle,
-body.theme-light #toolbar-toggle,
 body.theme-light #toolbar .slider-val,
 body.theme-light #toolbar .slider-reset,
 body.theme-light #toolbar .navtoggle .hint,
@@ -6305,7 +6233,6 @@ body.theme-light #tuning-panel .tune-label {
 }
 body.theme-light .tb-section-head:hover,
 body.theme-light #toolbar .drag-handle:hover,
-body.theme-light #toolbar-toggle:hover,
 body.theme-light #toolbar .footer-link:hover,
 body.theme-light .charts-airport-header:hover,
 body.theme-light #insp-close:hover,
@@ -6322,56 +6249,56 @@ body.theme-light .point-choice-option:hover .point-choice-meta,
 body.theme-light .point-choice-option:focus .point-choice-meta {
   color: #4b5563;
 }
-@media (min-width: 681px) and (hover: hover) and (pointer: fine) {
-  body.theme-light #toolbar {
+/* Desktop menubar: :where(html.menubar) (index.html head, ui.js toolbarUsesDesktopMenu). */
+  :where(html.menubar) body.theme-light #toolbar {
     background: rgba(250, 252, 255, 0.98);
     box-shadow: 0 2px 12px rgba(31, 37, 44, 0.16);
   }
 
-  body.theme-light #toolbar > #lang-toggle {
+  :where(html.menubar) body.theme-light #toolbar > #lang-toggle {
     border-color: #cfd5df;
   }
 
-  body.theme-light .tb-section-body {
+  :where(html.menubar) body.theme-light .tb-section-body {
     background: rgba(250, 252, 255, 0.99);
     border-color: #c6ccd6;
     box-shadow: 0 10px 24px rgba(31, 37, 44, 0.18);
   }
 
-  body.theme-light .tb-section-head {
+  :where(html.menubar) body.theme-light .tb-section-head {
     color: #26313d;
   }
 
-  body.theme-light .tb-section-head:hover,
-  body.theme-light .tb-section.open .tb-section-head {
+  :where(html.menubar) body.theme-light .tb-section-head:hover,
+  :where(html.menubar) body.theme-light .tb-section.open .tb-section-head {
     color: #111820;
     background: rgba(29, 111, 224, 0.10);
   }
 
-  body.theme-light #toolbar .tb-section-body button:hover,
-  body.theme-light #toolbar #export-select:hover,
-  body.theme-light #toolbar .tb-section-body .navtoggle:hover {
+  :where(html.menubar) body.theme-light #toolbar .tb-section-body button:hover,
+  :where(html.menubar) body.theme-light #toolbar #export-select:hover,
+  :where(html.menubar) body.theme-light #toolbar .tb-section-body .navtoggle:hover {
     background: rgba(29, 111, 224, 0.08);
   }
 
   /* …but a *selected* button (white text) must keep a solid fill on hover —
      the translucent wash above would otherwise leave white-on-near-white (the
      A3/A4 page buttons). Slightly darker blue gives hover feedback. */
-  body.theme-light #toolbar .tb-section-body button.tool.active:hover,
-  body.theme-light #toolbar .tb-section-body button[aria-pressed="true"]:hover {
+  :where(html.menubar) body.theme-light #toolbar .tb-section-body button.tool.active:hover,
+  :where(html.menubar) body.theme-light #toolbar .tb-section-body button[aria-pressed="true"]:hover {
     color: #fff;
     background: #195fc2;
     border-color: #195fc2;
   }
 
-  body.theme-light .tb-section[data-sec="print"] .tb-print-label {
+  :where(html.menubar) body.theme-light .tb-section[data-sec="print"] .tb-print-label {
     color: #647184;
   }
 
-  body.theme-light .tb-section[data-sec="print"] .tb-print-separator {
+  :where(html.menubar) body.theme-light .tb-section[data-sec="print"] .tb-print-separator {
     background: #d8dde5;
   }
-}
+
 /* The canvas swatches are painted exactly as on the chart -- black triangles, dark rings --
    so on the dark legend each sits on a chip of chart paper instead of disappearing. */
 body.theme-dark .map-legend canvas.legend-symbol {
@@ -7135,10 +7062,10 @@ html[data-theme="light"] #insp-body .insp-actions {
   /* The drag handle was 29x21 -- the smallest target in the app, on the control that moves
      the menu out of the way. Dim, never hide: it keeps its size on screen and grows a
      thumb's worth of tap area around it. */
-  #toolbar-handle { min-width: 44px; min-height: 44px; display: inline-flex;
+  :where(html:not(.menubar)) #toolbar-handle { min-width: 44px; min-height: 44px; display: inline-flex;
                     align-items: center; justify-content: center; }
-  #footer-links a,
-  #footer-links button,
+  :where(html:not(.menubar)) #footer-links a,
+  :where(html:not(.menubar)) #footer-links button,
   .footer-link {
     min-height: 44px;
     display: inline-flex;
@@ -7164,18 +7091,6 @@ html[data-theme="light"] #insp-body .insp-actions {
   }
   /* The hamburger is THE way to reach every menu on a phone, and it was 42x21 --
      the smallest target in the app sat on its most-used control. */
-  #toolbar-toggle {
-    min-width: 44px;
-    min-height: 44px;
-    display: inline-flex;
-    align-items: center;
-    /* center (for the 44px touch target) replaces the base rule's
-       space-between, which is what spaced the three bars — without a row-gap
-       they stack into one 6px smudge, and this toggle is the ONLY way into the
-       menus on a phone (it is display:none from 681px up). */
-    justify-content: center;
-    row-gap: 4px;
-  }
   /* The ☰ is the only way in and out of the menus on a phone, and it scrolled away with
      them: open Display, scroll to the bottom of a long section, and the control that
      closes it is somewhere above the top of the screen. Pin it, and pin it as the SAME
@@ -7183,30 +7098,22 @@ html[data-theme="light"] #insp-body .insp-actions {
      closing the panel does not rearrange its head. The closed card is already a
      three-column grid; this makes the open one match, with everything below spanning
      all three columns. */
-  #toolbar:not(.collapsed) {
+  :where(html:not(.menubar)) #toolbar.deck-hosted {
     display: grid;
     grid-template-columns: auto auto minmax(0, 1fr);
     align-items: center;
     column-gap: 0;
     row-gap: 4px;
   }
-  #toolbar:not(.collapsed) > * { grid-column: 1 / -1; }
-  #toolbar:not(.collapsed) > #toolbar-handle { grid-column: 1; grid-row: 1; }
-  #toolbar:not(.collapsed) > #toolbar-toggle { grid-column: 2; grid-row: 1; }
-  #toolbar:not(.collapsed) > #lang-toggle    { grid-column: 3; grid-row: 1; }
+  :where(html:not(.menubar)) #toolbar.deck-hosted > * { grid-column: 1 / -1; }
+  :where(html:not(.menubar)) #toolbar.deck-hosted > #toolbar-handle { grid-column: 1; grid-row: 1; }
+  :where(html:not(.menubar)) #toolbar.deck-hosted > #lang-toggle    { grid-column: 3; grid-row: 1; }
   /* The language picker moved into Settings: the ☰ takes the rest of the pinned band, and
      with it the far edge's bleed into the panel padding. */
-  #toolbar:not(.collapsed):not(:has(> #lang-toggle)) > #toolbar-toggle {
-    grid-column: 2 / -1; margin-right: -6px; padding-right: 6px;
-  }
-  html[dir="rtl"] #toolbar:not(.collapsed):not(:has(> #lang-toggle)) > #toolbar-toggle {
-    margin-right: 0; padding-right: 0; margin-left: -6px; padding-left: 6px;
-  }
   /* One pinned band, not three floating chips: opaque, and stretched into the panel's
      padding on every side, or the rows sliding past show through the seams. */
-  #toolbar:not(.collapsed) > #toolbar-handle,
-  #toolbar:not(.collapsed) > #toolbar-toggle,
-  #toolbar:not(.collapsed) > #lang-toggle {
+  :where(html:not(.menubar)) #toolbar.deck-hosted > #toolbar-handle,
+  :where(html:not(.menubar)) #toolbar.deck-hosted > #lang-toggle {
     position: sticky;
     top: 0;
     z-index: 3;
@@ -7218,12 +7125,12 @@ html[data-theme="light"] #insp-body .insp-actions {
     background: rgba(20, 18, 18, 0.97);
     border-bottom: 1px solid #3a3636;
   }
-  #toolbar:not(.collapsed) > #toolbar-handle { margin-left: -6px; padding-left: 6px; }
+  :where(html:not(.menubar)) #toolbar.deck-hosted > #toolbar-handle { margin-left: -6px; padding-left: 6px; }
   /* Record and Location ride with the head, not at the far end of the menu. They are the two
      controls a pilot reaches for with the aeroplane already moving, and they used to sit
      below every section -- open Display and they are a scroll away. Pinned as the second
      band, directly under the ☰ that is always there. */
-  #toolbar:not(.collapsed) > #footer-links {
+  :where(html:not(.menubar)) #toolbar.deck-hosted > #footer-links {
     grid-row: 2;
     position: sticky;
     top: var(--navaid-tb-head-h, 44px);
@@ -7233,24 +7140,23 @@ html[data-theme="light"] #insp-body .insp-actions {
     background: rgba(20, 18, 18, 0.97);
     border-bottom: 1px solid #3a3636;
   }
-  body.theme-light #toolbar:not(.collapsed) > #footer-links {
+  :where(html:not(.menubar)) body.theme-light #toolbar.deck-hosted > #footer-links {
     background: rgba(250, 252, 255, 0.98);
     border-bottom-color: #cfd5df;
   }
-  #toolbar:not(.collapsed) > #lang-toggle {
+  :where(html:not(.menubar)) #toolbar.deck-hosted > #lang-toggle {
     margin-right: -6px;
     padding-right: 6px;
     margin-bottom: 0;         /* its expanded-stack separator is the band's border now */
   }
-  html[dir="rtl"] #toolbar:not(.collapsed) > #toolbar-handle {
+  html:where(:not(.menubar))[dir="rtl"] #toolbar.deck-hosted > #toolbar-handle {
     margin-left: 0; padding-left: 0; margin-right: -6px; padding-right: 6px;
   }
-  html[dir="rtl"] #toolbar:not(.collapsed) > #lang-toggle {
+  html:where(:not(.menubar))[dir="rtl"] #toolbar.deck-hosted > #lang-toggle {
     margin-right: 0; padding-right: 0; margin-left: -6px; padding-left: 6px;
   }
-  body.theme-light #toolbar:not(.collapsed) > #toolbar-handle,
-  body.theme-light #toolbar:not(.collapsed) > #toolbar-toggle,
-  body.theme-light #toolbar:not(.collapsed) > #lang-toggle {
+  :where(html:not(.menubar)) body.theme-light #toolbar.deck-hosted > #toolbar-handle,
+  :where(html:not(.menubar)) body.theme-light #toolbar.deck-hosted > #lang-toggle {
     background: rgba(250, 252, 255, 0.98);
     border-bottom-color: #cfd5df;
   }
@@ -7259,8 +7165,8 @@ html[data-theme="light"] #insp-body .insp-actions {
      opacity" and the NOTAM timeline were the worst, and on a touch screen a 24px track is
      not a control. The label and the value keep the first line; the slider gets the next
      one, full width, with a track tall enough to hit. */
-  #toolbar .navtoggle-slider { flex-wrap: wrap; }
-  #toolbar .navtoggle-slider > input[type="range"] {
+  :where(html:not(.menubar)) #toolbar .navtoggle-slider { flex-wrap: wrap; }
+  :where(html:not(.menubar)) #toolbar .navtoggle-slider > input[type="range"] {
     flex: 1 1 100%;
     width: auto;
     min-width: 0;
@@ -7269,7 +7175,7 @@ html[data-theme="light"] #insp-body .insp-actions {
   }
   /* The value keeps its column on the label's line, so the number does not jump about as
      it changes width. */
-  #toolbar .navtoggle-slider > .slider-val { margin-inline-start: auto; }
+  :where(html:not(.menubar)) #toolbar .navtoggle-slider > .slider-val { margin-inline-start: auto; }
 
   /* The coordinate readout is a button in disguise ("Click to go to coordinates") and
      was 19px tall. Grow the strike area with padding, not type size, so the readout
@@ -8434,8 +8340,8 @@ body.theme-light .parking-preview {
 body.theme-light .route-library-gdrive-pii { color: #6b7787; border-inline-start-color: #c7cedb; }
 
 /* ---- Option B: the phone data strip and bottom deck ----------------------------------
-   Behind `featureMobileDeck` (off) and narrow screens only; see docs/app/deck.js for why.
-   Everything here hangs off body.deck-on, so with the feature off not one rule applies. */
+   Narrow and touch screens; see docs/app/deck.js for why. Everything here hangs off
+   body.deck-on, so on the desktop menubar not one rule applies. */
 .deck-strip {
   position: fixed;
   top: 0; left: 0; right: 0;
@@ -8708,12 +8614,13 @@ body.deck-on .overlay-loading { bottom: calc(var(--navaid-deck-bar-h, 52px) + 68
 }
 /* Two controls belong to the floating card, not to the menu: the drag handle moves a card
    that is now a sheet, and the hamburger closes one. The sheet has a grip and an X. */
-.deck-sheet #toolbar.deck-hosted > #toolbar-handle,
-.deck-sheet #toolbar.deck-hosted > #toolbar-toggle { display: none; }
-/* ...and so do Record, Location and the live readout: they are the deck and the strip now,
-   and a menu that repeats them says the same thing twice on a screen with no room to. */
+.deck-sheet #toolbar.deck-hosted > #toolbar-handle{ display: none; }
+/* ...and so do Record, Location, Comm failure and the live readout: they are the deck and the
+   strip now, and a menu that repeats them says the same thing twice on a screen with no room to.
+   The simulator stays: the deck has no other way to it, and connecting one is how a phone tests
+   the watch alerts. */
 /* Two ids and a class, to outrank the phone rules that put this row on screen. */
-.deck-sheet #toolbar.deck-hosted > #footer-links .footer-gps-group,
+.deck-sheet #toolbar.deck-hosted > #footer-links .footer-gps-group > .gps-footer-btn:not(#sim-trigger),
 .deck-sheet #toolbar.deck-hosted > #footer-links #gps-readout { display: none !important; }
 @media (prefers-reduced-motion: reduce) {
   .deck-sheet { transition: none; }
@@ -9276,7 +9183,7 @@ html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
    their edge: at a larger phone font "Download CVFR for offline use -- 0%" no longer fits one line
    of a phone's width. (The desktop menubar keeps its one-line labels.) */
 @media (max-width: 680px), (pointer: coarse) {
-  #toolbar button { white-space: normal; overflow-wrap: break-word; }
+  :where(html:not(.menubar)) #toolbar button { white-space: normal; overflow-wrap: break-word; }
 }
 
 /* The flight plan on a phone: the whole window scrolls, not just the legs table at its bottom.
@@ -9348,15 +9255,6 @@ body.theme-light #toolbar .tb-section-body .mi-select > #export-select:hover { b
 #toolbar .follow-me-button-icon[data-icon] { display: inline-grid; place-items: center; line-height: 0; vertical-align: -3px; }
 #toolbar .follow-me-button-icon svg { display: block; }
 
-/* The open phone menu without the deck stops above the collapsed legend chip in the bottom
-   corner (its 28px plus the map margin), and scrolls under its pinned head instead: the
-   Settings section made it tall enough to reach the chip on a short phone. */
-@media (max-width: 680px) {
-  body:not(.deck-on) #toolbar:not(.collapsed) {
-    max-height: calc(100vh - 92px);
-    max-height: calc(100dvh - 92px);
-  }
-}
 
 /* Phone: the right-hand column is one family. The heading box, the rotation dial and the zoom
    buttons were white squares (in light mode) under the round dark-glass in-flight buttons;
@@ -9384,21 +9282,21 @@ body.deck-on .zoom-readout {
 /* Desktop menubar: the sections fall into groups -- edit · map (Map, Display) · plan
    (Flight plan, Charts, Extra layers) · share (Export/import, Print) · Settings -- and a hairline
    between groups says so, instead of eleven equal labels in one run. */
-@media (min-width: 681px) and (hover: hover) and (pointer: fine) {
-  body:not(.deck-on) #toolbar .tb-section[data-sec="view"],
-  body:not(.deck-on) #toolbar .tb-section[data-sec="plan"],
-  body:not(.deck-on) #toolbar .tb-section[data-sec="export"],
-  body:not(.deck-on) #toolbar .tb-section[data-sec="settings"] {
+/* Desktop menubar: :where(html.menubar) (index.html head, ui.js toolbarUsesDesktopMenu). */
+  :where(html.menubar) body:not(.deck-on) #toolbar .tb-section[data-sec="view"],
+  :where(html.menubar) body:not(.deck-on) #toolbar .tb-section[data-sec="plan"],
+  :where(html.menubar) body:not(.deck-on) #toolbar .tb-section[data-sec="export"],
+  :where(html.menubar) body:not(.deck-on) #toolbar .tb-section[data-sec="settings"] {
     position: relative; margin-inline-start: 1px;   /* the heads' own 12px padding is the gap */
   }
-  body:not(.deck-on) #toolbar .tb-section[data-sec="view"]::before,
-  body:not(.deck-on) #toolbar .tb-section[data-sec="plan"]::before,
-  body:not(.deck-on) #toolbar .tb-section[data-sec="export"]::before,
-  body:not(.deck-on) #toolbar .tb-section[data-sec="settings"]::before {
+  :where(html.menubar) body:not(.deck-on) #toolbar .tb-section[data-sec="view"]::before,
+  :where(html.menubar) body:not(.deck-on) #toolbar .tb-section[data-sec="plan"]::before,
+  :where(html.menubar) body:not(.deck-on) #toolbar .tb-section[data-sec="export"]::before,
+  :where(html.menubar) body:not(.deck-on) #toolbar .tb-section[data-sec="settings"]::before {
     content: ''; position: absolute; inset-inline-start: -1px; top: 8px; bottom: 8px;
     width: 1px; background: currentColor; opacity: .18; pointer-events: none;
   }
-}
+
 
 /* Icons in the waypoint panel's actions and the dialogs' action rows (ui.js dressByGlyph). */
 .insp-btn .mi-icon, .modal-btns .mi-icon { display: inline-grid; place-items: center; line-height: 0; vertical-align: -3px; margin-inline-end: 6px; }
@@ -9451,22 +9349,22 @@ body.deck-on .fp-del button { min-height: 36px; }
 body.deck-on .modal-btns button { min-width: 44px; min-height: 44px; }
 
 /* Desktop: the web minimum of 24px (WCAG 2.2 target size). */
-@media (min-width: 681px) and (hover: hover) and (pointer: fine) {
-  .map-legend .map-legend-title { min-height: 24px; display: flex; align-items: center; }
-  #rotate-hdg { min-height: 24px; }
-  #map-time-now { min-height: 24px; }
-  #toolbar .slider-reset { min-width: 24px; min-height: 24px; }
-  #toolbar input[type="color"] { min-height: 24px; }
-  #insp-title { min-height: 24px; }
-  #insp-zoom-in, #insp-zoom-out { min-width: 24px; min-height: 24px; }
-  .satellite-expand-hint { min-height: 24px; display: inline-flex; align-items: center; }
-  .fp-aircraft input, .fp-aircraft select, #fp-vor-select, .fp-profile-vs-input,
-  .flight-table input { min-height: 24px; }
-}
+/* Desktop menubar: :where(html.menubar) (index.html head, ui.js toolbarUsesDesktopMenu). */
+  :where(html.menubar) .map-legend .map-legend-title { min-height: 24px; display: flex; align-items: center; }
+  :where(html.menubar) #rotate-hdg { min-height: 24px; }
+  :where(html.menubar) #map-time-now { min-height: 24px; }
+  :where(html.menubar) #toolbar .slider-reset { min-width: 24px; min-height: 24px; }
+  :where(html.menubar) #toolbar input[type="color"] { min-height: 24px; }
+  :where(html.menubar) #insp-title { min-height: 24px; }
+  :where(html.menubar) #insp-zoom-in, :where(html.menubar) #insp-zoom-out { min-width: 24px; min-height: 24px; }
+  :where(html.menubar) .satellite-expand-hint { min-height: 24px; display: inline-flex; align-items: center; }
+  :where(html.menubar) .fp-aircraft input, :where(html.menubar) .fp-aircraft select, :where(html.menubar) #fp-vor-select, :where(html.menubar) .fp-profile-vs-input,
+  :where(html.menubar) .flight-table input { min-height: 24px; }
+
 
 body.deck-on .modal-close-x { min-width: 44px; min-height: 44px; }
 body.deck-on .satellite-expand-hint { min-width: 44px; justify-content: center; }
-@media (min-width: 681px) and (hover: hover) and (pointer: fine) { .fp-del button { min-width: 24px; min-height: 24px; } }
+/* Desktop menubar: :where(html.menubar) (index.html head, ui.js toolbarUsesDesktopMenu). */ :where(html.menubar) .fp-del button { min-width: 24px; min-height: 24px; } 
 
 /* The panel's sticky action footer: a solid ground in the app's own theme (it keyed off the
    system dark setting, so in the app's dark mode it had none and the rows showed through the
@@ -9548,13 +9446,13 @@ body.theme-light #toolbar .tb-section-body .slider-reset { border-color: #858f9c
   outline: 2px solid #4c9bff;
   outline-offset: 1px;
 }
-@media (min-width: 681px) and (hover: hover) and (pointer: fine) {
-  #toolbar .tb-section-body .navtoggle select,
-  #toolbar .tb-section-body .navtoggle input[type="number"],
-  #toolbar .tb-section-body .navtoggle input[type="text"] { min-height: 28px; box-sizing: border-box; }
-  #toolbar .tb-section-body .slider-reset { min-width: 28px; min-height: 28px; }
-  #toolbar .tb-section-body input[type="color"] { min-height: 28px; min-width: 28px; box-sizing: border-box; }
-}
+/* Desktop menubar: :where(html.menubar) (index.html head, ui.js toolbarUsesDesktopMenu). */
+  :where(html.menubar) #toolbar .tb-section-body .navtoggle select,
+  :where(html.menubar) #toolbar .tb-section-body .navtoggle input[type="number"],
+  :where(html.menubar) #toolbar .tb-section-body .navtoggle input[type="text"] { min-height: 28px; box-sizing: border-box; }
+  :where(html.menubar) #toolbar .tb-section-body .slider-reset { min-width: 28px; min-height: 28px; }
+  :where(html.menubar) #toolbar .tb-section-body input[type="color"] { min-height: 28px; min-width: 28px; box-sizing: border-box; }
+
 body.deck-on #deck-sheet .tb-section-body input[type="color"] { min-height: 30px; min-width: 36px; box-sizing: border-box; }
 body.deck-on #deck-sheet #tool-magnifier { min-height: 36px; font-size: 14px; }
 #toolbar .tb-section-body .navtoggle input[type="color"] { border-color: #8a8282; }
@@ -9600,10 +9498,10 @@ body.deck-on .flight-table input { min-height: 28px; }
 .deck-strip-lang:focus-visible { outline: 2px solid #4c9bff; outline-offset: 2px; }
 @media (max-width: 360px) { .deck-strip-lang .lang-quick-label { display: none; } .deck-strip-lang { padding: 0 11px; } }
 #lang-quick .lang-quick-label { font-weight: 600; }
-@media (min-width: 681px) and (hover: hover) and (pointer: fine) {
+/* Desktop menubar: :where(html.menubar) (index.html head, ui.js toolbarUsesDesktopMenu). */
   /* The menubar is one row with ~20px to spare, so the switch is the globe alone here -- the
      sign for language everywhere -- with its tooltip in the language it switches to. */
-}
+
 /* In the toolbar (desktop bar, and the phone card without the deck) the switch is the globe
    alone; the phone's strip, with room, adds the language's name. */
 #toolbar #lang-quick .lang-quick-label { display: none; }
@@ -9612,22 +9510,20 @@ body.theme-dark #aircraft-custom input { border-color: #7f7777; }
 body.theme-light #aircraft-custom input { border-color: #858f9c; }
 body.theme-light #wp-search,
 body.theme-light #search-overlay #wp-search { border-color: #858f9c; }
-/* The phone card without the deck (?deck=0): collapsed, it is one row and its links; the
-   globe there took a row of its own. It shows again when the card is open. */
-#toolbar.collapsed #lang-quick { display: none; }
+/* A collapsed menu is one row and its links; the globe there took a row of its own. */
 
 /* Slider rows. Phone: label, value and its ↻ on the first line, the slider alone on the
    second -- the slider sat between them in the markup, so the value and ↻ fell to a third
    line of their own. Desktop: one line, the ↻ never parted from its value; the two rows whose
    value reads "1.00 (standard)" give the slider a little width instead of wrapping. */
 #toolbar .navtoggle-slider > input[type="range"] { order: 10; }
-@media (min-width: 681px) and (hover: hover) and (pointer: fine) {
-  #toolbar .navtoggle-slider > input[type="range"] { order: 0; }
-  #toolbar .tb-section-body .navtoggle-wrap { flex-wrap: nowrap; }
-  #toolbar .tb-section-body .navtoggle-wrap input[type="range"] { flex: 1 1 72px; width: auto; min-width: 64px; }
+/* Desktop menubar: :where(html.menubar) (index.html head, ui.js toolbarUsesDesktopMenu). */
+  :where(html.menubar) #toolbar .navtoggle-slider > input[type="range"] { order: 0; }
+  :where(html.menubar) #toolbar .tb-section-body .navtoggle-wrap { flex-wrap: nowrap; }
+  :where(html.menubar) #toolbar .tb-section-body .navtoggle-wrap input[type="range"] { flex: 1 1 72px; width: auto; min-width: 64px; }
   /* ...and the sliders of a menu start on one line: their names share a column. */
-  #toolbar .tb-section-body > .navtoggle-slider > span:first-child { min-width: 8.8em; }
-}
+  :where(html.menubar) #toolbar .tb-section-body > .navtoggle-slider > span:first-child { min-width: 8.8em; }
+
 
 /* Export on a phone: its neighbours in the sheet are centred, bordered buttons, and Export sat
    at the side as a bare list row. It wears the same face -- icon and name centred -- with the
@@ -9736,9 +9632,9 @@ body.theme-light .insp-row-closed .val { color: #9a3d00; }
 .wind-fetch-status:empty { display: none; }
 /* Desktop slider rows: the 28px reset button made the row taller than its label and value,
    which sat at the top; centre the row's items on one line. */
-@media (min-width: 681px) and (hover: hover) and (pointer: fine) {
-  #toolbar .tb-section-body .navtoggle-slider { align-items: center; }
-}
+/* Desktop menubar: :where(html.menubar) (index.html head, ui.js toolbarUsesDesktopMenu). */
+  :where(html.menubar) #toolbar .tb-section-body .navtoggle-slider { align-items: center; }
+
 
 /* --- Map tour (tour.js) -------------------------------------------------------------------
    One control at a time: the rest of the screen dimmed by the spotlight's own shadow, a bubble

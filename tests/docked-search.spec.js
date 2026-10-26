@@ -228,7 +228,7 @@ test('every draggable panel stores its position under a per-language key', async
   // The bases below are every position store in the app; each must go through
   // navLangPosKey so Hebrew and English keep separate spots.
   const bases = ['navaid.clockPos', 'navaid.legendPos', 'navaid.searchPos', 'navaid.inspPos',
-    'navaid.toolbarPos', 'navaid.toolbarPosDesktop', 'navaid.tunePanelPos', 'navaid.fpPos'];
+    'navaid.toolbarPosDesktop', 'navaid.tunePanelPos', 'navaid.fpPos'];
   const keys = await page.evaluate(bs => bs.map(b => navLangPosKey(b)), bases);
   expect(keys).toEqual(bases.map(b => b + '.en'));
   const he = await page.evaluate(bs => {

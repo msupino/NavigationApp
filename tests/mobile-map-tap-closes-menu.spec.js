@@ -1,6 +1,5 @@
 // @ts-check
-// On a phone, tapping the map closes the toolbar menu -- BOTH levels: the open section
-// (sub-menu) and the expanded toolbar column (main menu) that covers half the map. The
+// On a phone, tapping the map closes an open section of the menu. The
 // close was wired only to a document 'click', which Leaflet swallows on touch (it handles
 // the tap itself and re-fires it as the map's own 'click' rather than letting a native
 // click reach document). The fix hooks that map 'click'.
@@ -40,18 +39,3 @@ test('a map tap closes an open section (sub-menu)', async ({ page }) => {
   await expect(page.locator('.tb-section[data-sec="charts"]')).not.toHaveClass(/open/);
 });
 
-test('a map tap collapses the expanded toolbar (main menu)', async ({ page }) => {
-  await mobileBoot(page);
-  await page.evaluate(() => {
-    // Isolate THIS hook: a first tap on an empty route arms add-mode, and setMode already
-    // collapses the column on mobile. Disarm that so only a plain look-tap is under test --
-    // the case the user hit, where a menu stays open over an existing route.
-    window.routePrimingArmed = () => false;
-    if (typeof state !== 'undefined') state.mode = null;
-    // Expand the main column: the state the user is in when a menu is open.
-    document.getElementById('toolbar').classList.remove('collapsed');
-  });
-  await expect(page.locator('#toolbar')).not.toHaveClass(/collapsed/);
-  await tapMap(page);
-  await expect(page.locator('#toolbar')).toHaveClass(/collapsed/);
-});

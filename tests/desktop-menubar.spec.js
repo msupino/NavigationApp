@@ -10,8 +10,6 @@ async function bootDesktop(page, opts = {}) {
     try {
       localStorage.clear();
       sessionStorage.clear();
-      if (options.collapsed) localStorage.setItem('navaid.toolbarCollapsed', '1');
-      if (options.pos) localStorage.setItem('navaid.toolbarPos', JSON.stringify(options.pos));
       for (const sec of options.openSections || []) {
         localStorage.setItem('navaid.sec.' + sec, '1');
       }
@@ -21,9 +19,15 @@ async function bootDesktop(page, opts = {}) {
   await page.waitForFunction(() => typeof state !== 'undefined');
 }
 
+// The menubar is pinned by default (featureMenubarDrag off); the gist turns dragging on.
+const allowDrag = (page) => page.evaluate(() => {
+  NavAid.tuning.featureMenubarDrag = true;
+  window.refreshMenubarPin();
+});
+
 test.describe('Desktop menubar layout', () => {
-  test('uses a top menubar and ignores saved mobile drag/collapse state', async ({ page }) => {
-    await bootDesktop(page, { collapsed: true, pos: { x: 220, y: 180 } });
+  test('uses a top menubar', async ({ page }) => {
+    await bootDesktop(page);
 
     const toolbar = page.locator('#toolbar');
     const box = await toolbar.boundingBox();
@@ -35,11 +39,8 @@ test.describe('Desktop menubar layout', () => {
     expect(box.width).toBeGreaterThan(400);
     expect(box.width).toBeLessThan(1280 - 12);
     expect(box.height).toBeLessThanOrEqual(36);
-    await expect(toolbar).not.toHaveClass(/collapsed/);
-    // The drag grip is shown on desktop (the bar is draggable); the
-    // collapse toggle stays hidden.
-    await expect(page.locator('#toolbar-handle')).toBeVisible();
-    await expect(page.locator('#toolbar-toggle')).toBeHidden();
+    // Pinned by default: no drag grip.
+    await expect(page.locator('#toolbar-handle')).toBeHidden();
 
     const mapBox = await page.locator('#map').boundingBox();
     expect(mapBox).not.toBeNull();
@@ -49,6 +50,7 @@ test.describe('Desktop menubar layout', () => {
 
   test('drag grip repositions the floating bar and persists the position', async ({ page }) => {
     await bootDesktop(page);
+    await allowDrag(page);
     const bar = page.locator('#toolbar');
     const grip = page.locator('#toolbar-handle');
     await expect(grip).toBeVisible();
@@ -86,7 +88,10 @@ test.describe('Desktop menubar layout', () => {
       } catch (e) {}
     });
     await page.goto('?lang=en');
-    await page.waitForFunction(() => typeof state !== 'undefined');
+    await page.waitForFunction(() => typeof state !== 'undefined' && typeof window.refreshMenubarPin === 'function');
+    // Pinned by default, so the saved spot waits for dragging to be allowed.
+    expect(await page.evaluate(() => document.getElementById('toolbar').style.left)).toBe('');
+    await allowDrag(page);
     // Position is re-applied via requestAnimationFrame after load — wait for it.
     await page.waitForFunction(() => {
       const t = document.getElementById('toolbar');

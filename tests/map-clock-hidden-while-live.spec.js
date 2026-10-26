@@ -110,7 +110,7 @@ const PHONE = { width: 390, height: 844 };
 
 async function phone(page, opts) {
   await page.setViewportSize(PHONE);
-  await page.goto('?lang=en&nogist' + ((opts && opts.deck === false) ? '&deck=0' : ''));
+  await page.goto('?lang=en&nogist' + ((opts && opts.deck === false) ? '' : ''));
   await page.waitForFunction(() => document.getElementById('map-time')
     && window.NavAid && NavAid.refreshMapClock && NavAid.refreshMobileDeck);
 }
@@ -145,11 +145,6 @@ test('the desktop still dims rather than hides', async ({ page }) => {
   expect(await clockHidden(page)).toBe(false);
   expect(await page.evaluate(() => document.getElementById('map-time').classList.contains('idle')))
     .toBe(true);
-});
-
-test('without the deck, a phone keeps the old behaviour', async ({ page }) => {
-  await phone(page, { deck: false });
-  expect(await clockHidden(page)).toBe(false);
 });
 
 test('the gist can keep it on screen on a phone too', async ({ page }) => {

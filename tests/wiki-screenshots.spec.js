@@ -195,16 +195,6 @@ test.describe('wiki screenshots', () => {
       type: 'jpeg', quality: 90 });
   });
 
-  // ── Collapsed toolbar (narrow phone-width column) ────────────────────────
-  for (const [name, lang] of [['07-toolbar-collapsed', 'en'], ['07-toolbar-collapsed-he', 'he']]) {
-    test(name, async ({ page }) => {
-      await page.setViewportSize({ width: 430, height: 820 });
-      await boot(page, lang);
-      await seedRoute(page);
-      await save(page, name);
-    });
-  }
-
   // ── Social preview card (wiki copy) ──────────────────────────────────────
   test('og-preview', async ({ page }) => {
     await page.setViewportSize({ width: 1200, height: 630 });
