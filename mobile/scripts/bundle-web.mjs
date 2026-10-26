@@ -121,6 +121,11 @@ export function embeddedConfig() {
       // actually be up -- chart, state, strings, boot overlay gone -- before reporting
       // health, and that has to fit inside this with room to spare on a cold device.
       appReadyTimeout: 20000,
+      // Seconds. The plugin's default is 20, and on iOS that bounds the WHOLE download, not
+      // just an idle gap: the ~40 MB update bundle needed over 16 Mbit/s to finish in time, so
+      // the iPad failed every update with "timeout" while Android (idle timeouts only) was
+      // fine (reported). Ten minutes covers a slow hangar Wi-Fi.
+      responseTimeout: 600,
       resetWhenUpdate: true,
       statsUrl: '',
     },
