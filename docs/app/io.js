@@ -10065,6 +10065,10 @@ function tryLoadRouteFromUrl() {
     const q = params.toString();
     history.replaceState(history.state, '', location.pathname + (q ? '?' + q : '') + location.hash);
   } catch (e) { /* no history API: the route is still loaded */ }
+  // ...and keep it now: with the params gone, a reload restores the SAVED route, and a share
+  // that was never saved (a phone discarding the tab before any edit) came back as the previous
+  // route (review).
+  try { if (typeof persist === 'function') persist(); } catch (e) { /* storage full: still on the map */ }
   return true;
 }
 

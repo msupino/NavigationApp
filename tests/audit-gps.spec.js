@@ -191,7 +191,7 @@ test('own-ship altitude is compared on the feed\'s pressure reference, not the d
   await bootTraffic(page);
   const names = await page.evaluate(() => {
     _gpsLivePrev = { lat: 32.05, lng: 34.92, t: Date.now() };
-    gpsLastAlt = 2000; gpsAltIsGeometric = false; gpsQnh = 1025;
+    gpsLastAlt = 2000; gpsAltIsGeometric = false; gpsQnh = { hPa: 1025, inHg: 30.27 };
     window.trafficSetExternal([
       { hex: 'aaa111', flight: 'SELF', lat: 32.0502, lon: 34.9201, alt: 1680 },   // 2000 - 11.75*27.3
       { hex: 'bbb222', flight: 'ABOVE', lat: 32.0501, lon: 34.9199, alt: 2700 },

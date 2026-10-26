@@ -129,6 +129,10 @@ self.addEventListener('activate', e => {
     const ks = await caches.keys();
     for (const k of ks) {
       if (k === SHELL_CACHE || k === TILE_CACHE) continue;
+      // The production shell cache (the plain CACHE name) belongs to the root worker only. Before
+      // per-scope names it was shared, so an old preview could have stamped it as its own; a
+      // preview's first activation on the new naming then deleted production's offline shell.
+      if (SHELL_CACHE !== CACHE && k === CACHE) continue;
       // Only this deployment's own superseded caches.
       if (await ownedByThisScope(k)) await caches.delete(k);
     }

@@ -197,7 +197,9 @@
   // ours is taken as on the standard setting -- the gate still keeps traffic over and under.
   function ownPressureFt(ownFt) {
     if (!Number.isFinite(ownFt)) return null;
-    const q = typeof gpsQnh !== 'undefined' ? Number(gpsQnh) : NaN;
+    // gpsQnh is the QNH record ({ hPa, inHg, ... }) or null -- Number() of it was always NaN,
+    // so the correction never ran (review).
+    const q = typeof gpsQnh !== 'undefined' && gpsQnh ? Number(gpsQnh.hPa) : NaN;
     if (!(q > 900 && q < 1100)) return ownFt;
     return ownFt + (1013.25 - q) * 27.3;
   }
