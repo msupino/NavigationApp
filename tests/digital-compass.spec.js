@@ -349,3 +349,16 @@ test('the degree ring stays still and only the star turns; no marker outside the
   expect(r.starHasTicks).toBe(false);
   expect(r.lubber).toBe(0);
 });
+
+test('North up shows the yellow heading bug on the ring, turning with the aircraft; Heading up hides it', async ({ page }) => {
+  await boot(page);
+  await page.evaluate(() => {
+    setTune('compassSmoothing', 1); localStorage.setItem('navaid.compassMode', 'heading'); localStorage.setItem('navaid.compassSource', 'mag');
+    NavAid.compass.show();
+    window.dispatchEvent(Object.assign(new Event('deviceorientation'), { webkitCompassHeading: 70 }));
+  });
+  await expect(page.locator('.compass-bug')).toBeHidden();
+  await page.locator('.compass-modes button[data-mode="north"]').click();
+  await expect(page.locator('.compass-bug')).toBeVisible();
+  expect(await page.locator('.compass-ac').getAttribute('transform')).toContain('rotate(70.0');
+});
