@@ -11820,18 +11820,40 @@ document.getElementById('insp-close').onclick = () => {
 const toolbarDesktopMenuQuery = window.matchMedia
   ? window.matchMedia('(min-width: 681px) and (hover: hover) and (pointer: fine)')
   : null;
+// The gist's `featureTabletDesktop` hands a tablet (the iPad) the menubar anyway, to try it there.
+// style.css keys the menubar off html.menubar, which index.html sets on the query at first paint
+// and refreshToolbarDesktopMenu() keeps true to this.
+const toolbarTabletQuery = window.matchMedia
+  ? window.matchMedia('(min-width: 681px) and (pointer: coarse)')
+  : null;
+const toolbarDesktopMenuListeners = [];
 
 function toolbarUsesDesktopMenu() {
-  return !!(toolbarDesktopMenuQuery && toolbarDesktopMenuQuery.matches);
+  if (toolbarDesktopMenuQuery && toolbarDesktopMenuQuery.matches) return true;
+  return !!(toolbarTabletQuery && toolbarTabletQuery.matches
+    && typeof tune === 'function' && tune('featureTabletDesktop') === true);
 }
 
+function refreshToolbarDesktopMenu() {
+  const on = toolbarUsesDesktopMenu();
+  const root = document.documentElement;
+  if (root.classList.contains('menubar') === on) return;
+  root.classList.toggle('menubar', on);
+  for (const fn of toolbarDesktopMenuListeners) fn();
+}
+window.NavAid = window.NavAid || {};
+NavAid.usesDesktopMenu = toolbarUsesDesktopMenu;
+NavAid.refreshDesktopMenu = refreshToolbarDesktopMenu;
+for (const mq of [toolbarDesktopMenuQuery, toolbarTabletQuery]) {
+  if (!mq) continue;
+  if (mq.addEventListener) mq.addEventListener('change', refreshToolbarDesktopMenu);
+  else if (mq.addListener) mq.addListener(refreshToolbarDesktopMenu);
+}
+
+refreshToolbarDesktopMenu();
+
 function onToolbarDesktopMenuChange(fn) {
-  if (!toolbarDesktopMenuQuery) return;
-  if (toolbarDesktopMenuQuery.addEventListener) {
-    toolbarDesktopMenuQuery.addEventListener('change', fn);
-  } else if (toolbarDesktopMenuQuery.addListener) {
-    toolbarDesktopMenuQuery.addListener(fn);
-  }
+  toolbarDesktopMenuListeners.push(fn);
 }
 
 function refreshMapAfterToolbarModeChange() {
@@ -13261,6 +13283,7 @@ if (typeof loadRemoteConfig === "function") {
     if (typeof refreshFollowMeControl === "function") refreshFollowMeControl();
     if (typeof refreshFollowMeMapControl === "function") refreshFollowMeMapControl();
     if (typeof refreshAssistantFeature === "function") refreshAssistantFeature();
+    if (typeof refreshToolbarDesktopMenu === "function") refreshToolbarDesktopMenu();
     if (NavAid && typeof NavAid.refreshMobileDeck === "function") NavAid.refreshMobileDeck();
     if (typeof refreshEmptyRouteHint === "function") refreshEmptyRouteHint();
     if (typeof refreshTrafficFeature === "function") refreshTrafficFeature();

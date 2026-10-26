@@ -27,19 +27,29 @@ test('the menubar layout asks about the pointer, not just the width', async ({ p
   expect(q.agrees).toBe(true);
 });
 
-test('every desktop-menu CSS block carries the same conditions', async ({ page }) => {
+test('the desktop-menu CSS hangs off html.menubar, never a width alone', async ({ page }) => {
   await page.goto('?lang=en&nogist');
-  const blocks = await page.evaluate(async () => {
+  const r = await page.evaluate(async () => {
     const css = await (await fetch('app/style.css')).text();
-    const wide = css.match(/@media\s*\(min-width:\s*681px\)[^{]*\{/g) || [];
-    return wide.map(m => m.replace(/\s+/g, ' ').trim());
+    return {
+      wide: (css.match(/@media\s*\(min-width:\s*681px\)[^{]*\{/g) || []).map(m => m.replace(/\s+/g, ' ')),
+      menubar: (css.match(/:where\(html\.menubar\)|html:where\(\.menubar\)/g) || []).length,
+    };
   });
-  expect(blocks.length).toBeGreaterThan(0);
   // A block that asks about width alone would hand an iPad the menubar again.
-  for (const b of blocks) {
+  for (const b of r.wide) {
     expect(b).toContain('hover: hover');
     expect(b).toContain('pointer: fine');
   }
+  expect(r.menubar).toBeGreaterThan(100);
+});
+
+test('a computer has html.menubar from the first paint', async ({ page }) => {
+  await page.setViewportSize({ width: 1180, height: 820 });
+  await page.goto('?lang=en&nogist');
+  await page.waitForFunction(() => typeof toolbarUsesDesktopMenu === 'function');
+  // Chromium here has a fine pointer: the menubar, from index.html's first paint on.
+  expect(await page.evaluate(() => document.documentElement.classList.contains('menubar'))).toBe(true);
 });
 
 // On a fine-pointer desktop nothing changes: the menubar is still the menubar.

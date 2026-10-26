@@ -111,6 +111,11 @@
         history.replaceState(null, '', '?' + params.toString() + location.hash);
       }
       window.__navLang = lang;
+      // The desktop menubar's CSS hangs off html.menubar (ui.js refreshToolbarDesktopMenu keeps
+      // it current); set here so a computer paints the menubar from the first frame.
+      if (window.matchMedia && matchMedia('(min-width: 681px) and (hover: hover) and (pointer: fine)').matches) {
+        h.classList.add('menubar');
+      }
     }());
   </script>
   <!-- Google Analytics (GA4) — production only. Excludes /staging/,

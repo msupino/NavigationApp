@@ -45,20 +45,27 @@ test('Return in the sheet search builds the route and puts the menu away', async
   expect(await page.evaluate(() => document.activeElement && document.activeElement.id)).not.toBe('wp-search');
 });
 
-test('featureTabletDesktop gives the iPad the desktop layout, and back', async ({ page }) => {
+test('featureTabletDesktop gives the iPad the desktop menubar, and back', async ({ page }) => {
   await boot(page);
   await expect(page.locator('#deck-bar')).toBeVisible();
-  await page.evaluate(() => {
-    NavAid.tuning.featureTabletDesktop = true;
+  expect(await page.evaluate(() => document.documentElement.classList.contains('menubar'))).toBe(false);
+  const flip = (on) => page.evaluate((v) => {
+    NavAid.tuning.featureTabletDesktop = v;
+    NavAid.refreshDesktopMenu();
     NavAid.refreshMobileDeck();
-  });
+  }, on);
+  await flip(true);
+  expect(await page.evaluate(() => document.documentElement.classList.contains('menubar'))).toBe(true);
   await expect(page.locator('body')).not.toHaveClass(/deck-on/);
   await expect(page.locator('#deck-bar')).toHaveCount(0);
-  await expect(page.locator('#toolbar')).toBeVisible();
+  // The menubar: one row along the top, its sections opening as dropdowns on a tap.
+  const bar = await page.locator('#toolbar').boundingBox();
+  expect(bar.height).toBeLessThan(80);
+  expect(bar.width).toBeGreaterThan(500);
+  await page.locator('.tb-section[data-sec="settings"] .tb-section-head').click();
+  await expect(page.locator('.tb-section[data-sec="settings"] .tb-section-body')).toBeVisible();
   await page.screenshot({ path: 'test-results/ipad-desktop-layout.png' });
-  await page.evaluate(() => {
-    NavAid.tuning.featureTabletDesktop = false;
-    NavAid.refreshMobileDeck();
-  });
+  await flip(false);
+  expect(await page.evaluate(() => document.documentElement.classList.contains('menubar'))).toBe(false);
   await expect(page.locator('#deck-bar')).toBeVisible();
 });

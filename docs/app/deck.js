@@ -28,13 +28,11 @@
     if (param === '0' || param === 'false') return false;
     return typeof tune !== 'function' || tune('featureMobileDeck') !== false;
   }
-  // A tablet -- a touch screen wider than a phone, the iPad -- gets the deck too, through the
-  // coarse pointer. `featureTabletDesktop` (gist, off) hands it the desktop layout instead, to
-  // compare the two there; the touch-sized controls stay, they hang off the pointer, not the deck.
-  const TABLET = '(min-width: 681px) and (pointer: coarse)';
-  const tabletDesktop = () => typeof tune === 'function' && tune('featureTabletDesktop') === true
-    && !!window.matchMedia && window.matchMedia(TABLET).matches;
-  const narrow = () => !window.matchMedia || (window.matchMedia(NARROW).matches && !tabletDesktop());
+  // A tablet gets the deck through the coarse pointer -- unless the gist's `featureTabletDesktop`
+  // gives it the desktop menubar (ui.js toolbarUsesDesktopMenu), which the deck must not cover.
+  const desktopMenu = () => !!(window.NavAid && typeof NavAid.usesDesktopMenu === 'function'
+    && NavAid.usesDesktopMenu());
+  const narrow = () => !window.matchMedia || (window.matchMedia(NARROW).matches && !desktopMenu());
   const wanted = () => flagOn() && narrow();
 
   const txt = (id) => {
@@ -899,7 +897,7 @@
   NavAid.deckNearestFieldText = nearestFieldText;
   if (window.matchMedia) {
     const onChange = () => apply();
-    for (const mq of [window.matchMedia(NARROW), window.matchMedia(TABLET)]) {
+    for (const mq of [window.matchMedia(NARROW), window.matchMedia('(min-width: 681px) and (pointer: coarse)')]) {
       if (mq.addEventListener) mq.addEventListener('change', onChange);
       else if (mq.addListener) mq.addListener(onChange);
     }
