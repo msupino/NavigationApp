@@ -10019,6 +10019,8 @@ body.deck-on .ac-profile-btn, body.deck-on .fp-aircraft .ac-custom > summary { m
 .compass-card-name { fill: #333; font: 700 11.5px sans-serif; text-anchor: middle; dominant-baseline: central; }
 .compass-inter { font: 800 13px sans-serif; text-anchor: middle; }
 .compass-inter-deg { fill: #333; font-size: 11px; font-weight: 700; }
+.compass-bug { fill: #ffb300; stroke: #111; stroke-width: 1; }
+.compass-modal[data-compass-mode="heading"] .compass-bug { display: none; }
 .compass-plane { fill: #ffb300; stroke: #111; stroke-width: 1; opacity: 0.92; }
 .compass-ac { transition: transform 120ms linear; }
 @media (prefers-reduced-motion: reduce) { .compass-ac { transition: none; } }

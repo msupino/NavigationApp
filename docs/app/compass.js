@@ -77,6 +77,10 @@
     // The aircraft in the middle: the way the phone's top points. Still, with the star turning
     // (heading up); turning over a still star (north up).
     p.push('<g class="compass-ac">');
+    // The yellow heading bug on the fixed ring, North up only: there the aircraft turns, and the
+    // bug marks its heading on the ring to read off (asked back). Heading up hides it -- the
+    // star turns under a still aircraft, and the number underneath says the heading.
+    p.push(`<polygon points="${C},${C - R + 2} ${C - 10},${C - R - 20} ${C + 10},${C - R - 20}" class="compass-bug"/>`);
     p.push(`<path d="M${C} ${C - 24} l4 15 h15 l0 6 l-15 4 l-2 15 l7 4 v4 l-9 -2 l-9 2 v-4 l7 -4 l-2 -15 l-15 -4 l0 -6 h15 z" class="compass-plane"/>`);
     p.push('</g>');
     p.push('</svg>');
