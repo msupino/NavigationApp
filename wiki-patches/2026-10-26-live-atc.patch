@@ -1,0 +1,48 @@
+From 6634cec87e79822aa93dc4c0da5b712cadceba78 Mon Sep 17 00:00:00 2001
+From: Marco <marco@supino.org>
+Date: Mon, 26 Oct 2026 19:15:44 +0000
+Subject: [PATCH] Airfield panel: Live ATC link to LiveATC's player
+
+---
+ Inspector-he.md | 6 ++++++
+ Inspector.md    | 7 +++++++
+ 2 files changed, 13 insertions(+)
+
+diff --git a/Inspector-he.md b/Inspector-he.md
+index 0858543..ae1c472 100644
+--- a/Inspector-he.md
++++ b/Inspector-he.md
+@@ -152,6 +152,12 @@ DA  = PA + 120 × (T − ISA)
+ לשדה סגור או לקשר שאבד. היא נקראת *טלפון* ולא *מגדל*, כי ברוב השדות אין מגדל. שדה ללא מספר
+ אינו מקבל שורה.
+ 
++לשדה שיש לו ערוץ ב-[LiveATC](https://www.liveatc.net) נוספת בסוף שורת **האזנה חיה**: קישור שפותח את
++הנגן של LiveATC עצמו בדפדפן (בדפדפן המערכת באפליקציות), עם שם הערוץ — *מגדל*, *קרקע*, *גישה*, או
++*כל הערוצים* לדף השדה ב-LiveATC. NavAid אינו מנגן את השמע בעצמו: תנאי LiveATC אוסרים את השידורים
++שלו במוצרים אחרים. רשימת הערוצים היא <span dir="ltr"><code>liveAtcFeeds</code></span> ב-gist (זוגות ICAO:mount, למשל
++<span dir="ltr"><code>LLHZ:llhz2_twr,LLBG</code></span>), ו-<span dir="ltr"><code>featureLiveAtc</code></span> מכבה את השורה.
++
+ ## מרחב אווירי
+ 
+ הקשה על אזור [מרחב מבוקר או מוגבל](Extra-Layers-he) פותחת חלונית לקריאה בלבד:
+diff --git a/Inspector.md b/Inspector.md
+index 77e2629..a9cd2a5 100644
+--- a/Inspector.md
++++ b/Inspector.md
+@@ -162,6 +162,13 @@ After the frequencies, a **Phone** row gives the field's published number as a l
+ it (☎), for a clearance by phone, a closed field or a dead radio. It is labelled *Phone*, not
+ *Tower*, because most fields have no tower. A field with no number on file gets no row.
+ 
++A field with a feed on [LiveATC](https://www.liveatc.net) gets a **Live ATC** row last: a link
++that opens LiveATC's own player in the browser (the system browser in the apps), naming the
++feed — *Tower*, *Ground*, *Approach*, or *All feeds* for the field's LiveATC page. NavAid never
++plays the audio itself: LiveATC's terms keep its streams out of other products. The list of
++feeds is the gist's `liveAtcFeeds` (ICAO:mount pairs, e.g. `LLHZ:llhz2_twr,LLBG`), and
++`featureLiveAtc` turns the row off.
++
+ ## Airspace
+ 
+ Tapping an area of [controlled or restricted airspace](Extra-Layers#controlled--restricted-airspace)
+-- 
+2.43.0
+
