@@ -59,7 +59,7 @@ function scopeRootUrl() {
 }
 
 async function cachedAppShell(request) {
-  const cache = await caches.open(CACHE);
+  const cache = await caches.open(SHELL_CACHE);
   const exact = await cache.match(request);
   if (exact) return exact;
 
@@ -90,10 +90,21 @@ async function cachedAppShell(request) {
 // stamps its own scope into its cache and deletes only caches carrying that same stamp.
 const SCOPE = String((self.registration && self.registration.scope) || '/');
 const SCOPE_KEY = '__navaid_owner__';
+// The stamp alone was not enough while every scope used the same CACHE name: each install
+// re-stamped that one shared cache, so it carried whichever scope installed LAST -- and a
+// preview that later bumped its CACHE found production's shell cache stamped as its own and
+// deleted it. The production scope keeps the plain name (deploys rewrite the CACHE line, and
+// nothing about the live app's cache changes); any other scope gets its own cache, named
+// after its path, which no other worker ever opens or stamps.
+const SHELL_CACHE = (function () {
+  let path = '/';
+  try { path = new URL(SCOPE, self.location.href).pathname || '/'; } catch (e) { /* keep '/' */ }
+  return path === '/' ? CACHE : CACHE + ':' + path;
+}());
 
 async function stampOwner() {
   try {
-    const cache = await caches.open(CACHE);
+    const cache = await caches.open(SHELL_CACHE);
     await cache.put(SCOPE_KEY, new Response(SCOPE));
   } catch (e) { /* storage unavailable: cleanup below simply keeps everything */ }
 }
@@ -117,7 +128,12 @@ self.addEventListener('activate', e => {
     await stampOwner();
     const ks = await caches.keys();
     for (const k of ks) {
-      if (k === CACHE || k === TILE_CACHE) continue;
+      if (k === SHELL_CACHE || k === TILE_CACHE) continue;
+      // Unscoped shell caches (navaid-<sha>, no ':path') belong to the root worker only. Before
+      // per-scope names they were shared, so an old preview could have stamped production's as
+      // its own; and each root's deploy writes its own sha into CACHE, so comparing against this
+      // worker's CACHE did not cover production's (review). A non-root worker keeps them all.
+      if (SHELL_CACHE !== CACHE && /^navaid-[^:]+$/.test(k)) continue;
       // Only this deployment's own superseded caches.
       if (await ownedByThisScope(k)) await caches.delete(k);
     }
@@ -175,7 +191,7 @@ self.addEventListener('fetch', e => {
         .then(async resp => {
           if (resp && resp.ok) {
             const copy = resp.clone();
-            const c = await caches.open(CACHE);
+            const c = await caches.open(SHELL_CACHE);
             await c.put(e.request, copy);
           }
           return resp;
@@ -190,7 +206,7 @@ self.addEventListener('fetch', e => {
   // Versioned assets: cache-first. On a cache miss, prune sibling ?v= entries
   // for the same path so stale versions don't accumulate indefinitely.
   e.respondWith(
-    caches.open(CACHE).then(async cache => {
+    caches.open(SHELL_CACHE).then(async cache => {
       const hit = await cache.match(e.request);
       if (hit) return hit;
       const resp = await fetch(e.request);

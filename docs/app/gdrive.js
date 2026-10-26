@@ -17,6 +17,11 @@
  */
 var GDRIVE_CLIENT_ID = (typeof window !== 'undefined' && window.NAVAID_GDRIVE_CLIENT_ID) ||
   '1027636470762-lcnmpfmk4ef9rff2be3kg6qfd25vg7q1.apps.googleusercontent.com';
+// The iOS app's own OAuth client, in the SAME Google Cloud project as the web client above:
+// Drive's appDataFolder is per project, so a client from another project signs in fine and then
+// syncs into a separate, empty folder that no other device ever sees. Its reversed form is the
+// URL scheme in mobile/ios/App/App/Info.plist (Google hands the sign-in back through it).
+var GDRIVE_IOS_CLIENT_ID = '1027636470762-q23qd5ovab3g0j8up08jjhtsqh58foed.apps.googleusercontent.com';
 const GDRIVE_SCOPE = 'https://www.googleapis.com/auth/drive.appdata';
 const GDRIVE_FILE = 'navaid-routes.json';
 const GIS_SRC = 'https://accounts.google.com/gsi/client';
@@ -53,6 +58,12 @@ function loadGis() {
 
 // Request an access token. `prompt:''` lets Google issue one silently when the
 // user is already signed in and has consented; otherwise it shows consent.
+//
+// A popup the user closes, or one the browser blocks (a fallback sign-in that no longer runs
+// inside the click), never reaches `callback` -- Google reports it only through
+// `error_callback`. Without one the promise never settled: Sync sat at "Syncing…", disabled,
+// until a reload. The error handler is per request, like the callback.
+let _gdriveTokenError = null;
 function gdriveRequestToken(interactive) {
   return loadGis().then(() => new Promise((resolve, reject) => {
     if (!_gdriveTokenClient) {
@@ -60,8 +71,12 @@ function gdriveRequestToken(interactive) {
         client_id: GDRIVE_CLIENT_ID,
         scope: GDRIVE_SCOPE,
         callback: () => {},   // replaced per-request below
+        error_callback: (err) => { if (_gdriveTokenError) _gdriveTokenError(err); },
       });
     }
+    _gdriveTokenError = (err) => {
+      reject(new Error((err && (err.message || err.type)) || 'Google sign-in failed'));
+    };
     _gdriveTokenClient.callback = (resp) => {
       if (resp && resp.access_token) {
         _gdriveToken = {
@@ -95,7 +110,9 @@ function gdriveNativeToken() {
   if (!SL) return Promise.reject(new Error('native sign-in unavailable'));
   if (!_nativeSlInit) {
     _nativeSlInit = SL.initialize({
-      google: { webClientId: GDRIVE_CLIENT_ID, mode: 'online' },
+      // iOS needs its own client ID (the web one alone cannot sign in there) and the web one
+      // as the server client; Android ignores both and uses the web client with its SHA-1.
+      google: { webClientId: GDRIVE_CLIENT_ID, iOSClientId: GDRIVE_IOS_CLIENT_ID, iOSServerClientId: GDRIVE_CLIENT_ID, mode: 'online' },
     }).catch(e => { _nativeSlInit = null; throw e; });
   }
   return _nativeSlInit

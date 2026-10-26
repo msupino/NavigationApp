@@ -1062,8 +1062,13 @@ function _materialiseDefaultCumLabelRet(legIdx) {
 }
 function cumLabelDragFrame(legIdx, isReturn) {
   if (!state.waypoints[legIdx] || !state.waypoints[legIdx + 1]) return null;
-  const a = proj(state.waypoints[legIdx]);
-  const b = proj(state.waypoints[legIdx + 1]);
+  // The leg as DRAWN, like cumLabelCenter/cumLabelRetCenter. An out-and-back pair is drawn
+  // either side of the shared track; measuring the drag from the plain route line instead
+  // put the kite one offset sideways of where the finger held it, so it jumped on the
+  // first move of every drag on a-b-a.
+  const ends = (typeof legScreenEnds === 'function') ? legScreenEnds(legIdx) : null;
+  const a = ends ? ends.a : proj(state.waypoints[legIdx]);
+  const b = ends ? ends.b : proj(state.waypoints[legIdx + 1]);
   let dx = b.x - a.x, dy = b.y - a.y;
   const len = Math.hypot(dx, dy) || 1;
   dx /= len; dy /= len;
@@ -5438,6 +5443,18 @@ function coincidentWaypointIndices(hits) {
   return hits.map(h => h.index);
 }
 
+// The visits of a dropped waypoint that landed on a route neighbour -- the delete gesture --
+// highest index first, so deleting them in order does not renumber the ones still to go.
+// A loop's shared point is several visits with different neighbours: A-B-C-A's first A sits
+// next to B and its last next to C. Asking only the visit that was grabbed missed the other
+// one, so dropping A on B could leave B-B, a leg of zero length, depending on which visit
+// the press happened to pick up. Every visit the drag carried is asked.
+function dropDeletesVisits(d, wp) {
+  return [d.i].concat(d.also || [])
+    .filter(k => state.waypoints[k] && routeNeighbourAtPoint(k, wp))
+    .sort((a, b) => b - a);
+}
+
 // In ADD mode a press on a waypoint EXTENDS the route through that point instead of opening
 // its inspector: that is how a loop is drawn, by pressing the point you want to come back to.
 // Only a press without movement -- a drag still repositions the waypoint, so you can nudge the
@@ -5494,6 +5511,7 @@ function autoRouteSpliceAfterAdd(prevWp, newWp) {
     const sel = state.selected;
     const selWp = (sel && sel.type === 'wp') ? state.waypoints[sel.index] : null;
     state.waypoints.splice(idx, 0, ...mid);
+    if (mid.closedCorridor && typeof warnAutoRouteClosedCorridor === 'function') warnAutoRouteClosedCorridor();
     syncLegs();
     if (typeof seedCommChangeNotes === 'function') seedCommChangeNotes();
     if (selWp) {
@@ -5557,6 +5575,11 @@ function notePreClick(p) {
 }
 map.on('mousedown', e => {
   if (touchGestureInProgress()) return;
+  // Only the main button grabs, adds or selects. A right-click is the context menu's: in Add
+  // mode it used to press the waypoint under it too, so the release extended the route through
+  // it (a copy, which the menu's Delete then removed instead of the point) -- and a right-drag
+  // dragged the waypoint around under the open menu.
+  if (e.originalEvent && typeof e.originalEvent.button === 'number' && e.originalEvent.button !== 0) return;
   notePreClick(e.containerPoint);
   pendingOverlayAction = null;
   // Measuring: a press is either a pan or the point to measure to (the click below), never a
@@ -5869,8 +5892,10 @@ function endMouseDrag() {
       // Dropped on the waypoint NEXT to it: the delete gesture. It used to be any waypoint
       // at all, which is what made a circular route impossible to draw -- dragging the last
       // waypoint onto the first deleted it instead of closing the route.
-      if (routeNeighbourAtPoint(drag.i, wp)) {
-        deleteWaypoint(drag.i);   // removes the adjacent leg too; bare splice+syncLegs would drop the tail leg and misalign the rest
+      const dropped = dropDeletesVisits(drag, wp);
+      if (dropped.length) {
+        // removes the adjacent leg too; bare splice+syncLegs would drop the tail leg and misalign the rest
+        for (const k of dropped) deleteWaypoint(k);
         state.selected = null;
         showInspector(); draw();
         if (typeof setLiveDragging === 'function') setLiveDragging(false);   // commit one undo entry for the whole drag
@@ -6682,8 +6707,9 @@ function endTouch(evOrCancelled) {
       const wp = state.waypoints[touchDrag.i];
       const snappedToSelf = sameMapPoint(wp, { lat: touchDrag.origLat, lng: touchDrag.origLng });
       // Same two rules as the mouse path -- see endMouseDrag.
-      if (routeNeighbourAtPoint(touchDrag.i, wp)) {
-        deleteWaypoint(touchDrag.i);   // removes the adjacent leg too (see endMouseDrag)
+      const dropped = dropDeletesVisits(touchDrag, wp);
+      if (dropped.length) {
+        for (const k of dropped) deleteWaypoint(k);   // removes the adjacent leg too (see endMouseDrag)
         state.selected = null;
         showInspector(); draw();
         if (typeof setLiveDragging === 'function') setLiveDragging(false);   // commit one undo entry for the whole drag
@@ -6699,6 +6725,16 @@ function endTouch(evOrCancelled) {
       if (snappedToSelf && !touchDrag.originSnapArmed) {
         wp.lat = touchDrag.origLat; wp.lng = touchDrag.origLng;
         if (typeof touchDrag.origName === 'string') wp.name = touchDrag.origName;
+        // Every visit the drag carried goes back too -- the mouse path's rule. Restoring only
+        // the grabbed one left a cancelled drag of a loop's shared point with its two ends in
+        // different places.
+        for (const j of (touchDrag.also || [])) {
+          const other = state.waypoints[j];
+          if (other) {
+            other.lat = touchDrag.origLat; other.lng = touchDrag.origLng;
+            if (typeof touchDrag.origName === 'string') other.name = touchDrag.origName;
+          }
+        }
         syncLegs();
       }
     }

@@ -53,7 +53,10 @@ runs:
             docs/superpowers/*) OTHER=1 ;;
             docs/*|playwright.config.js|package.json|package-lock.json|tests/_*)
               FULL=1; REASON="${REASON:-$f}" ;;
-            tests/*.spec.js) SPECS="$SPECS $f" ;;
+            # A spec the PR DELETES is in the diff too, but handing its path to Playwright
+            # fails the run with "No tests found". Only specs that still exist are run.
+            tests/*.spec.js)
+              if [ -f "$f" ]; then SPECS="$SPECS $f"; fi ;;
             # Workflows decide how the suite runs at all: a change here has to be proved by
             # running it.
             .github/workflows/*|.github/actions/*) FULL=1; REASON="${REASON:-$f}" ;;

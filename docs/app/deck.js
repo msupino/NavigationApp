@@ -597,6 +597,15 @@
     closeSheet();
   }
 
+  // The press under way is holding something the route can drag (interact.js's touchDrag /
+  // drag, both top-level script bindings).
+  function grabPending() {
+    const kinds = ['wp', 'note', 'label', 'cumlabel', 'cumlabelret'];
+    const t = (typeof touchDrag !== 'undefined') ? touchDrag : null;
+    const m = (typeof drag !== 'undefined') ? drag : null;
+    return !!((t && kinds.indexOf(t.kind) !== -1) || (m && kinds.indexOf(m.kind) !== -1));
+  }
+
   let longPress = null;
   function wireLongPress() {
     if (longPress || typeof map === 'undefined' || !map || !map.getContainer) return;
@@ -615,6 +624,11 @@
       timer = setTimeout(() => {
         timer = 0;
         if (!map.containerPointToLatLng) return;
+        // A hold on a waypoint, a note or a kite is a GRAB of it (interact.js: TAP_MAX_MS),
+        // not a question about the chart. Opening Point details here lasted only until the
+        // finger lifted -- the release read as a hold and put the old selection back, so the
+        // panel flashed open and shut, and it popped up under a drag that paused first.
+        if (grabPending()) return;
         const box = el.getBoundingClientRect();
         openHere(map.containerPointToLatLng([sx - box.left, sy - box.top]));
       }, LONG_PRESS_MS);
