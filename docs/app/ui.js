@@ -7743,6 +7743,9 @@ function refreshSigmetBtn() {
       ? null : (S.whyNoSigmet || 'No SIGMET in force in the next 24 hours'));
   }
   setLayerCount('sigmet-count', (typeof activeSigmets === 'function') ? activeSigmets().length : 0);
+  // The Extra layers count with it, from the same feed: the re-poll called only this, so the
+  // layer kept its boot-time count while Charts moved on -- (5) beside (3) (reported).
+  if (typeof refreshSigmetLayerCount === 'function') refreshSigmetLayerCount();
 }
 if (sigmetBtn) {
   sigmetBtn.onclick = async () => {
@@ -7755,7 +7758,7 @@ if (sigmetBtn) {
 }
 // Eager load on boot so the button appears if SIGMETs are active.
 if (typeof loadSigmets === 'function') {
-  loadSigmets().then(() => { refreshSigmetBtn(); if (typeof refreshSigmetLayerCount === 'function') refreshSigmetLayerCount(); if (window.showSigmet) draw(); });
+  loadSigmets().then(() => { refreshSigmetBtn(); if (window.showSigmet) draw(); });
 }
 
 // --- Live hazard re-poll (NOTAM + SIGMET + AIRMET) --------------------------
@@ -8257,8 +8260,9 @@ if (notamTimeEl) {
     // A bubble or leg panel lists the NOTAMs in force at this time: rebuild it.
     if (state.selected && (state.selected.type === 'lsaArea' || state.selected.type === 'leg') &&
         typeof showInspector === 'function') showInspector();
-    // AIRMET rides the same look-ahead: refresh its count/controls when the slider moves.
+    // AIRMET and SIGMET ride the same look-ahead: refresh their counts/controls when the slider moves.
     if (typeof refreshAirmetGroup === 'function') refreshAirmetGroup();
+    if (typeof refreshSigmetBtn === 'function') refreshSigmetBtn();
     if (typeof refreshAirmetBtn === 'function') refreshAirmetBtn();
     draw();
   };
@@ -9958,7 +9962,10 @@ function refreshAirmetGroup() {
   // The Show AIRMETs toggle stays put like every other layer toggle -- a control must not
   // vanish when its data is momentarily absent. The layer just draws nothing while none is in force.
   if (group) group.hidden = false;
-  setLayerCount('airmet-count', (typeof activeAirmets === 'function') ? activeAirmets().length : 0);
+  // What the layer draws: an AIRMET without a usable area (metAreaLatLngs) is listed in Charts,
+  // not drawn, so -- like the SIGMET layer -- it is not counted on the map toggle.
+  setLayerCount('airmet-count', (typeof activeAirmets === 'function' && typeof metAreaLatLngs === 'function')
+    ? activeAirmets().filter(metAreaLatLngs).length : 0);
   setLayerIdle('airmet-cb', !(typeof airmetsInLookahead === 'function' && airmetsInLookahead().length), S.whyNoAirmet);
   if (typeof refreshMetUpdated === 'function') refreshMetUpdated('airmet');
 }
