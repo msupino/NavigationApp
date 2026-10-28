@@ -5,6 +5,11 @@ iOS apps fetch the feed natively. In a browser, the app fetches this relay, whic
 [adsb.lol](https://adsb.lol) (open data, ODbL) and adds the CORS header, for NavAid's own
 origins only (`ALLOWED_ORIGINS` in `worker.mjs`).
 
+adsb.lol rate-limits by IP, and Workers share their outgoing IPs, so a 429 is routine. When
+adsb.lol refuses, the relay asks [adsb.fi](https://adsb.fi), which uses the same format. If both
+refuse, it serves the last good answer for that spot if it's under 2 minutes old, marked
+`X-NavAid-Stale: 1`.
+
 To spare the feed, each request snaps to a 0.1° grid with its radius widened to cover the snap.
 Answers are cached for 8 s, so all pilots near one spot share one upstream call per poll. The
 free Workers plan (100,000 requests a day) is plenty.

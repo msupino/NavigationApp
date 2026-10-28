@@ -1,15 +1,17 @@
-From 4031f5acf87fc84c5c1142118f29e0087b9ec62d Mon Sep 17 00:00:00 2001
+From 4a40faf289a97a532b2116783953664eb650fcad Mon Sep 17 00:00:00 2001
 From: Marco <marco@supino.org>
 Date: Wed, 28 Oct 2026 19:26:13 +0000
 Subject: [PATCH] NavAid's own relay: Follow me broker and 5-minute SIGMET /
  AIRMET (relay/edge)
 
 ---
- Extra-Layers-he.md | 3 ++-
- Extra-Layers.md    | 4 +++-
- Follow-Me-he.md    | 2 +-
- Follow-Me.md       | 2 +-
- 4 files changed, 7 insertions(+), 4 deletions(-)
+ Extra-Layers-he.md        | 3 ++-
+ Extra-Layers.md           | 4 +++-
+ Follow-Me-he.md           | 2 +-
+ Follow-Me.md              | 2 +-
+ GPS-Track-Recording-he.md | 2 +-
+ GPS-Track-Recording.md    | 3 ++-
+ 6 files changed, 10 insertions(+), 6 deletions(-)
 
 diff --git a/Extra-Layers-he.md b/Extra-Layers-he.md
 index 8425532..f268eb3 100644
@@ -66,6 +68,33 @@ index e815b77..e918661 100644
  | `followMePlanePx` | `26` | Follower's aircraft symbol size |
  | `followMePlaneColor` | `#182839` | Follower's aircraft symbol colour |
  
+diff --git a/GPS-Track-Recording-he.md b/GPS-Track-Recording-he.md
+index b94dbf1..6ad3b5d 100644
+--- a/GPS-Track-Recording-he.md
++++ b/GPS-Track-Recording-he.md
+@@ -297,7 +297,7 @@ GPS נותן **כיוון תנועה**, ולכן אינו אומר דבר כשא
+ המקור הזהה אינו חל, ולכן האפליקציה פונה לשרת ישירות — בלי מתווך ובלי דבר לתחזק.
+ 
+ **בדפדפן** הבקשה עוברת דרך הממסר של NavAid: Cloudflare Worker קטן (<span dir="ltr"><code>relay/traffic</code></span> במאגר) ששואל את
+-adsb.lol ומוסיף את כותרת ה־CORS, לדפי NavAid בלבד. הוא מצמיד כל בקשה לרשת של 0.1° ושומר אותה
++adsb.lol — או את adsb.fi כש־adsb.lol מגביל אותו בקצב, ואז את התשובה הטובה האחרונה לאזור עד גיל 2 דקות — ומוסיף את כותרת ה־CORS, לדפי NavAid בלבד. הוא מצמיד כל בקשה לרשת של 0.1° ושומר אותה
+ 8 שניות, כך שטייסים באותו אזור חולקים פנייה אחת לשרת. <span dir="ltr"><code>trafficWebApiUrl</code></span> ב־gist מצביע עליו; כל עוד
+ הוא ריק, תיבת התעבורה בדפדפן נשארת אך מעומעמת, והסיבה כתובה עליה: פקד שנעלם בין הטלפון למחשב
+ גורם לתהות מה עוד השתנה. רק <span dir="ltr"><code>featureLiveTraffic</code></span> מסיר אותו.
+diff --git a/GPS-Track-Recording.md b/GPS-Track-Recording.md
+index 7edc77d..b70b5d0 100644
+--- a/GPS-Track-Recording.md
++++ b/GPS-Track-Recording.md
+@@ -345,7 +345,8 @@ in native code (Java on Android, Swift on iOS), where the same-origin rule does
+ hosted.
+ 
+ **In a browser** the request goes through NavAid's own relay: a small Cloudflare Worker
+-(`relay/traffic` in the repository) that asks adsb.lol and adds the CORS header, for NavAid's
++(`relay/traffic` in the repository) that asks adsb.lol — or adsb.fi when adsb.lol rate-limits it,
++then the last good answer for the spot up to 2 minutes old — and adds the CORS header, for NavAid's
+ pages only. It snaps each request to a 0.1° grid and caches it for 8 seconds, so pilots near one
+ spot share one call to the feed. The gist's `trafficWebApiUrl` names it; while that is empty the
+ Traffic box is still there in a browser but dimmed, with the reason on it — a control that
 -- 
 2.43.0
 
