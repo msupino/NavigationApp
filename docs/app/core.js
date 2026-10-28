@@ -1247,6 +1247,10 @@ NavAid.tuningDefaults = {
   // {lat}/{lon}/{dist} are filled in; a URL without them gets them as query parameters.
   trafficApiUrl: { value: 'https://api.adsb.lol/v2/lat/{lat}/lon/{lon}/dist/{dist}', type: 'text',
     label: 'Where live traffic is fetched from (empty turns it off)' },
+  // The feeds send no CORS header, so a browser needs a relay that adds one (relay/traffic, a
+  // Cloudflare Worker). Empty: no live traffic in a browser, the switch dimmed with the reason.
+  trafficWebApiUrl: { value: '', type: 'text',
+    label: 'Live traffic in a browser: the CORS relay, same {lat}/{lon}/{dist} template (empty: apps only)' },
   trafficRadiusNm: { value: 40, min: 5, max: 150, step: 5,
     label: 'How far around you live traffic is asked for (nm)' },
   trafficRefreshSec: { value: 8, min: 3, max: 60, step: 1,
@@ -1288,7 +1292,7 @@ NavAid.tuningGroups = [
   { name: 'Airspace', keys: ['defaultShowAirspace', 'airspaceProhibitedColor', 'airspaceRestrictedColor',
     'airspaceTmaColor', 'airspaceCtrColor', 'airspaceFillAlpha', 'airspaceLineWidthPx', 'airspaceLabelMinZoom',
     'airspaceLabelFontPx'] },
-  { name: 'Live traffic', keys: ['featureLiveTraffic', 'defaultShowTraffic', 'trafficApiUrl', 'trafficRadiusNm',
+  { name: 'Live traffic', keys: ['featureLiveTraffic', 'defaultShowTraffic', 'trafficApiUrl', 'trafficWebApiUrl', 'trafficRadiusNm',
     'trafficRefreshSec', 'trafficFailsBeforeWarn', 'trafficIconPx', 'trafficArrowColor',
     'trafficLabelColor'] },
   { name: 'Follow me', keys: ['featureFollowMe', 'featureFollowMePublic', 'publicPilotsViewHash', 'followMePublicZoomGrow', 'followMePublicDimSec', 'followMePublicDropSec', 'followMeBroker', 'followMeRateSec',

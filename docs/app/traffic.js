@@ -35,12 +35,13 @@
     return { lat: m.lat, lng: m.lng };
   };
   // The ADS-B aggregators serve data to anyone and CORS headers to nobody, so a browser
-  // cannot read them at all -- verified against adsb.lol, adsb.fi, airplanes.live, adsb.one
-  // and OpenSky, and against the public CORS proxies, which either time out or rate-limit
-  // long before an 8-second poll. The apps are not browsers: Capacitor's native HTTP makes
-  // the request in native code (Java on Android, Swift on iOS), where the same-origin rule does
-  // not apply. So this feature exists in the Android and iOS apps and nowhere else, rather than
-  // existing everywhere and failing on the desktop.
+  // cannot read them directly -- verified against adsb.lol, adsb.fi, airplanes.live, adsb.one,
+  // ADS-B Exchange and OpenSky, and against the public CORS proxies, which either time out or
+  // rate-limit long before an 8-second poll. The apps are not browsers: Capacitor's native HTTP
+  // makes the request in native code (Java on Android, Swift on iOS), where the same-origin rule
+  // does not apply. A browser goes through NavAid's own relay instead (relay/traffic, a Cloudflare
+  // Worker that adds the CORS header), named by the gist's `trafficWebApiUrl`; without it the
+  // switch is dimmed in a browser, saying why.
   const nativeHttp = () => {
     const C = typeof window !== 'undefined' && window.Capacitor;
     return (C && typeof C.isNativePlatform === 'function' && C.isNativePlatform()
@@ -51,7 +52,8 @@
   // it can WORK: in a browser the switch is still there, dimmed, saying why. A control that
   // vanishes between the phone and the desktop makes the pilot wonder what else moved.
   const offered = () => typeof tune !== 'function' || tune('featureLiveTraffic') === true;
-  const usable = () => !!nativeHttp();
+  const webUrl = () => (typeof tune === 'function' && tune('trafficWebApiUrl')) || '';
+  const usable = () => !!nativeHttp() || !!webUrl();
   window.trafficUsable = usable;
   window.trafficOffered = offered;
   const on = () => {
@@ -68,7 +70,8 @@
   // the tunable is a template. A URL with no placeholders keeps the old query-string form,
   // which is what a proxy of one's own would most likely want.
   function endpoint(lat, lng) {
-    const base = (typeof tune === 'function' && tune('trafficApiUrl')) || '';
+    // The apps ask the feed itself; a browser asks the relay, which answers in the feed's form.
+    const base = nativeHttp() ? ((typeof tune === 'function' && tune('trafficApiUrl')) || '') : webUrl();
     if (!base) return '';
     const nm = Math.round((typeof tune === 'function' ? tune('trafficRadiusNm') : 40) || 40);
     if (base.indexOf('{lat}') >= 0) {
@@ -98,10 +101,14 @@
   }
 
   // GET through the native bridge. Capacitor hands back a parsed body for JSON responses
-  // and a string otherwise, so both have to be accepted.
+  // and a string otherwise, so both have to be accepted. A browser fetches the relay.
   async function getJson(url) {
     const http = nativeHttp();
-    if (!http) throw new Error('no native http');
+    if (!http) {
+      const res = await fetch(url, { headers: { Accept: 'application/json' }, cache: 'no-store' });
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      return res.json();
+    }
     const r = await http.request({ url, method: 'GET', headers: { Accept: 'application/json' } });
     if (!r || r.status < 200 || r.status >= 300) throw new Error('HTTP ' + (r && r.status));
     return typeof r.data === 'string' ? JSON.parse(r.data) : r.data;
