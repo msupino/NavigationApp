@@ -21,25 +21,42 @@ const skipWx = (realFetch) => (url, init) => (/\/api\/data\/(metar|taf)\?/.test(
 export async function refreshFeeds(env, deps) {
   const d = deps || {};
   const written = {};
+  const problems = [];
+  const warn = (...a) => {
+    // The build's own words for what failed ("isigmet: 403", "ims airmet: ..."), kept for the
+    // status report; the ::error:: lines are its GitHub annotations of the same thing.
+    const line = a.map(String).join(' ');
+    if (!/^::error::/.test(line)) problems.push(line.slice(0, 300));
+    (d.warn || ((...x) => console.warn(...x)))(...a);
+  };
   const result = await buildAviationFeeds({
     firs: FIRS, ids: [], bbox: BBOX,
     fetchImpl: skipWx(d.fetch || fetch),
     write: (path, text) => { written[path] = text; },
-    log: () => {}, warn: d.warn || ((...a) => console.warn(...a)),
+    log: () => {}, warn,
   });
   const stored = [];
   // Only what the build published: a failed fetch keeps the last good copy, as on GitHub.
   for (const [name, path] of Object.entries(FEEDS)) {
     if (written[path] != null) { await env.FEEDS.put(name, written[path]); stored.push(name); }
   }
-  return { result, stored };
+  const report = { sigmet: result.sigmet, airmet: result.airmet, sigmets: result.sigmets,
+    airmets: result.airmets, problems };
+  console.log('feeds run', JSON.stringify(report));
+  // Readable at /feeds/status.json, so a source that fails from Cloudflare shows without the
+  // dashboard. Written only when it changes: KV's free plan allows 1,000 writes a day.
+  const prev = await env.FEEDS.get('status.json');
+  const prevReport = prev ? JSON.parse(prev) : null;
+  const same = prevReport && JSON.stringify({ ...prevReport, at: undefined, since: undefined }) === JSON.stringify(report);
+  if (!same) await env.FEEDS.put('status.json', JSON.stringify({ ...report, since: new Date().toISOString() }));
+  return { result, stored, report };
 }
 
 export async function serveFeed(name, env) {
-  if (!Object.prototype.hasOwnProperty.call(FEEDS, name)) return null;
+  if (name !== 'status.json' && !Object.prototype.hasOwnProperty.call(FEEDS, name)) return null;
   const body = await env.FEEDS.get(name);
   const headers = { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*', 'Cache-Control': 'public, max-age=60' };
   return body == null
-    ? new Response('{"error":"not built yet"}', { status: 404, headers })
+    ? new Response(name === 'status.json' ? '{"error":"no run yet"}' : '{"error":"not built yet"}', { status: 404, headers })
     : new Response(body, { headers });
 }

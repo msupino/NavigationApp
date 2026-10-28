@@ -63,3 +63,22 @@ test('served with CORS and a short cache; only the two feeds; 404 before the fir
   expect(await serveFeed('wx.json', env)).toBeNull();
   expect(await serveFeed('notam.json', env)).toBeNull();
 });
+
+test('each run leaves a status report at /feeds/status.json, written only when it changes', async () => {
+  const { refreshFeeds, serveFeed } = await load();
+  const env = { FEEDS: kv() };
+  let writes = 0;
+  const put = env.FEEDS.put;
+  env.FEEDS.put = async (k, v) => { if (k === 'status.json') writes++; return put(k, v); };
+  const up = upstream({ isigmet: () => new Response('blocked', { status: 403 }) });
+  await refreshFeeds(env, { fetch: up.fetch, warn: () => {} });
+  const st = JSON.parse(env.FEEDS.m.get('status.json'));
+  expect(st.sigmet).toBe('skipped');
+  expect(st.airmet).toBe('published');
+  expect(st.problems.join(' ')).toMatch(/isigmet.*403/);
+  expect(st.since).toBeTruthy();
+  await refreshFeeds(env, { fetch: up.fetch, warn: () => {} });
+  expect(writes).toBe(1);                                    // same outcome: no second write
+  const res = await serveFeed('status.json', env);
+  expect(res.status).toBe(200);
+});

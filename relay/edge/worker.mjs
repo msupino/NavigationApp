@@ -14,7 +14,7 @@ export default {
     if (url.pathname === '/mqtt') {
       return env.BROKER.get(env.BROKER.idFromName('navaid')).fetch(request);
     }
-    const feed = /^\/feeds\/([a-z]+\.json)$/.exec(url.pathname);
+    const feed = /^\/feeds\/([a-z]+\.json)$/.exec(url.pathname);   // also /feeds/status.json
     if (feed && request.method === 'GET') {
       const res = await serveFeed(feed[1], env);
       if (res) return res;
@@ -22,6 +22,10 @@ export default {
     return new Response('not found', { status: 404 });
   },
   async scheduled(event, env, ctx) {
-    ctx.waitUntil(refreshFeeds(env));
+    // A build that throws outright is reported too, not lost in a log nobody reads.
+    ctx.waitUntil(refreshFeeds(env).catch(async (e) => {
+      console.error('feeds run crashed', e && e.stack ? e.stack : String(e));
+      await env.FEEDS.put('status.json', JSON.stringify({ crashed: String(e && e.message ? e.message : e).slice(0, 500), since: new Date().toISOString() }));
+    }));
   },
 };

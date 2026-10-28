@@ -19,5 +19,10 @@ new_sqlite_classes = ["Broker"]
 binding = "FEEDS"
 id = "358767b927c74a7b9cd37cc1758173d4"
 
+# Logs in the dashboard (Workers -> navaid-edge -> Logs). Set here, not only in the dashboard:
+# a deploy resets what the dashboard set.
+[observability]
+enabled = true
+
 [triggers]
 crons = ["*/5 * * * *"]
