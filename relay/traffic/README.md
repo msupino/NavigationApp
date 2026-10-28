@@ -10,6 +10,16 @@ adsb.lol refuses, the relay asks [adsb.fi](https://adsb.fi), which uses the same
 refuse, it serves the last good answer for that spot if it's under 2 minutes old, marked
 `X-NavAid-Stale: 1`.
 
+Every answer carries `X-NavAid-Feeds`, which says what each feed did, e.g.
+`adsb.lol=429; adsb.fi=403`. It reads `cache` when the answer came from the relay's own cache,
+and `backoff` for a feed resting after a 429 (for its `Retry-After`, or 60 s). A 502's body
+lists the same.
+
+Known limit: adsb.lol counts its allowance (4/s, 60/min, 500/day) per IP address, and Workers
+share Cloudflare's outgoing addresses. adsb.fi refuses Cloudflare outright. So from a Worker,
+most requests get turned away. The apps aren't affected, because each phone asks from its own
+address.
+
 To spare the feed, each request snaps to a 0.1° grid with its radius widened to cover the snap.
 Answers are cached for 8 s, so all pilots near one spot share one upstream call per poll. The
 free Workers plan (100,000 requests a day) is plenty.

@@ -19,6 +19,10 @@ export const UPSTREAM = 'https://api.adsb.lol/v2/lat/{lat}/lon/{lon}/dist/{dist}
 // STALE_SECONDS old) is better than an empty sky.
 export const FALLBACKS = ['https://opendata.adsb.fi/api/v2/lat/{lat}/lon/{lon}/dist/{dist}'];
 export const STALE_SECONDS = 120;
+// After a 429 a feed rests for its Retry-After, or this long: asking again on every poll only
+// spends the allowance (adsb.lol: 4/s, 60/min, 500/day, shared by every Worker's IP).
+export const BACKOFF_SECONDS = 60;
+const feedName = (url) => new URL(url).hostname.replace(/^(api|opendata)\./, '');
 export const ALLOWED_ORIGINS = [
   'https://navaid.supino.org',
   'https://msupino.github.io',
@@ -54,7 +58,7 @@ function corsHeaders(origin) {
     h['Access-Control-Allow-Origin'] = origin;
     h['Access-Control-Allow-Methods'] = 'GET, OPTIONS';
     h['Access-Control-Allow-Headers'] = 'Accept';
-    h['Access-Control-Expose-Headers'] = 'X-NavAid-Stale';
+    h['Access-Control-Expose-Headers'] = 'X-NavAid-Stale, X-NavAid-Feeds';
     h['Access-Control-Max-Age'] = '86400';
   }
   return h;
@@ -84,24 +88,39 @@ export async function handle(request, deps) {
   const key = new Request(target);
   const staleKey = new Request(target + '#stale');
   const fresh = cache ? await cache.match(key) : null;
-  if (fresh) return reply(200, await fresh.text(), origin, { 'Cache-Control': 'public, max-age=' + CACHE_SECONDS });
-  let lastStatus = 0;
+  if (fresh) return reply(200, await fresh.text(), origin, { 'Cache-Control': 'public, max-age=' + CACHE_SECONDS, 'X-NavAid-Feeds': 'cache' });
+  // What each feed answered, in order: "adsb.lol=429; adsb.fi=403". On every response, and in
+  // a 502's body, so a refusal says which feed refused and how.
+  const feeds = [];
   for (const url of [target, ...fallbacksFor(target)]) {
+    const name = feedName(url);
+    const restKey = new Request('https://relay.internal/backoff/' + name);
+    if (cache && await cache.match(restKey)) { feeds.push(name + '=backoff'); continue; }
     let res;
     try {
       res = await doFetch(url, { headers: { Accept: 'application/json', 'User-Agent': 'NavAid traffic relay (navaid.supino.org)' } });
-    } catch (e) { continue; }
-    if (!res.ok) { lastStatus = res.status; continue; }
+    } catch (e) { feeds.push(name + '=unreachable'); continue; }
+    if (!res.ok) {
+      feeds.push(name + '=' + res.status);
+      if (res.status === 429 && cache) {
+        const after = Number(res.headers.get('Retry-After'));
+        const rest = Number.isFinite(after) && after > 0 ? Math.min(after, 3600) : BACKOFF_SECONDS;
+        await cache.put(restKey, new Response('1', { headers: { 'Cache-Control': 'public, max-age=' + rest } }));
+      }
+      continue;
+    }
+    feeds.push(name + '=' + res.status);
     const body = await res.text();
     if (cache) {
       await cache.put(key, new Response(body, { headers: { 'Content-Type': 'application/json', 'Cache-Control': 'public, max-age=' + CACHE_SECONDS } }));
       await cache.put(staleKey, new Response(body, { headers: { 'Content-Type': 'application/json', 'Cache-Control': 'public, max-age=' + STALE_SECONDS } }));
     }
-    return reply(200, body, origin, { 'Cache-Control': 'public, max-age=' + CACHE_SECONDS });
+    return reply(200, body, origin, { 'Cache-Control': 'public, max-age=' + CACHE_SECONDS, 'X-NavAid-Feeds': feeds.join('; ') });
   }
+  const said = feeds.join('; ');
   const stale = cache ? await cache.match(staleKey) : null;
-  if (stale) return reply(200, await stale.text(), origin, { 'Cache-Control': 'no-store', 'X-NavAid-Stale': '1' });
-  return reply(502, JSON.stringify({ error: lastStatus ? 'feeds answered ' + lastStatus : 'feeds unreachable' }), origin);
+  if (stale) return reply(200, await stale.text(), origin, { 'Cache-Control': 'no-store', 'X-NavAid-Stale': '1', 'X-NavAid-Feeds': said });
+  return reply(502, JSON.stringify({ error: 'no feed answered', feeds: said }), origin, { 'X-NavAid-Feeds': said });
 }
 
 export default { fetch: (request) => handle(request) };

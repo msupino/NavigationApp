@@ -80,7 +80,20 @@ test('adsb.lol rate-limiting (429) falls through to adsb.fi', async () => {
   expect(res.status).toBe(200);
   expect(await res.json()).toEqual({ aircraft: [{ hex: 'fi1' }] });
   expect(h.calls).toEqual(['https://api.adsb.lol/v2/lat/32.1/lon/34.9/dist/45',
-    'https://opendata.adsb.fi/api/v2/lat/32.1/lon/34.9/dist/45']);
+    'https://opendata.adsb.fi/api/v2/lat/32.1/lon/34.9/dist/45']);  expect(res.headers.get('x-navaid-feeds')).toBe('adsb.lol=429; adsb.fi=200');
+  // adsb.lol rests after its 429: the next question, for another spot, does not ask it again.
+  const next = await handle(req('/v2/lat/31.5/lon/34.8/dist/40'), h.deps);
+  expect(next.headers.get('x-navaid-feeds')).toBe('adsb.lol=backoff; adsb.fi=200');
+  expect(h.calls.filter(u => u.includes('adsb.lol')).length).toBe(1);
+});
+
+test('a 502 says what each feed answered', async () => {
+  const { handle } = await load();
+  const h = harness((url) => new Response('no', { status: url.includes('adsb.lol') ? 500 : 403 }));
+  const res = await handle(req('/v2/lat/32/lon/34/dist/40'), h.deps);
+  expect(res.status).toBe(502);
+  expect(await res.json()).toEqual({ error: 'no feed answered', feeds: 'adsb.lol=500; adsb.fi=403' });
+  expect(res.headers.get('access-control-expose-headers')).toContain('X-NavAid-Feeds');
 });
 
 test('both feeds refusing serves the last good answer for the spot, marked stale', async () => {
