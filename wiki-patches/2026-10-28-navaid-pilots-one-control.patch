@@ -1,4 +1,4 @@
-From aba32a47a2505770f4d97aa31be0dc9042262ffb Mon Sep 17 00:00:00 2001
+From 92496b7f75b7320434c22e6545f51f4457d3fb17 Mon Sep 17 00:00:00 2001
 From: Marco <marco@supino.org>
 Date: Wed, 28 Oct 2026 14:45:15 +0000
 Subject: [PATCH] NavAid pilots: one control, Off / See others / Share & see
@@ -6,9 +6,9 @@ Subject: [PATCH] NavAid pilots: one control, Off / See others / Share & see
 ---
  Extra-Layers-he.md | 13 +++++++++++--
  Extra-Layers.md    | 16 +++++++++++++---
- Follow-Me-he.md    |  6 ++++--
- Follow-Me.md       |  7 ++++---
- 4 files changed, 32 insertions(+), 10 deletions(-)
+ Follow-Me-he.md    |  8 ++++++--
+ Follow-Me.md       | 10 +++++++---
+ 4 files changed, 37 insertions(+), 10 deletions(-)
 
 diff --git a/Extra-Layers-he.md b/Extra-Layers-he.md
 index 0f9302b..8425532 100644
@@ -59,10 +59,10 @@ index 5428bd3..48a489a 100644
 +A public share turned on in the Follow me dialog shows here as **Share & see** too: being seen is
 +seeing. A line under the control says what the choice means — who you see, and whether they see you. See [Follow me → Public share](Follow-Me#public-share-see-and-be-seen-by-every-navaid-pilot).
 diff --git a/Follow-Me-he.md b/Follow-Me-he.md
-index a67f755..9fe65df 100644
+index a67f755..b3e5531 100644
 --- a/Follow-Me-he.md
 +++ b/Follow-Me-he.md
-@@ -178,10 +178,12 @@
+@@ -178,10 +178,14 @@
  - **הקישור שלכם לא משתנה.** הוא עדיין מראה רק אתכם, למי שמחזיק בו.
  - **ציבורי** מפרסם את המטוס גם בערוץ ציבורי של אותו ממסר: מזהה, מיקום, גובה, מהירות וכיוון.
    **חתום, לא מוצפן** — ציבורי פירושו ציבורי: כל מי שמחובר לממסר יכול לקרוא. עצירה מוחקת אותו.
@@ -72,16 +72,18 @@ index a67f755..9fe65df 100644
    ומהירות · גובה לידו (הסמל מצביע בכיוון הטיסה האמיתי). הם גדלים מעט כשמתקרבים. מטוס שהשתתק
    מתעמעם אחרי 2 דקות ומציין לפני כמה זמן נשמע לאחרונה (<span dir="ltr"><code>95 kt · 2500 ft · 4 min</code></span>); אחרי 30 דקות הוא נעלם.
 -- **כדי לראות אחרים צריך לשתף בעצמכם כציבורי.** עד אז המתג מעומעם ואומר זאת. החריג היחיד הוא
-+- **כדי לראות אחרים צריך לשתף בעצמכם כציבורי.** עד אז **צפייה** מעומעמת ואומרת זאת; **כבוי** מוריד
-+  אתכם מהערוץ הציבורי ומפסיק להציג את האחרים. החריג היחיד הוא
++- **כדי לראות אחרים צריך לשתף בעצמכם כציבורי.** שני חריגים, ולשמם קיימת **צפייה**: קישור הצפייה
++  הסודי (למטה), ויתרת שיתוף שהיה ציבורי — בחירה בצפייה במהלכו מורידה אתכם מהערוץ הציבורי, ואתם
++  ממשיכים לראות את כולם עד שהשיתוף נגמר. אחרת **צפייה** מעומעמת ואומרת זאת; **כבוי** מוריד אתכם
++  מהערוץ הציבורי ומפסיק להציג את האחרים. החריג היחיד הוא
    **קישור הצפייה הסודי**, <span dir="ltr"><code>https://navaid.supino.org/?pilots=<secret></code></span>: הוא מציג את כולם בלי לשתף, ומתאים
    את המפה אליהם. האפליקציה מחזיקה רק את ה־SHA-256 של הסוד (<span dir="ltr"><code>publicPilotsViewHash</code></span>), כך שסוד חדש הוא שינוי ב־gist.
  - **המטוס שלכם לעולם לא מוצג כמטוס של מישהו אחר** — גם לא ישן: הטלפון זוכר את המזהים הציבוריים
 diff --git a/Follow-Me.md b/Follow-Me.md
-index b6c5aea..179e6b8 100644
+index b6c5aea..e815b77 100644
 --- a/Follow-Me.md
 +++ b/Follow-Me.md
-@@ -200,12 +200,13 @@ you are taken off the public channel at once.
+@@ -200,12 +200,16 @@ you are taken off the public channel at once.
  - **Public** also puts your aircraft on a public channel of the same relay: identifier, position,
    altitude, speed and track. **Signed, not encrypted** — public means public: anyone on the relay
    can read it. Stop clears it.
@@ -93,8 +95,11 @@ index b6c5aea..179e6b8 100644
    heard (`95 kt · 2500 ft · 4 min`); after 30 minutes it goes.
 -- **Seeing others needs sharing publicly yourself.** Until you do, the switch is dimmed and says
 -  so. The one exception is the **secret viewing link**, `https://navaid.supino.org/?pilots=<secret>`:
-+- **Seeing others needs sharing publicly yourself.** Until you do, **See others** is dimmed and says
-+  so; **Off** takes you off the public channel and stops showing the others. The one exception is the **secret viewing link**, `https://navaid.supino.org/?pilots=<secret>`:
++- **Seeing others needs sharing publicly yourself.** Two exceptions, which are what **See others**
++  is for: the secret viewing link (below), and the rest of a share that was public — pick See others
++  during it and you leave the public channel but keep seeing everyone until that share ends. Otherwise
++  See others is dimmed and says so; **Off** takes you off the public channel and stops showing the
++  others. The one exception is the **secret viewing link**, `https://navaid.supino.org/?pilots=<secret>`:
    it shows everyone without sharing, and fits the map to them. The app holds only the secret's
    SHA-256 (`publicPilotsViewHash`), so a new secret is a gist change.
  - **Your own aircraft is never drawn as someone else** — not even an old one: the phone remembers
