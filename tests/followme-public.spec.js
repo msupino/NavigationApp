@@ -490,3 +490,18 @@ test('seeing without being seen does not carry over to the next share', async ({
   });
   expect(out).toEqual({ during: true, next: false, keep: false });
 });
+
+test('Share & see during a private share goes public on the spot, with no dialog', async ({ page }) => {
+  await boot(page);
+  await page.evaluate(async () => {
+    await NavAid.followMe.start('4X-PRIV');
+    window.__sockets[0].connack();
+    window.refreshPublicPilotsFeature();
+  });
+  await openLayers(page);
+  await page.locator('#public-pilots-mode [data-mode="share"]').click();
+  await expect(page.locator('.follow-me-ask-modal')).toHaveCount(0);
+  expect(await page.evaluate(() => NavAid.followMe.sharing() && NavAid.followMe.publicOn())).toBe(true);
+  await expect.poll(() => mode(page)).toBe('share');
+  await expect.poll(() => page.evaluate(() => NavAid.publicPilots.running())).toBe(true);
+});
