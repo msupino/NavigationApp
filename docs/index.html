@@ -797,9 +797,14 @@
         <div class="tb-layer-frame" id="public-pilots-frame">
         <div class="tb-frame-title" data-i18n="tbGrpPublicPilots"></div>
         <div class="tb-group-box">
-          <label class="navtoggle" data-i18n-title="tbShowPublicPilotsTitle">
-            <input type="checkbox" id="public-pilots-cb"> <span data-i18n="tbShowPublicPilots"></span>
-          </label>
+          <!-- One control for both halves: Off, See others (on a secret pilots link), Share & see
+               (starts public sharing and shows everyone). The checkbox is the viewing state. -->
+          <div class="pp-mode" id="public-pilots-mode" role="radiogroup" data-i18n-aria="tbShowPublicPilots" data-i18n-title="tbShowPublicPilotsTitle">
+            <button type="button" role="radio" data-mode="off" data-i18n="ppModeOff"></button>
+            <button type="button" role="radio" data-mode="see" data-i18n="ppModeSee"></button>
+            <button type="button" role="radio" data-mode="share" data-i18n="ppModeShare"></button>
+          </div>
+          <input type="checkbox" id="public-pilots-cb" hidden>
         </div>
         </div>
         <!-- Terrain and airspace last: they are the two layers a pilot leaves ON, so they

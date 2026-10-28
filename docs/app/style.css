@@ -9217,6 +9217,23 @@ body.deck-on .modal-back.flight-plan > .modal.wide .fp-scroll {
 .public-pilot-mark.public-pilot-stale { opacity: 0.45; }
 /* Locked (not sharing publicly): dimmed, still there, and its tooltip says why. */
 #public-pilots-frame label.is-dim { opacity: 0.5; }
+/* NavAid pilots: Off / See others / Share & see, one segmented control. The chosen one is filled
+   in the toolbar's selected blue (#1d6fe0, as a pressed button);
+   one that cannot be chosen here is dimmed (never hidden) and says why on a tap. */
+#public-pilots-mode { display: flex; border: 1px solid #4a5560; border-radius: 8px; overflow: hidden; margin: 2px 0; }
+/* The id outranks the toolbar's own button rules (body.theme-light #toolbar button and kin). */
+#toolbar #public-pilots-mode > button {
+  flex: 1 1 0; min-height: 32px; margin: 0; padding: 4px 6px; border: 0; border-radius: 0;
+  background: transparent; color: inherit; font: inherit; font-size: 12.5px; cursor: pointer; white-space: nowrap;
+  display: inline-flex; align-items: center; justify-content: center; text-align: center;
+}
+#toolbar #public-pilots-mode > button + button { border-inline-start: 1px solid #4a5560; }
+#toolbar #public-pilots-mode > button[aria-checked="true"] { background: #1d6fe0; color: #fff; font-weight: 600; }
+#toolbar #public-pilots-mode > button.is-dim { opacity: 0.45; cursor: not-allowed; }
+#toolbar #public-pilots-mode > button:focus-visible { outline: 2px solid #4c9bff; outline-offset: -2px; }
+body.theme-light #public-pilots-mode,
+body.theme-light #toolbar #public-pilots-mode > button + button { border-color: #b8c0cc; }
+body.deck-on #toolbar #public-pilots-mode > button { min-height: 44px; font-size: 14px; }
 
 /* A public pilot's label: the identifier, and under it speed, altitude and heading. */
 .public-pilot-label {

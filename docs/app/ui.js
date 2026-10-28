@@ -5792,7 +5792,9 @@ window.followMeNewLinkOffered = followMeNewLinkOffered;
     }
   });
 
-  btn.addEventListener('click', async () => {
+  // The press, awaitable: Extra layers' NavAid pilots "Share & see" starts a share through the
+  // same steps (identifier, then the link) and waits to see whether one started.
+  async function press() {
     const f = F();
     if (!f) return;
     // Watching someone else: sharing means leaving their flight, so it is asked as that and
@@ -5881,7 +5883,9 @@ window.followMeNewLinkOffered = followMeNewLinkOffered;
     }
     refresh();
     await handOverFollowMeLink(link, live);
-  });
+  }
+  btn.addEventListener('click', press);
+  window.followMePress = press;
   refresh();
   window.refreshFollowMeControl = refresh;
 }());
@@ -10558,25 +10562,96 @@ for (const id of ['circuit-cb', 'training-cb', 'cvfr-cb', 'heli-cb', 'commfail-c
   if (!cb) return;
   const KEY = 'navaid.showPublicPilots';
   const offered = () => typeof tune !== 'function' || tune('featureFollowMePublic') !== false;
-  const label = cb.closest('label');
-  // Seeing others is the other half of being seen: the switch works while this device shares
-  // publicly (or on a secret viewing link). Otherwise dimmed, never hidden, and it says why.
+  const group = document.getElementById('public-pilots-mode');
+  const F = () => (window.NavAid && NavAid.followMe) || null;
+  const sharingPublic = () => { const f = F(); return !!(f && f.sharing() && f.publicOn()); };
+  // Seeing others is the other half of being seen. One control, three answers:
+  //   Off         -- nobody shown, and this device is not public;
+  //   See others  -- only on a secret pilots link (?pilots=<secret>); dimmed otherwise, saying why;
+  //   Share & see -- public sharing on (starting a share if none is running) and everyone shown.
+  // The checkbox is the viewing state, remembered on this device.
+  function mode() {
+    const P = window.NavAid && NavAid.publicPilots;
+    if (!cb.checked || !P) return 'off';
+    if (sharingPublic()) return 'share';
+    return P.unlocked() ? 'see' : 'off';
+  }
   const apply = () => {
     const P = window.NavAid && NavAid.publicPilots;
     if (!P) return;
-    const ok = P.allowed();
-    if (label) {
-      label.classList.toggle('is-dim', !ok);
-      label.title = ok ? (S.tbShowPublicPilotsTitle || '') : (S.tbShowPublicPilotsLocked || 'Share your position as Public to see others');
+    if (group) {
+      const m = mode();
+      const seeOk = P.unlocked();
+      const shareOk = typeof followMeOffered !== 'function' || followMeOffered();
+      for (const b of group.querySelectorAll('[data-mode]')) {
+        const k = b.dataset.mode;
+        b.setAttribute('aria-checked', String(k === m));
+        const dim = (k === 'see' && !seeOk) || (k === 'share' && !shareOk);
+        b.classList.toggle('is-dim', dim);
+        b.setAttribute('aria-disabled', String(dim));
+        b.title = k === 'see' && !seeOk ? (S.tbShowPublicPilotsLocked || '')
+          : k === 'share' && !shareOk ? (S.ppModeNoFollowMe || '') : '';
+      }
     }
-    if (cb.checked && offered() && ok) P.start(); else P.stop();
+    if (cb.checked && offered() && P.allowed()) P.start(); else P.stop();
   };
+  function setViewing(on) {
+    cb.checked = !!on;
+    try { localStorage.setItem(KEY, on ? '1' : '0'); } catch (_) {}
+  }
+  function choose(k) {
+    const f = F(), P = window.NavAid && NavAid.publicPilots;
+    if (!f || !P) return;
+    if (k === 'off') {
+      setViewing(false);
+      if (f.publicOn()) {
+        f.setPublic(false);
+        if (f.sharing() && typeof showToast === 'function') showToast(S.followMePublicOffToast || 'Not public: your link only');
+      }
+    } else if (k === 'see') {
+      if (!P.unlocked()) {
+        if (typeof showToast === 'function') showToast(S.tbShowPublicPilotsLocked || 'Choose Share & see');
+        return;
+      }
+      setViewing(true);
+      if (f.publicOn()) f.setPublic(false);
+    } else if (k === 'share') {
+      if (typeof followMeOffered === 'function' && !followMeOffered()) {
+        if (typeof showToast === 'function') showToast(S.ppModeNoFollowMe || '');
+        return;
+      }
+      const wasPublic = f.publicOn(), wasViewing = cb.checked;
+      setViewing(true);
+      if (!wasPublic) f.setPublic(true);
+      if (f.sharing()) {
+        if (typeof showToast === 'function') showToast(S.followMePublicOnToast || 'Public: every NavAid pilot can see you now');
+      } else if (typeof window.followMePress === 'function') {
+        // The share itself starts the usual way: the identifier, then the link to hand round.
+        // Cancelled there, nothing is left switched on behind the pilot's back.
+        apply();
+        return window.followMePress().then(() => {
+          if (!f.sharing()) {
+            if (!wasPublic) f.setPublic(false);
+            setViewing(wasViewing);
+          }
+          apply();
+        });
+      }
+    }
+    apply();
+  }
+  if (group) {
+    group.addEventListener('click', (e) => {
+      const b = e.target && e.target.closest ? e.target.closest('[data-mode]') : null;
+      if (b) choose(b.dataset.mode);
+    });
+  }
   cb.checked = lsGet(KEY) === '1';
   cb.onchange = () => {
     try { localStorage.setItem(KEY, cb.checked ? '1' : '0'); } catch (_) {}
     const P = window.NavAid && NavAid.publicPilots;
     if (cb.checked && P && !P.allowed() && typeof showToast === 'function') {
-      showToast(S.tbShowPublicPilotsLocked || 'Share your position as Public to see others');
+      showToast(S.tbShowPublicPilotsLocked || 'Choose Share & see');
     }
     apply();
   };

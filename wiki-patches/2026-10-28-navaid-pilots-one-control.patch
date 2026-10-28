@@ -1,0 +1,95 @@
+From fee2630887bb7ab07366ac1bb4234b674bcf88a6 Mon Sep 17 00:00:00 2001
+From: Marco <marco@supino.org>
+Date: Wed, 28 Oct 2026 14:45:15 +0000
+Subject: [PATCH] NavAid pilots: one control, Off / See others / Share & see
+
+---
+ Extra-Layers-he.md |  9 +++++++--
+ Extra-Layers.md    | 12 +++++++++---
+ Follow-Me-he.md    |  6 ++++--
+ Follow-Me.md       |  7 ++++---
+ 4 files changed, 24 insertions(+), 10 deletions(-)
+
+diff --git a/Extra-Layers-he.md b/Extra-Layers-he.md
+index 0f9302b..dce50e5 100644
+--- a/Extra-Layers-he.md
++++ b/Extra-Layers-he.md
+@@ -538,8 +538,13 @@ SIGWX), **מרחב אווירי** (בועות LSA), **תרשימי שדה** (ש
+ 
+ ## טייסי NavAid
+ 
+-**הצג טייסי NavAid ציבוריים** מציג את כל מי שמשתף את מיקומו באופן ציבורי (שיתוף ← **ציבורי**),
+-דרך הממסר של NavAid — לא ADS-B. פועל כשאתם משתפים בעצמכם כציבורי, או בקישור הצפייה הסודי. ראו
++בקרה אחת עם שלוש אפשרויות, שמציגה את כל מי שמשתף את מיקומו באופן ציבורי, דרך הממסר של NavAid — לא ADS-B:
++
++- **כבוי** — אף אחד לא מוצג, והמטוס שלכם אינו ציבורי (קישור עקבו אחריי פרטי ממשיך).
++- **צפייה** — כולם מוצגים, בלי לשתף. רק בקישור הצפייה הסודי; אחרת היא מעומעמת, והקשה עליה
++  אומרת לבחור שיתוף וצפייה.
++- **שיתוף וצפייה** — אתם הופכים לציבוריים ורואים את כולם, בהקשה אחת. אם עוד לא שיתפתם, נפתח שלב
++  עקבו אחריי הרגיל (המזהה, ואז הקישור לשליחה) כש**ציבורי** כבר מסומן; ביטול שם לא משאיר דבר דלוק. ראו
+ [עקבו אחריי ← שיתוף ציבורי](Follow-Me-he#שיתוף-ציבורי-לראות-ולהיראות-על-ידי-כל-טייסי-navaid).
+ 
+ </div>
+diff --git a/Extra-Layers.md b/Extra-Layers.md
+index 5428bd3..f0f2879 100644
+--- a/Extra-Layers.md
++++ b/Extra-Layers.md
+@@ -603,6 +603,12 @@ menu.
+ 
+ ## NavAid pilots
+ 
+-**Show public NavAid pilots** draws everyone sharing their position publicly (Share → **Public**),
+-from the NavAid relay — not ADS-B. Works while you share publicly yourself, or on the secret
+-viewing link. See [Follow me → Public share](Follow-Me#public-share-see-and-be-seen-by-every-navaid-pilot).
++One control, three choices, drawing everyone who shares their position publicly, from the NavAid
++relay — not ADS-B:
++
++- **Off** — nobody is shown, and your own aircraft is not public (a private Follow me link goes on).
++- **See others** — everyone shown, without sharing. Only on the secret viewing link; otherwise it is
++  dimmed, and a tap says to choose Share & see.
++- **Share & see** — you go public and see everyone, in one tap. Not sharing yet, it opens the usual
++  Follow me step (the identifier, then the link to hand round) with **Public** already ticked;
++  cancel there and nothing is left switched on. See [Follow me → Public share](Follow-Me#public-share-see-and-be-seen-by-every-navaid-pilot).
+diff --git a/Follow-Me-he.md b/Follow-Me-he.md
+index a67f755..9fe65df 100644
+--- a/Follow-Me-he.md
++++ b/Follow-Me-he.md
+@@ -178,10 +178,12 @@
+ - **הקישור שלכם לא משתנה.** הוא עדיין מראה רק אתכם, למי שמחזיק בו.
+ - **ציבורי** מפרסם את המטוס גם בערוץ ציבורי של אותו ממסר: מזהה, מיקום, גובה, מהירות וכיוון.
+   **חתום, לא מוצפן** — ציבורי פירושו ציבורי: כל מי שמחובר לממסר יכול לקרוא. עצירה מוחקת אותו.
+-- **שכבות נוספות ← טייסי NavAid ← הצג טייסי NavAid ציבוריים** מציג כל מטוס ציבורי, עם המזהה
++- **שכבות נוספות ← טייסי NavAid ← שיתוף וצפייה** עושה את שני החלקים בהקשה אחת: הופך אתכם לציבוריים
++  (ומתחיל שיתוף אם אין) ומציג כל מטוס ציבורי, עם המזהה
+   ומהירות · גובה לידו (הסמל מצביע בכיוון הטיסה האמיתי). הם גדלים מעט כשמתקרבים. מטוס שהשתתק
+   מתעמעם אחרי 2 דקות ומציין לפני כמה זמן נשמע לאחרונה (<span dir="ltr"><code>95 kt · 2500 ft · 4 min</code></span>); אחרי 30 דקות הוא נעלם.
+-- **כדי לראות אחרים צריך לשתף בעצמכם כציבורי.** עד אז המתג מעומעם ואומר זאת. החריג היחיד הוא
++- **כדי לראות אחרים צריך לשתף בעצמכם כציבורי.** עד אז **צפייה** מעומעמת ואומרת זאת; **כבוי** מוריד
++  אתכם מהערוץ הציבורי ומפסיק להציג את האחרים. החריג היחיד הוא
+   **קישור הצפייה הסודי**, <span dir="ltr"><code>https://navaid.supino.org/?pilots=<secret></code></span>: הוא מציג את כולם בלי לשתף, ומתאים
+   את המפה אליהם. האפליקציה מחזיקה רק את ה־SHA-256 של הסוד (<span dir="ltr"><code>publicPilotsViewHash</code></span>), כך שסוד חדש הוא שינוי ב־gist.
+ - **המטוס שלכם לעולם לא מוצג כמטוס של מישהו אחר** — גם לא ישן: הטלפון זוכר את המזהים הציבוריים
+diff --git a/Follow-Me.md b/Follow-Me.md
+index b6c5aea..179e6b8 100644
+--- a/Follow-Me.md
++++ b/Follow-Me.md
+@@ -200,12 +200,13 @@ you are taken off the public channel at once.
+ - **Public** also puts your aircraft on a public channel of the same relay: identifier, position,
+   altitude, speed and track. **Signed, not encrypted** — public means public: anyone on the relay
+   can read it. Stop clears it.
+-- **Extra layers → NavAid pilots → Show public NavAid pilots** draws every public aircraft, with
++- **Extra layers → NavAid pilots → Share & see** does both halves in one tap: it makes you public
++  (starting a share if none is running) and draws every public aircraft, with
+   its identifier and speed · altitude beside it (the icon points along its true track). They grow a
+   little as you zoom in. A silent aircraft fades after 2 minutes and says how long ago it was last
+   heard (`95 kt · 2500 ft · 4 min`); after 30 minutes it goes.
+-- **Seeing others needs sharing publicly yourself.** Until you do, the switch is dimmed and says
+-  so. The one exception is the **secret viewing link**, `https://navaid.supino.org/?pilots=<secret>`:
++- **Seeing others needs sharing publicly yourself.** Until you do, **See others** is dimmed and says
++  so; **Off** takes you off the public channel and stops showing the others. The one exception is the **secret viewing link**, `https://navaid.supino.org/?pilots=<secret>`:
+   it shows everyone without sharing, and fits the map to them. The app holds only the secret's
+   SHA-256 (`publicPilotsViewHash`), so a new secret is a gist change.
+ - **Your own aircraft is never drawn as someone else** — not even an old one: the phone remembers
+-- 
+2.43.0
+
