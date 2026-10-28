@@ -17,7 +17,6 @@ async function freshBoot(page, { width, height }) {
 }
 
 const MOBILE = { width: 390, height: 844 };
-const DESKTOP = { width: 1200, height: 800 };
 
 test('mobile: inspector renders as a full-width bottom sheet', async ({ page }) => {
   await freshBoot(page, MOBILE);

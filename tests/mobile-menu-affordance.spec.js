@@ -4,40 +4,6 @@
 // looked like it had no opener at all.
 const { test, expect } = require('./_setup');
 
-const mobileChromeGeometry = page => page.evaluate(() => {
-  const rect = id => {
-    const r = document.getElementById(id).getBoundingClientRect();
-    return { left: r.left, top: r.top, right: r.right, bottom: r.bottom,
-      width: r.width, height: r.height };
-  };
-  const legend = rect('map-legend');
-  const toolbar = rect('toolbar');
-  const visibleContent = [...document.querySelectorAll('#map-legend > *')]
-    .filter(el => getComputedStyle(el).visibility !== 'hidden' &&
-      getComputedStyle(el).display !== 'none')
-    .map(el => el.getBoundingClientRect());
-  const content = visibleContent.length ? {
-    left: Math.min(...visibleContent.map(r => r.left)),
-    right: Math.max(...visibleContent.map(r => r.right)),
-  } : { left: legend.left, right: legend.right };
-  const intersects = legend.left < toolbar.right && legend.right > toolbar.left &&
-    legend.top < toolbar.bottom && legend.bottom > toolbar.top;
-  return { legend, toolbar, content, intersects,
-    viewport: { width: window.innerWidth, height: window.innerHeight } };
-});
-
-function expectLegendUsable({ legend, content, intersects, viewport }) {
-  expect(legend.left).toBeGreaterThanOrEqual(-1);
-  expect(legend.top).toBeGreaterThanOrEqual(-1);
-  expect(legend.right).toBeLessThanOrEqual(viewport.width + 1);
-  expect(legend.bottom).toBeLessThanOrEqual(viewport.height + 1);
-  expect(content.left).toBeGreaterThanOrEqual(-1);
-  expect(content.right).toBeLessThanOrEqual(viewport.width + 1);
-  expect(content.left).toBeGreaterThanOrEqual(legend.left - 1);
-  expect(content.right).toBeLessThanOrEqual(legend.right + 1);
-  expect(intersects).toBe(false);
-}
-
 test('an untouched desktop legend keeps its Leaflet bottom anchor after resize', async ({ page }) => {
   await page.setViewportSize({ width: 1200, height: 800 });
   await page.goto('?lang=en&nogist');

@@ -3905,7 +3905,6 @@ function showInspector() {
     return;
   }
   state.selected = normalized;
-  const wasHidden = insp.classList.contains('hidden');
   insp.classList.remove('hidden');
 
   if (state.selected.type === 'leg') {
