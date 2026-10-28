@@ -9234,6 +9234,8 @@ body.deck-on .modal-back.flight-plan > .modal.wide .fp-scroll {
 body.theme-light #public-pilots-mode,
 body.theme-light #toolbar #public-pilots-mode > button + button { border-color: #b8c0cc; }
 body.deck-on #toolbar #public-pilots-mode > button { min-height: 44px; font-size: 14px; }
+#public-pilots-frame .pp-mode-hint { margin: 4px 2px 0; font-size: 12px; line-height: 1.35; opacity: .8; }
+body.deck-on #public-pilots-frame .pp-mode-hint { font-size: 13px; }
 
 /* A public pilot's label: the identifier, and under it speed, altitude and heading. */
 .public-pilot-label {

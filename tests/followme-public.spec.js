@@ -197,6 +197,8 @@ test('Off is chosen to begin with, and See others is dimmed with the reason', as
   await page.evaluate(() => window.refreshPublicPilotsFeature());
   await openLayers(page);
   expect(await mode(page)).toBe('off');
+  // The choice is said in words under the control.
+  await expect(page.locator('#public-pilots-hint')).toHaveText('Other NavAid pilots are not shown, and they cannot see you.');
   const see = page.locator('#public-pilots-mode [data-mode="see"]');
   await expect(see).toBeVisible();
   await expect(see).toHaveClass(/is-dim/);
@@ -223,6 +225,7 @@ test('Share & see starts a public share through the usual identifier step, and s
   await page.evaluate(() => window.__sockets[0].connack());
   await expect.poll(() => page.evaluate(() => NavAid.followMe.sharing() && NavAid.followMe.publicOn())).toBe(true);
   await expect.poll(() => mode(page)).toBe('share');
+  await expect(page.locator('#public-pilots-hint')).toHaveText(/and they see you/);
   await expect.poll(() => page.evaluate(() => NavAid.publicPilots.running())).toBe(true);
   expect(await page.evaluate(() => localStorage.getItem('navaid.showPublicPilots'))).toBe('1');
 });
@@ -274,6 +277,7 @@ test('See others works on a secret pilots link, without sharing', async ({ page 
   await expect(see).not.toHaveClass(/is-dim/);
   await see.click();
   expect(await mode(page)).toBe('see');
+  await expect(page.locator('#public-pilots-hint')).toHaveText(/They do not see you/);
   expect(await page.evaluate(() => NavAid.followMe.sharing())).toBe(false);
   await expect.poll(() => page.evaluate(() => NavAid.publicPilots.running())).toBe(true);
 });

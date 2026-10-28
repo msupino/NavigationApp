@@ -1,20 +1,20 @@
-From fee2630887bb7ab07366ac1bb4234b674bcf88a6 Mon Sep 17 00:00:00 2001
+From 5da9f008edbed551426dafb2c9b3105767b8aca1 Mon Sep 17 00:00:00 2001
 From: Marco <marco@supino.org>
 Date: Wed, 28 Oct 2026 14:45:15 +0000
 Subject: [PATCH] NavAid pilots: one control, Off / See others / Share & see
 
 ---
- Extra-Layers-he.md |  9 +++++++--
- Extra-Layers.md    | 12 +++++++++---
+ Extra-Layers-he.md | 11 +++++++++--
+ Extra-Layers.md    | 14 +++++++++++---
  Follow-Me-he.md    |  6 ++++--
  Follow-Me.md       |  7 ++++---
- 4 files changed, 24 insertions(+), 10 deletions(-)
+ 4 files changed, 28 insertions(+), 10 deletions(-)
 
 diff --git a/Extra-Layers-he.md b/Extra-Layers-he.md
-index 0f9302b..dce50e5 100644
+index 0f9302b..14bf872 100644
 --- a/Extra-Layers-he.md
 +++ b/Extra-Layers-he.md
-@@ -538,8 +538,13 @@ SIGWX), **מרחב אווירי** (בועות LSA), **תרשימי שדה** (ש
+@@ -538,8 +538,15 @@ SIGWX), **מרחב אווירי** (בועות LSA), **תרשימי שדה** (ש
  
  ## טייסי NavAid
  
@@ -26,15 +26,17 @@ index 0f9302b..dce50e5 100644
 +- **צפייה** — כולם מוצגים, בלי לשתף. רק בקישור הצפייה הסודי; אחרת היא מעומעמת, והקשה עליה
 +  אומרת לבחור שיתוף וצפייה.
 +- **שיתוף וצפייה** — אתם הופכים לציבוריים ורואים את כולם, בהקשה אחת. אם עוד לא שיתפתם, נפתח שלב
-+  עקבו אחריי הרגיל (המזהה, ואז הקישור לשליחה) כש**ציבורי** כבר מסומן; ביטול שם לא משאיר דבר דלוק. ראו
++  עקבו אחריי הרגיל (המזהה, ואז הקישור לשליחה) כש**ציבורי** כבר מסומן; ביטול שם לא משאיר דבר דלוק.
++
++שורה מתחת לבקרה אומרת מה הבחירה אומרת — את מי אתם רואים, והאם הם רואים אתכם. ראו
  [עקבו אחריי ← שיתוף ציבורי](Follow-Me-he#שיתוף-ציבורי-לראות-ולהיראות-על-ידי-כל-טייסי-navaid).
  
  </div>
 diff --git a/Extra-Layers.md b/Extra-Layers.md
-index 5428bd3..f0f2879 100644
+index 5428bd3..7f07b90 100644
 --- a/Extra-Layers.md
 +++ b/Extra-Layers.md
-@@ -603,6 +603,12 @@ menu.
+@@ -603,6 +603,14 @@ menu.
  
  ## NavAid pilots
  
@@ -49,7 +51,9 @@ index 5428bd3..f0f2879 100644
 +  dimmed, and a tap says to choose Share & see.
 +- **Share & see** — you go public and see everyone, in one tap. Not sharing yet, it opens the usual
 +  Follow me step (the identifier, then the link to hand round) with **Public** already ticked;
-+  cancel there and nothing is left switched on. See [Follow me → Public share](Follow-Me#public-share-see-and-be-seen-by-every-navaid-pilot).
++  cancel there and nothing is left switched on.
++
++A line under the control says what the choice means — who you see, and whether they see you. See [Follow me → Public share](Follow-Me#public-share-see-and-be-seen-by-every-navaid-pilot).
 diff --git a/Follow-Me-he.md b/Follow-Me-he.md
 index a67f755..9fe65df 100644
 --- a/Follow-Me-he.md

@@ -10589,9 +10589,13 @@ for (const id of ['circuit-cb', 'training-cb', 'cvfr-cb', 'heli-cb', 'commfail-c
         const dim = (k === 'see' && !seeOk) || (k === 'share' && !shareOk);
         b.classList.toggle('is-dim', dim);
         b.setAttribute('aria-disabled', String(dim));
-        b.title = k === 'see' && !seeOk ? (S.tbShowPublicPilotsLocked || '')
-          : k === 'share' && !shareOk ? (S.ppModeNoFollowMe || '') : '';
+        const tip = { off: S.ppTipOff, see: S.ppTipSee, share: S.ppTipShare }[k] || '';
+        b.title = k === 'see' && !seeOk ? (S.tbShowPublicPilotsLocked || tip)
+          : k === 'share' && !shareOk ? (S.ppModeNoFollowMe || tip) : tip;
       }
+      // What the chosen answer means, in words: three bare labels did not say it (reported).
+      const hint = document.getElementById('public-pilots-hint');
+      if (hint) hint.textContent = { off: S.ppHintOff, see: S.ppHintSee, share: S.ppHintShare }[m] || '';
     }
     if (cb.checked && offered() && P.allowed()) P.start(); else P.stop();
   };
