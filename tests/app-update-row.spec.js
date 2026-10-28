@@ -51,6 +51,22 @@ async function boot(page, o) {
   return row;
 }
 
+// A delta that changes only a script says its own size, in tenths below a megabyte, in the row and
+// in the mobile-data question -- not the full 27 MB (reported as 38 MB on every update).
+test('a small delta update says its own size, not the full bundle', async ({ page }) => {
+  const h = (t) => require('crypto').createHash('sha256').update(t).digest('hex');
+  await page.route('**/bundle-manifest.json', r => r.fulfill({ contentType: 'application/json',
+    body: JSON.stringify({ hashes: { 'img/chart.png': h('chart'), 'app/ui.js': h('old') } }) }));
+  const manifest = Object.assign({}, MANIFEST, { files: [
+    { file_name: 'img/chart.png', file_hash: h('chart'), download_url: 'x', size: 26 * 1048576 },
+    { file_name: 'app/ui.js', file_hash: h('new'), download_url: 'y', size: 200 * 1024 },
+  ] });
+  const row = await boot(page, { manifest, network: 'cellular', running: '1.0-0000000' });
+  await expect(row).toContainText(/Update available · \u2066?0\.2 MB/);
+  await row.locator('.app-update-btn').click();
+  await expect(page.locator('.follow-me-ask-modal')).toContainText(/0\.2 MB\u2069? of mobile data/);
+});
+
 test('already on the latest build: Up to date, and a check, not a download', async ({ page }) => {
   // The APK's own stamp has 8 characters of the commit, the deploy's 7: the same build.
   const row = await boot(page, { manifest: MANIFEST, network: 'cellular', running: '1.0-abcdef12' });

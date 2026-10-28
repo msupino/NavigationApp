@@ -362,7 +362,13 @@ const appUpdate = (function () {
   let last = null;
   let pct = null;                    // download progress 0-100 while downloading, from the plugin
   const ota = () => (window.NavAid && NavAid.ota && typeof NavAid.ota.status === 'function') ? NavAid.ota : null;
-  const mb = (bytes) => (bytes ? Math.max(1, Math.round(bytes / 1048576)) : 0);
+  // Whole megabytes, and tenths below one: a delta update is often a few hundred kB, and
+  // rounding it up to "1 MB" overstates it.
+  const mb = (bytes) => {
+    if (!bytes) return 0;
+    const v = bytes / 1048576;
+    return v < 1 ? Math.max(0.1, Math.round(v * 10) / 10) : Math.round(v);
+  };
   // A number with its unit, and a build id, read left to right inside a Hebrew sentence: isolated,
   // or "26 MB" comes out "MB 26" and "1.0-90a0542" breaks around its hyphen.
   const ltr = (t) => '\u2066' + t + '\u2069';
@@ -441,7 +447,7 @@ const appUpdate = (function () {
     if (btn.dataset.action === 'restart') { if (typeof o.restartNow === 'function') await o.restartNow(); return; }
     if (btn.dataset.action !== 'download') return;
     if (!(await o.onUnmeteredConnection())) {
-      const size = mb(last && last.bytes) || 26;
+      const size = last && last.bytes ? mb(last.bytes) : 26;   // 26: a full bundle, when unknown
       const ok = typeof window.askYesNo === 'function'
         ? await window.askYesNo(S.appUpdateCellularTitle || 'Download on mobile data?',
           typeof S.appUpdateCellularText === 'function' ? S.appUpdateCellularText(ltr(size + ' MB')) : 'About ' + size + ' MB of mobile data.',
