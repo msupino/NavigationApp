@@ -10570,18 +10570,24 @@ for (const id of ['circuit-cb', 'training-cb', 'cvfr-cb', 'heli-cb', 'commfail-c
   //   See others  -- only on a secret pilots link (?pilots=<secret>); dimmed otherwise, saying why;
   //   Share & see -- public sharing on (starting a share if none is running) and everyone shown.
   // The checkbox is the viewing state, remembered on this device.
+  // Public sharing from either place -- this control or the Follow me dialog's Public box --
+  // is Share & see: you are seen, so you see. See others is seeing without being seen: on the
+  // secret link, or for the rest of a share that was public.
+  const seeAllowed = (P) => P.unlocked() || sharingPublic() || P.keepSeeing();
+  const viewing = () => cb.checked || sharingPublic();
   function mode() {
     const P = window.NavAid && NavAid.publicPilots;
-    if (!cb.checked || !P) return 'off';
+    if (!P) return 'off';
     if (sharingPublic()) return 'share';
-    return P.unlocked() ? 'see' : 'off';
+    if (cb.checked && (P.unlocked() || P.keepSeeing())) return 'see';
+    return 'off';
   }
   const apply = () => {
     const P = window.NavAid && NavAid.publicPilots;
     if (!P) return;
     if (group) {
       const m = mode();
-      const seeOk = P.unlocked();
+      const seeOk = seeAllowed(P);
       const shareOk = typeof followMeOffered !== 'function' || followMeOffered();
       for (const b of group.querySelectorAll('[data-mode]')) {
         const k = b.dataset.mode;
@@ -10597,7 +10603,7 @@ for (const id of ['circuit-cb', 'training-cb', 'cvfr-cb', 'heli-cb', 'commfail-c
       const hint = document.getElementById('public-pilots-hint');
       if (hint) hint.textContent = { off: S.ppHintOff, see: S.ppHintSee, share: S.ppHintShare }[m] || '';
     }
-    if (cb.checked && offered() && P.allowed()) P.start(); else P.stop();
+    if (viewing() && offered() && P.allowed()) P.start(); else P.stop();
   };
   function setViewing(on) {
     cb.checked = !!on;
@@ -10608,23 +10614,30 @@ for (const id of ['circuit-cb', 'training-cb', 'cvfr-cb', 'heli-cb', 'commfail-c
     if (!f || !P) return;
     if (k === 'off') {
       setViewing(false);
+      P.setKeepSeeing(false);
       if (f.publicOn()) {
         f.setPublic(false);
         if (f.sharing() && typeof showToast === 'function') showToast(S.followMePublicOffToast || 'Not public: your link only');
       }
     } else if (k === 'see') {
-      if (!P.unlocked()) {
+      if (!seeAllowed(P)) {
         if (typeof showToast === 'function') showToast(S.tbShowPublicPilotsLocked || 'Choose Share & see');
         return;
       }
+      // From a public share: off the public channel, still seeing everyone until it ends.
+      if (sharingPublic()) P.setKeepSeeing(true);
       setViewing(true);
-      if (f.publicOn()) f.setPublic(false);
+      if (f.publicOn()) {
+        f.setPublic(false);
+        if (f.sharing() && typeof showToast === 'function') showToast(S.followMePublicOffToast || 'Not public: your link only');
+      }
     } else if (k === 'share') {
       if (typeof followMeOffered === 'function' && !followMeOffered()) {
         if (typeof showToast === 'function') showToast(S.ppModeNoFollowMe || '');
         return;
       }
       const wasPublic = f.publicOn(), wasViewing = cb.checked;
+      P.setKeepSeeing(false);
       setViewing(true);
       if (!wasPublic) f.setPublic(true);
       if (f.sharing()) {

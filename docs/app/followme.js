@@ -953,9 +953,11 @@
   function followMeSharing() { return !!session && session.status !== 'stopping'; }
   // The public-pilots layer follows sharing (it shows others only while this device shares
   // publicly): look again whenever sharing may have started or stopped.
-  let lastPublicSharing = false;
+  // Sharing alone counts too: a pilot who chose See others during a public share sees everyone
+  // until that share ends, and its end has to be noticed though the share was not public then.
+  let lastPublicSharing = '';
   setInterval(() => {
-    const now = followMeSharing() && followMePublicOn();
+    const now = String(followMeSharing()) + followMePublicOn();
     if (now !== lastPublicSharing) {
       lastPublicSharing = now;
       if (typeof window.refreshPublicPilotsFeature === 'function') window.refreshPublicPilotsFeature();
@@ -1875,7 +1877,10 @@
     // the public channel itself is unencrypted on a public relay.
     let unlocked = false;
     try { unlocked = sessionStorage.getItem('navaid.publicPilotsUnlocked') === '1'; } catch (e) { /* private */ }
-    const allowed = () => unlocked || (followMeSharing() && followMePublicOn());
+    // A pilot who was public and chose See others keeps seeing everyone until that share ends:
+    // they were seen while they looked, and a new share starts the bargain again.
+    let keepSeeing = false;
+    const allowed = () => unlocked || (followMeSharing() && (followMePublicOn() || keepSeeing));
     async function unlock(secret) {
       const want = String(tune('publicPilotsViewHash', '') || '').toLowerCase();
       if (!secret || !want || !(crypto && crypto.subtle)) return false;
@@ -1911,7 +1916,9 @@
       clearInterval(timer);
       for (const id of [...pilots.keys()]) remove(id);
     }
+    function setKeepSeeing(on) { keepSeeing = !!on && followMeSharing(); }
     return { start, stop, running: () => !!client, allowed, unlock, unlocked: () => unlocked,
+      keepSeeing: () => keepSeeing && followMeSharing(), setKeepSeeing,
       fitNext: () => { fitPending = true; }, list: () => [...pilots.entries()].map(([id, p]) => ({ id, ...p.fix, stale: !!(p.el && p.el.classList.contains('public-pilot-stale')) })), _onMessage: onMessage, _sweep: sweep };
   }());
   NS.publicPilots = publicPilots;

@@ -430,3 +430,44 @@ test('Public can be switched on and off during a share, from the menu', async ({
   expect(out.cleared).toBe(true);     // switched off: taken off it at once
   expect(out.on).toBe(false);
 });
+
+// Public sharing turned on in the Follow me dialog, not here, is still Share & see: you are seen,
+// so you see -- the control does not claim Off and "they cannot see you" (reported).
+test('a public share started from the Follow me dialog shows as Share & see, with the others on the map', async ({ page }) => {
+  await boot(page);
+  await page.evaluate(async () => {
+    NavAid.followMe.setPublic(true);
+    await NavAid.followMe.start('4X-DLG');
+    window.__sockets[0].connack();
+    window.refreshPublicPilotsFeature();
+  });
+  await openLayers(page);
+  await expect.poll(() => mode(page)).toBe('share');
+  await expect(page.locator('#public-pilots-hint')).toHaveText(/and they see you/);
+  await expect.poll(() => page.evaluate(() => NavAid.publicPilots.running())).toBe(true);
+});
+
+test('See others is open while sharing publicly: it hides you and keeps showing the others until the share ends', async ({ page }) => {
+  await boot(page);
+  await page.evaluate(async () => {
+    NavAid.followMe.setPublic(true);
+    await NavAid.followMe.start('4X-HIDE');
+    window.__sockets[0].connack();
+    window.refreshPublicPilotsFeature();
+  });
+  await openLayers(page);
+  const see = page.locator('#public-pilots-mode [data-mode="see"]');
+  await expect(see).not.toHaveClass(/is-dim/);
+  await see.click();
+  expect(await page.evaluate(() => ({
+    sharing: NavAid.followMe.sharing(), pub: NavAid.followMe.publicOn(), running: NavAid.publicPilots.running(),
+  }))).toEqual({ sharing: true, pub: false, running: true });
+  expect(await mode(page)).toBe('see');
+  await expect(page.locator('#public-pilots-hint')).toHaveText(/They do not see you/);
+  // The share ends: so does seeing without being seen.
+  // Noticed by itself (the share watch), not by a refresh from the test.
+  await page.evaluate(async () => { await NavAid.followMe.stop(); });
+  await expect.poll(() => page.evaluate(() => NavAid.publicPilots.running()), { timeout: 6000 }).toBe(false);
+  expect(await mode(page)).toBe('off');
+  await expect(see).toHaveClass(/is-dim/);
+});

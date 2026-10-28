@@ -3049,7 +3049,7 @@ window.S = Object.assign({
   ppHintSee: 'You see every NavAid pilot who shares publicly. They do not see you.',
   ppHintShare: 'You see every NavAid pilot who shares publicly, and they see you.',
   ppTipOff: 'Hide other pilots and stop showing yourself to them',
-  ppTipSee: 'See other pilots without being seen (secret pilots link only)',
+  ppTipSee: 'See other pilots without being seen: for the rest of a public share, or on the secret pilots link',
   ppTipShare: 'Show yourself to other NavAid pilots and see them',
   tbShowPublicPilotsTitle: 'Everyone sharing their position publicly (Share → Public), from the NavAid relay. Not ADS-B.',
   tbShowTrafficApkOnly: 'In the app only: the ADS-B feeds refuse browser requests, so nothing could be drawn here. Install the NavAid app (Android, iPhone or iPad) and it works there.',

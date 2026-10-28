@@ -1,20 +1,20 @@
-From 5da9f008edbed551426dafb2c9b3105767b8aca1 Mon Sep 17 00:00:00 2001
+From aba32a47a2505770f4d97aa31be0dc9042262ffb Mon Sep 17 00:00:00 2001
 From: Marco <marco@supino.org>
 Date: Wed, 28 Oct 2026 14:45:15 +0000
 Subject: [PATCH] NavAid pilots: one control, Off / See others / Share & see
 
 ---
- Extra-Layers-he.md | 11 +++++++++--
- Extra-Layers.md    | 14 +++++++++++---
+ Extra-Layers-he.md | 13 +++++++++++--
+ Extra-Layers.md    | 16 +++++++++++++---
  Follow-Me-he.md    |  6 ++++--
  Follow-Me.md       |  7 ++++---
- 4 files changed, 28 insertions(+), 10 deletions(-)
+ 4 files changed, 32 insertions(+), 10 deletions(-)
 
 diff --git a/Extra-Layers-he.md b/Extra-Layers-he.md
-index 0f9302b..14bf872 100644
+index 0f9302b..8425532 100644
 --- a/Extra-Layers-he.md
 +++ b/Extra-Layers-he.md
-@@ -538,8 +538,15 @@ SIGWX), **מרחב אווירי** (בועות LSA), **תרשימי שדה** (ש
+@@ -538,8 +538,17 @@ SIGWX), **מרחב אווירי** (בועות LSA), **תרשימי שדה** (ש
  
  ## טייסי NavAid
  
@@ -23,20 +23,22 @@ index 0f9302b..14bf872 100644
 +בקרה אחת עם שלוש אפשרויות, שמציגה את כל מי שמשתף את מיקומו באופן ציבורי, דרך הממסר של NavAid — לא ADS-B:
 +
 +- **כבוי** — אף אחד לא מוצג, והמטוס שלכם אינו ציבורי (קישור עקבו אחריי פרטי ממשיך).
-+- **צפייה** — כולם מוצגים, בלי לשתף. רק בקישור הצפייה הסודי; אחרת היא מעומעמת, והקשה עליה
++- **צפייה** — כולם מוצגים, בלי שרואים אתכם: בקישור הצפייה הסודי, או עד סוף שיתוף שהיה ציבורי
++  (הבחירה מורידה אתכם מהערוץ הציבורי; האחרים נשארים עד שהשיתוף נגמר). אחרת היא מעומעמת, והקשה עליה
 +  אומרת לבחור שיתוף וצפייה.
 +- **שיתוף וצפייה** — אתם הופכים לציבוריים ורואים את כולם, בהקשה אחת. אם עוד לא שיתפתם, נפתח שלב
 +  עקבו אחריי הרגיל (המזהה, ואז הקישור לשליחה) כש**ציבורי** כבר מסומן; ביטול שם לא משאיר דבר דלוק.
 +
++שיתוף ציבורי שהופעל בחלון עקבו אחריי מופיע כאן גם הוא כ**שיתוף וצפייה**: מי שנראה, רואה.
 +שורה מתחת לבקרה אומרת מה הבחירה אומרת — את מי אתם רואים, והאם הם רואים אתכם. ראו
  [עקבו אחריי ← שיתוף ציבורי](Follow-Me-he#שיתוף-ציבורי-לראות-ולהיראות-על-ידי-כל-טייסי-navaid).
  
  </div>
 diff --git a/Extra-Layers.md b/Extra-Layers.md
-index 5428bd3..7f07b90 100644
+index 5428bd3..48a489a 100644
 --- a/Extra-Layers.md
 +++ b/Extra-Layers.md
-@@ -603,6 +603,14 @@ menu.
+@@ -603,6 +603,16 @@ menu.
  
  ## NavAid pilots
  
@@ -47,13 +49,15 @@ index 5428bd3..7f07b90 100644
 +relay — not ADS-B:
 +
 +- **Off** — nobody is shown, and your own aircraft is not public (a private Follow me link goes on).
-+- **See others** — everyone shown, without sharing. Only on the secret viewing link; otherwise it is
-+  dimmed, and a tap says to choose Share & see.
++- **See others** — everyone shown, without being seen: on the secret viewing link, or for the rest of
++  a share that was public (picking it takes you off the public channel; the others stay until that
++  share ends). Otherwise it is dimmed, and a tap says to choose Share & see.
 +- **Share & see** — you go public and see everyone, in one tap. Not sharing yet, it opens the usual
 +  Follow me step (the identifier, then the link to hand round) with **Public** already ticked;
 +  cancel there and nothing is left switched on.
 +
-+A line under the control says what the choice means — who you see, and whether they see you. See [Follow me → Public share](Follow-Me#public-share-see-and-be-seen-by-every-navaid-pilot).
++A public share turned on in the Follow me dialog shows here as **Share & see** too: being seen is
++seeing. A line under the control says what the choice means — who you see, and whether they see you. See [Follow me → Public share](Follow-Me#public-share-see-and-be-seen-by-every-navaid-pilot).
 diff --git a/Follow-Me-he.md b/Follow-Me-he.md
 index a67f755..9fe65df 100644
 --- a/Follow-Me-he.md
