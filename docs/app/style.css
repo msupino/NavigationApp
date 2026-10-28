@@ -9216,7 +9216,6 @@ body.deck-on .modal-back.flight-plan > .modal.wide .fp-scroll {
 .public-pilot-mark .follow-me-plane path { fill: #7a4fd6; }
 .public-pilot-mark.public-pilot-stale { opacity: 0.45; }
 /* Locked (not sharing publicly): dimmed, still there, and its tooltip says why. */
-#public-pilots-frame label.is-dim { opacity: 0.5; }
 /* NavAid pilots: Off / See others / Share & see, one segmented control. The chosen one is filled
    in the toolbar's selected blue (#1d6fe0, as a pressed button);
    one that cannot be chosen here is dimmed (never hidden) and says why on a tap. */
