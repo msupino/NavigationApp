@@ -252,7 +252,11 @@ export class Broker {
     ws.send(new Uint8Array([T.UNSUBACK << 4, 2, id >> 8, id & 0xff]));
   }
 
-  async webSocketClose(ws) { await this.gone(ws); }
+  async webSocketClose(ws, code) {
+    await this.gone(ws);
+    // Complete the closing handshake, or the client waits out its own timeout.
+    try { ws.close(code === 1005 || code === 1006 ? 1000 : code, 'closing'); } catch (e) { /* already closed */ }
+  }
   async webSocketError(ws) { await this.gone(ws); }
   async gone(ws) {
     const s = this.state(ws);
