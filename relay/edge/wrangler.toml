@@ -14,7 +14,7 @@ new_sqlite_classes = ["Broker"]
 
 # SIGMET / AIRMET as built every 5 minutes. Create once with
 #   npx wrangler kv namespace create FEEDS
-# and paste the id it prints here.
+# and paste the id it prints here (this one is navaid-edge-FEEDS).
 [[kv_namespaces]]
 binding = "FEEDS"
 id = "358767b927c74a7b9cd37cc1758173d4"
