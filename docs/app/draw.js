@@ -1872,7 +1872,11 @@ function sigmetActive(s, now) {
 }
 window.sigmetActive = sigmetActive;
 function activeSigmets() {
-  return Array.isArray(sigmets) ? sigmets.filter(s => sigmetActive(s)) : [];
+  // The look-ahead time, like NOTAM and AIRMET: with the slider forward, a SIGMET that has
+  // expired by then is neither drawn nor counted. It stayed on live "now" while the other two
+  // hazard layers moved. null view time = live.
+  const now = notamViewNow();
+  return Array.isArray(sigmets) ? sigmets.filter(s => sigmetActive(s, now)) : [];
 }
 window.activeSigmets = activeSigmets;
 
