@@ -1,0 +1,71 @@
+From 4031f5acf87fc84c5c1142118f29e0087b9ec62d Mon Sep 17 00:00:00 2001
+From: Marco <marco@supino.org>
+Date: Wed, 28 Oct 2026 19:26:13 +0000
+Subject: [PATCH] NavAid's own relay: Follow me broker and 5-minute SIGMET /
+ AIRMET (relay/edge)
+
+---
+ Extra-Layers-he.md | 3 ++-
+ Extra-Layers.md    | 4 +++-
+ Follow-Me-he.md    | 2 +-
+ Follow-Me.md       | 2 +-
+ 4 files changed, 7 insertions(+), 4 deletions(-)
+
+diff --git a/Extra-Layers-he.md b/Extra-Layers-he.md
+index 8425532..f268eb3 100644
+--- a/Extra-Layers-he.md
++++ b/Extra-Layers-he.md
+@@ -52,7 +52,8 @@ SIGMET בינלאומיים (מערבולות, קרח, גל הרים, אפר ג
+ 
+ (**AIRMET** ישראלי — מוצר אחר, של השמ״ט — הוא [שכבת ה-AIRMET](#airmet) שלהלן.)
+ 
+-- **מקור:** NOAA AWC, מרוענן כל ~20 דקות ע״י <span dir="ltr"><code>aviation-data.yml</code></span> לענף <span dir="ltr"><code>sigmet-data</code></span>.
++- **מקור:** NOAA AWC, מרוענן כל ~20 דקות ע״י <span dir="ltr"><code>aviation-data.yml</code></span> לענף <span dir="ltr"><code>sigmet-data</code></span> — או כל 5 דקות ע״י הממסר של NavAid
++  (<span dir="ltr"><code>relay/edge</code></span>, Cloudflare Worker) כש־<span dir="ltr"><code>hazardFeedBase</code></span> ב־gist מצביע עליו; אם הממסר נכשל, האפליקציה חוזרת לענף. גם ה־AIRMET מגיעים כך.
+   האפליקציה גם מושכת אותו מחדש כל ~10 דקות תוך כדי הפעלה, כך ש-SIGMET חדש או שפג מתעדכן ללא רענון דף.
+ - **ישירות מהמקור, לעולם לא דרך שירות אחר.** אתרים ישראליים אחרים לתכנון טיסה מפרסמים את אותם
+   NOTAM, וחלקם מקבלים את הנתונים תחת הסכם שאוסר להעביר אותם לצד שלישי. קריאה מהם הייתה הופכת את
+diff --git a/Extra-Layers.md b/Extra-Layers.md
+index 48a489a..ea633cc 100644
+--- a/Extra-Layers.md
++++ b/Extra-Layers.md
+@@ -51,7 +51,9 @@ and Ankara. Most days there are none; then the map toggle and the list button ar
+   covers almost all of Turkey, so an "Ankara" SIGMET can sit over Van or Batman. Read where it
+   is from its area, not its name. The same holds for *LLLL TEL AVIV FIR* over the Negev.
+ - **Source:** NOAA Aviation Weather Center, refreshed ~every 20 min by
+-  `aviation-data.yml` to the `sigmet-data` branch. The app also re-fetches it every
++  `aviation-data.yml` to the `sigmet-data` branch — or every 5 min by NavAid's own relay
++  (`relay/edge`, a Cloudflare Worker) when the gist's `hazardFeedBase` names it; the app falls
++  back to the branch if the relay fails. AIRMETs come the same way. The app also re-fetches it every
+   ~10 min in-session, so a new or expired SIGMET updates without a page reload. A warning
+   whose corner is mistyped in the feed (a live one gave E00356 for E03556, in the Atlantic) is
+   listed but not drawn or framed.
+diff --git a/Follow-Me-he.md b/Follow-Me-he.md
+index b3e5531..8a39f5b 100644
+--- a/Follow-Me-he.md
++++ b/Follow-Me-he.md
+@@ -246,7 +246,7 @@
+ | <span dir="ltr"><code>followMeRouteDebounceMs</code></span> | <span dir="ltr"><code>1500</code></span> | המתנה אחרי עריכת מסלול לפני שידור מחדש |
+ | <span dir="ltr"><code>featureFollowMeShareWhileViewing</code></span> | <span dir="ltr"><code>false</code></span> | לאפשר לדף לשתף בזמן שהוא עוקב אחרי מישהו אחר |
+ | <span dir="ltr"><code>followMeStaleSec</code></span> | <span dir="ltr"><code>30</code></span> | מתי הצופה קובע שהשידור נפסק |
+-| <span dir="ltr"><code>followMeBroker</code></span> | <span dir="ltr"><code>wss://broker.emqx.io:8084/mqtt</code></span> | הממסר הציבורי |
++| <span dir="ltr"><code>followMeBroker</code></span> | <span dir="ltr"><code>wss://broker.emqx.io:8084/mqtt</code></span> | הממסר. הממסר של NavAid עצמה (<span dir="ltr"><code>relay/edge</code></span>, Durable Object של Cloudflare שמדבר אותו MQTT) הוא <span dir="ltr"><code>wss://<host>/mqtt</code></span>: נושאי NavAid בלבד, מוגבל בקצב, ועותקים שמורים פגים אחרי יום |
+ | <span dir="ltr"><code>followMePlanePx</code></span> | <span dir="ltr"><code>26</code></span> | גודל סמל המטוס אצל העוקב |
+ | <span dir="ltr"><code>followMePlaneColor</code></span> | <span dir="ltr"><code>#182839</code></span> | צבע סמל המטוס אצל העוקב |
+ 
+diff --git a/Follow-Me.md b/Follow-Me.md
+index e815b77..e918661 100644
+--- a/Follow-Me.md
++++ b/Follow-Me.md
+@@ -278,7 +278,7 @@ Values are what the live app runs with — the shipped defaults as amended by th
+ | `followMeRouteDebounceMs` | `1500` | Wait after a route edit before re-sending |
+ | `featureFollowMeShareWhileViewing` | `false` | Let a page share while it is watching someone else |
+ | `followMeStaleSec` | `30` | When the viewer calls the feed stopped |
+-| `followMeBroker` | `wss://broker.emqx.io:8084/mqtt` | The public relay |
++| `followMeBroker` | `wss://broker.emqx.io:8084/mqtt` | The relay. NavAid's own (`relay/edge`, a Cloudflare Durable Object speaking the same MQTT) is `wss://<host>/mqtt`: NavAid topics only, rate-limited, retained copies expire after a day |
+ | `followMePlanePx` | `26` | Follower's aircraft symbol size |
+ | `followMePlaneColor` | `#182839` | Follower's aircraft symbol colour |
+ 
+-- 
+2.43.0
+
