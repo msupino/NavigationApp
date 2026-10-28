@@ -545,4 +545,30 @@ test('build-ota: a file the site already serves points at the site; one that dif
   expect(files.map(f => f.download_url)).toEqual(['https://navaid.supino.org/app/ui.js', 'https://navaid.supino.org/ota/1.0-x/index.html']);
   expect(fs.readFileSync(path.join(out, '1.0-x', 'index.html'), 'utf8')).toContain('embedded');
   expect(files[0].file_hash).toBe(require('crypto').createHash('sha256').update('same').digest('hex'));
+  // Each file says its size, for the app to add up what it lacks.
+  expect(files.map(f => f.size)).toEqual([4, Buffer.byteLength('<head><script>embedded</script></head>')]);
+});
+
+// The row said the full zip (38 MB) for an update that changed a few scripts (reported). It
+// weighs the delta against what the running bundle holds: bundle-manifest.json's hashes.
+test('the update size is what the phone lacks, not the full zip', async ({ page }) => {
+  const h = (s) => require('crypto').createHash('sha256').update(s).digest('hex');
+  let own = { hashes: { 'img/chart.png': h('chart'), 'app/ui.js': h('old ui') } };
+  await page.route('**/bundle-manifest.json', r => own
+    ? r.fulfill({ contentType: 'application/json', body: JSON.stringify(own) })
+    : r.fulfill({ status: 404, body: '' }));
+  await boot(page);
+  await page.waitForFunction(() => window.NavAid && NavAid.ota && typeof NavAid.ota.updateBytes === 'function');
+  const manifest = (v, sized = true) => ({ version: v, bytes: 38000000, files: [
+    { file_name: 'img/chart.png', file_hash: h('chart'), download_url: 'x', ...(sized ? { size: 30000000 } : {}) },
+    { file_name: 'app/ui.js', file_hash: h('new ui'), download_url: 'y', ...(sized ? { size: 250000 } : {}) },
+  ] });
+  // Only the changed script is downloaded.
+  expect(await page.evaluate(m => NavAid.ota.updateBytes(m), manifest('1.0-a'))).toBe(250000);
+  // A manifest without sizes (built before them), or no delta at all: the full zip.
+  expect(await page.evaluate(m => NavAid.ota.updateBytes(m), manifest('1.0-b', false))).toBe(38000000);
+  expect(await page.evaluate(() => NavAid.ota.updateBytes({ version: '1.0-c', bytes: 38000000 }))).toBe(38000000);
+  // A running bundle from before the hash list: the full zip too.
+  own = null;
+  expect(await page.evaluate(m => NavAid.ota.updateBytes(m), manifest('1.0-d'))).toBe(38000000);
 });

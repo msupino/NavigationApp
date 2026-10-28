@@ -89,6 +89,11 @@ test('the generated embedded app boots with every external request blocked', asy
   const path = require('path');
   const bundle = await import('../mobile/scripts/bundle-web.mjs');
   bundle.copyBundle();
+  // The bundle lists its own files by content, for the update row to weigh a delta against.
+  const own = JSON.parse(fs.readFileSync(path.join(bundle.wwwDir, 'bundle-manifest.json'), 'utf8'));
+  expect(own.hashes['index.html']).toBe(require('crypto').createHash('sha256')
+    .update(fs.readFileSync(path.join(bundle.wwwDir, 'index.html'))).digest('hex'));
+  expect(Object.keys(own.hashes).length).toBe(own.files);
   const types = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css',
     '.json': 'application/json', '.png': 'image/png', '.svg': 'image/svg+xml' };
   await page.route('**/*', route => {
