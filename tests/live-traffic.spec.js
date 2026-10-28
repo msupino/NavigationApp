@@ -89,6 +89,32 @@ test('a plain browser keeps the switch, dimmed, and says why', async ({ page }) 
   expect(await asked(page)).toEqual([]);
 });
 
+// With NavAid's relay named in the gist (trafficWebApiUrl, relay/traffic), a browser shows
+// traffic too: the relay adds the CORS header the feeds leave out.
+test('a browser shows traffic through the relay the gist names', async ({ page }) => {
+  await boot(page, { native: false });
+  const relayed = [];
+  await page.route('https://relay.navaid.test/**', (r) => {
+    relayed.push(r.request().url());
+    return r.fulfill({ contentType: 'application/json', headers: { 'Access-Control-Allow-Origin': '*' },
+      body: JSON.stringify({ ac: AC }) });
+  });
+  await page.evaluate(() => {
+    setTune('trafficWebApiUrl', 'https://relay.navaid.test/v2/lat/{lat}/lon/{lon}/dist/{dist}');
+    refreshTrafficFeature();
+  });
+  const state = await page.evaluate(() => {
+    const cb = document.getElementById('traffic-cb');
+    return { disabled: cb.disabled, dimmed: cb.closest('label').classList.contains('navtoggle-disabled') };
+  });
+  expect(state).toEqual({ disabled: false, dimmed: false });
+  await page.evaluate(() => map.setView([32.05, 34.92], 10));
+  await expect(marks(page)).toHaveCount(2);
+  expect(relayed[0]).toMatch(/^https:\/\/relay\.navaid\.test\/v2\/lat\/32\.\d+\/lon\/34\.\d+\/dist\/\d+$/);
+  // The feed itself is never asked from a browser.
+  expect(await asked(page)).toEqual([]);
+});
+
 test('the gist switch is the only thing that takes it away', async ({ page }) => {
   await boot(page, { feature: false });           // shipped state: featureLiveTraffic off
   expect(await page.evaluate(() => tune('featureLiveTraffic'))).toBe(false);
