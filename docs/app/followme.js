@@ -1879,8 +1879,10 @@
     try { unlocked = sessionStorage.getItem('navaid.publicPilotsUnlocked') === '1'; } catch (e) { /* private */ }
     // A pilot who was public and chose See others keeps seeing everyone until that share ends:
     // they were seen while they looked, and a new share starts the bargain again.
-    let keepSeeing = false;
-    const allowed = () => unlocked || (followMeSharing() && (followMePublicOn() || keepSeeing));
+    // Held as the share it was granted in, so a later share -- private or public -- starts over.
+    let keepSeeingFor = null;
+    const keepingSeeing = () => !!keepSeeingFor && keepSeeingFor === session && followMeSharing();
+    const allowed = () => unlocked || (followMeSharing() && (followMePublicOn() || keepingSeeing()));
     async function unlock(secret) {
       const want = String(tune('publicPilotsViewHash', '') || '').toLowerCase();
       if (!secret || !want || !(crypto && crypto.subtle)) return false;
@@ -1916,9 +1918,9 @@
       clearInterval(timer);
       for (const id of [...pilots.keys()]) remove(id);
     }
-    function setKeepSeeing(on) { keepSeeing = !!on && followMeSharing(); }
+    function setKeepSeeing(on) { keepSeeingFor = on && followMeSharing() ? session : null; }
     return { start, stop, running: () => !!client, allowed, unlock, unlocked: () => unlocked,
-      keepSeeing: () => keepSeeing && followMeSharing(), setKeepSeeing,
+      keepSeeing: keepingSeeing, setKeepSeeing,
       fitNext: () => { fitPending = true; }, list: () => [...pilots.entries()].map(([id, p]) => ({ id, ...p.fix, stale: !!(p.el && p.el.classList.contains('public-pilot-stale')) })), _onMessage: onMessage, _sweep: sweep };
   }());
   NS.publicPilots = publicPilots;

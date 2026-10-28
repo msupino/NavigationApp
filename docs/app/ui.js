@@ -10567,12 +10567,12 @@ for (const id of ['circuit-cb', 'training-cb', 'cvfr-cb', 'heli-cb', 'commfail-c
   const sharingPublic = () => { const f = F(); return !!(f && f.sharing() && f.publicOn()); };
   // Seeing others is the other half of being seen. One control, three answers:
   //   Off         -- nobody shown, and this device is not public;
-  //   See others  -- only on a secret pilots link (?pilots=<secret>); dimmed otherwise, saying why;
+  //   See others  -- everyone shown without being seen: on a secret pilots link (?pilots=<secret>),
+  //                  or for the rest of a share that was public; dimmed otherwise, saying why;
   //   Share & see -- public sharing on (starting a share if none is running) and everyone shown.
-  // The checkbox is the viewing state, remembered on this device.
-  // Public sharing from either place -- this control or the Follow me dialog's Public box --
-  // is Share & see: you are seen, so you see. See others is seeing without being seen: on the
-  // secret link, or for the rest of a share that was public.
+  // Public sharing from either place -- this control or the Follow me dialog's Public box -- is
+  // Share & see: you are seen, so you see. The hidden checkbox is the viewing choice, remembered
+  // on this device.
   const seeAllowed = (P) => P.unlocked() || sharingPublic() || P.keepSeeing();
   const viewing = () => cb.checked || sharingPublic();
   function mode() {
@@ -10591,7 +10591,7 @@ for (const id of ['circuit-cb', 'training-cb', 'cvfr-cb', 'heli-cb', 'commfail-c
       const shareOk = typeof followMeOffered !== 'function' || followMeOffered();
       for (const b of group.querySelectorAll('[data-mode]')) {
         const k = b.dataset.mode;
-        b.setAttribute('aria-checked', String(k === m));
+        b.setAttribute('aria-pressed', String(k === m));
         const dim = (k === 'see' && !seeOk) || (k === 'share' && !shareOk);
         b.classList.toggle('is-dim', dim);
         b.setAttribute('aria-disabled', String(dim));
@@ -10664,14 +10664,6 @@ for (const id of ['circuit-cb', 'training-cb', 'cvfr-cb', 'heli-cb', 'commfail-c
     });
   }
   cb.checked = lsGet(KEY) === '1';
-  cb.onchange = () => {
-    try { localStorage.setItem(KEY, cb.checked ? '1' : '0'); } catch (_) {}
-    const P = window.NavAid && NavAid.publicPilots;
-    if (cb.checked && P && !P.allowed() && typeof showToast === 'function') {
-      showToast(S.tbShowPublicPilotsLocked || 'Choose Share & see');
-    }
-    apply();
-  };
   window.refreshPublicPilotsFeature = function () {
     const frame = document.getElementById('public-pilots-frame');
     if (frame) frame.hidden = !offered();

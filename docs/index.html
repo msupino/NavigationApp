@@ -797,12 +797,13 @@
         <div class="tb-layer-frame" id="public-pilots-frame">
         <div class="tb-frame-title" data-i18n="tbGrpPublicPilots"></div>
         <div class="tb-group-box">
-          <!-- One control for both halves: Off, See others (on a secret pilots link), Share & see
-               (starts public sharing and shows everyone). The checkbox is the viewing state. -->
-          <div class="pp-mode" id="public-pilots-mode" role="radiogroup" data-i18n-aria="tbShowPublicPilots" data-i18n-title="tbShowPublicPilotsTitle">
-            <button type="button" role="radio" data-mode="off" data-i18n="ppModeOff"></button>
-            <button type="button" role="radio" data-mode="see" data-i18n="ppModeSee"></button>
-            <button type="button" role="radio" data-mode="share" data-i18n="ppModeShare"></button>
+          <!-- One control for both halves: Off, See others (without being seen: a secret pilots link,
+               or the rest of a public share), Share & see (public, and everyone shown). Three
+               pressed-state buttons; the hidden checkbox is the viewing choice. -->
+          <div class="pp-mode" id="public-pilots-mode" role="group" data-i18n-aria="tbShowPublicPilots" data-i18n-title="tbShowPublicPilotsTitle">
+            <button type="button" data-mode="off" data-i18n="ppModeOff"></button>
+            <button type="button" data-mode="see" data-i18n="ppModeSee"></button>
+            <button type="button" data-mode="share" data-i18n="ppModeShare"></button>
           </div>
           <p class="pp-mode-hint" id="public-pilots-hint" aria-live="polite"></p>
           <input type="checkbox" id="public-pilots-cb" hidden>

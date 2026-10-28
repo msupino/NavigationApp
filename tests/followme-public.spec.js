@@ -190,7 +190,7 @@ const openLayers = async (page) => {
   await expect(page.locator('#public-pilots-mode')).toBeVisible();
 };
 const mode = (page) => page.evaluate(() => [...document.querySelectorAll('#public-pilots-mode [data-mode]')]
-  .filter(b => b.getAttribute('aria-checked') === 'true').map(b => b.dataset.mode).join());
+  .filter(b => b.getAttribute('aria-pressed') === 'true').map(b => b.dataset.mode).join());
 
 test('Off is chosen to begin with, and See others is dimmed with the reason', async ({ page }) => {
   await boot(page);
@@ -470,4 +470,23 @@ test('See others is open while sharing publicly: it hides you and keeps showing 
   await expect.poll(() => page.evaluate(() => NavAid.publicPilots.running()), { timeout: 6000 }).toBe(false);
   expect(await mode(page)).toBe('off');
   await expect(see).toHaveClass(/is-dim/);
+});
+
+test('seeing without being seen does not carry over to the next share', async ({ page }) => {
+  await boot(page);
+  const out = await page.evaluate(async () => {
+    const F = NavAid.followMe, P = NavAid.publicPilots;
+    F.setPublic(true);
+    await F.start('4X-ONE');
+    window.__sockets[0].connack();
+    P.setKeepSeeing(true);
+    F.setPublic(false);
+    const during = P.allowed();
+    await F.stop();
+    // The next share is private: the bargain starts over.
+    await F.start('4X-TWO');
+    window.__sockets[window.__sockets.length - 1].connack();
+    return { during, next: P.allowed(), keep: P.keepSeeing() };
+  });
+  expect(out).toEqual({ during: true, next: false, keep: false });
 });
