@@ -4760,9 +4760,18 @@ function setSearchExamples(open) {
 // whether it is up is remembered under
 // navaid.searchShown; mobile keeps its summoned overlay.
 const SEARCH_SHOWN_KEY = 'navaid.searchShown';
+// The gist's `featureSearchClose` (off by default) decides whether the docked panel has an X at
+// all; without one it cannot be put away, so a dismissal stored earlier no longer holds.
+const searchCloseOffered = () => typeof tune === 'function' && tune('featureSearchClose') === true;
 function searchDockShown() {
+  if (!searchCloseOffered()) return true;
   try { return lsGet(SEARCH_SHOWN_KEY) !== '0'; } catch (e) { return true; }
 }
+function refreshSearchClose() {
+  document.documentElement.classList.toggle('search-no-close', !searchCloseOffered());
+  if (searchDocked()) searchOverlay.classList.toggle('hidden', !searchDockShown());
+}
+window.refreshSearchClose = refreshSearchClose;
 function setSearchDockShown(on) {
   try {
     if (on) localStorage.removeItem(SEARCH_SHOWN_KEY);
@@ -4906,6 +4915,7 @@ function searchDocked() { return searchOverlay.classList.contains('docked'); }
   sync();
   applySearchTipState();
 })();
+refreshSearchClose();
 
 // Reference-link overflow (⋯). The six links behind it are read once; keeping them
 // inline cost the menu bar more width than the flight plan itself and forced the
@@ -13315,6 +13325,7 @@ if (typeof loadRemoteConfig === "function") {
     if (typeof refreshFollowMeMapControl === "function") refreshFollowMeMapControl();
     if (typeof refreshAssistantFeature === "function") refreshAssistantFeature();
     if (typeof refreshToolbarDesktopMenu === "function") refreshToolbarDesktopMenu();
+    if (typeof window.refreshSearchClose === "function") window.refreshSearchClose();
     if (typeof window.refreshMenubarPin === "function") window.refreshMenubarPin();
     if (NavAid && typeof NavAid.refreshMobileDeck === "function") NavAid.refreshMobileDeck();
     if (typeof refreshEmptyRouteHint === "function") refreshEmptyRouteHint();

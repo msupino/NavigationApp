@@ -258,7 +258,8 @@ test('the box has an X that clears it without closing anything', async ({ page }
     return {
       insideH: x.left > box.left && x.right <= box.right + 1,
       insideV: x.top >= box.top && x.bottom <= box.bottom,
-      clearOfClose: x.right <= close.left,
+      // The overlay's own close may be hidden (featureSearchClose off on a docked panel).
+      clearOfClose: !close.width || x.right <= close.left,
     };
   });
   expect(where).toEqual({ insideH: true, insideV: true, clearOfClose: true });
