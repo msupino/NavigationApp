@@ -1682,6 +1682,19 @@ const SIGMET_URL =
 // the offline / first-run fallback.
 const AIRMET_URL =
   'https://raw.githubusercontent.com/msupino/NavigationApp/airmet-data/airmet.json';
+// NavAid's own relay (relay/edge) rebuilds SIGMET and AIRMET every 5 minutes, against the
+// Action's 20 and raw.githubusercontent's cache on top. The gist's `hazardFeedBase` names it
+// (https://<host>/feeds); empty, or the relay failing, reads the GitHub branch as before.
+async function fetchHazardFeed(name, githubUrl) {
+  const base = (typeof tune === 'function' && tune('hazardFeedBase')) || '';
+  if (base) {
+    try {
+      const res = await fetch(base.replace(/\/+$/, '') + '/' + name, { cache: 'no-store' });
+      if (res.ok) return res;
+    } catch (e) { /* the relay is down: GitHub below */ }
+  }
+  return fetch(githubUrl, { cache: 'no-store' });
+}
 let airmets = null;
 let airmetMeta = null;
 // Declared here, beside the loader that writes it; read elsewhere as window.sigmetMeta.
@@ -1838,7 +1851,7 @@ async function loadSigmets(force) {
     return list.filter(s => s && Array.isArray(s.coords));
   };
   try {
-    const res = await fetch(SIGMET_URL, { cache: 'no-store' });
+    const res = await fetchHazardFeed('sigmet.json', SIGMET_URL);
     if (!res.ok) throw new Error('HTTP ' + res.status);
     sigmets = parse(await res.json());
     return sigmets;
@@ -1955,7 +1968,7 @@ async function loadAirmets(force) {
     return list.filter(a => a && Array.isArray(a.coords));
   };
   try {
-    const res = await fetch(AIRMET_URL, { cache: 'no-store' });
+    const res = await fetchHazardFeed('airmet.json', AIRMET_URL);
     if (!res.ok) throw new Error('HTTP ' + res.status);
     airmets = parse(await res.json());
   } catch (e) {

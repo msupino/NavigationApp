@@ -1,0 +1,28 @@
+name = "navaid-edge"
+main = "worker.mjs"
+compatibility_date = "2026-10-01"
+compatibility_flags = ["nodejs_compat"]
+
+# The Follow me broker: one Durable Object holds every connection and the retained copies.
+[[durable_objects.bindings]]
+name = "BROKER"
+class_name = "Broker"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["Broker"]
+
+# SIGMET / AIRMET as built every 5 minutes. Create once with
+#   npx wrangler kv namespace create FEEDS
+# and paste the id it prints here (this one is navaid-edge-FEEDS).
+[[kv_namespaces]]
+binding = "FEEDS"
+id = "358767b927c74a7b9cd37cc1758173d4"
+
+# Logs in the dashboard (Workers -> navaid-edge -> Logs). Set here, not only in the dashboard:
+# a deploy resets what the dashboard set.
+[observability]
+enabled = true
+
+[triggers]
+crons = ["*/5 * * * *"]

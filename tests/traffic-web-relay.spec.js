@@ -12,7 +12,7 @@ function harness(answer) {
   const calls = [];
   const store = new Map();
   return {
-    calls,
+    calls, store,
     deps: {
       fetch: async (url) => { calls.push(url); return typeof answer === 'function' ? answer(url) : new Response(answer || '{"ac":[]}'); },
       cache: {
@@ -68,5 +68,44 @@ test('the radius is capped, and a feed failure is a 502, not cached', async () =
   expect(res.status).toBe(502);
   expect(res.headers.get('access-control-allow-origin')).toBe(NAVAID);
   await handle(req('/v2/lat/32/lon/34/dist/40'), h.deps);
-  expect(h.calls.length).toBe(2);
+  expect(h.calls.length).toBe(4);                              // both feeds, both times: nothing cached
+});
+
+test('adsb.lol rate-limiting (429) falls through to adsb.fi', async () => {
+  const { handle } = await load();
+  const h = harness((url) => url.includes('adsb.lol')
+    ? new Response('slow down', { status: 429 })
+    : new Response('{"aircraft":[{"hex":"fi1"}]}'));
+  const res = await handle(req('/v2/lat/32.06/lon/34.92/dist/40'), h.deps);
+  expect(res.status).toBe(200);
+  expect(await res.json()).toEqual({ aircraft: [{ hex: 'fi1' }] });
+  expect(h.calls).toEqual(['https://api.adsb.lol/v2/lat/32.1/lon/34.9/dist/45',
+    'https://opendata.adsb.fi/api/v2/lat/32.1/lon/34.9/dist/45']);  expect(res.headers.get('x-navaid-feeds')).toBe('adsb.lol=429; adsb.fi=200');
+  // adsb.lol rests after its 429: the next question, for another spot, does not ask it again.
+  const next = await handle(req('/v2/lat/31.5/lon/34.8/dist/40'), h.deps);
+  expect(next.headers.get('x-navaid-feeds')).toBe('adsb.lol=backoff; adsb.fi=200');
+  expect(h.calls.filter(u => u.includes('adsb.lol')).length).toBe(1);
+});
+
+test('a 502 says what each feed answered', async () => {
+  const { handle } = await load();
+  const h = harness((url) => new Response('no', { status: url.includes('adsb.lol') ? 500 : 403 }));
+  const res = await handle(req('/v2/lat/32/lon/34/dist/40'), h.deps);
+  expect(res.status).toBe(502);
+  expect(await res.json()).toEqual({ error: 'no feed answered', feeds: 'adsb.lol=500; adsb.fi=403' });
+  expect(res.headers.get('access-control-expose-headers')).toContain('X-NavAid-Feeds');
+});
+
+test('both feeds refusing serves the last good answer for the spot, marked stale', async () => {
+  const { handle } = await load();
+  let down = false;
+  const h = harness(() => (down ? new Response('no', { status: 429 }) : new Response('{"ac":[{"hex":"old"}]}')));
+  await handle(req('/v2/lat/32/lon/34/dist/40'), h.deps);
+  // The fresh copy has expired (simulated: dropped), the stale one is still there.
+  for (const k of [...h.store.keys()]) if (!k.endsWith('#stale')) h.store.delete(k);
+  down = true;
+  const res = await handle(req('/v2/lat/32/lon/34/dist/40'), h.deps);
+  expect(res.status).toBe(200);
+  expect(res.headers.get('x-navaid-stale')).toBe('1');
+  expect(await res.json()).toEqual({ ac: [{ hex: 'old' }] });
 });
