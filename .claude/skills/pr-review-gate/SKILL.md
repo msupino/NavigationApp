@@ -62,6 +62,11 @@ gh pr view $N --json comments -q '.comments[].body' | grep -Fxq "Code review: cl
   || echo "not reviewed at $H -- review again"
 ```
 
+## UI changes
+
+A PR that changes what a pilot sees or touches also needs the `uiux-review-gate` skill's marker,
+`UI review: passed at <sha>`, on the same head. Both markers must be there before it is readied.
+
 ## Notes
 
 - A DONT MERGE title still gets reviewed after pushes, so the PR is mergeable when the user lifts it.
