@@ -1,0 +1,40 @@
+From a67cb79f418d5980011dc8f2099ee16e421eaac6 Mon Sep 17 00:00:00 2001
+From: Marco <marco@supino.org>
+Date: Thu, 29 Oct 2026 07:24:56 +0000
+Subject: [PATCH] Docked desktop search: no X unless the gist's
+ featureSearchClose adds one
+
+---
+ Keyboard-and-Touch-he.md | 2 +-
+ Keyboard-and-Touch.md    | 2 +-
+ 2 files changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/Keyboard-and-Touch-he.md b/Keyboard-and-Touch-he.md
+index de9c018..7a84c89 100644
+--- a/Keyboard-and-Touch-he.md
++++ b/Keyboard-and-Touch-he.md
+@@ -61,7 +61,7 @@ NavAid הוא בעיקר אפליקציית **מפה** — רוב האינטרא
+ 
+ | מקש | פעולה |
+ | --- | --- |
+-| **Ctrl-F / Cmd-F** | פתיחת חיפוש נקודות והעברת המיקוד אליו. במחשב החיפוש נשאר מתחת לסרגל הכלים וניתן לגרירה; בטלפון הוא נפתח לפי בקשה. Esc מנקה את השאילתה, התוצאות והדוגמאות אך אינו מסתיר את שורת החיפוש, גם כשהיא ריקה. רק ✕ מסתיר אותה. אם Enter פתח חלונית מידע של נקודה, Esc סוגר גם אותה — אפילו אחרי גלילה כשהמיקוד נשאר בחיפוש. |
++| **Ctrl-F / Cmd-F** | פתיחת חיפוש נקודות והעברת המיקוד אליו. במחשב החיפוש נשאר מתחת לסרגל הכלים וניתן לגרירה; בטלפון הוא נפתח לפי בקשה. Esc מנקה את השאילתה, התוצאות והדוגמאות אך אינו מסתיר את שורת החיפוש, גם כשהיא ריקה. במחשב החלונית נשארת: אין לה ✕ אלא אם <span dir="ltr"><code>featureSearchClose</code></span> ב-gist מוסיף אותו, ואז רק ✕ מסתיר אותה. לחיפוש שנפתח לפי בקשה תמיד יש ✕. אם Enter פתח חלונית מידע של נקודה, Esc סוגר גם אותה — אפילו אחרי גלילה כשהמיקוד נשאר בחיפוש. |
+ | **?** | פתיחת **דף קיצורי המקלדת** המובנה (זמין גם דרך כפתור **Shortcuts** בכותרת התחתונה של סרגל הכלים) |
+ | **Ctrl-Z / Cmd-Z** | ביטול העריכה, ההזזה או המחיקה האחרונה |
+ | **M** | הפעלה/כיבוי של זכוכית המגדלת (תצוגה מוגדלת ליד הסמן) |
+diff --git a/Keyboard-and-Touch.md b/Keyboard-and-Touch.md
+index 238f209..5db177b 100644
+--- a/Keyboard-and-Touch.md
++++ b/Keyboard-and-Touch.md
+@@ -55,7 +55,7 @@ Closing an inspector during a trackpad scroll keeps the remaining scroll samples
+ 
+ | Key | Action |
+ | --- | --- |
+-| **Ctrl-F / Cmd-F** | Reveal the nav-WP search and put the caret in it. On a desktop the search is a draggable panel under the menu bar (left in English, right in Hebrew); on a phone it is a summoned overlay. Escape clears the query, results and examples but keeps the search bar visible, even when already empty. Only ✕ dismisses the bar. If Enter opened a point's inspector, Escape also closes that inspector, even after scrolling it while focus remains in search. |
++| **Ctrl-F / Cmd-F** | Reveal the nav-WP search and put the caret in it. On a desktop the search is a draggable panel under the menu bar (left in English, right in Hebrew); on a phone it is a summoned overlay. Escape clears the query, results and examples but keeps the search bar visible, even when already empty. On a desktop the panel stays: it has no ✕ unless the gist's `featureSearchClose` gives it one, and then only ✕ dismisses it. A summoned search always has its ✕. If Enter opened a point's inspector, Escape also closes that inspector, even after scrolling it while focus remains in search. |
+ | **?** | Open the in-app **keyboard-shortcuts cheat-sheet** (also reachable via the **Shortcuts** button in the toolbar footer). |
+ | **Ctrl-Z / Cmd-Z** | Undo the last edit, move, or delete. |
+ | **M** | Toggle the magnifying-glass loupe (zoomed view at the cursor). |
+-- 
+2.43.0
+

@@ -8822,6 +8822,9 @@ body.disclaimer-open { overflow: hidden; }
   box-shadow: none;
 }
 #search-overlay.deck-hosted-search #search-close { display: none; }
+/* featureSearchClose off (the default): the docked desktop panel has no X. A summoned search
+   keeps its X -- it is the only way out of one. */
+html.search-no-close #search-overlay.docked #search-close { display: none; }
 /* The box and its clear ✕ are one object: the field is padded on its inline end and the button
    sits in that padding, so it is inside the box on either layout and on either side of an RTL
    flip. Only there when the box has something in it. */
