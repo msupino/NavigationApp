@@ -1666,7 +1666,8 @@ function refreshEditColumn() {
   // lock already uses; otherwise Undo / Clear say when there is nothing for them to do.
   const lockWhy = locked ? (S.editLockBlockedToast || 'Route is locked — unlock it to edit') : null;
   const empty = !(state.waypoints && state.waypoints.length) && !(state.notes && state.notes.length)
-    && !(typeof measureOn === 'function' && measureOn());
+    && !(typeof measureOn === 'function' && measureOn())
+    && !document.querySelector('.tb-section[data-sec="weather"] input[type="checkbox"]:checked');
   setButtonWhy(add, lockWhy);
   setButtonWhy(note, lockWhy);
   setButtonWhy(undoBtn, lockWhy || ((menuUndo && menuUndo.disabled) ? (S.whyNothingToUndo || 'Nothing to undo') : null));
@@ -1684,6 +1685,15 @@ function refreshEditColumn() {
 }
 window.refreshEditColumn = refreshEditColumn;
 refreshEditColumn();
+// Clear map is available while any extra layer is shown, even on an otherwise empty chart.
+// Layer handlers persist their own toggles; refreshing here also keeps the Clear button's
+// dim cue in step with direct checkbox changes and the quick layer controls.
+document.addEventListener('change', e => {
+  const target = e.target;
+  if (target && target.matches && target.matches('.tb-section[data-sec="weather"] input[type="checkbox"]')) {
+    refreshEditColumn();
+  }
+});
 // Desktop placement: top left in both languages -- the same place as on the phone and in
 // English, so a pilot switching language finds them where they were (the Hebrew inspector
 // opens beside them, style.css). Just below the docked search card's actual bottom when the
