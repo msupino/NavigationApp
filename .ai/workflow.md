@@ -64,6 +64,12 @@ Every PR must have a matching GitHub issue.
 4. Push the feature branch.
 5. Open a draft PR targeting `dev`.
 
+When creating issue or PR bodies with multiple sections, provide actual Markdown
+line breaks (for example, write the body to a file and pass `--body-file`). Do
+not put literal `\n` sequences in a quoted one-line body. After creating or
+editing the item, read it back with `gh issue view` or `gh pr view` and confirm
+the headings and paragraphs are separated as intended.
+
 PR body should include:
 
 - `Fixes #N` or `Closes #N`.
