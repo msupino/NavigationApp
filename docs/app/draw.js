@@ -5759,10 +5759,12 @@ function drawLegs() {
     // already gated by legAllowsReturn).
     const inboundBlocked = typeof legAltitudeIsBlocked === 'function' &&
       legAltitudeIsBlocked(leg, 'inboundAltitude');
-    if (!inboundBlocked && !kiteOff) queueLegArrow(mid.x + dx * inAlong + nx * inPerp,
+    if (!inboundBlocked && !kiteOff) queueKite(drawLegArrow, [mid.x + dx * inAlong + nx * inPerp,
       mid.y + dy * inAlong + ny * inPerp,
       ang, pad3(magIn), timeStr, kiteAltitudeLabel(leg.inboundAltitude, leg, 'inboundAltitude'),
-      tune('inkColor'), tintFill(tune('legKiteFillColor'), tune('kiteNoteAlpha')), needsHalo(i, 'in'), zoomScale);
+      tune('inkColor'), tintFill(tune('legKiteFillColor'), tune('kiteNoteAlpha')), needsHalo(i, 'in'), zoomScale],
+      { key: 'in:' + i, fixed: !inP._default, ax: mid.x + dx * inAlong, ay: mid.y + dy * inAlong,
+        ux: dx, uy: dy, side: inPerp < 0 ? -1 : 1, nx, ny });
     // Cumulative inbound time: < [time], position driven by leg.cumLabel. By default it
     // sits opposite the nav kite (cumKiteAngleDeg 180). With the return path shown it joins
     // the nav kite (cumKiteAngleReturnDeg 0): every mark of one direction -- nav kite,
@@ -5782,9 +5784,10 @@ function drawLegs() {
       const cumAlong = cumP._default ? cumDef.along : (cumP.a || 0) * zoomScale;
       const cumX = sb.x + dx * cumAlong + nx * cumPerp;
       const cumY = sb.y + dy * cumAlong + ny * cumPerp;
-      queueCumTimeArrow(cumX, cumY,
+      queueKite(drawCumTimeArrow, [cumX, cumY,
         Math.atan2(sb.y - cumY, sb.x - cumX),
-        cumInStr, tune('inkColor'), tintFill(tune('cumKiteFillColor'), tune('kiteNoteAlpha')), zoomScale);
+        cumInStr, tune('inkColor'), tintFill(tune('cumKiteFillColor'), tune('kiteNoteAlpha')), zoomScale],
+        { key: 'cum:' + i, fixed: !cumP._default, ax: sb.x, ay: sb.y, cum: true });
     }
 
     // Belt and braces: the feature flag is checked at the draw site too, so a stored or
@@ -5792,10 +5795,12 @@ function drawLegs() {
     const returnOn = showReturn &&
       (typeof showReturnFeatureOn !== 'function' || showReturnFeatureOn());
     if (returnOn && legAllowsReturn(i)) {
-      if (!kiteOff) queueLegArrow(mid.x + dx * outAlong + nx * outPerp,
+      if (!kiteOff) queueKite(drawLegArrow, [mid.x + dx * outAlong + nx * outPerp,
         mid.y + dy * outAlong + ny * outPerp, ang + Math.PI,
         pad3(magOut), timeStrOut, kiteAltitudeLabel(leg.outboundAltitude, leg, 'outboundAltitude'),
-        tune('inkColor'), tintFill(tune('returnKiteFillColor'), tune('kiteNoteAlpha')), needsHalo(i, 'out'), zoomScale);
+        tune('inkColor'), tintFill(tune('returnKiteFillColor'), tune('kiteNoteAlpha')), needsHalo(i, 'out'), zoomScale],
+        { key: 'out:' + i, fixed: !outP._default, ax: mid.x + dx * outAlong, ay: mid.y + dy * outAlong,
+          ux: dx, uy: dy, side: outPerp < 0 ? -1 : 1, nx, ny });
       // Inside a CTR the way back is off its clock too (cumOutArr '---'), and draws no
       // cumulative kite there, as the way out does not. Only the CTR: a leg before the
       // start-timer point is off the way OUT's clock but still on the way home's.
@@ -5810,9 +5815,10 @@ function drawLegs() {
         const cumRetAlong = cumRetP._default ? -cumDef.along : (cumRetP.a || 0) * zoomScale;
         const cumRetX = sa.x + dx * cumRetAlong + nx * cumRetPerp;
         const cumRetY = sa.y + dy * cumRetAlong + ny * cumRetPerp;
-        queueCumTimeArrow(cumRetX, cumRetY,
+        queueKite(drawCumTimeArrow, [cumRetX, cumRetY,
           Math.atan2(sa.y - cumRetY, sa.x - cumRetX),
-          cumOutArr[i], tune('inkColor'), tintFill(tune('returnCumKiteFillColor'), tune('kiteNoteAlpha')), zoomScale, true);
+          cumOutArr[i], tune('inkColor'), tintFill(tune('returnCumKiteFillColor'), tune('kiteNoteAlpha')), zoomScale, true],
+          { key: 'cumret:' + i, fixed: !cumRetP._default, ax: sa.x, ay: sa.y, cum: true });
       }
     }
     if (showMidLeg) drawDistanceBadge(mid.x, mid.y, dist);
@@ -6005,14 +6011,210 @@ function needsHalo(i, which) {
 // drawNotes(); queued rather than drawn twice, because the fills are semi-transparent and a
 // second pass would darken them.
 let _kiteQueue = [];
-function queueKite(fn, args) { _kiteQueue.push([fn, args]); }
-function queueCumTimeArrow(...args) { queueKite(drawCumTimeArrow, args); }
-function queueLegArrow(...args) { queueKite(drawLegArrow, args); }
+function queueKite(fn, args, meta) { _kiteQueue.push([fn, args, meta || null]); }
 function flushKites() {
   const queued = _kiteQueue;
   _kiteQueue = [];
+  if (tune('kiteDeclutter') || _arranging) declutterKites(queued);
+  else _kitePlaced = new Map();
   for (const [fn, args] of queued) fn(...args);
 }
+
+// --- Overlap: kites and time boxes moved off each other ----------------------------------
+// Short legs and near-parallel legs (an out-and-back, two passes down one valley) put two
+// kites, or two time boxes, on the same patch of chart, one printed over the other (reported).
+// Before painting, a box the pilot has not placed that is covered by more than
+// kiteDeclutterAllowPct of its area tries a few nearby spots and takes the nearest clear one:
+// along its own leg and further out from it for a nav kite, round its waypoint and further out
+// for a time box. Some covering is wanted, so:
+//  - a slight overlap at the edge is left alone;
+//  - a box the pilot dragged is never moved, and one it was dragged ONTO is not pushed away
+//    from it either -- the pilot put them together;
+//  - where no clear spot is within reach the box stays where it would have been, covered,
+//    rather than wandering off to the least bad place.
+// A box is never dropped. One moved far from its leg gets a thin line back to it.
+//
+// Where each moved box ended up, by key ('in:3', 'out:3', 'cum:3', 'cumret:3'): the hit tests
+// and the drag read it (interact.js), so a moved kite is grabbed where it is painted.
+let _kitePlaced = new Map();
+function kitePlacedAt(key) { return _kitePlaced.get(key) || null; }
+
+// The Auto arrange button (the edit column): the pass above, once, on the pilot's say-so. Each box
+// it moves is written as an ordinary dragged position, so the pilot can go on adjusting it by
+// hand and Undo puts the lot back in one step. Run on purpose, every box may move -- ones the
+// pilot dragged and ones an earlier press placed (they never moved, so a second press after a
+// drag said "nothing moved", reported) -- except the one dragged LAST, which stays put and the
+// others make room for.
+let _arranging = false;
+function autoArrangeKites() {
+  _arranging = true;
+  try { draw(); } finally { _arranging = false; }
+  const moved = [..._kitePlaced.keys()];
+  for (const key of moved) _writeLabelAt(key, _kitePlaced.get(key));
+  _kitePlaced = new Map();
+  if (moved.length && typeof persist === 'function') persist();
+  draw();
+  return moved.length;
+}
+window.autoArrangeKites = autoArrangeKites;
+
+// The painted size of each kind, the same arithmetic drawLegArrow / drawCumTimeArrow use.
+function legKiteBoxSize(sc) {
+  if (printPxPerMm()) sc = kiteDrawScale();
+  const cell = tune('legKiteCellWidthPx') * sc;
+  return { L: cell * 2 + tune('legKiteTriangleLenPx') * sc, W: tune('legKiteHeightPx') * sc };
+}
+function cumKiteBoxSize(sc) {
+  const ppm = printPxPerMm();
+  if (ppm) {
+    const selc = (typeof legArrowSize === 'number' && legArrowSize > 0) ? legArrowSize : 1;
+    sc = (tune('cumKitePrintHeightMm') * ppm / tune('cumKiteHeightPx')) * selc;
+  }
+  return { L: (tune('cumKiteCellWidthPx') + tune('cumKiteTriangleLenPx')) * sc, W: tune('cumKiteHeightPx') * sc };
+}
+
+// Rotated boxes { x, y, ang, hl, hw }: separating-axis test.
+function _kiteBoxCorners(b) {
+  const c = Math.cos(b.ang), s = Math.sin(b.ang);
+  return [[-1, -1], [1, -1], [1, 1], [-1, 1]].map(([u, v]) =>
+    ({ x: b.x + u * b.hl * c - v * b.hw * s, y: b.y + u * b.hl * s + v * b.hw * c }));
+}
+function _polyArea(p) {
+  let a = 0;
+  for (let i = 0; i < p.length; i++) { const q = p[i], r = p[(i + 1) % p.length]; a += q.x * r.y - r.x * q.y; }
+  return Math.abs(a) / 2;
+}
+// The share of the smaller box that the other covers (0..1): one box clipped by the other.
+function _kiteBoxCover(a, b) {
+  if (!_kiteBoxesOverlap(a, b)) return 0;
+  let poly = _kiteBoxCorners(a);
+  const clip = _kiteBoxCorners(b);
+  for (let i = 0; i < 4 && poly.length; i++) {
+    const p1 = clip[i], p2 = clip[(i + 1) % 4];
+    const side = (q) => (p2.x - p1.x) * (q.y - p1.y) - (p2.y - p1.y) * (q.x - p1.x);
+    const out = [];
+    for (let j = 0; j < poly.length; j++) {
+      const cur = poly[j], prev = poly[(j + poly.length - 1) % poly.length];
+      const sc = side(cur), sp = side(prev);
+      if ((sc >= 0) !== (sp >= 0)) {
+        const t = sp / (sp - sc);
+        out.push({ x: prev.x + (cur.x - prev.x) * t, y: prev.y + (cur.y - prev.y) * t });
+      }
+      if (sc >= 0) out.push(cur);
+    }
+    poly = out;
+  }
+  const smaller = Math.min(4 * a.hl * a.hw, 4 * b.hl * b.hw);
+  return smaller > 0 ? _polyArea(poly) / smaller : 0;
+}
+function _kiteBoxesOverlap(a, b) {
+  const axes = [a.ang, a.ang + Math.PI / 2, b.ang, b.ang + Math.PI / 2];
+  for (const t of axes) {
+    const ux = Math.cos(t), uy = Math.sin(t);
+    const reach = (q) => Math.abs(q.hl * (Math.cos(q.ang) * ux + Math.sin(q.ang) * uy)) +
+                         Math.abs(q.hw * (-Math.sin(q.ang) * ux + Math.cos(q.ang) * uy));
+    const d = Math.abs((b.x - a.x) * ux + (b.y - a.y) * uy);
+    if (d >= reach(a) + reach(b)) return false;
+  }
+  return true;
+}
+
+function declutterKites(queued) {
+  _kitePlaced = new Map();
+  const gap = tune('kiteDeclutterGapPx') / 2;
+  const items = [];
+  const keep = _arranging && typeof kiteLastTouchedKey === 'function' ? kiteLastTouchedKey() : null;
+  for (const q of queued) {
+    const [fn, args, meta] = q;
+    if (!meta) continue;
+    if (_arranging) meta.fixed = meta.key === keep;
+    const size = fn === drawLegArrow ? legKiteBoxSize(args[9]) : cumKiteBoxSize(args[6]);
+    items.push({ q, meta, size, x: args[0], y: args[1], ang: args[2] });
+  }
+  // The route's waypoint discs are not to be covered either.
+  const placed = [];
+  for (let i = 0; i < state.waypoints.length; i++) {
+    if (typeof legDirWaypointVisible === 'function' && !legDirWaypointVisible(i)) continue;
+    const p = proj(state.waypoints[i]);
+    const g = typeof waypointGeom === 'function' ? waypointGeom(i) : null;
+    const r = g && Number.isFinite(g.r) ? g.r : 6;
+    placed.push({ x: p.x, y: p.y, ang: 0, hl: r, hw: r, wp: true });
+  }
+  const box = (it, x, y, ang) => ({ x, y, ang, hl: it.size.L / 2 + gap, hw: it.size.W / 2 + gap });
+  // Pilot-placed first, then nav kites, then time boxes, each in route order.
+  const rank = (it) => (it.meta.fixed ? 0 : it.meta.cum ? 2 : 1);
+  items.sort((a, b) => rank(a) - rank(b));
+  const leaders = [];
+  const allow = tune('kiteDeclutterAllowPct') / 100;
+  // How many placed boxes cover this one past the allowance. At its own spot, a box the pilot
+  // placed does not count: they were put together on purpose.
+  const conflicts = (b, home) => {
+    let n = 0;
+    for (const p of placed) {
+      if (home && p.fixed) continue;
+      if (_kiteBoxCover(b, p) > allow) n++;
+    }
+    return n;
+  };
+  for (const it of items) {
+    const m = it.meta;
+    if (m.fixed) { placed.push(Object.assign(box(it, it.x, it.y, it.ang), { fixed: true })); continue; }
+    const home = box(it, it.x, it.y, it.ang);
+    if (conflicts(home, !_arranging) === 0) { placed.push(home); continue; }
+    const maxMove = tune('kiteDeclutterMaxShift') * Math.max(it.size.L, it.size.W);
+    const cands = [];
+    if (m.cum) {
+      // Round the waypoint, and further out from it; the box keeps pointing at it.
+      const ox = it.x - m.ax, oy = it.y - m.ay;
+      for (const k of [1, 1.4, 1.8, 2.2]) {
+        for (const deg of [0, 30, -30, 60, -60, 90, -90, 120, -120, 150, -150, 180]) {
+          const t = deg * Math.PI / 180, c = Math.cos(t), s = Math.sin(t);
+          const x = m.ax + k * (ox * c - oy * s), y = m.ay + k * (ox * s + oy * c);
+          cands.push({ x, y, ang: Math.atan2(m.ay - y, m.ax - x) });
+        }
+      }
+    } else {
+      // Along its own leg, and further out on its own side; the heading stays the leg's.
+      for (const e of [0, 0.6, 1.2, 1.8]) {
+        for (const k of [0, 0.5, -0.5, 1, -1, 1.5, -1.5]) {
+          const along = k * it.size.L, out = e * it.size.W * m.side;
+          cands.push({ x: it.x + m.ux * along + m.nx * out, y: it.y + m.uy * along + m.ny * out, ang: it.ang });
+        }
+      }
+    }
+    // The nearest spot that is clear; none within reach, and it stays home, covered.
+    let best = null;
+    for (const c of cands) {
+      const moved = Math.hypot(c.x - it.x, c.y - it.y);
+      if (moved < 0.5 || moved > maxMove + 0.5 || (best && moved >= best.moved)) continue;
+      const b = box(it, c.x, c.y, c.ang);
+      if (conflicts(b, false) === 0) best = { c, b, moved };
+    }
+    if (!best) { placed.push(home); continue; }
+    placed.push(best.b);
+    const args = it.q[1];
+    args[0] = best.c.x; args[1] = best.c.y; args[2] = best.c.ang;
+    _kitePlaced.set(m.key, { x: best.c.x, y: best.c.y });
+    if (best.moved > it.size.W / 2) leaders.push([m.ax, m.ay, best.b]);
+  }
+  // From the leg or waypoint to the box's edge -- not into it, where the line showed through
+  // the translucent fill and crossed the numbers.
+  if (tune('kiteDeclutterLeader') && leaders.length) {
+    octx.save();
+    octx.strokeStyle = tune('inkColor');
+    octx.lineWidth = tune('kiteDeclutterLeaderPx');
+    for (const [ax, ay, b] of leaders) {
+      const vx = ax - b.x, vy = ay - b.y;
+      const c = Math.cos(b.ang), s = Math.sin(b.ang);
+      const va = Math.abs(vx * c + vy * s), vp = Math.abs(-vx * s + vy * c);
+      const t = Math.min(va ? b.hl / va : Infinity, vp ? b.hw / vp : Infinity);
+      if (!(t < 1)) continue;                       // the anchor is under the box itself
+      octx.beginPath(); octx.moveTo(ax, ay); octx.lineTo(b.x + vx * t, b.y + vy * t); octx.stroke();
+    }
+    octx.restore();
+  }
+}
+window.kitePlacedAt = kitePlacedAt;
 // Shared outline for cumulative-time markers and arrow-shaped text notes.
 // Coordinates are centred on the full shape, with the point on the right.
 function traceArrowBox(ctx, width, height, headLength) {
