@@ -40,6 +40,28 @@ test('Clear map switches off the extra layers the flight was planned with', asyn
   expect(await checked(page, ids)).toEqual([]);
 });
 
+test('Clear map stays active and clears an extra layer when there is no route', async ({ page }) => {
+  await boot(page);
+  await page.evaluate(() => {
+    state.waypoints = [];
+    state.legs = [];
+    state.notes = [];
+    if (window.measure) measureToggle(false, true);
+    for (const cb of document.querySelectorAll('.tb-section[data-sec="weather"] input[type="checkbox"]')) {
+      if (cb.checked) { cb.checked = false; cb.dispatchEvent(new Event('change', { bubbles: true })); }
+    }
+    refreshEditColumn();
+  });
+  const button = page.locator('#edit-col-clear');
+  await expect(button).toHaveClass(/is-dim/);
+
+  await switchOn(page, ['circuit-cb']);
+  await expect(button).not.toHaveClass(/is-dim/);
+  await button.click();
+  await expect(page.locator('#circuit-cb')).not.toBeChecked();
+  await expect(button).toHaveClass(/is-dim/);
+});
+
 test('every toggle in the Extra layers menu is cleared, not a hand-listed few', async ({ page }) => {
   await boot(page);
   // A hard-coded list would rot the next time a layer is added. Clear map walks the section,
