@@ -9971,3 +9971,9 @@ body.theme-light .compass-status { color: #a15c00; }
 
 /* The dial's long press is the compass: no text selection, callout or magnifier from the phone. */
 #rotate-dial { -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; touch-action: none; }
+
+/* The bottom-right corner spans the map's width, so its left edge stays put. Shrink-wrapped,
+   it widened when a credit line arrived after the first paint (the world relief's) and moved
+   that edge: a layout shift on every desktop boot. Its controls float right as before, and a
+   Leaflet corner takes no pointer events, so the map under it is untouched. */
+.leaflet-bottom.leaflet-right { left: 0; }
