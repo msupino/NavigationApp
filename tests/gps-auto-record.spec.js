@@ -78,7 +78,9 @@ test('a recording a reload interrupted resumes with its points', async ({ page }
   const track = [{ lat: 32.0, lng: 34.9, t: now - 120000 }, { lat: 32.02, lng: 34.9, t: now - 60000 }];
   await boot(page, {
     'navaid.gpsRecInProgress': JSON.stringify({ startT: now - 120000, auto: true, savedAt: now - 60000, track }),
+    'navaid.gpsLiveOn': '1',            // Location comes back with the reload, and takes it up
   });
+  await page.waitForFunction(() => gpsLiveOn && gpsRecording);
   const r = await page.evaluate(() => ({ on: gpsRecording, auto: gpsAutoRec, n: gpsTrack.length, start: gpsStartT }));
   expect(r).toEqual({ on: true, auto: true, n: 2, start: now - 120000 });
 });
@@ -148,4 +150,27 @@ test('the first fix centres with the automatic recording running', async ({ page
   const c = await page.evaluate(() => map.getCenter());
   expect(c.lat).toBeCloseTo(32.0, 2);
   expect(c.lng).toBeCloseTo(34.0, 2);
+});
+
+// An automatic recording has no GPS watch of its own: Location's feeds it, so the map behaves
+// exactly as Location alone does, and the phone runs one receiver, not two.
+test('the automatic recording rides on Location\'s watch', async ({ page }) => {
+  await boot(page);
+  await page.evaluate(() => startLiveLocation());
+  expect(await page.evaluate(() => ({ watches: window.__geo.length, rec: gpsRecording, own: gpsWatchId })))
+    .toEqual({ watches: 1, rec: true, own: null });
+  const t0 = Date.now();
+  await fix(page, 32.0, 34.9, t0);
+  await fix(page, 32.01, 34.9, t0 + 5000);
+  expect(await page.evaluate(() => gpsTrack.length)).toBe(2);
+});
+
+test('an automatic recording whose Location is not coming back is saved, not resumed', async ({ page }) => {
+  const now = Date.now();
+  const track = [{ lat: 32.0, lng: 34.9, t: now - 15 * 60000 }, { lat: 32.1, lng: 34.9, t: now - 60000 }];
+  await boot(page, {
+    'navaid.gpsRecInProgress': JSON.stringify({ startT: now - 15 * 60000, auto: true, savedAt: now - 60000, track }),
+  });
+  expect(await page.evaluate(() => gpsRecording)).toBe(false);
+  expect(await gpsCount(page)).toBeGreaterThanOrEqual(1);
 });
