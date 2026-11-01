@@ -369,19 +369,25 @@ function drawHeadingLine(pos, hdg, gsKt, opts) {
   // gentle turn below it); re-applying the floor here dropped every gentle one again.
   const turnRate = haveSpeed && gsKt >= minTurnKt && Number.isFinite(measuredRate) &&
     measuredRate !== 0 ? measuredRate : null;
-  const maxArcDeg = Math.max(1, finiteTuneNumber('livePredictorTurnMaxArcDeg', 60));
   const speedNmSec = haveSpeed ? gsKt / 3600 : 0;
-  const turnRadSec = Number.isFinite(turnRate) ? turnRate * Math.PI / 180 : 0;
-  // In a turn the line is the same line as in straight flight -- the same length (10 NM, or
-  // 5 minutes ahead if that is farther) and the same 2/5/10 NM and 2/5 min marks -- with the
-  // turn curving its first part: up to trendSec of flying or maxArcDeg of turn, whichever
-  // comes first, then on straight along the heading the turn ends on. Asked: "make the G1000
-  // curve line like the 10 NM line when flying straight -- same markers and length". (It was
-  // a trend vector of trendSec alone, with no marks but its own end.)
-  const trendSec = Math.max(5, finiteTuneNumber('livePredictorTurnMaxArcSec', 60));
-  const arcLimitNm = turnRadSec
-    ? speedNmSec * Math.min((maxArcDeg * Math.PI / 180) / Math.abs(turnRadSec), trendSec)
-    : Infinity;
+  const nmAtMin = (min) => gsKt * (min / 60);   // distance covered in `min` minutes at gsKt
+  // Line reaches whichever mark set extends further -- the 10 NM mark, or the 5-minute
+  // mark's own distance if that's farther out at the current speed (fast aircraft).
+  const farNm = haveSpeed
+    ? Math.max(HEADING_LINE_MARKS_NM[HEADING_LINE_MARKS_NM.length - 1],
+                nmAtMin(HEADING_LINE_MARKS_MIN[HEADING_LINE_MARKS_MIN.length - 1]))
+    : HEADING_LINE_MARKS_NM[HEADING_LINE_MARKS_NM.length - 1];
+  // In a turn the WHOLE line is one arc: the same length and the same 2/5/10 NM and 2/5 min
+  // marks as in straight flight, bending through lineDeg (a quarter circle) towards the turn.
+  // Asked: "the curve line should look like 1/4 of a circle", over "same markers and length".
+  // The bend shows which way the aircraft is turning, not where the turn rate would put it:
+  // drawn at the real rate, 90 deg is under a mile -- a hook hidden by the aircraft symbol at
+  // a normal zoom, with ten miles of straight line after it.
+  const lineDeg = Math.max(1, Math.min(180, finiteTuneNumber('livePredictorTurnLineDeg', 90)));
+  const lineSec = speedNmSec > 0 ? farNm / speedNmSec : 0;
+  const bendRate = Number.isFinite(turnRate) && lineSec > 0 ? Math.sign(turnRate) * lineDeg / lineSec : 0;
+  const turnRadSec = bendRate * Math.PI / 180;
+  const arcLimitNm = turnRadSec ? farNm : Infinity;
   const geoAtNm = (nm) => {
     let northNm, eastNm, pathHeading = h;
     if (!turnRadSec || nm <= 0) {
@@ -393,7 +399,7 @@ function drawHeadingLine(pos, hdg, gsKt, opts) {
       const endRad = hr + turnRadSec * arcSec;
       northNm = speedNmSec / turnRadSec * (Math.sin(endRad) - Math.sin(hr));
       eastNm = speedNmSec / turnRadSec * (Math.cos(hr) - Math.cos(endRad));
-      pathHeading = h + turnRate * arcSec;
+      pathHeading = h + bendRate * arcSec;
       if (nm > arcNm) {
         const straightNm = nm - arcNm;
         const endHeadingRad = pathHeading * Math.PI / 180;
@@ -425,15 +431,7 @@ function drawHeadingLine(pos, hdg, gsKt, opts) {
     const ux = dx / len, uy = dy / len;
     return { point, ux, uy, px: -uy, py: ux };
   };
-  const nmAtMin = (min) => gsKt * (min / 60);   // distance covered in `min` minutes at gsKt
   const s = proj(pos);
-  // Line reaches whichever mark set extends further -- the 10 NM mark, or the 5-minute
-  // mark's own distance if that's farther out at the current speed (fast aircraft).
-  const straightFarNm = haveSpeed
-    ? Math.max(HEADING_LINE_MARKS_NM[HEADING_LINE_MARKS_NM.length - 1],
-                nmAtMin(HEADING_LINE_MARKS_MIN[HEADING_LINE_MARKS_MIN.length - 1]))
-    : HEADING_LINE_MARKS_NM[HEADING_LINE_MARKS_NM.length - 1];
-  const farNm = straightFarNm;
   const endFrame = frameAtNm(farNm);
   const end = endFrame.point.screen;
   const ux = endFrame.ux, uy = endFrame.uy;
@@ -442,7 +440,7 @@ function drawHeadingLine(pos, hdg, gsKt, opts) {
   const pathDistances = [0];
   if (turnRadSec) {
     const curveNm = Math.min(farNm, arcLimitNm);
-    const curveDeg = Math.abs(turnRate) * curveNm / speedNmSec;
+    const curveDeg = Math.abs(bendRate) * curveNm / speedNmSec;
     const segments = Math.max(2, Math.min(120, Math.ceil(curveDeg / 3)));
     for (let i = 1; i <= segments; i++) pathDistances.push(curveNm * i / segments);
     if (farNm > curveNm + 1e-6) pathDistances.push(farNm);
@@ -516,7 +514,10 @@ function drawHeadingLine(pos, hdg, gsKt, opts) {
   }
   // Fixed-time marks: "N min". Needs a groundspeed to place at all (their distance is
   // derived from it); no secondary distance row either, same reasoning as above.
-  if (haveSpeed) {
+  // Not on the bent line: its quarter circle shows the turn's direction, not where the
+  // aircraft will be in 2 or 5 minutes -- distance only there (asked: "hide the minutes when
+  // bent, show only distance").
+  if (haveSpeed && !turnRadSec) {
     for (const min of HEADING_LINE_MARKS_MIN) {
       if (nmAtMin(min) <= farNm + 1e-9) drawMark(nmAtMin(min), ltrIsolate(min + ' min'), null, tune('liveHeadingMinTextColor'));
     }
@@ -547,7 +548,7 @@ function drawHeadingLine(pos, hdg, gsKt, opts) {
   if (typeof window !== 'undefined')
     window.__headingLine = { heading: h, marks: HEADING_LINE_MARKS_NM.slice(),
       minMarks: haveSpeed ? HEADING_LINE_MARKS_MIN.slice() : [], headingLabel,
-      curved: !!turnRadSec, turnRate, maxArcDeg, trendSec: turnRadSec ? trendSec : null, lengthNm: farNm,
+      curved: !!turnRadSec, turnRate, lineDeg: turnRadSec ? lineDeg : null, lengthNm: farNm,
       drawnMarks,
       endHeading: endFrame.point.heading,
       path: pathDistances.map(nm => {
