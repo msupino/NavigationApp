@@ -1,4 +1,4 @@
-From 6a4974fd2e4f8ff364aab61772042a36c018f0c9 Mon Sep 17 00:00:00 2001
+From 06bc73d8077b1db383dbc8b902c94ac37d8dcb79 Mon Sep 17 00:00:00 2001
 From: Marco <marco@supino.org>
 Date: Sun, 1 Nov 2026 15:15:18 +0000
 Subject: [PATCH] Architecture: the module loader runs in two phases
@@ -9,27 +9,27 @@ Subject: [PATCH] Architecture: the module loader runs in two phases
  2 files changed, 4 insertions(+)
 
 diff --git a/Architecture-he.md b/Architecture-he.md
-index 8bc68c0..3743f90 100644
+index 8bc68c0..98703ec 100644
 --- a/Architecture-he.md
 +++ b/Architecture-he.md
 @@ -51,6 +51,8 @@ app/offline-tiles.js
  
  כל מודול מצרף את הממשק הציבורי שלו ל-<span dir="ltr"><code>window.NavAid</code></span> או נשען על פונקציה גלובלית ממודול קודם. אין מערכת מודולים.
  
-+הטעינה מתבצעת **בשני שלבים**. הראשון, שמסתיים ב-<span dir="ltr"><code>app/world-offline.js</code></span>, כולל את כל מה שהמפה הראשונה צריכה. השני (תנועה חיה, Follow me, העוזר, יומן הניווט, תוספות תא הטייס, הסיור, ההצהרה, ו-<span dir="ltr"><code>app/ota.js</code></span> אחרון) נוסף אחרי שאריחי המפה הנראים נטענו, או אחרי 4 שניות (<span dir="ltr"><code>LATER_MAX_MS</code></span>), המוקדם מביניהם. הוא עדיין בסדר קבוע ועדיין לפני אירוע הטעינה של הדף, ולכן אסור לקוד בשלב הראשון לקרוא לשלב השני בזמן האתחול.
++הטעינה מתבצעת **בשני שלבים**. הראשון, שמסתיים ב-<span dir="ltr"><code>app/world-offline.js</code></span> ובהצהרה, כולל את כל מה שהמפה הראשונה צריכה. השני (תנועה חיה, Follow me, העוזר, יומן הניווט, תוספות תא הטייס, הסיור, ו-<span dir="ltr"><code>app/ota.js</code></span> אחרון) נוסף אחרי שאריחי המפה הנראים נטענו, או אחרי 4 שניות (<span dir="ltr"><code>LATER_MAX_MS</code></span>), המוקדם מביניהם. הוא עדיין בסדר קבוע ועדיין לפני אירוע הטעינה של הדף, ולכן אסור לקוד בשלב הראשון לקרוא לשלב השני בזמן האתחול.
 +
  ## מצב (State)
  
  מרחב שמות גלובלי יחיד <span dir="ltr"><code>window.NavAid</code></span> בתוספת מספר משתנים מקומיים למודול. צורת המצב המרכזית:
 diff --git a/Architecture.md b/Architecture.md
-index 041b2d2..379f8fe 100644
+index 041b2d2..0fe62f5 100644
 --- a/Architecture.md
 +++ b/Architecture.md
 @@ -45,6 +45,8 @@ app/offline-tiles.js
  
  Each module attaches its public surface to `window.NavAid` or relies on a globally-defined function from a previous module. There is no module system.
  
-+The loader runs in **two phases**. The first, ending with `app/world-offline.js`, is everything the first chart needs. The second (live traffic, Follow me, the assistant, the nav log, the flight-deck extras, the tour, the disclaimer, and `app/ota.js` last) is appended once the visible chart tiles have loaded, or after 4 s (`LATER_MAX_MS`), whichever comes first. It is still in order and still before the page's load event, so nothing in the first phase may call into the second while it boots.
++The loader runs in **two phases**. The first, ending with `app/world-offline.js` and the disclaimer, is everything the first chart needs. The second (live traffic, Follow me, the assistant, the nav log, the flight-deck extras, the tour, and `app/ota.js` last) is appended once the visible chart tiles have loaded, or after 4 s (`LATER_MAX_MS`), whichever comes first. It is still in order and still before the page's load event, so nothing in the first phase may call into the second while it boots.
 +
  ## State
  

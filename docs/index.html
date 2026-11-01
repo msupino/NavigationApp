@@ -1376,7 +1376,9 @@
         'app/gyro-turn.js' + v,
         'app/commfail.js' + v,
         'app/ui.js' + v,
-        'app/world-offline.js' + v
+        'app/world-offline.js' + v,
+        // The disclaimer is a gate before the app is used: it stays with the first chart.
+        'app/disclaimer.js' + v
       ];
       // The second phase: modules nothing needs to draw the first chart -- live traffic,
       // Follow me, the assistant, the nav log, the flight-deck extras, the tour... They are
@@ -1406,7 +1408,6 @@
         'app/gdl90.js' + v,
         'app/ble-gps.js' + v,
         'app/tour.js' + v,
-        'app/disclaimer.js' + v,
         'app/ota.js' + v
       ];
       // Subresource integrity for the pinned CDN dependencies. A wrong hash means the
