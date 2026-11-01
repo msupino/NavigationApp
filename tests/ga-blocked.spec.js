@@ -116,8 +116,8 @@ test('the gate fires only on the production host, for a person', () => {
   const fs = require('fs');
   const path = require('path');
   const html = fs.readFileSync(path.join(__dirname, '..', 'docs', 'index.html'), 'utf8');
-  // The gate is the `if` whose body loads the tag (now after the load event).
-  const m = /if \((location\.hostname === [^{]*?)\) \{(?:\s*\/\/[^\n]*)*\s*window\.addEventListener\('load'/.exec(html);
+  // The gate is the `if` whose body loads the tag (after the load event).
+  const m = /if \((location\.hostname === [^{]*?)\) \{\s*window\.addEventListener\('load'/.exec(html);
   expect(m, 'the GA gate condition').not.toBeNull();
   const cond = m[1].replace(/ +\/\/ native[^\n]*/, '');
   const gate = new Function('location', 'navigator', 'window', 'return (' + cond + ');');
