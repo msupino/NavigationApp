@@ -133,3 +133,19 @@ test('the stored copy grows with the flight and keeps its ends', async ({ page }
   const ts = p.track.map(q => q.t);
   expect(ts).toEqual([...ts].sort((a, b) => a - b));
 });
+
+// Showing location records too, and while a recording runs its handler drives the map: the
+// first fix must still centre and frame, even straight after a pan.
+test('the first fix centres with the automatic recording running', async ({ page }) => {
+  await boot(page);
+  await page.evaluate(() => {
+    startLiveLocation();
+    map.getContainer().dispatchEvent(new PointerEvent('pointerdown', { bubbles: true }));
+    map.setView([33.0, 35.0], map.getZoom());
+  });
+  expect(await page.evaluate(() => gpsRecording)).toBe(true);
+  await fix(page, 32.0, 34.0);
+  const c = await page.evaluate(() => map.getCenter());
+  expect(c.lat).toBeCloseTo(32.0, 2);
+  expect(c.lng).toBeCloseTo(34.0, 2);
+});

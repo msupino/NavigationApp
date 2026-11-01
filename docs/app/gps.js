@@ -1128,6 +1128,10 @@ function onGpsPosition(pos) {
     const comp = gpsCompassTrue(gpsLastGS);
     if (comp != null) { hdg = comp; hdgFromCompass = true; }
   }
+  // The first position on screen -- nothing to preserve yet. Showing location now starts a
+  // recording, and while one runs this path, not onLivePosition, drives the map; without the
+  // same first-fix rule a pan before the first fix left the map where it was.
+  const isFirst = !gpsOwn;
   // Same fix time as the live path: a stalled RECORDING freezes the same symbol.
   gpsOwn = { lat: pt.lat, lng: pt.lng, hdg, t: pt.t, hdgCompass: hdgFromCompass };
   gpsNoteFixArrived();
@@ -1136,7 +1140,11 @@ function onGpsPosition(pos) {
   gpsUpdateReadout();
   gpsCheckLegAlerts();
   scheduleDraw();
-  if (gpsFollow) gpsFollowRecenter(pt.lat, pt.lng);
+  // As onLivePosition: the first fix centres and frames (the flying band); later ones follow.
+  if (isFirst && gpsFollow && typeof map !== 'undefined') {
+    map.setView([pt.lat, pt.lng], gpsFollowZoom(map.getZoom(), pt.lat, pt.lng));
+  }
+  else if (gpsFollow) gpsFollowRecenter(pt.lat, pt.lng);
   gpsApplyHeadingUp();
 }
 
