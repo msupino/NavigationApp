@@ -993,10 +993,13 @@ test.describe('drift-off-course alert (gpsCheckDrift, own 2-minute timer)', () =
     await page.waitForFunction(() => typeof startGpsRecording === 'function' &&
       typeof startLiveLocation === 'function');
     const out = await page.evaluate(() => {
-      startGpsRecording();
+      // Location first, then a recording on it: Record started first would turn Location on
+      // itself, and stopping Record would then (rightly) turn it off again.
+      localStorage.setItem('navaid.autoRecord', '0');
+      startLiveLocation();
       // See the identical comment at startLiveLocation() above.
       window._gpsAlertConfirmed = true;
-      startLiveLocation();
+      startGpsRecording();
       // Not testing the confirmation gate itself here -- see the dedicated
       // "confirmation gate" describe block for that. Every other test's fix is a
       // manufactured scenario, not a real waypoint capture, so bypass it directly.

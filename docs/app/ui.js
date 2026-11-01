@@ -5691,16 +5691,22 @@ if (gpsBtn) {
   });
 }
 const liveBtn = document.getElementById('gps-live');
+// The Location button follows gpsLiveOn whoever switched it: its own press, Record (which turns
+// Location on for its recording), a resume on boot, or an error that stopped it. It was set only
+// by its own press, so a recording that turned Location on left the button unlit.
+function refreshGpsLiveButton() {
+  if (!liveBtn) return;
+  const on = typeof gpsLiveOn !== 'undefined' && !!gpsLiveOn;
+  setFooterBtn(liveBtn, on ? S.tbGpsLiveStop : S.tbGpsLive, '📍');
+  liveBtn.setAttribute('aria-pressed', on ? 'true' : 'false');
+}
+window.refreshGpsLiveButton = refreshGpsLiveButton;
 if (liveBtn) {
   if (!navigator.geolocation) { liveBtn.disabled = true; }
   liveBtn.addEventListener('click', () => {
-    if (gpsLiveOn) {
-      stopLiveLocation();
-      setFooterBtn(liveBtn, S.tbGpsLive, '📍'); liveBtn.setAttribute('aria-pressed', 'false');
-    } else {
-      startLiveLocation();
-      if (gpsLiveOn) { setFooterBtn(liveBtn, S.tbGpsLiveStop, '📍'); liveBtn.setAttribute('aria-pressed', 'true'); }
-    }
+    if (gpsLiveOn) stopLiveLocation();
+    else startLiveLocation();
+    refreshGpsLiveButton();
   });
   // Nothing else here survives a full page reload -- language switching (lang-select's
   // click handler above uses location.href, a real navigation) and any other reload
@@ -5716,10 +5722,8 @@ if (liveBtn) {
   }
   let _liveWasOn = false;
   try { _liveWasOn = lsGet('navaid.gpsLiveOn') === '1'; } catch (e) { /* */ }
-  if (_liveWasOn && navigator.geolocation && typeof startLiveLocation === 'function') {
-    startLiveLocation();
-    if (gpsLiveOn) { setFooterBtn(liveBtn, S.tbGpsLiveStop, '📍'); liveBtn.setAttribute('aria-pressed', 'true'); }
-  }
+  if (_liveWasOn && navigator.geolocation && typeof startLiveLocation === 'function') startLiveLocation();
+  refreshGpsLiveButton();
 }
 const RETURN_KEY = 'navaid.showReturn';
 const MIDLEG_KEY = 'navaid.showMidLeg';

@@ -593,17 +593,20 @@ test('live location survives a full page reload (e.g. switching language) -- res
 });
 
 test('stopping a recording keeps own-ship when live location is still on', async ({ page }) => {
+  // One watch now: a recording rides on Location's. With Location on first (its automatic
+  // recording off), Record and then Stop leave Location -- and its own-ship -- as they were.
   await page.addInitScript(() => {
-    window.__recCb = null; window.__liveCb = null; let n = 0;
-    navigator.geolocation.watchPosition = (cb) => { n++; if (n === 1) window.__recCb = cb; else window.__liveCb = cb; return n; };
+    window.__liveCb = null;
+    navigator.geolocation.watchPosition = (cb) => { window.__liveCb = cb; return 1; };
     navigator.geolocation.clearWatch = () => {};
+    try { localStorage.setItem('navaid.autoRecord', '0'); } catch (e) { /* */ }
   });
   await page.goto('?lang=en');
   await page.waitForFunction(() => typeof startGpsRecording === 'function' && typeof startLiveLocation === 'function');
   const out = await page.evaluate(() => {
-    startGpsRecording();                 // watch #1 -> __recCb
-    startLiveLocation();                 // watch #2 -> __liveCb
-    window.__recCb({ coords: { latitude: 32.0, longitude: 34.8, accuracy: 8, heading: 10, altitude: null }, timestamp: Date.now() });
+    startLiveLocation();
+    startGpsRecording();
+    window.__liveCb({ coords: { latitude: 32.0, longitude: 34.8, accuracy: 8, heading: 10, altitude: null }, timestamp: Date.now() });
     window.__liveCb({ coords: { latitude: 32.1, longitude: 34.9, accuracy: 8, heading: 20, altitude: null }, timestamp: Date.now() });
     stopGpsRecordingAndSave();           // stop recording; live still on
     return { live: gpsLiveOn, recording: gpsRecording, ownAfter: gpsOwn };
@@ -895,13 +898,16 @@ test.describe('the screen stays awake while a position is on screen', () => {
     await page.waitForFunction(() => gpsWakeLock == null);
   });
 
-  test('and the other way round', async ({ page }) => {
+  // The other way round there is nothing left on screen: a recording rides on Location, so
+  // stopping Location ends a recording started by hand too (asked: "Stopping location must stop
+  // record") -- and with nothing showing, the screen may sleep again.
+  test('stopping Location ends a hand-started recording too, and lets the screen go', async ({ page }) => {
     await bootWake(page);
-    // A recording started by hand, not the one Location starts (that one ends with Location).
     await page.evaluate(() => { localStorage.setItem('navaid.autoRecord', '0'); startLiveLocation(); startGpsRecording(); });
     await page.waitForFunction(() => gpsWakeLock != null);
     await page.evaluate(() => stopLiveLocation());
-    expect(await page.evaluate(() => gpsWakeLock != null)).toBe(true);
+    expect(await page.evaluate(() => gpsRecording)).toBe(false);
+    await page.waitForFunction(() => gpsWakeLock == null);
   });
 
   test('coming back to the foreground re-arms it for Location too', async ({ page }) => {

@@ -174,3 +174,48 @@ test('an automatic recording whose Location is not coming back is saved, not res
   expect(await page.evaluate(() => gpsRecording)).toBe(false);
   expect(await gpsCount(page)).toBeGreaterThanOrEqual(1);
 });
+
+// Reported: "Record starts location without highlight the button? Stopping location must stop
+// record". Record turns Location on (its button lights), the recording rides on Location's
+// fixes, and stopping Location stops the recording -- one started with Record is kept.
+test('Record turns Location on, lit, and its recording rides on Location', async ({ page }) => {
+  await boot(page);
+  await page.locator('#gps-record').click();
+  expect(await page.evaluate(() => [gpsLiveOn, gpsRecording, gpsAutoRec,
+    document.getElementById('gps-live').getAttribute('aria-pressed'),
+    window.__geo.length])).toEqual([true, true, false, 'true', 1]);    // one watch: Location's
+  const t0 = Date.now();
+  await fix(page, 32.0, 34.9, t0);
+  await fix(page, 32.001, 34.9, t0 + 1000);
+  expect(await page.evaluate(() => gpsTrack.length)).toBe(2);
+});
+
+test('stopping Location stops a recording started with Record, and keeps it', async ({ page }) => {
+  await boot(page);
+  await page.locator('#gps-record').click();
+  const t0 = Date.now();
+  await fix(page, 32.0, 34.9, t0);
+  await fix(page, 32.001, 34.9, t0 + 1000);                // short: Record's own is still kept
+  const before = await gpsCount(page);
+  await page.locator('#gps-live').click();
+  expect(await page.evaluate(() => [gpsLiveOn, gpsRecording,
+    document.getElementById('gps-live').getAttribute('aria-pressed'),
+    document.getElementById('gps-record').getAttribute('aria-pressed')])).toEqual([false, false, 'false', 'false']);
+  expect(await gpsCount(page)).toBe(before + 1);
+});
+
+test('stopping Record puts Location back as it found it', async ({ page }) => {
+  await boot(page);
+  // Off before: Record turned it on, so stopping Record turns it off again.
+  await page.locator('#gps-record').click();
+  await page.locator('#gps-record').click();
+  expect(await page.evaluate(() => [gpsLiveOn, gpsRecording,
+    document.getElementById('gps-live').getAttribute('aria-pressed')])).toEqual([false, false, 'false']);
+  // On before (with its automatic recording switched off): it stays on.
+  await page.evaluate(() => { localStorage.setItem('navaid.autoRecord', '0'); });
+  await page.locator('#gps-live').click();
+  await page.locator('#gps-record').click();
+  await page.locator('#gps-record').click();
+  expect(await page.evaluate(() => [gpsLiveOn, gpsRecording,
+    document.getElementById('gps-live').getAttribute('aria-pressed')])).toEqual([true, false, 'true']);
+});
