@@ -3670,6 +3670,15 @@ function refreshPrintFit() {
   const warn = document.getElementById('print-clip-warn');
   const fitBtn = document.getElementById('print-fit');
   if (!warn || !fitBtn) return;
+  // Every button that needs a route is dimmed with its reason; this runs from draw(), so after
+  // every edit (see refreshRouteButtons, ui.js).
+  if (typeof window.refreshRouteButtons === 'function') window.refreshRouteButtons();
+  // Dimmed, not disabled: a tap says why (setButtonWhy, ui.js). Disabled said nothing.
+  const fitWhy = (why, title) => {
+    if (typeof window.setButtonWhy === 'function') window.setButtonWhy(fitBtn, why || '');
+    else fitBtn.disabled = !!why;
+    fitBtn.title = title;
+  };
   const hasRoute = !!(state.waypoints && state.waypoints.length);
   // With no page chosen there is nothing to overflow, but there is still something to do:
   // Fit picks the smallest page that holds the route. It used to sit greyed out until a
@@ -3678,8 +3687,7 @@ function refreshPrintFit() {
   if (!hasRoute) {
     warn.hidden = true;
     fitBtn.hidden = false;
-    fitBtn.disabled = true;
-    fitBtn.title = S.printFitNoRoute || 'Draw a route first.';
+    fitWhy(S.printFitNoRoute || 'Draw a route first.', S.printFitNoRoute || 'Draw a route first.');
     return;
   }
   // Is there any page that COULD hold it? Ask without committing. A3 (and A4x2, the same
@@ -3695,15 +3703,13 @@ function refreshPrintFit() {
     warn.hidden = false;
     warn.textContent = S.printNoFit || 'No page size holds this route.';
     fitBtn.hidden = false;
-    fitBtn.disabled = true;
-    fitBtn.title = S.printNoFit || 'No page size holds this route.';
+    fitWhy(S.printNoFit || 'No page size holds this route.', S.printNoFit || 'No page size holds this route.');
     return;
   }
   if (!pageSize) {
     warn.hidden = true;
     fitBtn.hidden = false;
-    fitBtn.disabled = false;                       // a page can hold it: let it choose one
-    fitBtn.title = S.printFitTitle || '';
+    fitWhy('', S.printFitTitle || '');                       // a page can hold it: let it choose one
     return;
   }
   // A page IS chosen. Whether anything is clipped is the cheaper question, so ask that
@@ -3713,15 +3719,13 @@ function refreshPrintFit() {
     warn.hidden = false;
     warn.textContent = S.printNoFit || 'No page size holds this route.';
     fitBtn.hidden = false;
-    fitBtn.disabled = true;
-    fitBtn.title = S.printNoFit || 'No page size holds this route.';
+    fitWhy(S.printNoFit || 'No page size holds this route.', S.printNoFit || 'No page size holds this route.');
     return;
   }
   if (!clipped) {
     warn.hidden = true;
     fitBtn.hidden = false;
-    fitBtn.disabled = true;
-    fitBtn.title = S.printFitAlready || 'The route already fits this page.';
+    fitWhy(S.printFitAlready || 'The route already fits this page.', S.printFitAlready || 'The route already fits this page.');
     return;
   }
   warn.hidden = false;
@@ -3738,8 +3742,7 @@ function refreshPrintFit() {
     : routeInside ? (S.printClipWarnLabels || 'A label hangs past the page.')
       : (S.printClipWarn || 'The route runs past the page.');
   fitBtn.hidden = false;
-  fitBtn.disabled = false;
-  fitBtn.title = S.printFitTitle || '';
+  fitWhy('', S.printFitTitle || '');
 }
 
 function refreshOrientButton() {

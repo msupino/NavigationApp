@@ -2422,6 +2422,7 @@ window.S = Object.assign({
   errPngFail: 'PNG export failed (a map tile could not be loaded).',
   errTilesFail: function(f, t) { return f + ' of ' + t + ' map tiles failed to load — the PNG may have blank patches. Re-run the export to retry.'; },
   errNeedWps: 'Add at least two waypoints first.',
+  whyNothingToFit: 'Nothing to fit yet — draw a route first.',
   errNothingToSave: 'Nothing to save — add at least two waypoints to your route first.',
   // --- ICAO flight plan (FPL) ---
   tbFpl: '✈ Submit flight plan',
