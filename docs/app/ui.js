@@ -1672,7 +1672,9 @@ function refreshEditColumn() {
   const lockWhy = locked ? (S.editLockBlockedToast || 'Route is locked — unlock it to edit') : null;
   const empty = !(state.waypoints && state.waypoints.length) && !(state.notes && state.notes.length)
     && !(typeof measureOn === 'function' && measureOn())
-    && !document.querySelector('.tb-section[data-sec="weather"] input[type="checkbox"]:checked');
+    && !document.querySelector('.tb-section[data-sec="weather"] input[type="checkbox"]:checked')
+    // A recorded flight shown from Saved routes is cleared too (see the #clear handler).
+    && !(typeof shownTracks !== 'undefined' && Array.isArray(shownTracks) && shownTracks.length);
   setButtonWhy(add, lockWhy);
   setButtonWhy(note, lockWhy);
   setButtonWhy(undoBtn, lockWhy || ((menuUndo && menuUndo.disabled) ? (S.whyNothingToUndo || 'Nothing to undo') : null));
