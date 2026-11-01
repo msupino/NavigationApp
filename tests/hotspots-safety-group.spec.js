@@ -148,3 +148,25 @@ test('Show return path is a toggle button, dimmed with its reason on a turning r
   });
   expect(said).toEqual({ said: ['Has a turning point'], on: true });
 });
+
+// Edit is grouped by kind, with a separator between groups.
+test('Edit is split into groups by kind', async ({ page }) => {
+  await page.goto('?lang=en&nogist');
+  await page.waitForFunction(() => !!document.getElementById('autoroute-btn'));
+  const groups = await page.evaluate(() => {
+    const body = document.querySelector('.tb-section[data-sec="build"] .tb-section-body');
+    const out = [[]];
+    for (const el of body.children) {
+      if (el.classList.contains('tb-group-separator')) out.push([]);
+      else if (el.tagName === 'BUTTON') out[out.length - 1].push(el.id);
+    }
+    return out;
+  });
+  expect(groups).toEqual([
+    ['tool-add', 'tool-note', 'search-trigger'],
+    ['reverse', 'ret-btn'],
+    ['undo', 'clear'],
+    ['fit', 'tool-reset-all-markers', 'tool-reset-all-wp-names'],
+    ['autoroute-btn', 'force-snap-btn'],
+  ]);
+});
