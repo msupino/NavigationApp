@@ -6316,6 +6316,16 @@ document.getElementById('cumtime-cb').checked = showCumTime;
     }
     const retCb = document.getElementById('ret-cb');
     if (retCb) {
+      // A turning point makes the mirrored return meaningless, so it also switches it OFF --
+      // not just dims it. Left on, the button sat pressed (and stored as on) behind the dim,
+      // with no way to turn it off. Through its own change handler, so the choice is stored
+      // and the frequency callouts move back with it. Once off it stays off: removing the
+      // turn later does not switch it back on behind the pilot's back.
+      if (hasTurn && retCb.checked && !refreshTurnDependentControls._clearing) {
+        refreshTurnDependentControls._clearing = true;
+        try { retCb.checked = false; retCb.dispatchEvent(new Event('change')); }
+        finally { refreshTurnDependentControls._clearing = false; }
+      }
       retCb.disabled = hasTurn;
       // Dimmed, not disabled: a tap still says why (see button[data-toggle-for]).
       const row = document.getElementById('ret-btn');

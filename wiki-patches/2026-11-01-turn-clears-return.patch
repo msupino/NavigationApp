@@ -1,0 +1,43 @@
+From b25490decff8024ecfd3345661896ff04cb87f3c Mon Sep 17 00:00:00 2001
+From: Marco <marco@supino.org>
+Date: Sun, 1 Nov 2026 11:18:23 +0000
+Subject: [PATCH] Route and Legs: a turning point switches Show return path off
+
+---
+ Route-and-Legs-he.md | 4 ++++
+ Route-and-Legs.md    | 4 ++++
+ 2 files changed, 8 insertions(+)
+
+diff --git a/Route-and-Legs-he.md b/Route-and-Legs-he.md
+index c211608..3ad8f72 100644
+--- a/Route-and-Legs-he.md
++++ b/Route-and-Legs-he.md
+@@ -107,6 +107,10 @@
+ הטיסה: עפיפון הניווט, עפיפון הזמן המצטבר, סימוני הדקות ו[חץ שינוי התדר](Frequency-Changes-he#בדרך-חזרה).
+ סימני ההלוך בצד אחד של המסלול, וסימני החזור בצד השני.
+ 
++מסלול עם **נקודת חזרה**, בין שסומנה ב**סימון כנקודת חזרה** ובין שהמסלול חוזר על עקבותיו, כבר טס
++הלוך וחזור. בו **הצג מסלול חזרה** מעומעם ונכבה, ונגיעה בו מסבירה למה. ביטול נקודת החזרה משאיר אותו
++כבוי; הדליקו אותו שוב אם תרצו.
++
+ - הטקסט של הדרך חזרה (עפיפונים, זמנים מצטברים, מספרי דקות, קריאות) מסובב ב-180°, כך שהוא נקרא
+   ישר במפה שסובבה לטיסה הביתה.
+ - סימוני הדקות שלו נספרים מהקצה הרחוק, ב**צבע חזור**; החצים שלו ב**צבע חץ החזרה** (מראה).
+diff --git a/Route-and-Legs.md b/Route-and-Legs.md
+index d114b75..44d58b6 100644
+--- a/Route-and-Legs.md
++++ b/Route-and-Legs.md
+@@ -95,6 +95,10 @@ the right of the way it is flown: the nav kite, the cumulative-time kite, the mi
+ [frequency-change arrow](Frequency-Changes#on-the-way-back). The way out's sit on one side of the
+ track and the way back's on the other.
+ 
++A route with a **turning point**, whether marked with **Mark as turning point** or found because the
++route doubles back, already flies its way home. There, Show return path is dimmed and switches
++off, and a tap says why. Removing the turning point leaves it off; switch it back on if you want it.
++
+ - The way back's text (kites, cumulative times, minute numbers, callouts) is turned 180°, so it
+   reads upright on a chart turned round to fly home.
+ - Its minute ticks are counted from the far end, in **From color**; its arrows take **Return arrow
+-- 
+2.43.0
+
