@@ -160,13 +160,33 @@
         !navigator.webdriver &&
         typeof window.Capacitor === 'undefined' &&   // native shell loads the prod URL — keep GA browser-only
         !location.pathname.match(/^(?:\/[^/]+)?\/(?:staging|pr|branch)\//)) {
-      (function(w,d,s){var f=d.getElementsByTagName(s)[0],j=d.createElement(s);
-      j.async=true;j.src='https://www.googletagmanager.com/gtag/js?id=G-0XM5PHEK8B';
-      f.parentNode.insertBefore(j,f);})(window,document,'script');
+      // The tag (~180 KB) is fetched after the page has loaded, so it does not compete with
+      // the app and the first chart tiles; gtag() calls before then queue in dataLayer.
+      window.addEventListener('load', function () {
+        setTimeout(function () {
+          var j = document.createElement('script');
+          j.async = true; j.src = 'https://www.googletagmanager.com/gtag/js?id=G-0XM5PHEK8B';
+          document.head.appendChild(j);
+        }, 0);
+      });
       window.dataLayer = window.dataLayer || [];
       window.gtag = function(){ dataLayer.push(arguments); };
       window.gtag('js', new Date());
       window.gtag('config', 'G-0XM5PHEK8B');
+    }
+  </script>
+  <!-- Warm the connections the first view waits on: the chart and underlay tiles and the gist
+       config. Added from script, on the production host and for a person only (the same test
+       as the analytics above), so test and CI runs open no connection to these hosts. -->
+  <script>
+    if (location.hostname === 'navaid.supino.org' && !navigator.webdriver) {
+      [['https://flight-maps.com'], ['https://a.tile.openstreetmap.org'], ['https://b.tile.openstreetmap.org'],
+       ['https://gist.githubusercontent.com', 'anonymous']].forEach(function (o) {
+        var l = document.createElement('link');
+        l.rel = 'preconnect'; l.href = o[0];
+        if (o[1]) l.crossOrigin = o[1];
+        document.head.appendChild(l);
+      });
     }
   </script>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
