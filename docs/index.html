@@ -1376,7 +1376,16 @@
         'app/gyro-turn.js' + v,
         'app/commfail.js' + v,
         'app/ui.js' + v,
-        'app/world-offline.js' + v,
+        'app/world-offline.js' + v
+      ];
+      // The second phase: modules nothing needs to draw the first chart -- live traffic,
+      // Follow me, the assistant, the nav log, the flight-deck extras, the tour... They are
+      // appended once the visible chart tiles have loaded (or LATER_MAX_MS, whichever comes
+      // first), so on a slow phone connection they no longer stand between the pilot and the
+      // chart. Still before the page's load event in practice (a tile's onload is what starts
+      // them), and still in this order. ota.js stays LAST of everything, as below.
+      var LATER_MAX_MS = 4000;
+      var later = [
         'app/traffic.js' + v,
         'app/followme.js' + v,
         'app/density-altitude.js' + v,
@@ -1467,17 +1476,42 @@
           '). Check the connection and reload — the chart and route tools are unavailable ' +
           'until it loads.';
       }
-      for (var i = 0; i < srcs.length; i++) {
-        var s = document.createElement('script');
-        s.src = srcs[i];
-        if (sri[srcs[i]]) {
-          s.integrity = sri[srcs[i]];
-          s.crossOrigin = 'anonymous';
+      function append(list, then) {
+        for (var i = 0; i < list.length; i++) {
+          var s = document.createElement('script');
+          s.src = list[i];
+          if (sri[list[i]]) {
+            s.integrity = sri[list[i]];
+            s.crossOrigin = 'anonymous';
+          }
+          s.async = false;            // in-order, like parser-inserted
+          var failed = (function (src) { return function () { loadFailed(src); }; }(list[i]));
+          if (then && i === list.length - 1) {
+            s.onload = then;
+            s.onerror = (function (f) { return function () { f(); then(); }; }(failed));
+          } else {
+            s.onerror = failed;
+          }
+          document.head.appendChild(s);
         }
-        s.async = false;            // in-order, like parser-inserted
-        s.onerror = (function (src) { return function () { loadFailed(src); }; }(srcs[i]));
-        document.head.appendChild(s);
       }
+      // The first phase has run: the map exists and has asked for its tiles. Start the second
+      // when every tile layer still loading has finished (a failed tile counts as finished).
+      function startLater() {
+        var started = false;
+        function go() { if (started) return; started = true; append(later); }
+        setTimeout(go, LATER_MAX_MS);
+        try {
+          var pending = [];
+          if (typeof map !== 'undefined' && map.eachLayer && window.L && L.GridLayer) {
+            map.eachLayer(function (l) { if (l instanceof L.GridLayer && l.isLoading && l.isLoading()) pending.push(l); });
+          }
+          if (!pending.length) { go(); return; }
+          var left = pending.length;
+          pending.forEach(function (l) { l.once('load', function () { if (--left === 0) go(); }); });
+        } catch (e) { go(); }
+      }
+      append(srcs, startLater);
     }());
   </script>
   <!-- The aircraft: its type or one of the pilot's own aircraft, and the figures it brings.
