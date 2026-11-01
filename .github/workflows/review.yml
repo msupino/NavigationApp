@@ -117,27 +117,62 @@ jobs:
       github.head_ref != 'dev' ||
       github.base_ref != 'main'
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-node@v6
         with: { node-version: '22' }
-      - name: Serve docs/
-        run: npx --yes serve@14 docs -l 8080 &
+      # What production serves: the site minified by the deploy's own minifier (a copy of it,
+      # scripts/minify-site.mjs, kept identical by tests/speed-budget.spec.js).
+      - name: Install the minifier
+        run: npm ci --no-audit --no-fund
+      - name: Serve a minified copy of docs/
+        run: |
+          cp -r docs /tmp/site
+          rm -rf /tmp/site/byop
+          node scripts/minify-site.mjs /tmp/site
+          npx --yes serve@14 /tmp/site -l 8080 &
       - name: Wait for server
         run: |
           for i in 1 2 3 4 5 6 7 8 9 10; do
             curl -fs http://localhost:8080 >/dev/null && break
             sleep 1
           done
+      # Three runs, judged on the median score and the worst layout shift: one run on a shared
+      # runner swings by 15-20 points, so the floor is loose -- it is there to catch a big drop
+      # (a heavy library on the critical path, a page that never goes quiet), not noise. The
+      # byte budget, the quiet network and layout shift are checked exactly by
+      # tests/speed-budget.spec.js.
       - name: Lighthouse
         run: |
-          npx --yes lighthouse@12 http://localhost:8080 \
-            --chrome-flags="--headless --no-sandbox --disable-gpu" \
-            --blocked-url-patterns="googletagmanager|google-analytics|doubleclick" \
-            --output=json --output=html --output-path=./lighthouse \
-            --only-categories=performance,accessibility,best-practices,seo
+          for i in 1 2 3; do
+            npx --yes lighthouse@12 http://localhost:8080 \
+              --chrome-flags="--headless --no-sandbox --disable-gpu" \
+              --blocked-url-patterns="googletagmanager|google-analytics|doubleclick" \
+              --output=json --output=html --output-path=./lighthouse-$i \
+              --only-categories=performance,accessibility,best-practices,seo
+          done
+      - name: Speed floor
+        run: |
+          node -e '
+            const fs = require("fs");
+            const runs = [1, 2, 3].map(i => JSON.parse(fs.readFileSync("lighthouse-" + i + ".report.json", "utf8")));
+            const perf = runs.map(r => Math.round(r.categories.performance.score * 100)).sort((a, b) => a - b);
+            const cls = Math.max(...runs.map(r => r.audits["cumulative-layout-shift"].numericValue));
+            const lcp = runs.map(r => Math.round(r.audits["largest-contentful-paint"].numericValue)).sort((a, b) => a - b);
+            const median = perf[1];
+            // Keep the median run as the report.
+            const pick = runs.findIndex(r => Math.round(r.categories.performance.score * 100) === median) + 1;
+            for (const ext of ["json", "html"]) fs.copyFileSync("lighthouse-" + pick + ".report." + ext, "lighthouse.report." + ext);
+            console.log("performance " + perf.join(" / ") + " (median " + median + "), LCP " + lcp.join(" / ") + " ms, worst CLS " + cls.toFixed(4));
+            const PERF_FLOOR = 40, CLS_MAX = 0.01;
+            let bad = false;
+            if (median < PERF_FLOOR) { console.log("::error::Lighthouse performance median " + median + " is under the floor " + PERF_FLOOR); bad = true; }
+            if (cls > CLS_MAX) { console.log("::error::Layout shift " + cls.toFixed(4) + " is over " + CLS_MAX); bad = true; }
+            process.exit(bad ? 1 : 0);
+          '
       - uses: actions/upload-artifact@v4
+        if: always()
         with:
           name: lighthouse-report
           path: |
