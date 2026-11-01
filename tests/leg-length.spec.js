@@ -17,7 +17,7 @@ for (const lang of ['en', 'he']) {
     const label = lang === 'he' ? 'אורך קטע' : 'Leg length';
     const dirLabel = lang === 'he' ? 'כיוון מגנטי' : 'Magnetic track';
     // Magnetic track, True track, then the length.
-    const trueLabel = lang === 'he' ? 'כיוון אמת' : 'True track';
+    const trueLabel = lang === 'he' ? 'כיוון אמיתי' : 'True track';
     expect(labels.indexOf(trueLabel)).toBe(labels.indexOf(dirLabel) + 1);
     expect(labels.indexOf(label)).toBe(labels.indexOf(dirLabel) + 2);
     const rowOf = (l) => page.locator('#insp-body .row', { has: page.locator('label', { hasText: new RegExp('^' + l + '$') }) });

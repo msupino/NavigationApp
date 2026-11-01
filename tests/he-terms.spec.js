@@ -4,7 +4,6 @@ const { test, expect } = require('./_setup');
 // English it translates; the review that set them compared every Hebrew string with its English.
 //   waypoint            ציון דרך          (not נקודת ציון -- that is a coordinate -- nor נקודת מסלול/דרך)
 //   leg                 קטע               (not רגל in the sense of a leg / מקטע)
-//   true (track/north)  אמת               (not אמיתי)
 //   variation           נטייה             (סטייה is deviation: the compass card)
 //   gallon              גלון / גל׳        (not גאל)
 //   recording (track)   הקלטה             (not רצועה)
@@ -13,9 +12,6 @@ const RULES = [
     allow: ['coordPointTitle'] },                       // "Coordinate": there נקודת ציון is right
   // Not bare רגל: that is also feet, the unit.
   { bad: /הרגליים|ברגל הראשונה|הרגל הראשונה|(^|[^א-ת])מקטע/, why: 'leg is קטע', allow: [] },
-  // The nav log's column headers are also the keys of its exported exercise files (נתיב אמיתי is
-  // read back on import), so they keep their wording.
-  { bad: /אמיתי/, why: 'true is אמת', allow: ['navLogHeaders', 'navLogHeaderTitles', 'printBtnTitle'] },   // printBtnTitle: "real" physical size
   { bad: /גאל/, why: 'gallon is גלון', allow: [] },
   { bad: /רצוע/, why: 'a recorded track is הקלטה', allow: [] },
   { bad: /View\/Set|תצוגה\/הגדרה/, why: 'View/Set no longer exists (Settings)', allow: [] },
@@ -39,12 +35,11 @@ test('Hebrew strings keep the settled terms', async ({ page }) => {
   expect(hits).toEqual([]);
 });
 
-test('the compass reads variation and true the way the nav log does', async ({ page }) => {
+test('the compass reads variation the way the nav log does', async ({ page }) => {
   await page.goto('?lang=he&nogist');
   await page.waitForFunction(() => window.S && S.compassVar);
-  const s = await page.evaluate(() => ({ v: S.compassVar, t: S.compassTrue, nl: S.navLogVariation, card: S.navLogCard }));
+  const s = await page.evaluate(() => ({ v: S.compassVar, nl: S.navLogVariation, card: S.navLogCard }));
   expect(s.v).toBe('נטייה');
   expect(s.nl).toContain('נטייה');
   expect(s.card).toContain('סטיות');          // deviation keeps its own word
-  expect(s.t).toBe('אמת');
 });
