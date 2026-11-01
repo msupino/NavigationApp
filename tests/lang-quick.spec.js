@@ -66,7 +66,7 @@ for (const lang of ['he', 'en']) test(`settings rows stay one line with the cont
   await page.evaluate(() => document.querySelector('.deck-btn-menu').click());
   await page.locator('.tb-section[data-sec="settings"] .tb-section-head').click();
   const rows = await page.evaluate(() => [...document.querySelectorAll('.tb-section[data-sec="settings"] .tb-section-body > .navtoggle')]
-    // Name-then-control rows; a checkbox row ("Phone's own brightness") has its box first and no
+    // Name-then-control rows; a checkbox row ("System brightness") has its box first and no
     // control column to line up with.
     .filter(r => r.getClientRects().length && !r.querySelector('input[type="checkbox"]')).map(r => {
       const kids = [...r.children].filter(k => k.getClientRects().length);

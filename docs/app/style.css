@@ -1518,42 +1518,53 @@ body.deck-on .leaflet-control.edit-col-ctrl {
 }
 .leaflet-control.zulu-clock.dragging { cursor: grabbing; }
 
-/* GPS recording indicator — a pulsing red dot inside a rounded square, pinned
-   to the top-right corner only while a track records. Sits below the top band
-   so it clears the Zulu clock (English top-right / Hebrew top-left). */
+/* GPS recording indicator: a red REC pill with a pulsing white dot, pinned to the top corner
+   only while a track records. It was a 30px dark square with a red dot that faded to a quarter
+   on each pulse: over a light chart it read as a stop button, not as "this flight is being
+   recorded" (asked: "make it visible"). Now the strongest red on the screen, white text, a
+   white ring so it holds on the dark charts too. */
 #gps-rec-indicator {
   position: fixed;
   top: 58px;
   right: 12px;
-  z-index: 1200;
-  width: 30px;
-  height: 30px;
+  /* Above the search card (1500): that card can be dragged anywhere on a desktop (gist), and
+     over the pill it hid the only sign that the flight is being recorded. It takes no pointer
+     events, so typing in the card underneath still works. Below search results (2350) and
+     the dialogs (2400). */
+  z-index: 1550;
+  height: 28px;
+  padding: 0 11px 0 9px;
   box-sizing: border-box;
-  border: 2px solid #e6194b;
-  border-radius: 5px;
-  background: rgba(20, 18, 18, 0.85);
+  border-radius: 14px;
+  border: 2px solid #fff;
+  background: #d7263d;
+  color: #fff;
+  font: 800 13px/1 system-ui, sans-serif;
+  letter-spacing: .06em;
   display: flex;
   align-items: center;
-  justify-content: center;
-  box-shadow: 0 1px 6px rgba(0, 0, 0, 0.5);
+  gap: 7px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.45);
   pointer-events: none;
 }
 #gps-rec-indicator[hidden] { display: none; }
-/* Desktop: under the Zulu clock, on its side. At 58px it sat over the clock's last digits in
-   English, and in Hebrew -- clock top-LEFT, the docked search card top-right -- under the card
-   (z-index 1500 to its 1200): recording showed nothing. The phone keeps its place: the deck
-   has no docked card and its clock lives in the strip. */
-body:not(.deck-on) #gps-rec-indicator { top: 82px; }
-html[dir="rtl"] body:not(.deck-on) #gps-rec-indicator { right: auto; left: 12px; }
 #gps-rec-indicator .gps-rec-dot {
-  width: 14px;
-  height: 14px;
+  width: 10px;
+  height: 10px;
   border-radius: 50%;
-  background: #e6194b;
+  background: #fff;
   animation: gps-rec-pulse 1.3s ease-in-out infinite;
 }
-@keyframes gps-rec-pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.25; } }
+@keyframes gps-rec-pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.35; } }
 @media (prefers-reduced-motion: reduce) { #gps-rec-indicator .gps-rec-dot { animation: none; } }
+/* Phone: under the GPS chip, which shares the row under the strip -- the wider pill would sit
+   on its end. */
+body.deck-on #gps-rec-indicator { top: calc(var(--navaid-deck-strip-h, 46px) + 48px); }
+/* Desktop: under the Zulu clock, on its side. At 58px it sat over the clock's last digits in
+   English, and in Hebrew -- clock top-LEFT, the docked search card top-right -- under the card:
+   recording showed nothing. */
+body:not(.deck-on) #gps-rec-indicator { top: 82px; }
+html[dir="rtl"] body:not(.deck-on) #gps-rec-indicator { right: auto; left: 12px; }
 
 /* Hebrew (RTL): the floating menu bar lives top-right on desktop, so default
    the Zulu clock to the top-LEFT corner instead of stacking beneath the bar.
@@ -6042,6 +6053,8 @@ body.theme-light .search-ex code { color: #1d6fe0; }
     right: 12px;
   }
   :where(html.menubar) #search-overlay.docked.dragging { cursor: grabbing; }
+  /* Pinned by the gist (featureSearchDrag off): nothing to grab. */
+  :where(html.menubar) #search-overlay.docked.search-pinned { cursor: auto; }
   /* Dismissable here too: ✕ (or Ctrl-F while focused) puts it away, and the
      choice is remembered. Ctrl-F / the toolbar button brings it back. */
 
