@@ -964,24 +964,55 @@
     cvfrCoverage(undefined, undefined, { pruneOtherLayers: true }).then(setReport).catch(() => {});
   }
 
+  // The automatic transfer is thousands of tile requests. Started at load, it ran for every
+  // visitor -- one who looked once and left as well as the pilot -- and a page load that never
+  // went quiet made PageSpeed give up ("RPC::DEADLINE_EXCEEDED"). It now waits until the app
+  // is in use: the first tap or key, or offlineCvfrStartSec on screen. The native app keeps
+  // starting at load: it is installed to be flown with.
+  let autoArmed = false;
   function scheduleAuto() {
+    if (!autoArmed) return;
     const go = () => { auditAndMaintain().catch(() => {}); };
     if (window.requestIdleCallback) window.requestIdleCallback(go, { timeout: 8000 });
     else setTimeout(go, 4000);
   }
+  const ARM_EVENTS = ['pointerdown', 'keydown'];
+  let armTimer = 0;
+  function armAuto() {
+    if (autoArmed) return;
+    autoArmed = true;
+    clearTimeout(armTimer);
+    scheduleAuto();
+  }
+  // The timer counts time on screen: a tab opened in the background does not start it.
+  function armTimerWhenShown() {
+    clearTimeout(armTimer);
+    if (document.hidden) return;
+    const sec = typeof tune === 'function' ? Number(tune('offlineCvfrStartSec')) : 60;
+    armTimer = setTimeout(armAuto, (Number.isFinite(sec) ? Math.max(0, sec) : 60) * 1000);
+  }
+  function waitForUse() {
+    if (window.NavAidNativeTiles && NavAidNativeTiles.enabled) { armAuto(); return; }
+    // once: each listener goes by itself; the one not fired stays, and does nothing (armAuto
+    // returns at once), as does the visibility one.
+    for (const e of ARM_EVENTS) window.addEventListener(e, armAuto, { capture: true, once: true, passive: true });
+    document.addEventListener('visibilitychange', () => { if (!autoArmed) armTimerWhenShown(); });
+    armTimerWhenShown();
+  }
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', wire);
   else wire();
-  if (document.readyState === 'complete') scheduleAuto();
-  else window.addEventListener('load', scheduleAuto);
+  if (document.readyState === 'complete') waitForUse();
+  else window.addEventListener('load', waitForUse);
   window.addEventListener('online', scheduleAuto);
 
   window.NavAidOfflineTiles = {
     offlineTileList, cvfrPlan, chartPlan, areaPlan, routeTileDistanceSq, prioritizeRouteTiles, reprioritizeRemaining,
     cvfrCoverage, chartCoverage, areaCoverage, connectionSuitable, automaticCvfrWanted,
-    downloadPack, fetchFloor, deletePack, packSize, auditAndMaintain, scheduleAuto,
+    downloadPack, fetchFloor, deletePack, packSize, auditAndMaintain, scheduleAuto, armAuto,
     connectionUnknownOnPhone, automaticDownloadAgreed,
     downloadChart, deleteChart, downloadArea, deleteArea, screenArea, readPacks, wantedTileUrls, openManager,
     offlineTileCount, previewDeployment, TILE_CACHE, OFFLINE_MIN_Z, OFFLINE_MAX_Z, AREA_TILE_LIMIT,
+    get autoArmed() { return autoArmed; },
   };
 }());

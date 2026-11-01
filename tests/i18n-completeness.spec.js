@@ -2,6 +2,11 @@
 // English text. The dataset URLs are the deliberate exception: they are
 // locale-independent (same files, Hebrew text inside) and the Hebrew file says so.
 const { test, expect } = require('./_setup');
+const fs = require('fs');
+const path = require('path');
+// The SOURCE, from disk: the deployed suite serves the minified site, where a mangled local
+// can read like an S.<key> and a fallback string may be re-quoted.
+const src = (p) => fs.readFileSync(path.join(__dirname, '..', 'docs', p), 'utf8');
 
 const URL_KEYS = ['routeGraphUrl', 'airfieldsUrl', 'airfieldHoursUrl', 'routeTemplatesUrl', 'vorUrl', 'commfailUrl', 'worldCountriesUrl'];
 
@@ -86,14 +91,14 @@ test('every S.<key> referenced in code is defined, so no English fallback is rea
   // to 10 of the 16 scripts the app loads -- traffic.js, followme.js, density-altitude.js,
   // editor.js, alt-pair-directions.js and route-graph-shapes.js were never scanned, so an
   // English fallback added in any of them was invisible to this test.
-  const undefinedKeys = await page.evaluate(async () => {
-    const html = await (await fetch('index.html')).text();
-    const files = [...new Set([...html.matchAll(/'(app\/[a-z0-9-]+\.js)'/g)].map(m => m[1]))];
+  const html = src('index.html');
+  const files = [...new Set([...html.matchAll(/'(app\/[a-z0-9-]+\.js)'/g)].map(m => m[1]))];
+  const texts = Object.fromEntries(files.map(f => { try { return [f, src(f)]; } catch (e) { return [f, '']; } }));
+  const undefinedKeys = await page.evaluate(async ({ files, texts }) => {
     if (files.length < 12) return ['index.html: script list not found (' + files.length + ')'];
     const out = [];
     for (const f of files) {
-      let text = '';
-      try { text = await (await fetch(f)).text(); } catch (e) { continue; }
+      const text = texts[f];
       // Only the `S.key || 'fallback'` form: a bare S.key may be an optional
       // string that the code deliberately treats as absent.
       for (const m of text.matchAll(/\bS\.([A-Za-z][A-Za-z0-9_]*)\s*\|\|\s*['\`"]/g)) {
@@ -102,7 +107,7 @@ test('every S.<key> referenced in code is defined, so no English fallback is rea
       }
     }
     return out;
-  });
+  }, { files, texts });
   expect(undefinedKeys).toEqual([]);
 });
 
