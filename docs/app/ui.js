@@ -6255,10 +6255,20 @@ document.getElementById('cumtime-cb').checked = showCumTime;
   window.refreshTurnDependentControls = function () {
     const hasTurn = (typeof legRetraceTurnIndex === 'function') && legRetraceTurnIndex() >= 0;
     const why = hasTurn ? ((S && S.tbDisabledByTurn) || '') : '';
+    // With no route there is nothing to reverse or reset: dimmed, and a tap says so
+    // (setButtonWhy) -- rather than a confirm about resetting markers that do not exist.
+    const noRoute = !state.waypoints.length;
     const rev = document.getElementById('reverse');
     if (rev) {
+      setButtonWhy(rev, !hasTurn && state.waypoints.length < 2 ? ((S && S.reverseNoRoute) || 'No route to reverse') : '');
       rev.disabled = hasTurn;
       rev.title = hasTurn ? why : ((S && S.tbReverseTitle) || '');
+    }
+    for (const [id, title] of [['tool-reset-all-markers', 'tbResetAllMarkersTitle'], ['tool-reset-all-wp-names', 'tbResetAllWpNamesTitle']]) {
+      const b = document.getElementById(id);
+      if (!b) continue;
+      setButtonWhy(b, noRoute ? ((S && S.resetNoRoute) || 'Draw a route first') : '');
+      b.title = (S && S[title]) || '';
     }
     const retCb = document.getElementById('ret-cb');
     if (retCb) {

@@ -170,3 +170,29 @@ test('Edit is split into groups by kind', async ({ page }) => {
     ['autoroute-btn', 'force-snap-btn'],
   ]);
 });
+
+// With no route there is nothing to reset or reverse: dimmed, and a tap says why instead of
+// asking to reset markers that do not exist. A route brings them back.
+test('Reset and Reverse are dimmed with no route, and say why', async ({ page }) => {
+  await page.goto('?lang=en&nogist');
+  await page.waitForFunction(() => typeof refreshTurnDependentControls === 'function' && typeof syncLegs === 'function');
+  const ids = ['tool-reset-all-markers', 'tool-reset-all-wp-names', 'reverse'];
+  const dim = () => page.evaluate((list) => list.map(id => document.getElementById(id).getAttribute('aria-disabled')), ids);
+  expect(await dim()).toEqual(['true', 'true', 'true']);
+  const out = await page.evaluate(() => {
+    window.__said = []; window.__asked = 0;
+    const real = window.showToast;
+    window.showToast = (m, o) => { window.__said.push(String(m)); return real && real(m, o); };
+    const ac = window.appConfirm;
+    window.appConfirm = (...a) => { window.__asked++; return ac(...a); };
+    document.getElementById('tool-reset-all-markers').click();
+    return { said: window.__said.slice(), asked: window.__asked };
+  });
+  expect(out.asked).toBe(0);
+  expect(out.said.join(' ')).toContain('Draw a route first');
+  await page.evaluate(() => {
+    state.waypoints = [{ lat: 32.1, lng: 34.8, name: 'A' }, { lat: 32.3, lng: 35.0, name: 'B' }];
+    syncLegs(); draw();
+  });
+  expect(await dim()).toEqual([null, null, null]);
+});
