@@ -355,15 +355,30 @@
     <button id="tool-add" class="tool" data-i18n="tbAddWp" data-i18n-title="tbAddWpTitle"></button>
     <button id="tool-note" class="tool" data-i18n="tbAddNote" data-i18n-title="tbAddNoteTitle"></button>
     <button id="search-trigger" type="button" data-i18n="tbSearchOpen" data-i18n-title="tbSearchOpenTitle"></button>
+    <!-- Edit is grouped by kind, a separator between groups: putting points on the map; the
+         route's direction; taking edits back; tidying the layout; how adding a point behaves. -->
+    <div class="tb-group-separator" aria-hidden="true"></div>
     <button id="reverse" data-i18n="tbReverse" data-i18n-title="tbReverseTitle"></button>
-    <label class="navtoggle" data-i18n-title="tbShowReturnTitle">
-      <input type="checkbox" id="ret-cb"> <span data-i18n="tbShowReturn"></span>
-    </label>
+    <!-- A toggle button like the rest of Edit; it drives the hidden checkbox (see button[data-toggle-for]). -->
+    <button type="button" id="ret-btn" data-toggle-for="ret-cb" aria-pressed="false" data-i18n="tbShowReturn" data-i18n-title="tbShowReturnTitle"></button>
+    <input type="checkbox" id="ret-cb" hidden>
+    <div class="tb-group-separator" aria-hidden="true"></div>
     <button id="undo" data-i18n="tbUndo" data-i18n-title="tbUndoTitle" disabled></button>
     <button id="clear" data-i18n="tbClear" data-i18n-title="tbClearTitle"></button>
+    <div class="tb-group-separator" aria-hidden="true"></div>
     <button id="fit" data-i18n="tbFit" data-i18n-title="tbFitTitle"></button>
     <button id="tool-reset-all-markers" type="button" data-i18n="tbResetAllMarkers" data-i18n-title="tbResetAllMarkersTitle"></button>
     <button id="tool-reset-all-wp-names" type="button" data-i18n="tbResetAllWpNames" data-i18n-title="tbResetAllWpNamesTitle"></button>
+    <!-- How adding a point behaves -- route building, so here after the tools that build, not
+         under Map with what is drawn. Toggle buttons, not checkbox rows: Edit is a list of
+         buttons, and on reads in the toolbar's selected blue like any pressed one. Each drives
+         its hidden checkbox, which keeps the handlers, storage and gist defaults it always had.
+         Auto-route ships off: it changes what the pilot's own route contains, so it is opt-in. -->
+    <div class="tb-group-separator" aria-hidden="true"></div>
+    <button type="button" id="autoroute-btn" data-toggle-for="autoroute-cb" aria-pressed="false" data-i18n="tbAutoRoute" data-i18n-title="tbAutoRouteTitle"></button>
+    <input type="checkbox" id="autoroute-cb" hidden>
+    <button type="button" id="force-snap-btn" data-toggle-for="force-snap-cb" aria-pressed="false" data-i18n="tbForceSnap" data-i18n-title="tbForceSnapTitle"></button>
+    <input type="checkbox" id="force-snap-cb" hidden>
   </div>
     </div>
 
@@ -418,14 +433,6 @@
         <label class="navtoggle" data-i18n-title="tbShowDriftTitle">
           <input type="checkbox" id="drift-cb" checked> <span data-i18n="tbShowDrift"></span>
         </label>
-        <label class="navtoggle" data-i18n-title="tbInspectorTrackingTitle">
-          <input type="checkbox" id="insp-tracking-cb"> <span data-i18n="tbInspectorTracking"></span>
-        </label>
-        <!-- Route BUILDING, not display: adding a point follows the published corridor.
-             Ships off -- it changes what the pilot's own route contains, so it is opt-in. -->
-        <label class="navtoggle" data-i18n-title="tbAutoRouteTitle">
-          <input type="checkbox" id="autoroute-cb"> <span data-i18n="tbAutoRoute"></span>
-        </label>
         <label class="navtoggle" data-i18n-title="tbShowMidLegTitle">
           <input type="checkbox" id="mid-cb"> <span data-i18n="tbShowMidLeg"></span>
         </label>
@@ -441,9 +448,6 @@
         </label>
         <label class="navtoggle" data-i18n-title="tbShowReportingTitle">
           <input type="checkbox" id="reporting-cb"> <span data-i18n="tbShowReporting"></span>
-        </label>
-        <label class="navtoggle" data-i18n-title="tbForceSnapTitle">
-          <input type="checkbox" id="force-snap-cb"> <span data-i18n="tbForceSnap"></span>
         </label>
         <button id="tool-magnifier" type="button" data-i18n="tbMagnifier" data-i18n-title="tbMagnifierTitle" style="width:100%;margin-top:4px;padding:4px 8px"></button>
       </div>
@@ -1001,6 +1005,15 @@
             <option value="gps" data-i18n="tbAltSourceGps"></option>
             <option value="baro" data-i18n="tbAltSourceBaro"></option>
           </select>
+        </label>
+        <!-- How the app records, not what the map draws: showing location records the flight
+             too; a recording too short to be one is dropped. -->
+        <label class="navtoggle" data-i18n-title="tbAutoRecordTitle">
+          <input type="checkbox" id="auto-record-cb" checked> <span data-i18n="tbAutoRecord"></span>
+        </label>
+        <!-- What a tap does while the position shows: behaviour, not something the map draws. -->
+        <label class="navtoggle" data-i18n-title="tbInspectorTrackingTitle">
+          <input type="checkbox" id="insp-tracking-cb"> <span data-i18n="tbInspectorTracking"></span>
         </label>
         <!-- Reference tables a pilot sets up once and consults: the frequency table and the
              altitude pairs, moved here from Charts. -->
