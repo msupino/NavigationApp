@@ -12096,6 +12096,37 @@ refreshToolbarDesktopMenu();
 function onToolbarDesktopMenuChange(fn) {
   toolbarDesktopMenuListeners.push(fn);
 }
+// The live readout (fixes, time, speed, altitude, pressure) in a frame of its own under the
+// desktop menu bar. Inside the bar it lengthened the bar's last row the moment Location or
+// Record started, and the whole bar wrapped onto two rows -- reported: "recording or location
+// changes the menu layout, make the additional info in a new frame, not change top menu size".
+// The element itself moves (same id: gpsSetReadout writes it, the phone deck reads it), and
+// moves back when the layout stops being the desktop menu bar.
+(function readoutFrame() {
+  const el = document.getElementById('gps-readout');
+  if (!el || !el.parentNode) return;
+  const home = el.parentNode;
+  const frame = document.createElement('div');
+  frame.id = 'gps-readout-frame';
+  document.body.appendChild(frame);
+  // Under the bar's actual bottom, as the GPS chip is (gps-status.js): the bar can wrap to a
+  // second row on a narrower screen. The chip steps down below this frame while it shows.
+  const tb = document.getElementById('toolbar');
+  const setTop = () => {
+    const r = tb && tb.getClientRects().length ? tb.getBoundingClientRect() : null;
+    frame.style.top = Math.round((r ? r.bottom : 50) + 8) + 'px';
+  };
+  const place = () => {
+    const desk = document.documentElement.classList.contains('menubar');
+    if (desk && el.parentNode !== frame) frame.appendChild(el);
+    else if (!desk && el.parentNode === frame) home.appendChild(el);
+    setTop();
+  };
+  place();                                  // the class may already be set by index.html
+  onToolbarDesktopMenuChange(place);
+  window.addEventListener('resize', setTop);
+  if (window.ResizeObserver && tb) new ResizeObserver(setTop).observe(tb);
+})();
 
 function refreshMapAfterToolbarModeChange() {
   requestAnimationFrame(() => {

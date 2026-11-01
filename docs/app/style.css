@@ -10003,3 +10003,33 @@ body.theme-light .compass-status { color: #a15c00; }
    under its strip, and a paint between ui.js and deck.js showed it jump (PageSpeed: layout
    shift). They appear in place instead; an element appearing is not a shift. */
 html:not(.nav-booted) .leaflet-control-container { visibility: hidden; }
+
+/* The live readout's own frame under the desktop menu bar (ui.js readoutFrame), centred like the
+   GPS chip, which steps down below it while it shows (gps-status.js). Same surface as the menu bar in both
+   themes. Shown only while the readout is live and has a value. */
+#gps-readout-frame { display: none; }
+:where(html.menubar) #gps-readout-frame:has(> .gps-readout.live-active:not(:empty)) {
+  display: block;
+  position: fixed;
+  top: 58px;                    /* set from the bar's real bottom by ui.js readoutFrame */
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 901;
+  max-width: calc(100vw - 132px);
+  padding: 5px 14px;
+  border: 1px solid #3a3434;
+  border-radius: 9px;
+  background: rgba(20, 18, 18, 0.92);
+  color: #f2f2f2;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.35);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+:where(html.menubar) body.theme-light #gps-readout-frame:has(> .gps-readout.live-active:not(:empty)) {
+  color: #1f252c;
+  background: rgba(250, 252, 255, 0.98);
+  border-color: #c6ccd6;
+  box-shadow: 0 2px 12px rgba(31, 37, 44, 0.16);
+}
+#gps-readout-frame > .gps-readout { margin: 0; opacity: 1; font-weight: 600; font-variant-numeric: tabular-nums; }
