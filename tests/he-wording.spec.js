@@ -15,7 +15,7 @@ test('Hebrew says what the English says', async ({ page }) => {
     varC: S.compassVar, varHint: S.tbSecSettingsHint, card: S.navLogCard,
   }));
   expect(s.overwrite).toContain('להחליף');          // was "לשמור על" -- to keep, the opposite of overwrite
-  expect(s.flown).toContain('נטוס');               // the leg is flown; it does not fly
+  expect(s.flown).toContain('את הקטע הזה כבר טסים');   // the leg is flown (by you); it does not fly
   expect(s.cas).toContain('מכוילת');               // CAS is calibrated airspeed
   expect(s.exp).toContain('FDR');
   expect(s.imp).toBe('ייבא מסלול מקובץ JSON או GPX');

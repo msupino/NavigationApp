@@ -305,7 +305,7 @@ window.S = {
   startRouteHere: '➕ התחל מסלול כאן',
   addToRoute: '➕ הוסף למסלול',
   alreadyOnRoute: '✓ כבר במסלול',
-  trackFlownTwiceToast: 'הקטע הזה כבר נטוס הלוך ושוב — אפשר לטוס מסלול פעמיים, פעם בכל כיוון',
+  trackFlownTwiceToast: 'את הקטע הזה כבר טסים הלוך ושוב — אפשר לטוס מסלול פעמיים, פעם בכל כיוון',
   emptyRouteHint: 'לחץ על נקודה במפה כדי להתחיל מסלול',
   fpHeadersNarrow: { dist: 'NM', speed: 'kt', alt: 'גובה', time: 'זמן', fuel: 'דלק',
     cumTime: 'מצטבר', cumFuel: 'דלק מצטבר' },
