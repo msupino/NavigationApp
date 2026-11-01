@@ -27,7 +27,7 @@ test('the hotspot switch is in the Safety group of View/Set', async ({ page }) =
   expect(where.section).toBe('view');
   expect(where.heading).toBe('Safety');
   // ...beside the other safety switches, not stranded at the end of the section.
-  expect(where.after).toEqual(expect.arrayContaining(['reporting-cb', 'force-snap-cb']));
+  expect(where.after).toEqual(expect.arrayContaining(['reporting-cb']));
 });
 
 // It ships on, and the gist is what turns it off for everyone -- the same lever every other
@@ -93,4 +93,15 @@ test('and a choice made after the reset is kept', async ({ page }) => {
     return document.getElementById('hotspot-cb').checked;
   });
   expect(kept).toBe(true);                  // an explicit choice still beats the gist
+});
+
+// Behaviour, not display: these rows left Map for the section that owns what they do.
+test('route-building and location-behaviour switches live outside Map', async ({ page }) => {
+  await page.goto('?lang=en&nogist');
+  await page.waitForFunction(() => !!document.getElementById('force-snap-cb'));
+  const sec = await page.evaluate(() => Object.fromEntries(
+    ['autoroute-cb', 'force-snap-cb', 'insp-tracking-cb', 'auto-record-cb']
+      .map(id => [id, document.getElementById(id).closest('.tb-section').dataset.sec])));
+  expect(sec).toEqual({ 'autoroute-cb': 'build', 'force-snap-cb': 'build',
+    'insp-tracking-cb': 'settings', 'auto-record-cb': 'settings' });
 });

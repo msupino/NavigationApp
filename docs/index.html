@@ -364,6 +364,16 @@
     <button id="fit" data-i18n="tbFit" data-i18n-title="tbFitTitle"></button>
     <button id="tool-reset-all-markers" type="button" data-i18n="tbResetAllMarkers" data-i18n-title="tbResetAllMarkersTitle"></button>
     <button id="tool-reset-all-wp-names" type="button" data-i18n="tbResetAllWpNames" data-i18n-title="tbResetAllWpNamesTitle"></button>
+    <!-- How adding a point behaves -- route building, so here after the tools that build, not
+         under Map with what is drawn. Auto-route ships off: it changes what the pilot's own
+         route contains, so it is opt-in. -->
+    <div class="tb-group-separator" aria-hidden="true"></div>
+    <label class="navtoggle" data-i18n-title="tbAutoRouteTitle">
+      <input type="checkbox" id="autoroute-cb"> <span data-i18n="tbAutoRoute"></span>
+    </label>
+    <label class="navtoggle" data-i18n-title="tbForceSnapTitle">
+      <input type="checkbox" id="force-snap-cb"> <span data-i18n="tbForceSnap"></span>
+    </label>
   </div>
     </div>
 
@@ -418,14 +428,6 @@
         <label class="navtoggle" data-i18n-title="tbShowDriftTitle">
           <input type="checkbox" id="drift-cb" checked> <span data-i18n="tbShowDrift"></span>
         </label>
-        <label class="navtoggle" data-i18n-title="tbInspectorTrackingTitle">
-          <input type="checkbox" id="insp-tracking-cb"> <span data-i18n="tbInspectorTracking"></span>
-        </label>
-        <!-- Route BUILDING, not display: adding a point follows the published corridor.
-             Ships off -- it changes what the pilot's own route contains, so it is opt-in. -->
-        <label class="navtoggle" data-i18n-title="tbAutoRouteTitle">
-          <input type="checkbox" id="autoroute-cb"> <span data-i18n="tbAutoRoute"></span>
-        </label>
         <label class="navtoggle" data-i18n-title="tbShowMidLegTitle">
           <input type="checkbox" id="mid-cb"> <span data-i18n="tbShowMidLeg"></span>
         </label>
@@ -441,9 +443,6 @@
         </label>
         <label class="navtoggle" data-i18n-title="tbShowReportingTitle">
           <input type="checkbox" id="reporting-cb"> <span data-i18n="tbShowReporting"></span>
-        </label>
-        <label class="navtoggle" data-i18n-title="tbForceSnapTitle">
-          <input type="checkbox" id="force-snap-cb"> <span data-i18n="tbForceSnap"></span>
         </label>
         <button id="tool-magnifier" type="button" data-i18n="tbMagnifier" data-i18n-title="tbMagnifierTitle" style="width:100%;margin-top:4px;padding:4px 8px"></button>
       </div>
@@ -1006,6 +1005,10 @@
              too; a recording too short to be one is dropped. -->
         <label class="navtoggle" data-i18n-title="tbAutoRecordTitle">
           <input type="checkbox" id="auto-record-cb" checked> <span data-i18n="tbAutoRecord"></span>
+        </label>
+        <!-- What a tap does while the position shows: behaviour, not something the map draws. -->
+        <label class="navtoggle" data-i18n-title="tbInspectorTrackingTitle">
+          <input type="checkbox" id="insp-tracking-cb"> <span data-i18n="tbInspectorTracking"></span>
         </label>
         <!-- Reference tables a pilot sets up once and consults: the frequency table and the
              altitude pairs, moved here from Charts. -->
