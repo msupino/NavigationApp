@@ -1525,6 +1525,12 @@ function toggleTrackOverlay(entry) {
 }
 function persistShownTrackIds() {
   try { localStorage.setItem(SHOWN_TRACKS_KEY, JSON.stringify(shownTracks.map(t => t.id))); } catch (e) { /* */ }
+  _refreshClearForTracks();
+}
+// Clear map also removes a shown track, so its dim ("the map is already empty") must follow
+// the overlay being shown or hidden, not only route edits.
+function _refreshClearForTracks() {
+  if (typeof window !== 'undefined' && typeof window.refreshEditColumn === 'function') window.refreshEditColumn();
 }
 function loadShownTrackOverlays() {
   _shownTracksBooted = true;
@@ -1538,7 +1544,7 @@ function loadShownTrackOverlays() {
   // Heal the stored key when it drifted from what we restored (an old multi-id
   // list, or ids whose entries were since deleted), so it matches reality.
   if (ids.length !== shownTracks.length) persistShownTrackIds();
-  if (shownTracks.length) scheduleDraw();
+  if (shownTracks.length) { _refreshClearForTracks(); scheduleDraw(); }
 }
 
 // Total great-circle length of a track (NM) — for library row meta.
