@@ -1238,6 +1238,7 @@ function startGpsRecording(opts) {
   if (!gpsLiveOn) gpsOwn = null;
   gpsStartT = o.resume && Number.isFinite(o.resume.startT) ? o.resume.startT : Date.now();
   _gpsRecSavedAt = 0;
+  _gpsRecSimp = gpsTrack.slice(); _gpsRecSimpUpTo = gpsTrack.length;   // a resumed track is already simplified
   gpsResetLegAlerts();
   gpsRequestNotifyPermission();
   gpsMaybeStartDriftTimer();
@@ -1267,6 +1268,9 @@ function startGpsRecording(opts) {
 // is kept in storage as it grows, so a reload resumes it instead of losing it.
 var gpsAutoRec = false;
 var _gpsRecSavedAt = 0;
+// The stored copy grows by simplifying only the fixes since the last save: re-simplifying the
+// whole track every 10 s is seconds of work on a phone once a long flight nears the point cap.
+var _gpsRecSimp = [], _gpsRecSimpUpTo = 0;
 const AUTO_REC_KEY = 'navaid.autoRecord';
 const REC_PROGRESS_KEY = 'navaid.gpsRecInProgress';
 function autoRecordOn() {
@@ -1291,7 +1295,13 @@ function gpsSaveRecProgress(force) {
   if (!force && now - _gpsRecSavedAt < 10000) return;
   _gpsRecSavedAt = now;
   try {
-    const track = simplifyTrack(gpsTrack, GPS_SIMPLIFY_EPS_DEG);
+    if (gpsTrack.length > _gpsRecSimpUpTo) {
+      const from = Math.max(0, _gpsRecSimpUpTo - 1);          // overlap one fix so the pieces join
+      const piece = simplifyTrack(gpsTrack.slice(from), GPS_SIMPLIFY_EPS_DEG);
+      _gpsRecSimp = _gpsRecSimp.concat(_gpsRecSimpUpTo > 0 ? piece.slice(1) : piece);
+      _gpsRecSimpUpTo = gpsTrack.length;
+    }
+    const track = _gpsRecSimp;
     localStorage.setItem(REC_PROGRESS_KEY, JSON.stringify({ startT: gpsStartT, auto: gpsAutoRec, savedAt: now, track }));
   } catch (e) { /* storage full or unavailable: the live recording goes on regardless */ }
 }
@@ -1312,6 +1322,7 @@ function gpsResumeOrSaveRecording() {
     return gpsRecording ? 'resumed' : null;
   }
   gpsClearRecProgress();
+  if (p.track.length < 2) return null;                 // nothing worth saving, and nothing to say
   gpsTrack = p.track; gpsStartT = p.startT; gpsAutoRec = !!p.auto; gpsRecording = true;
   const entry = stopGpsRecordingAndSave();
   return entry ? 'saved' : 'dropped';

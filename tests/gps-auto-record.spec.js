@@ -100,3 +100,36 @@ test('the gist can withdraw the option', async ({ page }) => {
   expect(await page.evaluate(() => gpsRecording)).toBe(false);
   expect(await page.locator('#auto-record-cb').evaluate(el => el.closest('label').hidden)).toBe(true);
 });
+
+test('a stale leftover with no real track is cleared quietly', async ({ page }) => {
+  const old = Date.now() - 3 * 3600000;
+  await page.addInitScript(() => {
+    window.__said = [];
+    window.addEventListener('DOMContentLoaded', () => {
+      const real = window.showToast;
+      window.showToast = (m, o) => { window.__said.push(String(m)); return real && real(m, o); };
+    });
+  });
+  await boot(page, {
+    'navaid.gpsRecInProgress': JSON.stringify({ startT: old, auto: false, savedAt: old, track: [{ lat: 32, lng: 34.9, t: old }] }),
+  });
+  expect(await page.evaluate(() => gpsRecording)).toBe(false);
+  expect(await page.evaluate(() => localStorage.getItem('navaid.gpsRecInProgress'))).toBeNull();
+  expect(await page.evaluate(() => window.__said.filter(m => /track/i.test(m)))).toEqual([]);
+});
+
+test('the stored copy grows with the flight and keeps its ends', async ({ page }) => {
+  await boot(page);
+  await page.evaluate(() => startGpsRecording());
+  const t0 = Date.now();
+  for (let i = 0; i < 40; i++) {
+    await fix(page, 32 + i * 0.01, 34.9 + (i % 7 === 0 ? 0.02 : 0), t0 + i * 20000);
+    if (i % 10 === 9) await page.evaluate(() => gpsSaveRecProgress(true));
+  }
+  const p = await page.evaluate(() => JSON.parse(localStorage.getItem('navaid.gpsRecInProgress')));
+  expect(p.track.length).toBeGreaterThan(2);
+  expect(p.track[0]).toMatchObject({ lat: 32, lng: 34.92 });   // i = 0 is one of the kinks
+  expect(p.track[p.track.length - 1].lat).toBeCloseTo(32.39, 5);
+  const ts = p.track.map(q => q.t);
+  expect(ts).toEqual([...ts].sort((a, b) => a - b));
+});
