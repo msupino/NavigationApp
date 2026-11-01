@@ -54,6 +54,11 @@ test('every key the tuning panel groups is a key that exists', async ({ page }) 
 
 test('withdrawing it dims the button rather than leaving it dead', async ({ page }) => {
   await boot(page);
+  // With no route it is dimmed for that reason too; this is about the gist switch.
+  await page.evaluate(() => {
+    state.waypoints = [{ lat: 32.1, lng: 34.8, name: 'A' }, { lat: 32.4, lng: 35.1, name: 'B' }];
+    syncLegs();
+  });
   const btn = page.locator('#route-check-btn');
   await expect(btn).toBeEnabled();
 

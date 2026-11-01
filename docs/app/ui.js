@@ -44,11 +44,15 @@ function setButtonWhy(btn, why) {
 window.setButtonWhy = setButtonWhy;
 // One listener for all of them, in the capture phase so it runs before the button's own handler.
 window.addEventListener('click', (e) => {
+  // Route actions dim from draw(); a tap in the same frame as an edit must not be refused on a
+  // stale answer, so ask again first (cheap: a few attribute reads).
+  if (typeof window.refreshRouteButtons === 'function') window.refreshRouteButtons();
   const b = e.target && e.target.closest && e.target.closest('[aria-disabled="true"][data-why]');
   if (!b) return;
   e.preventDefault();
   e.stopImmediatePropagation();
-  if (typeof showToast === 'function') showToast(b.dataset.why);
+  // A refusal, not an acknowledgement: the longer floor, like refuse().
+  if (typeof showToast === 'function') showToast(b.dataset.why, { warn: true });
 }, true);
 // Dim a hazard layer's Extra-layers row when nothing is in force across the look-ahead. Dimmed
 // means not usable: the box does not toggle, and a tap says why (setButtonWhy's listener). The
@@ -1673,6 +1677,8 @@ function refreshEditColumn() {
   setButtonWhy(note, lockWhy);
   setButtonWhy(undoBtn, lockWhy || ((menuUndo && menuUndo.disabled) ? (S.whyNothingToUndo || 'Nothing to undo') : null));
   setButtonWhy(document.getElementById('edit-col-clear'), lockWhy || (empty ? (S.whyNothingToClear || 'The map is already empty') : null));
+  // The menu's Clear map is the same action: the same dim, the same reason.
+  setButtonWhy(document.getElementById('clear'), lockWhy || (empty ? (S.whyNothingToClear || 'The map is already empty') : null));
   // Route check reads the plan, it does not edit it, so the lock leaves it alone; it dims when
   // there is no route to check (two points, as the check itself requires) or the gist has
   // withdrawn the feature.
@@ -1686,6 +1692,44 @@ function refreshEditColumn() {
 }
 window.refreshEditColumn = refreshEditColumn;
 refreshEditColumn();
+// Buttons that act on the route, dimmed while there is not enough route for them to do
+// anything -- each with the reason a tap used to refuse with, so the tap still says it
+// (setButtonWhy). Before, they all looked live and most answered an empty map with a refusal.
+// Called from refreshPrintFit, which draw() runs after every edit.
+function refreshRouteButtons() {
+  const wps = (state.waypoints || []).length;
+  const legs = (state.legs || []).length;
+  // Written only when the answer changes: this runs on every draw (pan, zoom, drag), and
+  // rewriting the same attributes each frame costs style work for nothing.
+  const set = (el, reason) => {
+    if (!el) return;
+    const r = reason || '';
+    if ((el.dataset.why || '') === r && el.hasAttribute('aria-disabled') === !!r) return;
+    setButtonWhy(el, r);
+  };
+  const why = (id, reason) => set(document.getElementById(id), reason);
+  const noLegs = legs === 0 ? (S.errNoLegs || 'No legs yet') : '';
+  const needTwo = wps < 2 ? (S.errNeedWps || 'Add at least two waypoints first.') : '';
+  // Fit frames the route -- or the print page when one is chosen, which needs no route.
+  const noFit = !wps && !(typeof pageSize !== 'undefined' && pageSize)
+    ? (S.whyNothingToFit || 'Nothing to fit yet — draw a route first.') : '';
+  why('fit', noFit);
+  why('edit-col-fit', noFit);
+  why('plan', noLegs);
+  // The phone bar's Plan also closes an open plan, so it dims only while the plan is closed.
+  const deckPlan = document.querySelector('.deck-btn-plan');
+  if (deckPlan) set(deckPlan, (typeof fpOpen !== 'undefined' && fpOpen) ? '' : noLegs);
+  why('nav-log', noLegs);
+  why('share', needTwo);
+  why('fly', needTwo);
+  why('mosaic-btn', wps ? '' : (S.mosaicEmpty || 'Add route waypoints first.'));
+  // Route check: the gist withdrawing it keeps its own disabled state (refreshRouteCheckBtn).
+  const rc = document.getElementById('route-check-btn');
+  if (rc && !(typeof tune === 'function' && tune('featureRouteCheck') === false)) {
+    set(rc, wps < 2 ? (S.routeCheckNeedRoute || 'Draw a route first.') : '');
+  }
+}
+window.refreshRouteButtons = refreshRouteButtons;
 // Clear map is available while any extra layer is shown, even on an otherwise empty chart.
 // Layer handlers persist their own toggles; refreshing here also keeps the Clear button's
 // dim cue in step with direct checkbox changes and the quick layer controls.

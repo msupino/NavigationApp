@@ -3670,6 +3670,9 @@ function refreshPrintFit() {
   const warn = document.getElementById('print-clip-warn');
   const fitBtn = document.getElementById('print-fit');
   if (!warn || !fitBtn) return;
+  // Every button that needs a route is dimmed with its reason; this runs from draw(), so after
+  // every edit (see refreshRouteButtons, ui.js).
+  if (typeof window.refreshRouteButtons === 'function') window.refreshRouteButtons();
   const hasRoute = !!(state.waypoints && state.waypoints.length);
   // With no page chosen there is nothing to overflow, but there is still something to do:
   // Fit picks the smallest page that holds the route. It used to sit greyed out until a
