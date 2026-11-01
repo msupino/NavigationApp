@@ -1521,6 +1521,9 @@
       // The first phase has run: the map exists and has asked for its tiles. Start the second
       // when every tile layer still loading has finished (a failed tile counts as finished).
       function startLater() {
+        // The first phase has run, deck.js included: the map's controls are where they will
+        // stay, and may show (style.css, html.nav-booted).
+        document.documentElement.classList.add('nav-booted');
         var started = false;
         function go() { if (started) return; started = true; append(later); }
         setTimeout(go, LATER_MAX_MS);

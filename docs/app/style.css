@@ -9971,3 +9971,10 @@ body.theme-light .compass-status { color: #a15c00; }
 
 /* The dial's long press is the compass: no text selection, callout or magnifier from the phone. */
 #rotate-dial { -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; touch-action: none; }
+
+
+/* The map's controls show once the first loading phase has run. Before that they could paint
+   where they do not stay: on a phone the deck (deck.js, body.deck-on) moves the edit column
+   under its strip, and a paint between ui.js and deck.js showed it jump (PageSpeed: layout
+   shift). They appear in place instead; an element appearing is not a shift. */
+html:not(.nav-booted) .leaflet-control-container { visibility: hidden; }
