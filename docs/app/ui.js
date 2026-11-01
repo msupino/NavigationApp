@@ -181,7 +181,7 @@ const MENU_ICONS = {
   'tool-add': 'addWp', 'tool-note': 'addNote', 'search-trigger': 'search', reverse: 'reverse',
   undo: 'undo', clear: 'trash', fit: 'fit', 'tool-reset-all-markers': 'reset',
   'tool-reset-all-wp-names': 'reset', 'tool-magnifier': 'magnifier',
-  'autoroute-btn': 'map', 'force-snap-btn': 'addWp',
+  'autoroute-btn': 'map', 'force-snap-btn': 'addWp', 'ret-btn': 'direct',
   'theme-toggle': (b) => (/☀|light|בהיר/i.test(b.textContent) ? 'sun' : 'moon'),
   'route-templates': 'templates', 'freq-table': 'antenna', 'alt-pairs': 'altPairs',
   'nav-log': 'form', charts: 'charts', 'sigwx-btn': 'globe', 'pwx-btn': 'wind',
@@ -6158,10 +6158,11 @@ window.showReturnFeatureOn = showReturnFeatureOn;
 function refreshShowReturnFeature() {
   const on = showReturnFeatureOn();
   const cb = document.getElementById('ret-cb');
-  const row = cb && cb.closest('label');
+  const row = document.getElementById('ret-btn');
   if (!on) window.showReturn = false;
   if (row) row.hidden = !on;
   if (cb) cb.checked = !!window.showReturn;
+  if (typeof window.refreshToggleButtons === 'function') window.refreshToggleButtons();
 }
 window.refreshShowReturnFeature = refreshShowReturnFeature;
 refreshShowReturnFeature();
@@ -6262,9 +6263,10 @@ document.getElementById('cumtime-cb').checked = showCumTime;
     const retCb = document.getElementById('ret-cb');
     if (retCb) {
       retCb.disabled = hasTurn;
-      const row = retCb.closest('label');
+      // Dimmed, not disabled: a tap still says why (see button[data-toggle-for]).
+      const row = document.getElementById('ret-btn');
       if (row) {
-        row.classList.toggle('navtoggle-disabled', hasTurn);
+        if (hasTurn) row.setAttribute('aria-disabled', 'true'); else row.removeAttribute('aria-disabled');
         row.title = hasTurn ? why : ((S && S.tbShowReturnTitle) || '');
       }
     }
@@ -11051,6 +11053,12 @@ document.querySelectorAll('button[data-toggle-for]').forEach((btn) => {
   const cb = document.getElementById(btn.dataset.toggleFor);
   if (!cb) return;
   btn.addEventListener('click', () => {
+    // Dimmed (its checkbox is disabled, e.g. Show return path on a route with a turning point):
+    // say why rather than do nothing.
+    if (cb.disabled) {
+      if (btn.title && typeof showToast === 'function') showToast(btn.title);
+      return;
+    }
     cb.checked = !cb.checked;
     cb.dispatchEvent(new Event('change', { bubbles: true }));
   });

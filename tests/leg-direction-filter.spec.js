@@ -961,7 +961,7 @@ test.describe('a turning point disables reverse and show-return', () => {
       const rev = document.getElementById('reverse');
       const ret = document.getElementById('ret-cb');
       return { rev: rev.disabled, ret: ret.disabled,
-               dimmed: ret.closest('label').classList.contains('navtoggle-disabled'),
+               dimmed: document.getElementById('ret-btn').getAttribute('aria-disabled') === 'true',
                why: rev.title };
     });
 

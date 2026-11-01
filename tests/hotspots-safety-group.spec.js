@@ -122,3 +122,29 @@ test('Auto-route and Snap are toggle buttons that drive their checkbox', async (
     await expect(b).toHaveAttribute('aria-pressed', 'false');
   }
 });
+
+// Show return path joins them; on a route with a turning point it is dimmed, and a tap says why.
+test('Show return path is a toggle button, dimmed with its reason on a turning route', async ({ page }) => {
+  await page.goto('?lang=en&nogist');
+  await page.waitForFunction(() => typeof window.refreshToggleButtons === 'function' && typeof refreshShowReturnFeature === 'function');
+  await page.evaluate(() => {
+    const orig = window.tune;
+    window.tune = (k) => (k === 'featureShowReturn' ? true : orig(k));
+    refreshShowReturnFeature();
+  });
+  const b = page.locator('#ret-btn');
+  expect(await b.evaluate(el => el.hidden)).toBe(false);
+  await b.evaluate(el => el.click());
+  await expect(b).toHaveAttribute('aria-pressed', 'true');
+  expect(await page.evaluate(() => window.showReturn)).toBe(true);
+  // Dim it the way a turning point does, and tap: nothing flips, the reason is said.
+  const said = await page.evaluate(() => {
+    const cb = document.getElementById('ret-cb'), btn = document.getElementById('ret-btn');
+    cb.disabled = true; btn.setAttribute('aria-disabled', 'true'); btn.title = 'Has a turning point';
+    window.__said = []; const real = window.showToast;
+    window.showToast = (m, o) => { window.__said.push(String(m)); return real && real(m, o); };
+    btn.click();
+    return { said: window.__said, on: window.showReturn };
+  });
+  expect(said).toEqual({ said: ['Has a turning point'], on: true });
+});
