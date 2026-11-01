@@ -7098,6 +7098,9 @@ function syncLegs() {
   // leg-direction picker has anything to divide.
   if (typeof refreshLegDirEnabled === 'function') refreshLegDirEnabled();
   if (typeof refreshTurnDependentControls === 'function') refreshTurnDependentControls();
+  // Route actions dim when there is not enough route for them (ui.js); draw() asks too, but a
+  // tap can land before the next frame.
+  if (typeof window.refreshRouteButtons === 'function') window.refreshRouteButtons();
 }
 
 // Canonical -- the same key whichever way the leg is flown. The graph stores a segment in

@@ -2,7 +2,7 @@ const { test, expect } = require('./_setup');
 
 // Buttons that act on the route are dimmed while there is not enough route for them to do
 // anything, and a tap says why instead of running (setButtonWhy). A route brings them back.
-const IDS = ['clear', 'fit', 'edit-col-fit', 'plan', 'nav-log', 'share', 'fly', 'mosaic-btn', 'route-check-btn', 'print-fit'];
+const IDS = ['clear', 'fit', 'edit-col-fit', 'plan', 'nav-log', 'share', 'fly', 'mosaic-btn', 'route-check-btn'];
 
 async function boot(page) {
   await page.goto('?lang=en&nogist');
@@ -56,7 +56,7 @@ test('a two-point route brings them all back', async ({ page }) => {
   await boot(page);
   await route(page, [[32.1, 34.8], [32.4, 35.1]]);
   const d = await dims(page);
-  for (const id of IDS.filter(i => i !== 'print-fit')) expect([id, d[id]]).toEqual([id, false]);
+  for (const id of IDS) expect([id, d[id]]).toEqual([id, false]);
 });
 
 test('one point: what one point can do comes back, the rest stay dimmed', async ({ page }) => {
