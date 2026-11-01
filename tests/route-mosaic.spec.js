@@ -118,6 +118,9 @@ test('opening the mosaic closes the toolbar dropdown', async ({ page }) => {
   await page.evaluate(() => {
     const sec = document.querySelector('.tb-section[data-sec="charts"]');
     sec.classList.add('open');
+    // The button is dimmed with no route; this is about the dropdown.
+    state.waypoints = [{ lat: 32.18, lng: 34.83, name: 'LLHZ' }];
+    syncLegs();
   });
   await page.evaluate(() => document.getElementById('mosaic-btn').click());
   await expect(page.locator('.tb-section[data-sec="charts"].open')).toHaveCount(0);
@@ -205,12 +208,18 @@ test('mosaic zoom and size sliders each have a reset-to-default button', async (
   await expect(page.locator('.route-mosaic-size .route-mosaic-zoom-val')).toHaveText(defSize + 'px');
 });
 
-test('mosaic with no waypoints shows an empty message', async ({ page }) => {
+test('with no waypoints the mosaic button is dimmed, and a tap says why', async ({ page }) => {
   await boot(page);
-  await page.evaluate(() => { state.waypoints = []; });
-  await page.evaluate(() => document.getElementById('mosaic-btn').click());
-  const modal = page.locator('.route-mosaic-modal');
-  await expect(modal).toBeVisible();
-  await expect(modal.locator('.route-mosaic-empty')).toBeVisible();
-  await expect(modal.locator('.route-mosaic-cell')).toHaveCount(0);
+  const out = await page.evaluate(() => {
+    state.waypoints = []; syncLegs();
+    window.__said = [];
+    const real = window.showToast;
+    window.showToast = (m, o) => { window.__said.push(String(m)); return real && real(m, o); };
+    const b = document.getElementById('mosaic-btn');
+    b.click();
+    return { dim: b.getAttribute('aria-disabled'), said: window.__said };
+  });
+  expect(out.dim).toBe('true');
+  expect(out.said).toEqual(['Add route waypoints first.']);
+  await expect(page.locator('.route-mosaic-modal')).toHaveCount(0);
 });
