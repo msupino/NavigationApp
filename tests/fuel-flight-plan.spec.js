@@ -34,7 +34,7 @@ async function openFlightPlan(page) {
 }
 
 // Read (legFuel of row 0, totalFuel from tfoot) from the flight table.
-// Find the fuel column by matching its header text ("Fuel (gal)" or "דלק (גלון)").
+// Find the fuel column by matching its header text ("Fuel (gal)" or "דלק (גאל)").
 async function readFuelCells(page) {
   return page.evaluate(() => {
     const table = document.querySelector('.flight-table');
