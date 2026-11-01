@@ -10041,3 +10041,19 @@ body.tour-live-preview .leaflet-control.voice-ctrl,
 body.tour-live-preview .leaflet-control.orient-ctrl,
 body.tour-live-preview .leaflet-control.follow-ctrl { display: block !important; }
 body.tour-live-preview #gps-rec-indicator { display: flex !important; }
+
+/* A pressed menu-bar button keeps its blue under the mouse. The footer buttons' hover wash
+   (.footer-link:hover, more specific than the pressed rule) replaced it, so Location or Record
+   looked switched OFF exactly while the pointer was on it (reported: "mouse over button removes
+   the highlight"). Slightly darker blue is the hover feedback, as for the section buttons. */
+:where(html.menubar) #toolbar button.footer-link[aria-pressed="true"]:hover,
+:where(html.menubar) #toolbar button[aria-pressed="true"]:hover {
+  background: #195fc2;
+  border-color: #195fc2;
+}
+:where(html.menubar) body.theme-light #toolbar button.footer-link[aria-pressed="true"]:hover,
+:where(html.menubar) body.theme-light #toolbar button[aria-pressed="true"]:hover {
+  color: #fff;
+  background: #195fc2;
+  border-color: #195fc2;
+}
