@@ -3206,7 +3206,7 @@ window.S = Object.assign({
   tbAutoRecordTitle: 'Showing your location also records the flight. When location stops, a recording too short to be a flight is not kept.',
   gpsAutoRecShort: (min, nm) => 'Short recording not kept (under ' + min + ' min or ' + nm + ' nm)',
   tbInspectorTrackingTitle: 'Let a tap open the inspector while your position is on the map. Off by default: in flight the chart is what you are reading.',
-  inspectorTrackingBlocked: 'The panel stays shut while your position is showing — turn it on in View/Set.',
+  inspectorTrackingBlocked: 'The panel stays shut while your position is showing — turn it on in Settings.',
   tbShowDrift: 'Show drift lines',
   tbShowDriftTitle: 'Show 10-degree drift reference lines at each leg end',
   tbShowAirfields: 'Show/pin airfields',
@@ -3531,7 +3531,7 @@ window.S = Object.assign({
   tbGpsRecordTitle: 'Start recording your flown track from the device GPS; Stop saves it to your routes',
   tbGpsStop: 'Stop',
   tbGpsLive: 'Location',
-  tbGpsLiveTitle: 'Show your live position on the map (device GPS, no recording)',
+  tbGpsLiveTitle: 'Show your live position on the map (device GPS); records the flight too while Record automatically with location is on',
   tbGpsLiveStop: 'Hide',
   // ATIS reminder: fires once, a set time out from the destination.
   // Last light (#667): fires once per flight, when the planned arrival is after the end of
