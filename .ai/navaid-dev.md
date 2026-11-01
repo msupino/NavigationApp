@@ -1122,14 +1122,14 @@ AES-GCM/MQTT retained-message protocol, and clears the retained fix on normal ex
 the broker.
 
 The shared predictor is used by real GPS/recording, simulator, and Follow Me fixes. Two fresh,
-timed ground-track samples can bend it into a constant-rate turn. In a turn the line is a
-G1000-style **trend vector**: only `livePredictorTurnMaxArcSec` (60 s) of flying ahead, curving
-through at most `livePredictorTurnMaxArcDeg` (60°) and then straight to the end of that time,
-with a `1 min` tick at its end and **no** 10 NM tail; marks beyond the vector are not drawn
-(`drawHeadingLine`, `window.__headingLine.lengthNm` / `.trendSec`). Rolled out, the full straight
-line with its 2/5/10 NM and 2/5 minute marks returns. Do not reintroduce the long tail: a
-half-mile arc under a 10 NM line hides behind the aircraft symbol ("the curve line lost its
-curve"). One sample, compass-only direction, less than 10 kt, a turn below the floor
+timed ground-track samples can bend it into a constant-rate turn. In a turn the **whole line is
+one quarter-circle arc** (`livePredictorTurnLineDeg`, 90°) bending the way of the turn: as long as
+the straight line (10 NM, or 5 min ahead if farther), with the 2/5/10 NM marks along it and **no
+minute marks** (`drawHeadingLine`; `window.__headingLine.lengthNm` / `.lineDeg` / `.drawnMarks`).
+The bend shows the turn's direction, not where its rate would put the aircraft: drawn at the real
+rate, 90° is under a mile and hides behind the aircraft symbol. Asked for in Nov 2026 ("same
+markers and length", then "like 1/4 of a circle", "hide the minutes when bent"), replacing the
+one-minute trend vector and the 60 s / 60° arc caps (`livePredictorTurnMaxArcSec/Deg`, removed). One sample, compass-only direction, less than 10 kt, a turn below the floor
 (`livePredictorTurnMinDegSec`, or the statistically-significant gentle-turn test down to
 `livePredictorTurnGentleDegSec`), a turn above 4°/s, or a sample older than six seconds falls
 back to the straight predictor. The thresholds, arc, trend time, hold time, and smoothing are
