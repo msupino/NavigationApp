@@ -12,6 +12,7 @@ test('Hebrew says what the English says', async ({ page }) => {
     imp: S.tbImportTitle,
     blocked: S.inspectorTrackingBlocked,
     live: S.tbGpsLiveTitle,
+    varC: S.compassVar, varHint: S.tbSecSettingsHint, card: S.navLogCard,
   }));
   expect(s.overwrite).toContain('להחליף');          // was "לשמור על" -- to keep, the opposite of overwrite
   expect(s.flown).toContain('נטוס');               // the leg is flown; it does not fly
@@ -20,4 +21,8 @@ test('Hebrew says what the English says', async ({ page }) => {
   expect(s.imp).toBe('ייבא מסלול מקובץ JSON או GPX');
   expect(s.blocked).toContain('בהגדרות');          // the switch lives in Settings
   expect(s.live).not.toContain('ללא הקלטה');       // Location records too now
+  // Variation is נטייה; deviation is סטייה (the compass card) -- the compass said סטייה for VAR.
+  expect(s.varC).toBe('נטייה');
+  expect(s.varHint).toContain('נטייה');
+  expect(s.card).toContain('סטיות');
 });
