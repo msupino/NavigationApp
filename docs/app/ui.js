@@ -6540,6 +6540,15 @@ document.getElementById('limit-kites-cb').onchange = e => {
       if (typeof window.simStop === 'function') simStop();    // saves navaid.simOn
     }
   };
+  // The footer's plane button disconnects a live simulator directly (below): the same stop as
+  // the panel's own button, so the panel's label and state stay in step with it.
+  window.simDisconnect = () => {
+    if (!connected) return false;
+    connected = false;
+    setConnectLabel();
+    if (typeof window.simStop === 'function') simStop();
+    return true;
+  };
 
   // Auto-reconnect if sim was active before the page refreshed.
   // Read localStorage directly — the global simOn may not yet reflect the
@@ -6633,7 +6642,16 @@ document.getElementById('limit-kites-cb').onchange = e => {
     prevFocus = null;
     if (el && document.contains(el)) { try { el.focus(); } catch (e) { /* */ } }
   };
-  trigger.addEventListener('click', open);
+  // Connected, the button is a switch like Location and Record beside it: a press disconnects,
+  // it does not open the connect panel (asked: "pressing on sim button when active, should
+  // disable, not open the connect window"). Disconnected, it opens the panel to connect.
+  trigger.addEventListener('click', () => {
+    if (typeof simOn !== 'undefined' && simOn && typeof window.simDisconnect === 'function' && window.simDisconnect()) {
+      if (typeof showToast === 'function') showToast((S && S.tbSimDisconnected) || 'Simulator disconnected');
+      return;
+    }
+    open();
+  });
   if (closeBtn) closeBtn.addEventListener('click', close);
   modal.addEventListener('click', e => { if (e.target === modal) close(); });
   document.addEventListener('keydown', e => {

@@ -1,4 +1,4 @@
-From 850a815e0bd1e3d6ea8ae176712954e624b5a537 Mon Sep 17 00:00:00 2001
+From 7d4579c167a1aaaeece8503cb11656cdb3bc7d59 Mon Sep 17 00:00:00 2001
 From: Marco <marco@supino.org>
 Date: Sun, 1 Nov 2026 18:49:14 +0000
 Subject: [PATCH] The in-flight tour, the REC sign, and a pinned desktop search
@@ -11,11 +11,13 @@ Subject: [PATCH] The in-flight tour, the REC sign, and a pinned desktop search
  LocalStorage-Schema.md    | 1 +
  Quick-Start-he.md         | 6 ++++++
  Quick-Start.md            | 8 ++++++++
+ Simulator-Connect-he.md   | 3 +++
+ Simulator-Connect.md      | 4 ++++
  Toolbar-he.md             | 2 +-
  Toolbar.md                | 2 +-
  Tuning-Panel-he.md        | 3 ++-
  Tuning-Panel.md           | 4 +++-
- 10 files changed, 25 insertions(+), 6 deletions(-)
+ 12 files changed, 32 insertions(+), 6 deletions(-)
 
 diff --git a/Keyboard-and-Touch-he.md b/Keyboard-and-Touch-he.md
 index 7a84c89..0ff9af3 100644
@@ -103,6 +105,35 @@ index a5f0095..c650082 100644
  ## First flight plan
  
  1. Build a route as above.
+diff --git a/Simulator-Connect-he.md b/Simulator-Connect-he.md
+index 7afcfde..db5b6aa 100644
+--- a/Simulator-Connect-he.md
++++ b/Simulator-Connect-he.md
+@@ -41,6 +41,9 @@ NavAid יכול להציג את **מיקום המטוס בזמן אמת** על 
+ הפאנל הוא כפתור **התחבר לסימולטור**, שדה כתובת הגשר ושורת המצב. החיבור מציג מצב
+ פעיל ירוק.
+ 
++כשהסימולטור מחובר, אייקון המטוס מודגש כמו מיקום והקלטה שלידו, והוא מתג: לחיצה עליו
++**מנתקת** (הודעה קצרה: *הסימולטור נותק*) במקום לפתוח את הפאנל. כשהוא מנותק, לחיצה פותחת את הפאנל שוב.
++
+ מעקב ומרכוז **אינם** בפאנל הזה: אלה [מתג המעקב ומצפן כיוון המפה](The-Map-he)
+ שעל המפה, אותם שני פקדים שמשמשים גם קליטת GPS אמיתית. בעבר היו לפאנל עותקים
+ משלו, ומכיוון שנדרשו שניהם, מתג המפה יכול היה שלא לעשות דבר כשדגל הפאנל כבוי.
+diff --git a/Simulator-Connect.md b/Simulator-Connect.md
+index 5c9e875..0beb109 100644
+--- a/Simulator-Connect.md
++++ b/Simulator-Connect.md
+@@ -39,6 +39,10 @@ The bridge exposes a JSON endpoint on `http://localhost:2020` by default.
+ The panel is the **Connect to simulator** button, the Bridge URL field and the
+ status line. Connect shows a green active state.
+ 
++While connected, the plane icon is lit like Location and Record beside it, and it is a switch:
++pressing it **disconnects** (a toast says *Simulator disconnected*) instead of opening the panel.
++Disconnected, it opens the panel again.
++
+ Following and centring are **not** in this panel: they are the map's own
+ [follow switch and orientation compass](The-Map#the-control-column-bottom-right), the same two
+ controls a real fix uses. The panel used to carry its own copies, and requiring
 diff --git a/Toolbar-he.md b/Toolbar-he.md
 index d8d5f90..5850ff5 100644
 --- a/Toolbar-he.md
