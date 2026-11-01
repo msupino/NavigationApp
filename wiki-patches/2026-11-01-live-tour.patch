@@ -1,4 +1,4 @@
-From 1d2107d0c03dc4dee6ab735e844eff9edfb96912 Mon Sep 17 00:00:00 2001
+From 850a815e0bd1e3d6ea8ae176712954e624b5a537 Mon Sep 17 00:00:00 2001
 From: Marco <marco@supino.org>
 Date: Sun, 1 Nov 2026 18:49:14 +0000
 Subject: [PATCH] The in-flight tour, the REC sign, and a pinned desktop search
@@ -9,13 +9,13 @@ Subject: [PATCH] The in-flight tour, the REC sign, and a pinned desktop search
  Keyboard-and-Touch.md     | 2 +-
  LocalStorage-Schema-he.md | 1 +
  LocalStorage-Schema.md    | 1 +
- Quick-Start-he.md         | 5 +++++
- Quick-Start.md            | 6 ++++++
+ Quick-Start-he.md         | 6 ++++++
+ Quick-Start.md            | 8 ++++++++
  Toolbar-he.md             | 2 +-
  Toolbar.md                | 2 +-
  Tuning-Panel-he.md        | 3 ++-
  Tuning-Panel.md           | 4 +++-
- 10 files changed, 22 insertions(+), 6 deletions(-)
+ 10 files changed, 25 insertions(+), 6 deletions(-)
 
 diff --git a/Keyboard-and-Touch-he.md b/Keyboard-and-Touch-he.md
 index 7a84c89..0ff9af3 100644
@@ -68,26 +68,27 @@ index 7f52347..f04b536 100644
  - `navaid.notamListPos`, `navaid.sigmetListPos`, `navaid.airmetListPos` (each `.en` / `.he`) —
    where the NOTAM, SIGMET and AIRMET lists were dragged to. Device-local, like every `*Pos`.
 diff --git a/Quick-Start-he.md b/Quick-Start-he.md
-index 514f5ad..7f221bf 100644
+index 514f5ad..7e41f3f 100644
 --- a/Quick-Start-he.md
 +++ b/Quick-Start-he.md
-@@ -64,6 +64,11 @@ NavAid מחשב מרחקים, כיוונים וזמני טיסה באופן חי
+@@ -64,6 +64,12 @@ NavAid מחשב מרחקים, כיוונים וזמני טיסה באופן חי
  - הסיור מוצג פעם אחת בכל מכשיר. **הגדרות ← הצג את הסיור** מציג אותו שוב.
  - מתג ב-gist: <span dir="ltr"><code>featureTour</code></span> (פעיל כברירת מחדל). "הפחתת תנועה" עוצרת את תנועת החץ.
  
 +**סיור הטיסה.** בפעם הראשונה שהמיקום שלכם חי, סיור שני עובר על הכפתורים שמופיעים רק אז: הסימן
 +האדום **מקליט**, מהירות / גובה / כיוון, איכות ה-GPS, מעקב, צפון למעלה או כיוון התקדמות, התראות
 +מוקראות, עקבו אחריי (כשהוא פעיל), וקו המגמה (סימוני 2 / 5 / 10 nm ו-2 / 5 min, ורבע המעגל בפנייה).
-+הוא מוצג פעם אחת; **הצג את הסיור** כשהמיקום חי מציג את שני הסיורים, זה אחר זה.
++הוא מוצג פעם אחת; **הצג את הסיור** מציג את שני הסיורים, זה אחר זה. כשהמיקום כבוי, כפתורי
++הטיסה וסימן ההקלטה מוצגים לאורך הסיור ומוסתרים אחריו (התצוגה החיה וסימן ה-GPS, שצריכים מיקום, מדולגים אז).
 +
  ## מה עוד?
  
  - הוסיפו **הערות** (📝 הוסף הערה) לכל מה שאין על המפה: קריאת "טפס 4500 רגל", ה-ATIS של השדה, או
 diff --git a/Quick-Start.md b/Quick-Start.md
-index a5f0095..62fbffa 100644
+index a5f0095..c650082 100644
 --- a/Quick-Start.md
 +++ b/Quick-Start.md
-@@ -34,6 +34,12 @@ On the first launch, after the [safety notice](Safety-Notice), a short tour walk
+@@ -34,6 +34,14 @@ On the first launch, after the [safety notice](Safety-Notice), a short tour walk
  - It plays once per device. **Settings → Show the tour** plays it again.
  - Gist switch `featureTour` (default on). Reduced motion stops the arrow's nudge.
  
@@ -95,13 +96,15 @@ index a5f0095..62fbffa 100644
 +controls that only appear then: the red **REC** sign, speed / altitude / track, GPS quality,
 +Follow, north up or heading up, spoken alerts, Follow me (when it is on), and the heading line
 +(its 2 / 5 / 10 nm and 2 / 5 min marks, and the quarter circle in a turn). It plays once; **Show
-+the tour** while the position is live plays both tours, one after the other.
++the tour** plays both tours, one after the other. With Location off, the in-flight buttons and
++the REC sign are shown for the tour and put away after it (the readout and the GPS chip, which
++need a fix, are left out then).
 +
  ## First flight plan
  
  1. Build a route as above.
 diff --git a/Toolbar-he.md b/Toolbar-he.md
-index d8d5f90..b1320b6 100644
+index d8d5f90..5850ff5 100644
 --- a/Toolbar-he.md
 +++ b/Toolbar-he.md
 @@ -128,7 +128,7 @@
@@ -109,12 +112,12 @@ index d8d5f90..b1320b6 100644
  | **הקלטה אוטומטית עם מיקום** | מסומן כברירת מחדל: הצגת המיקום מקליטה גם את הטיסה, והקלטה קצרה מכדי להיות טיסה אינה נשמרת — ראו [הקלטת מסלול GPS](GPS-Track-Recording-he#הקלטה-אוטומטית-עם-מיקום). |
  | **חלונית בזמן הצגת מיקום** | כבוי כברירת מחדל: מאפשר לנגיעה לפתוח את החלונית בזמן שהמיקום מוצג — ראו [החלונית למידע נוסף](Inspector-he). |
 -| **הצג את הסיור** | מנגן שוב את סיור המפה. |
-+| **הצג את הסיור** | מנגן שוב את סיור המפה, ואחריו את סיור הטיסה כשהמיקום חי. |
++| **הצג את הסיור** | מנגן שוב את סיור המפה, ואחריו את סיור הטיסה (כשהמיקום כבוי, כפתוריו מוצגים לאורך הסיור). |
  | **בהירות מסך** | *(אפליקציית אנדרואיד)* מחוון לתא הטייס בלילה, גם מתחת למינימום של הטלפון (מסך כהה משלים את השאר; בדפדפן יש רק אותו). **בהירות: חזרה להגדרת הטלפון** מחזירה לטלפון. מקומי למכשיר (<span dir="ltr"><code>navaid.brightness</code></span>). ב-gist: <span dir="ltr"><code>featureBrightness</code></span>. |
  | **חיבור GPS בבלוטות׳** | *(אפליקציית אנדרואיד, כבוי כברירת מחדל — <span dir="ltr"><code>featureBleGps</code></span>)* GPS חיצוני ב-Bluetooth LE (NMEA $..RMC/$..GGA). כשהוא מספק מיקום, המיקום של הטלפון זז הצידה ושורת ה-GPS מראה **BT**. מחוץ לאפליקציה הוא מעומעם, עם הסיבה. |
  | **גרסת האפליקציה** | הגרסה המותקנת, וב-APK למה עדכון מחכה — ראו [לא מקוון ו-PWA](Offline-and-PWA-he#אפליקציית-מובייל-android-apk). |
 diff --git a/Toolbar.md b/Toolbar.md
-index 901fcfd..dc72b02 100644
+index 901fcfd..74e08cc 100644
 --- a/Toolbar.md
 +++ b/Toolbar.md
 @@ -134,7 +134,7 @@ The NOTAM, SIGMET and AIRMET lists move by their title bar and open again where
@@ -122,7 +125,7 @@ index 901fcfd..dc72b02 100644
  | **Record automatically with location** | On by default: showing your location also records the flight, and a recording too short to be a flight is not kept — see [GPS Track Recording](GPS-Track-Recording#recording-automatically-with-location). |
  | **Panel while showing position** | Off by default: lets a tap open the inspector while your position is on the map — see [Inspector](Inspector). |
 -| **Show the tour** | Plays the map tour again. |
-+| **Show the tour** | Plays the map tour again, and the in-flight tour after it while your position is live. |
++| **Show the tour** | Plays the map tour again, then the in-flight tour (with Location off, its buttons are shown for the tour). |
  | **Screen brightness** | *(Android app)* A slider for the cockpit at night, below the phone's own minimum if needed (a dark veil does the rest; in a browser the veil is all there is). **Brightness: back to the phone's setting** hands it back. Device-local (`navaid.brightness`). Gist: `featureBrightness`. |
  | **Connect Bluetooth GPS** | *(Android app, off by default — `featureBleGps`)* An external GPS over Bluetooth LE (NMEA $..RMC/$..GGA). While it delivers, the phone's own fixes step aside and the GPS line shows **BT**. Dimmed, with its reason, outside the app. |
  | **App version** | The installed version, and in the APK what an update is waiting for — see [Offline and PWA](Offline-and-PWA#mobile-app-android-apk). |

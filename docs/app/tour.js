@@ -37,9 +37,12 @@
     { sel: null, k: 'Hold', only: 'phone' },
   ];
   // The in-flight tour: the controls that only appear while a fix is driving the map (and the
-  // recording dot while a flight is recorded). Asked: "when recording, there are few more
+  // recording sign while a flight is recorded). Asked: "when recording, there are few more
   // icons on map, add tutorial for them". It plays once, the first time the position is live;
-  // "Show the tour" plays it after the map tour whenever the position is live.
+  // "Show the tour" always plays it after the map tour -- with no live position, the in-flight
+  // buttons and the REC sign are shown for the tour's length (body.tour-live-preview) and put
+  // away when it ends. The readout and the GPS chip have nothing to show without a fix, so
+  // their steps are left out then.
   const LIVE_SEEN_KEY = 'navaid.liveTourSeen';
   const LIVE_STEPS = [
     { sel: ['#gps-rec-indicator'], k: 'LiveRec' },
@@ -72,11 +75,13 @@
   const str = (k, d) => (typeof S === 'object' && S && S[k]) || d;
 
   let root = null, list = [], i = 0, before = null, onKey = null, onResize = null, seenKeys = [SEEN_KEY];
+  const PREVIEW = 'tour-live-preview';
 
   function close(seen) {
     if (!root) return;
     root.remove();
     root = null;
+    document.body.classList.remove(PREVIEW);
     window.removeEventListener('keydown', onKey, true);
     window.removeEventListener('resize', onResize);
     if (seen) { try { for (const k of seenKeys) localStorage.setItem(k, '1'); } catch (e) { /* storage off */ } }
@@ -207,11 +212,14 @@
   function start(which) {
     if (root) return false;
     const w = which === 'live' || which === 'all' ? which : 'map';
+    // "Show the tour" with no live position: show the in-flight controls so their steps can
+    // point at them (before the steps are chosen -- a step is kept only if its control shows).
+    if (w === 'all' && !liveNow()) document.body.classList.add(PREVIEW);
     list = w === 'live' ? stepsOf(LIVE_STEPS) : w === 'all' ? steps().concat(stepsOf(LIVE_STEPS)) : steps();
     // A live tour of only the heading line is not worth stopping the pilot for.
     if (w === 'live' && !list.some((s) => s.sel)) return false;
     seenKeys = w === 'live' ? [LIVE_SEEN_KEY] : w === 'all' ? [SEEN_KEY, LIVE_SEEN_KEY] : [SEEN_KEY];
-    if (!list.length) return false;
+    if (!list.length) { document.body.classList.remove(PREVIEW); return false; }
     i = 0;
     before = document.activeElement;
     root = document.createElement('div');
@@ -299,7 +307,7 @@
     // On a phone the menu sheet covers the map: the Map tab puts everything away first.
     const mapTab = document.querySelector('.deck-btn-map');
     if (mapTab && phone()) mapTab.click();
-    setTimeout(() => start(liveNow() ? 'all' : 'map'), 350);
+    setTimeout(() => start('all'), 350);
   });
   if (document.readyState === 'complete') { maybeAutoStart(); maybeAutoStartLive(); }
   else window.addEventListener('load', () => { maybeAutoStart(); maybeAutoStartLive(); });

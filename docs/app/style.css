@@ -10033,3 +10033,11 @@ html:not(.nav-booted) .leaflet-control-container { visibility: hidden; }
   box-shadow: 0 2px 12px rgba(31, 37, 44, 0.16);
 }
 #gps-readout-frame > .gps-readout { margin: 0; opacity: 1; font-weight: 600; font-variant-numeric: tabular-nums; }
+
+/* "Show the tour" with no live position (tour.js): the in-flight buttons and the REC sign show
+   for the tour's length so its steps can point at them. They are normally hidden by their own
+   inline display:none (ui.js refresh*Control) and [hidden]. */
+body.tour-live-preview .leaflet-control.voice-ctrl,
+body.tour-live-preview .leaflet-control.orient-ctrl,
+body.tour-live-preview .leaflet-control.follow-ctrl { display: block !important; }
+body.tour-live-preview #gps-rec-indicator { display: flex !important; }
