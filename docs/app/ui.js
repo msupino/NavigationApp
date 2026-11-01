@@ -181,6 +181,7 @@ const MENU_ICONS = {
   'tool-add': 'addWp', 'tool-note': 'addNote', 'search-trigger': 'search', reverse: 'reverse',
   undo: 'undo', clear: 'trash', fit: 'fit', 'tool-reset-all-markers': 'reset',
   'tool-reset-all-wp-names': 'reset', 'tool-magnifier': 'magnifier',
+  'autoroute-btn': 'map', 'force-snap-btn': 'addWp',
   'theme-toggle': (b) => (/☀|light|בהיר/i.test(b.textContent) ? 'sun' : 'moon'),
   'route-templates': 'templates', 'freq-table': 'antenna', 'alt-pairs': 'altPairs',
   'nav-log': 'form', charts: 'charts', 'sigwx-btn': 'globe', 'pwx-btn': 'wind',
@@ -11037,6 +11038,26 @@ document.getElementById('force-snap-cb').onchange = e => {
   try { localStorage.setItem(FORCE_SNAP_KEY, forceSnap ? '1' : '0'); }
   catch (err) { /* storage unavailable */ }
 };
+// Toggle buttons standing in for a checkbox (Edit's Auto-route and Snap): a press flips the
+// hidden checkbox and fires its change, so its own handler runs exactly as before; aria-pressed
+// follows the checkbox, including when the gist default sets it (that dispatches change too).
+function refreshToggleButtons() {
+  document.querySelectorAll('button[data-toggle-for]').forEach((btn) => {
+    const cb = document.getElementById(btn.dataset.toggleFor);
+    if (cb) btn.setAttribute('aria-pressed', cb.checked ? 'true' : 'false');
+  });
+}
+document.querySelectorAll('button[data-toggle-for]').forEach((btn) => {
+  const cb = document.getElementById(btn.dataset.toggleFor);
+  if (!cb) return;
+  btn.addEventListener('click', () => {
+    cb.checked = !cb.checked;
+    cb.dispatchEvent(new Event('change', { bubbles: true }));
+  });
+  cb.addEventListener('change', refreshToggleButtons);
+});
+refreshToggleButtons();
+window.refreshToggleButtons = refreshToggleButtons;
 // Comm-change overlay toggle. The dataset lives in
 // the route graph's comm-change nodes and rings are drawn on top of the nav-WP dots
 // in draw.js. This key intentionally replaced the legacy
@@ -13365,6 +13386,7 @@ if (typeof loadRemoteConfig === "function") {
     if (typeof refreshToolbarDesktopMenu === "function") refreshToolbarDesktopMenu();
     if (typeof window.refreshSearchClose === "function") window.refreshSearchClose();
     if (typeof window.refreshAutoRecordControl === "function") window.refreshAutoRecordControl();
+    if (typeof window.refreshToggleButtons === "function") window.refreshToggleButtons();
     if (typeof window.refreshMenubarPin === "function") window.refreshMenubarPin();
     if (NavAid && typeof NavAid.refreshMobileDeck === "function") NavAid.refreshMobileDeck();
     if (typeof refreshEmptyRouteHint === "function") refreshEmptyRouteHint();

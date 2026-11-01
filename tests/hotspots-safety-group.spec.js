@@ -105,3 +105,20 @@ test('route-building and location-behaviour switches live outside Map', async ({
   expect(sec).toEqual({ 'autoroute-cb': 'build', 'force-snap-cb': 'build',
     'insp-tracking-cb': 'settings', 'auto-record-cb': 'settings' });
 });
+
+// Edit is a list of buttons, so its two switches are toggle buttons: pressed = on, in the
+// toolbar's selected blue, driving the same checkbox (and so the same handler and key).
+test('Auto-route and Snap are toggle buttons that drive their checkbox', async ({ page }) => {
+  await page.goto('?lang=en&nogist');
+  await page.waitForFunction(() => typeof window.refreshToggleButtons === 'function');
+  for (const [btn, cb, key] of [['#autoroute-btn', 'autoroute-cb', 'navaid.autoRoute'], ['#force-snap-btn', 'force-snap-cb', 'navaid.forceSnap']]) {
+    const b = page.locator(btn);
+    await expect(b).toHaveAttribute('aria-pressed', 'false');
+    await b.evaluate(el => el.click());
+    await expect(b).toHaveAttribute('aria-pressed', 'true');
+    expect(await page.evaluate(([id, k]) => [document.getElementById(id).checked, localStorage.getItem(k)], [cb, key])).toEqual([true, '1']);
+    // Set from elsewhere (the gist default path): the button follows.
+    await page.evaluate((id) => { const c = document.getElementById(id); c.checked = false; c.dispatchEvent(new Event('change')); }, cb);
+    await expect(b).toHaveAttribute('aria-pressed', 'false');
+  }
+});
