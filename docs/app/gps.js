@@ -291,7 +291,10 @@ function onLivePosition(pos) {
   // Every fix, before the accuracy filter below: the status line shows a coarse fix as coarse.
   if (window.NavAid && NavAid.gpsStatus) NavAid.gpsStatus.noteFix(pos);
   const c = pos.coords;
-  if (gpsRecording) {
+  // A recording started by hand has its own watch and drives the map (below). One that
+  // Location started has none: this handler drives the map exactly as without it, and adds
+  // each fix to the line.
+  if (gpsRecording && !gpsAutoRec) {
     // Recording drives own-ship + recenter; avoid dueling. But the last-fix point is still
     // kept current: traffic asks around gpsLastFix() and drops its own-ship by it, and the
     // first live fix after a recording stops takes its heading and speed from it. Left
@@ -302,6 +305,7 @@ function onLivePosition(pos) {
     return;
   }
   if (c.accuracy != null && c.accuracy > gpsMaxAccM()) return;
+  if (gpsRecording && gpsAutoRec) gpsAppendTrackPoint(pos);
   const p = { lat: r5(c.latitude), lng: r5(c.longitude) };
   const t = pos.timestamp || Date.now();
   // NaN, not 0, when neither the device nor a previous fix can supply a heading --
@@ -466,11 +470,22 @@ function startLiveLocation() {
   // written once the watch actually registered; onGpsLiveError's stopLiveLocation() below
   // clears it again on a registration failure.
   try { localStorage.setItem('navaid.gpsLiveOn', '1'); } catch (e) { /* */ }
+  // Showing location records the flight too, unless the pilot switched that off.
+  // A recording a reload interrupted (gpsResumeOrSaveRecording) carries on here, with its points.
+  if (!gpsRecording && (autoRecordOn() || _gpsPendingAutoResume)) {
+    startGpsRecording({ auto: true, resume: _gpsPendingAutoResume || undefined });
+  }
+  _gpsPendingAutoResume = null;
   scheduleDraw();
 }
 
 function stopLiveLocation() {
   try { localStorage.setItem('navaid.gpsLiveOn', '0'); } catch (e) { /* */ }
+  // The recording Location started ends with it: saved, or dropped when too short.
+  if (gpsRecording && gpsAutoRec) {
+    stopGpsRecordingAndSave();
+    if (typeof window.refreshRouteLibrary === 'function') window.refreshRouteLibrary();
+  }
   gpsStopWatch(gpsLiveWatchId);
   gpsLiveWatchId = null;
   gpsLiveOn = false;
@@ -1078,12 +1093,11 @@ function gpsUpdateReadout() {
   gpsSetReadout(el, [], gpsStaleText());
 }
 
-function onGpsPosition(pos) {
-  if (!gpsRecording || !pos || !pos.coords) return;
-  if (pos.source !== 'ble' && window.NavAid && NavAid.bleGps && NavAid.bleGps.fresh()) return;   // the Bluetooth GPS leads
-  if (window.NavAid && NavAid.gpsStatus) NavAid.gpsStatus.noteFix(pos);   // the status line, before the filter
+// One fix onto the recorded line (the caller has already applied the accuracy filter). Shared
+// by a recording's own watch (onGpsPosition) and by Location's (onLivePosition), which feeds an
+// automatic recording -- that one opens no watch of its own.
+function gpsAppendTrackPoint(pos) {
   const c = pos.coords;
-  if (c.accuracy != null && c.accuracy > gpsMaxAccM()) return;       // too imprecise
   const pt = { lat: r5(c.latitude), lng: r5(c.longitude), t: pos.timestamp || Date.now(),
                alt: c.altitude != null ? c.altitude : null,
                acc: c.accuracy != null ? c.accuracy : null };
@@ -1099,6 +1113,17 @@ function onGpsPosition(pos) {
   // At the cap, stop growing the track but keep the live display (own-ship,
   // GS/alt, readout, recenter) updating instead of freezing.
   if (!jitter && gpsTrack.length < GPS_MAX_POINTS) gpsTrack.push(pt);
+  gpsSaveRecProgress();
+  return { pt, prev, jitter };
+}
+
+function onGpsPosition(pos) {
+  if (!gpsRecording || !pos || !pos.coords) return;
+  if (pos.source !== 'ble' && window.NavAid && NavAid.bleGps && NavAid.bleGps.fresh()) return;   // the Bluetooth GPS leads
+  if (window.NavAid && NavAid.gpsStatus) NavAid.gpsStatus.noteFix(pos);   // the status line, before the filter
+  const c = pos.coords;
+  if (c.accuracy != null && c.accuracy > gpsMaxAccM()) return;       // too imprecise
+  const { pt, prev, jitter } = gpsAppendTrackPoint(pos);
   // Ground speed: device value (m/s) when present, else derived from the last
   // fix; altitude in feet. Both feed the live readout.
   let gsMs = (c.speed != null && !isNaN(c.speed) && c.speed >= 0) ? c.speed : null;
@@ -1120,6 +1145,10 @@ function onGpsPosition(pos) {
     const comp = gpsCompassTrue(gpsLastGS);
     if (comp != null) { hdg = comp; hdgFromCompass = true; }
   }
+  // The first position on screen -- nothing to preserve yet. Showing location now starts a
+  // recording, and while one runs this path, not onLivePosition, drives the map; without the
+  // same first-fix rule a pan before the first fix left the map where it was.
+  const isFirst = !gpsOwn;
   // Same fix time as the live path: a stalled RECORDING freezes the same symbol.
   gpsOwn = { lat: pt.lat, lng: pt.lng, hdg, t: pt.t, hdgCompass: hdgFromCompass };
   gpsNoteFixArrived();
@@ -1128,7 +1157,11 @@ function onGpsPosition(pos) {
   gpsUpdateReadout();
   gpsCheckLegAlerts();
   scheduleDraw();
-  if (gpsFollow) gpsFollowRecenter(pt.lat, pt.lng);
+  // As onLivePosition: the first fix centres and frames (the flying band); later ones follow.
+  if (isFirst && gpsFollow && typeof map !== 'undefined') {
+    map.setView([pt.lat, pt.lng], gpsFollowZoom(map.getZoom(), pt.lat, pt.lng));
+  }
+  else if (gpsFollow) gpsFollowRecenter(pt.lat, pt.lng);
   gpsApplyHeadingUp();
 }
 
@@ -1213,23 +1246,33 @@ function updateGpsRecIndicator() {
   }
 }
 
-function startGpsRecording() {
+// opts.auto: started by showing location (see autoRecordOn) -- such a recording is dropped
+// when too short. opts.resume: { startT, track } of a recording a reload interrupted.
+function startGpsRecording(opts) {
   if (gpsRecording) return;
   if (!navigator.geolocation && !_bgGeo()) { refuse(S.gpsUnsupported || 'GPS is not available in this browser.'); return; }
+  const o = opts || {};
+  // An automatic recording rides on Location's watch; without Location there is nothing to ride.
+  if (o.auto && !gpsLiveOn) return;
   gpsRecording = true;
+  gpsAutoRec = !!o.auto;
   if (typeof clearPageFrameForLocation === 'function') clearPageFrameForLocation();
   gpsStartCompass();
   _gpsUserMovedAt = 0;
   gpsWatchUserMapMoves();
   updateGpsRecIndicator();
-  gpsTrack = [];
+  gpsTrack = o.resume && Array.isArray(o.resume.track) ? o.resume.track.slice() : [];
   if (!gpsLiveOn) gpsOwn = null;
-  gpsStartT = Date.now();
+  gpsStartT = o.resume && Number.isFinite(o.resume.startT) ? o.resume.startT : Date.now();
+  _gpsRecSavedAt = 0;
+  _gpsRecSimp = gpsTrack.slice(); _gpsRecSimpUpTo = gpsTrack.length;   // a resumed track is already simplified
   gpsResetLegAlerts();
   gpsRequestNotifyPermission();
   gpsMaybeStartDriftTimer();
   try {
-    gpsWatchId = gpsStartWatch(onGpsPosition, onGpsRecError,
+    // An automatic recording is fed by Location's watch (onLivePosition): one receiver, one
+    // battery cost, and the map behaves exactly as Location without a recording.
+    if (!o.auto) gpsWatchId = gpsStartWatch(onGpsPosition, onGpsRecError,
       S.gpsRecNotifTitle || 'NavAid GPS recording', S.gpsRecNotifText || 'Recording your track — tap to return');
   } catch (e) {
     // A synchronous failure registering the watch (e.g. a native plugin API
@@ -1247,6 +1290,87 @@ function startGpsRecording() {
   scheduleDraw();
 }
 
+// --- automatic recording ------------------------------------------------------
+// Showing location starts a recording (navaid.autoRecord, the gist's defaultAutoRecord; the
+// gist's featureAutoRecord can withdraw it). Such a recording is kept only once it is a
+// flight: at least autoRecordMinSec long and autoRecordMinNm flown. A recording in progress
+// is kept in storage as it grows, so a reload resumes it instead of losing it.
+var gpsAutoRec = false;
+var _gpsRecSavedAt = 0;
+// The stored copy grows by simplifying only the fixes since the last save: re-simplifying the
+// whole track every 10 s is seconds of work on a phone once a long flight nears the point cap.
+var _gpsRecSimp = [], _gpsRecSimpUpTo = 0;
+// An automatic recording a reload interrupted, waiting for Location to resume and take it up.
+var _gpsPendingAutoResume = null;
+const AUTO_REC_KEY = 'navaid.autoRecord';
+const REC_PROGRESS_KEY = 'navaid.gpsRecInProgress';
+function autoRecordOn() {
+  if (typeof tune === 'function' && tune('featureAutoRecord') === false) return false;
+  let v = null;
+  try { v = localStorage.getItem(AUTO_REC_KEY); } catch (e) { /* storage unavailable */ }
+  if (v === '1') return true;
+  if (v === '0') return false;
+  return typeof tune !== 'function' || tune('defaultAutoRecord') !== false;
+}
+function autoRecMinSec() { return typeof tune === 'function' ? tune('autoRecordMinSec') : 300; }
+function autoRecMinNm() { return typeof tune === 'function' ? tune('autoRecordMinNm') : 1; }
+function gpsRecordingLongEnough(track, startT) {
+  if (!Array.isArray(track) || track.length < 2) return false;
+  const end = track[track.length - 1].t || Date.now();
+  const secs = (end - (Number.isFinite(startT) ? startT : track[0].t)) / 1000;
+  return secs >= autoRecMinSec() && trackDistanceNm(track) >= autoRecMinNm();
+}
+function gpsSaveRecProgress(force) {
+  if (!gpsRecording) return;
+  const now = Date.now();
+  if (!force && now - _gpsRecSavedAt < 10000) return;
+  _gpsRecSavedAt = now;
+  try {
+    if (gpsTrack.length > _gpsRecSimpUpTo) {
+      const from = Math.max(0, _gpsRecSimpUpTo - 1);          // overlap one fix so the pieces join
+      const piece = simplifyTrack(gpsTrack.slice(from), GPS_SIMPLIFY_EPS_DEG);
+      _gpsRecSimp = _gpsRecSimp.concat(_gpsRecSimpUpTo > 0 ? piece.slice(1) : piece);
+      _gpsRecSimpUpTo = gpsTrack.length;
+    }
+    const track = _gpsRecSimp;
+    localStorage.setItem(REC_PROGRESS_KEY, JSON.stringify({ startT: gpsStartT, auto: gpsAutoRec, savedAt: now, track }));
+  } catch (e) { /* storage full or unavailable: the live recording goes on regardless */ }
+}
+function gpsClearRecProgress() {
+  try { localStorage.removeItem(REC_PROGRESS_KEY); } catch (e) { /* storage unavailable */ }
+}
+// On boot: a recording a reload cut short carries on where it was -- unless it was left for
+// longer than recordResumeMin, when it is saved as it stands (or dropped, if automatic and too
+// short) and the next one starts fresh.
+function gpsResumeOrSaveRecording() {
+  let p = null;
+  try { p = JSON.parse(localStorage.getItem(REC_PROGRESS_KEY) || 'null'); } catch (e) { p = null; }
+  if (!p || !Array.isArray(p.track)) return null;
+  const last = p.track.length ? p.track[p.track.length - 1].t : p.savedAt;
+  const gapMin = typeof tune === 'function' ? tune('recordResumeMin') : 30;
+  let liveWillResume = false;
+  try { liveWillResume = localStorage.getItem('navaid.gpsLiveOn') === '1'; } catch (e) { /* */ }
+  const fresh = Number.isFinite(last) && Date.now() - last < gapMin * 60000;
+  // An automatic recording carries on with the Location that started it (it has no watch of
+  // its own); if Location is not coming back, it is saved as it stands.
+  if (fresh && p.auto && liveWillResume) { _gpsPendingAutoResume = p; return 'pending'; }
+  if (fresh && !p.auto) {
+    startGpsRecording({ resume: p });
+    return gpsRecording ? 'resumed' : null;
+  }
+  gpsClearRecProgress();
+  if (p.track.length < 2) return null;                 // nothing worth saving, and nothing to say
+  gpsTrack = p.track; gpsStartT = p.startT; gpsAutoRec = !!p.auto; gpsRecording = true;
+  const entry = stopGpsRecordingAndSave();
+  return entry ? 'saved' : 'dropped';
+}
+if (typeof window !== 'undefined') {
+  window.autoRecordOn = autoRecordOn;
+  window.gpsResumeOrSaveRecording = gpsResumeOrSaveRecording;
+  // A page going away saves the last stretch now, not up to 10 s later.
+  window.addEventListener('pagehide', () => gpsSaveRecProgress(true));
+}
+
 function gpsTrackName() {
   const d = new Date();
   const p = n => String(n).padStart(2, '0');
@@ -1262,7 +1386,18 @@ function gpsTrackName() {
 // saved-track overlay section below.
 function stopGpsRecordingAndSave() {
   const raw = gpsTrack.slice();
+  const auto = gpsAutoRec, startT = gpsStartT;
   stopGpsRecording();
+  // An automatic recording that never became a flight -- the phone on the desk, a walk to the
+  // hangar -- is not kept: showing location would otherwise fill the library with them.
+  if (auto && !gpsRecordingLongEnough(raw, startT)) {
+    if (typeof showToast === 'function') {
+      showToast(typeof S.gpsAutoRecShort === 'function'
+        ? S.gpsAutoRecShort(Math.round(autoRecMinSec() / 60), autoRecMinNm())
+        : 'Short automatic recording not kept');
+    }
+    return null;
+  }
   if (raw.length < 2) { refuse(S.gpsNoTrack || 'No track recorded.'); return null; }
   const simplified = simplifyTrack(raw, GPS_SIMPLIFY_EPS_DEG);   // keeps the flown line's shape, drops redundant fixes
   const entry = {
@@ -1561,6 +1696,8 @@ function stopGpsRecording() {
   gpsStopWatch(gpsWatchId);
   gpsWatchId = null;
   gpsRecording = false;
+  gpsAutoRec = false;
+  gpsClearRecProgress();
   if (!gpsLiveOn) gpsStopCompass();
   updateGpsRecIndicator();
   if (!gpsLiveOn) gpsReleaseWakeLock();     // Location may still be showing

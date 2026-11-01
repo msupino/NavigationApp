@@ -57,7 +57,7 @@ test('Display -> Minute markers: size and both colours, remembered; return arrow
 
 test('the Show return path toggle names its shortcut', async ({ page }) => {
   await page.goto('?lang=en&nogist');
-  await expect(page.locator('label:has(#ret-cb) span')).toHaveText('Show return path (B)');
+  await expect(page.locator('#ret-btn')).toHaveText('Show return path (B)');
 });
 
 test('the way-back colours are dimmed, saying why, while the return path is off', async ({ page }) => {

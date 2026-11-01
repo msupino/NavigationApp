@@ -449,13 +449,11 @@ test.describe('comm-change schema + UI plumbing (shipped populated dataset)', ()
     expect(labelText).toMatch(/Show\/Add Freq Changes/i);
     const cb = page.locator('#commchange-cb');
     await expect(cb).toBeChecked();
-    const commBeforeSnap = await page.evaluate(() => {
-      const comm = document.querySelector('label[data-i18n-title="tbShowCommChangeTitle"]');
-      const snap = document.querySelector('label[data-i18n-title="tbForceSnapTitle"]');
-      return !!(comm && snap &&
-        (comm.compareDocumentPosition(snap) & Node.DOCUMENT_POSITION_FOLLOWING));
-    });
-    expect(commBeforeSnap).toBe(true);
+    // In Map (data-sec "view"). It used to be pinned before Snap to nearest point, while both
+    // sat in Map; Snap is route building and moved to Edit.
+    const sec = await page.evaluate(() =>
+      document.querySelector('label[data-i18n-title="tbShowCommChangeTitle"]').closest('.tb-section').dataset.sec);
+    expect(sec).toBe('view');
   });
 
   test('legacy stored-off comm-change preference is ignored after key rename', async ({ page }) => {

@@ -46,7 +46,8 @@ test.describe('Toolbar section toggles', () => {
 
 test.describe('Display checkbox toggles', () => {
   const cases = [
-    { id: '#ret-cb',      key: 'navaid.showReturn',     startsChecked: false },
+    // A toggle button in Edit now, driving the hidden checkbox: press the button.
+    { id: '#ret-cb',      key: 'navaid.showReturn',     startsChecked: false, press: '#ret-btn' },
     { id: '#mid-cb',      key: 'navaid.showMidLeg',     startsChecked: false },
     { id: '#diff-cb',     key: 'navaid.highlightDiff',  startsChecked: false },
     { id: '#limit-kites-cb', key: 'navaid.limitLegKites', startsChecked: true },
@@ -63,7 +64,7 @@ test.describe('Display checkbox toggles', () => {
       const cb = page.locator(c.id);
       const before = await cb.isChecked();
       expect(before).toBe(c.startsChecked);
-      await cb.click();
+      await (c.press ? page.locator(c.press) : cb).click();
       const stored = await page.evaluate(k => localStorage.getItem(k), c.key);
       expect(stored).toBe(c.startsChecked ? '0' : '1');
     });
