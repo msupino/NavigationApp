@@ -17,7 +17,7 @@ const ROOT = path.join(__dirname, '..');
 const DOCS = path.join(ROOT, 'docs');
 
 // KB, gzipped after the deploy's own minification -- what production sends before the first
-// tile is asked for. 474 KB on 2026-11-01; the budget leaves ~5% of room.
+// tile is asked for. 480 KB on 2026-11-01; the budget leaves ~4% of room.
 const CRITICAL_PATH_BUDGET_KB = 500;
 
 // The first phase of the loader (index.html `var srcs = [...]`): our own files only -- the
@@ -91,6 +91,10 @@ for (const vp of [{ name: 'phone', width: 412, height: 823, mobile: true }, { na
   test.describe(vp.name, () => {
     test.use({ viewport: { width: vp.width, height: vp.height }, isMobile: vp.mobile, hasTouch: vp.mobile });
     test(`no layout shift while the app loads (${vp.name})`, async ({ page }) => {
+      // Slowed down like a phone (and a CI runner): paints then land between the loader's
+      // scripts, which is where a control shows before it is moved.
+      const cdp = await page.context().newCDPSession(page);
+      await cdp.send('Emulation.setCPUThrottlingRate', { rate: 4 });
       await page.addInitScript(() => {
         window.__cls = 0; window.__shifts = [];
         new PerformanceObserver((list) => {
