@@ -1128,6 +1128,14 @@ NavAid.tuningDefaults = {
   featureMenubarDrag: { value: false, type: 'bool', label: 'Feature: the desktop top menu can be dragged (off pins it in place)' },
   // The docked desktop search panel's X. Off: the panel stays put (it is furniture there), and
   // one dismissed before comes back. A summoned search keeps its X -- the only way out of it.
+  // Showing location records the flight (navaid.autoRecord, defaulting to defaultAutoRecord);
+  // featureAutoRecord off removes the option. An automatic recording shorter than either
+  // threshold is not kept; a recording a reload interrupted resumes within recordResumeMin.
+  featureAutoRecord: { value: true, type: 'bool', label: 'Feature: offer recording automatically with location' },
+  defaultAutoRecord: { value: true, type: 'bool', label: 'Default: showing location records the flight' },
+  autoRecordMinSec: { value: 300, min: 0, max: 3600, step: 30, label: 'Automatic recording: keep only if at least this long (s)' },
+  autoRecordMinNm: { value: 1, min: 0, max: 50, step: 0.5, label: 'Automatic recording: keep only if at least this far (nm)' },
+  recordResumeMin: { value: 30, min: 1, max: 720, step: 1, label: 'A recording a reload interrupted resumes if its last fix is this recent (min)' },
   featureSearchClose: { value: false, type: 'bool', label: 'Feature: an X that puts the docked desktop search away' },
   featureTabletDesktop: { value: false, type: 'bool', label: 'Feature: iPad / tablet uses the desktop layout, not the phone deck' },
   // The reverse-route warning is the one toast a pilot has to act on, so it gets its own
@@ -1371,7 +1379,7 @@ NavAid.tuningGroups = [
     'defaultViewZoom', 'defaultViewLat', 'defaultViewLng'] },
   { name: 'Export', keys: ['exportBgColor', 'fpTableBorderWidthPx', 'fpTableGridWidthPx'] },
   { name: 'Global palette', keys: ['inkColor', 'selectedColor', 'labelFillColor', 'kiteTextColor', 'legKiteHaloColor', 'kiteNoteAlpha'] },
-  { name: 'Default layer visibility', keys: ['defaultShowNavWP', 'defaultShowAirfields', 'defaultShowVor', 'defaultShowHotspots', 'defaultShowWpNames', 'defaultShowCumTime', 'defaultShowDrift', 'defaultShowCommChange', 'defaultVoiceAlerts', 'defaultShowMidLeg', 'defaultHighlightDiff', 'defaultLimitLegKites', 'defaultShowMsa', 'defaultShowReporting', 'defaultForceSnap', 'defaultShowReturn', 'featureShowReturn', 'featureFplReturnJoin', 'offlineAutoCvfr', 'offlineCvfrUnmeteredOnly', 'offlineCvfrMinZoom', 'offlineCvfrMaxZoom', 'featureRouteIntro', 'featureTour', 'defaultPressureUnit', 'defaultAltSource', 'featureGpsStatus', 'featureKeepAwake', 'featureHaptics', 'featureBrightness', 'featureBarometer', 'featureBatteryWarn', 'featureFullscreenFlight', 'featureGdl90', 'featureBleGps', 'featureSatZoomButtons', 'featureInspectorResize', 'featureInspectorWhileTracking', 'featureAssistant', 'featureSearchClose', 'featureTabletDesktop', 'featureMenubarDrag', 'featureDisclaimer', 'featureOtaUpdates', 'featureNavLog', 'reverseWarnMs', 'notamSeenDays', 'toastReadWpm', 'toastNoticeMs', 'toastMinMs', 'toastWarnMinMs', 'toastMaxMs', 'reverseWarnBlink', 'reverseRotatesMap', 'addToRouteOpensInspector', 'defaultShowNotam', 'defaultShowAirmet', 'defaultShowSigmet', 'defaultShowWind', 'defaultWindField', 'defaultAirfieldWind', 'defaultSurfaceWx', 'defaultImsPwx', 'defaultSigwxOv', 'defaultShowLsaBubbles', 'defaultAutoRoute', 'defaultShowCircuit', 'defaultShowTraining', 'defaultShowCvfr', 'defaultShowHeli', 'defaultShowCommfail', 'defaultShowAdc', 'defaultShowIfr', 'plateFieldZoom'] },
+  { name: 'Default layer visibility', keys: ['defaultShowNavWP', 'defaultShowAirfields', 'defaultShowVor', 'defaultShowHotspots', 'defaultShowWpNames', 'defaultShowCumTime', 'defaultShowDrift', 'defaultShowCommChange', 'defaultVoiceAlerts', 'defaultShowMidLeg', 'defaultHighlightDiff', 'defaultLimitLegKites', 'defaultShowMsa', 'defaultShowReporting', 'defaultForceSnap', 'defaultShowReturn', 'featureShowReturn', 'featureFplReturnJoin', 'offlineAutoCvfr', 'offlineCvfrUnmeteredOnly', 'offlineCvfrMinZoom', 'offlineCvfrMaxZoom', 'featureRouteIntro', 'featureTour', 'defaultPressureUnit', 'defaultAltSource', 'featureGpsStatus', 'featureKeepAwake', 'featureHaptics', 'featureBrightness', 'featureBarometer', 'featureBatteryWarn', 'featureFullscreenFlight', 'featureGdl90', 'featureBleGps', 'featureSatZoomButtons', 'featureInspectorResize', 'featureInspectorWhileTracking', 'featureAssistant', 'featureAutoRecord', 'defaultAutoRecord', 'autoRecordMinSec', 'autoRecordMinNm', 'recordResumeMin', 'featureSearchClose', 'featureTabletDesktop', 'featureMenubarDrag', 'featureDisclaimer', 'featureOtaUpdates', 'featureNavLog', 'reverseWarnMs', 'notamSeenDays', 'toastReadWpm', 'toastNoticeMs', 'toastMinMs', 'toastWarnMinMs', 'toastMaxMs', 'reverseWarnBlink', 'reverseRotatesMap', 'addToRouteOpensInspector', 'defaultShowNotam', 'defaultShowAirmet', 'defaultShowSigmet', 'defaultShowWind', 'defaultWindField', 'defaultAirfieldWind', 'defaultSurfaceWx', 'defaultImsPwx', 'defaultSigwxOv', 'defaultShowLsaBubbles', 'defaultAutoRoute', 'defaultShowCircuit', 'defaultShowTraining', 'defaultShowCvfr', 'defaultShowHeli', 'defaultShowCommfail', 'defaultShowAdc', 'defaultShowIfr', 'plateFieldZoom'] },
 ];
 // Padding pair + maxZoom for a fitBounds call, from the tuning registry. Every "frame the
 // map on X" call goes through this instead of carrying its own literals.
@@ -3081,6 +3089,7 @@ window.S = Object.assign({
   plateTypeAdc: 'Aerodrome chart',
   tbDisabledByTurn: 'Not available on a route with a turning point — it already flies out and back, so there is nothing to reverse or mirror.',
   reverseNoRoute: 'No route to reverse — add at least two waypoints.',
+  resetNoRoute: 'Draw a route first — there are no markers or names to reset yet.',
   reverseRouteWarn: '\u26a0 Reversed — might not match allowed routes. Check the chart: published corridors can be one-way.',
   tbReverse: '⇄ Reverse route (R)',
   tbReverseTitle: 'Reverse route order',
@@ -3193,6 +3202,9 @@ window.S = Object.assign({
   tbAutoRoute: 'Auto-route through waypoints',
   tbAutoRouteTitle: 'Adding a point fills in the published reporting points between it and the previous one (CVFR). Closed routes are avoided.',
   tbInspectorTracking: 'Panel while showing position',
+  tbAutoRecord: 'Record automatically with location',
+  tbAutoRecordTitle: 'Showing your location also records the flight. When location stops, a recording too short to be a flight is not kept.',
+  gpsAutoRecShort: (min, nm) => 'Short recording not kept (under ' + min + ' min or ' + nm + ' nm)',
   tbInspectorTrackingTitle: 'Let a tap open the inspector while your position is on the map. Off by default: in flight the chart is what you are reading.',
   inspectorTrackingBlocked: 'The panel stays shut while your position is showing — turn it on in View/Set.',
   tbShowDrift: 'Show drift lines',

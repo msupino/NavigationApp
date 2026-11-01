@@ -185,6 +185,7 @@ const MENU_ICONS = {
   'tool-add': 'addWp', 'tool-note': 'addNote', 'search-trigger': 'search', reverse: 'reverse',
   undo: 'undo', clear: 'trash', fit: 'fit', 'tool-reset-all-markers': 'reset',
   'tool-reset-all-wp-names': 'reset', 'tool-magnifier': 'magnifier',
+  'autoroute-btn': 'map', 'force-snap-btn': 'addWp', 'ret-btn': 'direct',
   'theme-toggle': (b) => (/☀|light|בהיר/i.test(b.textContent) ? 'sun' : 'moon'),
   'route-templates': 'templates', 'freq-table': 'antenna', 'alt-pairs': 'altPairs',
   'nav-log': 'form', charts: 'charts', 'sigwx-btn': 'globe', 'pwx-btn': 'wind',
@@ -5689,6 +5690,12 @@ if (liveBtn) {
   // sign anything had changed. Same auto-reconnect pattern the simulator already uses
   // (navaid.simOn, below): persist on/off (see startLiveLocation/stopLiveLocation in
   // gps.js) and resume here on boot.
+  // A recording a reload cut short carries on (or is saved, if it was left too long) before
+  // Location resumes -- otherwise Location's own automatic recording would start a second one.
+  if (typeof window.gpsResumeOrSaveRecording === 'function') {
+    const was = window.gpsResumeOrSaveRecording();
+    if (was === 'saved' && typeof window.refreshRouteLibrary === 'function') window.refreshRouteLibrary();
+  }
   let _liveWasOn = false;
   try { _liveWasOn = lsGet('navaid.gpsLiveOn') === '1'; } catch (e) { /* */ }
   if (_liveWasOn && navigator.geolocation && typeof startLiveLocation === 'function') {
@@ -6195,10 +6202,11 @@ window.showReturnFeatureOn = showReturnFeatureOn;
 function refreshShowReturnFeature() {
   const on = showReturnFeatureOn();
   const cb = document.getElementById('ret-cb');
-  const row = cb && cb.closest('label');
+  const row = document.getElementById('ret-btn');
   if (!on) window.showReturn = false;
   if (row) row.hidden = !on;
   if (cb) cb.checked = !!window.showReturn;
+  if (typeof window.refreshToggleButtons === 'function') window.refreshToggleButtons();
 }
 window.refreshShowReturnFeature = refreshShowReturnFeature;
 refreshShowReturnFeature();
@@ -6291,17 +6299,28 @@ document.getElementById('cumtime-cb').checked = showCumTime;
   window.refreshTurnDependentControls = function () {
     const hasTurn = (typeof legRetraceTurnIndex === 'function') && legRetraceTurnIndex() >= 0;
     const why = hasTurn ? ((S && S.tbDisabledByTurn) || '') : '';
+    // With no route there is nothing to reverse or reset: dimmed, and a tap says so
+    // (setButtonWhy) -- rather than a confirm about resetting markers that do not exist.
+    const noRoute = !state.waypoints.length;
     const rev = document.getElementById('reverse');
     if (rev) {
+      setButtonWhy(rev, !hasTurn && state.waypoints.length < 2 ? ((S && S.reverseNoRoute) || 'No route to reverse') : '');
       rev.disabled = hasTurn;
       rev.title = hasTurn ? why : ((S && S.tbReverseTitle) || '');
+    }
+    for (const [id, title] of [['tool-reset-all-markers', 'tbResetAllMarkersTitle'], ['tool-reset-all-wp-names', 'tbResetAllWpNamesTitle']]) {
+      const b = document.getElementById(id);
+      if (!b) continue;
+      setButtonWhy(b, noRoute ? ((S && S.resetNoRoute) || 'Draw a route first') : '');
+      b.title = (S && S[title]) || '';
     }
     const retCb = document.getElementById('ret-cb');
     if (retCb) {
       retCb.disabled = hasTurn;
-      const row = retCb.closest('label');
+      // Dimmed, not disabled: a tap still says why (see button[data-toggle-for]).
+      const row = document.getElementById('ret-btn');
       if (row) {
-        row.classList.toggle('navtoggle-disabled', hasTurn);
+        if (hasTurn) row.setAttribute('aria-disabled', 'true'); else row.removeAttribute('aria-disabled');
         row.title = hasTurn ? why : ((S && S.tbShowReturnTitle) || '');
       }
     }
@@ -6648,6 +6667,28 @@ document.getElementById('wpname-cb').onchange = e => {
       if (e.target.checked && typeof showInspector === 'function' && state && state.selected) {
         showInspector();
       }
+    };
+  }
+}
+// Record automatically while showing location. On by default (the gist's defaultAutoRecord);
+// the gist's featureAutoRecord removes the option. Turning it off leaves a recording already
+// running alone -- Record stops it, as any other.
+{
+  const cb = document.getElementById('auto-record-cb');
+  if (cb) {
+    const label = cb.closest('label');
+    const sync = () => {
+      cb.checked = typeof window.autoRecordOn === 'function' && window.autoRecordOn();
+      if (label) label.hidden = typeof tune === 'function' && tune('featureAutoRecord') === false;
+    };
+    sync();
+    window.refreshAutoRecordControl = sync;
+    cb.onchange = (e) => {
+      try { localStorage.setItem('navaid.autoRecord', e.target.checked ? '1' : '0'); }
+      catch (err) { /* storage unavailable */ }
+      // Turned on with location already showing: start now, not at the next Location tap.
+      if (e.target.checked && typeof gpsLiveOn !== 'undefined' && gpsLiveOn && !gpsRecording
+          && typeof startGpsRecording === 'function') startGpsRecording({ auto: true });
     };
   }
 }
@@ -11053,6 +11094,32 @@ document.getElementById('force-snap-cb').onchange = e => {
   try { localStorage.setItem(FORCE_SNAP_KEY, forceSnap ? '1' : '0'); }
   catch (err) { /* storage unavailable */ }
 };
+// Toggle buttons standing in for a checkbox (Edit's Auto-route and Snap): a press flips the
+// hidden checkbox and fires its change, so its own handler runs exactly as before; aria-pressed
+// follows the checkbox, including when the gist default sets it (that dispatches change too).
+function refreshToggleButtons() {
+  document.querySelectorAll('button[data-toggle-for]').forEach((btn) => {
+    const cb = document.getElementById(btn.dataset.toggleFor);
+    if (cb) btn.setAttribute('aria-pressed', cb.checked ? 'true' : 'false');
+  });
+}
+document.querySelectorAll('button[data-toggle-for]').forEach((btn) => {
+  const cb = document.getElementById(btn.dataset.toggleFor);
+  if (!cb) return;
+  btn.addEventListener('click', () => {
+    // Dimmed (its checkbox is disabled, e.g. Show return path on a route with a turning point):
+    // say why rather than do nothing.
+    if (cb.disabled) {
+      if (btn.title && typeof showToast === 'function') showToast(btn.title);
+      return;
+    }
+    cb.checked = !cb.checked;
+    cb.dispatchEvent(new Event('change', { bubbles: true }));
+  });
+  cb.addEventListener('change', refreshToggleButtons);
+});
+refreshToggleButtons();
+window.refreshToggleButtons = refreshToggleButtons;
 // Comm-change overlay toggle. The dataset lives in
 // the route graph's comm-change nodes and rings are drawn on top of the nav-WP dots
 // in draw.js. This key intentionally replaced the legacy
@@ -13380,6 +13447,8 @@ if (typeof loadRemoteConfig === "function") {
     if (typeof refreshAssistantFeature === "function") refreshAssistantFeature();
     if (typeof refreshToolbarDesktopMenu === "function") refreshToolbarDesktopMenu();
     if (typeof window.refreshSearchClose === "function") window.refreshSearchClose();
+    if (typeof window.refreshAutoRecordControl === "function") window.refreshAutoRecordControl();
+    if (typeof window.refreshToggleButtons === "function") window.refreshToggleButtons();
     if (typeof window.refreshMenubarPin === "function") window.refreshMenubarPin();
     if (NavAid && typeof NavAid.refreshMobileDeck === "function") NavAid.refreshMobileDeck();
     if (typeof refreshEmptyRouteHint === "function") refreshEmptyRouteHint();

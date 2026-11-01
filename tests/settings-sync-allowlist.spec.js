@@ -149,6 +149,7 @@ const NOT_A_SYNCED_SETTING = [
   // Dev-only scratch space.
   [/^navaid\.editor\./,          '?edit=1 overlay editor scratch data'],
   [/^navaid\.sim/,               'simulator link, per device'],
+  [/^navaid\.gpsRecInProgress$/, 'the recording in progress on this device, resumed after a reload -- data, not a setting'],
   [/^navaid\.gpsLiveOn$/,        'whether live location is on, per device -- resumed on reload, not synced to others'],
   [/^navaid\.offlinePacks$/,     'which charts and areas this device keeps offline -- storage on this device, not a setting'],
   [/^navaid\.commFail$/,         'a comm failure in progress on this aircraft, resumed on reload -- not a setting'],

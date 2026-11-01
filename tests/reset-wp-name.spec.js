@@ -210,7 +210,8 @@ test.describe('#418 — waypoint-name reset button', () => {
     await boot(page);
     let dialogCount = 0;
     page.on('dialog', () => { dialogCount++; });
-    await page.locator('#tool-reset-all-wp-names').click();
+    // Dimmed with no route (aria-disabled), so Playwright needs force to tap it.
+    await page.locator('#tool-reset-all-wp-names').click({ force: true });
     expect(dialogCount).toBe(0);
   });
 
