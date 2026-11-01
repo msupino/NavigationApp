@@ -202,6 +202,53 @@ jobs:
           git -C d checkout --detach FETCH_HEAD
           test "$(git -C d rev-parse HEAD)" = "$WANT"
           echo "staging now at $(git -C d rev-parse --short HEAD)"
+      # Minified app code and stylesheet: the source keeps its comments (half its size), the
+      # site does not need them. PageSpeed measured ~485 KB of JS and ~45 KB of CSS to gain.
+      # The script is written HERE, from this workflow, never taken from a checkout: it also
+      # runs over PR branches' code (parsing only, nothing of theirs is executed). Top-level
+      # names stay (the app's files share them as globals), function names stay, and quotes
+      # stay as written, so the deploy's own greps (version: '1.0-sha') still match.
+      - name: Install the minifier
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/minify
+          cd /tmp/minify
+          npm init -y >/dev/null
+          npm install --no-audit --no-fund --silent terser@5.36.0 csso@5.0.5
+          cat > minify.mjs <<'MINIFY'
+            // Minify one assembled site root in place: app/*.js, i18n/**/*.js, app/style.css.
+            // Writes through a fresh file (rm + write) because the tree is hard-linked to the checkouts.
+            import fs from 'node:fs';
+            import path from 'node:path';
+            import { minify } from 'terser';
+            import { minify as cssMinify } from 'csso';
+            const root = process.argv[2];
+            const files = [];
+            const walk = (d) => { if (!fs.existsSync(d)) return; for (const e of fs.readdirSync(d, { withFileTypes: true })) {
+              const p = path.join(d, e.name); if (e.isDirectory()) walk(p); else files.push(p); } };
+            walk(path.join(root, 'app')); walk(path.join(root, 'i18n'));
+            let before = 0, after = 0;
+            const put = (f, out) => { fs.rmSync(f); fs.writeFileSync(f, out); };
+            for (const f of files) {
+              const src = fs.readFileSync(f, 'utf8');
+              let out;
+              if (f.endsWith('.js')) {
+                const r = await minify(src, {
+                  ecma: 2020, module: false, toplevel: false,
+                  compress: { passes: 1, keep_fnames: true, keep_classnames: true, drop_console: false },
+                  mangle: { keep_fnames: true, keep_classnames: true },
+                  format: { quote_style: 3, comments: false, ascii_only: false },
+                });
+                out = r.code;
+              } else if (f.endsWith('.css')) {
+                out = cssMinify(src, { restructure: false }).css;
+              } else continue;
+              if (!out || out.length >= src.length) continue;
+              before += src.length; after += out.length;
+              put(f, out);
+            }
+            console.log(`${root}: ${Math.round(before / 1024)} KB -> ${Math.round(after / 1024)} KB`);
+          MINIFY
       - name: Assemble site
         id: assemble
         run: |
@@ -301,6 +348,13 @@ jobs:
             fi
             node "$SCRIPT" "$ROOT/data/gist-snapshot.js"
           done
+
+      # After the snapshot and before the update bundle, so the embedded apps get the small
+      # files too. A failure here stops the deploy: the site would otherwise be half rewritten.
+      - name: Minify the site
+        run: |
+          set -euo pipefail
+          for ROOT in site site/staging; do node /tmp/minify/minify.mjs "$ROOT"; done
 
       - name: Publish the update bundle for the embedded apps
         run: |
@@ -485,6 +539,9 @@ jobs:
             # ...and no service worker: Cache Storage is per ORIGIN, so a preview worker's
             # cleanup used to delete the live app's offline shell just by being visited.
             rm -f "$STAGING/sw.js"
+            # Minified like production, so its e2e run tests what production will serve.
+            node /tmp/minify/minify.mjs "$STAGING" \
+              || echo "::warning::PR #$NUM: minify failed; its preview keeps the source files"
             mv "$STAGING" "../site/pr/$NUM"
             echo "  -> /pr/$NUM/ ($SHA)"
           }
@@ -745,7 +802,7 @@ jobs:
             # injected version SHA matches this dispatched branch exactly.
             for CORE in _site/pr/*/app/core.js; do
               [ -f "$CORE" ] || continue
-              CANDIDATE_SHA=$(sed -nE "s/.*version: '1\.0-([A-Za-z0-9]+)'.*/\1/p" "$CORE")
+              CANDIDATE_SHA=$(sed -nE "s/.*version: ?'1\.0-([A-Za-z0-9]+)'.*/\1/p" "$CORE")
               case "$HEAD_SHA" in
                 "$CANDIDATE_SHA"*) PR_NUM=${CORE#_site/pr/}; PR_NUM=${PR_NUM%%/*}; break ;;
               esac
@@ -763,7 +820,7 @@ jobs:
             echo "::error::No preview at $PREVIEW in the built artifact"; exit 1
           fi
           # Sanity: the built preview must carry this PR's HEAD commit.
-          SHA=$(sed -nE "s/.*version: '1\.0-([A-Za-z0-9]+)'.*/\1/p" "$PREVIEW/app/core.js")
+          SHA=$(sed -nE "s/.*version: ?'1\.0-([A-Za-z0-9]+)'.*/\1/p" "$PREVIEW/app/core.js")
           echo "artifact preview SHA=$SHA, PR HEAD=$HEAD_SHA"
           case "$HEAD_SHA" in
             "$SHA"*) echo "Preview matches HEAD" ;;
