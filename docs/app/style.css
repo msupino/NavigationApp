@@ -9977,3 +9977,10 @@ body.theme-light .compass-status { color: #a15c00; }
    that edge: a layout shift on every desktop boot. Its controls float right as before, and a
    Leaflet corner takes no pointer events, so the map under it is untouched. */
 .leaflet-bottom.leaflet-right { left: 0; }
+
+
+/* The map's controls show once the first loading phase has run. Before that they could paint
+   where they do not stay: on a phone the deck (deck.js, body.deck-on) moves the edit column
+   under its strip, and a paint between ui.js and deck.js showed it jump (PageSpeed: layout
+   shift). They appear in place instead; an element appearing is not a shift. */
+html:not(.nav-booted) .leaflet-control-container { visibility: hidden; }
