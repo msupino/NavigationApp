@@ -4858,7 +4858,12 @@ function searchDocked() { return searchOverlay.classList.contains('docked'); }
     } catch (e) { return null; }
   };
   let savedPosCache = readSavedPos();
-  const savedPos = () => savedPosCache;
+  // Pinned unless the gist's `featureSearchDrag` is exactly true -- off, empty or missing all pin
+  // the card where the stylesheet docks it (under the menu bar, on the side the language reads
+  // from), as `featureMenubarDrag` pins the menu: no drag, and a position saved from before is
+  // not applied (it stays stored for if it returns).
+  const searchPinned = () => typeof tune !== 'function' || tune('featureSearchDrag') !== true;
+  const savedPos = () => (searchPinned() ? null : savedPosCache);
   // Same rule as the legend: never come to rest ON the menu bar, but above and
   // below are both fine, so a panel dragged down can be dragged back up.
   function clearOfToolbar(x, y) {
@@ -4960,16 +4965,27 @@ function searchDocked() { return searchOverlay.classList.contains('docked'); }
     window.addEventListener('touchend', end);
   }
   box.addEventListener('mousedown', e => {
-    if (!searchDocked() || !isDragSurface(e.target)) return;
+    if (!searchDocked() || searchPinned() || !isDragSurface(e.target)) return;
     e.preventDefault();
     start(e.clientX, e.clientY);
   });
   box.addEventListener('touchstart', e => {
-    if (!searchDocked() || e.touches.length !== 1 || !isDragSurface(e.target)) return;
+    if (!searchDocked() || searchPinned() || e.touches.length !== 1 || !isDragSurface(e.target)) return;
     e.preventDefault();
     start(e.touches[0].clientX, e.touches[0].clientY);
   }, { passive: false });
+  // Pinned or not shows in the cursor (no grab hand on a card that does not move), and a gist
+  // that changes the switch after boot moves the card straight back under the menu (or to the
+  // pilot's spot).
+  function refreshSearchPin() {
+    box.classList.toggle('search-pinned', searchPinned());
+    if (!searchDocked()) return;
+    const p = savedPos();
+    if (p) applyPos(p.x, p.y); else { clearInlinePos(); parkBelowToolbar(); }
+  }
+  window.refreshSearchPin = refreshSearchPin;
   sync();
+  refreshSearchPin();
   applySearchTipState();
 })();
 refreshSearchClose();
@@ -6524,6 +6540,15 @@ document.getElementById('limit-kites-cb').onchange = e => {
       if (typeof window.simStop === 'function') simStop();    // saves navaid.simOn
     }
   };
+  // The footer's plane button disconnects a live simulator directly (below): the same stop as
+  // the panel's own button, so the panel's label and state stay in step with it.
+  window.simDisconnect = () => {
+    if (!connected) return false;
+    connected = false;
+    setConnectLabel();
+    if (typeof window.simStop === 'function') simStop();
+    return true;
+  };
 
   // Auto-reconnect if sim was active before the page refreshed.
   // Read localStorage directly — the global simOn may not yet reflect the
@@ -6617,7 +6642,16 @@ document.getElementById('limit-kites-cb').onchange = e => {
     prevFocus = null;
     if (el && document.contains(el)) { try { el.focus(); } catch (e) { /* */ } }
   };
-  trigger.addEventListener('click', open);
+  // Connected, the button is a switch like Location and Record beside it: a press disconnects,
+  // it does not open the connect panel (asked: "pressing on sim button when active, should
+  // disable, not open the connect window"). Disconnected, it opens the panel to connect.
+  trigger.addEventListener('click', () => {
+    if (typeof simOn !== 'undefined' && simOn && typeof window.simDisconnect === 'function' && window.simDisconnect()) {
+      if (typeof showToast === 'function') showToast((S && S.tbSimDisconnected) || 'Simulator disconnected');
+      return;
+    }
+    open();
+  });
   if (closeBtn) closeBtn.addEventListener('click', close);
   modal.addEventListener('click', e => { if (e.target === modal) close(); });
   document.addEventListener('keydown', e => {
@@ -12080,6 +12114,37 @@ refreshToolbarDesktopMenu();
 function onToolbarDesktopMenuChange(fn) {
   toolbarDesktopMenuListeners.push(fn);
 }
+// The live readout (fixes, time, speed, altitude, pressure) in a frame of its own under the
+// desktop menu bar. Inside the bar it lengthened the bar's last row the moment Location or
+// Record started, and the whole bar wrapped onto two rows -- reported: "recording or location
+// changes the menu layout, make the additional info in a new frame, not change top menu size".
+// The element itself moves (same id: gpsSetReadout writes it, the phone deck reads it), and
+// moves back when the layout stops being the desktop menu bar.
+(function readoutFrame() {
+  const el = document.getElementById('gps-readout');
+  if (!el || !el.parentNode) return;
+  const home = el.parentNode;
+  const frame = document.createElement('div');
+  frame.id = 'gps-readout-frame';
+  document.body.appendChild(frame);
+  // Under the bar's actual bottom, as the GPS chip is (gps-status.js): the bar can wrap to a
+  // second row on a narrower screen. The chip steps down below this frame while it shows.
+  const tb = document.getElementById('toolbar');
+  const setTop = () => {
+    const r = tb && tb.getClientRects().length ? tb.getBoundingClientRect() : null;
+    frame.style.top = Math.round((r ? r.bottom : 50) + 8) + 'px';
+  };
+  const place = () => {
+    const desk = document.documentElement.classList.contains('menubar');
+    if (desk && el.parentNode !== frame) frame.appendChild(el);
+    else if (!desk && el.parentNode === frame) home.appendChild(el);
+    setTop();
+  };
+  place();                                  // the class may already be set by index.html
+  onToolbarDesktopMenuChange(place);
+  window.addEventListener('resize', setTop);
+  if (window.ResizeObserver && tb) new ResizeObserver(setTop).observe(tb);
+})();
 
 function refreshMapAfterToolbarModeChange() {
   requestAnimationFrame(() => {
@@ -13462,6 +13527,7 @@ if (typeof loadRemoteConfig === "function") {
     if (typeof window.refreshAutoRecordControl === "function") window.refreshAutoRecordControl();
     if (typeof window.refreshToggleButtons === "function") window.refreshToggleButtons();
     if (typeof window.refreshMenubarPin === "function") window.refreshMenubarPin();
+    if (typeof window.refreshSearchPin === "function") window.refreshSearchPin();
     if (NavAid && typeof NavAid.refreshMobileDeck === "function") NavAid.refreshMobileDeck();
     if (typeof refreshEmptyRouteHint === "function") refreshEmptyRouteHint();
     if (typeof refreshTrafficFeature === "function") refreshTrafficFeature();

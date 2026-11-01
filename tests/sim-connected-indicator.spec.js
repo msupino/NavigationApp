@@ -53,3 +53,28 @@ test('a session resumed on boot shows as connected without opening the panel', a
   expect((await iconState(page)).pressed).toBe('true');
   expect(await page.evaluate(() => document.getElementById('sim-modal').classList.contains('hidden'))).toBe(true);
 });
+
+// Asked: "pressing on sim button when active, should disable, not open the connect window".
+// Connected, the plane button is a switch like Location and Record: a press disconnects (the
+// panel's own state with it) and says so; disconnected, it opens the panel.
+test('pressing the plane button while connected disconnects instead of opening the panel', async ({ page }) => {
+  await boot(page);
+  // Connect the way a pilot does: open the panel, press Connect, close it.
+  await page.locator('#sim-trigger').click();
+  await expect(page.locator('#sim-modal')).not.toHaveClass(/hidden/);
+  await page.locator('#sim-connect-cb').click();
+  await page.locator('#sim-modal-close').click();
+  expect((await iconState(page)).pressed).toBe('true');
+  expect((await iconState(page)).label).toMatch(/tap to disconnect/);
+
+  await page.locator('#sim-trigger').click();
+  expect((await iconState(page)).pressed).toBe('false');
+  await expect(page.locator('#sim-modal')).toHaveClass(/hidden/);           // not opened
+  expect(await page.evaluate(() => [window.simOn, localStorage.getItem('navaid.simOn')])).toEqual([false, '0']);
+  // The panel's own button follows: it offers to connect again.
+  expect(await page.locator('#sim-connect-cb').textContent()).toMatch(/Connect to simulator/);
+
+  // Disconnected, the same press opens the panel.
+  await page.locator('#sim-trigger').click();
+  await expect(page.locator('#sim-modal')).not.toHaveClass(/hidden/);
+});
