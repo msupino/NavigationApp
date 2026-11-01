@@ -10927,7 +10927,7 @@ function refreshSimTrigger() {
   const on = typeof simOn !== 'undefined' && !!simOn;
   btn.classList.add('gps-footer-btn');            // borrow the latched styling, not a new one
   btn.setAttribute('aria-pressed', on ? 'true' : 'false');
-  const label = on ? ((S && S.tbSimConnected) || 'Simulator connected')
+  const label = on ? ((S && S.tbSimConnectedTap) || 'Simulator connected — tap to disconnect')
                    : ((S && S.tbSecSim) || 'Simulator');
   btn.title = label;
   btn.setAttribute('aria-label', label);

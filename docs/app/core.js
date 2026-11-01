@@ -1127,6 +1127,7 @@ NavAid.tuningDefaults = {
   featureDisclaimer: { value: true, type: 'bool', label: 'Safety notice on first run' },
   featureOtaUpdates: { value: true, type: 'bool', label: 'Embedded build fetches web updates' },
   featureMenubarDrag: { value: false, type: 'bool', label: 'Feature: the desktop top menu can be dragged (off pins it in place)' },
+  featureSearchDrag: { value: false, type: 'bool', label: 'Feature: the desktop search card can be dragged (off pins it under the menu)' },
   // The docked desktop search panel's X. Off: the panel stays put (it is furniture there), and
   // one dismissed before comes back. A summoned search keeps its X -- the only way out of it.
   // Showing location records the flight (navaid.autoRecord, defaulting to defaultAutoRecord);
@@ -1380,7 +1381,7 @@ NavAid.tuningGroups = [
     'defaultViewZoom', 'defaultViewLat', 'defaultViewLng'] },
   { name: 'Export', keys: ['exportBgColor', 'fpTableBorderWidthPx', 'fpTableGridWidthPx'] },
   { name: 'Global palette', keys: ['inkColor', 'selectedColor', 'labelFillColor', 'kiteTextColor', 'legKiteHaloColor', 'kiteNoteAlpha'] },
-  { name: 'Default layer visibility', keys: ['defaultShowNavWP', 'defaultShowAirfields', 'defaultShowVor', 'defaultShowHotspots', 'defaultShowWpNames', 'defaultShowCumTime', 'defaultShowDrift', 'defaultShowCommChange', 'defaultVoiceAlerts', 'defaultShowMidLeg', 'defaultHighlightDiff', 'defaultLimitLegKites', 'defaultShowMsa', 'defaultShowReporting', 'defaultForceSnap', 'defaultShowReturn', 'featureShowReturn', 'featureFplReturnJoin', 'offlineAutoCvfr', 'offlineCvfrUnmeteredOnly', 'offlineCvfrMinZoom', 'offlineCvfrMaxZoom', 'offlineCvfrStartSec', 'featureRouteIntro', 'featureTour', 'defaultPressureUnit', 'defaultAltSource', 'featureGpsStatus', 'featureKeepAwake', 'featureHaptics', 'featureBrightness', 'featureBarometer', 'featureBatteryWarn', 'featureFullscreenFlight', 'featureGdl90', 'featureBleGps', 'featureSatZoomButtons', 'featureInspectorResize', 'featureInspectorWhileTracking', 'featureAssistant', 'featureAutoRecord', 'defaultAutoRecord', 'autoRecordMinSec', 'autoRecordMinNm', 'recordResumeMin', 'featureSearchClose', 'featureTabletDesktop', 'featureMenubarDrag', 'featureDisclaimer', 'featureOtaUpdates', 'featureNavLog', 'reverseWarnMs', 'notamSeenDays', 'toastReadWpm', 'toastNoticeMs', 'toastMinMs', 'toastWarnMinMs', 'toastMaxMs', 'reverseWarnBlink', 'reverseRotatesMap', 'addToRouteOpensInspector', 'defaultShowNotam', 'defaultShowAirmet', 'defaultShowSigmet', 'defaultShowWind', 'defaultWindField', 'defaultAirfieldWind', 'defaultSurfaceWx', 'defaultImsPwx', 'defaultSigwxOv', 'defaultShowLsaBubbles', 'defaultAutoRoute', 'defaultShowCircuit', 'defaultShowTraining', 'defaultShowCvfr', 'defaultShowHeli', 'defaultShowCommfail', 'defaultShowAdc', 'defaultShowIfr', 'plateFieldZoom'] },
+  { name: 'Default layer visibility', keys: ['defaultShowNavWP', 'defaultShowAirfields', 'defaultShowVor', 'defaultShowHotspots', 'defaultShowWpNames', 'defaultShowCumTime', 'defaultShowDrift', 'defaultShowCommChange', 'defaultVoiceAlerts', 'defaultShowMidLeg', 'defaultHighlightDiff', 'defaultLimitLegKites', 'defaultShowMsa', 'defaultShowReporting', 'defaultForceSnap', 'defaultShowReturn', 'featureShowReturn', 'featureFplReturnJoin', 'offlineAutoCvfr', 'offlineCvfrUnmeteredOnly', 'offlineCvfrMinZoom', 'offlineCvfrMaxZoom', 'offlineCvfrStartSec', 'featureRouteIntro', 'featureTour', 'defaultPressureUnit', 'defaultAltSource', 'featureGpsStatus', 'featureKeepAwake', 'featureHaptics', 'featureBrightness', 'featureBarometer', 'featureBatteryWarn', 'featureFullscreenFlight', 'featureGdl90', 'featureBleGps', 'featureSatZoomButtons', 'featureInspectorResize', 'featureInspectorWhileTracking', 'featureAssistant', 'featureAutoRecord', 'defaultAutoRecord', 'autoRecordMinSec', 'autoRecordMinNm', 'recordResumeMin', 'featureSearchClose', 'featureTabletDesktop', 'featureMenubarDrag', 'featureSearchDrag', 'featureDisclaimer', 'featureOtaUpdates', 'featureNavLog', 'reverseWarnMs', 'notamSeenDays', 'toastReadWpm', 'toastNoticeMs', 'toastMinMs', 'toastWarnMinMs', 'toastMaxMs', 'reverseWarnBlink', 'reverseRotatesMap', 'addToRouteOpensInspector', 'defaultShowNotam', 'defaultShowAirmet', 'defaultShowSigmet', 'defaultShowWind', 'defaultWindField', 'defaultAirfieldWind', 'defaultSurfaceWx', 'defaultImsPwx', 'defaultSigwxOv', 'defaultShowLsaBubbles', 'defaultAutoRoute', 'defaultShowCircuit', 'defaultShowTraining', 'defaultShowCvfr', 'defaultShowHeli', 'defaultShowCommfail', 'defaultShowAdc', 'defaultShowIfr', 'plateFieldZoom'] },
 ];
 // Padding pair + maxZoom for a fitBounds call, from the tuning registry. Every "frame the
 // map on X" call goes through this instead of carrying its own literals.
@@ -1890,6 +1891,24 @@ window.S = Object.assign({
   tourSearchText: 'Type a waypoint or airfield, or several codes (LLHZ BAZRA DEROR) to build a route.',
   tourHoldTitle: 'Press and hold the map',
   tourHoldText: 'Hold a finger on any point: what is there, add it as a waypoint, or fly Direct to it.',
+  recIndicatorLabel: 'REC',
+  recIndicatorTitle: 'Recording the flight',
+  tourLiveRecTitle: 'Recording',
+  tourLiveRecText: 'The red REC sign: this flight is being recorded. It stops with Record, or when you turn Location off, and is kept in Saved routes.',
+  tourLiveReadTitle: 'Speed, altitude, track',
+  tourLiveReadText: 'Your ground speed, altitude and magnetic track, from the GPS.',
+  tourLiveStatusTitle: 'GPS quality',
+  tourLiveStatusText: 'How good the position is. Tap it for the accuracy, the satellites and the last fix.',
+  tourLiveFollowTitle: 'Follow',
+  tourLiveFollowText: 'Keeps the chart on your aircraft. Move the map and it waits, then brings you back; tap it to stop following.',
+  tourLiveOrientTitle: 'North up or heading up',
+  tourLiveOrientText: 'Turns the chart so your track points up, or back to north up.',
+  tourLiveVoiceTitle: 'Spoken alerts',
+  tourLiveVoiceText: 'Speaks the in-flight alerts: next leg, altitude, TOP, off route. Tap it to silence them.',
+  tourLiveShareTitle: 'Follow me',
+  tourLiveShareText: 'Shares a live link to your position, for someone on the ground to follow.',
+  tourLiveLineTitle: 'The heading line',
+  tourLiveLineText: 'The dashed line ahead of you, marked at 2, 5 and 10 nm and at 2 and 5 minutes. In a turn it bends into a quarter circle the way you turn, with the distances only.',
   appUpdateReadyTitle: 'Update ready',
   appUpdateReadyText: function (v) {
     return 'A new version of NavAid has been downloaded' + (v ? ' (' + v + ')' : '') +
@@ -2946,8 +2965,8 @@ window.S = Object.assign({
   compassHoldHint: 'hold for the compass',
   tbBrightness: 'Screen brightness',
   tbBrightnessTitle: 'Dim the screen for night flying — below the phone\u2019s own minimum if needed',
-  tbBrightnessSystem: 'Phone\u2019s own brightness',
-  tbBrightnessSystemTitle: 'The screen at the phone\u2019s own brightness. Off: set it with the slider below',
+  tbBrightnessSystem: 'System brightness',
+  tbBrightnessSystemTitle: 'The screen at the brightness the device itself is set to. Off: set it with the slider below',
   tbBrightnessAuto: 'System',
   batteryLow: function (pct) { return 'Battery ' + pct + '%: plug the phone in'; },
   tbBleGps: 'Connect Bluetooth GPS',
@@ -3757,6 +3776,8 @@ window.S = Object.assign({
   inspTurnNeedsSameField: 'Available on a route that returns to the airfield it started from — a one-way trip has no return to separate from its outbound.',
   inspTurnTitle: 'Where this route turns for home. A loop repeats no waypoint, so nothing in the geometry says where the far end is — mark it here and the leg-direction filter can split outbound from return.',
   tbSimConnected: 'Simulator connected — showing its aircraft on the map',
+  tbSimConnectedTap: 'Simulator connected — tap to disconnect',
+  tbSimDisconnected: 'Simulator disconnected',
   tbSecSim: 'Simulator',   // footer button + sim modal title; the footer icon span draws the plane
   tbSimConnect: 'Connect to simulator',
   tbSimDiscover: 'Find X-Plane',
