@@ -256,5 +256,10 @@
 
   window.NavAid = window.NavAid || {};
   NavAid.worldOffline = { load, refreshLabels };
-  load();
+  // 235 KB of outlines, shown only where a chart tile is missing: fetched once the page has
+  // loaded and the main thread is free, not in the race with the first tiles. It is the app's
+  // own file, so it is there offline either way.
+  const later = () => { if (window.requestIdleCallback) requestIdleCallback(() => load(), { timeout: 3000 }); else setTimeout(load, 500); };
+  if (document.readyState === 'complete') later();
+  else window.addEventListener('load', later);
 })();

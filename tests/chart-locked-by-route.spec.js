@@ -9,6 +9,11 @@
 // OpenStreetMap and the helicopter chart change what is underneath, not what the route
 // means, so they stay free with a route on screen.
 const { test, expect } = require('./_setup');
+const fs = require('fs');
+const path = require('path');
+// The SOURCE, from disk: the deployed suite serves the minified site, whose text is not what
+// these assertions are about.
+const src = (p) => fs.readFileSync(path.join(__dirname, '..', 'docs', p), 'utf8');
 
 async function boot(page) {
   await page.goto('?lang=en&nogist');
@@ -185,12 +190,8 @@ test('the chart refusal is a warning, not an acknowledgement', async ({ page }) 
 test('every refusal and outage asks for the warning floor', async ({ page }) => {
   await page.goto('?lang=en&nogist');
   await page.waitForFunction(() => typeof showToast === 'function');
-  const src = await page.evaluate(async () => {
-    const files = ['app/ui.js', 'app/io.js', 'app/draw.js', 'app/traffic.js', 'app/followme.js'];
-    const out = {};
-    for (const f of files) out[f] = await (await fetch(f + '?v=src')).text();
-    return out;
-  });
+  const files = ['app/ui.js', 'app/io.js', 'app/draw.js', 'app/traffic.js', 'app/followme.js'];
+  const texts = Object.fromEntries(files.map(f => [f, src(f)]));
   // Each entry: the string a call site shows, and the file it lives in.
   const mustWarn = [
     ['app/ui.js', 'editLockBlockedToast'],       // the route is locked: the edit refused
@@ -205,7 +206,7 @@ test('every refusal and outage asks for the warning floor', async ({ page }) => 
   ];
   const missing = [];
   for (const [file, key] of mustWarn) {
-    const text = src[file] || '';
+    const text = texts[file] || '';
     const at = text.indexOf(key);
     if (at < 0) { missing.push(key + ' (string gone from ' + file + ')'); continue; }
     // The options object follows the message, within the same call.
