@@ -1539,6 +1539,12 @@ body.deck-on .leaflet-control.edit-col-ctrl {
   pointer-events: none;
 }
 #gps-rec-indicator[hidden] { display: none; }
+/* Desktop: under the Zulu clock, on its side. At 58px it sat over the clock's last digits in
+   English, and in Hebrew -- clock top-LEFT, the docked search card top-right -- under the card
+   (z-index 1500 to its 1200): recording showed nothing. The phone keeps its place: the deck
+   has no docked card and its clock lives in the strip. */
+body:not(.deck-on) #gps-rec-indicator { top: 82px; }
+html[dir="rtl"] body:not(.deck-on) #gps-rec-indicator { right: auto; left: 12px; }
 #gps-rec-indicator .gps-rec-dot {
   width: 14px;
   height: 14px;

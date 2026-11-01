@@ -36,6 +36,22 @@
     { sel: ['#search-overlay:not(.hidden) input', '#search-overlay:not(.hidden)'], k: 'Search', only: 'desktop' },
     { sel: null, k: 'Hold', only: 'phone' },
   ];
+  // The in-flight tour: the controls that only appear while a fix is driving the map (and the
+  // recording dot while a flight is recorded). Asked: "when recording, there are few more
+  // icons on map, add tutorial for them". It plays once, the first time the position is live;
+  // "Show the tour" plays it after the map tour whenever the position is live.
+  const LIVE_SEEN_KEY = 'navaid.liveTourSeen';
+  const LIVE_STEPS = [
+    { sel: ['#gps-rec-indicator'], k: 'LiveRec' },
+    { sel: ['.deck-strip-vals', '#gps-readout'], k: 'LiveRead' },
+    { sel: ['#gps-status'], k: 'LiveStatus' },
+    { sel: ['#follow-lock'], k: 'LiveFollow' },
+    { sel: ['#orient-toggle'], k: 'LiveOrient' },
+    { sel: ['#voice-toggle'], k: 'LiveVoice' },
+    { sel: ['#follow-me-map'], k: 'LiveShare' },
+    { sel: null, k: 'LiveLine' },
+  ];
+  const liveNow = () => typeof gpsPositionLive === 'function' && !!gpsPositionLive();
   const phone = () => document.body.classList.contains('deck-on');
   const visible = (el) => {
     if (!el || !el.getClientRects().length) return false;
@@ -51,10 +67,11 @@
     }
     return null;
   };
-  const steps = () => STEPS.filter((s) => (!s.only || (s.only === 'phone') === phone()) && (!s.sel || target(s)));
+  const stepsOf = (defs) => defs.filter((s) => (!s.only || (s.only === 'phone') === phone()) && (!s.sel || target(s)));
+  const steps = () => stepsOf(STEPS);
   const str = (k, d) => (typeof S === 'object' && S && S[k]) || d;
 
-  let root = null, list = [], i = 0, before = null, onKey = null, onResize = null;
+  let root = null, list = [], i = 0, before = null, onKey = null, onResize = null, seenKeys = [SEEN_KEY];
 
   function close(seen) {
     if (!root) return;
@@ -62,7 +79,7 @@
     root = null;
     window.removeEventListener('keydown', onKey, true);
     window.removeEventListener('resize', onResize);
-    if (seen) { try { localStorage.setItem(SEEN_KEY, '1'); } catch (e) { /* storage off */ } }
+    if (seen) { try { for (const k of seenKeys) localStorage.setItem(k, '1'); } catch (e) { /* storage off */ } }
     if (before && typeof before.focus === 'function') { try { before.focus(); } catch (e) { /* gone */ } }
   }
 
@@ -185,9 +202,15 @@
     render();
   };
 
-  function start() {
+  // `which`: 'map' (the first-launch tour), 'live' (the in-flight one), or 'all' (both, for
+  // "Show the tour" while the position is live). Each marks its own tour seen.
+  function start(which) {
     if (root) return false;
-    list = steps();
+    const w = which === 'live' || which === 'all' ? which : 'map';
+    list = w === 'live' ? stepsOf(LIVE_STEPS) : w === 'all' ? steps().concat(stepsOf(LIVE_STEPS)) : steps();
+    // A live tour of only the heading line is not worth stopping the pilot for.
+    if (w === 'live' && !list.some((s) => s.sel)) return false;
+    seenKeys = w === 'live' ? [LIVE_SEEN_KEY] : w === 'all' ? [SEEN_KEY, LIVE_SEEN_KEY] : [SEEN_KEY];
     if (!list.length) return false;
     i = 0;
     before = document.activeElement;
@@ -250,16 +273,34 @@
     }, 500);
   }
 
+  // The in-flight tour, the first time the position is live: polled (cheaply, every 2 s) only
+  // until it has been seen. It waits for the map tour, a dialog or the boot screen to be gone,
+  // and for the controls to be on screen.
+  function maybeAutoStartLive() {
+    if (window.__navaidNoTour) return;
+    if (typeof tune === 'function' && tune('featureTour') === false) return;
+    try { if (localStorage.getItem(LIVE_SEEN_KEY) === '1') return; } catch (e) { return; }
+    let liveSince = 0;
+    const t = setInterval(() => {
+      try { if (localStorage.getItem(LIVE_SEEN_KEY) === '1') { clearInterval(t); return; } } catch (e) { clearInterval(t); return; }
+      if (!liveNow()) { liveSince = 0; return; }
+      if (root || document.getElementById('boot-loading') || document.querySelector('.modal-back, .disclaimer-back')) return;
+      if (!liveSince) { liveSince = Date.now(); return; }
+      if (Date.now() - liveSince < 1500) return;          // the controls have just appeared
+      if (start('live')) clearInterval(t);
+    }, 2000);
+  }
+
   window.NavAid = window.NavAid || {};
-  NavAid.tour = { start, close: () => close(false), steps };
+  NavAid.tour = { start, close: () => close(false), steps, liveSteps: () => stepsOf(LIVE_STEPS) };
   const replay = document.getElementById('tour-replay');
   if (replay) replay.addEventListener('click', () => {
     if (typeof window.closeToolbarMenus === 'function') window.closeToolbarMenus();
     // On a phone the menu sheet covers the map: the Map tab puts everything away first.
     const mapTab = document.querySelector('.deck-btn-map');
     if (mapTab && phone()) mapTab.click();
-    setTimeout(start, 350);
+    setTimeout(() => start(liveNow() ? 'all' : 'map'), 350);
   });
-  if (document.readyState === 'complete') maybeAutoStart();
-  else window.addEventListener('load', maybeAutoStart);
+  if (document.readyState === 'complete') { maybeAutoStart(); maybeAutoStartLive(); }
+  else window.addEventListener('load', () => { maybeAutoStart(); maybeAutoStartLive(); });
 }());
