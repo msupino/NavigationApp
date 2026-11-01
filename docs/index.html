@@ -176,8 +176,8 @@
     }
   </script>
   <!-- Warm the connections the first view waits on: the chart and underlay tiles and the gist
-       config. Added from script, on the production host and for a person only (the same test
-       as the analytics above), so test and CI runs open no connection to these hosts. -->
+       config. Added from script, on the production host and for a person only (no
+       navigator.webdriver), so test and CI runs open no connection to these hosts. -->
   <script>
     if (location.hostname === 'navaid.supino.org' && !navigator.webdriver) {
       [['https://flight-maps.com'], ['https://a.tile.openstreetmap.org'], ['https://b.tile.openstreetmap.org'],
