@@ -1,0 +1,118 @@
+From 10bbfead0ba0a90db6b0d95b18de1d5d2f63f7cd Mon Sep 17 00:00:00 2001
+From: Marco <marco@supino.org>
+Date: Sun, 1 Nov 2026 17:33:13 +0000
+Subject: [PATCH] Heading line: in a turn, the straight line's length and
+ marks, curved at the start
+
+---
+ GPS-Track-Recording-he.md | 10 +++++-----
+ GPS-Track-Recording.md    | 10 +++++-----
+ Simulator-Connect-he.md   |  4 ++--
+ Simulator-Connect.md      |  2 +-
+ Tuning-Panel-he.md        |  4 ++--
+ Tuning-Panel.md           |  4 ++--
+ 6 files changed, 17 insertions(+), 17 deletions(-)
+
+diff --git a/GPS-Track-Recording-he.md b/GPS-Track-Recording-he.md
+index 04cdab3..5161938 100644
+--- a/GPS-Track-Recording-he.md
++++ b/GPS-Track-Recording-he.md
+@@ -236,11 +236,11 @@ NavAid יכול להקליט את הנתיב שבאמת טסתם מה-GPS של 
+ 
+ **בפנייה הקו מתעקל.** הקרנה ישרה היא שקר ברגע שנוטים: היא מצביעה לאן טסתם, לא לאן תגיעו. מעל
+ <span dir="ltr"><code>livePredictorTurnMinDegSec</code></span> (1 מעלה/שנייה) ומעל <span dir="ltr"><code>livePredictorTurnMinKt</code></span> (10 קשר) NavAid
+-מודדת את קצב הפנייה ומציירת את הקשת שאתם באמת טסים. בפנייה הקו הופך ל**וקטור מגמה**, כמו ב־G1000:
+-רק <span dir="ltr"><code>livePredictorTurnMaxArcSec</code></span> (60 שניות) של טיסה קדימה, מתעקל לכל היותר
+-<span dir="ltr"><code>livePredictorTurnMaxArcDeg</code></span> (60°) ואחר כך ישר עד סוף הדקה, עם סימון **1 min** בקצהו ובלי זנב של 10 מ״י —
+-קשת של חצי מייל מתחת לקו של 10 מ״י מסתתרת מאחורי סמל המטוס. ביציאה מהפנייה חוזר הקו הישר המלא
+-עם הסימונים שלו. קצב
++מודדת את קצב הפנייה ומציירת את הקשת שאתם באמת טסים. בפנייה הקו שומר על האורך של הקו הישר (10 מ״י,
++או 5 דקות קדימה אם זה רחוק יותר) ועל אותם סימונים, **2 / 5 / 10 nm** ו-**2 / 5 min**, לאורך המסלול.
++החלק הראשון שלו מתעקל עם הפנייה, לכל היותר <span dir="ltr"><code>livePredictorTurnMaxArcSec</code></span> (60 שניות) של טיסה
++או <span dir="ltr"><code>livePredictorTurnMaxArcDeg</code></span> (60°) של פנייה, המוקדם מביניהם, ואחר כך הוא ממשיך ישר בכיוון
++שבו הפנייה מסתיימת. קצב
+ מעבר ל-<span dir="ltr"><code>livePredictorTurnMaxDegSec</code></span> (4 מעלות/שנייה) נחשב רעש ולא פנייה; הקצב שנמדד נשמר למשך
+ <span dir="ltr"><code>livePredictorTurnHoldSec</code></span> (6 שניות) כדי שהקו לא יקפוץ ליישר בין פעימות, ו-
+ <span dir="ltr"><code>livePredictorTurnSmoothing</code></span> מחליק את השאר.
+diff --git a/GPS-Track-Recording.md b/GPS-Track-Recording.md
+index f76cb53..cf5a57e 100644
+--- a/GPS-Track-Recording.md
++++ b/GPS-Track-Recording.md
+@@ -303,11 +303,11 @@ next fix corrects it. The redraw rate follows the speed and the zoom (a ~2 px st
+ **In a turn the line curves.** A straight projection is a lie the moment you bank: it points
+ where you were going, not where you will be. Above `livePredictorTurnMinDegSec` (1 °/s) and
+ `livePredictorTurnMinKt` (10 kt) NavAid measures the turn rate and draws the arc you are
+-actually flying. In a turn the line becomes a **trend vector**, as on a G1000: only
+-`livePredictorTurnMaxArcSec` (60 s) of flying ahead, curving through at most
+-`livePredictorTurnMaxArcDeg` (60°) and then straight to the end of the minute, with a
+-**1 min** tick at its end and no 10 NM tail — a half-mile arc under a 10 NM line hides
+-behind the aircraft symbol. Rolled out, the full straight line and its marks come back. A rate beyond
++actually flying. In a turn the line keeps the straight line's length (10 NM, or 5 minutes
++ahead if that is farther) and the same **2 / 5 / 10 nm** and **2 / 5 min** marks, set along
++the path. Its first part curves with the turn, for at most `livePredictorTurnMaxArcSec` (60 s)
++of flying or `livePredictorTurnMaxArcDeg` (60°) of turn, whichever comes first. It then runs
++on straight along the heading the turn ends on. A rate beyond
+ `livePredictorTurnMaxDegSec` (4 °/s) is treated as noise rather than a turn; the measured rate
+ is held for `livePredictorTurnHoldSec` (6 s) so the line does not snap straight between fixes,
+ and `livePredictorTurnSmoothing` damps the rest.
+diff --git a/Simulator-Connect-he.md b/Simulator-Connect-he.md
+index dd319d6..56b4c89 100644
+--- a/Simulator-Connect-he.md
++++ b/Simulator-Connect-he.md
+@@ -49,8 +49,8 @@ NavAid יכול להציג את **מיקום המטוס בזמן אמת** על 
+ 
+ המטוס שלך מופיע על המפה כ**צללית כחולה של מטוס כנף-גבוהה במבט מלמעלה** עם קו מתאר לבן, שמסתובבת בהתאם לכיוון שלך. אם המפה מסובבת (דרך חוגת הכיוון), האייקון מפצה כך שהוא תמיד מצביע לכיוון הנכון על המסך.
+ 
+-**קו מגמה** יוצא קדימה מהאייקון, מסומן ב-2 / 5 / 10 מ״י וב-2 / 5 דקות; בפנייה הוא הופך
+-לווקטור מגמה מעוקל של דקה אחת (ראו [קו המגמה](GPS-Track-Recording-he#קו-המגמה)). בתחתית מוצגים מהירות קרקע, גובה ומגמה מגנטית מהזנת הסימולטור,
++**קו מגמה** יוצא קדימה מהאייקון, מסומן ב-2 / 5 / 10 מ״י וב-2 / 5 דקות; בפנייה הוא שומר
++על האורך והסימונים ומתעקל עם הפנייה (ראו [קו המגמה](GPS-Track-Recording-he#קו-המגמה)). בתחתית מוצגים מהירות קרקע, גובה ומגמה מגנטית מהזנת הסימולטור,
+ ו[התראות הטיסה](GPS-Track-Recording-he#התראות-בטיסה) — קטע הבא, טופ, גובה, סחיפה,
+ מחוץ למסלול — פועלות ממיקום סימולטור בדיוק כמו מפעימת GPS, וזו הדרך הנוחה לנסות
+ אותן על הקרקע.
+diff --git a/Simulator-Connect.md b/Simulator-Connect.md
+index 9ecdc92..48df3eb 100644
+--- a/Simulator-Connect.md
++++ b/Simulator-Connect.md
+@@ -48,7 +48,7 @@ both meant the map's switch could do nothing while the panel's flag was off.
+ 
+ Your aircraft appears on the map as a **blue top-down high-wing airplane** with a white outline, rotating with your heading. If the map is rotated (via the bearing dial), the icon compensates so it always points in the correct screen direction.
+ 
+-A **heading line** runs ahead of the icon, marked at 2 / 5 / 10 nm and at 2 / 5 min; in a turn it becomes a one-minute curved trend vector (see [The heading line](GPS-Track-Recording#the-heading-line)). The footer shows ground speed, altitude and magnetic heading from the sim feed, and the [in-flight alerts](GPS-Track-Recording#in-flight-alerts) — next leg, TOP, altitude, drift, off route — run off a simulator position exactly as they do off a GPS fix, which is the easiest way to try them on the ground.
++A **heading line** runs ahead of the icon, marked at 2 / 5 / 10 nm and at 2 / 5 min; in a turn it keeps that length and those marks and curves with the turn (see [The heading line](GPS-Track-Recording#the-heading-line)). The footer shows ground speed, altitude and magnetic heading from the sim feed, and the [in-flight alerts](GPS-Track-Recording#in-flight-alerts) — next leg, TOP, altitude, drift, off route — run off a simulator position exactly as they do off a GPS fix, which is the easiest way to try them on the ground.
+ 
+ ## Options
+ 
+diff --git a/Tuning-Panel-he.md b/Tuning-Panel-he.md
+index 4a7ee73..11d9b4d 100644
+--- a/Tuning-Panel-he.md
++++ b/Tuning-Panel-he.md
+@@ -70,8 +70,8 @@
+ - **CVFR לא מקוון** — <span dir="ltr"><code>offlineAutoCvfr</code></span> (שמירת כל מפת ה-CVFR במכשיר),
+   <span dir="ltr"><code>offlineCvfrUnmeteredOnly</code></span>, וטווח הזומים שנשמר (7–13). ראו [לא מקוון ו-PWA](Offline-and-PWA-he).
+ - **חזאי כיוון חי** — החזאי המעוקל בפנייה: קצב הפנייה שמעליו הוא מתעקל והקצב המרבי שהוא מאמין
+-  לו, הקשת המרבית שיצייר (<span dir="ltr"><code>livePredictorTurnMaxArcDeg</code></span>, 60°) וכמה רחוק וקטור המגמה מגיע בפנייה
+-  (<span dir="ltr"><code>livePredictorTurnMaxArcSec</code></span>, 60 שניות), המהירות הקרקעית שמתחתיה הוא נשאר ישר, כמה זמן נשמר קצב פנייה שנמדד,
++  לו, הקשת המרבית שיצייר (<span dir="ltr"><code>livePredictorTurnMaxArcDeg</code></span>, 60°) והחלק המעוקל הארוך ביותר בזמן טיסה
++  (<span dir="ltr"><code>livePredictorTurnMaxArcSec</code></span>, 60 שניות; אחריו הקו ממשיך ישר עד אורכו המלא), המהירות הקרקעית שמתחתיה הוא נשאר ישר, כמה זמן נשמר קצב פנייה שנמדד,
+   והחלקה.
+ - **סמלי מפה לפי זום** — <span dir="ltr"><code>symbolScaleSmallest</code></span> (1 = תמיד בגודל מלא; 0.3–1), <span dir="ltr"><code>symbolScaleMinZoom</code></span> (8)
+   ו-<span dir="ltr"><code>symbolScaleFullZoom</code></span> (11) להתכווצות, וזומי ההסתרה לכל שכבה <span dir="ltr"><code>airfieldMinZoom</code></span>, <span dir="ltr"><code>navWpMinZoom</code></span>,
+diff --git a/Tuning-Panel.md b/Tuning-Panel.md
+index 7063a11..4986e4b 100644
+--- a/Tuning-Panel.md
++++ b/Tuning-Panel.md
+@@ -77,8 +77,8 @@ Constants are grouped into collapsible sections. Each control edits one constant
+   `offlineCvfrUnmeteredOnly`, and the zoom span stored (7–13). See [Offline and PWA](Offline-and-PWA).
+ - **Live heading predictor** — the curved-track predictor used in a turn: the turn rate it
+   starts curving above and the maximum it believes, the longest arc it will draw
+-  (`livePredictorTurnMaxArcDeg`, 60°) and how far ahead the trend vector reaches in a turn
+-  (`livePredictorTurnMaxArcSec`, 60 s), the
++  (`livePredictorTurnMaxArcDeg`, 60°) and the longest curved part in flying time
++  (`livePredictorTurnMaxArcSec`, 60 s; the line then goes on straight to its full length), the
+   groundspeed below which it stays straight, how long a measured turn rate is held, and its
+   smoothing; the gentle-turn floor and how clearly a gentle turn must stand out from GPS
+   scatter; and whether the phone's gyro helps (`livePredictorGyro`). See
+-- 
+2.43.0
+

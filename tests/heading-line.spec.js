@@ -474,12 +474,14 @@ test('the turn is drawn for at most 60 s and 60 deg, so a slow or gentle turn do
   expect(out.gentle).toBeCloseTo(out.gentleNow + 0.5 * 60, 0);
 });
 
-// Reported: "the G1000 curve line lost its curve". Capped at 30 s and 60 deg, the arc was half
-// a mile long under a 10 NM straight tail -- hidden by the aircraft symbol. In a turn the line
-// is now a trend vector: 60 s of flying, curved, no tail; rolled out, the full line is back.
-test('in a turn the line is a 60 s trend vector with no straight 10 NM tail', async ({ page }) => {
+// Asked: "make the G1000 curve line like the 10 NM line when flying straight -- same markers
+// and length". In a turn the line keeps the straight line's length and its 2/5/10 NM and
+// 2/5 min marks; the turn bends its first part (60 s or 60 deg at most), then it runs on
+// straight along the heading the turn ends on.
+test('in a turn the line has the straight line\'s length and marks, curved at the start', async ({ page }) => {
   await boot(page);
   const out = await page.evaluate(() => {
+    map.setView([32.2, 34.9], 11);
     resetHeadingPredictor();
     const fly = (key, rate) => {
       const now = Date.now();
@@ -488,16 +490,21 @@ test('in a turn the line is a 60 s trend vector with no straight 10 NM tail', as
         drawHeadingLine({ lat: 32.1, lng: 34.9, t }, 90 + i * rate, 90, { trackKey: key, sampleTime: t, receivedAt: t });
       }
       const l = window.__headingLine;
-      return { curved: l.curved, lengthNm: l.lengthNm, trendSec: l.trendSec, lastNm: l.path.at(-1).nm };
+      return { curved: l.curved, lengthNm: l.lengthNm, lastNm: l.path.at(-1).nm, marks: l.drawnMarks.slice().sort(),
+        points: l.path.length, endHeading: l.endHeading, startHeading: l.path[0].heading };
     };
     return { turning: fly('turn', 3), straight: fly('level', 0) };
   });
-  expect(out.turning.curved).toBe(true);
-  expect(out.turning.trendSec).toBe(60);
-  expect(out.turning.lengthNm).toBeCloseTo(90 / 60, 2);      // one minute at 90 kt
-  expect(out.turning.lastNm).toBeCloseTo(90 / 60, 2);
   expect(out.straight.curved).toBe(false);
-  expect(out.straight.lengthNm).toBeGreaterThanOrEqual(10);  // the 10 NM line and its marks
+  expect(out.straight.lengthNm).toBeGreaterThanOrEqual(10);
+  expect(out.turning.curved).toBe(true);
+  expect(out.turning.lengthNm).toBeCloseTo(out.straight.lengthNm, 6);   // same length
+  expect(out.turning.lastNm).toBeCloseTo(out.straight.lengthNm, 6);
+  expect(out.turning.marks).toEqual(out.straight.marks);               // same markers
+  expect(out.turning.marks).toEqual(['10 nm', '2 min', '2 nm', '5 min', '5 nm']);
+  // ...and it does curve: many points along the bend, ending 60 deg round from where it began.
+  expect(out.turning.points).toBeGreaterThan(5);
+  expect(((out.turning.endHeading - out.turning.startHeading) % 360 + 360) % 360).toBeCloseTo(60, 0);
 });
 
 test('straight flight with ordinary course jitter stays straight under the gentle-turn test', async ({ page }) => {
