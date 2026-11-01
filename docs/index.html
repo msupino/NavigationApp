@@ -154,14 +154,14 @@
        app.navaid.local left localhost, 127.0.0.1 and any other host reporting -- the Lighthouse
        job loads http://localhost:8080 on every review run, and a dev server does the same.
        navigator.webdriver is set by every automated browser (Lighthouse, Playwright, Puppeteer),
-       so a CI or monitoring run against production itself does not report either. -->
+       so a CI or monitoring run against production itself does not report either.
+       The tag (~180 KB) is fetched after the load event, so it does not compete with the app
+       and the first chart tiles; gtag() calls before then queue in dataLayer. -->
   <script>
     if (location.hostname === 'navaid.supino.org' &&
         !navigator.webdriver &&
         typeof window.Capacitor === 'undefined' &&   // native shell loads the prod URL — keep GA browser-only
         !location.pathname.match(/^(?:\/[^/]+)?\/(?:staging|pr|branch)\//)) {
-      // The tag (~180 KB) is fetched after the page has loaded, so it does not compete with
-      // the app and the first chart tiles; gtag() calls before then queue in dataLayer.
       window.addEventListener('load', function () {
         setTimeout(function () {
           var j = document.createElement('script');
