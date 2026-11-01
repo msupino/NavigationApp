@@ -215,6 +215,8 @@ test.describe('Share route link', () => {
         inLabel: { a: 0, p: 44 },
         outLabel: { a: 0, p: -44 },
       }));
+      // The app draws after every edit, and the draw is what un-dims Share for a route.
+      draw();
     }, ROUTE);
     await answerAppDialogs(page, true);        // share-success alert
     await page.locator('#share').click();
