@@ -5645,6 +5645,12 @@ if (liveBtn) {
   // sign anything had changed. Same auto-reconnect pattern the simulator already uses
   // (navaid.simOn, below): persist on/off (see startLiveLocation/stopLiveLocation in
   // gps.js) and resume here on boot.
+  // A recording a reload cut short carries on (or is saved, if it was left too long) before
+  // Location resumes -- otherwise Location's own automatic recording would start a second one.
+  if (typeof window.gpsResumeOrSaveRecording === 'function') {
+    const was = window.gpsResumeOrSaveRecording();
+    if (was === 'saved' && typeof window.refreshRouteLibrary === 'function') window.refreshRouteLibrary();
+  }
   let _liveWasOn = false;
   try { _liveWasOn = lsGet('navaid.gpsLiveOn') === '1'; } catch (e) { /* */ }
   if (_liveWasOn && navigator.geolocation && typeof startLiveLocation === 'function') {
@@ -6604,6 +6610,28 @@ document.getElementById('wpname-cb').onchange = e => {
       if (e.target.checked && typeof showInspector === 'function' && state && state.selected) {
         showInspector();
       }
+    };
+  }
+}
+// Record automatically while showing location. On by default (the gist's defaultAutoRecord);
+// the gist's featureAutoRecord removes the option. Turning it off leaves a recording already
+// running alone -- Record stops it, as any other.
+{
+  const cb = document.getElementById('auto-record-cb');
+  if (cb) {
+    const label = cb.closest('label');
+    const sync = () => {
+      cb.checked = typeof window.autoRecordOn === 'function' && window.autoRecordOn();
+      if (label) label.hidden = typeof tune === 'function' && tune('featureAutoRecord') === false;
+    };
+    sync();
+    window.refreshAutoRecordControl = sync;
+    cb.onchange = (e) => {
+      try { localStorage.setItem('navaid.autoRecord', e.target.checked ? '1' : '0'); }
+      catch (err) { /* storage unavailable */ }
+      // Turned on with location already showing: start now, not at the next Location tap.
+      if (e.target.checked && typeof gpsLiveOn !== 'undefined' && gpsLiveOn && !gpsRecording
+          && typeof startGpsRecording === 'function') startGpsRecording({ auto: true });
     };
   }
 }
@@ -13336,6 +13364,7 @@ if (typeof loadRemoteConfig === "function") {
     if (typeof refreshAssistantFeature === "function") refreshAssistantFeature();
     if (typeof refreshToolbarDesktopMenu === "function") refreshToolbarDesktopMenu();
     if (typeof window.refreshSearchClose === "function") window.refreshSearchClose();
+    if (typeof window.refreshAutoRecordControl === "function") window.refreshAutoRecordControl();
     if (typeof window.refreshMenubarPin === "function") window.refreshMenubarPin();
     if (NavAid && typeof NavAid.refreshMobileDeck === "function") NavAid.refreshMobileDeck();
     if (typeof refreshEmptyRouteHint === "function") refreshEmptyRouteHint();

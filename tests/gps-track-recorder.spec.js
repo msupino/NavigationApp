@@ -81,6 +81,7 @@ test('readout shows realtime ground speed + altitude while recording', async ({ 
 
 test('readout shows ground speed + altitude for plain "show location" too, not just recording', async ({ page }) => {
   await page.addInitScript(() => {
+    try { localStorage.setItem('navaid.autoRecord', '0'); } catch (e) { /* Location alone, not its automatic recording */ }
     window.__liveCb = null;
     navigator.geolocation.watchPosition = (cb) => { window.__liveCb = cb; return 11; };
     navigator.geolocation.clearWatch = () => {};
@@ -528,6 +529,7 @@ test('native addWatcher returning a bare id (not a Promise) still registers', as
 
 test('Show my location shows own-ship without recording or saving a track', async ({ page }) => {
   await page.addInitScript(() => {
+    try { localStorage.setItem('navaid.autoRecord', '0'); } catch (e) { /* Location alone, not its automatic recording */ }
     window.__liveCb = null;
     navigator.geolocation.watchPosition = (cb) => { window.__liveCb = cb; return 11; };
     navigator.geolocation.clearWatch = () => {};
@@ -613,6 +615,7 @@ test('stopping a recording keeps own-ship when live location is still on', async
 
 test('GPS error resets the live-location button too', async ({ page }) => {
   await page.addInitScript(() => {
+    try { localStorage.setItem('navaid.autoRecord', '0'); } catch (e) { /* Location alone, not its automatic recording */ }
     window.__errCb = null;
     navigator.geolocation.watchPosition = (cb, err) => { window.__errCb = err; return 4; };
     navigator.geolocation.clearWatch = () => {};
@@ -763,6 +766,7 @@ test('an async addWatcher rejection is a registration failure, not a transient b
 // measurements, so the bidi algorithm reordered the whole sequence around the RTL base.
 test('the readout reads left to right in Hebrew, and keeps the stale notice readable', async ({ page }) => {
   await page.addInitScript(() => {
+    try { localStorage.setItem('navaid.autoRecord', '0'); } catch (e) { /* Location alone, not its automatic recording */ }
     window.__liveCb = null;
     navigator.geolocation.watchPosition = (cb) => { window.__liveCb = cb; return 11; };
     navigator.geolocation.clearWatch = () => {};
@@ -893,7 +897,8 @@ test.describe('the screen stays awake while a position is on screen', () => {
 
   test('and the other way round', async ({ page }) => {
     await bootWake(page);
-    await page.evaluate(() => { startLiveLocation(); startGpsRecording(); });
+    // A recording started by hand, not the one Location starts (that one ends with Location).
+    await page.evaluate(() => { localStorage.setItem('navaid.autoRecord', '0'); startLiveLocation(); startGpsRecording(); });
     await page.waitForFunction(() => gpsWakeLock != null);
     await page.evaluate(() => stopLiveLocation());
     expect(await page.evaluate(() => gpsWakeLock != null)).toBe(true);

@@ -386,6 +386,8 @@ const GDRIVE_SETTINGS_KEYS = [
   // Whether a tap may open the panel while a position is showing. A preference about how the
   // pilot reads a chart in flight, not a fact about this handset, so it travels with them.
   'navaid.inspectorWhileTracking',
+  // Whether showing location records the flight: the pilot's habit, not this handset's.
+  'navaid.autoRecord',
   'navaid.showTraffic',
   'navaid.showAirspace',
   'navaid.showAirmet',

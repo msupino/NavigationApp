@@ -1,0 +1,109 @@
+From d200db1789f67ecacf9d278ee792a733f8507fbc Mon Sep 17 00:00:00 2001
+From: Marco <marco@supino.org>
+Date: Sun, 1 Nov 2026 07:50:24 +0000
+Subject: [PATCH] GPS Track Recording: Location records the flight
+ automatically; short ones are dropped
+
+---
+ GPS-Track-Recording-he.md | 22 ++++++++++++++++++----
+ GPS-Track-Recording.md    | 26 ++++++++++++++++++++++----
+ 2 files changed, 40 insertions(+), 8 deletions(-)
+
+diff --git a/GPS-Track-Recording-he.md b/GPS-Track-Recording-he.md
+index b94dbf1..bc0212f 100644
+--- a/GPS-Track-Recording-he.md
++++ b/GPS-Track-Recording-he.md
+@@ -17,7 +17,7 @@ NavAid יכול להקליט את הנתיב שבאמת טסתם מה-GPS של 
+ | כפתור | פעולה |
+ |---|---|
+ | **⏺ הקלטה** | מתחיל להקליט את הנתיב הטוס מ-GPS המכשיר. בזמן ההקלטה התווית משתנה ל-**⏹ עצור**. |
+-| **📍 מיקום** | מציג את מיקומכם החי על המפה **בלי** להקליט. בזמן פעולה התווית משתנה ל-**הסתר**. |
++| **📍 מיקום** | מציג את מיקומכם החי על המפה, ומקליט גם את הטיסה אלא אם *הקלטה אוטומטית עם מיקום* כבויה (ראו למטה). בזמן פעולה התווית משתנה ל-**הסתר**. |
+ 
+ קריאה **חיה** קטנה ליד הכפתורים מציגה בזמן ההקלטה: מספר נקודות, זמן שחלף
+ (<span dir="ltr"><code>MM:SS</code></span>), וכשהפיקס מספק אותם — מהירות קרקע (kt) וגובה GPS (ft), למשל
+@@ -57,14 +57,28 @@ NavAid יכול להקליט את הנתיב שבאמת טסתם מה-GPS של 
+ הקשה נוספת על **הצג** במסלול שכבר מוצג מבצעת שוב זום והדגשה. השתמשו ב-**הסתר**
+ כדי להסירו. המסלול המוצג שורד רענון.
+ 
+-## מיקום (חי, ללא הקלטה)
++## מיקום (מיקום חי)
+ 
+-**📍 מיקום** פשוט מציב את מיקומכם החי על המפה כסמן מטוס — שום דבר
+-לא מוקלט ושום דבר לא נשמר. המפה ממרכזת על הפיקס הראשון, ובזמן המעקב שומרת אתכם
++**📍 מיקום** מציב את מיקומכם החי על המפה כסמן מטוס. המפה ממרכזת על הפיקס הראשון, ובזמן המעקב שומרת אתכם
+ בתצוגה. הקישו **הסתר מיקום** לכיבוי. (אם רצה הקלטה, ההקלטה מזינה את
+ סמן המטוס.)
+ הפעלת מיקום או הקלטה מסירה ממפה מסגרת הדפסה של A4 / A3, עם הודעה קצרה — בחרו את הדף שוב כדי להדפיס.
+ 
++### הקלטה אוטומטית עם מיקום
++
++הצגת המיקום מתחילה גם הקלטה, כך שטיסה מוקלטת גם אם שכחתם ללחוץ **⏺ הקלטה**. כשמסתירים את
++המיקום, ההקלטה נעצרת יחד איתו:
++
++- הקלטה שהפכה לטיסה — לפחות **5 דקות** ולפחות **1 מייל ימי** — נשמרת תחת *הקלטות* כמו כל הקלטה;
++- הקלטה קצרה יותר (הטלפון על השולחן, הליכה להאנגר) אינה נשמרת, והודעה קצרה אומרת זאת.
++
++כדי לכבות, הסירו את הסימון מ-**מפה ← הקלטה אוטומטית עם מיקום** (מסומן כברירת מחדל). אז המיקום
++רק מציג את מיקומכם, ושום דבר לא מוקלט אלא אם תלחצו **⏺ הקלטה**. הקלטה שהתחלתם בעצמכם ב-**⏺ הקלטה**
++נשמרת תמיד, קצרה ככל שתהיה.
++
++הקלטה בתהליך שורדת טעינה מחדש או הפעלה מחדש של האפליקציה: אם הפיקס האחרון שלה צעיר מ-30 דקות
++היא ממשיכה מאותה נקודה; אם הוא ישן יותר, היא נשמרת כפי שהיא וההקלטה הבאה מתחילה מחדש.
++
+ ## שורת ה-GPS
+ 
+ כשהמיקום של הטלפון עצמו מוצג (מיקום או הקלטה), שורה קצרה אחת יושבת מתחת לרצועה העליונה בטלפון,
+diff --git a/GPS-Track-Recording.md b/GPS-Track-Recording.md
+index 7edc77d..6ab8ae5 100644
+--- a/GPS-Track-Recording.md
++++ b/GPS-Track-Recording.md
+@@ -15,7 +15,7 @@ Simulator ✈ icon), so they're reachable no matter which section is open.
+ | Button | What it does |
+ |---|---|
+ | **⏺ Record** | Starts recording your flown path from the device GPS. While recording the label changes to **⏹ Stop**. |
+-| **📍 Location** | Shows your live own-ship on the map **without** recording. While active the label changes to **Hide**. |
++| **📍 Location** | Shows your live own-ship on the map, and records the flight too unless *Record automatically with location* is off (see below). While active the label changes to **Hide**. |
+ 
+ A small live **readout** next to the buttons shows, while recording: number of
+ points, elapsed time (`MM:SS`), and — when the fix provides them — ground speed
+@@ -59,15 +59,33 @@ right after a recording stops — NavAid now:
+ Tapping **Show** again on a track that's already shown re-zooms and re-glows it.
+ Use **Hide** to remove it. The shown track survives a reload.
+ 
+-## Location (live, no recording)
++## Location (live position)
+ 
+-**📍 Location** just puts your live position on the map as an own-ship
+-marker — nothing is recorded and nothing is saved. The map recenters on your
++**📍 Location** puts your live position on the map as an own-ship
++marker. The map recenters on your
+ first fix and, while following, keeps you in view. Tap **Hide** to
+ turn it off. (If a recording is running, the recording drives the own-ship.)
+ Starting Location or a recording removes an A4 / A3 print frame from the map, with a short
+ message — pick the page again to print.
+ 
++### Recording automatically with Location
++
++Showing your location starts a recording as well, so a flight is recorded even if you forget
++**⏺ Record**. When you hide Location, that recording stops with it:
++
++- a recording that became a flight — at least **5 minutes** long and **1 nm** flown — is saved
++  under *Recordings* like any other;
++- a shorter one (the phone on the desk, a walk to the hangar) is not kept, and a short message
++  says so.
++
++To turn it off, clear **Map → Record automatically with location** (on by default). Location then
++only shows your position, and nothing is recorded unless you tap **⏺ Record**. A recording you start
++yourself with **⏺ Record** is always saved, however short.
++
++A recording in progress survives a reload or a restart of the app: if its last fix is less than
++30 minutes old it carries on where it was; if it is older, it is saved as it stands and the next
++one starts fresh.
++
+ ## The GPS line
+ 
+ While the phone's own position is showing (Location or a recording), one short line sits under
+-- 
+2.43.0
+
