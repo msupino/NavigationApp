@@ -141,7 +141,7 @@ test.describe('#418 — waypoint-name reset button', () => {
       syncLegs(); draw(); showInspector();
     });
     const btn = page.locator('#insp-body .insp-btn[title*="נקודת הייחוס"]');
-    await expect(btn).toHaveText('אפס שם נקודה');
+    await expect(btn).toHaveText('אפס שם ציון דרך');
     await expect(btn.locator('.mi-icon svg')).toHaveCount(1);
   });
 
