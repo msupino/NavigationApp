@@ -1,4 +1,4 @@
-From d200db1789f67ecacf9d278ee792a733f8507fbc Mon Sep 17 00:00:00 2001
+From 6fc4e0c95e0bf686a0dbe7f3ea9f2e3633ba6dfd Mon Sep 17 00:00:00 2001
 From: Marco <marco@supino.org>
 Date: Sun, 1 Nov 2026 07:50:24 +0000
 Subject: [PATCH] GPS Track Recording: Location records the flight
@@ -10,7 +10,7 @@ Subject: [PATCH] GPS Track Recording: Location records the flight
  2 files changed, 40 insertions(+), 8 deletions(-)
 
 diff --git a/GPS-Track-Recording-he.md b/GPS-Track-Recording-he.md
-index b94dbf1..bc0212f 100644
+index b94dbf1..04cdab3 100644
 --- a/GPS-Track-Recording-he.md
 +++ b/GPS-Track-Recording-he.md
 @@ -17,7 +17,7 @@ NavAid יכול להקליט את הנתיב שבאמת טסתם מה-GPS של 
@@ -44,7 +44,7 @@ index b94dbf1..bc0212f 100644
 +- הקלטה שהפכה לטיסה — לפחות **5 דקות** ולפחות **1 מייל ימי** — נשמרת תחת *הקלטות* כמו כל הקלטה;
 +- הקלטה קצרה יותר (הטלפון על השולחן, הליכה להאנגר) אינה נשמרת, והודעה קצרה אומרת זאת.
 +
-+כדי לכבות, הסירו את הסימון מ-**מפה ← הקלטה אוטומטית עם מיקום** (מסומן כברירת מחדל). אז המיקום
++כדי לכבות, הסירו את הסימון מ-**הגדרות ← הקלטה אוטומטית עם מיקום** (מסומן כברירת מחדל). אז המיקום
 +רק מציג את מיקומכם, ושום דבר לא מוקלט אלא אם תלחצו **⏺ הקלטה**. הקלטה שהתחלתם בעצמכם ב-**⏺ הקלטה**
 +נשמרת תמיד, קצרה ככל שתהיה.
 +
@@ -55,7 +55,7 @@ index b94dbf1..bc0212f 100644
  
  כשהמיקום של הטלפון עצמו מוצג (מיקום או הקלטה), שורה קצרה אחת יושבת מתחת לרצועה העליונה בטלפון,
 diff --git a/GPS-Track-Recording.md b/GPS-Track-Recording.md
-index 7edc77d..6ab8ae5 100644
+index 7edc77d..f76cb53 100644
 --- a/GPS-Track-Recording.md
 +++ b/GPS-Track-Recording.md
 @@ -15,7 +15,7 @@ Simulator ✈ icon), so they're reachable no matter which section is open.
@@ -93,7 +93,7 @@ index 7edc77d..6ab8ae5 100644
 +- a shorter one (the phone on the desk, a walk to the hangar) is not kept, and a short message
 +  says so.
 +
-+To turn it off, clear **Map → Record automatically with location** (on by default). Location then
++To turn it off, clear **Settings → Record automatically with location** (on by default). Location then
 +only shows your position, and nothing is recorded unless you tap **⏺ Record**. A recording you start
 +yourself with **⏺ Record** is always saved, however short.
 +

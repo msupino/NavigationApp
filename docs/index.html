@@ -421,10 +421,6 @@
         <label class="navtoggle" data-i18n-title="tbInspectorTrackingTitle">
           <input type="checkbox" id="insp-tracking-cb"> <span data-i18n="tbInspectorTracking"></span>
         </label>
-        <!-- Showing location records the flight too; a recording too short to be one is dropped. -->
-        <label class="navtoggle" data-i18n-title="tbAutoRecordTitle">
-          <input type="checkbox" id="auto-record-cb" checked> <span data-i18n="tbAutoRecord"></span>
-        </label>
         <!-- Route BUILDING, not display: adding a point follows the published corridor.
              Ships off -- it changes what the pilot's own route contains, so it is opt-in. -->
         <label class="navtoggle" data-i18n-title="tbAutoRouteTitle">
@@ -1005,6 +1001,11 @@
             <option value="gps" data-i18n="tbAltSourceGps"></option>
             <option value="baro" data-i18n="tbAltSourceBaro"></option>
           </select>
+        </label>
+        <!-- How the app records, not what the map draws: showing location records the flight
+             too; a recording too short to be one is dropped. -->
+        <label class="navtoggle" data-i18n-title="tbAutoRecordTitle">
+          <input type="checkbox" id="auto-record-cb" checked> <span data-i18n="tbAutoRecord"></span>
         </label>
         <!-- Reference tables a pilot sets up once and consults: the frequency table and the
              altitude pairs, moved here from Charts. -->
