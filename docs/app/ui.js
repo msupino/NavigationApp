@@ -1674,7 +1674,10 @@ function refreshEditColumn() {
     && !(typeof measureOn === 'function' && measureOn())
     && !document.querySelector('.tb-section[data-sec="weather"] input[type="checkbox"]:checked')
     // A recorded flight shown from Saved routes is cleared too (see the #clear handler).
-    && !(typeof shownTracks !== 'undefined' && Array.isArray(shownTracks) && shownTracks.length);
+    && !(typeof shownTracks !== 'undefined' && Array.isArray(shownTracks) && shownTracks.length)
+    // So is the A3/A4 page frame: on an otherwise empty map it was the one thing left, and
+    // Clear map stayed dimmed ("already empty") with the frame still drawn.
+    && !(typeof pageSize !== 'undefined' && pageSize);
   setButtonWhy(add, lockWhy);
   setButtonWhy(note, lockWhy);
   setButtonWhy(undoBtn, lockWhy || ((menuUndo && menuUndo.disabled) ? (S.whyNothingToUndo || 'Nothing to undo') : null));
