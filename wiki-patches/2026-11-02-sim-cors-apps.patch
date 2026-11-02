@@ -1,0 +1,81 @@
+From 74d72940e4d5fd4d0a47f63d38f724d71f758f18 Mon Sep 17 00:00:00 2001
+From: Marco <marco@supino.org>
+Date: Mon, 2 Nov 2026 08:04:13 +0000
+Subject: [PATCH] Simulator Connect: CORS and HTTPS-to-HTTP limits are the
+ browser's; the apps reach an http:// bridge natively
+
+---
+ Simulator-Connect-he.md | 21 ++++++++++++++++++++-
+ Simulator-Connect.md    | 24 +++++++++++++++++++++++-
+ 2 files changed, 43 insertions(+), 2 deletions(-)
+
+diff --git a/Simulator-Connect-he.md b/Simulator-Connect-he.md
+index d70e37c..8463a1f 100644
+--- a/Simulator-Connect-he.md
++++ b/Simulator-Connect-he.md
+@@ -96,7 +96,26 @@ NavAid יכול להציג את **מיקום המטוס בזמן אמת** על 
+ | **⚠ אין נתונים** לאחר מספר שניות | הסימולטור לא מחובר לגשר | לחץ Connect ב-Little NavMap |
+ | האייקון קופץ | הגשר מחזיר נתונים מטמון/ישנים | הפעל מחדש את הגשר |
+ | האייקון נראה אך הכיוון שגוי | שדה heading חסר ב-JSON של הגשר | ודא שהגשר מחזיר <span dir="ltr"><code>heading</code></span> במעלות |
+-| שגיאת CORS בקונסולת הדפדפן | הגשר חוסם בקשות cross-origin | השתמש ב-NavAid מקומית (<span dir="ltr"><code>localhost:8000</code></span>) או הגדר CORS בגשר |
++| שגיאת CORS בקונסולת הדפדפן | הגשר חוסם בקשות cross-origin | השתמשו ב**אפליקציית NavAid לאנדרואיד או ל-iOS** עם כתובת גשר <span dir="ltr"><code>http://</code></span> (אין שם CORS, ראו בהמשך), השתמשו ב-NavAid מקומית (<span dir="ltr"><code>localhost:8000</code></span>), או הגדירו CORS בגשר |
++
++### בדפדפן לעומת באפליקציה
++
++**בדפדפן** שני כללי רשת יכולים לעצור את החיבור, עוד לפני ש-NavAid רואה נתונים:
++
++- **CORS:** הגשר צריך לענות עם <span dir="ltr"><code>Access-Control-Allow-Origin</code></span> (הגשר המדומה בהמשך עונה כך;
++  יש גשרים שלא), אחרת הדפדפן מסתיר את התשובה.
++- **דף HTTPS ← גשר HTTP:** האתר החי הוא <span dir="ltr"><code>https://</code></span>, ודפדפן לא נותן לו לפנות לכתובת
++  <span dir="ltr"><code>http://</code></span> ברשת ("תוכן מעורב"). החריג הוא אותו מחשב: <span dir="ltr"><code>http://localhost</code></span> ו-<span dir="ltr"><code>http://127.0.0.1</code></span>
++  עובדים ב-Chrome, Edge ו-Firefox (לא ב-Safari).
++
++**באפליקציות לאנדרואיד ול-iOS אף אחד מהם לא חל** על כתובת גשר <span dir="ltr"><code>http://</code></span>: האפליקציה
++פונה אליה דרך רכיב הרשת של הטלפון עצמו, לא דרך דף האינטרנט, ולכן אין בדיקת CORS ואין חסימת תוכן
++מעורב. הזינו את כתובת המחשב של הסימולטור ברשת, למשל <span dir="ltr"><code>http://192.168.1.20:2020</code></span>, או השתמשו ב-**Find X-Plane**.
++
++- **אנדרואיד:** HTTP רגיל מותר לכל כתובת.
++- **iOS:** HTTP רגיל מותר לכתובות **מקומיות** בלבד (הרשת המקומית, <span dir="ltr"><code>.local</code></span>, localhost). החיבור הראשון
++  מבקש הרשאת **רשת מקומית**; אם סירבתם, הפעילו אותה בהגדרות ← NavAid ← רשת מקומית.
++- כתובת גשר <span dir="ltr"><code>https://</code></span> באפליקציה עוברת דרך תצוגת האינטרנט כמו בדפדפן, ולכן CORS כן חל עליה.
+ 
+ ## בדיקה בלי סימולטור
+ 
+diff --git a/Simulator-Connect.md b/Simulator-Connect.md
+index b2b059e..395c572 100644
+--- a/Simulator-Connect.md
++++ b/Simulator-Connect.md
+@@ -93,7 +93,29 @@ glance at the bar reads all three sources alike. Its tooltip and accessible name
+ | **⚠ No data** after a few seconds | Simulator not connected to bridge | Click Connect in Little NavMap |
+ | Aircraft icon jumps | Bridge returning stale/cached data | Restart the bridge |
+ | Icon visible but wrong heading | Heading field missing from bridge JSON | Ensure bridge returns `heading` in degrees true |
+-| CORS error in browser console | Bridge blocks cross-origin requests | Use NavAid locally (`localhost:8000`) or configure CORS on the bridge |
++| CORS error in browser console | Bridge blocks cross-origin requests | Use the NavAid **Android or iOS app** with an `http://` bridge address (no CORS there, see below), use NavAid locally (`localhost:8000`), or configure CORS on the bridge |
++
++### In a browser vs in the app
++
++**In a browser** two web rules can stop the connection, both before NavAid sees any data:
++
++- **CORS:** the bridge must answer with `Access-Control-Allow-Origin` (the fake bridge below
++  does; some bridges do not), or the browser hides its reply.
++- **HTTPS page → HTTP bridge:** the live site is `https://`, and a browser will not let it fetch
++  an `http://` address on the network ("mixed content"). The exception is the same computer:
++  `http://localhost` and `http://127.0.0.1` work in Chrome, Edge and Firefox (not Safari).
++
++**In the Android and iOS apps neither applies** to an `http://` bridge address: the app fetches
++it through the phone's own network stack, not the web page, so there is no CORS check and no
++mixed-content block. Enter the simulator computer's LAN address, for example
++`http://192.168.1.20:2020`, or use **Find X-Plane**.
++
++- **Android:** plain HTTP is allowed to any address.
++- **iOS:** plain HTTP is allowed to **local** addresses only (the LAN, `.local`, localhost). The
++  first connection asks for **Local Network** permission; if it was declined, turn it on in
++  Settings → NavAid → Local Network.
++- An `https://` bridge address in the app goes through the web view like a browser, so CORS does
++  apply to it.
+ 
+ ## Testing without a simulator
+ 
+-- 
+2.43.0
+
