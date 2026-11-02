@@ -145,7 +145,9 @@ test('native iOS polls an HTTP LAN bridge through CapacitorHttp', async ({ page 
     lng: window.simAircraft && window.simAircraft.lng,
   }))).toEqual({ lat: 32.1, lng: 34.8 });
   await expect(page.locator('#sim-status')).toContainText('Connected');
-  await page.locator('#sim-connect-cb').click();
+  // Connect closed the window; the lit plane button is the switch that disconnects.
+  await page.locator('#sim-trigger').click();
+  expect(await page.evaluate(() => simOn)).toBe(false);
 });
 
 test('native Android polls an HTTP LAN bridge through CapacitorHttp', async ({ page }) => {
@@ -178,7 +180,9 @@ test('native Android polls an HTTP LAN bridge through CapacitorHttp', async ({ p
     lng: window.simAircraft && window.simAircraft.lng,
   }))).toEqual({ lat: 32.1, lng: 34.8 });
   await expect(page.locator('#sim-status')).toContainText('Connected');
-  await page.locator('#sim-connect-cb').click();
+  // Connect closed the window; the lit plane button is the switch that disconnects.
+  await page.locator('#sim-trigger').click();
+  expect(await page.evaluate(() => simOn)).toBe(false);
 });
 
 test('native Android discovers X-Plane and fills the bridge URL', async ({ page }) => {
@@ -246,6 +250,10 @@ test('editing a connected simulator to an unusable URL disconnects with the spec
   await page.locator('#sim-url').fill('http://localhost:2020');
   await page.locator('#sim-connect-cb').click();
   await expect(page.locator('#sim-connect-cb')).toHaveAttribute('aria-pressed', 'true');
+  // Connect closes the window and the plane button disconnects while connected, so a pilot no
+  // longer reaches this state; the handler is still there, so open the window directly to keep it
+  // covered.
+  await page.evaluate(() => document.getElementById('sim-modal').classList.remove('hidden'));
 
   // The local test server is HTTP, so use an invalid scheme to exercise the real input
   // handler's disconnect path. The pure-validator test above separately pins the exact

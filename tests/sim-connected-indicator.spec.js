@@ -2,7 +2,7 @@
 // Reported: nothing in the menu bar says the simulator is connected — you had to open the
 // panel to find out. The two GPS buttons beside it already carry their state; the plane
 // icon now carries its own, the same way, so one glance reads all three sources alike.
-const { test, expect } = require('./_setup');
+const { test, expect, captureToasts } = require('./_setup');
 
 async function boot(page) {
   await page.goto('?lang=en&nogist');
@@ -63,7 +63,9 @@ test('pressing the plane button while connected disconnects instead of opening t
   await page.locator('#sim-trigger').click();
   await expect(page.locator('#sim-modal')).not.toHaveClass(/hidden/);
   await page.locator('#sim-connect-cb').click();
-  await page.locator('#sim-modal-close').click();
+  // Connect closes the window by itself (asked: "connect to sim button in sim window should
+  // close when click to connect").
+  await expect(page.locator('#sim-modal')).toHaveClass(/hidden/);
   expect((await iconState(page)).pressed).toBe('true');
   expect((await iconState(page)).label).toMatch(/tap to disconnect/);
 
@@ -77,4 +79,26 @@ test('pressing the plane button while connected disconnects instead of opening t
   // Disconnected, the same press opens the panel.
   await page.locator('#sim-trigger').click();
   await expect(page.locator('#sim-modal')).not.toHaveClass(/hidden/);
+});
+
+test('a bad bridge URL keeps the window open, with the problem shown', async ({ page }) => {
+  await boot(page);
+  await page.locator('#sim-trigger').click();
+  await page.locator('#sim-url').fill('not a url');
+  await page.locator('#sim-connect-cb').click();
+  await expect(page.locator('#sim-modal')).not.toHaveClass(/hidden/);
+  expect((await iconState(page)).pressed).toBe('false');
+});
+
+// The window closes on Connect, so its status line is out of sight: the first state after
+// connecting is said in a toast instead -- once, not on every poll.
+test('after Connect closes the window, the status arrives as a toast, once', async ({ page }) => {
+  await boot(page);
+  const toasts = await captureToasts(page);
+  await page.locator('#sim-trigger').click();
+  await page.locator('#sim-connect-cb').click();
+  await expect(page.locator('#sim-modal')).toHaveClass(/hidden/);
+  await expect.poll(async () => (await toasts()).filter(t => /Simulator connected/.test(t)).length).toBe(1);
+  await page.waitForTimeout(2500);                       // more polls: no repeat
+  expect((await toasts()).filter(t => /Simulator connected/.test(t)).length).toBe(1);
 });

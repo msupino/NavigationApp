@@ -10730,12 +10730,23 @@ map.on('move zoom moveend zoomend rotate layeradd', () => {
 let _simInterval = null;
 // Status element is set by ui.js via window._simStatusEl after DOM is ready.
 
+// The window closes on Connect, so its status line is not where the pilot is looking: a change
+// of state while the window is closed is said in a toast -- once per change, not every poll.
+let _simLastOk = null;
 function _simSetStatus(ok) {
   const el = window._simStatusEl || null;
-  if (!el) return;
-  el.textContent = ok ? (S.tbSimStatusOk || '✅ Connected')
-                      : (S.tbSimStatusErr || '⚠ No data');
-  el.style.color = ok ? tune('simStatusOkColor') : tune('simStatusErrColor');
+  if (el) {
+    el.textContent = ok ? (S.tbSimStatusOk || '✅ Connected')
+                        : (S.tbSimStatusErr || '⚠ No data');
+    el.style.color = ok ? tune('simStatusOkColor') : tune('simStatusErrColor');
+  }
+  if (ok === _simLastOk) return;
+  _simLastOk = ok;
+  const modal = document.getElementById('sim-modal');
+  if ((!modal || modal.classList.contains('hidden')) && typeof showToast === 'function') {
+    if (ok) showToast(S.tbSimToastOk || 'Simulator connected: its aircraft is on the map');
+    else showToast(S.tbSimToastErr || 'No data from the simulator bridge. Check that it is running and the URL is right.', { warn: true });
+  }
 }
 
 // AbortSignal.timeout() is recent enough that a WebView with working fetch and
@@ -10982,6 +10993,7 @@ function simStart() {
 
 function simStop() {
   simOn = false;
+  _simLastOk = null;              // the next connection reports its first state again
   refreshSimTrigger();
   simRefreshFlightControls();          // ...and away again on disconnect
 

@@ -1,0 +1,58 @@
+From 8aeaca1e6214d99ffba0600cf6d23462594e8e0c Mon Sep 17 00:00:00 2001
+From: Marco <marco@supino.org>
+Date: Mon, 2 Nov 2026 06:42:53 +0000
+Subject: [PATCH] Simulator Connect: Connect closes the window; the status is a
+ short message
+
+---
+ Simulator-Connect-he.md | 10 ++++++----
+ Simulator-Connect.md    | 10 ++++++----
+ 2 files changed, 12 insertions(+), 8 deletions(-)
+
+diff --git a/Simulator-Connect-he.md b/Simulator-Connect-he.md
+index db5b6aa..ec91cd8 100644
+--- a/Simulator-Connect-he.md
++++ b/Simulator-Connect-he.md
+@@ -35,11 +35,13 @@ NavAid יכול להציג את **מיקום המטוס בזמן אמת** על 
+ 
+ 1. לחץ על **אייקון המטוס ✈** הקטן בכותרת התחתונה של סרגל הכלים (ליד תנאים /
+    פרטיות) — נפתח פאנל הסימולטור.
+-2. לחץ **התחבר לסימולטור** — NavAid מתחיל לסקור כל שנייה.
+-3. מחוון המצב מציג **✅ מחובר** כאשר נתונים מגיעים, **⚠ אין נתונים** אם הגשר אינו נגיש.
++2. בדקו את **כתובת הגשר** ולחצו **התחבר לסימולטור** — NavAid מתחיל לסקור כל שנייה והחלון
++   נסגר; אייקון המטוס מודגש.
++3. הודעה קצרה אומרת **הסימולטור מחובר** כשמגיעים נתונים, או שאין נתונים מהגשר (ודאו שהוא
++   פועל ושהכתובת נכונה).
+ 
+-הפאנל הוא כפתור **התחבר לסימולטור**, שדה כתובת הגשר ושורת המצב. החיבור מציג מצב
+-פעיל ירוק.
++הפאנל הוא שדה כתובת הגשר (עם שורה על מה להזין בו), **Find X-Plane** באפליקציות, וכפתור
++**התחבר לסימולטור**.
+ 
+ כשהסימולטור מחובר, אייקון המטוס מודגש כמו מיקום והקלטה שלידו, והוא מתג: לחיצה עליו
+ **מנתקת** (הודעה קצרה: *הסימולטור נותק*) במקום לפתוח את הפאנל. כשהוא מנותק, לחיצה פותחת את הפאנל שוב.
+diff --git a/Simulator-Connect.md b/Simulator-Connect.md
+index 0beb109..616f626 100644
+--- a/Simulator-Connect.md
++++ b/Simulator-Connect.md
+@@ -33,11 +33,13 @@ The bridge exposes a JSON endpoint on `http://localhost:2020` by default.
+ 
+ 1. Click the small **✈ plane icon** in the toolbar footer (next to Terms /
+    Privacy) — it opens the Simulator panel.
+-2. Click **Connect to simulator** — NavAid starts polling every second.
+-3. The status indicator shows **✅ Connected** when data arrives, **⚠ No data** if the bridge is unreachable.
++2. Check the **Bridge URL**, then click **Connect to simulator** — NavAid starts polling every
++   second and the window closes; the plane icon lights up.
++3. A short message says **Simulator connected** when data arrives, or that there is **no data**
++   from the bridge (check that it is running and the URL is right).
+ 
+-The panel is the **Connect to simulator** button, the Bridge URL field and the
+-status line. Connect shows a green active state.
++The panel is the Bridge URL field (with a line on what to enter there), **Find X-Plane** in the
++apps, and the **Connect to simulator** button.
+ 
+ While connected, the plane icon is lit like Location and Record beside it, and it is a switch:
+ pressing it **disconnects** (a toast says *Simulator disconnected*) instead of opening the panel.
+-- 
+2.43.0
+
