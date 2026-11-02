@@ -291,21 +291,12 @@ function onLivePosition(pos) {
   // Every fix, before the accuracy filter below: the status line shows a coarse fix as coarse.
   if (window.NavAid && NavAid.gpsStatus) NavAid.gpsStatus.noteFix(pos);
   const c = pos.coords;
-  // A recording started by hand has its own watch and drives the map (below). One that
-  // Location started has none: this handler drives the map exactly as without it, and adds
-  // each fix to the line.
-  if (gpsRecording && !gpsAutoRec) {
-    // Recording drives own-ship + recenter; avoid dueling. But the last-fix point is still
-    // kept current: traffic asks around gpsLastFix() and drops its own-ship by it, and the
-    // first live fix after a recording stops takes its heading and speed from it. Left
-    // alone here, it stayed wherever the recording started.
-    if (!(c.accuracy != null && c.accuracy > gpsMaxAccM())) {
-      _gpsLivePrev = { lat: r5(c.latitude), lng: r5(c.longitude), t: pos.timestamp || Date.now() };
-    }
-    return;
-  }
+  // Every recording rides on Location: this handler drives the map exactly as without one, and
+  // adds each fix to the line. (A recording started by hand used to run a watch of its own,
+  // without Location -- the position showed while the Location button sat unlit, and stopping
+  // Location left the recording running. Record now turns Location on; see startGpsRecording.)
   if (c.accuracy != null && c.accuracy > gpsMaxAccM()) return;
-  if (gpsRecording && gpsAutoRec) gpsAppendTrackPoint(pos);
+  if (gpsRecording) gpsAppendTrackPoint(pos);
   const p = { lat: r5(c.latitude), lng: r5(c.longitude) };
   const t = pos.timestamp || Date.now();
   // NaN, not 0, when neither the device nor a previous fix can supply a heading --
@@ -470,19 +461,23 @@ function startLiveLocation() {
   // written once the watch actually registered; onGpsLiveError's stopLiveLocation() below
   // clears it again on a registration failure.
   try { localStorage.setItem('navaid.gpsLiveOn', '1'); } catch (e) { /* */ }
-  // Showing location records the flight too, unless the pilot switched that off.
+  // Showing location records the flight too, unless the pilot switched that off -- or Record
+  // itself is turning Location on, for a recording of its own (startGpsRecording).
   // A recording a reload interrupted (gpsResumeOrSaveRecording) carries on here, with its points.
-  if (!gpsRecording && (autoRecordOn() || _gpsPendingAutoResume)) {
+  if (!gpsRecording && !_gpsRecStartingLive && (autoRecordOn() || _gpsPendingAutoResume)) {
     startGpsRecording({ auto: true, resume: _gpsPendingAutoResume || undefined });
   }
   _gpsPendingAutoResume = null;
+  if (typeof window.refreshGpsLiveButton === 'function') window.refreshGpsLiveButton();
   scheduleDraw();
 }
 
 function stopLiveLocation() {
+  _gpsLiveByRecord = false;          // stopping Location by hand: nothing left for Record to undo
   try { localStorage.setItem('navaid.gpsLiveOn', '0'); } catch (e) { /* */ }
-  // The recording Location started ends with it: saved, or dropped when too short.
-  if (gpsRecording && gpsAutoRec) {
+  // A recording ends with Location -- it rides on Location's fixes: saved (an automatic one is
+  // dropped when too short; one started with Record is always kept).
+  if (gpsRecording) {
     stopGpsRecordingAndSave();
     if (typeof window.refreshRouteLibrary === 'function') window.refreshRouteLibrary();
   }
@@ -506,6 +501,7 @@ function stopLiveLocation() {
   // Otherwise the last live speed/altitude reading sat in the readout forever -- same
   // refresh stopGpsRecording() already does on its own stop.
   if (!gpsRecording && typeof gpsUpdateReadout === 'function') gpsUpdateReadout();
+  if (typeof window.refreshGpsLiveButton === 'function') window.refreshGpsLiveButton();
   scheduleDraw();
 }
 
@@ -1248,12 +1244,22 @@ function updateGpsRecIndicator() {
 
 // opts.auto: started by showing location (see autoRecordOn) -- such a recording is dropped
 // when too short. opts.resume: { startT, track } of a recording a reload interrupted.
+var _gpsRecStartingLive = false;    // Record is turning Location on (no automatic recording then)
+var _gpsLiveByRecord = false;       // ...and Location is on only because Record turned it on
 function startGpsRecording(opts) {
   if (gpsRecording) return;
   if (!navigator.geolocation && !_bgGeo()) { refuse(S.gpsUnsupported || 'GPS is not available in this browser.'); return; }
   const o = opts || {};
-  // An automatic recording rides on Location's watch; without Location there is nothing to ride.
+  // A recording rides on Location's watch. An automatic one exists only because Location is
+  // on; Record turns Location on first (its button lights up with it), and a Location that
+  // will not start means no recording either.
   if (o.auto && !gpsLiveOn) return;
+  if (!o.auto && !gpsLiveOn) {
+    _gpsRecStartingLive = true;
+    try { startLiveLocation(); } finally { _gpsRecStartingLive = false; }
+    if (!gpsLiveOn || gpsRecording) return;
+    _gpsLiveByRecord = true;
+  }
   gpsRecording = true;
   gpsAutoRec = !!o.auto;
   if (typeof clearPageFrameForLocation === 'function') clearPageFrameForLocation();
@@ -1269,22 +1275,9 @@ function startGpsRecording(opts) {
   gpsResetLegAlerts();
   gpsRequestNotifyPermission();
   gpsMaybeStartDriftTimer();
-  try {
-    // An automatic recording is fed by Location's watch (onLivePosition): one receiver, one
-    // battery cost, and the map behaves exactly as Location without a recording.
-    if (!o.auto) gpsWatchId = gpsStartWatch(onGpsPosition, onGpsRecError,
-      S.gpsRecNotifTitle || 'NavAid GPS recording', S.gpsRecNotifText || 'Recording your track — tap to return');
-  } catch (e) {
-    // A synchronous failure registering the watch (e.g. a native plugin API
-    // mismatch on the APK) must roll the recording back — stop, reset the
-    // button + dot, and surface the error — not leave a phantom "recording".
-    // Tagged so gpsErrFatal can tell this apart from a codeless MID-watch error
-    // (a running watch reporting an unrecognized native error) -- only this one,
-    // where the watch never started at all, is unconditionally fatal.
-    if (e && typeof e === 'object') e._gpsRegistrationFailure = true;
-    onGpsRecError(e);
-    return;
-  }
+  // Fed by Location's watch (onLivePosition): one receiver, one battery cost, and the map
+  // behaves exactly as Location without a recording. (Location's own registration failure
+  // already stops it -- see startLiveLocation -- and then the check above returns.)
   gpsAcquireWakeLock();
   gpsUpdateReadout();
   scheduleDraw();
@@ -1702,6 +1695,11 @@ function stopGpsRecording() {
   gpsStopWatch(gpsWatchId);
   gpsWatchId = null;
   gpsRecording = false;
+  // Record turned Location on for this recording (startGpsRecording): stopping the recording
+  // puts Location back as it found it, once the rest of the stop below has run. A Location the
+  // pilot had on already stays on.
+  const undoLive = _gpsLiveByRecord && gpsLiveOn;
+  _gpsLiveByRecord = false;
   gpsAutoRec = false;
   gpsClearRecProgress();
   if (!gpsLiveOn) gpsStopCompass();
@@ -1713,6 +1711,7 @@ function stopGpsRecording() {
   gpsMaybeStopDriftTimer();
   gpsUpdateReadout();
   scheduleDraw();
+  if (undoLive) stopLiveLocation();
 }
 
 // The browser drops the wake lock whenever the tab is backgrounded; re-arm it
