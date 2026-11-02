@@ -10976,6 +10976,8 @@ function simStart() {
   refreshSimTrigger();
   // A recording running on a Location that Record turned on carries on from the simulator.
   if (typeof gpsRecordingSwitchToSim === 'function') gpsRecordingSwitchToSim();
+  // A simulator is a position source like the GPS: the screen stays on while it flies.
+  if (typeof gpsAcquireWakeLock === 'function') gpsAcquireWakeLock();
   // The in-flight column follows ANY live position now (gpsPositionLive), and the simulator
   // is one -- but nothing here told those controls the state had changed, so they only
   // appeared after some other refresh happened to run. Reported as the buttons not appearing
@@ -11011,6 +11013,7 @@ function simStop() {
   }
   simOn = false;
   _simLastOk = null;              // the next connection reports its first state again
+  if (typeof gpsWakeLockWanted === 'function' && !gpsWakeLockWanted() && typeof gpsReleaseWakeLock === 'function') gpsReleaseWakeLock();
   refreshSimTrigger();
   simRefreshFlightControls();          // ...and away again on disconnect
 

@@ -41,6 +41,14 @@ test('keep-awake and full screen follow the position (full screen only when swit
   await expect.poll(() => calls(page)).toEqual(expect.arrayContaining(['KeepAwake.allowSleep', 'StatusBar.show']));
 });
 
+test('the app keeps the screen on while the simulator is connected, like the GPS', async ({ page }) => {
+  await boot(page, { native: true });
+  await page.evaluate(() => { new Function('simOn = true')(); NavAid.device.tick(); });
+  await expect.poll(() => calls(page)).toEqual(expect.arrayContaining(['KeepAwake.keepAwake']));
+  await page.evaluate(() => { new Function('simOn = false')(); NavAid.device.tick(); });
+  await expect.poll(() => calls(page)).toEqual(expect.arrayContaining(['KeepAwake.allowSleep']));
+});
+
 test('an in-flight alert vibrates; switched off it does not', async ({ page }) => {
   await boot(page, { native: true });
   await page.evaluate(() => gpsSendWatchAlert('Next leg', 'BAZRA 095°'));
