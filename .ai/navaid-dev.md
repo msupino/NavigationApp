@@ -1113,7 +1113,7 @@ follows the page direction, while aircraft code, altitude, speed, track and coor
 
 For ground testing, `scripts/follow-me-simulator.py` publishes the bundled
 `scripts/routes/LLHZ-to-LLHA.json` route template as aircraft `TEST`, or accepts any exported
-route JSON. Like the cvfr-bridge fake, it flies the route's waypoint geometry with per-leg
+route JSON. Like the cvfr-bridge fake (copied here as `scripts/fake-sim-bridge.py`, with the bridge's schema as `scripts/fake-sim-bridge-schema.json`), it flies the route's waypoint geometry with per-leg
 `flightSpeed` and `inboundAltitude`, loops indefinitely, and offers `--speed-factor` plus
 global speed/altitude overrides. It prints a new follower link, uses the production
 AES-GCM/MQTT retained-message protocol, and clears the retained fix on normal exit. Use

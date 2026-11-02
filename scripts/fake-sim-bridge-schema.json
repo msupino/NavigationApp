@@ -1,0 +1,149 @@
+{
+  "_comment_top": [
+    "Single source of truth for the cvfr-bridge JSON wire format.",
+    "Both backends consume this file:",
+    "  - python/cvfrmap-bridge.py reads it at runtime (json.load),",
+    "    drives RREF subscriptions, JSON serialization, and the LLBG",
+    "    fallback dict from these field definitions.",
+    "  - c/ has CMake invoke tools/gen_c_schema.py before building, which",
+    "    emits c/schema.h with #define'd field names and the LLBG",
+    "    fallback constants for the plugin to use.",
+    "Add/remove/rename a field here and both backends pick it up after a",
+    "rebuild (C) or a script restart (Python). Keep the JSON Schema",
+    "$schema reference so editors can validate this file."
+  ],
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "cvfr-bridge JSON",
+  "version": "1.0.0",
+  "port": 2020,
+  "endpoint": "/",
+
+  "fields": [
+    {
+      "name": "latitude",
+      "type": "double",
+      "format": "%.6f",
+      "unit": "deg WGS84",
+      "description": "aircraft latitude",
+      "source": { "kind": "rpos", "offset": 13, "ctype": "double" },
+      "fallback": 32.0055
+    },
+    {
+      "name": "longitude",
+      "type": "double",
+      "format": "%.6f",
+      "unit": "deg WGS84",
+      "description": "aircraft longitude",
+      "source": { "kind": "rpos", "offset": 5, "ctype": "double" },
+      "fallback": 34.8854
+    },
+    {
+      "name": "altitude",
+      "type": "int",
+      "format": "%d",
+      "unit": "feet MSL",
+      "description": "aircraft altitude above mean sea level",
+      "source": { "kind": "rpos", "offset": 21, "ctype": "double", "transform": "meters_to_feet" },
+      "fallback": 135
+    },
+    {
+      "name": "heading",
+      "type": "double",
+      "format": "%.1f",
+      "unit": "deg magnetic",
+      "description": "magnetic heading shown on the compass",
+      "source": { "kind": "computed", "expression": "(rpos_heading_true - variation) % 360" },
+      "fallback": 0.0
+    },
+    {
+      "name": "variation",
+      "type": "double",
+      "format": "%.1f",
+      "unit": "deg",
+      "description": "magnetic variation, E positive",
+      "source": { "kind": "rref", "dataref": "sim/flightmodel/position/magnetic_variation" },
+      "fallback": 4.7
+    },
+    {
+      "name": "pitch",
+      "type": "double",
+      "format": "%.2f",
+      "unit": "deg",
+      "description": "pitch angle, nose-up positive",
+      "source": { "kind": "rpos", "offset": 33, "ctype": "float" },
+      "fallback": 0.0
+    },
+    {
+      "name": "roll",
+      "type": "double",
+      "format": "%.2f",
+      "unit": "deg",
+      "description": "roll angle, right-wing-down positive",
+      "source": { "kind": "rpos", "offset": 41, "ctype": "float" },
+      "fallback": 0.0
+    },
+    {
+      "name": "ias",
+      "type": "double",
+      "format": "%.1f",
+      "unit": "knots",
+      "description": "indicated airspeed",
+      "source": { "kind": "rref", "dataref": "sim/flightmodel/position/indicated_airspeed" },
+      "fallback": 0.0
+    },
+    {
+      "name": "vsi",
+      "type": "int",
+      "format": "%d",
+      "unit": "fpm",
+      "description": "vertical speed",
+      "source": { "kind": "rref", "dataref": "sim/flightmodel/position/vh_ind_fpm" },
+      "fallback": 0
+    },
+    {
+      "name": "wind_dir",
+      "type": "double",
+      "format": "%.0f",
+      "unit": "deg magnetic",
+      "description": "surface wind direction (FROM)",
+      "source": { "kind": "rref", "dataref": "sim/cockpit2/gauges/indicators/wind_heading_deg_mag" },
+      "fallback": 0.0
+    },
+    {
+      "name": "wind_speed",
+      "type": "double",
+      "format": "%.1f",
+      "unit": "kt",
+      "description": "surface wind speed",
+      "source": { "kind": "rref", "dataref": "sim/cockpit2/gauges/indicators/wind_speed_kts" },
+      "fallback": 0.0
+    },
+    {
+      "name": "qnh",
+      "type": "double",
+      "format": "%.2f",
+      "unit": "inHg",
+      "description": "altimeter setting (pilot)",
+      "source": { "kind": "rref", "dataref": "sim/cockpit2/gauges/actuators/barometer_setting_in_hg_pilot" },
+      "fallback": 29.92
+    },
+    {
+      "name": "sim_ready",
+      "type": "bool",
+      "format": "%s",
+      "unit": "boolean",
+      "description": "false when the sim hasn't placed an aircraft yet (lat == lon == 0)",
+      "source": { "kind": "computed", "expression": "rpos_latitude != 0 || rpos_longitude != 0" },
+      "fallback": false
+    },
+    {
+      "name": "speed_factor",
+      "type": "double",
+      "format": "%.1f",
+      "unit": "multiplier",
+      "description": "how much faster than real time the reporting aircraft's own clock is running (1 = real time). Real backends (X-Plane) always report 1 -- only tools/cvfrmap-fake.py's --speed-factor can report anything else. A client timing something against WALL-CLOCK time (not a fresh fix on every poll) needs this to scale that timing to match, or its own checks run too slowly relative to a sped-up aircraft.",
+      "source": { "kind": "computed", "expression": "1.0" },
+      "fallback": 1.0
+    }
+  ]
+}
