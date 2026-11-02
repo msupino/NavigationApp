@@ -10838,7 +10838,9 @@ async function _simFetch() {
     // Follow me treats the connected simulator as a live position source, so it must carry
     // the same fixes the map control promises. The bridge uses ft/kt; the encrypted feed uses
     // metres/kt, matching the Geolocation path in gps.js. A real device fix keeps precedence.
-    if (!gpsRecording && !gpsLiveOn && window.NavAid && NavAid.followMe && NavAid.followMe.sharing()) {
+    // A recording of the simulator's own flight (gpsSimRecording) is the simulator too.
+    const simDrives = !gpsLiveOn && (!gpsRecording || (typeof gpsSimRecording === 'function' && gpsSimRecording()));
+    if (simDrives && window.NavAid && NavAid.followMe && NavAid.followMe.sharing()) {
       NavAid.followMe.publish({
         lat: window.simAircraft.lat,
         lng: window.simAircraft.lng,
@@ -10873,8 +10875,15 @@ async function _simFetch() {
     // alert pipeline, which the marker's own guard never covered. Without it, a real fix
     // and a sim poll racing to overwrite gpsOwn/gpsLastGS/gpsLastAlt would fight over
     // which one's position the alerts react to, however briefly each one wins between fixes.
-    if (typeof gpsCheckLegAlerts === 'function' && !gpsRecording && !gpsLiveOn) {
+    if (typeof gpsCheckLegAlerts === 'function' && simDrives) {
       const prevOwn = gpsOwn;
+      // Recording the simulator's flight: this fix is a point on the recorded line, as a GPS
+      // fix is on a GPS recording (bridge ft/kt -> metres, m/s; its altitude is an altimeter's).
+      if (gpsRecording && typeof gpsAppendTrackPoint === 'function') {
+        gpsAppendTrackPoint({ coords: { latitude: window.simAircraft.lat, longitude: window.simAircraft.lng,
+          altitude: window.simAircraft.alt * 0.3048, accuracy: 5, heading: window.simAircraft.hdg,
+          speed: window.simAircraft.ias / 1.94384 }, timestamp: Date.now(), altitudeMsl: true, source: 'sim' });
+      }
       gpsOwn = { lat: window.simAircraft.lat, lng: window.simAircraft.lng,
         hdg: window.simAircraft.hdg, t: Date.now() };
       gpsLastGS = window.simAircraft.ias || null;
@@ -10965,6 +10974,8 @@ function simStart() {
   _simSession++;                 // anything still in flight belongs to the previous session
   simOn = true;
   refreshSimTrigger();
+  // A recording running on a Location that Record turned on carries on from the simulator.
+  if (typeof gpsRecordingSwitchToSim === 'function') gpsRecordingSwitchToSim();
   // The in-flight column follows ANY live position now (gpsPositionLive), and the simulator
   // is one -- but nothing here told those controls the state had changed, so they only
   // appeared after some other refresh happened to run. Reported as the buttons not appearing
@@ -10992,6 +11003,12 @@ function simStart() {
 }
 
 function simStop() {
+  // A recording of the simulator's flight ends with the simulator, saved -- as a recording
+  // ends with Location (stopLiveLocation).
+  if (typeof gpsSimRecording === 'function' && gpsSimRecording() && typeof stopGpsRecordingAndSave === 'function') {
+    stopGpsRecordingAndSave();
+    if (typeof window.refreshRouteLibrary === 'function') window.refreshRouteLibrary();
+  }
   simOn = false;
   _simLastOk = null;              // the next connection reports its first state again
   refreshSimTrigger();

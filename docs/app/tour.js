@@ -265,8 +265,12 @@
 
   // First launch: once the app is up and nothing else is asking for attention (the safety
   // notice, the boot screen, a question), and only if the tour is on and not yet seen.
+  // A link someone shared (a Follow me view, a route, the pilots link) opens on what it was
+  // shared for, not a walk round the controls: no tour then, and it is not marked seen, so the
+  // pilot's own first visit still gets it.
   function maybeAutoStart() {
     if (window.__navaidNoTour) return;                    // the test suite (tests/_setup.js)
+    if (window.__navaidFromSharedLink) return;
     if (typeof tune === 'function' && tune('featureTour') === false) return;
     try { if (localStorage.getItem(SEEN_KEY) === '1') return; } catch (e) { return; }
     let tries = 0;
@@ -286,6 +290,7 @@
   // and for the controls to be on screen.
   function maybeAutoStartLive() {
     if (window.__navaidNoTour) return;
+    if (window.__navaidFromSharedLink) return;
     if (typeof tune === 'function' && tune('featureTour') === false) return;
     try { if (localStorage.getItem(LIVE_SEEN_KEY) === '1') return; } catch (e) { return; }
     let liveSince = 0;

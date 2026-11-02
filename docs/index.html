@@ -111,6 +111,10 @@
         history.replaceState(null, '', '?' + params.toString() + location.hash);
       }
       window.__navLang = lang;
+      // Opened from a link someone shared -- Follow me (?follow=), the pilots link (?pilots=), a
+      // shared route (?r=) -- the first-launch tours keep out of the way (tour.js). Read here,
+      // before io.js strips a shared route's parameters from the address.
+      window.__navaidFromSharedLink = /[?&](follow|pilots|r)=/.test(location.search);
       // The desktop menubar's CSS hangs off html.menubar (ui.js refreshToolbarDesktopMenu keeps
       // it current); set here so a computer paints the menubar from the first frame.
       if (window.matchMedia && matchMedia('(min-width: 681px) and (hover: hover) and (pointer: fine)').matches) {
