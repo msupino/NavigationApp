@@ -3577,6 +3577,8 @@ function applyPage() {
   refreshPageButtons();
   draw();
   refreshPrintFit();
+  // Clear map takes the frame away, so its dim ("already empty") follows the frame too.
+  if (typeof window.refreshEditColumn === 'function') window.refreshEditColumn();
 }
 
 // Reflect the active page size on the A3/A4 buttons (.active + aria-pressed →
