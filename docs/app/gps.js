@@ -30,7 +30,7 @@ function gpsMapLocked() {
 // point. In the air it is the opposite -- a stray tap while flying used to cover the map
 // with the inspector, which is the one thing a pilot is looking at.
 function gpsTrackingLive() {
-  const live = !!(gpsRecording || gpsLiveOn);
+  const live = !!((gpsRecording && !gpsRecFromSim) || gpsLiveOn);
   // The "panel stays shut" notice is once per tracking session, not once per install.
   if (!live) window.__inspTrackingToldThisRun = false;
   return live;
@@ -70,7 +70,7 @@ function inspectorAllowedNow(sel) {
 // otherwise flying. Not the simulator -- that is a desk, where the ordinary screen timeout is
 // the right behaviour.
 function gpsWakeLockWanted() {
-  return !!(gpsRecording || gpsLiveOn);
+  return !!((gpsRecording && !gpsRecFromSim) || gpsLiveOn);
 }
 let _gpsWakeLockPending = false;
 function gpsAcquireWakeLock() {
@@ -296,7 +296,7 @@ function onLivePosition(pos) {
   // without Location -- the position showed while the Location button sat unlit, and stopping
   // Location left the recording running. Record now turns Location on; see startGpsRecording.)
   if (c.accuracy != null && c.accuracy > gpsMaxAccM()) return;
-  if (gpsRecording) gpsAppendTrackPoint(pos);
+  if (gpsRecording && !gpsRecFromSim) gpsAppendTrackPoint(pos);   // a simulator recording takes the simulator's
   const p = { lat: r5(c.latitude), lng: r5(c.longitude) };
   const t = pos.timestamp || Date.now();
   // NaN, not 0, when neither the device nor a previous fix can supply a heading --
@@ -476,8 +476,9 @@ function stopLiveLocation() {
   _gpsLiveByRecord = false;          // stopping Location by hand: nothing left for Record to undo
   try { localStorage.setItem('navaid.gpsLiveOn', '0'); } catch (e) { /* */ }
   // A recording ends with Location -- it rides on Location's fixes: saved (an automatic one is
-  // dropped when too short; one started with Record is always kept).
-  if (gpsRecording) {
+  // dropped when too short; one started with Record is always kept). Not one of the simulator's
+  // flight, which never rode on Location.
+  if (gpsRecording && !gpsRecFromSim) {
     stopGpsRecordingAndSave();
     if (typeof window.refreshRouteLibrary === 'function') window.refreshRouteLibrary();
   }
@@ -1245,6 +1246,28 @@ function updateGpsRecIndicator() {
 // opts.auto: started by showing location (see autoRecordOn) -- such a recording is dropped
 // when too short. opts.resume: { startT, track } of a recording a reload interrupted.
 var _gpsRecStartingLive = false;    // Record is turning Location on (no automatic recording then)
+// A recording of the connected SIMULATOR's flight: Record with a simulator connected and
+// Location off records the simulator's movement (io.js _simFetch feeds it), not the device GPS.
+// Reported: "record when sim connected should record sim movement, not gps" -- the change that
+// made Record turn Location on had made it record (and show) the desk's real GPS instead.
+var gpsRecFromSim = false;
+function gpsSimRecording() { return !!(gpsRecording && gpsRecFromSim); }
+// The simulator connects while Record is running on a Location that Record itself turned on: the
+// recording carries on from the simulator, and that Location goes off (asked: "if sim is
+// connected after record, which activated location, should deactivate location and record from
+// sim"). A Location the pilot turned on is theirs, and the real GPS keeps precedence then.
+function gpsRecordingSwitchToSim() {
+  if (!gpsRecording || gpsRecFromSim || !_gpsLiveByRecord || !gpsLiveOn) return false;
+  gpsRecFromSim = true;             // first: stopLiveLocation keeps a simulator recording running
+  _gpsLiveByRecord = false;
+  stopLiveLocation();
+  gpsStopCompass();                 // the simulator reports its own heading
+  gpsReleaseWakeLock();             // and a simulator is a desk
+  updateGpsRecIndicator();
+  return true;
+}
+if (typeof window !== 'undefined') window.gpsRecordingSwitchToSim = gpsRecordingSwitchToSim;
+if (typeof window !== 'undefined') window.gpsSimRecording = gpsSimRecording;
 var _gpsLiveByRecord = false;       // ...and Location is on only because Record turned it on
 function startGpsRecording(opts) {
   if (gpsRecording) return;
@@ -1254,7 +1277,8 @@ function startGpsRecording(opts) {
   // on; Record turns Location on first (its button lights up with it), and a Location that
   // will not start means no recording either.
   if (o.auto && !gpsLiveOn) return;
-  if (!o.auto && !gpsLiveOn) {
+  const fromSim = !o.auto && !gpsLiveOn && typeof simOn !== 'undefined' && simOn;
+  if (!o.auto && !gpsLiveOn && !fromSim) {
     _gpsRecStartingLive = true;
     try { startLiveLocation(); } finally { _gpsRecStartingLive = false; }
     if (!gpsLiveOn || gpsRecording) return;
@@ -1262,8 +1286,9 @@ function startGpsRecording(opts) {
   }
   gpsRecording = true;
   gpsAutoRec = !!o.auto;
+  gpsRecFromSim = fromSim;
   if (typeof clearPageFrameForLocation === 'function') clearPageFrameForLocation();
-  gpsStartCompass();
+  if (!fromSim) gpsStartCompass();       // the simulator reports its own heading
   _gpsUserMovedAt = 0;
   gpsWatchUserMapMoves();
   updateGpsRecIndicator();
@@ -1278,7 +1303,7 @@ function startGpsRecording(opts) {
   // Fed by Location's watch (onLivePosition): one receiver, one battery cost, and the map
   // behaves exactly as Location without a recording. (Location's own registration failure
   // already stops it -- see startLiveLocation -- and then the check above returns.)
-  gpsAcquireWakeLock();
+  if (!fromSim) gpsAcquireWakeLock();    // a simulator is a desk: the screen may sleep as usual
   gpsUpdateReadout();
   scheduleDraw();
 }
@@ -1695,6 +1720,7 @@ function stopGpsRecording() {
   gpsStopWatch(gpsWatchId);
   gpsWatchId = null;
   gpsRecording = false;
+  gpsRecFromSim = false;
   // Record turned Location on for this recording (startGpsRecording): stopping the recording
   // puts Location back as it found it, once the rest of the stop below has run. A Location the
   // pilot had on already stays on.
