@@ -10,7 +10,7 @@ NavAid's own "Connect to simulator" (it polls this exact port/shape
 too), for testing in-flight features without a real flight or X-Plane.
 
 Like python/cvfrmap-bridge.py, this script reads its schema (here
-scripts/cvfrmap-schema.json, the bridge repo's schema.json) at
+scripts/fake-sim-bridge-schema.json, the bridge repo's schema.json) at
 startup as the single source of truth: port, endpoint, field order,
 and per-field fallback values all come from there. Adding a field to
 schema.json automatically adds it to the fake's output (with its
@@ -87,10 +87,10 @@ from http.server import BaseHTTPRequestHandler
 from pathlib import Path
 from typing import Any
 
-# Copied into NavigationApp from msupino/cvfr-bridge (tools/cvfrmap-fake.py @ 5eaddf8); its
-# schema.json sits beside it as cvfrmap-schema.json. The bridge repo stays the source of truth:
+# Copied into NavigationApp from msupino/cvfr-bridge (tools/cvfrmap-fake.py @ 5eaddf8) as
+# fake-sim-bridge.py; its schema.json sits beside it as fake-sim-bridge-schema.json. The bridge repo stays the source of truth:
 # when its schema or this script change there, copy both again.
-DEFAULT_SCHEMA = Path(__file__).resolve().parent / "cvfrmap-schema.json"
+DEFAULT_SCHEMA = Path(__file__).resolve().parent / "fake-sim-bridge-schema.json"
 
 # Same mean Earth radius NavAid's own geo() uses (docs/app/core.js), so a route flown here
 # covers the same distance/time NavAid itself would compute for the identical route.
@@ -549,7 +549,7 @@ def banner(schema: dict, host: str, port: int, route: "Route | None",
     print("Ctrl-C to stop.")
 
 
-# Bundled default: NavAid's own LLHZ -> LLHA route export, so `python3 cvfrmap-fake.py`
+# Bundled default: NavAid's own LLHZ -> LLHA route export, so `python3 fake-sim-bridge.py`
 # with no arguments flies a real planned route out of the box instead of an arbitrary
 # orbit. Use --figure-eight for the old synthetic pattern, or --route for a different one.
 DEFAULT_ROUTE = Path(__file__).resolve().parent / "routes" / "LLHZ-to-LLHA.json"
@@ -557,7 +557,7 @@ DEFAULT_ROUTE = Path(__file__).resolve().parent / "routes" / "LLHZ-to-LLHA.json"
 
 def main(argv: list[str] | None = None) -> int:
     p = argparse.ArgumentParser(
-        description="Schema-driven fake cvfr-bridge for cvfr-map web-UI dev.",
+        description="A fake simulator bridge: serves a synthetic aircraft on the bridge's port for NavAid's Connect to simulator (and cvfr-map).",
     )
     p.add_argument("--schema", type=Path, default=DEFAULT_SCHEMA,
                    help=f"Path to schema.json (default: {DEFAULT_SCHEMA})")

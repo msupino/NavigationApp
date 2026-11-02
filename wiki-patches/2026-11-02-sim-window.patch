@@ -1,4 +1,4 @@
-From b7074b2b7350d5399e5aa4d76433852715988646 Mon Sep 17 00:00:00 2001
+From cd0b3fa11826c10199064bf607fb9a26d28252ce Mon Sep 17 00:00:00 2001
 From: Marco <marco@supino.org>
 Date: Mon, 2 Nov 2026 06:42:53 +0000
 Subject: [PATCH] Simulator Connect: Connect closes the window; the status is a
@@ -10,7 +10,7 @@ Subject: [PATCH] Simulator Connect: Connect closes the window; the status is a
  2 files changed, 48 insertions(+), 8 deletions(-)
 
 diff --git a/Simulator-Connect-he.md b/Simulator-Connect-he.md
-index db5b6aa..1efde8e 100644
+index db5b6aa..560b755 100644
 --- a/Simulator-Connect-he.md
 +++ b/Simulator-Connect-he.md
 @@ -35,11 +35,13 @@ NavAid יכול להציג את **מיקום המטוס בזמן אמת** על 
@@ -37,17 +37,17 @@ index db5b6aa..1efde8e 100644
  
 +## בדיקה בלי סימולטור
 +
-+<span dir="ltr"><code>scripts/cvfrmap-fake.py</code></span> (במאגר NavigationApp, עותק של ה-fake של cvfr-bridge) מגיש את
++<span dir="ltr"><code>scripts/fake-sim-bridge.py</code></span> (במאגר NavigationApp: גשר סימולטור מדומה, מועתק ממאגר cvfr-bridge) מגיש את
 +ה-JSON של הגשר בפורט 2020 עם מטוס מדומה, כך שאפשר לנסות את החיבור ואת תכונות הטיסה בלי X-Plane.
 +Python עם הספרייה הסטנדרטית בלבד:
 +
 +<div dir="ltr">
 +
 +```bash
-+python3 scripts/cvfrmap-fake.py                       # flies scripts/routes/LLHZ-to-LLHA.json, looping
-+python3 scripts/cvfrmap-fake.py --route my-route.json # an exported NavAid route
-+python3 scripts/cvfrmap-fake.py --figure-eight        # rate-1 figure-8 over LLBG
-+python3 scripts/cvfrmap-fake.py --speed-factor 10 --wind-dir 270 --wind-speed 20
++python3 scripts/fake-sim-bridge.py                       # flies scripts/routes/LLHZ-to-LLHA.json, looping
++python3 scripts/fake-sim-bridge.py --route my-route.json # an exported NavAid route
++python3 scripts/fake-sim-bridge.py --figure-eight        # rate-1 figure-8 over LLBG
++python3 scripts/fake-sim-bridge.py --speed-factor 10 --wind-dir 270 --wind-speed 20
 +```
 +
 +</div>
@@ -59,7 +59,7 @@ index db5b6aa..1efde8e 100644
  
  - **[Little NavMap](https://albar965.github.io/littlenavmap.html)** (MSFS 2020/2024, X-Plane, P3D, FSX) — מומלץ
 diff --git a/Simulator-Connect.md b/Simulator-Connect.md
-index 0beb109..c51fa88 100644
+index 0beb109..f8ccd59 100644
 --- a/Simulator-Connect.md
 +++ b/Simulator-Connect.md
 @@ -33,11 +33,13 @@ The bridge exposes a JSON endpoint on `http://localhost:2020` by default.
@@ -86,15 +86,15 @@ index 0beb109..c51fa88 100644
  
 +## Testing without a simulator
 +
-+`scripts/cvfrmap-fake.py` (in the NavigationApp repo, a copy of the cvfr-bridge fake) serves the
++`scripts/fake-sim-bridge.py` (in the NavigationApp repo: a fake simulator bridge, copied from the cvfr-bridge repo) serves the
 +bridge's JSON on port 2020 with a synthetic aircraft, so the connection and the in-flight features
 +can be tried without X-Plane. Standard library Python only:
 +
 +```bash
-+python3 scripts/cvfrmap-fake.py                       # flies scripts/routes/LLHZ-to-LLHA.json, looping
-+python3 scripts/cvfrmap-fake.py --route my-route.json # an exported NavAid route
-+python3 scripts/cvfrmap-fake.py --figure-eight        # rate-1 figure-8 over LLBG
-+python3 scripts/cvfrmap-fake.py --speed-factor 10 --wind-dir 270 --wind-speed 20
++python3 scripts/fake-sim-bridge.py                       # flies scripts/routes/LLHZ-to-LLHA.json, looping
++python3 scripts/fake-sim-bridge.py --route my-route.json # an exported NavAid route
++python3 scripts/fake-sim-bridge.py --figure-eight        # rate-1 figure-8 over LLBG
++python3 scripts/fake-sim-bridge.py --speed-factor 10 --wind-dir 270 --wind-speed 20
 +```
 +
 +Then connect to `http://localhost:2020` (or the computer's LAN address from the phone app).
