@@ -65,12 +65,12 @@ function inspectorAllowedNow(sel) {
 // Wake Lock is auto-released by the browser when the tab is hidden; we re-acquire
 // on visibilitychange (see listener at end of file). Best-effort: silently
 // no-op where unsupported (older Safari) or denied by policy.
-// Recording OR just showing the position: both are the pilot watching the chart move, and a
-// screen that blanks every 30 seconds is one the pilot has to keep waking with a hand that is
-// otherwise flying. Not the simulator -- that is a desk, where the ordinary screen timeout is
-// the right behaviour.
+// Recording, showing the position, or a connected simulator: all are the pilot watching the
+// chart move, and a screen that blanks every 30 seconds is one the pilot has to keep waking with
+// a hand that is otherwise flying. The simulator is a position source like the GPS (asked: "sim
+// is like gps") -- the phone or tablet beside it is the chart -- so it keeps the screen on too.
 function gpsWakeLockWanted() {
-  return !!((gpsRecording && !gpsRecFromSim) || gpsLiveOn);
+  return !!(gpsRecording || gpsLiveOn || (typeof simOn !== 'undefined' && simOn));
 }
 let _gpsWakeLockPending = false;
 function gpsAcquireWakeLock() {
@@ -486,7 +486,7 @@ function stopLiveLocation() {
   gpsLiveWatchId = null;
   gpsLiveOn = false;
   if (!gpsRecording) gpsStopCompass();
-  if (!gpsRecording) gpsReleaseWakeLock();
+  if (!gpsWakeLockWanted()) gpsReleaseWakeLock();    // a recording or the simulator may still want it
   // Alerts belong to the flight that queued them. With nothing left driving the map, one
   // still talking about the next leg is talking about a flight that has ended.
   if (!gpsRecording && !(typeof simOn !== 'undefined' && simOn)) gpsStopSpeaking();
@@ -1262,7 +1262,6 @@ function gpsRecordingSwitchToSim() {
   _gpsLiveByRecord = false;
   stopLiveLocation();
   gpsStopCompass();                 // the simulator reports its own heading
-  gpsReleaseWakeLock();             // and a simulator is a desk
   updateGpsRecIndicator();
   return true;
 }
@@ -1303,7 +1302,7 @@ function startGpsRecording(opts) {
   // Fed by Location's watch (onLivePosition): one receiver, one battery cost, and the map
   // behaves exactly as Location without a recording. (Location's own registration failure
   // already stops it -- see startLiveLocation -- and then the check above returns.)
-  if (!fromSim) gpsAcquireWakeLock();    // a simulator is a desk: the screen may sleep as usual
+  gpsAcquireWakeLock();
   gpsUpdateReadout();
   scheduleDraw();
 }
@@ -1730,7 +1729,7 @@ function stopGpsRecording() {
   gpsClearRecProgress();
   if (!gpsLiveOn) gpsStopCompass();
   updateGpsRecIndicator();
-  if (!gpsLiveOn) gpsReleaseWakeLock();     // Location may still be showing
+  if (!gpsWakeLockWanted()) gpsReleaseWakeLock();     // Location or the simulator may still want it
   if (!gpsLiveOn && !(typeof simOn !== 'undefined' && simOn)) gpsStopSpeaking();     // see stopLiveLocation
   gpsLastGS = null; gpsLastAlt = null;
   if (!gpsLiveOn) gpsOwn = null;

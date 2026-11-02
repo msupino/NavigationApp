@@ -910,6 +910,23 @@ test.describe('the screen stays awake while a position is on screen', () => {
     await page.waitForFunction(() => gpsWakeLock == null);
   });
 
+  // Asked: "simulator keeps screen on?" -- "sim is like gps": a connected simulator holds the
+  // lock like Location, and lets it go when it disconnects (unless Location still wants it).
+  test('a connected simulator holds it, and disconnecting lets it go', async ({ page }) => {
+    await bootWake(page);
+    await page.route(/^http:\/\/localhost:2020\//, r => r.fulfill({ status: 200, contentType: 'application/json',
+      body: JSON.stringify({ latitude: 32.1, longitude: 34.9, altitude: 1500, heading: 90, ias: 95 }) }));
+    await page.evaluate(() => simStart());
+    await page.waitForFunction(() => gpsWakeLock != null);
+    await page.evaluate(() => simStop());
+    await page.waitForFunction(() => gpsWakeLock == null);
+    // With Location also on, disconnecting the simulator keeps it.
+    await page.evaluate(() => { localStorage.setItem('navaid.autoRecord', '0'); startLiveLocation(); simStart(); });
+    await page.waitForFunction(() => gpsWakeLock != null);
+    await page.evaluate(() => simStop());
+    expect(await page.evaluate(() => gpsWakeLock != null)).toBe(true);
+  });
+
   test('coming back to the foreground re-arms it for Location too', async ({ page }) => {
     await bootWake(page);
     await page.evaluate(() => startLiveLocation());
