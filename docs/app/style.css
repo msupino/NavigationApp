@@ -3282,45 +3282,82 @@ body.printing-plan .ac-custom { display: none !important; }
   background: rgba(0, 0, 0, 0.5);
 }
 .sim-overlay.hidden { display: none; }
-/* Sim panel: a tidy vertical menu — full-width stacked controls. */
+/* Simulator window: a small form -- the Bridge URL field with its label above it, what to
+   enter, the apps' Find X-Plane, the status, and Connect last as the one primary action (the
+   app's blue, full width, 44px). The field is 16px: smaller text made iOS zoom the page on
+   focus, and the old 11px bold boxy field was hard to read. The help line is plain text, not
+   bold. Connect closes the window; the status reaches the pilot as a toast after that (io.js). */
 .modal.sim-modal {
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  min-width: 220px;
+  gap: 10px;
+  min-width: 260px;
+  max-width: min(360px, 92vw);
 }
 .modal.sim-modal > .sim-modal-title {
   cursor: move;
   user-select: none;
   touch-action: none;
+  margin: 0 0 2px;
 }
 .modal.sim-modal > button:not(.sim-modal-close),
-.modal.sim-modal > label,
+.modal.sim-modal > .sim-url-row,
 .modal.sim-modal > #sim-status,
-.modal.sim-modal > .sim-url-help { width: 100%; }
+.modal.sim-modal > .sim-url-help { width: 100%; box-sizing: border-box; }
 #sim-discover.hidden { display: none; }
-.modal.sim-modal > button:not(.sim-modal-close) { text-align: center; }
-.modal.sim-modal > .sim-url-help {
+.modal.sim-modal > .sim-url-row {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  background: none;
+  cursor: default;
+}
+.modal.sim-modal .sim-url-label { font: 600 13px/1.3 system-ui, sans-serif; opacity: .8; }
+.modal.sim-modal #sim-url {
+  width: 100%;
+  min-width: 0;
   box-sizing: border-box;
+  min-height: 44px;
+  padding: 8px 10px;
+  font: 400 16px/1.3 ui-monospace, SFMono-Regular, Menlo, monospace;
+  border: 1px solid #4a4444;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.06);
+  color: inherit;
+  text-align: left;                 /* a URL reads left to right in Hebrew too (dir="ltr") */
+}
+.modal.sim-modal #sim-url:focus-visible { outline: 3px solid #3d8bfd; outline-offset: 1px; }
+body.theme-light .modal.sim-modal #sim-url { border-color: #c6ccd6; background: #fff; }
+.modal.sim-modal > .sim-url-help {
   margin: -2px 0 0;
-  padding: 0 6px;
-  max-width: 300px;
+  padding: 0;
   color: var(--muted);
-  font-size: 11px;
-  line-height: 1.35;
+  font: 400 13px/1.45 system-ui, sans-serif;
 }
 .modal.sim-modal > #sim-status {
-  box-sizing: border-box;
   white-space: normal;
-  line-height: 1.35;
+  font: 600 13px/1.35 system-ui, sans-serif;
 }
-/* Active state for the panel's one toggle (Connect), so it is clear it has fired. Follow and
-   Center used to live here too -- they are map buttons now, beside the rotation dial. */
-.modal.sim-modal > button[aria-pressed="true"] {
+.modal.sim-modal > #sim-status:empty { display: none; }
+.modal.sim-modal > #sim-discover { min-height: 40px; }
+/* The one action: the app's primary blue. Pressed (connected) it turns green -- seen only if the
+   window is open while connected (the plane button disconnects then). */
+.modal.sim-modal > #sim-connect-cb {
+  min-height: 44px;
+  margin-top: 2px;
+  text-align: center;
+  font: 700 15px/1 system-ui, sans-serif;
+  color: #fff;
+  background: #1d6fe0;
+  border: 1px solid #1d6fe0;
+  border-radius: 8px;
+}
+.modal.sim-modal > #sim-connect-cb:hover { background: #195fc2; border-color: #195fc2; }
+.modal.sim-modal > #sim-connect-cb[aria-pressed="true"] {
   background: #2e7d32;
   border-color: #2e7d32;
-  color: #fff;
-  font-weight: 700;
 }
 /* Flight Plan variant: transparent backdrop that doesn't capture events,
    so the map underneath stays draggable / pannable while the plan is open. */

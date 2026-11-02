@@ -111,6 +111,10 @@
         history.replaceState(null, '', '?' + params.toString() + location.hash);
       }
       window.__navLang = lang;
+      // Opened from a link someone shared -- Follow me (?follow=), the pilots link (?pilots=), a
+      // shared route (?r=) -- the first-launch tours keep out of the way (tour.js). Read here,
+      // before io.js strips a shared route's parameters from the address.
+      window.__navaidFromSharedLink = /[?&](follow|pilots|r)=/.test(location.search);
       // The desktop menubar's CSS hangs off html.menubar (ui.js refreshToolbarDesktopMenu keeps
       // it current); set here so a computer paints the menubar from the first frame.
       if (window.matchMedia && matchMedia('(min-width: 681px) and (hover: hover) and (pointer: fine)').matches) {
@@ -1222,18 +1226,18 @@
     <div class="modal sim-modal" role="dialog" aria-modal="true">
       <button class="sim-modal-close" id="sim-modal-close" type="button" aria-label="Close">×</button>
       <h3 class="sim-modal-title" data-i18n="tbSecSim">Simulator</h3>
-      <button id="sim-connect-cb" type="button" data-i18n-title="tbSimConnectTitle"></button>
-      <label class="navtoggle" data-i18n-title="tbSimIpTitle">
-        <span data-i18n="tbSimIpLabel"></span>
-        <input type="url" id="sim-url" value="http://localhost:2020"
-               inputmode="url" autocomplete="off" spellcheck="false"
-               style="flex:1;min-width:0;font:inherit;font-size:11px">
+      <!-- A form, in a form's order: the field (label above it), what to enter, the apps' Find
+           X-Plane, the status, and the one action last. Connect closes the window. -->
+      <label class="sim-url-row" data-i18n-title="tbSimIpTitle">
+        <span class="sim-url-label" data-i18n="tbSimIpLabel"></span>
+        <input type="url" id="sim-url" value="http://localhost:2020" dir="ltr"
+               inputmode="url" autocomplete="off" spellcheck="false">
       </label>
       <p id="sim-url-help" class="sim-url-help"></p>
       <button id="sim-discover" type="button" class="hidden"
               data-i18n="tbSimDiscover" data-i18n-title="tbSimDiscoverTitle"></button>
-      <span id="sim-status" role="status" aria-live="polite"
-            style="font-size:11px;padding:0 6px"></span>
+      <span id="sim-status" role="status" aria-live="polite"></span>
+      <button id="sim-connect-cb" type="button" data-i18n-title="tbSimConnectTitle"></button>
     </div>
   </div>
 

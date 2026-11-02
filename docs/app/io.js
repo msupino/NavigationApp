@@ -10730,12 +10730,23 @@ map.on('move zoom moveend zoomend rotate layeradd', () => {
 let _simInterval = null;
 // Status element is set by ui.js via window._simStatusEl after DOM is ready.
 
+// The window closes on Connect, so its status line is not where the pilot is looking: a change
+// of state while the window is closed is said in a toast -- once per change, not every poll.
+let _simLastOk = null;
 function _simSetStatus(ok) {
   const el = window._simStatusEl || null;
-  if (!el) return;
-  el.textContent = ok ? (S.tbSimStatusOk || '✅ Connected')
-                      : (S.tbSimStatusErr || '⚠ No data');
-  el.style.color = ok ? tune('simStatusOkColor') : tune('simStatusErrColor');
+  if (el) {
+    el.textContent = ok ? (S.tbSimStatusOk || '✅ Connected')
+                        : (S.tbSimStatusErr || '⚠ No data');
+    el.style.color = ok ? tune('simStatusOkColor') : tune('simStatusErrColor');
+  }
+  if (ok === _simLastOk) return;
+  _simLastOk = ok;
+  const modal = document.getElementById('sim-modal');
+  if ((!modal || modal.classList.contains('hidden')) && typeof showToast === 'function') {
+    if (ok) showToast(S.tbSimToastOk || 'Simulator connected: its aircraft is on the map');
+    else showToast(S.tbSimToastErr || 'No data from the simulator bridge. Check that it is running and the URL is right.', { warn: true });
+  }
 }
 
 // AbortSignal.timeout() is recent enough that a WebView with working fetch and
@@ -10827,7 +10838,9 @@ async function _simFetch() {
     // Follow me treats the connected simulator as a live position source, so it must carry
     // the same fixes the map control promises. The bridge uses ft/kt; the encrypted feed uses
     // metres/kt, matching the Geolocation path in gps.js. A real device fix keeps precedence.
-    if (!gpsRecording && !gpsLiveOn && window.NavAid && NavAid.followMe && NavAid.followMe.sharing()) {
+    // A recording of the simulator's own flight (gpsSimRecording) is the simulator too.
+    const simDrives = !gpsLiveOn && (!gpsRecording || (typeof gpsSimRecording === 'function' && gpsSimRecording()));
+    if (simDrives && window.NavAid && NavAid.followMe && NavAid.followMe.sharing()) {
       NavAid.followMe.publish({
         lat: window.simAircraft.lat,
         lng: window.simAircraft.lng,
@@ -10862,8 +10875,15 @@ async function _simFetch() {
     // alert pipeline, which the marker's own guard never covered. Without it, a real fix
     // and a sim poll racing to overwrite gpsOwn/gpsLastGS/gpsLastAlt would fight over
     // which one's position the alerts react to, however briefly each one wins between fixes.
-    if (typeof gpsCheckLegAlerts === 'function' && !gpsRecording && !gpsLiveOn) {
+    if (typeof gpsCheckLegAlerts === 'function' && simDrives) {
       const prevOwn = gpsOwn;
+      // Recording the simulator's flight: this fix is a point on the recorded line, as a GPS
+      // fix is on a GPS recording (bridge ft/kt -> metres, m/s; its altitude is an altimeter's).
+      if (gpsRecording && typeof gpsAppendTrackPoint === 'function') {
+        gpsAppendTrackPoint({ coords: { latitude: window.simAircraft.lat, longitude: window.simAircraft.lng,
+          altitude: window.simAircraft.alt * 0.3048, accuracy: 5, heading: window.simAircraft.hdg,
+          speed: window.simAircraft.ias / 1.94384 }, timestamp: Date.now(), altitudeMsl: true, source: 'sim' });
+      }
       gpsOwn = { lat: window.simAircraft.lat, lng: window.simAircraft.lng,
         hdg: window.simAircraft.hdg, t: Date.now() };
       gpsLastGS = window.simAircraft.ias || null;
@@ -10954,6 +10974,8 @@ function simStart() {
   _simSession++;                 // anything still in flight belongs to the previous session
   simOn = true;
   refreshSimTrigger();
+  // A recording running on a Location that Record turned on carries on from the simulator.
+  if (typeof gpsRecordingSwitchToSim === 'function') gpsRecordingSwitchToSim();
   // The in-flight column follows ANY live position now (gpsPositionLive), and the simulator
   // is one -- but nothing here told those controls the state had changed, so they only
   // appeared after some other refresh happened to run. Reported as the buttons not appearing
@@ -10981,7 +11003,14 @@ function simStart() {
 }
 
 function simStop() {
+  // A recording of the simulator's flight ends with the simulator, saved -- as a recording
+  // ends with Location (stopLiveLocation).
+  if (typeof gpsSimRecording === 'function' && gpsSimRecording() && typeof stopGpsRecordingAndSave === 'function') {
+    stopGpsRecordingAndSave();
+    if (typeof window.refreshRouteLibrary === 'function') window.refreshRouteLibrary();
+  }
   simOn = false;
+  _simLastOk = null;              // the next connection reports its first state again
   refreshSimTrigger();
   simRefreshFlightControls();          // ...and away again on disconnect
 

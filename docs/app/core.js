@@ -3776,6 +3776,8 @@ window.S = Object.assign({
   inspTurnNeedsSameField: 'Available on a route that returns to the airfield it started from — a one-way trip has no return to separate from its outbound.',
   inspTurnTitle: 'Where this route turns for home. A loop repeats no waypoint, so nothing in the geometry says where the far end is — mark it here and the leg-direction filter can split outbound from return.',
   tbSimConnected: 'Simulator connected — showing its aircraft on the map',
+  tbSimToastOk: 'Simulator connected: its aircraft is on the map',
+  tbSimToastErr: 'No data from the simulator bridge. Check that it is running and the URL is right.',
   tbSimConnectedTap: 'Simulator connected — tap to disconnect',
   tbSimDisconnected: 'Simulator disconnected',
   tbSecSim: 'Simulator',   // footer button + sim modal title; the footer icon span draws the plane

@@ -6538,6 +6538,10 @@ document.getElementById('limit-kites-cb').onchange = e => {
       setConnectLabel();
       window._simStatusEl = statusEl;
       if (typeof window.simStart === 'function') simStart();  // saves navaid.simOn
+      // Connected: the window has done its job -- it closes, and the lit plane button says the
+      // simulator is on (asked: "connect to sim button in sim window should close when click to
+      // connect"). A URL problem above keeps it open, with the problem shown.
+      if (typeof window.closeSimPanel === 'function') window.closeSimPanel();
     } else {
       connected = false;
       setConnectLabel();
@@ -6649,6 +6653,7 @@ document.getElementById('limit-kites-cb').onchange = e => {
   // Connected, the button is a switch like Location and Record beside it: a press disconnects,
   // it does not open the connect panel (asked: "pressing on sim button when active, should
   // disable, not open the connect window"). Disconnected, it opens the panel to connect.
+  window.closeSimPanel = () => { if (!modal.classList.contains('hidden')) close(); };
   trigger.addEventListener('click', () => {
     if (typeof simOn !== 'undefined' && simOn && typeof window.simDisconnect === 'function' && window.simDisconnect()) {
       if (typeof showToast === 'function') showToast((S && S.tbSimDisconnected) || 'Simulator disconnected');

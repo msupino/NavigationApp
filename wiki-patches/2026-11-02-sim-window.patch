@@ -1,0 +1,108 @@
+From cd0b3fa11826c10199064bf607fb9a26d28252ce Mon Sep 17 00:00:00 2001
+From: Marco <marco@supino.org>
+Date: Mon, 2 Nov 2026 06:42:53 +0000
+Subject: [PATCH] Simulator Connect: Connect closes the window; the status is a
+ short message
+
+---
+ Simulator-Connect-he.md | 30 ++++++++++++++++++++++++++----
+ Simulator-Connect.md    | 26 ++++++++++++++++++++++----
+ 2 files changed, 48 insertions(+), 8 deletions(-)
+
+diff --git a/Simulator-Connect-he.md b/Simulator-Connect-he.md
+index db5b6aa..560b755 100644
+--- a/Simulator-Connect-he.md
++++ b/Simulator-Connect-he.md
+@@ -35,11 +35,13 @@ NavAid יכול להציג את **מיקום המטוס בזמן אמת** על 
+ 
+ 1. לחץ על **אייקון המטוס ✈** הקטן בכותרת התחתונה של סרגל הכלים (ליד תנאים /
+    פרטיות) — נפתח פאנל הסימולטור.
+-2. לחץ **התחבר לסימולטור** — NavAid מתחיל לסקור כל שנייה.
+-3. מחוון המצב מציג **✅ מחובר** כאשר נתונים מגיעים, **⚠ אין נתונים** אם הגשר אינו נגיש.
++2. בדקו את **כתובת הגשר** ולחצו **התחבר לסימולטור** — NavAid מתחיל לסקור כל שנייה והחלון
++   נסגר; אייקון המטוס מודגש.
++3. הודעה קצרה אומרת **הסימולטור מחובר** כשמגיעים נתונים, או שאין נתונים מהגשר (ודאו שהוא
++   פועל ושהכתובת נכונה).
+ 
+-הפאנל הוא כפתור **התחבר לסימולטור**, שדה כתובת הגשר ושורת המצב. החיבור מציג מצב
+-פעיל ירוק.
++הפאנל הוא שדה כתובת הגשר (עם שורה על מה להזין בו), **Find X-Plane** באפליקציות, וכפתור
++**התחבר לסימולטור**.
+ 
+ כשהסימולטור מחובר, אייקון המטוס מודגש כמו מיקום והקלטה שלידו, והוא מתג: לחיצה עליו
+ **מנתקת** (הודעה קצרה: *הסימולטור נותק*) במקום לפתוח את הפאנל. כשהוא מנותק, לחיצה פותחת את הפאנל שוב.
+@@ -92,6 +94,26 @@ NavAid יכול להציג את **מיקום המטוס בזמן אמת** על 
+ | האייקון נראה אך הכיוון שגוי | שדה heading חסר ב-JSON של הגשר | ודא שהגשר מחזיר <span dir="ltr"><code>heading</code></span> במעלות |
+ | שגיאת CORS בקונסולת הדפדפן | הגשר חוסם בקשות cross-origin | השתמש ב-NavAid מקומית (<span dir="ltr"><code>localhost:8000</code></span>) או הגדר CORS בגשר |
+ 
++## בדיקה בלי סימולטור
++
++<span dir="ltr"><code>scripts/fake-sim-bridge.py</code></span> (במאגר NavigationApp: גשר סימולטור מדומה, מועתק ממאגר cvfr-bridge) מגיש את
++ה-JSON של הגשר בפורט 2020 עם מטוס מדומה, כך שאפשר לנסות את החיבור ואת תכונות הטיסה בלי X-Plane.
++Python עם הספרייה הסטנדרטית בלבד:
++
++<div dir="ltr">
++
++```bash
++python3 scripts/fake-sim-bridge.py                       # flies scripts/routes/LLHZ-to-LLHA.json, looping
++python3 scripts/fake-sim-bridge.py --route my-route.json # an exported NavAid route
++python3 scripts/fake-sim-bridge.py --figure-eight        # rate-1 figure-8 over LLBG
++python3 scripts/fake-sim-bridge.py --speed-factor 10 --wind-dir 270 --wind-speed 20
++```
++
++</div>
++
++אחר כך התחברו ל-<span dir="ltr"><code>http://localhost:2020</code></span> (או לכתובת המחשב ברשת מהאפליקציה בטלפון).
++<span dir="ltr"><code>--reverse</code></span> טס את המסלול גם בחזרה; רוח צד באמת מסיטה את המטוס, בשביל התראת הסחיפה.
++
+ ## גשרים תואמים
+ 
+ - **[Little NavMap](https://albar965.github.io/littlenavmap.html)** (MSFS 2020/2024, X-Plane, P3D, FSX) — מומלץ
+diff --git a/Simulator-Connect.md b/Simulator-Connect.md
+index 0beb109..f8ccd59 100644
+--- a/Simulator-Connect.md
++++ b/Simulator-Connect.md
+@@ -33,11 +33,13 @@ The bridge exposes a JSON endpoint on `http://localhost:2020` by default.
+ 
+ 1. Click the small **✈ plane icon** in the toolbar footer (next to Terms /
+    Privacy) — it opens the Simulator panel.
+-2. Click **Connect to simulator** — NavAid starts polling every second.
+-3. The status indicator shows **✅ Connected** when data arrives, **⚠ No data** if the bridge is unreachable.
++2. Check the **Bridge URL**, then click **Connect to simulator** — NavAid starts polling every
++   second and the window closes; the plane icon lights up.
++3. A short message says **Simulator connected** when data arrives, or that there is **no data**
++   from the bridge (check that it is running and the URL is right).
+ 
+-The panel is the **Connect to simulator** button, the Bridge URL field and the
+-status line. Connect shows a green active state.
++The panel is the Bridge URL field (with a line on what to enter there), **Find X-Plane** in the
++apps, and the **Connect to simulator** button.
+ 
+ While connected, the plane icon is lit like Location and Record beside it, and it is a switch:
+ pressing it **disconnects** (a toast says *Simulator disconnected*) instead of opening the panel.
+@@ -88,6 +90,22 @@ glance at the bar reads all three sources alike. Its tooltip and accessible name
+ | Icon visible but wrong heading | Heading field missing from bridge JSON | Ensure bridge returns `heading` in degrees true |
+ | CORS error in browser console | Bridge blocks cross-origin requests | Use NavAid locally (`localhost:8000`) or configure CORS on the bridge |
+ 
++## Testing without a simulator
++
++`scripts/fake-sim-bridge.py` (in the NavigationApp repo: a fake simulator bridge, copied from the cvfr-bridge repo) serves the
++bridge's JSON on port 2020 with a synthetic aircraft, so the connection and the in-flight features
++can be tried without X-Plane. Standard library Python only:
++
++```bash
++python3 scripts/fake-sim-bridge.py                       # flies scripts/routes/LLHZ-to-LLHA.json, looping
++python3 scripts/fake-sim-bridge.py --route my-route.json # an exported NavAid route
++python3 scripts/fake-sim-bridge.py --figure-eight        # rate-1 figure-8 over LLBG
++python3 scripts/fake-sim-bridge.py --speed-factor 10 --wind-dir 270 --wind-speed 20
++```
++
++Then connect to `http://localhost:2020` (or the computer's LAN address from the phone app).
++`--reverse` flies the route back again; a crosswind really drifts the aircraft, for the drift alert.
++
+ ## Compatible bridges
+ 
+ - **[Little NavMap](https://albar965.github.io/littlenavmap.html)** (MSFS 2020/2024, X-Plane, P3D, FSX) — recommended
+-- 
+2.43.0
+
