@@ -93,6 +93,8 @@ test('the gist can withdraw it: the button goes and the audio stops', async ({ p
   await page.evaluate(() => { NavAid.tuning.featureAtcRadio = false; window.refreshAtcRadioFeature(); });
   expect(await page.evaluate(() => [document.getElementById('tool-atc-radio').hidden, window.atcRadio.current]))
     .toEqual([true, null]);
+  // Hidden as drawn, not only as a property (display:flex once beat [hidden]).
+  await expect(page.locator('#tool-atc-radio')).toBeHidden();
 });
 
 // Asked: "each play to each airfield which has it", then "a small play button near the freq of
