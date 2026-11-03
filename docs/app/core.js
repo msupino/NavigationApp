@@ -6915,6 +6915,36 @@ const map = L.map('map', {
   touchRotate: _touchRotateGesture(),
 });
 L.control.zoom({ position: 'bottomright' }).addTo(map);
+
+// Trackpad pinch on a Mac. The app there is the iOS build in WebKit, which delivers a trackpad pinch
+// as gesturestart/gesturechange (a scale), not as two touches -- and the app's user-scalable=no
+// stops the page zoom it would otherwise do. Leaflet handles neither, so the pinch did nothing
+// (reported). Turn the scale into a map zoom around the cursor. A touchscreen pinch (an iPhone,
+// an iPad) sends touches with these events and stays Leaflet's: skipped while a finger is down.
+// Safari can send ctrl+wheel for the same pinch; that is dropped while a gesture is driving.
+(function trackpadPinchZoom() {
+  const el = map.getContainer();
+  let fingers = 0;
+  let start = null;
+  const count = e => { fingers = e.touches ? e.touches.length : 0; };
+  for (const t of ['touchstart', 'touchend', 'touchcancel']) el.addEventListener(t, count, { passive: true });
+  el.addEventListener('gesturestart', (e) => {
+    if (fingers > 0) return;
+    e.preventDefault();
+    start = { zoom: map.getZoom(), at: map.mouseEventToContainerPoint(e) };
+  });
+  el.addEventListener('gesturechange', (e) => {
+    if (!start) return;
+    e.preventDefault();
+    if (!(e.scale > 0)) return;
+    const z = Math.max(map.getMinZoom(), Math.min(map.getMaxZoom(), start.zoom + Math.log2(e.scale)));
+    map.setZoomAround(start.at, z, { animate: false });
+  });
+  el.addEventListener('gestureend', (e) => { if (start) { e.preventDefault(); start = null; } });
+  el.addEventListener('wheel', (e) => {
+    if (start && e.ctrlKey) { e.preventDefault(); e.stopImmediatePropagation(); }
+  }, { capture: true, passive: false });
+})();
 // Base layer is chosen from the toolbar (#layer-select, wired in ui.js).
 
 // --- OpenStreetMap underlay -----------------------------------------
