@@ -1262,6 +1262,12 @@ NavAid.tuningDefaults = {
   defaultShowTraffic: { value: false, type: 'bool',
     label: 'Default: show live traffic while a fix is driving the map' },
   // {lat}/{lon}/{dist} are filled in; a URL without them gets them as query parameters.
+  // Live ATC: a link to LiveATC's own player, never the audio in the app -- LiveATC's terms bar
+  // its streams from third-party products. Comma-separated ICAO:mount pairs; a field without
+  // a mount links to its LiveATC page, which lists every feed it has. Shown under the ATC radio
+  // switch (featureAtcRadio), with its gist group.
+  liveAtcFeeds: { value: 'LLBG', type: 'text',
+    label: 'Live ATC feeds: ICAO:mount pairs, comma-separated (a bare ICAO links to its LiveATC page)' },
   trafficApiUrl: { value: 'https://api.adsb.lol/v2/lat/{lat}/lon/{lon}/dist/{dist}', type: 'text',
     label: 'Where live traffic is fetched from (empty turns it off)' },
   // The feeds send no CORS header, so a browser needs a relay that adds one (relay/traffic, a
@@ -1309,7 +1315,7 @@ NavAid.tuningGroups = [
   { name: 'Airspace', keys: ['defaultShowAirspace', 'airspaceProhibitedColor', 'airspaceRestrictedColor',
     'airspaceTmaColor', 'airspaceCtrColor', 'airspaceFillAlpha', 'airspaceLineWidthPx', 'airspaceLabelMinZoom',
     'airspaceLabelFontPx'] },
-  { name: 'ATC radio', keys: ['featureAtcRadio', 'atcRadioBase'] },
+  { name: 'ATC radio', keys: ['featureAtcRadio', 'atcRadioBase', 'liveAtcFeeds'] },
   { name: 'Live traffic', keys: ['featureLiveTraffic', 'defaultShowTraffic', 'trafficApiUrl', 'trafficWebApiUrl', 'trafficRadiusNm',
     'trafficRefreshSec', 'trafficFailsBeforeWarn', 'trafficIconPx', 'trafficArrowColor',
     'trafficLabelColor'] },
@@ -2255,6 +2261,8 @@ window.S = Object.assign({
   commFailChartNote: 'Fly the comm-failure chart shown on the map. The drawn line only leads to the entry point.',
   deckCommFail: 'Comm fail',
   airfieldPhone: 'Phone',
+  liveAtcAll: 'All feeds',
+  liveAtcTitle: (what) => 'Listen to ' + what + ' on liveatc.net (opens outside NavAid)',
   callNumber: 'Call',
   atis: 'ATIS',
   commArrival: 'Arrival',

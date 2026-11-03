@@ -28,7 +28,8 @@ test('a field with a published number shows it as a tel: link', async ({ page })
 
 test('the frequencies stay together, with the phone after them', async ({ page }) => {
   await openField(page, 'LLHZ');
-  const order = await page.evaluate(() => [...document.querySelectorAll('#inspector .comm-section .row')]
+  // The Live ATC link (live-atc.spec.js) follows the phone; this is about the radios.
+  const order = await page.evaluate(() => [...document.querySelectorAll('#inspector .comm-section .row:not(.live-atc-row)')]
     .map(r => r.classList.contains('airfield-phone-row') ? 'phone' : 'freq'));
   // Every frequency row comes before the phone: nothing that is not a radio sits among them.
   expect(order[order.length - 1]).toBe('phone');

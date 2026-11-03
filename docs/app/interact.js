@@ -2074,6 +2074,8 @@ function appendAirfieldComms(body, af) {
   if (window.atcRadio && typeof window.atcRadio.airfieldAttach === 'function') {
     window.atcRadio.airfieldAttach(af && af.name, sec);
   }
+  // The LiveATC link (a field LiveATC carries, LLBG by default): the frame's last row.
+  for (const row of liveAtcRows(af)) sec.appendChild(row);
   // A field with no published frequency gets no empty frame.
   if (sec.querySelectorAll('.row').length) body.appendChild(sec);
 }
@@ -2104,6 +2106,59 @@ function airfieldPhoneRow(callSignId) {
   a.title = (S.callNumber || 'Call') + ' — ' + shown;
   row.append(l, a);
   return row;
+}
+
+// The field's feeds on LiveATC, from the gist's `liveAtcFeeds` ("LLBG" or "ICAO:mount,...").
+// A mount is one feed; a bare ICAO is the field's LiveATC page, which lists them all.
+function liveAtcFeedsFor(icao) {
+  // One switch for every way NavAid lets you listen to ATC: the ATC radio feature's.
+  if (!icao || typeof tune !== 'function' || tune('featureAtcRadio') === false) return [];
+  const want = String(icao).toUpperCase();
+  const out = [];
+  for (const entry of String(tune('liveAtcFeeds') || '').split(',')) {
+    const [code, mount] = entry.split(':').map(s => (s || '').trim());
+    if (!code || code.toUpperCase() !== want) continue;
+    out.push(/^[a-z0-9_]+$/i.test(mount || '') ? mount.toLowerCase() : '');
+  }
+  return out;
+}
+
+// What a mount carries, from LiveATC's own naming (llhz2_twr, llbg_gnd, ..._app).
+function liveAtcRole(mount) {
+  if (!mount) return S.liveAtcAll || 'All feeds';
+  // The app's own labels: the ATC radio's Tower, the plates' Ground and Approach.
+  if (/_twr\b|twr$/.test(mount)) return S.atcTower || 'Tower';
+  if (/_gnd\b|gnd$/.test(mount)) return S.plateCategoryGround || 'Ground';
+  if (/_app\b|app$/.test(mount)) return S.plateCategoryApproach || 'Approach';
+  return mount;
+}
+
+// A link out to LiveATC's player, opened in the browser (the system browser in the apps):
+// LiveATC's terms bar its audio from third-party products, so NavAid never plays it.
+function liveAtcRows(af) {
+  const icao = af && af.name;
+  return liveAtcFeedsFor(icao).map((mount) => {
+    const row = document.createElement('div');
+    row.className = 'row live-atc-row';
+    const l = document.createElement('label');
+    l.textContent = S.atcRadio || 'ATC radio';
+    const a = document.createElement('a');
+    a.className = 'val live-atc-link';
+    a.href = mount
+      ? 'https://www.liveatc.net/hlisten.php?mount=' + encodeURIComponent(mount)
+        + '&icao=' + encodeURIComponent(icao.toLowerCase())
+      : 'https://www.liveatc.net/search/?icao=' + encodeURIComponent(icao.toLowerCase());
+    a.target = '_blank';
+    a.rel = 'noopener noreferrer';
+    const role = liveAtcRole(mount);
+    a.title = S.liveAtcTitle ? S.liveAtcTitle(role) : role;
+    a.setAttribute('aria-label', a.title);
+    a.innerHTML = (typeof navIconSvg === 'function' ? navIconSvg('headset', 18) : '')
+      + '<span class="live-atc-role"></span><span class="live-atc-host" dir="ltr">liveatc.net</span>';
+    a.querySelector('.live-atc-role').textContent = role;
+    row.append(l, a);
+    return row;
+  });
 }
 
 function appendAirfieldFrequencyRows(body, af) {

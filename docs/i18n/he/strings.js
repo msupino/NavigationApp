@@ -550,6 +550,8 @@ window.S = {
   commFailChartNote: 'טוס לפי תרשים תקלת הקשר המוצג על המפה. הקו המשורטט רק מוביל לנקודת הכניסה.',
   deckCommFail: 'תקלת קשר',
   airfieldPhone: 'טלפון',
+  liveAtcAll: 'כל הערוצים',
+  liveAtcTitle: (what) => 'האזנה ל' + what + ' ב-liveatc.net (נפתח מחוץ ל-NavAid)',
   callNumber: 'חייג',
   atis: 'ATIS',
   commArrival: 'נחיתה',

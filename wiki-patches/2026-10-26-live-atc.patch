@@ -1,0 +1,48 @@
+From 0fb59e7313c9bd47392d0b2b0ad677a93b186f00 Mon Sep 17 00:00:00 2001
+From: Marco <marco@supino.org>
+Date: Tue, 3 Nov 2026 17:46:26 +0000
+Subject: [PATCH] Airfield panel: Live ATC link to LiveATC's player
+
+---
+ Inspector-he.md | 6 ++++++
+ Inspector.md    | 7 +++++++
+ 2 files changed, 13 insertions(+)
+
+diff --git a/Inspector-he.md b/Inspector-he.md
+index 3802b4c..cf7300b 100644
+--- a/Inspector-he.md
++++ b/Inspector-he.md
+@@ -160,6 +160,12 @@ DA  = PA + 120 × (T − ISA)
+ שעל המפה — יחד עם **פלוטו מערב** <span dir="ltr">118.40</span>, הבקרה הארצית, שאינה שייכת לשום שדה
+ ולכן מופיעה רק שם. מצב הערוץ זהה בשני המקומות.
+ 
++לשדה שיש לו ערוץ ב-[LiveATC](https://www.liveatc.net) נוספת בסוף שורת **רדיו בקרה**: קישור שפותח את
++הנגן של LiveATC עצמו בדפדפן (בדפדפן המערכת באפליקציות), עם שם הערוץ — *מגדל*, *קרקע*, *גישה*, או
++*כל הערוצים* לדף השדה ב-LiveATC. NavAid אינו מנגן את השמע בעצמו: תנאי LiveATC אוסרים את השידורים
++שלו במוצרים אחרים. רשימת הערוצים היא <span dir="ltr"><code>liveAtcFeeds</code></span> ב-gist (זוגות ICAO:mount או ICAO בלבד, למשל
++<span dir="ltr"><code>LLBG</code></span>), ו-<span dir="ltr"><code>featureAtcRadio</code></span> — אותו מתג של רדיו הבקרה באפליקציה — מכבה את השורה.
++
+ ## מרחב אווירי
+ 
+ הקשה על אזור [מרחב מבוקר או מוגבל](Extra-Layers-he) פותחת חלונית לקריאה בלבד:
+diff --git a/Inspector.md b/Inspector.md
+index 982f334..b77af91 100644
+--- a/Inspector.md
++++ b/Inspector.md
+@@ -171,6 +171,13 @@ audio playing. The same channels are listed together in the **ATC radio** window
+ headset button on the map — with **Pluto West** 118.40, the country-wide control, which belongs to
+ no airfield and is in that window only. A channel's state is the same in both places.
+ 
++A field with a feed on [LiveATC](https://www.liveatc.net) gets an **ATC radio** row last: a link
++that opens LiveATC's own player in the browser (the system browser in the apps), naming the
++feed — *Tower*, *Ground*, *Approach*, or *All feeds* for the field's LiveATC page. NavAid never
++plays the audio itself: LiveATC's terms keep its streams out of other products. The list of
++feeds is the gist's `liveAtcFeeds` (ICAO:mount pairs or a bare ICAO, e.g. `LLBG`), and
++`featureAtcRadio` — the same switch as the in-app ATC radio — turns the row off.
++
+ ## Airspace
+ 
+ Tapping an area of [controlled or restricted airspace](Extra-Layers#controlled--restricted-airspace)
+-- 
+2.43.0
+
