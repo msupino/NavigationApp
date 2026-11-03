@@ -1,0 +1,43 @@
+From 88e8f9d8f0ddda92791b7d0e1ca891b9564dcd1a Mon Sep 17 00:00:00 2001
+From: Marco <marco@supino.org>
+Date: Wed, 28 Oct 2026 07:31:38 +0000
+Subject: [PATCH] SIGMET: the layer count matches Charts and follows the time
+ slider
+
+---
+ Extra-Layers-he.md | 4 ++--
+ Extra-Layers.md    | 3 ++-
+ 2 files changed, 4 insertions(+), 3 deletions(-)
+
+diff --git a/Extra-Layers-he.md b/Extra-Layers-he.md
+index 45b25c9..0f9302b 100644
+--- a/Extra-Layers-he.md
++++ b/Extra-Layers-he.md
+@@ -33,8 +33,8 @@ SIGMET בינלאומיים (מערבולות, קרח, גל הרים, אפר ג
+ 
+ - **על המפה** — הפעילו **הצג SIGMET** (ליד הצג AIRMET) כדי לצייר כל SIGMET פעיל שיש לו אזור
+   שמיש — קואורדינטות תקינות ולפחות חלק מהאזור בתוך האזור הגאוגרפי, כך ש-SIGMET של FIR שכן
+-  שחורג הרבה מעבר לו (של ג׳דה, למשל) מצויר ונספר כמו כל אחר, והספירה כאן תמיד תואמת את הרשימה
+-  ב**דפיות**. כבוי כברירת מחדל (<span dir="ltr"><code>defaultShowSigmet</code></span>; הבחירה שלכם היא <span dir="ltr"><code>navaid.showSigmet</code></span>, מסונכרנת).
++  שחורג הרבה מעבר לו (של ג׳דה, למשל) מצויר ונספר כמו כל אחר, והספירה כאן תואמת את הרשימה
++  ב**דפיות**: שתיהן עוקבות אחרי מחוון הזמן, כמו שכבות ה-NOTAM וה-AIRMET, ושתיהן מתעדכנות כשהעדכון נטען מחדש. כבוי כברירת מחדל (<span dir="ltr"><code>defaultShowSigmet</code></span>; הבחירה שלכם היא <span dir="ltr"><code>navaid.showSigmet</code></span>, מסונכרנת).
+   **הקשה על אזור** פותחת את הכרטיס של אותו SIGMET, והאזור מהבהב.
+ - **הרשימה** — כפתור **⚠ SIGMET** ב**דפיות**. היא בנויה בדיוק כמו [רשימת ה-NOTAM](#notam): כותרת
+   עם המספר, מתג **גולמי / מפוענח** אחד לכל הרשימה, שורת **עודכן** (מתי ההזנה נמשכה) וכרטיס לכל
+diff --git a/Extra-Layers.md b/Extra-Layers.md
+index dcb95fc..5428bd3 100644
+--- a/Extra-Layers.md
++++ b/Extra-Layers.md
+@@ -33,7 +33,8 @@ and Ankara. Most days there are none; then the map toggle and the list button ar
+ - **On the map** — toggle **Show SIGMETs** (next to Show AIRMETs) to draw every active SIGMET
+   that has a usable area — valid coordinates with at least part of the area in the region, so a
+   neighbouring FIR's SIGMET that reaches well beyond it (Jeddah's, say) is drawn and counted
+-  like any other, and the count here always matches the list in **Charts**. Off by default (`defaultShowSigmet`; your choice is
++  like any other, and the count here matches the list in **Charts**: both follow the look-ahead
++  time slider, like the NOTAM and AIRMET layers, and both update when the feed is re-read. Off by default (`defaultShowSigmet`; your choice is
+   `navaid.showSigmet`, synced). **Tap an area** to open that SIGMET's card; the area flashes.
+ - **The list** — a **⚠ SIGMET** button in **Charts**. It is built exactly like the
+   [NOTAM list](#notams): the title with the count, one **Raw / Decoded** switch for the whole
+-- 
+2.43.0
+

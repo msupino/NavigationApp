@@ -44,11 +44,15 @@ function setButtonWhy(btn, why) {
 window.setButtonWhy = setButtonWhy;
 // One listener for all of them, in the capture phase so it runs before the button's own handler.
 window.addEventListener('click', (e) => {
+  // Route actions dim from draw(); a tap in the same frame as an edit must not be refused on a
+  // stale answer, so ask again first (cheap: a few attribute reads).
+  if (typeof window.refreshRouteButtons === 'function') window.refreshRouteButtons();
   const b = e.target && e.target.closest && e.target.closest('[aria-disabled="true"][data-why]');
   if (!b) return;
   e.preventDefault();
   e.stopImmediatePropagation();
-  if (typeof showToast === 'function') showToast(b.dataset.why);
+  // A refusal, not an acknowledgement: the longer floor, like refuse().
+  if (typeof showToast === 'function') showToast(b.dataset.why, { warn: true });
 }, true);
 // Dim a hazard layer's Extra-layers row when nothing is in force across the look-ahead. Dimmed
 // means not usable: the box does not toggle, and a tap says why (setButtonWhy's listener). The
@@ -181,6 +185,7 @@ const MENU_ICONS = {
   'tool-add': 'addWp', 'tool-note': 'addNote', 'search-trigger': 'search', reverse: 'reverse',
   undo: 'undo', clear: 'trash', fit: 'fit', 'tool-reset-all-markers': 'reset',
   'tool-reset-all-wp-names': 'reset', 'tool-magnifier': 'magnifier',
+  'autoroute-btn': 'map', 'force-snap-btn': 'addWp', 'ret-btn': 'direct',
   'theme-toggle': (b) => (/☀|light|בהיר/i.test(b.textContent) ? 'sun' : 'moon'),
   'route-templates': 'templates', 'freq-table': 'antenna', 'alt-pairs': 'altPairs',
   'nav-log': 'form', charts: 'charts', 'sigwx-btn': 'globe', 'pwx-btn': 'wind',
@@ -362,7 +367,13 @@ const appUpdate = (function () {
   let last = null;
   let pct = null;                    // download progress 0-100 while downloading, from the plugin
   const ota = () => (window.NavAid && NavAid.ota && typeof NavAid.ota.status === 'function') ? NavAid.ota : null;
-  const mb = (bytes) => (bytes ? Math.max(1, Math.round(bytes / 1048576)) : 0);
+  // Whole megabytes, and tenths below one: a delta update is often a few hundred kB, and
+  // rounding it up to "1 MB" overstates it.
+  const mb = (bytes) => {
+    if (!bytes) return 0;
+    const v = bytes / 1048576;
+    return v < 1 ? Math.max(0.1, Math.round(v * 10) / 10) : Math.round(v);
+  };
   // A number with its unit, and a build id, read left to right inside a Hebrew sentence: isolated,
   // or "26 MB" comes out "MB 26" and "1.0-90a0542" breaks around its hyphen.
   const ltr = (t) => '\u2066' + t + '\u2069';
@@ -441,7 +452,7 @@ const appUpdate = (function () {
     if (btn.dataset.action === 'restart') { if (typeof o.restartNow === 'function') await o.restartNow(); return; }
     if (btn.dataset.action !== 'download') return;
     if (!(await o.onUnmeteredConnection())) {
-      const size = mb(last && last.bytes) || 26;
+      const size = last && last.bytes ? mb(last.bytes) : 26;   // 26: a full bundle, when unknown
       const ok = typeof window.askYesNo === 'function'
         ? await window.askYesNo(S.appUpdateCellularTitle || 'Download on mobile data?',
           typeof S.appUpdateCellularText === 'function' ? S.appUpdateCellularText(ltr(size + ' MB')) : 'About ' + size + ' MB of mobile data.',
@@ -906,7 +917,7 @@ try { headingUpOn = lsGet(HEADING_UP_KEY) === '1'; } catch (e) { /* storage unav
 // cockpit: the follow-me id pushes up the map dial. It belongs with the in-flight group it
 // was built for, next to the follow lock.
 const MAP_CONTROL_ORDER = ['voice-ctrl', 'orient-ctrl', 'follow-ctrl', 'follow-me-ctrl',
-  'editlock-ctrl', 'measure-ctrl', 'assistant-fab-control', 'rotate-ctrl'];
+  'editlock-ctrl', 'measure-ctrl', 'atc-fab-control', 'assistant-fab-control', 'rotate-ctrl'];
 function orderMapControls(corner) {
   if (!corner) return;
   const rank = (el) => {
@@ -947,6 +958,10 @@ const MAP_ICONS = {
     + '<path d="M8.2 10.5V7.8a3.8 3.8 0 0 1 7.6 0v2.7"/>',
   lockOpen: '<rect x="5" y="10.5" width="14" height="10" rx="2.2" fill="currentColor" fill-opacity=".18"/>'
     + '<path d="M8.2 10.5V7.8a3.8 3.8 0 0 1 7.3-1.4"/>',
+  // Headphones: the live ATC launcher, same outlined family.
+  headset: '<path d="M4 14v-2a8 8 0 0 1 16 0v2"/>'
+    + '<rect x="3.5" y="13.5" width="4" height="6.5" rx="1.5" fill="currentColor" fill-opacity=".18"/>'
+    + '<rect x="16.5" y="13.5" width="4" height="6.5" rx="1.5" fill="currentColor" fill-opacity=".18"/>',
   // The phone's edit column (top left), same family.
   addWp: '<path d="M12 21.5s-6.5-5.9-6.5-11a6.5 6.5 0 0 1 13 0c0 5.1-6.5 11-6.5 11z"'
     + ' fill="currentColor" fill-opacity=".18"/><path d="M12 7.3v6.4M8.8 10.5h6.4"/>',
@@ -1316,6 +1331,35 @@ measureCtrl.onAdd = function () {
   return wrap;
 };
 measureCtrl.addTo(map);
+
+// Live ATC launcher. The button's shell is built here, at boot with the other map controls, so
+// its slot in the bottom-right column is reserved before first paint -- built later (in the
+// phase-2 radio module) it grew the column after paint and shifted every control (a layout
+// shift lighthouse flags). atc-radio.js (phase 2) finds it by id and wires play/open and the
+// feature gate; before that loads, a tap is a harmless no-op. Ranked by MAP_CONTROL_ORDER.
+const atcRadioCtrl = L.control({ position: 'bottomright' });
+atcRadioCtrl.onAdd = function () {
+  const wrap = L.DomUtil.create('div', 'leaflet-control atc-fab-control');
+  const b = document.createElement('button');
+  b.type = 'button';
+  b.id = 'tool-atc-radio';
+  b.className = 'atc-fab';
+  b.setAttribute('aria-pressed', 'false');
+  setMapIcon(b, 'headset');
+  b.title = (typeof S !== 'undefined' && S.atcRadioTitle) || 'ATC radio';
+  b.setAttribute('aria-label', b.title);
+  b.addEventListener('click', () => { if (window.atcRadio && typeof window.atcRadio.open === 'function') window.atcRadio.open(); });
+  wrap.appendChild(b);
+  // Ships off (gist turns it on). The wrapper reserves its slot from first paint (CSS min-size);
+  // only the button is hidden when off. So the gist flipping it on -- after paint, on a cold load
+  // lighthouse measures -- fills the reserved slot without moving any control (no layout shift).
+  if (typeof tune === 'function' && tune('featureAtcRadio') === false) b.hidden = true;
+  L.DomEvent.disableClickPropagation(wrap);
+  L.DomEvent.disableScrollPropagation(wrap);
+  return wrap;
+};
+atcRadioCtrl.addTo(map);
+
 function measureLiveFrom() {
   if (typeof gpsOwn !== 'undefined' && gpsOwn && (gpsRecording || gpsLiveOn)) {
     return typeof gpsShownOwn === 'function' ? gpsShownOwn() : gpsOwn;
@@ -1660,11 +1704,19 @@ function refreshEditColumn() {
   // lock already uses; otherwise Undo / Clear say when there is nothing for them to do.
   const lockWhy = locked ? (S.editLockBlockedToast || 'Route is locked — unlock it to edit') : null;
   const empty = !(state.waypoints && state.waypoints.length) && !(state.notes && state.notes.length)
-    && !(typeof measureOn === 'function' && measureOn());
+    && !(typeof measureOn === 'function' && measureOn())
+    && !document.querySelector('.tb-section[data-sec="weather"] input[type="checkbox"]:checked')
+    // A recorded flight shown from Saved routes is cleared too (see the #clear handler).
+    && !(typeof shownTracks !== 'undefined' && Array.isArray(shownTracks) && shownTracks.length)
+    // So is the A3/A4 page frame: on an otherwise empty map it was the one thing left, and
+    // Clear map stayed dimmed ("already empty") with the frame still drawn.
+    && !(typeof pageSize !== 'undefined' && pageSize);
   setButtonWhy(add, lockWhy);
   setButtonWhy(note, lockWhy);
   setButtonWhy(undoBtn, lockWhy || ((menuUndo && menuUndo.disabled) ? (S.whyNothingToUndo || 'Nothing to undo') : null));
   setButtonWhy(document.getElementById('edit-col-clear'), lockWhy || (empty ? (S.whyNothingToClear || 'The map is already empty') : null));
+  // The menu's Clear map is the same action: the same dim, the same reason.
+  setButtonWhy(document.getElementById('clear'), lockWhy || (empty ? (S.whyNothingToClear || 'The map is already empty') : null));
   // Route check reads the plan, it does not edit it, so the lock leaves it alone; it dims when
   // there is no route to check (two points, as the check itself requires) or the gist has
   // withdrawn the feature.
@@ -1678,6 +1730,53 @@ function refreshEditColumn() {
 }
 window.refreshEditColumn = refreshEditColumn;
 refreshEditColumn();
+// Buttons that act on the route, dimmed while there is not enough route for them to do
+// anything -- each with the reason a tap used to refuse with, so the tap still says it
+// (setButtonWhy). Before, they all looked live and most answered an empty map with a refusal.
+// Called from refreshPrintFit, which draw() runs after every edit.
+function refreshRouteButtons() {
+  const wps = (state.waypoints || []).length;
+  const legs = (state.legs || []).length;
+  // Written only when the answer changes: this runs on every draw (pan, zoom, drag), and
+  // rewriting the same attributes each frame costs style work for nothing.
+  const set = (el, reason) => {
+    if (!el) return;
+    const r = reason || '';
+    if ((el.dataset.why || '') === r && el.hasAttribute('aria-disabled') === !!r) return;
+    setButtonWhy(el, r);
+  };
+  const why = (id, reason) => set(document.getElementById(id), reason);
+  const noLegs = legs === 0 ? (S.errNoLegs || 'No legs yet') : '';
+  const needTwo = wps < 2 ? (S.errNeedWps || 'Add at least two waypoints first.') : '';
+  // Fit frames the route -- or the print page when one is chosen, which needs no route.
+  const noFit = !wps && !(typeof pageSize !== 'undefined' && pageSize)
+    ? (S.whyNothingToFit || 'Nothing to fit yet — draw a route first.') : '';
+  why('fit', noFit);
+  why('edit-col-fit', noFit);
+  why('plan', noLegs);
+  // The phone bar's Plan also closes an open plan, so it dims only while the plan is closed.
+  const deckPlan = document.querySelector('.deck-btn-plan');
+  if (deckPlan) set(deckPlan, (typeof fpOpen !== 'undefined' && fpOpen) ? '' : noLegs);
+  why('nav-log', noLegs);
+  why('share', needTwo);
+  why('fly', needTwo);
+  why('mosaic-btn', wps ? '' : (S.mosaicEmpty || 'Add route waypoints first.'));
+  // Route check: the gist withdrawing it keeps its own disabled state (refreshRouteCheckBtn).
+  const rc = document.getElementById('route-check-btn');
+  if (rc && !(typeof tune === 'function' && tune('featureRouteCheck') === false)) {
+    set(rc, wps < 2 ? (S.routeCheckNeedRoute || 'Draw a route first.') : '');
+  }
+}
+window.refreshRouteButtons = refreshRouteButtons;
+// Clear map is available while any extra layer is shown, even on an otherwise empty chart.
+// Layer handlers persist their own toggles; refreshing here also keeps the Clear button's
+// dim cue in step with direct checkbox changes and the quick layer controls.
+document.addEventListener('change', e => {
+  const target = e.target;
+  if (target && target.matches && target.matches('.tb-section[data-sec="weather"] input[type="checkbox"]')) {
+    refreshEditColumn();
+  }
+});
 // Desktop placement: top left in both languages -- the same place as on the phone and in
 // English, so a pilot switching language finds them where they were (the Hebrew inspector
 // opens beside them, style.css). Just below the docked search card's actual bottom when the
@@ -4754,9 +4853,18 @@ function setSearchExamples(open) {
 // whether it is up is remembered under
 // navaid.searchShown; mobile keeps its summoned overlay.
 const SEARCH_SHOWN_KEY = 'navaid.searchShown';
+// The gist's `featureSearchClose` (off by default) decides whether the docked panel has an X at
+// all; without one it cannot be put away, so a dismissal stored earlier no longer holds.
+const searchCloseOffered = () => typeof tune === 'function' && tune('featureSearchClose') === true;
 function searchDockShown() {
+  if (!searchCloseOffered()) return true;
   try { return lsGet(SEARCH_SHOWN_KEY) !== '0'; } catch (e) { return true; }
 }
+function refreshSearchClose() {
+  document.documentElement.classList.toggle('search-no-close', !searchCloseOffered());
+  if (searchDocked()) searchOverlay.classList.toggle('hidden', !searchDockShown());
+}
+window.refreshSearchClose = refreshSearchClose;
 function setSearchDockShown(on) {
   try {
     if (on) localStorage.removeItem(SEARCH_SHOWN_KEY);
@@ -4786,7 +4894,12 @@ function searchDocked() { return searchOverlay.classList.contains('docked'); }
     } catch (e) { return null; }
   };
   let savedPosCache = readSavedPos();
-  const savedPos = () => savedPosCache;
+  // Pinned unless the gist's `featureSearchDrag` is exactly true -- off, empty or missing all pin
+  // the card where the stylesheet docks it (under the menu bar, on the side the language reads
+  // from), as `featureMenubarDrag` pins the menu: no drag, and a position saved from before is
+  // not applied (it stays stored for if it returns).
+  const searchPinned = () => typeof tune !== 'function' || tune('featureSearchDrag') !== true;
+  const savedPos = () => (searchPinned() ? null : savedPosCache);
   // Same rule as the legend: never come to rest ON the menu bar, but above and
   // below are both fine, so a panel dragged down can be dragged back up.
   function clearOfToolbar(x, y) {
@@ -4888,18 +5001,30 @@ function searchDocked() { return searchOverlay.classList.contains('docked'); }
     window.addEventListener('touchend', end);
   }
   box.addEventListener('mousedown', e => {
-    if (!searchDocked() || !isDragSurface(e.target)) return;
+    if (!searchDocked() || searchPinned() || !isDragSurface(e.target)) return;
     e.preventDefault();
     start(e.clientX, e.clientY);
   });
   box.addEventListener('touchstart', e => {
-    if (!searchDocked() || e.touches.length !== 1 || !isDragSurface(e.target)) return;
+    if (!searchDocked() || searchPinned() || e.touches.length !== 1 || !isDragSurface(e.target)) return;
     e.preventDefault();
     start(e.touches[0].clientX, e.touches[0].clientY);
   }, { passive: false });
+  // Pinned or not shows in the cursor (no grab hand on a card that does not move), and a gist
+  // that changes the switch after boot moves the card straight back under the menu (or to the
+  // pilot's spot).
+  function refreshSearchPin() {
+    box.classList.toggle('search-pinned', searchPinned());
+    if (!searchDocked()) return;
+    const p = savedPos();
+    if (p) applyPos(p.x, p.y); else { clearInlinePos(); parkBelowToolbar(); }
+  }
+  window.refreshSearchPin = refreshSearchPin;
   sync();
+  refreshSearchPin();
   applySearchTipState();
 })();
+refreshSearchClose();
 
 // Reference-link overflow (⋯). The six links behind it are read once; keeping them
 // inline cost the menu bar more width than the flight plan itself and forced the
@@ -5602,16 +5727,22 @@ if (gpsBtn) {
   });
 }
 const liveBtn = document.getElementById('gps-live');
+// The Location button follows gpsLiveOn whoever switched it: its own press, Record (which turns
+// Location on for its recording), a resume on boot, or an error that stopped it. It was set only
+// by its own press, so a recording that turned Location on left the button unlit.
+function refreshGpsLiveButton() {
+  if (!liveBtn) return;
+  const on = typeof gpsLiveOn !== 'undefined' && !!gpsLiveOn;
+  setFooterBtn(liveBtn, on ? S.tbGpsLiveStop : S.tbGpsLive, '📍');
+  liveBtn.setAttribute('aria-pressed', on ? 'true' : 'false');
+}
+window.refreshGpsLiveButton = refreshGpsLiveButton;
 if (liveBtn) {
   if (!navigator.geolocation) { liveBtn.disabled = true; }
   liveBtn.addEventListener('click', () => {
-    if (gpsLiveOn) {
-      stopLiveLocation();
-      setFooterBtn(liveBtn, S.tbGpsLive, '📍'); liveBtn.setAttribute('aria-pressed', 'false');
-    } else {
-      startLiveLocation();
-      if (gpsLiveOn) { setFooterBtn(liveBtn, S.tbGpsLiveStop, '📍'); liveBtn.setAttribute('aria-pressed', 'true'); }
-    }
+    if (gpsLiveOn) stopLiveLocation();
+    else startLiveLocation();
+    refreshGpsLiveButton();
   });
   // Nothing else here survives a full page reload -- language switching (lang-select's
   // click handler above uses location.href, a real navigation) and any other reload
@@ -5619,12 +5750,16 @@ if (liveBtn) {
   // sign anything had changed. Same auto-reconnect pattern the simulator already uses
   // (navaid.simOn, below): persist on/off (see startLiveLocation/stopLiveLocation in
   // gps.js) and resume here on boot.
+  // A recording a reload cut short carries on (or is saved, if it was left too long) before
+  // Location resumes -- otherwise Location's own automatic recording would start a second one.
+  if (typeof window.gpsResumeOrSaveRecording === 'function') {
+    const was = window.gpsResumeOrSaveRecording();
+    if (was === 'saved' && typeof window.refreshRouteLibrary === 'function') window.refreshRouteLibrary();
+  }
   let _liveWasOn = false;
   try { _liveWasOn = lsGet('navaid.gpsLiveOn') === '1'; } catch (e) { /* */ }
-  if (_liveWasOn && navigator.geolocation && typeof startLiveLocation === 'function') {
-    startLiveLocation();
-    if (gpsLiveOn) { setFooterBtn(liveBtn, S.tbGpsLiveStop, '📍'); liveBtn.setAttribute('aria-pressed', 'true'); }
-  }
+  if (_liveWasOn && navigator.geolocation && typeof startLiveLocation === 'function') startLiveLocation();
+  refreshGpsLiveButton();
 }
 const RETURN_KEY = 'navaid.showReturn';
 const MIDLEG_KEY = 'navaid.showMidLeg';
@@ -5792,7 +5927,9 @@ window.followMeNewLinkOffered = followMeNewLinkOffered;
     }
   });
 
-  btn.addEventListener('click', async () => {
+  // The press, awaitable: Extra layers' NavAid pilots "Share & see" starts a share through the
+  // same steps (identifier, then the link) and waits to see whether one started.
+  async function press() {
     const f = F();
     if (!f) return;
     // Watching someone else: sharing means leaving their flight, so it is asked as that and
@@ -5881,7 +6018,9 @@ window.followMeNewLinkOffered = followMeNewLinkOffered;
     }
     refresh();
     await handOverFollowMeLink(link, live);
-  });
+  }
+  btn.addEventListener('click', press);
+  window.followMePress = press;
   refresh();
   window.refreshFollowMeControl = refresh;
 }());
@@ -6121,10 +6260,11 @@ window.showReturnFeatureOn = showReturnFeatureOn;
 function refreshShowReturnFeature() {
   const on = showReturnFeatureOn();
   const cb = document.getElementById('ret-cb');
-  const row = cb && cb.closest('label');
+  const row = document.getElementById('ret-btn');
   if (!on) window.showReturn = false;
   if (row) row.hidden = !on;
   if (cb) cb.checked = !!window.showReturn;
+  if (typeof window.refreshToggleButtons === 'function') window.refreshToggleButtons();
 }
 window.refreshShowReturnFeature = refreshShowReturnFeature;
 refreshShowReturnFeature();
@@ -6217,17 +6357,38 @@ document.getElementById('cumtime-cb').checked = showCumTime;
   window.refreshTurnDependentControls = function () {
     const hasTurn = (typeof legRetraceTurnIndex === 'function') && legRetraceTurnIndex() >= 0;
     const why = hasTurn ? ((S && S.tbDisabledByTurn) || '') : '';
+    // With no route there is nothing to reverse or reset: dimmed, and a tap says so
+    // (setButtonWhy) -- rather than a confirm about resetting markers that do not exist.
+    const noRoute = !state.waypoints.length;
     const rev = document.getElementById('reverse');
     if (rev) {
+      setButtonWhy(rev, !hasTurn && state.waypoints.length < 2 ? ((S && S.reverseNoRoute) || 'No route to reverse') : '');
       rev.disabled = hasTurn;
       rev.title = hasTurn ? why : ((S && S.tbReverseTitle) || '');
     }
+    for (const [id, title] of [['tool-reset-all-markers', 'tbResetAllMarkersTitle'], ['tool-reset-all-wp-names', 'tbResetAllWpNamesTitle']]) {
+      const b = document.getElementById(id);
+      if (!b) continue;
+      setButtonWhy(b, noRoute ? ((S && S.resetNoRoute) || 'Draw a route first') : '');
+      b.title = (S && S[title]) || '';
+    }
     const retCb = document.getElementById('ret-cb');
     if (retCb) {
+      // A turning point makes the mirrored return meaningless, so it also switches it OFF --
+      // not just dims it. Left on, the button sat pressed (and stored as on) behind the dim,
+      // with no way to turn it off. Through its own change handler, so the choice is stored
+      // and the frequency callouts move back with it. Once off it stays off: removing the
+      // turn later does not switch it back on behind the pilot's back.
+      if (hasTurn && retCb.checked && !refreshTurnDependentControls._clearing) {
+        refreshTurnDependentControls._clearing = true;
+        try { retCb.checked = false; retCb.dispatchEvent(new Event('change')); }
+        finally { refreshTurnDependentControls._clearing = false; }
+      }
       retCb.disabled = hasTurn;
-      const row = retCb.closest('label');
+      // Dimmed, not disabled: a tap still says why (see button[data-toggle-for]).
+      const row = document.getElementById('ret-btn');
       if (row) {
-        row.classList.toggle('navtoggle-disabled', hasTurn);
+        if (hasTurn) row.setAttribute('aria-disabled', 'true'); else row.removeAttribute('aria-disabled');
         row.title = hasTurn ? why : ((S && S.tbShowReturnTitle) || '');
       }
     }
@@ -6413,11 +6574,24 @@ document.getElementById('limit-kites-cb').onchange = e => {
       setConnectLabel();
       window._simStatusEl = statusEl;
       if (typeof window.simStart === 'function') simStart();  // saves navaid.simOn
+      // Connected: the window has done its job -- it closes, and the lit plane button says the
+      // simulator is on (asked: "connect to sim button in sim window should close when click to
+      // connect"). A URL problem above keeps it open, with the problem shown.
+      if (typeof window.closeSimPanel === 'function') window.closeSimPanel();
     } else {
       connected = false;
       setConnectLabel();
       if (typeof window.simStop === 'function') simStop();    // saves navaid.simOn
     }
+  };
+  // The footer's plane button disconnects a live simulator directly (below): the same stop as
+  // the panel's own button, so the panel's label and state stay in step with it.
+  window.simDisconnect = () => {
+    if (!connected) return false;
+    connected = false;
+    setConnectLabel();
+    if (typeof window.simStop === 'function') simStop();
+    return true;
   };
 
   // Auto-reconnect if sim was active before the page refreshed.
@@ -6512,7 +6686,17 @@ document.getElementById('limit-kites-cb').onchange = e => {
     prevFocus = null;
     if (el && document.contains(el)) { try { el.focus(); } catch (e) { /* */ } }
   };
-  trigger.addEventListener('click', open);
+  // Connected, the button is a switch like Location and Record beside it: a press disconnects,
+  // it does not open the connect panel (asked: "pressing on sim button when active, should
+  // disable, not open the connect window"). Disconnected, it opens the panel to connect.
+  window.closeSimPanel = () => { if (!modal.classList.contains('hidden')) close(); };
+  trigger.addEventListener('click', () => {
+    if (typeof simOn !== 'undefined' && simOn && typeof window.simDisconnect === 'function' && window.simDisconnect()) {
+      if (typeof showToast === 'function') showToast((S && S.tbSimDisconnected) || 'Simulator disconnected');
+      return;
+    }
+    open();
+  });
   if (closeBtn) closeBtn.addEventListener('click', close);
   modal.addEventListener('click', e => { if (e.target === modal) close(); });
   document.addEventListener('keydown', e => {
@@ -6574,6 +6758,28 @@ document.getElementById('wpname-cb').onchange = e => {
       if (e.target.checked && typeof showInspector === 'function' && state && state.selected) {
         showInspector();
       }
+    };
+  }
+}
+// Record automatically while showing location. On by default (the gist's defaultAutoRecord);
+// the gist's featureAutoRecord removes the option. Turning it off leaves a recording already
+// running alone -- Record stops it, as any other.
+{
+  const cb = document.getElementById('auto-record-cb');
+  if (cb) {
+    const label = cb.closest('label');
+    const sync = () => {
+      cb.checked = typeof window.autoRecordOn === 'function' && window.autoRecordOn();
+      if (label) label.hidden = typeof tune === 'function' && tune('featureAutoRecord') === false;
+    };
+    sync();
+    window.refreshAutoRecordControl = sync;
+    cb.onchange = (e) => {
+      try { localStorage.setItem('navaid.autoRecord', e.target.checked ? '1' : '0'); }
+      catch (err) { /* storage unavailable */ }
+      // Turned on with location already showing: start now, not at the next Location tap.
+      if (e.target.checked && typeof gpsLiveOn !== 'undefined' && gpsLiveOn && !gpsRecording
+          && typeof startGpsRecording === 'function') startGpsRecording({ auto: true });
     };
   }
 }
@@ -7743,6 +7949,9 @@ function refreshSigmetBtn() {
       ? null : (S.whyNoSigmet || 'No SIGMET in force in the next 24 hours'));
   }
   setLayerCount('sigmet-count', (typeof activeSigmets === 'function') ? activeSigmets().length : 0);
+  // The Extra layers count with it, from the same feed: the re-poll called only this, so the
+  // layer kept its boot-time count while Charts moved on -- (5) beside (3) (reported).
+  if (typeof refreshSigmetLayerCount === 'function') refreshSigmetLayerCount();
 }
 if (sigmetBtn) {
   sigmetBtn.onclick = async () => {
@@ -7755,7 +7964,7 @@ if (sigmetBtn) {
 }
 // Eager load on boot so the button appears if SIGMETs are active.
 if (typeof loadSigmets === 'function') {
-  loadSigmets().then(() => { refreshSigmetBtn(); if (typeof refreshSigmetLayerCount === 'function') refreshSigmetLayerCount(); if (window.showSigmet) draw(); });
+  loadSigmets().then(() => { refreshSigmetBtn(); if (window.showSigmet) draw(); });
 }
 
 // --- Live hazard re-poll (NOTAM + SIGMET + AIRMET) --------------------------
@@ -8257,8 +8466,9 @@ if (notamTimeEl) {
     // A bubble or leg panel lists the NOTAMs in force at this time: rebuild it.
     if (state.selected && (state.selected.type === 'lsaArea' || state.selected.type === 'leg') &&
         typeof showInspector === 'function') showInspector();
-    // AIRMET rides the same look-ahead: refresh its count/controls when the slider moves.
+    // AIRMET and SIGMET ride the same look-ahead: refresh their counts/controls when the slider moves.
     if (typeof refreshAirmetGroup === 'function') refreshAirmetGroup();
+    if (typeof refreshSigmetBtn === 'function') refreshSigmetBtn();
     if (typeof refreshAirmetBtn === 'function') refreshAirmetBtn();
     draw();
   };
@@ -9958,7 +10168,10 @@ function refreshAirmetGroup() {
   // The Show AIRMETs toggle stays put like every other layer toggle -- a control must not
   // vanish when its data is momentarily absent. The layer just draws nothing while none is in force.
   if (group) group.hidden = false;
-  setLayerCount('airmet-count', (typeof activeAirmets === 'function') ? activeAirmets().length : 0);
+  // What the layer draws: an AIRMET without a usable area (metAreaLatLngs) is listed in Charts,
+  // not drawn, so -- like the SIGMET layer -- it is not counted on the map toggle.
+  setLayerCount('airmet-count', (typeof activeAirmets === 'function' && typeof metAreaLatLngs === 'function')
+    ? activeAirmets().filter(metAreaLatLngs).length : 0);
   setLayerIdle('airmet-cb', !(typeof airmetsInLookahead === 'function' && airmetsInLookahead().length), S.whyNoAirmet);
   if (typeof refreshMetUpdated === 'function') refreshMetUpdated('airmet');
 }
@@ -10551,28 +10764,108 @@ for (const id of ['circuit-cb', 'training-cb', 'cvfr-cb', 'heli-cb', 'commfail-c
   if (!cb) return;
   const KEY = 'navaid.showPublicPilots';
   const offered = () => typeof tune !== 'function' || tune('featureFollowMePublic') !== false;
-  const label = cb.closest('label');
-  // Seeing others is the other half of being seen: the switch works while this device shares
-  // publicly (or on a secret viewing link). Otherwise dimmed, never hidden, and it says why.
+  const group = document.getElementById('public-pilots-mode');
+  const F = () => (window.NavAid && NavAid.followMe) || null;
+  const sharingPublic = () => { const f = F(); return !!(f && f.sharing() && f.publicOn()); };
+  // Seeing others is the other half of being seen. One control, three answers:
+  //   Off         -- nobody shown, and this device is not public;
+  //   See others  -- everyone shown without being seen: on a secret pilots link (?pilots=<secret>),
+  //                  or for the rest of a share that was public; dimmed otherwise, saying why;
+  //   Share & see -- public sharing on (starting a share if none is running) and everyone shown.
+  // Public sharing from either place -- this control or the Follow me dialog's Public box -- is
+  // Share & see: you are seen, so you see. The hidden checkbox is the viewing choice, remembered
+  // on this device.
+  const seeAllowed = (P) => P.unlocked() || sharingPublic() || P.keepSeeing();
+  const viewing = () => cb.checked || sharingPublic();
+  function mode() {
+    const P = window.NavAid && NavAid.publicPilots;
+    if (!P) return 'off';
+    if (sharingPublic()) return 'share';
+    if (cb.checked && (P.unlocked() || P.keepSeeing())) return 'see';
+    return 'off';
+  }
   const apply = () => {
     const P = window.NavAid && NavAid.publicPilots;
     if (!P) return;
-    const ok = P.allowed();
-    if (label) {
-      label.classList.toggle('is-dim', !ok);
-      label.title = ok ? (S.tbShowPublicPilotsTitle || '') : (S.tbShowPublicPilotsLocked || 'Share your position as Public to see others');
+    if (group) {
+      const m = mode();
+      const seeOk = seeAllowed(P);
+      const shareOk = typeof followMeOffered !== 'function' || followMeOffered();
+      for (const b of group.querySelectorAll('[data-mode]')) {
+        const k = b.dataset.mode;
+        b.setAttribute('aria-pressed', String(k === m));
+        const dim = (k === 'see' && !seeOk) || (k === 'share' && !shareOk);
+        b.classList.toggle('is-dim', dim);
+        b.setAttribute('aria-disabled', String(dim));
+        const tip = { off: S.ppTipOff, see: S.ppTipSee, share: S.ppTipShare }[k] || '';
+        b.title = k === 'see' && !seeOk ? (S.tbShowPublicPilotsLocked || tip)
+          : k === 'share' && !shareOk ? (S.ppModeNoFollowMe || tip) : tip;
+      }
+      // What the chosen answer means, in words: three bare labels did not say it (reported).
+      const hint = document.getElementById('public-pilots-hint');
+      if (hint) hint.textContent = { off: S.ppHintOff, see: S.ppHintSee, share: S.ppHintShare }[m] || '';
     }
-    if (cb.checked && offered() && ok) P.start(); else P.stop();
+    if (viewing() && offered() && P.allowed()) P.start(); else P.stop();
   };
-  cb.checked = lsGet(KEY) === '1';
-  cb.onchange = () => {
-    try { localStorage.setItem(KEY, cb.checked ? '1' : '0'); } catch (_) {}
-    const P = window.NavAid && NavAid.publicPilots;
-    if (cb.checked && P && !P.allowed() && typeof showToast === 'function') {
-      showToast(S.tbShowPublicPilotsLocked || 'Share your position as Public to see others');
+  function setViewing(on) {
+    cb.checked = !!on;
+    try { localStorage.setItem(KEY, on ? '1' : '0'); } catch (_) {}
+  }
+  function choose(k) {
+    const f = F(), P = window.NavAid && NavAid.publicPilots;
+    if (!f || !P) return;
+    if (k === 'off') {
+      setViewing(false);
+      P.setKeepSeeing(false);
+      if (f.publicOn()) {
+        f.setPublic(false);
+        if (f.sharing() && typeof showToast === 'function') showToast(S.followMePublicOffToast || 'Not public: your link only');
+      }
+    } else if (k === 'see') {
+      if (!seeAllowed(P)) {
+        if (typeof showToast === 'function') showToast(S.tbShowPublicPilotsLocked || 'Choose Share & see');
+        return;
+      }
+      // From a public share: off the public channel, still seeing everyone until it ends.
+      if (sharingPublic()) P.setKeepSeeing(true);
+      setViewing(true);
+      if (f.publicOn()) {
+        f.setPublic(false);
+        if (f.sharing() && typeof showToast === 'function') showToast(S.followMePublicOffToast || 'Not public: your link only');
+      }
+    } else if (k === 'share') {
+      if (typeof followMeOffered === 'function' && !followMeOffered()) {
+        if (typeof showToast === 'function') showToast(S.ppModeNoFollowMe || '');
+        return;
+      }
+      const wasPublic = f.publicOn(), wasViewing = cb.checked;
+      P.setKeepSeeing(false);
+      setViewing(true);
+      if (!wasPublic) f.setPublic(true);
+      if (f.sharing()) {
+        if (typeof showToast === 'function') showToast(S.followMePublicOnToast || 'Public: every NavAid pilot can see you now');
+      } else if (typeof window.followMePress === 'function') {
+        // The share itself starts the usual way: the identifier, then the link to hand round.
+        // Cancelled there, nothing is left switched on behind the pilot's back.
+        apply();
+        return window.followMePress().then(() => {
+          if (!f.sharing()) {
+            if (!wasPublic) f.setPublic(false);
+            setViewing(wasViewing);
+          }
+          apply();
+        });
+      }
     }
     apply();
-  };
+  }
+  if (group) {
+    group.addEventListener('click', (e) => {
+      const b = e.target && e.target.closest ? e.target.closest('[data-mode]') : null;
+      if (b) choose(b.dataset.mode);
+    });
+  }
+  cb.checked = lsGet(KEY) === '1';
   window.refreshPublicPilotsFeature = function () {
     const frame = document.getElementById('public-pilots-frame');
     if (frame) frame.hidden = !offered();
@@ -10892,6 +11185,32 @@ document.getElementById('force-snap-cb').onchange = e => {
   try { localStorage.setItem(FORCE_SNAP_KEY, forceSnap ? '1' : '0'); }
   catch (err) { /* storage unavailable */ }
 };
+// Toggle buttons standing in for a checkbox (Edit's Auto-route and Snap): a press flips the
+// hidden checkbox and fires its change, so its own handler runs exactly as before; aria-pressed
+// follows the checkbox, including when the gist default sets it (that dispatches change too).
+function refreshToggleButtons() {
+  document.querySelectorAll('button[data-toggle-for]').forEach((btn) => {
+    const cb = document.getElementById(btn.dataset.toggleFor);
+    if (cb) btn.setAttribute('aria-pressed', cb.checked ? 'true' : 'false');
+  });
+}
+document.querySelectorAll('button[data-toggle-for]').forEach((btn) => {
+  const cb = document.getElementById(btn.dataset.toggleFor);
+  if (!cb) return;
+  btn.addEventListener('click', () => {
+    // Dimmed (its checkbox is disabled, e.g. Show return path on a route with a turning point):
+    // say why rather than do nothing.
+    if (cb.disabled) {
+      if (btn.title && typeof showToast === 'function') showToast(btn.title);
+      return;
+    }
+    cb.checked = !cb.checked;
+    cb.dispatchEvent(new Event('change', { bubbles: true }));
+  });
+  cb.addEventListener('change', refreshToggleButtons);
+});
+refreshToggleButtons();
+window.refreshToggleButtons = refreshToggleButtons;
 // Comm-change overlay toggle. The dataset lives in
 // the route graph's comm-change nodes and rings are drawn on top of the nav-WP dots
 // in draw.js. This key intentionally replaced the legacy
@@ -11840,6 +12159,37 @@ refreshToolbarDesktopMenu();
 function onToolbarDesktopMenuChange(fn) {
   toolbarDesktopMenuListeners.push(fn);
 }
+// The live readout (fixes, time, speed, altitude, pressure) in a frame of its own under the
+// desktop menu bar. Inside the bar it lengthened the bar's last row the moment Location or
+// Record started, and the whole bar wrapped onto two rows -- reported: "recording or location
+// changes the menu layout, make the additional info in a new frame, not change top menu size".
+// The element itself moves (same id: gpsSetReadout writes it, the phone deck reads it), and
+// moves back when the layout stops being the desktop menu bar.
+(function readoutFrame() {
+  const el = document.getElementById('gps-readout');
+  if (!el || !el.parentNode) return;
+  const home = el.parentNode;
+  const frame = document.createElement('div');
+  frame.id = 'gps-readout-frame';
+  document.body.appendChild(frame);
+  // Under the bar's actual bottom, as the GPS chip is (gps-status.js): the bar can wrap to a
+  // second row on a narrower screen. The chip steps down below this frame while it shows.
+  const tb = document.getElementById('toolbar');
+  const setTop = () => {
+    const r = tb && tb.getClientRects().length ? tb.getBoundingClientRect() : null;
+    frame.style.top = Math.round((r ? r.bottom : 50) + 8) + 'px';
+  };
+  const place = () => {
+    const desk = document.documentElement.classList.contains('menubar');
+    if (desk && el.parentNode !== frame) frame.appendChild(el);
+    else if (!desk && el.parentNode === frame) home.appendChild(el);
+    setTop();
+  };
+  place();                                  // the class may already be set by index.html
+  onToolbarDesktopMenuChange(place);
+  window.addEventListener('resize', setTop);
+  if (window.ResizeObserver && tb) new ResizeObserver(setTop).observe(tb);
+})();
 
 function refreshMapAfterToolbarModeChange() {
   requestAnimationFrame(() => {
@@ -13218,10 +13568,15 @@ if (typeof loadRemoteConfig === "function") {
     if (typeof refreshFollowMeMapControl === "function") refreshFollowMeMapControl();
     if (typeof refreshAssistantFeature === "function") refreshAssistantFeature();
     if (typeof refreshToolbarDesktopMenu === "function") refreshToolbarDesktopMenu();
+    if (typeof window.refreshSearchClose === "function") window.refreshSearchClose();
+    if (typeof window.refreshAutoRecordControl === "function") window.refreshAutoRecordControl();
+    if (typeof window.refreshToggleButtons === "function") window.refreshToggleButtons();
     if (typeof window.refreshMenubarPin === "function") window.refreshMenubarPin();
+    if (typeof window.refreshSearchPin === "function") window.refreshSearchPin();
     if (NavAid && typeof NavAid.refreshMobileDeck === "function") NavAid.refreshMobileDeck();
     if (typeof refreshEmptyRouteHint === "function") refreshEmptyRouteHint();
     if (typeof refreshTrafficFeature === "function") refreshTrafficFeature();
+    if (typeof window.refreshAtcRadioFeature === "function") window.refreshAtcRadioFeature();
     // The gist may have turned base layers on or off -- rebuild the picker to match, and
     // the nav-data source list with it: its entries are those same charts.
     if (typeof rebuildLayerPicker === "function") rebuildLayerPicker();

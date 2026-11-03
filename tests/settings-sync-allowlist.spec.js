@@ -149,6 +149,7 @@ const NOT_A_SYNCED_SETTING = [
   // Dev-only scratch space.
   [/^navaid\.editor\./,          '?edit=1 overlay editor scratch data'],
   [/^navaid\.sim/,               'simulator link, per device'],
+  [/^navaid\.gpsRecInProgress$/, 'the recording in progress on this device, resumed after a reload -- data, not a setting'],
   [/^navaid\.gpsLiveOn$/,        'whether live location is on, per device -- resumed on reload, not synced to others'],
   [/^navaid\.offlinePacks$/,     'which charts and areas this device keeps offline -- storage on this device, not a setting'],
   [/^navaid\.commFail$/,         'a comm failure in progress on this aircraft, resumed on reload -- not a setting'],
@@ -169,6 +170,7 @@ const NOT_A_SYNCED_SETTING = [
   [/^navaid\.brightness(Own)?$/,   'screen brightness is this phone in this cockpit, not the pilot’s other devices'],
   [/^navaid\.altSource$/,          'whether THIS phone has a usable barometer is a fact about the phone'],
   [/^navaid\.tourSeen$/,           'the map tour plays once per device: a new phone gets it too'],
+  [/^navaid\.liveTourSeen$/,       'the in-flight tour plays once per device, like the map tour'],
   [/^navaid\.(ota|apk)AskedVersion$/, 'which update this device has already been asked about -- asking again on another device is right'],
   [/^navaid\.followMeCode$/,     'the aircraft code typed for a follow-me link -- belongs to the aeroplane being flown from THIS device, not to the pilot account'],
   [/^navaid\.followVerified$/,  'the verify keys this device has seen for Follow me links -- a note about links opened HERE, kept so a link with the key stripped cannot talk this device out of checking signatures; syncing it would spread one device\'s browsing to the others'],

@@ -6,11 +6,6 @@
 const { test, expect } = require('./_setup');
 
 const KEY = 'navaid.legendPos.en';
-// Between the two toolbar heights, with room either side: an OPEN toolbar (about 540 px
-// here) covers this spot on any runner, a closed one (about 120) covers it on none. The
-// first fixture sat at y=150, close enough to the collapsed bar that a runner rendering it
-// taller still covered it -- so the card could not go back, and the test demanded it did.
-const HOME = { x: 12, y: 300 };
 
 async function boot(page, home) {
   await page.setViewportSize({ width: 390, height: 780 });

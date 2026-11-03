@@ -94,8 +94,7 @@ NavAid.tuningDefaults = {
   // remaining knobs reject low-speed jitter and age the estimate out promptly.
   livePredictorTurnMinDegSec: { value: 1, min: 0, max: 3, step: 0.05, label: 'Curve predictor above turn rate (°/s)' },
   livePredictorTurnMaxDegSec: { value: 4, min: 0.5, max: 12, step: 0.25, label: 'Curve predictor maximum valid turn rate (°/s)' },
-  livePredictorTurnMaxArcDeg: { value: 60, min: 10, max: 180, step: 5, label: 'Curve predictor maximum arc (°)' },
-  livePredictorTurnMaxArcSec: { value: 60, min: 5, max: 300, step: 5, label: 'Trend vector in a turn: flying time ahead (s), G1000-style, no straight tail' },
+  livePredictorTurnLineDeg: { value: 90, min: 15, max: 180, step: 5, label: 'Heading line in a turn: how far the whole line bends (°; 90 = a quarter circle)' },
   livePredictorTurnMinKt: { value: 10, min: 0, max: 100, step: 1, label: 'Curve predictor above groundspeed (kt)' },
   livePredictorTurnHoldSec: { value: 6, min: 1, max: 30, step: 1, label: 'Keep measured turn rate for (s)' },
   livePredictorTurnSmoothing: { value: 0.7, min: 0, max: 1, step: 0.05, label: 'Curve predictor smoothing (0-1)' },
@@ -1032,6 +1031,8 @@ NavAid.tuningDefaults = {
     label: 'Update the offline CVFR chart only on a suitable connection' },
   offlineCvfrMinZoom: { value: 7, min: 5, max: 12, step: 1, label: 'Offline CVFR: widest zoom' },
   offlineCvfrMaxZoom: { value: 13, min: 6, max: 13, step: 1, label: 'Offline CVFR: closest zoom' },
+  offlineCvfrStartSec: { value: 60, min: 0, max: 600, step: 5,
+    label: 'Offline CVFR: start the automatic download after the first tap, or after this long on screen (s)' },
   featureFollowMe: { value: false, type: 'bool', label: 'Feature: share a live position link' },
   featureFollowMePublic: { value: true, type: 'bool', label: 'Follow me: offer a Public share every NavAid user can see, and the layer that shows them' },
   publicPilotsViewHash: { value: '7603b91e9b75291d6044bb8ba93a4f721b88b762681e3d558df6f40735926550', type: 'text', label: 'Public pilots: SHA-256 of the secret viewing link (?pilots=<secret>) that shows everyone without sharing' },
@@ -1126,6 +1127,18 @@ NavAid.tuningDefaults = {
   featureDisclaimer: { value: true, type: 'bool', label: 'Safety notice on first run' },
   featureOtaUpdates: { value: true, type: 'bool', label: 'Embedded build fetches web updates' },
   featureMenubarDrag: { value: false, type: 'bool', label: 'Feature: the desktop top menu can be dragged (off pins it in place)' },
+  featureSearchDrag: { value: false, type: 'bool', label: 'Feature: the desktop search card can be dragged (off pins it under the menu)' },
+  // The docked desktop search panel's X. Off: the panel stays put (it is furniture there), and
+  // one dismissed before comes back. A summoned search keeps its X -- the only way out of it.
+  // Showing location records the flight (navaid.autoRecord, defaulting to defaultAutoRecord);
+  // featureAutoRecord off removes the option. An automatic recording shorter than either
+  // threshold is not kept; a recording a reload interrupted resumes within recordResumeMin.
+  featureAutoRecord: { value: true, type: 'bool', label: 'Feature: offer recording automatically with location' },
+  defaultAutoRecord: { value: true, type: 'bool', label: 'Default: showing location records the flight' },
+  autoRecordMinSec: { value: 300, min: 0, max: 3600, step: 30, label: 'Automatic recording: keep only if at least this long (s)' },
+  autoRecordMinNm: { value: 1, min: 0, max: 50, step: 0.5, label: 'Automatic recording: keep only if at least this far (nm)' },
+  recordResumeMin: { value: 30, min: 1, max: 720, step: 1, label: 'A recording a reload interrupted resumes if its last fix is this recent (min)' },
+  featureSearchClose: { value: false, type: 'bool', label: 'Feature: an X that puts the docked desktop search away' },
   featureTabletDesktop: { value: false, type: 'bool', label: 'Feature: iPad / tablet uses the desktop layout, not the phone deck' },
   // The reverse-route warning is the one toast a pilot has to act on, so it gets its own
   // dwell time and its own attention -- 2.5s alongside 'route saved' was not enough to read
@@ -1223,6 +1236,10 @@ NavAid.tuningDefaults = {
   // (see traffic.js: a browser cannot read these feeds), so this is the switch that turns
   // it on for everyone flying with the app, without an app release.
   featureLiveTraffic: { value: false, type: 'bool', label: 'Feature: live ADS-B traffic' },
+  // Live ATC audio
+  featureAtcRadio: { value: false, type: 'bool', label: 'Feature: live ATC radio (Herzliya, Haifa)' },
+  atcRadioBase: { value: 'https://navaid-atc.marco-956.workers.dev/', type: 'text',
+    label: 'Where the live ATC channels are played from (<base><channel id>)' },
   featureDensityAltitude: { value: true, type: 'bool', label: 'Feature: density altitude in the airfield panel' },
   defaultShowAirspace: { value: false, type: 'bool', label: 'Default: show airspace areas' },
   airspaceProhibitedColor: { value: '#c0392b', type: 'color', label: 'Prohibited area outline color' },
@@ -1253,6 +1270,10 @@ NavAid.tuningDefaults = {
     label: 'Live ATC feeds: ICAO:mount pairs, comma-separated (a bare ICAO links to its LiveATC page)' },
   trafficApiUrl: { value: 'https://api.adsb.lol/v2/lat/{lat}/lon/{lon}/dist/{dist}', type: 'text',
     label: 'Where live traffic is fetched from (empty turns it off)' },
+  // The feeds send no CORS header, so a browser needs a relay that adds one (relay/traffic, a
+  // Cloudflare Worker). Empty: no live traffic in a browser, the switch dimmed with the reason.
+  trafficWebApiUrl: { value: '', type: 'text',
+    label: 'Live traffic in a browser: the CORS relay, same {lat}/{lon}/{dist} template (empty: apps only)' },
   trafficRadiusNm: { value: 40, min: 5, max: 150, step: 5,
     label: 'How far around you live traffic is asked for (nm)' },
   trafficRefreshSec: { value: 8, min: 3, max: 60, step: 1,
@@ -1295,7 +1316,8 @@ NavAid.tuningGroups = [
     'airspaceTmaColor', 'airspaceCtrColor', 'airspaceFillAlpha', 'airspaceLineWidthPx', 'airspaceLabelMinZoom',
     'airspaceLabelFontPx'] },
   { name: 'Live ATC', keys: ['featureLiveAtc', 'liveAtcFeeds'] },
-  { name: 'Live traffic', keys: ['featureLiveTraffic', 'defaultShowTraffic', 'trafficApiUrl', 'trafficRadiusNm',
+  { name: 'ATC radio', keys: ['featureAtcRadio', 'atcRadioBase'] },
+  { name: 'Live traffic', keys: ['featureLiveTraffic', 'defaultShowTraffic', 'trafficApiUrl', 'trafficWebApiUrl', 'trafficRadiusNm',
     'trafficRefreshSec', 'trafficFailsBeforeWarn', 'trafficIconPx', 'trafficArrowColor',
     'trafficLabelColor'] },
   { name: 'Follow me', keys: ['featureFollowMe', 'featureFollowMePublic', 'publicPilotsViewHash', 'followMePublicZoomGrow', 'followMePublicDimSec', 'followMePublicDropSec', 'followMeBroker', 'followMeRateSec',
@@ -1339,7 +1361,7 @@ NavAid.tuningGroups = [
   { name: 'Alt pairs', keys: ['altPairFocusColor', 'altPairFocusWidthPx', 'altPairFocusDashOnPx', 'altPairFocusDashOffPx', 'altPairFocusDotRadiusPx', 'altPairFocusDotColor', 'altPairFocusMs', 'altPairFocusLineAlpha', 'altPairFocusDotAlpha'] },
   { name: 'VOR stations', keys: ['vorMarkerRadiusPx', 'vorMarkerWidthPx', 'vorMarkerColor', 'vorSelectedColor', 'vorLabelFontPx', 'vorRangeRingLabelAlpha'] },
   { name: 'Reporting badges', keys: ['reportBadgeRadiusPx', 'reportBadgeOffsetPx', 'reportBadgeStrokeWidthPx'] },
-  { name: 'Live aircraft', keys: ['ownShipColor', 'ownShipHaloColor', 'liveAircraftRadiusPx', 'liveHeadingLineColor', 'liveHeadingTextColor', 'liveHeadingNmTextColor', 'liveHeadingMinTextColor', 'liveHeadingLineWidthPx', 'liveHeadingDashPx', 'liveHeadingDashGapPx', 'liveHeadingTickPx', 'liveHeadingLabelPx', 'liveHeadingLabelGapPx', 'livePredictorTurnMinDegSec', 'livePredictorTurnMaxDegSec', 'livePredictorTurnMaxArcDeg', 'livePredictorTurnMaxArcSec', 'livePredictorTurnMinKt', 'livePredictorTurnHoldSec', 'livePredictorTurnSmoothing', 'livePredictorTurnGentleDegSec', 'livePredictorTurnSignificance', 'livePredictorGyro', 'ownShipHaloWidthPx', 'ownShipStaleAlpha', 'ownShipShadowColor', 'ownShipShadowAlpha', 'ownShipShadowBlurPx', 'ownShipShadowOffsetPx', 'liveHeadingLineAlpha', 'liveHeadingTickAlpha', 'measureLineWidthPx', 'measureDashOnPx', 'measureDashOffPx', 'measureDotRadiusPx', 'measureDotRingWidthPx', 'measureLabelFontPx', 'measureLabelLineHeightPx', 'measureLabelPadXPx', 'measureLabelPadYPx', 'measureLabelGapXPx', 'measureLabelGapYPx'] },
+  { name: 'Live aircraft', keys: ['ownShipColor', 'ownShipHaloColor', 'liveAircraftRadiusPx', 'liveHeadingLineColor', 'liveHeadingTextColor', 'liveHeadingNmTextColor', 'liveHeadingMinTextColor', 'liveHeadingLineWidthPx', 'liveHeadingDashPx', 'liveHeadingDashGapPx', 'liveHeadingTickPx', 'liveHeadingLabelPx', 'liveHeadingLabelGapPx', 'livePredictorTurnMinDegSec', 'livePredictorTurnMaxDegSec', 'livePredictorTurnLineDeg', 'livePredictorTurnMinKt', 'livePredictorTurnHoldSec', 'livePredictorTurnSmoothing', 'livePredictorTurnGentleDegSec', 'livePredictorTurnSignificance', 'livePredictorGyro', 'ownShipHaloWidthPx', 'ownShipStaleAlpha', 'ownShipShadowColor', 'ownShipShadowAlpha', 'ownShipShadowBlurPx', 'ownShipShadowOffsetPx', 'liveHeadingLineAlpha', 'liveHeadingTickAlpha', 'measureLineWidthPx', 'measureDashOnPx', 'measureDashOffPx', 'measureDotRadiusPx', 'measureDotRingWidthPx', 'measureLabelFontPx', 'measureLabelLineHeightPx', 'measureLabelPadXPx', 'measureLabelPadYPx', 'measureLabelGapXPx', 'measureLabelGapYPx'] },
   { name: 'Terrain', keys: ['terrainWarnClearanceFt', 'terrainTintAlpha', 'terrainAlertColor', 'terrainCautionColor', 'terrainLegWarnWidthPx', 'terrainLegWarnAlpha', 'terrainWpWarnRingPx', 'terrainTintMinZoom', 'terrainTintMinCellPx'] },   // msaBufferFt lives in the Navigation group
   { name: 'Vertical profile', keys: ['profileTerrainColor', 'profileMsaColor', 'profileTerrainSamples', 'profileHeadroomFt', 'profileBgColor', 'profileGridColor', 'profileAxisColor', 'profileGroundColor', 'profileTextColor', 'profileNmTextColor', 'profileTimeTextColor', 'profileAreaColor', 'profileLineColor', 'profileSpeedColor', 'profilePlanColor', 'routeProfileHeightPx', 'trackProfileSmoothFixes', 'profileLegend', 'profileExportWidthPx', 'profileExportHeightPx', 'profileTocColor', 'profileMarkerHaloColor', 'profileAxisHeightPx', 'profileYPadPx', 'profileFontPx', 'profileSmallFontPx', 'profileBadgeFontPx', 'profileMessageFontPx', 'profileGridAlpha', 'profileGridXAlpha', 'profileGridWidthPx', 'profileTerrainAlpha', 'profileAreaAlpha', 'profileMsaAlpha', 'profileMsaWidthPx', 'profileMsaDashOnPx', 'profileMsaDashOffPx', 'profileLineWidthPx', 'profileAssumedDashOnPx', 'profileAssumedDashOffPx', 'profilePlanWidthPx', 'profilePlanDashOnPx', 'profilePlanDashOffPx', 'profileSpeedWidthPx', 'profileSpeedDashOnPx', 'profileSpeedDashOffPx', 'profileNoteBgAlpha', 'profileNoteBgHeightPx', 'profileTocDotRadiusPx', 'profileTocLabelGapPx', 'profileTocTickLenPx', 'profileTickLenPx', 'profileAxisRow1Px', 'profileAxisRow2Px', 'profileAxisRow3Px', 'profileWpIdMinGapPx', 'profileLabelGapPx', 'profileCaptionInsetPx', 'profileSpeedLabelInsetPx', 'profileLegendRightInsetPx', 'profileLegendSwatchPx', 'profileLegendGapPx', 'profileLegendPadPx', 'profileMarkerRadiusPx', 'profileMarkerRingWidthPx', 'profileMarkerFontPx', 'profileMarkerTextHaloPx', 'profileMarkerHaloAlpha', 'profileMarkerLabelGapPx', 'profileExportHeaderPx', 'profileExportInsetPx', 'profileExportTitleFontPx', 'profileExportTitleTopPx', 'profileExportSubtitleFontPx', 'profileExportSubtitleTopPx'] },
   { name: 'SIGMETs', keys: ['sigmetTurbColor', 'sigmetIceColor', 'sigmetMtwColor', 'sigmetVaColor', 'sigmetDustColor', 'sigmetTcColor', 'sigmetDefaultColor', 'sigmetFillAlpha', 'sigmetLineWidthPx', 'sigmetDashOnPx', 'sigmetDashOffPx', 'sigmetLabelFontPx', 'airmetColor', 'airmetDotPx'] },
@@ -1371,7 +1393,7 @@ NavAid.tuningGroups = [
     'defaultViewZoom', 'defaultViewLat', 'defaultViewLng'] },
   { name: 'Export', keys: ['exportBgColor', 'fpTableBorderWidthPx', 'fpTableGridWidthPx'] },
   { name: 'Global palette', keys: ['inkColor', 'selectedColor', 'labelFillColor', 'kiteTextColor', 'legKiteHaloColor', 'kiteNoteAlpha'] },
-  { name: 'Default layer visibility', keys: ['defaultShowNavWP', 'defaultShowAirfields', 'defaultShowVor', 'defaultShowHotspots', 'defaultShowWpNames', 'defaultShowCumTime', 'defaultShowDrift', 'defaultShowCommChange', 'defaultVoiceAlerts', 'defaultShowMidLeg', 'defaultHighlightDiff', 'defaultLimitLegKites', 'defaultShowMsa', 'defaultShowReporting', 'defaultForceSnap', 'defaultShowReturn', 'featureShowReturn', 'featureFplReturnJoin', 'offlineAutoCvfr', 'offlineCvfrUnmeteredOnly', 'offlineCvfrMinZoom', 'offlineCvfrMaxZoom', 'featureRouteIntro', 'featureTour', 'defaultPressureUnit', 'defaultAltSource', 'featureGpsStatus', 'featureKeepAwake', 'featureHaptics', 'featureBrightness', 'featureBarometer', 'featureBatteryWarn', 'featureFullscreenFlight', 'featureGdl90', 'featureBleGps', 'featureSatZoomButtons', 'featureInspectorResize', 'featureInspectorWhileTracking', 'featureAssistant', 'featureTabletDesktop', 'featureMenubarDrag', 'featureDisclaimer', 'featureOtaUpdates', 'featureNavLog', 'reverseWarnMs', 'notamSeenDays', 'toastReadWpm', 'toastNoticeMs', 'toastMinMs', 'toastWarnMinMs', 'toastMaxMs', 'reverseWarnBlink', 'reverseRotatesMap', 'addToRouteOpensInspector', 'defaultShowNotam', 'defaultShowAirmet', 'defaultShowSigmet', 'defaultShowWind', 'defaultWindField', 'defaultAirfieldWind', 'defaultSurfaceWx', 'defaultImsPwx', 'defaultSigwxOv', 'defaultShowLsaBubbles', 'defaultAutoRoute', 'defaultShowCircuit', 'defaultShowTraining', 'defaultShowCvfr', 'defaultShowHeli', 'defaultShowCommfail', 'defaultShowAdc', 'defaultShowIfr', 'plateFieldZoom'] },
+  { name: 'Default layer visibility', keys: ['defaultShowNavWP', 'defaultShowAirfields', 'defaultShowVor', 'defaultShowHotspots', 'defaultShowWpNames', 'defaultShowCumTime', 'defaultShowDrift', 'defaultShowCommChange', 'defaultVoiceAlerts', 'defaultShowMidLeg', 'defaultHighlightDiff', 'defaultLimitLegKites', 'defaultShowMsa', 'defaultShowReporting', 'defaultForceSnap', 'defaultShowReturn', 'featureShowReturn', 'featureFplReturnJoin', 'offlineAutoCvfr', 'offlineCvfrUnmeteredOnly', 'offlineCvfrMinZoom', 'offlineCvfrMaxZoom', 'offlineCvfrStartSec', 'featureRouteIntro', 'featureTour', 'defaultPressureUnit', 'defaultAltSource', 'featureGpsStatus', 'featureKeepAwake', 'featureHaptics', 'featureBrightness', 'featureBarometer', 'featureBatteryWarn', 'featureFullscreenFlight', 'featureGdl90', 'featureBleGps', 'featureSatZoomButtons', 'featureInspectorResize', 'featureInspectorWhileTracking', 'featureAssistant', 'featureAutoRecord', 'defaultAutoRecord', 'autoRecordMinSec', 'autoRecordMinNm', 'recordResumeMin', 'featureSearchClose', 'featureTabletDesktop', 'featureMenubarDrag', 'featureSearchDrag', 'featureDisclaimer', 'featureOtaUpdates', 'featureNavLog', 'reverseWarnMs', 'notamSeenDays', 'toastReadWpm', 'toastNoticeMs', 'toastMinMs', 'toastWarnMinMs', 'toastMaxMs', 'reverseWarnBlink', 'reverseRotatesMap', 'addToRouteOpensInspector', 'defaultShowNotam', 'defaultShowAirmet', 'defaultShowSigmet', 'defaultShowWind', 'defaultWindField', 'defaultAirfieldWind', 'defaultSurfaceWx', 'defaultImsPwx', 'defaultSigwxOv', 'defaultShowLsaBubbles', 'defaultAutoRoute', 'defaultShowCircuit', 'defaultShowTraining', 'defaultShowCvfr', 'defaultShowHeli', 'defaultShowCommfail', 'defaultShowAdc', 'defaultShowIfr', 'plateFieldZoom'] },
 ];
 // Padding pair + maxZoom for a fitBounds call, from the tuning registry. Every "frame the
 // map on X" call goes through this instead of carrying its own literals.
@@ -1881,6 +1903,24 @@ window.S = Object.assign({
   tourSearchText: 'Type a waypoint or airfield, or several codes (LLHZ BAZRA DEROR) to build a route.',
   tourHoldTitle: 'Press and hold the map',
   tourHoldText: 'Hold a finger on any point: what is there, add it as a waypoint, or fly Direct to it.',
+  recIndicatorLabel: 'REC',
+  recIndicatorTitle: 'Recording the flight',
+  tourLiveRecTitle: 'Recording',
+  tourLiveRecText: 'The red REC sign: this flight is being recorded. It stops with Record, or when you turn Location off, and is kept in Saved routes.',
+  tourLiveReadTitle: 'Speed, altitude, track',
+  tourLiveReadText: 'Your ground speed, altitude and magnetic track, from the GPS.',
+  tourLiveStatusTitle: 'GPS quality',
+  tourLiveStatusText: 'How good the position is. Tap it for the accuracy, the satellites and the last fix.',
+  tourLiveFollowTitle: 'Follow',
+  tourLiveFollowText: 'Keeps the chart on your aircraft. Move the map and it waits, then brings you back; tap it to stop following.',
+  tourLiveOrientTitle: 'North up or heading up',
+  tourLiveOrientText: 'Turns the chart so your track points up, or back to north up.',
+  tourLiveVoiceTitle: 'Spoken alerts',
+  tourLiveVoiceText: 'Speaks the in-flight alerts: next leg, altitude, TOP, off route. Tap it to silence them.',
+  tourLiveShareTitle: 'Follow me',
+  tourLiveShareText: 'Shares a live link to your position, for someone on the ground to follow.',
+  tourLiveLineTitle: 'The heading line',
+  tourLiveLineText: 'The dashed line ahead of you, marked at 2, 5 and 10 nm and at 2 and 5 minutes. In a turn it bends into a quarter circle the way you turn, with the distances only.',
   appUpdateReadyTitle: 'Update ready',
   appUpdateReadyText: function (v) {
     return 'A new version of NavAid has been downloaded' + (v ? ' (' + v + ')' : '') +
@@ -2428,6 +2468,7 @@ window.S = Object.assign({
   errPngFail: 'PNG export failed (a map tile could not be loaded).',
   errTilesFail: function(f, t) { return f + ' of ' + t + ' map tiles failed to load — the PNG may have blank patches. Re-run the export to retry.'; },
   errNeedWps: 'Add at least two waypoints first.',
+  whyNothingToFit: 'Nothing to fit yet — draw a route first.',
   errNothingToSave: 'Nothing to save — add at least two waypoints to your route first.',
   // --- ICAO flight plan (FPL) ---
   tbFpl: '✈ Submit flight plan',
@@ -2942,8 +2983,8 @@ window.S = Object.assign({
   compassHoldHint: 'hold for the compass',
   tbBrightness: 'Screen brightness',
   tbBrightnessTitle: 'Dim the screen for night flying — below the phone\u2019s own minimum if needed',
-  tbBrightnessSystem: 'Phone\u2019s own brightness',
-  tbBrightnessSystemTitle: 'The screen at the phone\u2019s own brightness. Off: set it with the slider below',
+  tbBrightnessSystem: 'System brightness',
+  tbBrightnessSystemTitle: 'The screen at the brightness the device itself is set to. Off: set it with the slider below',
   tbBrightnessAuto: 'System',
   batteryLow: function (pct) { return 'Battery ' + pct + '%: plug the phone in'; },
   tbBleGps: 'Connect Bluetooth GPS',
@@ -3053,7 +3094,17 @@ window.S = Object.assign({
   tbShowTraffic: 'Show live traffic',
   tbGrpPublicPilots: 'NavAid pilots',
   tbShowPublicPilots: 'Show public NavAid pilots',
-  tbShowPublicPilotsLocked: 'Share your position as Public to see others (Share → Public)',
+  tbShowPublicPilotsLocked: 'Choose Share & see: you see the others while they can see you',
+  ppModeOff: 'Off',
+  ppModeSee: 'See others',
+  ppModeShare: 'Share & see',
+  ppModeNoFollowMe: 'Sharing is switched off in this version',
+  ppHintOff: 'Other NavAid pilots are not shown, and they cannot see you.',
+  ppHintSee: 'You see every NavAid pilot who shares publicly. They do not see you.',
+  ppHintShare: 'You see every NavAid pilot who shares publicly, and they see you.',
+  ppTipOff: 'Hide other pilots and stop showing yourself to them',
+  ppTipSee: 'See other pilots without being seen: for the rest of a public share, or on the secret pilots link',
+  ppTipShare: 'Show yourself to other NavAid pilots and see them',
   tbShowPublicPilotsTitle: 'Everyone sharing their position publicly (Share → Public), from the NavAid relay. Not ADS-B.',
   tbShowTrafficApkOnly: 'In the app only: the ADS-B feeds refuse browser requests, so nothing could be drawn here. Install the NavAid app (Android, iPhone or iPad) and it works there.',
   tbShowTrafficTitle: 'Aircraft heard on ADS-B. It asks around your position when you have one, and otherwise around the middle of the map, so it works while planning too. The arrow points where each one is going; its callsign and altitude in hundreds of feet are beside it.',
@@ -3076,6 +3127,7 @@ window.S = Object.assign({
   plateTypeAdc: 'Aerodrome chart',
   tbDisabledByTurn: 'Not available on a route with a turning point — it already flies out and back, so there is nothing to reverse or mirror.',
   reverseNoRoute: 'No route to reverse — add at least two waypoints.',
+  resetNoRoute: 'Draw a route first — there are no markers or names to reset yet.',
   reverseRouteWarn: '\u26a0 Reversed — might not match allowed routes. Check the chart: published corridors can be one-way.',
   tbReverse: '⇄ Reverse route (R)',
   tbReverseTitle: 'Reverse route order',
@@ -3188,8 +3240,11 @@ window.S = Object.assign({
   tbAutoRoute: 'Auto-route through waypoints',
   tbAutoRouteTitle: 'Adding a point fills in the published reporting points between it and the previous one (CVFR). Closed routes are avoided.',
   tbInspectorTracking: 'Panel while showing position',
+  tbAutoRecord: 'Record automatically with location',
+  tbAutoRecordTitle: 'Showing your location also records the flight. When location stops, a recording too short to be a flight is not kept.',
+  gpsAutoRecShort: (min, nm) => 'Short recording not kept (under ' + min + ' min or ' + nm + ' nm)',
   tbInspectorTrackingTitle: 'Let a tap open the inspector while your position is on the map. Off by default: in flight the chart is what you are reading.',
-  inspectorTrackingBlocked: 'The panel stays shut while your position is showing — turn it on in View/Set.',
+  inspectorTrackingBlocked: 'The panel stays shut while your position is showing — turn it on in Settings.',
   tbShowDrift: 'Show drift lines',
   tbShowDriftTitle: 'Show 10-degree drift reference lines at each leg end',
   tbShowAirfields: 'Show/pin airfields',
@@ -3503,6 +3558,18 @@ window.S = Object.assign({
   tbPrint: '🖨 Print',
   tbPrintTitle: 'Print or save the framed map + route as a PNG',
   tbMagnifier: '🔍 Magnifying glass (M)',
+  atcRadio: 'ATC radio',
+  atcRadioTitle: 'Listen live: Herzliya and Haifa towers, and Pluto West',
+  atcRadioNote: 'Live ATC receivers. One channel at a time.',
+  atcTower: 'Tower',
+  atcClearance: 'Clearance',
+  atcPluto: 'Pluto West',
+  atcPlay: 'Listen',
+  atcStop: 'Stop',
+  atcConnecting: 'Connecting\u2026',
+  atcLive: 'Live',
+  atcBuffering: 'Buffering\u2026',
+  atcOffline: 'Not on the air right now',
   tbMagnifierTitle: 'Magnifying glass (M) — zoomed view at cursor; +/− adjust loupe zoom while open',
   // Footer-button labels carry NO icon prefix: the button's own
   // .footer-link-icon span renders the glyph, so an emoji in the label
@@ -3514,7 +3581,7 @@ window.S = Object.assign({
   tbGpsRecordTitle: 'Start recording your flown track from the device GPS; Stop saves it to your routes',
   tbGpsStop: 'Stop',
   tbGpsLive: 'Location',
-  tbGpsLiveTitle: 'Show your live position on the map (device GPS, no recording)',
+  tbGpsLiveTitle: 'Show your live position on the map (device GPS); records the flight too while Record automatically with location is on',
   tbGpsLiveStop: 'Hide',
   // ATIS reminder: fires once, a set time out from the destination.
   // Last light (#667): fires once per flight, when the planned arrival is after the end of
@@ -3739,6 +3806,10 @@ window.S = Object.assign({
   inspTurnNeedsSameField: 'Available on a route that returns to the airfield it started from — a one-way trip has no return to separate from its outbound.',
   inspTurnTitle: 'Where this route turns for home. A loop repeats no waypoint, so nothing in the geometry says where the far end is — mark it here and the leg-direction filter can split outbound from return.',
   tbSimConnected: 'Simulator connected — showing its aircraft on the map',
+  tbSimToastOk: 'Simulator connected: its aircraft is on the map',
+  tbSimToastErr: 'No data from the simulator bridge. Check that it is running and the URL is right.',
+  tbSimConnectedTap: 'Simulator connected — tap to disconnect',
+  tbSimDisconnected: 'Simulator disconnected',
   tbSecSim: 'Simulator',   // footer button + sim modal title; the footer icon span draws the plane
   tbSimConnect: 'Connect to simulator',
   tbSimDiscover: 'Find X-Plane',
@@ -3857,6 +3928,7 @@ const NAV_ICONS = {
   moon: '<path d="M19.5 14.5A8 8 0 1 1 9.5 4.5a6.5 6.5 0 0 0 10 10z"/>',
   sun: '<circle cx="12" cy="12" r="4"/><path d="M12 2.5v2M12 19.5v2M2.5 12h2M19.5 12h2M5.3 5.3l1.4 1.4M17.3 17.3l1.4 1.4M5.3 18.7l1.4-1.4M17.3 6.7l1.4-1.4"/>',
   templates: '<rect x="4" y="4" width="7" height="7" rx="1.5"/><rect x="13" y="4" width="7" height="7" rx="1.5"/><rect x="4" y="13" width="7" height="7" rx="1.5"/><rect x="13" y="13" width="7" height="7" rx="1.5"/>',
+  headset: '<path d="M4 14v-2a8 8 0 0 1 16 0v2"/><rect x="3.5" y="13.5" width="4" height="6.5" rx="1.5"/><rect x="16.5" y="13.5" width="4" height="6.5" rx="1.5"/>',
   antenna: '<path d="M12 11v10M8.6 7.6a4.8 4.8 0 0 1 6.8 0M6 5a8.5 8.5 0 0 1 12 0"/><circle cx="12" cy="10" r="1.3" fill="currentColor"/>',
   altPairs: '<path d="M7 20V5M4 8l3-3 3 3M17 4v15M14 16l3 3 3-3"/>',
   form: '<path d="M4 20 20 4v16z"/><path d="M9 20v-5h5"/>',
@@ -7094,6 +7166,9 @@ function syncLegs() {
   // leg-direction picker has anything to divide.
   if (typeof refreshLegDirEnabled === 'function') refreshLegDirEnabled();
   if (typeof refreshTurnDependentControls === 'function') refreshTurnDependentControls();
+  // Route actions dim when there is not enough route for them (ui.js); draw() asks too, but a
+  // tap can land before the next frame.
+  if (typeof window.refreshRouteButtons === 'function') window.refreshRouteButtons();
 }
 
 // Canonical -- the same key whichever way the leg is flown. The graph stores a segment in

@@ -143,6 +143,29 @@
     } catch (e) { return null; }
   }
 
+  // What an update will really download. A delta (manifest.files) fetches only the files whose
+  // content the phone does not already hold, and the running bundle lists its own by hash
+  // (bundle-manifest.json, mobile/scripts/bundle-web.mjs). The row said the full zip -- 38 MB --
+  // for an update that changed a few scripts (reported). A bundle from before the list, or a
+  // manifest with no delta, answers the zip's size, which is what a full download costs.
+  const deltaCache = new Map();
+  async function updateBytes(manifest) {
+    const full = Number(manifest && manifest.bytes) || 0;
+    const files = manifest && Array.isArray(manifest.files) ? manifest.files : null;
+    if (!files || !files.length || files.some((f) => !Number.isFinite(f && f.size))) return full;
+    if (deltaCache.has(manifest.version)) return deltaCache.get(manifest.version);
+    let have = null;
+    try {
+      const res = await fetch(new URL('bundle-manifest.json', document.baseURI).href, { cache: 'no-store' });
+      const own = res.ok ? await res.json() : null;
+      if (own && own.hashes && typeof own.hashes === 'object') have = new Set(Object.values(own.hashes));
+    } catch (e) { /* no list: the full size */ }
+    if (!have) return full;
+    const need = files.reduce((sum, f) => sum + (have.has(f.file_hash) ? 0 : f.size), 0);
+    deltaCache.set(manifest.version, need);
+    return need;
+  }
+
   async function currentBundle(p) {
     try {
       const current = await p.current();
@@ -412,7 +435,7 @@
       const tiles = window.NavAidNativeTiles;
       if (tiles && typeof tiles.bundledSeeded === 'function' && !(await tiles.bundledSeeded())) wait = 'charts';
     }
-    return { state: 'available', version: manifest.version, bytes: Number(manifest.bytes) || 0, manifest, wait };
+    return { state: 'available', version: manifest.version, bytes: await updateBytes(manifest), manifest, wait };
   }
 
   // The pilot asked for it: on mobile data too (the row asks first), and the packed chart is
@@ -528,7 +551,7 @@
   window.NavAid = window.NavAid || {};
   NavAid.ota = {
     notifyReady, checkForUpdate, readManifest, appIsUp, installPendingAtStartup, MANIFEST,
-    status, downloadNow, downloading, onUnmeteredConnection, sameBuild,
+    status, downloadNow, downloading, onUnmeteredConnection, sameBuild, updateBytes,
     restartNow, offerRestart, checkForNewApk, newerVersion,
   };
 

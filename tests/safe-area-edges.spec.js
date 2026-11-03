@@ -11,6 +11,11 @@
 // Headless Chrome has no cut-outs, so these assert the declarations rather than the geometry:
 // what can be checked is that the app asks, and asks at the right edges.
 const { test, expect } = require('./_setup');
+const fs = require('fs');
+const path = require('path');
+// The SOURCE, from disk: the deployed suite serves the minified site, whose text is not what
+// these assertions are about.
+const src = (p) => fs.readFileSync(path.join(__dirname, '..', 'docs', p), 'utf8');
 
 test('the page asks for the real insets', async ({ page }) => {
   await page.goto('?lang=en&nogist');
@@ -20,7 +25,7 @@ test('the page asks for the real insets', async ({ page }) => {
 
 test('every edge-anchored surface says what it keeps clear of', async ({ page }) => {
   await page.goto('?lang=en&nogist');
-  const css = await page.evaluate(() => fetch('app/style.css?v=src').then(r => r.text()));
+  const css = src('app/style.css');
   // Every block for this selector, not the first: a selector may be declared once for layout
   // and again for the edge it has to keep clear of.
   const rule = (selector) => {
@@ -48,7 +53,7 @@ test('every edge-anchored surface says what it keeps clear of', async ({ page })
 
 test('the bottom inset is reserved once, not twice', async ({ page }) => {
   await page.goto('?lang=en&nogist');
-  const css = await page.evaluate(() => fetch('app/style.css?v=src').then(r => r.text()));
+  const css = src('app/style.css');
   // With the deck on, the corner is already lifted by the deck's height plus the inset; the
   // plain rule is scoped away so the home indicator is not paid for twice.
   expect(css).toMatch(/body:not\(\.deck-on\) \.leaflet-bottom \{[^}]*safe-area-inset-bottom/);

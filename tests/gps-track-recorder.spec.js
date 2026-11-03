@@ -81,6 +81,7 @@ test('readout shows realtime ground speed + altitude while recording', async ({ 
 
 test('readout shows ground speed + altitude for plain "show location" too, not just recording', async ({ page }) => {
   await page.addInitScript(() => {
+    try { localStorage.setItem('navaid.autoRecord', '0'); } catch (e) { /* Location alone, not its automatic recording */ }
     window.__liveCb = null;
     navigator.geolocation.watchPosition = (cb) => { window.__liveCb = cb; return 11; };
     navigator.geolocation.clearWatch = () => {};
@@ -528,6 +529,7 @@ test('native addWatcher returning a bare id (not a Promise) still registers', as
 
 test('Show my location shows own-ship without recording or saving a track', async ({ page }) => {
   await page.addInitScript(() => {
+    try { localStorage.setItem('navaid.autoRecord', '0'); } catch (e) { /* Location alone, not its automatic recording */ }
     window.__liveCb = null;
     navigator.geolocation.watchPosition = (cb) => { window.__liveCb = cb; return 11; };
     navigator.geolocation.clearWatch = () => {};
@@ -591,17 +593,20 @@ test('live location survives a full page reload (e.g. switching language) -- res
 });
 
 test('stopping a recording keeps own-ship when live location is still on', async ({ page }) => {
+  // One watch now: a recording rides on Location's. With Location on first (its automatic
+  // recording off), Record and then Stop leave Location -- and its own-ship -- as they were.
   await page.addInitScript(() => {
-    window.__recCb = null; window.__liveCb = null; let n = 0;
-    navigator.geolocation.watchPosition = (cb) => { n++; if (n === 1) window.__recCb = cb; else window.__liveCb = cb; return n; };
+    window.__liveCb = null;
+    navigator.geolocation.watchPosition = (cb) => { window.__liveCb = cb; return 1; };
     navigator.geolocation.clearWatch = () => {};
+    try { localStorage.setItem('navaid.autoRecord', '0'); } catch (e) { /* */ }
   });
   await page.goto('?lang=en');
   await page.waitForFunction(() => typeof startGpsRecording === 'function' && typeof startLiveLocation === 'function');
   const out = await page.evaluate(() => {
-    startGpsRecording();                 // watch #1 -> __recCb
-    startLiveLocation();                 // watch #2 -> __liveCb
-    window.__recCb({ coords: { latitude: 32.0, longitude: 34.8, accuracy: 8, heading: 10, altitude: null }, timestamp: Date.now() });
+    startLiveLocation();
+    startGpsRecording();
+    window.__liveCb({ coords: { latitude: 32.0, longitude: 34.8, accuracy: 8, heading: 10, altitude: null }, timestamp: Date.now() });
     window.__liveCb({ coords: { latitude: 32.1, longitude: 34.9, accuracy: 8, heading: 20, altitude: null }, timestamp: Date.now() });
     stopGpsRecordingAndSave();           // stop recording; live still on
     return { live: gpsLiveOn, recording: gpsRecording, ownAfter: gpsOwn };
@@ -613,6 +618,7 @@ test('stopping a recording keeps own-ship when live location is still on', async
 
 test('GPS error resets the live-location button too', async ({ page }) => {
   await page.addInitScript(() => {
+    try { localStorage.setItem('navaid.autoRecord', '0'); } catch (e) { /* Location alone, not its automatic recording */ }
     window.__errCb = null;
     navigator.geolocation.watchPosition = (cb, err) => { window.__errCb = err; return 4; };
     navigator.geolocation.clearWatch = () => {};
@@ -763,6 +769,7 @@ test('an async addWatcher rejection is a registration failure, not a transient b
 // measurements, so the bidi algorithm reordered the whole sequence around the RTL base.
 test('the readout reads left to right in Hebrew, and keeps the stale notice readable', async ({ page }) => {
   await page.addInitScript(() => {
+    try { localStorage.setItem('navaid.autoRecord', '0'); } catch (e) { /* Location alone, not its automatic recording */ }
     window.__liveCb = null;
     navigator.geolocation.watchPosition = (cb) => { window.__liveCb = cb; return 11; };
     navigator.geolocation.clearWatch = () => {};
@@ -891,11 +898,32 @@ test.describe('the screen stays awake while a position is on screen', () => {
     await page.waitForFunction(() => gpsWakeLock == null);
   });
 
-  test('and the other way round', async ({ page }) => {
+  // The other way round there is nothing left on screen: a recording rides on Location, so
+  // stopping Location ends a recording started by hand too (asked: "Stopping location must stop
+  // record") -- and with nothing showing, the screen may sleep again.
+  test('stopping Location ends a hand-started recording too, and lets the screen go', async ({ page }) => {
     await bootWake(page);
-    await page.evaluate(() => { startLiveLocation(); startGpsRecording(); });
+    await page.evaluate(() => { localStorage.setItem('navaid.autoRecord', '0'); startLiveLocation(); startGpsRecording(); });
     await page.waitForFunction(() => gpsWakeLock != null);
     await page.evaluate(() => stopLiveLocation());
+    expect(await page.evaluate(() => gpsRecording)).toBe(false);
+    await page.waitForFunction(() => gpsWakeLock == null);
+  });
+
+  // Asked: "simulator keeps screen on?" -- "sim is like gps": a connected simulator holds the
+  // lock like Location, and lets it go when it disconnects (unless Location still wants it).
+  test('a connected simulator holds it, and disconnecting lets it go', async ({ page }) => {
+    await bootWake(page);
+    await page.route(/^http:\/\/localhost:2020\//, r => r.fulfill({ status: 200, contentType: 'application/json',
+      body: JSON.stringify({ latitude: 32.1, longitude: 34.9, altitude: 1500, heading: 90, ias: 95 }) }));
+    await page.evaluate(() => simStart());
+    await page.waitForFunction(() => gpsWakeLock != null);
+    await page.evaluate(() => simStop());
+    await page.waitForFunction(() => gpsWakeLock == null);
+    // With Location also on, disconnecting the simulator keeps it.
+    await page.evaluate(() => { localStorage.setItem('navaid.autoRecord', '0'); startLiveLocation(); simStart(); });
+    await page.waitForFunction(() => gpsWakeLock != null);
+    await page.evaluate(() => simStop());
     expect(await page.evaluate(() => gpsWakeLock != null)).toBe(true);
   });
 

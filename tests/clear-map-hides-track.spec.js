@@ -77,3 +77,40 @@ test('a route and a track go together, and the confirm still guards the route', 
   expect((await state(page)).shown).toEqual([]);
   expect(await page.evaluate(() => state.waypoints.length)).toBe(0);
 });
+
+// Reported: "when showing a recorded flight, clear map is dimmed". Clear map takes the track
+// away (above), so a shown track is something to clear: both Clears stay lit while it is shown
+// -- also after a reload brings it back -- and dim again once it is hidden.
+test('a shown track keeps Clear map lit', async ({ page }) => {
+  await boot(page);
+  const dims = () => page.evaluate(() => ['clear', 'edit-col-clear'].map(id =>
+    document.getElementById(id).getAttribute('aria-disabled') === 'true'));
+  // Nothing else on the map: no route, no notes, no extra layer.
+  await page.evaluate(() => {
+    for (const cb of document.querySelectorAll('.tb-section[data-sec="weather"] input[type="checkbox"]:checked')) cb.click();
+    refreshEditColumn();
+  });
+  expect(await dims()).toEqual([true, true]);
+
+  await showTrack(page);
+  expect(await dims()).toEqual([false, false]);
+
+  // A reload restores the shown track from Saved routes. boot()'s init script wipes both on
+  // every load, so put them back for this one.
+  await page.addInitScript(() => {
+    const keep = sessionStorage.getItem('keepShown');
+    if (!keep) return;
+    const pts = [[32.0, 34.8], [32.1, 34.9], [32.2, 35.0]].map(p => ({ lat: p[0], lng: p[1], t: 1 }));
+    localStorage.setItem('navaid.routes', JSON.stringify([{ id: 'T1', name: 'Sunday', track: pts }]));
+    localStorage.setItem('navaid.tracks.shown', keep);
+  });
+  await page.evaluate(() => sessionStorage.setItem('keepShown', localStorage.getItem('navaid.tracks.shown')));
+  await page.reload();
+  await page.waitForFunction(() => typeof draw === 'function' && shownTracks.length === 1);
+  await expect.poll(dims).toEqual([false, false]);
+
+  await answerAppDialogs(page, true);
+  await page.locator('#edit-col-clear').click();
+  await expect.poll(async () => (await state(page)).shown).toEqual([]);
+  expect(await dims()).toEqual([true, true]);
+});

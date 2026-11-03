@@ -1,0 +1,44 @@
+From 9facb42e4eaa04f76708a92f1be8c0fa5c16941e Mon Sep 17 00:00:00 2001
+From: Marco <marco@supino.org>
+Date: Wed, 28 Oct 2026 17:21:52 +0000
+Subject: [PATCH] App update row: the size is what the phone lacks, not the
+ full bundle
+
+---
+ Offline-and-PWA-he.md | 4 +++-
+ Offline-and-PWA.md    | 4 +++-
+ 2 files changed, 6 insertions(+), 2 deletions(-)
+
+diff --git a/Offline-and-PWA-he.md b/Offline-and-PWA-he.md
+index 1767061..aa02fcd 100644
+--- a/Offline-and-PWA-he.md
++++ b/Offline-and-PWA-he.md
+@@ -140,7 +140,9 @@ adaptive בחמש צפיפויות, ומסכי הפתיחה — על ידי <spa
+ 
+ - *מעודכנת* (בדוק שוב);
+ - *יש עדכון · 40 MB — יורד מעצמו ב-Wi-Fi*, או *… אחרי שהעתקת המפות תסתיים* מיד אחרי APK חדש
+-  (**הורד עכשיו** לוקח אותו מיד — גם בחבילת גלישה, אחרי שאלה — עם פס התקדמות);
++  (**הורד עכשיו** לוקח אותו מיד — גם בחבילת גלישה, אחרי שאלה — עם פס התקדמות). הגודל הוא מה
++  שבאמת יורד: עדכון ששינה כמה קבצי קוד עולה כמה קבצים, לא החבילה כולה, כי השאר כבר בטלפון
++  (הוא משווה את קבצי העדכון לשלו לפי התוכן);
+ - *מוריד… 45%*, עם פס ההתקדמות ובלי כפתור — בין אם לחצתם **הורד עכשיו** ובין אם האפליקציה
+   התחילה מעצמה ב-Wi-Fi; בקשה נוספת בינתיים מצטרפת להורדה הזו ולא מורידה את אותה חבילה פעמיים;
+ - *העדכון מוכן: הפעלה מחדש תוצע כשהמיקום יפסיק להיות מוצג, או בהפעלה הבאה* (**הפעל מחדש עכשיו**).
+diff --git a/Offline-and-PWA.md b/Offline-and-PWA.md
+index 83ee949..b267e09 100644
+--- a/Offline-and-PWA.md
++++ b/Offline-and-PWA.md
+@@ -146,7 +146,9 @@ shows the build and says what the update is waiting for:
+ - *Up to date* (Check again);
+ - *Update available · 40 MB — downloads by itself on Wi-Fi*, or *… after the charts finish
+   copying* right after a new APK (**Download now** takes it at once — on mobile data too, after
+-  asking — with a progress bar);
++  asking — with a progress bar). The size is what will actually be downloaded: an update that
++  changed a few scripts costs those scripts, not the full bundle, because the phone already
++  holds the rest (it compares the update's files with its own by content);
+ - *Downloading… 45%*, with its progress bar and nothing to press — whether you pressed
+   **Download now** or the app started it by itself on Wi-Fi; asking again meanwhile joins that
+   download instead of fetching the same bundle twice;
+-- 
+2.43.0
+

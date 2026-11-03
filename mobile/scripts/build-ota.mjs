@@ -137,7 +137,8 @@ export function deltaFiles(entries, opts) {
       fs.writeFileSync(dest, e.data);
       url = o.baseUrl.replace(/\/$/, '') + '/' + enc(o.version) + '/' + enc(e.name);
     }
-    if (url) files.push({ file_name: e.name, file_hash: hash, download_url: url });
+    // size: not used by the plugin; docs/app/ota.js adds up the files the phone lacks.
+    if (url) files.push({ file_name: e.name, file_hash: hash, download_url: url, size: e.data.length });
   }
   return files.length === entries.length ? files : null;   // all or nothing: a partial list cannot install
 }

@@ -1518,36 +1518,53 @@ body.deck-on .leaflet-control.edit-col-ctrl {
 }
 .leaflet-control.zulu-clock.dragging { cursor: grabbing; }
 
-/* GPS recording indicator — a pulsing red dot inside a rounded square, pinned
-   to the top-right corner only while a track records. Sits below the top band
-   so it clears the Zulu clock (English top-right / Hebrew top-left). */
+/* GPS recording indicator: a red REC pill with a pulsing white dot, pinned to the top corner
+   only while a track records. It was a 30px dark square with a red dot that faded to a quarter
+   on each pulse: over a light chart it read as a stop button, not as "this flight is being
+   recorded" (asked: "make it visible"). Now the strongest red on the screen, white text, a
+   white ring so it holds on the dark charts too. */
 #gps-rec-indicator {
   position: fixed;
   top: 58px;
   right: 12px;
-  z-index: 1200;
-  width: 30px;
-  height: 30px;
+  /* Above the search card (1500): that card can be dragged anywhere on a desktop (gist), and
+     over the pill it hid the only sign that the flight is being recorded. It takes no pointer
+     events, so typing in the card underneath still works. Below search results (2350) and
+     the dialogs (2400). */
+  z-index: 1550;
+  height: 28px;
+  padding: 0 11px 0 9px;
   box-sizing: border-box;
-  border: 2px solid #e6194b;
-  border-radius: 5px;
-  background: rgba(20, 18, 18, 0.85);
+  border-radius: 14px;
+  border: 2px solid #fff;
+  background: #d7263d;
+  color: #fff;
+  font: 800 13px/1 system-ui, sans-serif;
+  letter-spacing: .06em;
   display: flex;
   align-items: center;
-  justify-content: center;
-  box-shadow: 0 1px 6px rgba(0, 0, 0, 0.5);
+  gap: 7px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.45);
   pointer-events: none;
 }
 #gps-rec-indicator[hidden] { display: none; }
 #gps-rec-indicator .gps-rec-dot {
-  width: 14px;
-  height: 14px;
+  width: 10px;
+  height: 10px;
   border-radius: 50%;
-  background: #e6194b;
+  background: #fff;
   animation: gps-rec-pulse 1.3s ease-in-out infinite;
 }
-@keyframes gps-rec-pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.25; } }
+@keyframes gps-rec-pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.35; } }
 @media (prefers-reduced-motion: reduce) { #gps-rec-indicator .gps-rec-dot { animation: none; } }
+/* Phone: under the GPS chip, which shares the row under the strip -- the wider pill would sit
+   on its end. */
+body.deck-on #gps-rec-indicator { top: calc(var(--navaid-deck-strip-h, 46px) + 48px); }
+/* Desktop: under the Zulu clock, on its side. At 58px it sat over the clock's last digits in
+   English, and in Hebrew -- clock top-LEFT, the docked search card top-right -- under the card:
+   recording showed nothing. */
+body:not(.deck-on) #gps-rec-indicator { top: 82px; }
+html[dir="rtl"] body:not(.deck-on) #gps-rec-indicator { right: auto; left: 12px; }
 
 /* Hebrew (RTL): the floating menu bar lives top-right on desktop, so default
    the Zulu clock to the top-LEFT corner instead of stacking beneath the bar.
@@ -3265,45 +3282,207 @@ body.printing-plan .ac-custom { display: none !important; }
   background: rgba(0, 0, 0, 0.5);
 }
 .sim-overlay.hidden { display: none; }
-/* Sim panel: a tidy vertical menu — full-width stacked controls. */
+/* Simulator window: a small form -- the Bridge URL field with its label above it, what to
+   enter, the apps' Find X-Plane, the status, and Connect last as the one primary action (the
+   app's blue, full width, 44px). The field is 16px: smaller text made iOS zoom the page on
+   focus, and the old 11px bold boxy field was hard to read. The help line is plain text, not
+   bold. Connect closes the window; the status reaches the pilot as a toast after that (io.js). */
 .modal.sim-modal {
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  min-width: 220px;
+  gap: 10px;
+  min-width: 260px;
+  max-width: min(360px, 92vw);
 }
 .modal.sim-modal > .sim-modal-title {
   cursor: move;
   user-select: none;
   touch-action: none;
+  margin: 0 0 2px;
 }
 .modal.sim-modal > button:not(.sim-modal-close),
-.modal.sim-modal > label,
+.modal.sim-modal > .sim-url-row,
 .modal.sim-modal > #sim-status,
-.modal.sim-modal > .sim-url-help { width: 100%; }
+.modal.sim-modal > .sim-url-help { width: 100%; box-sizing: border-box; }
 #sim-discover.hidden { display: none; }
-.modal.sim-modal > button:not(.sim-modal-close) { text-align: center; }
-.modal.sim-modal > .sim-url-help {
+.modal.sim-modal > .sim-url-row {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  background: none;
+  cursor: default;
+}
+.modal.sim-modal .sim-url-label { font: 600 13px/1.3 system-ui, sans-serif; opacity: .8; }
+.modal.sim-modal #sim-url {
+  width: 100%;
+  min-width: 0;
   box-sizing: border-box;
+  min-height: 44px;
+  padding: 8px 10px;
+  font: 400 16px/1.3 ui-monospace, SFMono-Regular, Menlo, monospace;
+  border: 1px solid #4a4444;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.06);
+  color: inherit;
+  text-align: left;                 /* a URL reads left to right in Hebrew too (dir="ltr") */
+}
+.modal.sim-modal #sim-url:focus-visible { outline: 3px solid #3d8bfd; outline-offset: 1px; }
+body.theme-light .modal.sim-modal #sim-url { border-color: #c6ccd6; background: #fff; }
+.modal.sim-modal > .sim-url-help {
   margin: -2px 0 0;
-  padding: 0 6px;
-  max-width: 300px;
+  padding: 0;
   color: var(--muted);
-  font-size: 11px;
-  line-height: 1.35;
+  font: 400 13px/1.45 system-ui, sans-serif;
 }
 .modal.sim-modal > #sim-status {
-  box-sizing: border-box;
   white-space: normal;
-  line-height: 1.35;
+  font: 600 13px/1.35 system-ui, sans-serif;
 }
-/* Active state for the panel's one toggle (Connect), so it is clear it has fired. Follow and
-   Center used to live here too -- they are map buttons now, beside the rotation dial. */
-.modal.sim-modal > button[aria-pressed="true"] {
+.modal.sim-modal > #sim-status:empty { display: none; }
+.modal.sim-modal > #sim-discover { min-height: 40px; }
+/* The one action: the app's primary blue. Pressed (connected) it turns green -- seen only if the
+   window is open while connected (the plane button disconnects then). */
+.modal.sim-modal > #sim-connect-cb {
+  min-height: 44px;
+  margin-top: 2px;
+  text-align: center;
+  font: 700 15px/1 system-ui, sans-serif;
+  color: #fff;
+  background: #1d6fe0;
+  border: 1px solid #1d6fe0;
+  border-radius: 8px;
+}
+.modal.sim-modal > #sim-connect-cb:hover { background: #195fc2; border-color: #195fc2; }
+.modal.sim-modal > #sim-connect-cb[aria-pressed="true"] {
   background: #2e7d32;
   border-color: #2e7d32;
+}
+/* Live ATC radio (atc-radio.js): the same small window as the simulator's. One row per
+   channel -- name, frequency, the state line under them, and Listen / Stop at the row's end
+   (44px, the app's blue; pressed it is the stop). A channel on the air gets a green state. */
+.modal.atc-modal {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 260px;
+  max-width: min(380px, 92vw);
+}
+.modal.atc-modal > .sim-modal-title { margin: 0 0 2px; }
+.modal.atc-modal > .atc-note {
+  margin: -4px 0 0;
+  color: var(--muted);
+  font: 400 13px/1.45 system-ui, sans-serif;
+}
+.atc-list { display: grid; gap: 8px; }
+.atc-row {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  grid-template-areas: "name freq btn" "state state btn";
+  align-items: center;
+  column-gap: 10px;
+  row-gap: 2px;
+  padding: 8px 10px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 8px;
+}
+body.theme-light .atc-row { border-color: #d5dae2; }
+.atc-row .atc-name { grid-area: name; font: 600 15px/1.3 system-ui, sans-serif; }
+.atc-row .atc-freq {
+  grid-area: freq;
+  font: 400 14px/1.3 ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-variant-numeric: tabular-nums;
+  color: var(--muted);
+}
+.atc-row .atc-state { grid-area: state; min-height: 1.2em; font: 400 12px/1.3 system-ui, sans-serif; color: var(--muted); }
+.atc-row.is-live .atc-state { color: #3ecf83; font-weight: 600; }
+body.theme-light .atc-row.is-live .atc-state { color: #1e7d45; }
+.atc-row .atc-play {
+  grid-area: btn;
+  min-width: 84px;
+  min-height: 44px;
+  padding: 0 12px;
+  font: 700 14px/1 system-ui, sans-serif;
   color: #fff;
-  font-weight: 700;
+  background: #1d6fe0;
+  border: 1px solid #1d6fe0;
+  border-radius: 8px;
+  cursor: pointer;
+}
+.atc-row .atc-play:hover { background: #195fc2; border-color: #195fc2; }
+.atc-row .atc-play[aria-pressed="true"],
+.atc-row .atc-play[aria-pressed="true"]:hover { background: #2e7d32; border-color: #2e7d32; }
+.atc-row .atc-play:focus-visible { outline: 3px solid #3d8bfd; outline-offset: 2px; }
+/* In the airfield's window: a small round play button beside the frequency it plays.
+   32px drawn, a 44px touch area around it. Blue ring idle, blue fill connecting (pulsing),
+   green fill live, red ring when the channel would not start. */
+.atc-inline { display: inline-flex; align-items: center; flex-shrink: 0; margin-inline-start: 6px; }
+.atc-inline .atc-play {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  color: #5aa2ff;
+  background: transparent;
+  border: 2px solid #1d6fe0;
+  border-radius: 50%;
+  cursor: pointer;
+  transition: background-color 150ms ease-out, border-color 150ms ease-out, color 150ms ease-out;
+}
+.atc-inline .atc-play::after { content: ''; position: absolute; inset: -6px; border-radius: 50%; }
+.atc-inline .atc-play svg { width: 16px; height: 16px; fill: currentColor; }
+.atc-inline .atc-play:hover { background: rgba(29, 111, 224, 0.18); }
+.atc-inline .atc-play:focus-visible { outline: 3px solid #3d8bfd; outline-offset: 2px; }
+.atc-inline .atc-play[aria-pressed="true"] { color: #fff; background: #1d6fe0; }
+.atc-inline.is-live .atc-play,
+.atc-inline.is-live .atc-play:hover { color: #fff; background: #2e7d32; border-color: #2e7d32; }
+.atc-inline.is-connecting .atc-play { animation: atc-pulse 1.1s ease-in-out infinite; }
+.atc-inline.is-offline .atc-play { color: #e5534b; border-color: #e5534b; }
+body.theme-light .atc-inline .atc-play { color: #1d6fe0; }
+body.theme-light .atc-inline .atc-play[aria-pressed="true"],
+body.theme-light .atc-inline.is-live .atc-play { color: #fff; }
+body.theme-light .atc-inline.is-offline .atc-play { color: #c62828; border-color: #c62828; }
+/* The other frequency rows keep the button's space, so every input stays in one column. */
+.comm-section.has-atc .row:not(:has(.atc-inline)) > .val:has(input) { padding-inline-end: 38px; }
+@keyframes atc-pulse { 50% { opacity: 0.55; } }
+@media (prefers-reduced-motion: reduce) { .atc-inline.is-connecting .atc-play { animation: none; } }
+/* On-map launcher: a round button in the bottom-right control column (with zoom and the
+   assistant launcher). Neutral at rest; green and gently pulsing while a channel plays, the
+   same "live" language as the inline airfield buttons. */
+/* Reserve the slot whether or not the button shows, so the gist turning the feature on (after
+   first paint) fills it without shifting the column -- the strict CLS budget needs this. */
+.atc-fab-control { min-width: 44px; min-height: 44px; margin-bottom: 8px !important; }
+.atc-fab {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px; height: 44px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  background: rgba(20, 18, 18, 0.92);
+  color: #fff;
+  cursor: pointer;
+  box-shadow: 0 3px 12px rgba(0, 0, 0, 0.5);
+  transition: background-color 150ms ease-out, border-color 150ms ease-out;
+}
+.atc-fab:hover { background: rgba(40, 36, 36, 0.96); }
+.atc-fab:focus-visible { outline: 3px solid #3d8bfd; outline-offset: 2px; }
+.atc-fab svg { display: block; width: 24px; height: 24px; }
+.atc-fab.active { background: #2e7d32; border-color: #2e7d32; animation: atc-fab-live 1.8s ease-in-out infinite; }
+.atc-fab.active:hover { background: #276b2b; }
+@keyframes atc-fab-live { 50% { box-shadow: 0 3px 12px rgba(0, 0, 0, 0.5), 0 0 0 5px rgba(46, 125, 50, 0.28); } }
+@media (prefers-reduced-motion: reduce) { .atc-fab.active { animation: none; } }
+/* No light-theme override: the map's control column (zoom, lock, measure, the assistant
+   launcher) stays dark in both themes, and this button is one of them. */
+.atc-fab.atc-fab-floating {
+  position: fixed;
+  inset-block-end: 160px;
+  inset-inline-end: 16px;
+  z-index: 1200;
 }
 /* Flight Plan variant: transparent backdrop that doesn't capture events,
    so the map underneath stays draggable / pannable while the plan is open. */
@@ -6036,6 +6215,8 @@ body.theme-light .search-ex code { color: #1d6fe0; }
     right: 12px;
   }
   :where(html.menubar) #search-overlay.docked.dragging { cursor: grabbing; }
+  /* Pinned by the gist (featureSearchDrag off): nothing to grab. */
+  :where(html.menubar) #search-overlay.docked.search-pinned { cursor: auto; }
   /* Dismissable here too: ✕ (or Ctrl-F while focused) puts it away, and the
      choice is remembered. Ctrl-F / the toolbar button brings it back. */
 
@@ -8822,6 +9003,9 @@ body.disclaimer-open { overflow: hidden; }
   box-shadow: none;
 }
 #search-overlay.deck-hosted-search #search-close { display: none; }
+/* featureSearchClose off (the default): the docked desktop panel has no X. A summoned search
+   keeps its X -- it is the only way out of one. */
+html.search-no-close #search-overlay.docked #search-close { display: none; }
 /* The box and its clear ✕ are one object: the field is padded on its inline end and the button
    sits in that padding, so it is inside the box on either layout and on either side of an RTL
    flip. Only there when the box has something in it. */
@@ -9233,7 +9417,25 @@ body.deck-on .modal-back.flight-plan > .modal.wide .fp-scroll {
 .public-pilot-mark .follow-me-plane path { fill: #7a4fd6; }
 .public-pilot-mark.public-pilot-stale { opacity: 0.45; }
 /* Locked (not sharing publicly): dimmed, still there, and its tooltip says why. */
-#public-pilots-frame label.is-dim { opacity: 0.5; }
+/* NavAid pilots: Off / See others / Share & see, one segmented control. The chosen one is filled
+   in the toolbar's selected blue (#1d6fe0, as a pressed button);
+   one that cannot be chosen here is dimmed (never hidden) and says why on a tap. */
+#public-pilots-mode { display: flex; border: 1px solid #4a5560; border-radius: 8px; overflow: hidden; margin: 2px 0; }
+/* The id outranks the toolbar's own button rules (body.theme-light #toolbar button and kin). */
+#toolbar #public-pilots-mode > button {
+  flex: 1 1 0; min-height: 32px; margin: 0; padding: 4px 6px; border: 0; border-radius: 0;
+  background: transparent; color: inherit; font: inherit; font-size: 12.5px; cursor: pointer; white-space: nowrap;
+  display: inline-flex; align-items: center; justify-content: center; text-align: center;
+}
+#toolbar #public-pilots-mode > button + button { border-inline-start: 1px solid #4a5560; }
+#toolbar #public-pilots-mode > button[aria-pressed="true"] { background: #1d6fe0; color: #fff; font-weight: 600; }
+#toolbar #public-pilots-mode > button.is-dim { opacity: 0.45; cursor: not-allowed; }
+#toolbar #public-pilots-mode > button:focus-visible { outline: 2px solid #4c9bff; outline-offset: -2px; }
+body.theme-light #public-pilots-mode,
+body.theme-light #toolbar #public-pilots-mode > button + button { border-color: #b8c0cc; }
+body.deck-on #toolbar #public-pilots-mode > button { min-height: 44px; font-size: 14px; }
+#public-pilots-frame .pp-mode-hint { margin: 4px 2px 0; font-size: 12px; line-height: 1.35; opacity: .8; }
+body.deck-on #public-pilots-frame .pp-mode-hint { font-size: 13px; }
 
 /* A public pilot's label: the identifier, and under it speed, altitude and heading. */
 .public-pilot-label {
@@ -9967,3 +10169,70 @@ body.theme-light .compass-status { color: #a15c00; }
 
 /* The dial's long press is the compass: no text selection, callout or magnifier from the phone. */
 #rotate-dial { -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; touch-action: none; }
+
+/* The bottom-right corner spans the map's width, so its left edge stays put. Shrink-wrapped,
+   it widened when a credit line arrived after the first paint (the world relief's) and moved
+   that edge: a layout shift on every desktop boot. Its controls float right as before, and a
+   Leaflet corner takes no pointer events, so the map under it is untouched. */
+.leaflet-bottom.leaflet-right { left: 0; }
+
+
+/* The map's controls show once the first loading phase has run. Before that they could paint
+   where they do not stay: on a phone the deck (deck.js, body.deck-on) moves the edit column
+   under its strip, and a paint between ui.js and deck.js showed it jump (PageSpeed: layout
+   shift). They appear in place instead; an element appearing is not a shift. */
+html:not(.nav-booted) .leaflet-control-container { visibility: hidden; }
+
+/* The live readout's own frame under the desktop menu bar (ui.js readoutFrame), centred like the
+   GPS chip, which steps down below it while it shows (gps-status.js). Same surface as the menu bar in both
+   themes. Shown only while the readout is live and has a value. */
+#gps-readout-frame { display: none; }
+:where(html.menubar) #gps-readout-frame:has(> .gps-readout.live-active:not(:empty)) {
+  display: block;
+  position: fixed;
+  top: 58px;                    /* set from the bar's real bottom by ui.js readoutFrame */
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 901;
+  max-width: calc(100vw - 132px);
+  padding: 5px 14px;
+  border: 1px solid #3a3434;
+  border-radius: 9px;
+  background: rgba(20, 18, 18, 0.92);
+  color: #f2f2f2;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.35);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+:where(html.menubar) body.theme-light #gps-readout-frame:has(> .gps-readout.live-active:not(:empty)) {
+  color: #1f252c;
+  background: rgba(250, 252, 255, 0.98);
+  border-color: #c6ccd6;
+  box-shadow: 0 2px 12px rgba(31, 37, 44, 0.16);
+}
+#gps-readout-frame > .gps-readout { margin: 0; opacity: 1; font-weight: 600; font-variant-numeric: tabular-nums; }
+
+/* "Show the tour" with no live position (tour.js): the in-flight buttons and the REC sign show
+   for the tour's length so its steps can point at them. They are normally hidden by their own
+   inline display:none (ui.js refresh*Control) and [hidden]. */
+body.tour-live-preview .leaflet-control.voice-ctrl,
+body.tour-live-preview .leaflet-control.orient-ctrl,
+body.tour-live-preview .leaflet-control.follow-ctrl { display: block !important; }
+body.tour-live-preview #gps-rec-indicator { display: flex !important; }
+
+/* A pressed menu-bar button keeps its blue under the mouse. The footer buttons' hover wash
+   (.footer-link:hover, more specific than the pressed rule) replaced it, so Location or Record
+   looked switched OFF exactly while the pointer was on it (reported: "mouse over button removes
+   the highlight"). Slightly darker blue is the hover feedback, as for the section buttons. */
+:where(html.menubar) #toolbar button.footer-link[aria-pressed="true"]:hover,
+:where(html.menubar) #toolbar button[aria-pressed="true"]:hover {
+  background: #195fc2;
+  border-color: #195fc2;
+}
+:where(html.menubar) body.theme-light #toolbar button.footer-link[aria-pressed="true"]:hover,
+:where(html.menubar) body.theme-light #toolbar button[aria-pressed="true"]:hover {
+  color: #fff;
+  background: #195fc2;
+  border-color: #195fc2;
+}

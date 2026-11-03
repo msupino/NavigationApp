@@ -3,7 +3,15 @@
 // keeps the summoned overlay — there is no room for a standing panel.
 const { test, expect } = require('./_setup');
 
+// The docked panel's X is the gist's (featureSearchClose, off by default): these tests are about
+// what it does when it is there.
+const withClose = (page) => page.evaluate(() => { setTune('featureSearchClose', true); refreshSearchClose(); });
+
 const box = '#search-overlay';
+// The card is pinned unless the gist's featureSearchDrag is true; the drag specs turn it on.
+const allowDrag = (page) => page.addInitScript(() => {
+  window.__navaidTune = Object.assign(window.__navaidTune || {}, { featureSearchDrag: true });
+});
 const geom = page => page.evaluate(() => {
   const b = document.getElementById('search-overlay');
   const r = b.getBoundingClientRect();
@@ -95,6 +103,7 @@ test('Escape clears desktop search but only the close button dismisses it', asyn
   await page.setViewportSize({ width: 1280, height: 800 });
   await page.goto('?lang=en&nogist');
   await page.waitForFunction(() => typeof searchDocked === 'function');
+  await withClose(page);
   await page.click('#wp-search');
   await page.fill('#wp-search', 'LLHZ');
   await page.keyboard.press('Escape');
@@ -128,11 +137,13 @@ test('a dismissal is remembered across reloads, and Ctrl-F brings it back', asyn
   await page.setViewportSize({ width: 1280, height: 800 });
   await page.goto('?lang=en&nogist');
   await page.waitForFunction(() => typeof searchDocked === 'function');
+  await withClose(page);
   await page.click('#search-close');
   expect((await geom(page)).hidden).toBe(true);
   expect(await page.evaluate(() => localStorage.getItem('navaid.searchShown'))).toBe('0');
   await page.reload();
   await page.waitForFunction(() => typeof searchDocked === 'function');
+  await withClose(page);                          // the gist lands after boot, as here
   expect((await geom(page)).hidden).toBe(true);   // stays down until asked for
   await page.keyboard.press('Control+f');
   const g = await geom(page);
@@ -146,6 +157,7 @@ test('the ✕ dismisses the docked panel and the toolbar button brings it back',
   await page.setViewportSize({ width: 1280, height: 800 });
   await page.goto('?lang=en&nogist');
   await page.waitForFunction(() => typeof searchDocked === 'function');
+  await withClose(page);
   await expect(page.locator('#search-close')).toBeVisible();
   await page.click('#search-close');
   expect((await geom(page)).hidden).toBe(true);
@@ -157,6 +169,7 @@ test('the ✕ dismisses the docked panel and the toolbar button brings it back',
 });
 
 test('dragging the panel persists its spot across reload', async ({ page }) => {
+  await allowDrag(page);
   await page.setViewportSize({ width: 1280, height: 800 });
   await page.goto('?lang=en&nogist');
   await page.waitForFunction(() => typeof searchDocked === 'function');
@@ -192,6 +205,7 @@ test('typing in the input does not drag the panel', async ({ page }) => {
 });
 
 test('a position dragged in Hebrew does not move the English one', async ({ page }) => {
+  await allowDrag(page);
   // Positions are per-language: the RTL layout mirrors LTR, so one spot cannot
   // serve both. Every draggable stores under navLangPosKey(base).
   await page.setViewportSize({ width: 1280, height: 800 });
@@ -266,3 +280,59 @@ test('the legend stays draggable when pushed clear past the docked search', asyn
   const moved = await drag(60, 480);         // and still draggable from there
   expect(moved).toBeGreaterThan(parked + 100);
 });
+
+// featureSearchClose off (the default): the docked panel has no X, and a dismissal stored while
+// it had one no longer keeps it down -- there would be no way to put it away again.
+test('by default the docked panel has no X, and an old dismissal does not hide it', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await page.addInitScript(() => { try { localStorage.setItem('navaid.searchShown', '0'); } catch (e) {} });
+  await page.goto('?lang=en&nogist');
+  await page.waitForFunction(() => typeof searchDocked === 'function');
+  const g = await geom(page);
+  expect(g.docked).toBe(true);
+  expect(g.hidden).toBe(false);
+  await expect(page.locator('#search-close')).toBeHidden();
+});
+
+// A summoned search (not docked: an iPad on the desktop menubar) keeps its X whatever the gist
+// says -- it is the only way out of one.
+test.describe('touch tablet', () => {
+  test.use({ viewport: { width: 1024, height: 1366 }, hasTouch: true, isMobile: true });
+  test('a summoned search keeps its X', async ({ page }) => {
+    await page.goto('?lang=en&nogist');
+    await page.waitForFunction(() => typeof searchDocked === 'function' && typeof setTune === 'function');
+    await page.evaluate(() => {
+      setTune('featureTabletDesktop', true);
+      NavAid.refreshDesktopMenu();
+      NavAid.refreshMobileDeck();
+      showSearchOverlay();
+    });
+    expect(await page.evaluate(() => searchDocked())).toBe(false);
+    await expect(page.locator('#search-close')).toBeVisible();
+  });
+});
+
+// Asked: "make the search also non movable, with gist, like the top menu on desktop" --
+// "featureSearchDrag default or empty false". Pinned: a drag does not move it, a position saved
+// while it could move is not applied, and there is no grab cursor.
+for (const value of [undefined, false, '']) {
+  test(`featureSearchDrag ${JSON.stringify(value)} pins the docked card under the menu`, async ({ page }) => {
+    await page.addInitScript((v) => {
+      try { localStorage.setItem('navaid.searchPos.en', JSON.stringify({ x: 600, y: 400 })); } catch (e) { /* */ }
+      if (v !== undefined) window.__navaidTune = Object.assign(window.__navaidTune || {}, { featureSearchDrag: v });
+    }, value);
+    await page.setViewportSize({ width: 1280, height: 800 });
+    await page.goto('?lang=en&nogist');
+    await page.waitForFunction(() => typeof searchDocked === 'function' && searchDocked());
+    const before = await geom(page);
+    expect(before.left).toBeLessThan(40);                      // docked left, not at the saved 600,400
+    const b = await page.locator(box).boundingBox();
+    await page.mouse.move(b.x + 6, b.y + b.height - 6);
+    await page.mouse.down();
+    await page.mouse.move(b.x + 300, b.y + 250, { steps: 8 });
+    await page.mouse.up();
+    const after = await geom(page);
+    expect([after.left, after.top]).toEqual([before.left, before.top]);
+    expect(await page.locator(box).evaluate(el => getComputedStyle(el).cursor)).not.toBe('grab');
+  });
+}

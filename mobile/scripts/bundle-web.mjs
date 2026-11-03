@@ -212,6 +212,10 @@ export function copyBundle(srcDir = docsDir) {
       ? new Date(Number(process.env.SOURCE_DATE_EPOCH) * 1000) : new Date()).toISOString(),
     files: bundled.length,
     bytes: bundled.reduce((sum, f) => sum + f.size, 0),
+    // What this bundle holds, by content: docs/app/ota.js weighs a delta update against it, so the
+    // update row says what will actually be downloaded rather than the full zip.
+    hashes: Object.fromEntries(bundled.map(({ rel }) => [rel.split(path.sep).join('/'),
+      createHash('sha256').update(fs.readFileSync(path.join(wwwDir, rel))).digest('hex')])),
     leftOnTheServer: LEAVE_ON_THE_SERVER,
     source: REMOTE_URL,
   };

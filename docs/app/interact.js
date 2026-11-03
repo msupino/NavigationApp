@@ -2053,6 +2053,8 @@ function appendAirfieldComms(body, af) {
   // styles select, and a second element wearing it makes every one of those selectors
   // ambiguous.
   sec.className = 'insp-frame comm-section';
+  // atc-radio.js loads in phase 2: a window already open by then gets its buttons by this.
+  if (af && af.name) sec.dataset.icao = af.name;
   const head = document.createElement('div');
   head.className = 'insp-frame-head';
   const lbl = document.createElement('span');
@@ -2067,6 +2069,12 @@ function appendAirfieldComms(body, af) {
     ? AIRFIELD_CALL_SIGN_IDS[af.name] : null;
   const phoneRow = callSignId ? airfieldPhoneRow(callSignId) : null;
   if (phoneRow) sec.appendChild(phoneRow);
+  // Live ATC audio for the fields that have it (atc-radio.js): a small play button in each
+  // frequency row that is on the air.
+  if (window.atcRadio && typeof window.atcRadio.airfieldAttach === 'function') {
+    window.atcRadio.airfieldAttach(af && af.name, sec);
+  }
+  // The LiveATC link (a field LiveATC carries, LLBG by default): the frame's last row.
   for (const row of liveAtcRows(af)) sec.appendChild(row);
   // A field with no published frequency gets no empty frame.
   if (sec.querySelectorAll('.row').length) body.appendChild(sec);
@@ -3957,7 +3965,6 @@ function showInspector() {
     return;
   }
   state.selected = normalized;
-  const wasHidden = insp.classList.contains('hidden');
   insp.classList.remove('hidden');
 
   if (state.selected.type === 'leg') {

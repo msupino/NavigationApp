@@ -215,7 +215,7 @@ test.describe('Flight plan', () => {
     await page.evaluate(() => {
       const orig = window.tune;
       window.tune = (k) => (k === 'featureShowReturn' ? true : orig(k));
-      const row = document.getElementById('ret-cb').closest('label');
+      const row = document.getElementById('ret-btn');
       if (row) row.hidden = false;
       window.showReturn = false;
     });
@@ -227,13 +227,13 @@ test.describe('Flight plan', () => {
     await expect(modal.locator('.flight-plan-sub')).toHaveCount(0);
 
     // Toggle return on
-    await showToolbarControl(page, '#ret-cb');
-    await page.locator('#ret-cb').check();
+    await showToolbarControl(page, '#ret-btn');
+    await page.locator('#ret-btn').click();
     await expect(modal).toBeVisible();
     await expect(modal.locator('.flight-plan-sub')).toHaveCount(1);
 
     // Toggle return off
-    await page.locator('#ret-cb').uncheck();
+    await page.locator('#ret-btn').click();
     await expect(modal).toBeVisible();
     await expect(modal.locator('.flight-plan-sub')).toHaveCount(0);
   });

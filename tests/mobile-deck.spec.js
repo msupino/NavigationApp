@@ -93,6 +93,7 @@ test('the numbers on the strip are the live readout, not a second copy of it', a
 
 test('Record and Here press the buttons that already exist', async ({ page }) => {
   await boot(page);
+  await route(page);          // Plan is dimmed with no route; this is about the forwarding
   const got = await page.evaluate(() => {
     const hits = [];
     for (const id of ['gps-record', 'gps-live', 'plan']) {

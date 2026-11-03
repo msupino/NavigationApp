@@ -28,7 +28,18 @@ test('a dimmed button says why instead of doing nothing; a locked route locks al
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('?lang=en&nogist');
   await page.waitForFunction(() => typeof setMode === 'function' && !!document.getElementById('edit-col-undo'));
-  await page.evaluate(() => { state.waypoints = []; state.notes = []; syncLegs(); draw(); refreshEditColumn(); });
+  await page.evaluate(() => {
+    state.waypoints = []; state.notes = []; syncLegs(); draw();
+    // Clear can now stay active for an extra layer even when the route is empty.
+    // This assertion is specifically about the truly empty map affordance.
+    for (const checkbox of document.querySelectorAll('.tb-section[data-sec="weather"] input[type="checkbox"]')) {
+      if (checkbox.checked) {
+        checkbox.checked = false;
+        checkbox.dispatchEvent(new Event('change', { bubbles: true }));
+      }
+    }
+    refreshEditColumn();
+  });
   // A real tap reaches an aria-disabled button; Playwright's actionability check would refuse it.
   const tap = (id) => page.locator(id).click({ force: true });
   await tap('#edit-col-undo');
