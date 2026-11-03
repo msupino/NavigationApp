@@ -1249,7 +1249,7 @@ NavAid.tuningDefaults = {
   // its streams from third-party products. Comma-separated ICAO:mount pairs; a field without
   // a mount links to its LiveATC page, which lists every feed it has.
   featureLiveAtc: { value: true, type: 'bool', label: 'Feature: Live ATC link in the airfield panel' },
-  liveAtcFeeds: { value: 'LLHZ:llhz2_twr,LLBG', type: 'text',
+  liveAtcFeeds: { value: 'LLBG', type: 'text',
     label: 'Live ATC feeds: ICAO:mount pairs, comma-separated (a bare ICAO links to its LiveATC page)' },
   trafficApiUrl: { value: 'https://api.adsb.lol/v2/lat/{lat}/lon/{lon}/dist/{dist}', type: 'text',
     label: 'Where live traffic is fetched from (empty turns it off)' },

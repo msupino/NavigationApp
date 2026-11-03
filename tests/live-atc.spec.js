@@ -18,11 +18,11 @@ async function openField(page, icao, lang = 'en', tun = {}) {
   }, [icao, tun]);
 }
 
-test('Herzliya links its tower feed to LiveATC, after the phone, out of the app', async ({ page }) => {
-  await openField(page, 'LLHZ');
+test('Ben Gurion links a tower feed to LiveATC, after the phone, out of the app', async ({ page }) => {
+  await openField(page, 'LLBG', 'en', { liveAtcFeeds: 'LLBG:llbg_twr' });
   const link = page.locator('#inspector .comm-section .live-atc-link');
   await expect(link).toHaveCount(1);
-  await expect(link).toHaveAttribute('href', 'https://www.liveatc.net/hlisten.php?mount=llhz2_twr&icao=llhz');
+  await expect(link).toHaveAttribute('href', 'https://www.liveatc.net/hlisten.php?mount=llbg_twr&icao=llbg');
   await expect(link).toHaveAttribute('target', '_blank');
   await expect(link).toHaveAttribute('rel', /noopener/);
   await expect(link).toContainText('Tower');
@@ -58,20 +58,20 @@ test('the gist owns the list and the switch', async ({ page }) => {
   await openField(page, 'LLES', 'en', { liveAtcFeeds: 'LLES:lles_twr, LLES:lles_gnd' });
   await expect(page.locator('#inspector .live-atc-link')).toHaveCount(2);
   await expect(page.locator('#inspector .live-atc-link').nth(1)).toContainText('Ground');
-  await openField(page, 'LLHZ', 'en', { featureLiveAtc: false });
+  await openField(page, 'LLBG', 'en', { featureLiveAtc: false });
   await expect(page.locator('#inspector')).not.toHaveClass(/hidden/);
   await expect(page.locator('#inspector .live-atc-row')).toHaveCount(0);
 });
 
 test('a mount that is not a plain name is not put into the link', async ({ page }) => {
-  await openField(page, 'LLHZ', 'en', { liveAtcFeeds: 'LLHZ:"><img src=x>' });
+  await openField(page, 'LLBG', 'en', { liveAtcFeeds: 'LLBG:"><img src=x>' });
   const link = page.locator('#inspector .live-atc-link');
-  await expect(link).toHaveAttribute('href', 'https://www.liveatc.net/search/?icao=llhz');
+  await expect(link).toHaveAttribute('href', 'https://www.liveatc.net/search/?icao=llbg');
   await expect(page.locator('#inspector img[src="x"]')).toHaveCount(0);
 });
 
 test('Hebrew labels it in Hebrew and keeps the host name left to right', async ({ page }) => {
-  await openField(page, 'LLHZ', 'he');
+  await openField(page, 'LLBG', 'he', { liveAtcFeeds: 'LLBG:llbg_twr' });
   const row = page.locator('#inspector .live-atc-row');
   await expect(row.locator('label')).toHaveText('האזנה חיה');
   await expect(row.locator('.live-atc-role')).toHaveText('מגדל');

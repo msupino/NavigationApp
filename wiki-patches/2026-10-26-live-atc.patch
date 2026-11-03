@@ -1,6 +1,6 @@
-From 6634cec87e79822aa93dc4c0da5b712cadceba78 Mon Sep 17 00:00:00 2001
+From 0831e1670ff961f2834bdcdd0b2828a28c95aaff Mon Sep 17 00:00:00 2001
 From: Marco <marco@supino.org>
-Date: Mon, 26 Oct 2026 19:15:44 +0000
+Date: Tue, 3 Nov 2026 17:46:26 +0000
 Subject: [PATCH] Airfield panel: Live ATC link to LiveATC's player
 
 ---
@@ -9,35 +9,35 @@ Subject: [PATCH] Airfield panel: Live ATC link to LiveATC's player
  2 files changed, 13 insertions(+)
 
 diff --git a/Inspector-he.md b/Inspector-he.md
-index 0858543..ae1c472 100644
+index 3802b4c..8156127 100644
 --- a/Inspector-he.md
 +++ b/Inspector-he.md
-@@ -152,6 +152,12 @@ DA  = PA + 120 × (T − ISA)
- לשדה סגור או לקשר שאבד. היא נקראת *טלפון* ולא *מגדל*, כי ברוב השדות אין מגדל. שדה ללא מספר
- אינו מקבל שורה.
+@@ -160,6 +160,12 @@ DA  = PA + 120 × (T − ISA)
+ שעל המפה — יחד עם **פלוטו מערב** <span dir="ltr">118.40</span>, הבקרה הארצית, שאינה שייכת לשום שדה
+ ולכן מופיעה רק שם. מצב הערוץ זהה בשני המקומות.
  
 +לשדה שיש לו ערוץ ב-[LiveATC](https://www.liveatc.net) נוספת בסוף שורת **האזנה חיה**: קישור שפותח את
 +הנגן של LiveATC עצמו בדפדפן (בדפדפן המערכת באפליקציות), עם שם הערוץ — *מגדל*, *קרקע*, *גישה*, או
 +*כל הערוצים* לדף השדה ב-LiveATC. NavAid אינו מנגן את השמע בעצמו: תנאי LiveATC אוסרים את השידורים
-+שלו במוצרים אחרים. רשימת הערוצים היא <span dir="ltr"><code>liveAtcFeeds</code></span> ב-gist (זוגות ICAO:mount, למשל
-+<span dir="ltr"><code>LLHZ:llhz2_twr,LLBG</code></span>), ו-<span dir="ltr"><code>featureLiveAtc</code></span> מכבה את השורה.
++שלו במוצרים אחרים. רשימת הערוצים היא <span dir="ltr"><code>liveAtcFeeds</code></span> ב-gist (זוגות ICAO:mount או ICAO בלבד, למשל
++<span dir="ltr"><code>LLBG</code></span>), ו-<span dir="ltr"><code>featureLiveAtc</code></span> מכבה את השורה.
 +
  ## מרחב אווירי
  
  הקשה על אזור [מרחב מבוקר או מוגבל](Extra-Layers-he) פותחת חלונית לקריאה בלבד:
 diff --git a/Inspector.md b/Inspector.md
-index 77e2629..a9cd2a5 100644
+index 982f334..ab6b007 100644
 --- a/Inspector.md
 +++ b/Inspector.md
-@@ -162,6 +162,13 @@ After the frequencies, a **Phone** row gives the field's published number as a l
- it (☎), for a clearance by phone, a closed field or a dead radio. It is labelled *Phone*, not
- *Tower*, because most fields have no tower. A field with no number on file gets no row.
+@@ -171,6 +171,13 @@ audio playing. The same channels are listed together in the **ATC radio** window
+ headset button on the map — with **Pluto West** 118.40, the country-wide control, which belongs to
+ no airfield and is in that window only. A channel's state is the same in both places.
  
 +A field with a feed on [LiveATC](https://www.liveatc.net) gets a **Live ATC** row last: a link
 +that opens LiveATC's own player in the browser (the system browser in the apps), naming the
 +feed — *Tower*, *Ground*, *Approach*, or *All feeds* for the field's LiveATC page. NavAid never
 +plays the audio itself: LiveATC's terms keep its streams out of other products. The list of
-+feeds is the gist's `liveAtcFeeds` (ICAO:mount pairs, e.g. `LLHZ:llhz2_twr,LLBG`), and
++feeds is the gist's `liveAtcFeeds` (ICAO:mount pairs or a bare ICAO, e.g. `LLBG`), and
 +`featureLiveAtc` turns the row off.
 +
  ## Airspace

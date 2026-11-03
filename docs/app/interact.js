@@ -2100,7 +2100,7 @@ function airfieldPhoneRow(callSignId) {
   return row;
 }
 
-// The field's feeds on LiveATC, from the gist's `liveAtcFeeds` ("LLHZ:llhz2_twr,LLBG").
+// The field's feeds on LiveATC, from the gist's `liveAtcFeeds` ("LLBG" or "ICAO:mount,...").
 // A mount is one feed; a bare ICAO is the field's LiveATC page, which lists them all.
 function liveAtcFeedsFor(icao) {
   if (!icao || typeof tune !== 'function' || tune('featureLiveAtc') !== true) return [];
