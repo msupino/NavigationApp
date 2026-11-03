@@ -1264,8 +1264,8 @@ NavAid.tuningDefaults = {
   // {lat}/{lon}/{dist} are filled in; a URL without them gets them as query parameters.
   // Live ATC: a link to LiveATC's own player, never the audio in the app -- LiveATC's terms bar
   // its streams from third-party products. Comma-separated ICAO:mount pairs; a field without
-  // a mount links to its LiveATC page, which lists every feed it has.
-  featureLiveAtc: { value: true, type: 'bool', label: 'Feature: Live ATC link in the airfield panel' },
+  // a mount links to its LiveATC page, which lists every feed it has. Shown under the ATC radio
+  // switch (featureAtcRadio), with its gist group.
   liveAtcFeeds: { value: 'LLBG', type: 'text',
     label: 'Live ATC feeds: ICAO:mount pairs, comma-separated (a bare ICAO links to its LiveATC page)' },
   trafficApiUrl: { value: 'https://api.adsb.lol/v2/lat/{lat}/lon/{lon}/dist/{dist}', type: 'text',
@@ -1315,8 +1315,7 @@ NavAid.tuningGroups = [
   { name: 'Airspace', keys: ['defaultShowAirspace', 'airspaceProhibitedColor', 'airspaceRestrictedColor',
     'airspaceTmaColor', 'airspaceCtrColor', 'airspaceFillAlpha', 'airspaceLineWidthPx', 'airspaceLabelMinZoom',
     'airspaceLabelFontPx'] },
-  { name: 'Live ATC', keys: ['featureLiveAtc', 'liveAtcFeeds'] },
-  { name: 'ATC radio', keys: ['featureAtcRadio', 'atcRadioBase'] },
+  { name: 'ATC radio', keys: ['featureAtcRadio', 'atcRadioBase', 'liveAtcFeeds'] },
   { name: 'Live traffic', keys: ['featureLiveTraffic', 'defaultShowTraffic', 'trafficApiUrl', 'trafficWebApiUrl', 'trafficRadiusNm',
     'trafficRefreshSec', 'trafficFailsBeforeWarn', 'trafficIconPx', 'trafficArrowColor',
     'trafficLabelColor'] },
@@ -2262,10 +2261,6 @@ window.S = Object.assign({
   commFailChartNote: 'Fly the comm-failure chart shown on the map. The drawn line only leads to the entry point.',
   deckCommFail: 'Comm fail',
   airfieldPhone: 'Phone',
-  liveAtc: 'Live ATC',
-  liveAtcTower: 'Tower',
-  liveAtcGround: 'Ground',
-  liveAtcApproach: 'Approach',
   liveAtcAll: 'All feeds',
   liveAtcTitle: (what) => 'Listen to ' + what + ' on liveatc.net (opens outside NavAid)',
   callNumber: 'Call',
@@ -3896,7 +3891,6 @@ window.S = Object.assign({
 // nothing in the APK once (see the sim button in index.html).
 const NAV_ICONS = {
   edit: '<path d="M4 20h4L19 9l-4-4L4 16z"/><path d="m13.5 6.5 4 4"/>',
-  headphones: '<path d="M4 15v-3a8 8 0 0 1 16 0v3"/><rect x="3" y="14" width="4.5" height="6.5" rx="1.5"/><rect x="16.5" y="14" width="4.5" height="6.5" rx="1.5"/>',
   view: '<path d="M12 4 3 9l9 5 9-5z"/><path d="m3 14 9 5 9-5"/>',
   display: '<path d="M5 7h14M5 17h14"/><circle cx="9" cy="7" r="2.2"/><circle cx="15" cy="17" r="2.2"/>',
   plan: '<rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4V3h6v1M8.5 10h7M8.5 14h7M8.5 18h4"/>',

@@ -12,7 +12,7 @@ async function openField(page, icao, lang = 'en', tun = {}) {
     && typeof commChangeCallSigns === 'object' && commChangeCallSigns
     && Object.keys(commChangeCallSigns).length > 0);
   await page.evaluate(([code, t]) => {
-    Object.assign(NavAid.tuning, t);
+    Object.assign(NavAid.tuning, { featureAtcRadio: true }, t);   // ships off; the gist turns it on
     state.selected = { type: 'airfield', index: airfields.findIndex(a => a.name === code) };
     showInspector();
   }, [icao, tun]);
@@ -58,7 +58,7 @@ test('the gist owns the list and the switch', async ({ page }) => {
   await openField(page, 'LLES', 'en', { liveAtcFeeds: 'LLES:lles_twr, LLES:lles_gnd' });
   await expect(page.locator('#inspector .live-atc-link')).toHaveCount(2);
   await expect(page.locator('#inspector .live-atc-link').nth(1)).toContainText('Ground');
-  await openField(page, 'LLBG', 'en', { featureLiveAtc: false });
+  await openField(page, 'LLBG', 'en', { featureAtcRadio: false });
   await expect(page.locator('#inspector')).not.toHaveClass(/hidden/);
   await expect(page.locator('#inspector .live-atc-row')).toHaveCount(0);
 });
@@ -73,7 +73,7 @@ test('a mount that is not a plain name is not put into the link', async ({ page 
 test('Hebrew labels it in Hebrew and keeps the host name left to right', async ({ page }) => {
   await openField(page, 'LLBG', 'he', { liveAtcFeeds: 'LLBG:llbg_twr' });
   const row = page.locator('#inspector .live-atc-row');
-  await expect(row.locator('label')).toHaveText('האזנה חיה');
+  await expect(row.locator('label')).toHaveText('רדיו בקרה');
   await expect(row.locator('.live-atc-role')).toHaveText('מגדל');
   await expect(row.locator('.live-atc-host')).toHaveAttribute('dir', 'ltr');
 });
