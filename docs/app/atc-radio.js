@@ -5,13 +5,15 @@
 (function () {
   'use strict';
   const CHANNELS = [
-    { id: 'herzliya-twr', icao: 'LLHZ', type: 'atcTower', freq: '125.60' },
+    // callSign: the station's id in the frequency catalog (comm-change), so a waypoint's call-sign
+    // list can offer its live channel too -- the tower for an airfield's call sign.
+    { id: 'herzliya-twr', icao: 'LLHZ', type: 'atcTower', freq: '125.60', callSign: 'HERZLIYA' },
     { id: 'herzliya-clr', icao: 'LLHZ', type: 'atcClearance', freq: '118.55' },
-    { id: 'haifa-twr', icao: 'LLHA', type: 'atcTower', freq: '133.00' },
+    { id: 'haifa-twr', icao: 'LLHA', type: 'atcTower', freq: '133.00', callSign: 'HAIFA' },
     { id: 'haifa-atis', icao: 'LLHA', type: 'atis', freq: '135.40' },
     // Pluto is the country-wide control, not an airfield's: in the list only, never in an
     // airfield's window.
-    { id: 'pluto-west', icao: null, type: 'atcPluto', freq: '118.40' },
+    { id: 'pluto-west', icao: null, type: 'atcPluto', freq: '118.40', callSign: 'PLUTO_WEST' },
   ];
   const str = (k, fb) => (typeof S !== 'undefined' && S[k]) || fb;
   const offered = () => typeof tune !== 'function' || tune('featureAtcRadio') !== false;
@@ -126,7 +128,7 @@
     const wrap = document.createElement('span');
     wrap.className = 'atc-inline';
     wrap.dataset.atc = c.id;
-    wrap.dataset.label = c.icao + ' ' + str(c.type, c.type) + ' ' + c.freq;
+    wrap.dataset.label = (c.icao ? c.icao + ' ' : '') + str(c.type, c.type) + ' ' + c.freq;
     const btn = document.createElement('button');
     btn.type = 'button';
     btn.className = 'atc-play';
@@ -163,7 +165,13 @@
         const phone = sec.querySelector('.airfield-phone-row');
         sec.insertBefore(row, phone || null);
       }
-      (row.querySelector('.val') || row).appendChild(makeInline(c));
+      // Between the label and the frequency in either language. The value box reads left to
+      // right, so the button goes after the frequency in Hebrew (label on the right), before it
+      // in English (label on the left).
+      const host = row.querySelector('.val') || row;
+      const btn = makeInline(c);
+      if (document.documentElement.dir === 'rtl') host.appendChild(btn);
+      else { btn.classList.add('atc-inline-lead'); host.insertBefore(btn, host.firstChild); }
     }
     // The frequency inputs stay in one column: rows without a button keep its space.
     sec.classList.toggle('has-atc', mine.length > 0);
@@ -196,11 +204,30 @@
   }
 
   window.refreshAtcRadioFeature = refreshAtcRadioFeature;
-  window.atcRadio = { channels: CHANNELS, airfieldAttach, play, stop, open, close, streamUrl, get current() { return current; } };
+  // A waypoint's call-sign list (interact.js, the frequency change point): the live channel of a
+  // listed station, as the same small button -- Pluto West, Haifa, Herzliya. Null for any other.
+  function callSignButton(id) {
+    if (!offered() || !id) return null;
+    const c = CHANNELS.find(ch => ch.callSign === String(id).toUpperCase());
+    return c ? makeInline(c) : null;
+  }
+  function callSignAttach(item) {
+    if (!item || item.querySelector('[data-atc]')) return false;
+    const slot = item.querySelector('.commchange-option-play');
+    const btn = callSignButton(item.dataset.callSign);
+    if (!slot || !btn) return false;
+    slot.appendChild(btn);
+    item.classList.add('has-atc');
+    return true;
+  }
+
+  window.atcRadio = { channels: CHANNELS, airfieldAttach, callSignAttach, play, stop, open, close, streamUrl, get current() { return current; } };
   refreshOpener();
   refreshAtcRadioFeature();
   // An airfield window opened before this module loaded (phase 2) gets its buttons now.
   for (const sec of document.querySelectorAll('.comm-section[data-icao]')) {
     if (!sec.querySelector('[data-atc]')) airfieldAttach(sec.dataset.icao, sec);
   }
+  // ...and so does a waypoint's call-sign list.
+  for (const item of document.querySelectorAll('.commchange-option[data-call-sign]')) callSignAttach(item);
 })();
