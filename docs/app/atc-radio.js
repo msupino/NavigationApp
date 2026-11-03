@@ -21,7 +21,6 @@
   // slot is reserved before first paint; here we find it by id and wire its behaviour.
   const opener = document.getElementById('tool-atc-radio');
   if (!modal || !list || !opener) return;
-  const fabWrap = opener.closest('.atc-fab-control') || opener;   // hide the control, not just the button
 
   const audio = new Audio();
   audio.preload = 'none';
@@ -188,12 +187,11 @@
     if (e.key === 'Escape' && !modal.classList.contains('hidden')) { e.preventDefault(); close(); }
   });
 
-  // Only the gist removes the control; withdrawn, the audio stops with it. Hide the Leaflet
-  // wrapper, not just the button, so no empty control slot is left on the map.
+  // The gist withdraws it: hide the button, but leave the wrapper in place -- its slot stays
+  // reserved (CSS min-size), so turning it on or off never shifts the control column.
   function refreshAtcRadioFeature() {
     const on = offered();
-    fabWrap.hidden = !on;
-    opener.hidden = !on;            // the button too, so its own hidden reflects the feature
+    opener.hidden = !on;
     if (!on) { stop(); modal.classList.add('hidden'); }
   }
 
