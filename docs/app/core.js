@@ -1236,6 +1236,10 @@ NavAid.tuningDefaults = {
   // (see traffic.js: a browser cannot read these feeds), so this is the switch that turns
   // it on for everyone flying with the app, without an app release.
   featureLiveTraffic: { value: false, type: 'bool', label: 'Feature: live ADS-B traffic' },
+  // Live ATC audio
+  featureAtcRadio: { value: false, type: 'bool', label: 'Feature: live ATC radio (Herzliya, Haifa)' },
+  atcRadioBase: { value: 'https://navaid-atc.marco-956.workers.dev/', type: 'text',
+    label: 'Where the live ATC channels are played from (<base><channel id>)' },
   featureDensityAltitude: { value: true, type: 'bool', label: 'Feature: density altitude in the airfield panel' },
   defaultShowAirspace: { value: false, type: 'bool', label: 'Default: show airspace areas' },
   airspaceProhibitedColor: { value: '#c0392b', type: 'color', label: 'Prohibited area outline color' },
@@ -1305,6 +1309,7 @@ NavAid.tuningGroups = [
   { name: 'Airspace', keys: ['defaultShowAirspace', 'airspaceProhibitedColor', 'airspaceRestrictedColor',
     'airspaceTmaColor', 'airspaceCtrColor', 'airspaceFillAlpha', 'airspaceLineWidthPx', 'airspaceLabelMinZoom',
     'airspaceLabelFontPx'] },
+  { name: 'ATC radio', keys: ['featureAtcRadio', 'atcRadioBase'] },
   { name: 'Live traffic', keys: ['featureLiveTraffic', 'defaultShowTraffic', 'trafficApiUrl', 'trafficWebApiUrl', 'trafficRadiusNm',
     'trafficRefreshSec', 'trafficFailsBeforeWarn', 'trafficIconPx', 'trafficArrowColor',
     'trafficLabelColor'] },
@@ -3540,6 +3545,18 @@ window.S = Object.assign({
   tbPrint: '🖨 Print',
   tbPrintTitle: 'Print or save the framed map + route as a PNG',
   tbMagnifier: '🔍 Magnifying glass (M)',
+  atcRadio: 'ATC radio',
+  atcRadioTitle: 'Listen live: Herzliya and Haifa towers, and Pluto West',
+  atcRadioNote: 'Live ATC receivers. One channel at a time.',
+  atcTower: 'Tower',
+  atcClearance: 'Clearance',
+  atcPluto: 'Pluto West',
+  atcPlay: 'Listen',
+  atcStop: 'Stop',
+  atcConnecting: 'Connecting\u2026',
+  atcLive: 'Live',
+  atcBuffering: 'Buffering\u2026',
+  atcOffline: 'Not on the air right now',
   tbMagnifierTitle: 'Magnifying glass (M) — zoomed view at cursor; +/− adjust loupe zoom while open',
   // Footer-button labels carry NO icon prefix: the button's own
   // .footer-link-icon span renders the glyph, so an emoji in the label
@@ -3897,6 +3914,7 @@ const NAV_ICONS = {
   moon: '<path d="M19.5 14.5A8 8 0 1 1 9.5 4.5a6.5 6.5 0 0 0 10 10z"/>',
   sun: '<circle cx="12" cy="12" r="4"/><path d="M12 2.5v2M12 19.5v2M2.5 12h2M19.5 12h2M5.3 5.3l1.4 1.4M17.3 17.3l1.4 1.4M5.3 18.7l1.4-1.4M17.3 6.7l1.4-1.4"/>',
   templates: '<rect x="4" y="4" width="7" height="7" rx="1.5"/><rect x="13" y="4" width="7" height="7" rx="1.5"/><rect x="4" y="13" width="7" height="7" rx="1.5"/><rect x="13" y="13" width="7" height="7" rx="1.5"/>',
+  headset: '<path d="M4 14v-2a8 8 0 0 1 16 0v2"/><rect x="3.5" y="13.5" width="4" height="6.5" rx="1.5"/><rect x="16.5" y="13.5" width="4" height="6.5" rx="1.5"/>',
   antenna: '<path d="M12 11v10M8.6 7.6a4.8 4.8 0 0 1 6.8 0M6 5a8.5 8.5 0 0 1 12 0"/><circle cx="12" cy="10" r="1.3" fill="currentColor"/>',
   altPairs: '<path d="M7 20V5M4 8l3-3 3 3M17 4v15M14 16l3 3 3-3"/>',
   form: '<path d="M4 20 20 4v16z"/><path d="M9 20v-5h5"/>',

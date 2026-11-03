@@ -917,7 +917,7 @@ try { headingUpOn = lsGet(HEADING_UP_KEY) === '1'; } catch (e) { /* storage unav
 // cockpit: the follow-me id pushes up the map dial. It belongs with the in-flight group it
 // was built for, next to the follow lock.
 const MAP_CONTROL_ORDER = ['voice-ctrl', 'orient-ctrl', 'follow-ctrl', 'follow-me-ctrl',
-  'editlock-ctrl', 'measure-ctrl', 'assistant-fab-control', 'rotate-ctrl'];
+  'editlock-ctrl', 'measure-ctrl', 'atc-fab-control', 'assistant-fab-control', 'rotate-ctrl'];
 function orderMapControls(corner) {
   if (!corner) return;
   const rank = (el) => {
@@ -958,6 +958,10 @@ const MAP_ICONS = {
     + '<path d="M8.2 10.5V7.8a3.8 3.8 0 0 1 7.6 0v2.7"/>',
   lockOpen: '<rect x="5" y="10.5" width="14" height="10" rx="2.2" fill="currentColor" fill-opacity=".18"/>'
     + '<path d="M8.2 10.5V7.8a3.8 3.8 0 0 1 7.3-1.4"/>',
+  // Headphones: the live ATC launcher, same outlined family.
+  headset: '<path d="M4 14v-2a8 8 0 0 1 16 0v2"/>'
+    + '<rect x="3.5" y="13.5" width="4" height="6.5" rx="1.5" fill="currentColor" fill-opacity=".18"/>'
+    + '<rect x="16.5" y="13.5" width="4" height="6.5" rx="1.5" fill="currentColor" fill-opacity=".18"/>',
   // The phone's edit column (top left), same family.
   addWp: '<path d="M12 21.5s-6.5-5.9-6.5-11a6.5 6.5 0 0 1 13 0c0 5.1-6.5 11-6.5 11z"'
     + ' fill="currentColor" fill-opacity=".18"/><path d="M12 7.3v6.4M8.8 10.5h6.4"/>',
@@ -1327,6 +1331,34 @@ measureCtrl.onAdd = function () {
   return wrap;
 };
 measureCtrl.addTo(map);
+
+// Live ATC launcher. The button's shell is built here, at boot with the other map controls, so
+// its slot in the bottom-right column is reserved before first paint -- built later (in the
+// phase-2 radio module) it grew the column after paint and shifted every control (a layout
+// shift lighthouse flags). atc-radio.js (phase 2) finds it by id and wires play/open and the
+// feature gate; before that loads, a tap is a harmless no-op. Ranked by MAP_CONTROL_ORDER.
+const atcRadioCtrl = L.control({ position: 'bottomright' });
+atcRadioCtrl.onAdd = function () {
+  const wrap = L.DomUtil.create('div', 'leaflet-control atc-fab-control');
+  const b = document.createElement('button');
+  b.type = 'button';
+  b.id = 'tool-atc-radio';
+  b.className = 'atc-fab';
+  b.setAttribute('aria-pressed', 'false');
+  setMapIcon(b, 'headset');
+  b.title = (typeof S !== 'undefined' && S.atcRadioTitle) || 'ATC radio';
+  b.setAttribute('aria-label', b.title);
+  b.addEventListener('click', () => { if (window.atcRadio && typeof window.atcRadio.open === 'function') window.atcRadio.open(); });
+  wrap.appendChild(b);
+  // Ships off (gist turns it on). Hide the slot from first paint when off, so the phase-2 module
+  // confirming "off" is not a layout shift -- and so enabling it later is the only change.
+  if (typeof tune === 'function' && tune('featureAtcRadio') === false) { wrap.hidden = true; b.hidden = true; }
+  L.DomEvent.disableClickPropagation(wrap);
+  L.DomEvent.disableScrollPropagation(wrap);
+  return wrap;
+};
+atcRadioCtrl.addTo(map);
+
 function measureLiveFrom() {
   if (typeof gpsOwn !== 'undefined' && gpsOwn && (gpsRecording || gpsLiveOn)) {
     return typeof gpsShownOwn === 'function' ? gpsShownOwn() : gpsOwn;
@@ -13543,6 +13575,7 @@ if (typeof loadRemoteConfig === "function") {
     if (NavAid && typeof NavAid.refreshMobileDeck === "function") NavAid.refreshMobileDeck();
     if (typeof refreshEmptyRouteHint === "function") refreshEmptyRouteHint();
     if (typeof refreshTrafficFeature === "function") refreshTrafficFeature();
+    if (typeof window.refreshAtcRadioFeature === "function") window.refreshAtcRadioFeature();
     // The gist may have turned base layers on or off -- rebuild the picker to match, and
     // the nav-data source list with it: its entries are those same charts.
     if (typeof rebuildLayerPicker === "function") rebuildLayerPicker();
