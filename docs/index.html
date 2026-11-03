@@ -1241,6 +1241,17 @@
     </div>
   </div>
 
+  <!-- Live ATC radio (atc-radio.js): one channel plays at a time, each through its owner's
+       own stream link. Opened from View -> ATC radio. -->
+  <div id="atc-modal" class="sim-overlay hidden">
+    <div class="modal atc-modal" role="dialog" aria-modal="true" aria-labelledby="atc-modal-title">
+      <button class="sim-modal-close" id="atc-modal-close" type="button" data-i18n-aria="modalCloseTitle" aria-label="Close">×</button>
+      <h3 class="sim-modal-title" id="atc-modal-title" data-i18n="atcRadio">ATC radio</h3>
+      <p class="atc-note" data-i18n="atcRadioNote"></p>
+      <div id="atc-list" class="atc-list"></div>
+    </div>
+  </div>
+
   <!-- Floating nav-waypoint search — Ctrl/Cmd-F or the toolbar button shows
        this overlay. Hidden by default; Escape closes. The input + results
        moved out of the Build section so the search no longer requires the
@@ -1434,6 +1445,7 @@
         'app/gdl90.js' + v,
         'app/ble-gps.js' + v,
         'app/tour.js' + v,
+        'app/atc-radio.js' + v,
         'app/ota.js' + v
       ];
       // Subresource integrity for the pinned CDN dependencies. A wrong hash means the

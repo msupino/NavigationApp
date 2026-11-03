@@ -1960,6 +1960,18 @@ window.S = {
 
   // --- Magnifying glass ------------------------------------------------
   tbMagnifier: '🔍 זכוכית מגדלת (M)',
+  atcRadio: 'רדיו בקרה',
+  atcRadioTitle: 'האזנה חיה: מגדלי הרצליה וחיפה, ופלוטו מערב',
+  atcRadioNote: 'מקלטי בקרה בשידור חי. ערוץ אחד בכל פעם.',
+  atcTower: 'מגדל',
+  atcClearance: 'קלירנס',
+  atcPluto: 'פלוטו מערב',
+  atcPlay: 'האזנה',
+  atcStop: 'עצירה',
+  atcConnecting: 'מתחבר\u2026',
+  atcLive: 'בשידור',
+  atcBuffering: 'טוען\u2026',
+  atcOffline: 'לא משודר כרגע',
   tbMagnifierTitle: 'זכוכית מגדלת (M) — תצוגה מוגדלת במיקום הסמן; +/- משנים את הגדלת הזכוכית כשהיא פתוחה',
   magSettingsTitle: 'זכוכית מגדלת',
   magZoomLabel: 'תקריב',
