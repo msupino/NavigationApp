@@ -361,6 +361,12 @@ function appendNavWaypointCommChangeInfo(body, name) {
         item.appendChild(code);
       }
 
+      // The play slot between the station's name and its frequency, in either language (asked),
+      // as in the airfield rows. Always there (atc-radio.js fills it for a station NavAid plays
+      // live), so the frequencies line up with or without a button.
+      const play = document.createElement('span');
+      play.className = 'commchange-option-play';
+      item.appendChild(play);
       if (opt.freq) {
         const freq = document.createElement('span');
         freq.className = 'commchange-option-freq';
@@ -368,6 +374,7 @@ function appendNavWaypointCommChangeInfo(body, name) {
         freq.textContent = opt.freq + ' MHz';
         item.appendChild(freq);
       }
+      if (window.atcRadio && typeof window.atcRadio.callSignAttach === 'function') window.atcRadio.callSignAttach(item);
       list.appendChild(item);
     }
     row.appendChild(list);
@@ -4541,26 +4548,9 @@ function showInspector() {
       if (linkedNote && typeof appendFreqEdit === 'function') {
         appendFreqEdit(body, linkedNote, { deleteButton: true });
       } else if (cc && cc.commChange) {
-        const row = document.createElement('div');
-        row.className = 'row col commchange-row';
-        const lbl = document.createElement('label');
-        lbl.className = 'commchange-label';
-        lbl.textContent = S.commChangeBadge || '📡 Freq change';
-        row.appendChild(lbl);
-        body.appendChild(row);
-        if (cc.from || cc.to) {
-          const freq = document.createElement('span');
-          freq.className = 'val commchange-freq';
-          const arrow = (S.legArrow || '→');
-          freq.textContent = (cc.from || '?') + ' ' + arrow + ' ' + (cc.to || '?');
-          row.appendChild(freq);
-        }
-        if (cc.note) {
-          const note = document.createElement('span');
-          note.className = 'val commchange-note';
-          note.textContent = cc.note;
-          row.appendChild(note);
-        }
+        // The same frame the map waypoint shows (asked: match the styling between waypoint types):
+        // the call signs with their frequencies and live play buttons, or from -> to, and the note.
+        appendNavWaypointCommChangeInfo(body, ccKey);
         appendAddFreqChangeButton(body, wp, ccKey);
       } else if (ccKey) {
         appendAddFreqChangeButton(body, wp, ccKey);

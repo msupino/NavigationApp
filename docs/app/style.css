@@ -3448,6 +3448,10 @@ body.theme-light .atc-inline.is-live .atc-play { color: #fff; }
 body.theme-light .atc-inline.is-offline .atc-play { color: #c62828; border-color: #c62828; }
 /* The other frequency rows keep the button's space, so every input stays in one column. */
 .comm-section.has-atc .row:not(:has(.atc-inline)) > .val:has(input) { padding-inline-end: 38px; }
+/* English: the button leads the value box (next to the label), so its gap and the reserved space
+   on rows without one sit at the start. */
+.atc-inline.atc-inline-lead { margin-inline-start: 0; margin-inline-end: 6px; }
+html:not([dir="rtl"]) .comm-section.has-atc .row:not(:has(.atc-inline)) > .val:has(input) { padding-inline-end: 0; padding-inline-start: 38px; }
 @keyframes atc-pulse { 50% { opacity: 0.55; } }
 @media (prefers-reduced-motion: reduce) { .atc-inline.is-connecting .atc-play { animation: none; } }
 /* On-map launcher: a round button in the bottom-right control column (with zoom and the
@@ -4961,30 +4965,38 @@ body.theme-light .msa-low .val { color: #c0392b; }
   display: grid;
   gap: 4px;
 }
+/* Flat rows like the airfield Communication frame: the call sign, its frequency, and a fixed play
+   slot -- no boxed card. A thin divider between them, and the frequency lines up down the column. */
 .commchange-option {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: 2px 8px;
-  padding: 4px 6px;
-  background: rgba(255, 255, 255, 0.06);
-  border-radius: 3px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 2px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
 }
+.commchange-option:last-child { border-bottom: 0; }
 .commchange-option-name {
+  flex: 1 1 auto;
   min-width: 0;
   overflow-wrap: anywhere;
   font-weight: 700;
 }
 .commchange-option-code {
+  flex: 0 0 auto;
   color: #b9b3b3;
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   font-size: 10px;
 }
 .commchange-option-freq {
-  grid-column: 1 / -1;
+  flex: 0 0 auto;
   color: #fff;
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-  font-size: 11px;
+  font-size: 13px;
 }
+/* The play slot: always there (empty when the station is not one NavAid plays), so the
+   frequencies line up whether or not a row has a button -- the airfield rows do the same. */
+.commchange-option-play { flex: 0 0 32px; display: inline-flex; justify-content: center; align-items: center; }
+.commchange-option-play > .atc-inline { margin-inline-start: 0; }
 .commchange-template {
   margin-top: -3px;
   font-size: 11px;
@@ -6557,9 +6569,7 @@ body.theme-light .commchange-row .commchange-note {
 body.theme-light .commchange-options-title {
   color: #4b5563;
 }
-body.theme-light .commchange-option {
-  background: rgba(31, 37, 44, 0.06);
-}
+body.theme-light .commchange-option { border-bottom-color: rgba(31, 37, 44, 0.1); }
 body.theme-light .commchange-option-code {
   color: #6b7280;
 }
