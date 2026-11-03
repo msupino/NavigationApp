@@ -412,6 +412,10 @@ const appUpdate = (function () {
       if (pct != null) bar.value = pct; else bar.removeAttribute('value');   // indeterminate until the first report
     }
     row.classList.toggle('has-update', action === 'download');
+    // On the desktop layout the row sits inside the Settings menu, closed most of the time: a dot
+    // on that menu says there is an update to take (download or restart).
+    const settingsSec = document.querySelector('#toolbar .tb-section[data-sec="settings"]');
+    if (settingsSec) settingsSec.classList.toggle('has-app-update', action === 'download' || action === 'restart');
     btn.hidden = !action || !!busy;
     btn.textContent = action === 'download' ? (S.appUpdateDownload || 'Download now')
       : action === 'restart' ? (S.appUpdateRestart || 'Restart now') : (S.appUpdateCheck || 'Check again');
@@ -12148,6 +12152,25 @@ function refreshToolbarDesktopMenu() {
 window.NavAid = window.NavAid || {};
 NavAid.usesDesktopMenu = toolbarUsesDesktopMenu;
 NavAid.refreshDesktopMenu = refreshToolbarDesktopMenu;
+
+// The app's update row (installed app only). On the phone layout it is the toolbar's footer line;
+// the desktop menu bar has no footer, and hid it -- so the app on a Mac (a window wider than a
+// phone, with a mouse) had no way to take an update until the window was narrowed (reported).
+// There it goes to the bottom of the Settings menu instead, and back when the layout changes.
+function placeAppUpdateRow() {
+  const row = document.getElementById('app-update');
+  const tb = document.getElementById('toolbar');
+  if (!row || !tb) return;
+  const settingsBody = tb.querySelector('.tb-section[data-sec="settings"] > .tb-section-body');
+  if (toolbarUsesDesktopMenu() && settingsBody) {
+    if (row.parentNode !== settingsBody) settingsBody.appendChild(row);
+  } else {
+    const links = document.getElementById('footer-links');
+    if (links && links.parentNode === tb && row.nextElementSibling !== links) tb.insertBefore(row, links);
+  }
+}
+toolbarDesktopMenuListeners.push(placeAppUpdateRow);
+placeAppUpdateRow();
 for (const mq of [toolbarDesktopMenuQuery, toolbarTabletQuery]) {
   if (!mq) continue;
   if (mq.addEventListener) mq.addEventListener('change', refreshToolbarDesktopMenu);
