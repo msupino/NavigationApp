@@ -2664,9 +2664,15 @@ body.theme-dark #toolbar button.gps-footer-btn[aria-pressed="true"] .footer-link
 }
 
 /* Desktop menubar: :where(html.menubar) (index.html head, ui.js toolbarUsesDesktopMenu). */
-  :where(html.menubar) #app-version,
-  :where(html.menubar) #app-update {
+  :where(html.menubar) #app-version {
     display: none;
+  }
+  /* The update row lives in the Settings menu on this layout (ui.js placeAppUpdateRow); a dot on
+     the menu's title says an update is waiting. */
+  :where(html.menubar) #toolbar .tb-section[data-sec="settings"] .app-update { margin-top: 6px; }
+  :where(html.menubar) #toolbar .tb-section.has-app-update > .tb-section-head .tb-section-title::after {
+    content: ''; display: inline-block; width: 7px; height: 7px; margin-inline-start: 6px;
+    border-radius: 50%; background: #f5a623; vertical-align: middle;
   }
 
   :where(html.menubar) #toolbar > #footer-links {
@@ -3473,6 +3479,9 @@ html:not([dir="rtl"]) .comm-section.has-atc .row:not(:has(.atc-inline)) > .val:h
   box-shadow: 0 3px 12px rgba(0, 0, 0, 0.5);
   transition: background-color 150ms ease-out, border-color 150ms ease-out;
 }
+/* display:flex above beats the browser's own [hidden] rule: without this the button stayed on the
+   map with the feature off (its slot is still reserved by .atc-fab-control). */
+.atc-fab[hidden] { display: none; }
 .atc-fab:hover { background: rgba(40, 36, 36, 0.96); }
 .atc-fab:focus-visible { outline: 3px solid #3d8bfd; outline-offset: 2px; }
 .atc-fab svg { display: block; width: 24px; height: 24px; }
