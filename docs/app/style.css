@@ -3453,8 +3453,9 @@ body.theme-light .atc-inline.is-offline .atc-play { color: #c62828; border-color
 /* On-map launcher: a round button in the bottom-right control column (with zoom and the
    assistant launcher). Neutral at rest; green and gently pulsing while a channel plays, the
    same "live" language as the inline airfield buttons. */
-.atc-fab-control { margin-bottom: 8px !important; }
-.atc-fab-control[hidden] { display: none; }
+/* Reserve the slot whether or not the button shows, so the gist turning the feature on (after
+   first paint) fills it without shifting the column -- the strict CLS budget needs this. */
+.atc-fab-control { min-width: 44px; min-height: 44px; margin-bottom: 8px !important; }
 .atc-fab {
   display: flex;
   align-items: center;

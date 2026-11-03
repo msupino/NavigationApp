@@ -1350,9 +1350,10 @@ atcRadioCtrl.onAdd = function () {
   b.setAttribute('aria-label', b.title);
   b.addEventListener('click', () => { if (window.atcRadio && typeof window.atcRadio.open === 'function') window.atcRadio.open(); });
   wrap.appendChild(b);
-  // Ships off (gist turns it on). Hide the slot from first paint when off, so the phase-2 module
-  // confirming "off" is not a layout shift -- and so enabling it later is the only change.
-  if (typeof tune === 'function' && tune('featureAtcRadio') === false) { wrap.hidden = true; b.hidden = true; }
+  // Ships off (gist turns it on). The wrapper reserves its slot from first paint (CSS min-size);
+  // only the button is hidden when off. So the gist flipping it on -- after paint, on a cold load
+  // lighthouse measures -- fills the reserved slot without moving any control (no layout shift).
+  if (typeof tune === 'function' && tune('featureAtcRadio') === false) b.hidden = true;
   L.DomEvent.disableClickPropagation(wrap);
   L.DomEvent.disableScrollPropagation(wrap);
   return wrap;
