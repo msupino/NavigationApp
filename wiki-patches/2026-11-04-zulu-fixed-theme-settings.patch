@@ -1,4 +1,4 @@
-From fdeb999f6b54252b4874e00c103efb6bd45a1960 Mon Sep 17 00:00:00 2001
+From 02ee97916c81138ec658a45bcf24db303c857505 Mon Sep 17 00:00:00 2001
 From: Marco <marco@supino.org>
 Date: Wed, 4 Nov 2026 09:32:45 +0000
 Subject: [PATCH] Settings holds Light/Dark mode; the Zulu clock is fixed
@@ -69,7 +69,7 @@ index b5aa69b..5e31e96 100644
  - **⟳** — rotate all waypoint name labels 90° (useful if you want labels reading along the route).
  - **Label Transparency** slider - opacity of every label background.
 diff --git a/The-Map.md b/The-Map.md
-index 0fd415e..d878cef 100644
+index 0fd415e..b15e8e1 100644
 --- a/The-Map.md
 +++ b/The-Map.md
 @@ -170,10 +170,10 @@ would offer to change something you cannot see.
@@ -77,7 +77,7 @@ index 0fd415e..d878cef 100644
  - **Coordinate readout** and **zoom readout**, bottom right — clear of the zoom buttons on a phone. The zoom readout is two lines (zoom over scale, `z10` / `0.25×`) in a box the round buttons' width, so the column keeps one edge.
  - **Messages** (toasts) come in front: while one shows, the start-a-route hint and the coordinate readouts under it step back, and return when it goes.
 -- **Zulu clock**, top right.
-+- **Zulu clock**, bottom right — above the coordinate readout, left of the zoom buttons. It moves up past the VOR, wind and SIGMET lines while they show, so it never covers one. Fixed in place; the gist's `zuluClockMovable` makes it draggable again.
++- **Zulu clock**, bottom right — left of the zoom buttons, always just above the VOR line's place over the coordinate readout; it stays put when that line comes and goes, and the wind and SIGMET lines sit above it. Fixed in place; the gist's `zuluClockMovable` makes it draggable again.
  - **Search panel** — a permanent panel on a desktop (left in English, right in Hebrew), a summoned overlay on a phone.
  
 -Every one of those panels is draggable, and each remembers its place **per language**, because the RTL and LTR layouts mirror.

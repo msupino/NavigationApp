@@ -34,16 +34,26 @@ test.describe('Zulu clock', () => {
     await expect.poll(() => clock.textContent(), { timeout: 2500 }).not.toBe(initial);
   });
 
-  test('fixed: it moves up past the VOR line instead of covering it, and cannot be dragged', async ({ page }) => {
+  test('fixed: always above the VOR line, still when it comes and goes, and cannot be dragged', async ({ page }) => {
     await boot(page);
-    const r = await page.evaluate(() => {
-      const v = document.getElementById('vor-readout');
-      v.textContent = 'BGN 045\u00b0 12.3 NM'; v.classList.add('show');
+    const place = (show) => page.evaluate((show) => {
+      for (const [id, on, txt] of [['vor-readout', show, 'BGN 045\u00b0 12.3 NM']]) {
+        const el = document.getElementById(id); el.textContent = txt; el.classList.toggle('show', on);
+      }
+      for (const sel of ['.wind-readout', '.sigmet-readout']) {
+        const el = document.querySelector(sel); if (el) { el.textContent = 'X'; el.classList.toggle('show', show); }
+      }
       const c = document.getElementById('zulu-clock').getBoundingClientRect();
-      const b = v.getBoundingClientRect();
-      return { clockBottom: c.bottom, vorTop: b.top };
-    });
-    expect(r.clockBottom).toBeLessThanOrEqual(r.vorTop);
+      const hit = (sel) => { const el = document.querySelector(sel); if (!el || !el.classList.contains('show')) return false;
+        const b = el.getBoundingClientRect(); return c.left < b.right && b.left < c.right && c.top < b.bottom && b.top < c.bottom; };
+      return { top: Math.round(c.top), vorTop: Math.round(document.getElementById('vor-readout').getBoundingClientRect().top),
+        covers: ['.vor-readout', '.wind-readout', '.sigmet-readout'].filter(hit) };
+    }, show);
+    const off = await place(false);
+    const on = await place(true);
+    expect(on.top).toBe(off.top);                         // does not move with the VOR line
+    expect(on.covers).toEqual([]);                        // and nothing lands on it
+    expect(on.top).toBeLessThan(on.vorTop);               // above the VOR line
     const clock = page.locator('#zulu-clock');
     const before = await clock.boundingBox();
     if (!before) throw new Error('no box');
