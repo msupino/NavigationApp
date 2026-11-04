@@ -756,6 +756,9 @@ as a machine-readable registry.
   `navLangPosRead()` adopts a legacy bare position key into the active
   language's key and leaves the bare key available for the other language.
   Position keys and other panel geometry are device-local.
+- `navaid.clockPosReset` — `'1'` once this device has dropped its old dragged
+  Zulu clock spot (the clock is fixed by default; gist `zuluClockMovable`).
+  Device-local.
 - `navaid.inspSize` — device-local desktop inspector width and height. The full
   panel is clamped to the viewport on opening and window resize. Phone layout
   ignores these dimensions without overwriting the saved desktop preference.

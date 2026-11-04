@@ -1517,6 +1517,22 @@ body.deck-on .leaflet-control.edit-col-ctrl {
   unicode-bidi: isolate;
 }
 .leaflet-control.zulu-clock.dragging { cursor: grabbing; }
+/* Fixed (gist zuluClockMovable off): in the readout stack left of the zoom buttons, always in the
+   slot above the VOR line -- it does not move when that line comes and goes (asked). The wind and
+   SIGMET lines step up past it, so nothing lands on it. Nothing to drag. */
+.leaflet-bottom.leaflet-right .leaflet-control.zulu-clock.zulu-fixed {
+  position: absolute;
+  right: var(--navaid-map-ctrl-clear);
+  bottom: var(--navaid-zulu-fixed-bottom, 70px);
+  top: auto;              /* the Hebrew top-left default sets these */
+  left: auto;
+  margin: 0;
+  transform: none;
+  cursor: default;
+  touch-action: auto;
+}
+body:not(.deck-on) .leaflet-bottom.leaflet-right:has(.zulu-clock.zulu-fixed) .wind-readout { bottom: 100px; }
+body:not(.deck-on) .leaflet-bottom.leaflet-right:has(.zulu-clock.zulu-fixed) .sigmet-readout { bottom: 120px; }
 
 /* GPS recording indicator: a red REC pill with a pulsing white dot, pinned to the top corner
    only while a track records. It was a 30px dark square with a red dot that faded to a quarter
@@ -7391,6 +7407,10 @@ html[data-theme="light"] #insp-body .insp-actions {
   .leaflet-bottom.leaflet-right .vor-readout { bottom: 74px; }
   .leaflet-bottom.leaflet-right .wind-readout { bottom: 100px; }
   .leaflet-bottom.leaflet-right .sigmet-readout { bottom: 126px; }
+  /* The fixed Zulu clock: always above the VOR line's slot; wind and SIGMET step up past it. */
+  .leaflet-bottom.leaflet-right .zulu-clock.zulu-fixed { --navaid-zulu-fixed-bottom: 104px; }
+  body:not(.deck-on) .leaflet-bottom.leaflet-right:has(.zulu-clock.zulu-fixed) .wind-readout { bottom: 134px; }
+  body:not(.deck-on) .leaflet-bottom.leaflet-right:has(.zulu-clock.zulu-fixed) .sigmet-readout { bottom: 160px; }
   /* ...and while editing, the six DMS fields were a 22px-tall row. Grow the fields
      vertically only: the row is already 196px wide on a 375px screen, so widening
      them would push it off the edge. */
