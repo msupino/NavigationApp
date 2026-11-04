@@ -1,8 +1,8 @@
-From 02ee97916c81138ec658a45bcf24db303c857505 Mon Sep 17 00:00:00 2001
+From 214e967bca02b5d85786e46b5ee6b4450648d062 Mon Sep 17 00:00:00 2001
 From: Marco <marco@supino.org>
 Date: Wed, 4 Nov 2026 09:32:45 +0000
-Subject: [PATCH] Settings holds Light/Dark mode; the Zulu clock is fixed
- bottom right
+Subject: [PATCH] Settings holds the Theme (light / dark); the Zulu clock is
+ fixed bottom right
 
 ---
  Features-he.md | 5 ++---
@@ -13,7 +13,7 @@ Subject: [PATCH] Settings holds Light/Dark mode; the Zulu clock is fixed
  5 files changed, 12 insertions(+), 14 deletions(-)
 
 diff --git a/Features-he.md b/Features-he.md
-index eae7d22..d9515e6 100644
+index eae7d22..933e649 100644
 --- a/Features-he.md
 +++ b/Features-he.md
 @@ -16,13 +16,13 @@
@@ -28,7 +28,7 @@ index eae7d22..d9515e6 100644
  | **ייצוא/ייבוא** | ייצוא/ייבוא JSON / GPX / PLN, ✈️ Google Earth, 🔗 שיתוף קישור, **מסלולים שמורים** (+ **סנכרון Google Drive**) |
  | **הדפסה** | מסגרת עמוד A3 / A4 + מתג כיוון ▭/▯ + שמירת PNG |
 -| **הגדרות** | שפה, מהירות ברירת מחדל, נטייה מגנטית, יחידת לחץ, גובה לפי (GPS / ברומטר + QNH), הקלטה אוטומטית עם מיקום, חלונית בזמן הצגת מיקום, טבלת ברירות תדר, טבלת זוגות גובה, הסיור, בהירות מסך ו-GPS בבלוטות׳ (אפליקציה), גרסת האפליקציה |
-+| **הגדרות** | שפה, **מצב בהיר / כהה (בהיר כברירת מחדל)**, מהירות ברירת מחדל, נטייה מגנטית, יחידת לחץ, גובה לפי (GPS / ברומטר + QNH), הקלטה אוטומטית עם מיקום, חלונית בזמן הצגת מיקום, טבלת ברירות תדר, טבלת זוגות גובה, הסיור, בהירות מסך ו-GPS בבלוטות׳ (אפליקציה), גרסת האפליקציה |
++| **הגדרות** | שפה, **מצב תצוגה (בהיר כברירת מחדל, או כהה)**, מהירות ברירת מחדל, נטייה מגנטית, יחידת לחץ, גובה לפי (GPS / ברומטר + QNH), הקלטה אוטומטית עם מיקום, חלונית בזמן הצגת מיקום, טבלת ברירות תדר, טבלת זוגות גובה, הסיור, בהירות מסך ו-GPS בבלוטות׳ (אפליקציה), גרסת האפליקציה |
  | **GPS** | ⏺ **הקלטה** / ⏹ עצור, 📍 **מיקום** (בטלפון — לשוניות בסרגל התחתון) — ראו [הקלטת מסלול GPS](GPS-Track-Recording-he) |
  
  בורר השפה (🌐) יושב מעל הקטעים; הוא מתג מהיר, לא חלק מקטע כלשהו.
@@ -41,7 +41,7 @@ index eae7d22..d9515e6 100644
  - **⟳** — סיבוב כל תוויות שמות הנקודות ב-90°.
  - מחווני **שקיפות תוויות**, **בהירות מפה**, **גודל ציון דרך**, **גודל חץ קטע**.
 diff --git a/Features.md b/Features.md
-index b5aa69b..5e31e96 100644
+index b5aa69b..42aeccd 100644
 --- a/Features.md
 +++ b/Features.md
 @@ -14,13 +14,13 @@ The toolbar (a menu bar on a computer, the deck's Menu sheet on a phone) is grou
@@ -56,7 +56,7 @@ index b5aa69b..5e31e96 100644
  | **Export/import** | Export / import JSON / GPX / PLN, ✈️ Google Earth, 🔗 share link, **Saved routes** (+ **Google Drive sync**) |
  | **Print** | A3 / A4 page frame + ▭/▯ orientation toggle + Save PNG |
 -| **Settings** | Language, default speed, magnetic variation, pressure unit, altitude from (GPS / barometer + QNH), record automatically with location, panel while showing position, frequency-defaults table, altitude-pairs table, the tour, screen brightness and Bluetooth GPS (APK), app version |
-+| **Settings** | Language, **light / dark mode (light by default)**, default speed, magnetic variation, pressure unit, altitude from (GPS / barometer + QNH), record automatically with location, panel while showing position, frequency-defaults table, altitude-pairs table, the tour, screen brightness and Bluetooth GPS (APK), app version |
++| **Settings** | Language, **theme (light by default, or dark)**, default speed, magnetic variation, pressure unit, altitude from (GPS / barometer + QNH), record automatically with location, panel while showing position, frequency-defaults table, altitude-pairs table, the tour, screen brightness and Bluetooth GPS (APK), app version |
  | **Simulator** (✈) | Footer ✈ icon → panel: live aircraft from SimConnect bridge, heading-rotated icon, **Connect / Follow / Center** — see [Simulator Connect](Simulator-Connect) |
  | **GPS** | ⏺ **Record** / ⏹ Stop, 📍 **Location** (on a phone, tabs in the bottom bar) — see [GPS track recording](GPS-Track-Recording) |
  
@@ -86,7 +86,7 @@ index 0fd415e..b15e8e1 100644
  ## See also
  
 diff --git a/Toolbar-he.md b/Toolbar-he.md
-index 5850ff5..5acc61c 100644
+index 5850ff5..da952f8 100644
 --- a/Toolbar-he.md
 +++ b/Toolbar-he.md
 @@ -16,13 +16,13 @@
@@ -101,7 +101,7 @@ index 5850ff5..5acc61c 100644
  | 7 | **ייצוא/ייבוא** | קבצים, קישור שיתוף | ייצוא (JSON / GPX / PLN / FDR), ייבוא (JSON / GPX / PLN), מסלולים שמורים (+ סנכרון עם Google Drive), שתף קישור, פתח ב-Google Earth |
  | 8 | **הדפסה** | עמוד, PNG, כרטיס תכנית | מסגרת A3 / A4 / A4×2, מתג לרוחב / לאורך, שמור PNG |
 -| 9 | **הגדרות** | מהירות, שינוי מגנטי, שפה, טבלאות | שפה, מהירות ברירת מחדל, נטייה מגנטית, הקלטה אוטומטית עם מיקום, חלונית בזמן הצגת מיקום, ואחריהן טבלת התדרים וטבלת הנתיבים, וגרסת האפליקציה |
-+| 9 | **הגדרות** | מהירות, שינוי מגנטי, שפה, טבלאות | שפה, מצב בהיר / כהה, מהירות ברירת מחדל, נטייה מגנטית, הקלטה אוטומטית עם מיקום, חלונית בזמן הצגת מיקום, ואחריהן טבלת התדרים וטבלת הנתיבים, וגרסת האפליקציה |
++| 9 | **הגדרות** | מהירות, שינוי מגנטי, שפה, טבלאות | שפה, מצב תצוגה, מהירות ברירת מחדל, נטייה מגנטית, הקלטה אוטומטית עם מיקום, חלונית בזמן הצגת מיקום, ואחריהן טבלת התדרים וטבלת הנתיבים, וגרסת האפליקציה |
  
  **מפה** ו**הגדרות** היו פעם קטע אחד, *תצוגה/הגדרה*. ב**הגדרות** נמצא עכשיו מה שקובעים פעם אחת: השפה, מהירות ברירת המחדל והנטייה המגנטית, ואחריהן שתי טבלאות העיון. הסימולטור הוא סמל ✈ קטן בתחתית סרגל הכלים.
  
@@ -117,12 +117,12 @@ index 5850ff5..5acc61c 100644
  | פקד | פעולה |
  |---|---|
  | **שפה** | English / עברית. מוצע גם בהפעלה הראשונה (מסך התנאים), כך שגם מי שלא קורא אף אחד מהתפריטים יכול להחליף. |
-+| **מצב בהיר / מצב כהה** | ערכת הנושא הבהירה היא **ברירת המחדל**; הכפתור מחליף בין כהה לבהיר (נשמר ב-<span dir="ltr"><code>navaid.theme</code></span>). ממש מתחת לשפה. |
++| **מצב תצוגה** | **בהיר** (ברירת המחדל) או **כהה** (נשמר ב-<span dir="ltr"><code>navaid.theme</code></span>). ממש מתחת לשפה, באותה צורה של שורה. |
  | **מהירות ברירת מחדל (קשר)** | מהירות ההתחלה לקטע שאין לפניו קטע להעתיק ממנו — קובעים פעם אחת למטוס. <span dir="ltr"><code>navaid.defaultSpeed</code></span>; **↻** מחזיר לברירת המחדל. |
  | **נטייה מגנטית** | **אוטומטית** (מודל השדה המגנטי העולמי, ללא רשת) או **ידנית** (מעלות שלמות, E או W). <span dir="ltr"><code>navaid.magVarAuto</code></span> / <span dir="ltr"><code>navaid.magVarManual</code></span>. |
  | **📡 טבלת תדרים** | עורך הניתן לחיפוש לברירות תדר מקומיות — דריסת תדר של אות-קריאה, איפוס שורה, או שחזור מקור. ראו [שינויי תדר](Frequency-Changes-he). |
 diff --git a/Toolbar.md b/Toolbar.md
-index 74e08cc..e960d9f 100644
+index 74e08cc..fabd4c9 100644
 --- a/Toolbar.md
 +++ b/Toolbar.md
 @@ -14,13 +14,13 @@ Each header is a full-height row (52 px on a phone): a drawn icon, the title, a
@@ -137,7 +137,7 @@ index 74e08cc..e960d9f 100644
  | 7 | **Export/import** | Files, share link | Export (JSON / GPX / PLN / FDR), Import (JSON / GPX / PLN), Saved routes (+ Sync with Google Drive), Share link, Open in Google Earth |
  | 8 | **Print** | Page, PNG, plan card | A3 / A4 page frame, Landscape / Portrait toggle, Save PNG |
 -| 9 | **Settings** | Speed, variation, language, tables | Language, Default speed, Magnetic variation, Record automatically with location, Panel while showing position, then Freq table and Alt pairs, and the app version |
-+| 9 | **Settings** | Speed, variation, language, tables | Language, Light / Dark mode, Default speed, Magnetic variation, Record automatically with location, Panel while showing position, then Freq table and Alt pairs, and the app version |
++| 9 | **Settings** | Speed, variation, language, tables | Language, Theme, Default speed, Magnetic variation, Record automatically with location, Panel while showing position, then Freq table and Alt pairs, and the app version |
  
  **Map** and **Settings** used to be one section, *View/Set*. Settings now holds what you set once: the language, the default speed and the magnetic variation, followed by the two reference tables.
  
@@ -153,7 +153,7 @@ index 74e08cc..e960d9f 100644
  | Control | What it does |
  |---|---|
  | **Language** | English / עברית. Also offered at first start (the terms screen), so a pilot who reads neither menu can still switch. |
-+| **Light mode / Dark mode** | Light theme is the **default**; this toggles dark ⇄ light (persisted to `navaid.theme`). Right under Language. |
++| **Theme** | **Light** (the default) or **Dark** (persisted to `navaid.theme`). Right under Language, the same kind of row. |
  | **Default speed (kt)** | Seed speed for a leg with no earlier leg to copy from — set it once for your aircraft. Drives the `defaultLegSpeedKt` tuning key and outranks the remote config, so it survives a reload. Accepts 20–400; anything else snaps back to the value in force. Persists to `navaid.defaultSpeed`. **↻** beside it returns to the default — the gist's speed if it sets one, else the built-in — and moves the legs that follow it; dimmed when the default is already in force. |
  | **Magnetic variation** | **Automatic** (World Magnetic Model at the aircraft / route / map centre, offline) or **Manual** (whole degrees, E or W, read as a chart writes it: `5 E`). The fields always show the value in force — read-only in Automatic, with where it was taken in the tooltip. Persists to `navaid.magVarAuto` / `navaid.magVarManual`; outranks the gist. |
  | **📡 Freq table** | Searchable editor for local frequency defaults — override any call sign's frequency, reset a row, or restore originals. See [Frequency Changes](Frequency-Changes). |

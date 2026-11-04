@@ -186,7 +186,6 @@ const MENU_ICONS = {
   undo: 'undo', clear: 'trash', fit: 'fit', 'tool-reset-all-markers': 'reset',
   'tool-reset-all-wp-names': 'reset', 'tool-magnifier': 'magnifier',
   'autoroute-btn': 'map', 'force-snap-btn': 'addWp', 'ret-btn': 'direct',
-  'theme-toggle': (b) => (/☀|light|בהיר/i.test(b.textContent) ? 'sun' : 'moon'),
   'route-templates': 'templates', 'freq-table': 'antenna', 'alt-pairs': 'altPairs',
   'nav-log': 'form', charts: 'charts', 'sigwx-btn': 'globe', 'pwx-btn': 'wind',
   'sigmet-btn': 'warn', 'airmet-btn': 'warn', 'route-check-btn': 'check', 'notam-list-btn': 'list',
@@ -11292,23 +11291,14 @@ function applyDisplayTheme() {
   // reads the body theme class, so refresh it now that the class is set.
   if (typeof applyTuningCssVars === 'function') applyTuningCssVars();
 }
-const THEME_TOGGLE_EL = document.getElementById('theme-toggle');
-// The button shows the mode it switches TO: in dark it offers "Light mode",
-// in light it offers "Dark mode".
-function updateThemeToggleLabel() {
-  if (!THEME_TOGGLE_EL) return;
-  const toLight = displayTheme !== 'light';
-  THEME_TOGGLE_EL.textContent = toLight
-    ? '☀️ ' + (S.tbLightMode || 'Light mode')
-    : '🌙 ' + (S.tbDarkMode || 'Dark mode');
-}
+// Settings -> Theme: a Light / Dark choice, the same kind of row as the language beside it.
+const THEME_SELECT_EL = document.getElementById('theme-select');
 applyDisplayTheme();
-updateThemeToggleLabel();
-if (THEME_TOGGLE_EL) {
-  THEME_TOGGLE_EL.onclick = () => {
-    displayTheme = displayTheme === 'light' ? 'dark' : 'light';
+if (THEME_SELECT_EL) {
+  THEME_SELECT_EL.value = displayTheme === 'light' ? 'light' : 'dark';
+  THEME_SELECT_EL.onchange = () => {
+    displayTheme = THEME_SELECT_EL.value === 'light' ? 'light' : 'dark';
     applyDisplayTheme();
-    updateThemeToggleLabel();
     try { localStorage.setItem(THEME_KEY, displayTheme); }
     catch (err) { /* storage unavailable */ }
   };
