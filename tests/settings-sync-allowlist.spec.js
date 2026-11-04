@@ -84,6 +84,7 @@ test('every synced key is one the app still uses', () => {
 const NOT_A_SYNCED_SETTING = [
   // Device-local by nature: geometry, per-device UI state, local caches.
   [/Pos$/,                        'panel geometry is per device'],
+  [/^navaid\.clockPosReset$/,     'one-time reset marker for the dragged clock spot, per device'],
   [/^navaid\.sec\./,             'toolbar section expand/collapse'],
   [/Collapsed$/,                  'toolbar collapse state'],
   [/^navaid\.legendPillW$/,       'measured pixel width, recomputed on load'],

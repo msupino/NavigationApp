@@ -1517,6 +1517,23 @@ body.deck-on .leaflet-control.edit-col-ctrl {
   unicode-bidi: isolate;
 }
 .leaflet-control.zulu-clock.dragging { cursor: grabbing; }
+/* Fixed (gist zuluClockMovable off): in the readout stack left of the zoom buttons, on the first
+   free slot above the coordinates -- the VOR line's slot, and up past the VOR, wind and SIGMET
+   lines while they show, so it never covers one. Nothing to drag. */
+.leaflet-bottom.leaflet-right .leaflet-control.zulu-clock.zulu-fixed {
+  position: absolute;
+  right: var(--navaid-map-ctrl-clear);
+  bottom: var(--navaid-zulu-fixed-bottom, 50px);
+  top: auto;              /* the Hebrew top-left default sets these */
+  left: auto;
+  margin: 0;
+  transform: none;
+  cursor: default;
+  touch-action: auto;
+}
+.leaflet-bottom.leaflet-right:has(.vor-readout.show) .zulu-clock.zulu-fixed { --navaid-zulu-fixed-bottom: 70px; }
+.leaflet-bottom.leaflet-right:has(.wind-readout.show) .zulu-clock.zulu-fixed { --navaid-zulu-fixed-bottom: 90px; }
+.leaflet-bottom.leaflet-right:has(.sigmet-readout.show) .zulu-clock.zulu-fixed { --navaid-zulu-fixed-bottom: 110px; }
 
 /* GPS recording indicator: a red REC pill with a pulsing white dot, pinned to the top corner
    only while a track records. It was a 30px dark square with a red dot that faded to a quarter
@@ -7391,6 +7408,11 @@ html[data-theme="light"] #insp-body .insp-actions {
   .leaflet-bottom.leaflet-right .vor-readout { bottom: 74px; }
   .leaflet-bottom.leaflet-right .wind-readout { bottom: 100px; }
   .leaflet-bottom.leaflet-right .sigmet-readout { bottom: 126px; }
+  /* The fixed Zulu clock rides the same stack: first free slot above the 44 px coordinates. */
+  .leaflet-bottom.leaflet-right .zulu-clock.zulu-fixed { --navaid-zulu-fixed-bottom: 78px; }
+  .leaflet-bottom.leaflet-right:has(.vor-readout.show) .zulu-clock.zulu-fixed { --navaid-zulu-fixed-bottom: 104px; }
+  .leaflet-bottom.leaflet-right:has(.wind-readout.show) .zulu-clock.zulu-fixed { --navaid-zulu-fixed-bottom: 130px; }
+  .leaflet-bottom.leaflet-right:has(.sigmet-readout.show) .zulu-clock.zulu-fixed { --navaid-zulu-fixed-bottom: 156px; }
   /* ...and while editing, the six DMS fields were a 22px-tall row. Grow the fields
      vertically only: the row is already 196px wide on a 375px screen, so widening
      them would push it off the edge. */

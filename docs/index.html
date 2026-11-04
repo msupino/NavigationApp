@@ -481,7 +481,6 @@
     <div class="tb-section" data-sec="display">
       <div class="tb-section-head" tabindex="0" role="button" data-i18n-aria="tbSecDisplay"><span class="tb-sec-icon" aria-hidden="true" data-nav-icon="display"></span><span class="tb-sec-text"><span class="tb-section-title" data-i18n="tbSecDisplay"></span><span class="tb-sec-hint" aria-hidden="true" data-i18n="tbSecDisplayHint"></span></span></div>
       <div class="tb-section-body">
-        <button id="theme-toggle" type="button" data-i18n-title="tbLightModeTitle"></button>
         <!-- Grouped coarse to fine, separated by rules: the base map, then the waypoint
              controls, then the leg-arrow controls, then the line widths. Within a group
              the order is always size, opacity, colour. -->
@@ -951,6 +950,8 @@
             <option value="en">English</option>
           </select>
         </label>
+        <!-- Dark / light: a setting, beside the language (moved from Display, asked). -->
+        <button id="theme-toggle" type="button" data-i18n-title="tbLightModeTitle"></button>
         <script>
           (function () {
             var sel = document.getElementById('lang-select');

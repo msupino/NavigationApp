@@ -11,26 +11,61 @@ async function boot(page, lang = 'en') {
 }
 
 test.describe('Zulu clock', () => {
-  test('renders a live UTC clock in the top-right corner', async ({ page }) => {
+  test('renders a live UTC clock, fixed above the coordinates, left of the zoom buttons', async ({ page }) => {
     await boot(page);
     const clock = page.locator('#zulu-clock');
     await expect(clock).toBeVisible();
     await expect(clock).toHaveAttribute('dir', 'ltr');
     await expect(clock).toHaveAttribute('aria-label', 'Zulu time (UTC)');
     await expect(clock).toHaveText(/^\d{2}:\d{2}:\d{2}Z$/);
+    await expect(clock).toHaveClass(/zulu-fixed/);
 
-    const box = await clock.boundingBox();
-    const viewport = page.viewportSize();
-    expect(box).not.toBeNull();
-    expect(viewport).not.toBeNull();
-    if (box && viewport) {
-      expect(box.x + box.width).toBeGreaterThan(viewport.width - 24);
-      // Top-right, but dropped below the floating desktop menu bar (~46px).
-      expect(box.y).toBeLessThan(80);
-    }
+    const pos = await page.evaluate(() => {
+      const c = document.getElementById('zulu-clock').getBoundingClientRect();
+      const z = document.querySelector('.leaflet-control-zoom').getBoundingClientRect();
+      return { right: c.right, bottom: c.bottom, zoomLeft: z.left, vh: window.innerHeight,
+        corner: document.getElementById('zulu-clock').parentNode.className };
+    });
+    expect(pos.corner).toContain('leaflet-bottom leaflet-right');
+    expect(pos.right).toBeLessThanOrEqual(pos.zoomLeft);          // left of the zoom buttons
+    expect(pos.bottom).toBeGreaterThan(pos.vh - 120);             // down by the coordinates
 
     const initial = await clock.textContent();
     await expect.poll(() => clock.textContent(), { timeout: 2500 }).not.toBe(initial);
+  });
+
+  test('fixed: it moves up past the VOR line instead of covering it, and cannot be dragged', async ({ page }) => {
+    await boot(page);
+    const r = await page.evaluate(() => {
+      const v = document.getElementById('vor-readout');
+      v.textContent = 'BGN 045\u00b0 12.3 NM'; v.classList.add('show');
+      const c = document.getElementById('zulu-clock').getBoundingClientRect();
+      const b = v.getBoundingClientRect();
+      return { clockBottom: c.bottom, vorTop: b.top };
+    });
+    expect(r.clockBottom).toBeLessThanOrEqual(r.vorTop);
+    const clock = page.locator('#zulu-clock');
+    const before = await clock.boundingBox();
+    if (!before) throw new Error('no box');
+    await page.mouse.move(before.x + before.width / 2, before.y + before.height / 2);
+    await page.mouse.down();
+    await page.mouse.move(before.x - 200, before.y - 220, { steps: 6 });
+    await page.mouse.up();
+    const after = await clock.boundingBox();
+    expect(after && Math.abs(after.x - before.x)).toBeLessThan(2);
+  });
+
+  test('a clock spot dragged before is dropped once, on every device', async ({ page }) => {
+    await page.addInitScript(() => {
+      if (!sessionStorage.getItem('__seeded')) {
+        sessionStorage.setItem('__seeded', '1');
+        localStorage.setItem('navaid.clockPos.en', JSON.stringify({ x: 300, y: 300 }));
+        localStorage.removeItem('navaid.clockPosReset');
+      }
+    });
+    await boot(page);
+    expect(await page.evaluate(() => [localStorage.getItem('navaid.clockPos.en'), localStorage.getItem('navaid.clockPosReset')]))
+      .toEqual([null, '1']);
   });
 
   test('formats Zulu time from UTC fields, independent of page direction', async ({ page }) => {
@@ -50,6 +85,8 @@ test.describe('Zulu clock', () => {
       try { localStorage.removeItem('navaid.inspPos'); } catch (e) {}
     });
     await boot(page, 'he');
+    // The draggable clock's corner (gist zuluClockMovable): the inspector must start below it.
+    await page.evaluate(() => { NavAid.tuning.zuluClockMovable = true; window.refreshZuluClockPlacement(); });
     await page.evaluate(() => {
       state.waypoints = [{ lat: 32.18, lng: 34.81, name: 'BAZRA' }];
       state.selected = { type: 'wp', index: 0 };
@@ -68,9 +105,12 @@ test.describe('Zulu clock', () => {
   });
 
   test('the clock can be dragged and the position persists across reload', async ({ page }) => {
-    // Fresh context starts with empty localStorage — don't clear via
-    // addInitScript (that would also wipe the saved pos on the reload below).
+    // Draggable only when the gist says so (zuluClockMovable); the gist answers after boot, on the
+    // reload too. Fresh context starts with empty localStorage.
+    await page.route('https://gist.githubusercontent.com/**', r => r.fulfill({
+      status: 200, contentType: 'application/json', body: JSON.stringify({ zuluClockMovable: true }) }));
     await boot(page);
+    await page.waitForFunction(() => !document.getElementById('zulu-clock').classList.contains('zulu-fixed'));
     const clock = page.locator('#zulu-clock');
     const before = await clock.boundingBox();
     if (!before) throw new Error('no box');
@@ -89,7 +129,8 @@ test.describe('Zulu clock', () => {
 
     await page.reload();
     await page.waitForFunction(() =>
-      typeof map !== 'undefined' && document.getElementById('zulu-clock') !== null);
+      typeof map !== 'undefined' && document.getElementById('zulu-clock') !== null
+      && !document.getElementById('zulu-clock').classList.contains('zulu-fixed'));
     const reloaded = await clock.boundingBox();
     if (!reloaded) throw new Error('no box');
     expect(Math.abs(reloaded.x - after.x)).toBeLessThan(3);

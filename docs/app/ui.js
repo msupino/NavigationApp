@@ -2078,15 +2078,19 @@ function applyTuningCssVars() {
 }
 window.applyTuningCssVars = applyTuningCssVars;
 applyTuningCssVars();
-const zuluClockCtrl = L.control({ position: 'topright' });
+const zuluClockMovable = () => typeof tune === 'function' && tune('zuluClockMovable') === true;
+const zuluClockCtrl = L.control({ position: zuluClockMovable() ? 'topright' : 'bottomright' });
+// One element for the life of the page: the gist can move the control between corners
+// (setPosition re-runs onAdd), and the tick and the drag handlers hold on to this element.
+const zuluClockEl = L.DomUtil.create('div', 'leaflet-control zulu-clock');
+zuluClockEl.id = 'zulu-clock';
+zuluClockEl.dir = 'ltr';
+zuluClockEl.title = 'Zulu time (UTC)';
+zuluClockEl.setAttribute('aria-label', 'Zulu time (UTC)');
+zuluClockEl.setAttribute('aria-live', 'off');
 zuluClockCtrl.onAdd = function () {
-  const box = L.DomUtil.create('div', 'leaflet-control zulu-clock');
-  box.id = 'zulu-clock';
-  box.dir = 'ltr';
-  box.title = 'Zulu time (UTC)';
-  box.setAttribute('aria-label', 'Zulu time (UTC)');
-  box.setAttribute('aria-live', 'off');
-  return box;
+  zuluClockEl.classList.toggle('zulu-fixed', !zuluClockMovable());
+  return zuluClockEl;
 };
 zuluClockCtrl.addTo(map);
 const zuluClockBox = document.getElementById('zulu-clock');
@@ -2104,11 +2108,21 @@ setInterval(refreshZuluClock, 1000);
   const box = document.getElementById('zulu-clock');
   if (!box) return;
   const KEY = 'navaid.clockPos';
+  // One-time reset (asked): every device drops the spot its clock was dragged to, once. The clock
+  // is fixed by default now; if the gist makes it draggable again it starts from its corner, and a
+  // spot dragged after that is kept as before.
+  try {
+    if (localStorage.getItem('navaid.clockPosReset') !== '1') {
+      for (const k of [KEY, KEY + '.en', KEY + '.he']) localStorage.removeItem(k);
+      localStorage.setItem('navaid.clockPosReset', '1');
+    }
+  } catch (e) { /* storage unavailable */ }
   if (window.L && L.DomEvent) {
     L.DomEvent.disableClickPropagation(box);
     L.DomEvent.disableScrollPropagation(box);
   }
   function applyPos(x, y) {
+    if (!zuluClockMovable()) return;
     const maxX = Math.max(0, window.innerWidth - box.offsetWidth);
     const maxY = Math.max(0, window.innerHeight - box.offsetHeight);
     box.style.position = 'fixed';
@@ -2124,6 +2138,7 @@ setInterval(refreshZuluClock, 1000);
   } catch (e) { /* storage unavailable */ }
 
   function start(cx, cy) {
+    if (!zuluClockMovable()) return;
     const r = box.getBoundingClientRect();
     const off = { x: cx - r.left, y: cy - r.top };
     box.classList.add('dragging');
@@ -2145,10 +2160,26 @@ setInterval(refreshZuluClock, 1000);
     window.addEventListener('touchmove', tm, { passive: false });
     window.addEventListener('touchend', end);
   }
-  box.addEventListener('mousedown', e => { e.preventDefault(); start(e.clientX, e.clientY); });
+  box.addEventListener('mousedown', e => { if (!zuluClockMovable()) return; e.preventDefault(); start(e.clientX, e.clientY); });
   box.addEventListener('touchstart', e => {
+    if (!zuluClockMovable()) return;
     if (e.touches.length === 1) { e.preventDefault(); start(e.touches[0].clientX, e.touches[0].clientY); }
   }, { passive: false });
+  // The gist can switch it: fixed goes to the bottom-right slot (a dragged spot stays in storage
+  // for when it is draggable again); draggable goes back to the top corner, or that spot.
+  window.refreshZuluClockPlacement = function () {
+    const movable = zuluClockMovable();
+    const want = movable ? 'topright' : 'bottomright';
+    if (zuluClockCtrl.getPosition() !== want) zuluClockCtrl.setPosition(want);
+    box.classList.toggle('zulu-fixed', !movable);
+    for (const k of ['position', 'left', 'top', 'right', 'margin', 'transform']) box.style[k] = '';
+    if (movable) {
+      try {
+        const p = JSON.parse(navLangPosRead(KEY) || 'null');
+        if (p && Number.isFinite(p.x) && Number.isFinite(p.y)) applyPos(p.x, p.y);
+      } catch (e) { /* storage unavailable */ }
+    }
+  };
 })();
 // --- chart attribution, folded away on a phone -----------------------
 // The notice is required and must stay one tap away, but on a 390px screen it was a
@@ -13600,6 +13631,7 @@ if (typeof loadRemoteConfig === "function") {
     if (typeof refreshEmptyRouteHint === "function") refreshEmptyRouteHint();
     if (typeof refreshTrafficFeature === "function") refreshTrafficFeature();
     if (typeof window.refreshAtcRadioFeature === "function") window.refreshAtcRadioFeature();
+    if (typeof window.refreshZuluClockPlacement === "function") window.refreshZuluClockPlacement();
     // The gist may have turned base layers on or off -- rebuild the picker to match, and
     // the nav-data source list with it: its entries are those same charts.
     if (typeof rebuildLayerPicker === "function") rebuildLayerPicker();

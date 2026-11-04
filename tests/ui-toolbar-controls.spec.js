@@ -13,7 +13,7 @@ async function boot(page) {
       if (localStorage.getItem('__test_tb_init') !== '1') {
         localStorage.clear();
         sessionStorage.clear();
-        for (const s of ['build','view','display','charts','export','print'])
+        for (const s of ['build','view','display','charts','export','print','settings'])
           localStorage.setItem('navaid.sec.' + s, '1');
         localStorage.setItem('__test_tb_init', '1');
       }
@@ -106,6 +106,9 @@ test.describe('Sliders persist to localStorage', () => {
   test('theme toggle button writes navaid.theme and persists across reload', async ({ page }) => {
     await boot(page);
     const btn = page.locator('#theme-toggle');
+    // A setting now, beside the language -- not in Display (asked).
+    await expect(page.locator('.tb-section[data-sec="settings"] #theme-toggle')).toHaveCount(1);
+    await expect(page.locator('.tb-section[data-sec="display"] #theme-toggle')).toHaveCount(0);
     // Light by default → button offers to switch TO dark.
     await expect(page.locator('body')).toHaveClass(/theme-light/);
     await expect(btn).toContainText('Dark mode');
