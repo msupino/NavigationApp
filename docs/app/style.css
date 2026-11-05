@@ -8238,6 +8238,8 @@ body.theme-light .ov-hide-btn { color: #1f252c; }
 /* Live ADS-B traffic: an arrow pointing where the aircraft is going, with its callsign and
    altitude beside it. Deliberately quieter than the own-ship and the route -- it is
    information about somebody else, and it must not be mistaken for either. */
+/* The feed has been silent a while: these positions are getting old (traffic.js ageOut). */
+.traffic-mark.traffic-stale { opacity: 0.4; filter: saturate(0.3); }
 .traffic-mark {
   display: flex; align-items: center; gap: 2px;
   pointer-events: auto; cursor: pointer;
