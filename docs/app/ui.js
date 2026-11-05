@@ -1351,7 +1351,13 @@ atcRadioCtrl.onAdd = function () {
   setMapIcon(b, 'headset');
   b.title = (typeof S !== 'undefined' && S.atcRadioTitle) || 'ATC radio';
   b.setAttribute('aria-label', b.title);
-  b.addEventListener('click', () => { if (window.atcRadio && typeof window.atcRadio.open === 'function') window.atcRadio.open(); });
+  // Green (a channel playing): a tap stops it (asked). Otherwise it opens the channel list.
+  b.addEventListener('click', () => {
+    const r = window.atcRadio;
+    if (!r) return;
+    if (r.current && typeof r.stop === 'function') r.stop();
+    else if (typeof r.open === 'function') r.open();
+  });
   wrap.appendChild(b);
   // Ships off (gist turns it on). The wrapper reserves its slot from first paint (CSS min-size);
   // only the button is hidden when off. So the gist flipping it on -- after paint, on a cold load
