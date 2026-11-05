@@ -180,9 +180,16 @@
 
   // The opener stays lit while a channel plays, like the other switches: closing the window
   // does not stop the audio, and the lit button says where to stop it.
+  // While a channel plays the button stops it (ui.js), and says so: "Stop <channel>".
   function refreshOpener() {
     opener.setAttribute('aria-pressed', current ? 'true' : 'false');
     opener.classList.toggle('active', !!current);
+    const c = current && CHANNELS.find(ch => ch.id === current);
+    const label = c
+      ? str('atcStop', 'Stop') + ' ' + (c.icao ? c.icao + ' ' : '') + str(c.type, c.type) + ' ' + c.freq
+      : str('atcRadioTitle', 'ATC radio');
+    opener.title = label;
+    opener.setAttribute('aria-label', label);
   }
 
   function open() { build(); modal.classList.remove('hidden'); const b = list.querySelector('button'); if (b) b.focus(); }

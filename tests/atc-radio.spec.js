@@ -71,6 +71,22 @@ test('closing the window keeps the audio, and the opener stays lit until Stop', 
   expect(await page.evaluate(() => document.getElementById('tool-atc-radio').getAttribute('aria-pressed'))).toBe('false');
 });
 
+// Asked: "when playing atc, pressing the green button on map should stop playing".
+test('the green map button stops the channel playing; idle, it opens the list', async ({ page }) => {
+  await boot(page);
+  const fab = page.locator('#tool-atc-radio');
+  await expect(fab).toHaveAttribute('aria-label', /ATC/);
+  await page.evaluate(() => window.atcRadio.play('pluto-west'));
+  await expect(fab).toHaveClass(/active/);
+  await expect(fab).toHaveAttribute('aria-label', 'Stop Pluto West 118.40');
+  await fab.click();
+  expect(await page.evaluate(() => window.atcRadio.current)).toBe(null);
+  await expect(fab).toHaveAttribute('aria-pressed', 'false');
+  await expect(page.locator('#atc-modal')).toHaveClass(/hidden/);     // stopped, not opened
+  await fab.click();
+  await expect(page.locator('#atc-modal')).not.toHaveClass(/hidden/); // idle: opens the list
+});
+
 test('a stream that does not start says so and releases the button', async ({ page }) => {
   await boot(page, { fail: true });
   await page.evaluate(() => window.atcRadio.open());
