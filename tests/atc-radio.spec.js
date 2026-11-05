@@ -75,7 +75,8 @@ test('closing the window keeps the audio, and the opener stays lit until Stop', 
 test('the green map button stops the channel playing; idle, it opens the list', async ({ page }) => {
   await boot(page);
   const fab = page.locator('#tool-atc-radio');
-  await expect(fab).toHaveAttribute('aria-label', /ATC/);
+  const idle = await page.evaluate(() => S.atcRadioTitle);
+  await expect(fab).toHaveAttribute('aria-label', idle);
   await page.evaluate(() => window.atcRadio.play('pluto-west'));
   await expect(fab).toHaveClass(/active/);
   await expect(fab).toHaveAttribute('aria-label', 'Stop Pluto West 118.40');
@@ -83,6 +84,7 @@ test('the green map button stops the channel playing; idle, it opens the list', 
   expect(await page.evaluate(() => window.atcRadio.current)).toBe(null);
   await expect(fab).toHaveAttribute('aria-pressed', 'false');
   await expect(page.locator('#atc-modal')).toHaveClass(/hidden/);     // stopped, not opened
+  await expect(fab).toHaveAttribute('aria-label', idle);             // and says what it does again
   await fab.click();
   await expect(page.locator('#atc-modal')).not.toHaveClass(/hidden/); // idle: opens the list
 });
