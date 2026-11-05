@@ -6096,11 +6096,32 @@ window.addEventListener('keydown', e => {
   // waypoint behind the dialog, silently, with the route and the filed plan one point short.
   // Undo (Ctrl-Z) is deliberately still allowed: it is a recovery key, not a route edit.
   const modalOpen = !!document.querySelector('.modal-back');
+  // A shortcut does what its button does -- including saying no. When the button it stands for
+  // is dimmed, the key gives the button's reason (as a tap on it would) and does nothing. F fitted
+  // the map with Fit dimmed, Ctrl-Z rewrote a locked route with Undo dimmed (reported).
+  const refusedLikeButton = (...ids) => {
+    if (typeof window.refreshRouteButtons === 'function') window.refreshRouteButtons();
+    if (typeof window.refreshEditColumn === 'function') window.refreshEditColumn();
+    const b = ids.map(id => document.getElementById(id)).find(Boolean);
+    if (!b || b.getAttribute('aria-disabled') !== 'true' || !b.dataset.why) return false;
+    if (typeof showToast === 'function') showToast(b.dataset.why, { warn: true });
+    return true;
+  };
+  // The selection keys (D, Delete, X, Z) edit the route like the panel's buttons, which a locked
+  // route dims: the key refuses with the lock's own message.
+  const refusedByLock = () => {
+    if (!(typeof routeEditLocked === 'function' && routeEditLocked())) return false;
+    // A read-only pick (an airfield, a chart point) has nothing for these keys to change.
+    if (!state.selected || (state.selected.type !== 'wp' && state.selected.type !== 'note')) return false;
+    if (typeof showToast === 'function') showToast(S.editLockBlockedToast || 'Route is locked', { warn: true });
+    return true;
+  };
   // Ctrl/Cmd-Z undoes the last committed edit. Shift-Ctrl-Z (redo) is left
   // alone — there is no redo, so don't swallow it.
   if (shortcutKey(e, 'KeyZ', 'z') && (e.ctrlKey || e.metaKey) &&
       !e.altKey && !e.shiftKey) {
     e.preventDefault();
+    if (refusedLikeButton('edit-col-undo')) return;     // locked, or nothing to undo
     if (typeof undo === 'function') undo();
     return;
   }
@@ -6121,6 +6142,7 @@ window.addEventListener('keydown', e => {
   // overlay shortcut handled in ui.js — bail out so we don't shadow it.
   if (shortcutPlain(e, 'KeyF', 'f')) {
     e.preventDefault();
+    if (refusedLikeButton('edit-col-fit', 'fit')) return;   // nothing to fit yet
     fitToScreen();
     return;
   }
@@ -6173,6 +6195,7 @@ window.addEventListener('keydown', e => {
     if (modalOpen || !state.selected) return;
     const freqNote = selectedFreqNoteIndex();
     if (freqNote >= 0) {
+      if (refusedByLock()) return;
       const note = state.notes[freqNote];
       // Suppress so seedCommChangeNotes() doesn't re-seed it on the next
       // drag/add/toggle — matches the other freq-note delete paths.
@@ -6190,6 +6213,7 @@ window.addEventListener('keydown', e => {
     if (!wp || !wp.name || !showCommChange) return;
     const ccKey = waypointFreqChangeKey(wp);
     if (!ccKey || freqChangeNoteForKey(ccKey)) return;
+    if (refusedByLock()) return;
     const idx = addCommChangeNoteForWaypoint(wp, ccKey);
     if (idx >= 0) state.selected.freqNoteIndex = idx;
     draw(); showInspector();
@@ -6198,12 +6222,14 @@ window.addEventListener('keydown', e => {
   // D (no modifier): delete the selected waypoint or note (freq callout goes with its waypoint).
   if (shortcutPlain(e, 'KeyD', 'd')) {
     if (modalOpen || !state.selected) return;
+    if (refusedByLock()) return;
     deleteSelectedWpOrNote();
     return;
   }
   // Delete / Backspace: delete freq callout first, otherwise waypoint/note.
   if (e.key === 'Delete' || e.key === 'Backspace') {
     if (modalOpen || !state.selected) return;
+    if (refusedByLock()) return;
     const freqNote = selectedFreqNoteIndex();
     if (freqNote >= 0) {
       const note = state.notes[freqNote];
