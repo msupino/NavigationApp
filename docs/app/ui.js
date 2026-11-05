@@ -1359,6 +1359,14 @@ atcRadioCtrl.onAdd = function () {
     else if (typeof r.open === 'function') r.open();
   });
   wrap.appendChild(b);
+  // What is playing, beside the green button (asked). Absolutely placed, so showing it never moves
+  // the column; the button's own label already says it to a screen reader.
+  const now = document.createElement('span');
+  now.className = 'atc-fab-now';
+  now.hidden = true;
+  now.setAttribute('aria-hidden', 'true');
+  now.dir = 'auto';
+  wrap.appendChild(now);
   // Ships off (gist turns it on). The wrapper reserves its slot from first paint (CSS min-size);
   // only the button is hidden when off. So the gist flipping it on -- after paint, on a cold load
   // lighthouse measures -- fills the reserved slot without moving any control (no layout shift).
