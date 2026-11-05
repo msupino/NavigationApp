@@ -1712,6 +1712,7 @@ window.S = {
   wxTitleNoMetar: 'גובה צפיפות',
   daElevFromModel: 'גובה שטח',
   trafficUnavailable: 'תעבורה חיה אינה זמינה',
+  trafficLost: (s) => 'התעבורה החיה אבדה — אין עדכון ' + s + ' שניות',
   airspaceUnavailable: 'מרחב אווירי לא זמין',
   trafficTitle: 'תעבורה',
   trafficAltitude: 'גובה',

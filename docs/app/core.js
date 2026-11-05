@@ -1278,6 +1278,16 @@ NavAid.tuningDefaults = {
     label: 'How often live traffic is refreshed (s)' },
   trafficFailsBeforeWarn: { value: 3, min: 1, max: 10, step: 1,
     label: 'Failed traffic requests in a row before saying so' },
+  // A request that hangs used to hold every later refresh off (one in flight at a time) until the
+  // browser gave up; timed out, it fails and the next refresh tries again.
+  trafficTimeoutSec: { value: 10, min: 3, max: 30, step: 1,
+    label: 'Give up on a live traffic request after (s)' },
+  // No good answer for this long: the feed's aircraft fade (their positions are getting old), and
+  // after the second, longer wait they go, with a message -- a frozen aeroplane reads as current.
+  trafficStaleSec: { value: 30, min: 10, max: 120, step: 5,
+    label: 'Fade live traffic when no update for (s)' },
+  trafficDropSec: { value: 60, min: 20, max: 300, step: 10,
+    label: 'Remove live traffic when no update for (s)' },
   // Not red. Red on an aviation display means resolve it now, and this is information --
   // magenta is what a traffic symbol wears on a moving map, and nothing else on the chart
   // uses it.
@@ -1315,7 +1325,7 @@ NavAid.tuningGroups = [
     'airspaceLabelFontPx'] },
   { name: 'ATC radio', keys: ['featureAtcRadio', 'atcRadioBase'] },
   { name: 'Live traffic', keys: ['featureLiveTraffic', 'defaultShowTraffic', 'trafficApiUrl', 'trafficWebApiUrl', 'trafficRadiusNm',
-    'trafficRefreshSec', 'trafficFailsBeforeWarn', 'trafficIconPx', 'trafficArrowColor',
+    'trafficRefreshSec', 'trafficFailsBeforeWarn', 'trafficTimeoutSec', 'trafficStaleSec', 'trafficDropSec', 'trafficIconPx', 'trafficArrowColor',
     'trafficLabelColor'] },
   { name: 'Follow me', keys: ['featureFollowMe', 'featureFollowMePublic', 'publicPilotsViewHash', 'followMePublicZoomGrow', 'followMePublicDimSec', 'followMePublicDropSec', 'followMeBroker', 'followMeRateSec',
     'followMeStaleSec', 'featureFollowMeHeartbeat', 'followMeHeartbeatSec', 'followMePlanePx', 'followMePlaneColor', 'featureFollowMeShareWhileViewing', 'featureFollowMeRoute', 'followMeRequireSignedLinks', 'followMeRouteCompress', 'followMeRouteMaxKb', 'followMeRouteDebounceMs', 'followMeStopMaxSec', 'followMeResumeHr',
@@ -3447,6 +3457,7 @@ window.S = Object.assign({
   wxTitleNoMetar: 'Density altitude',
   daElevFromModel: 'terrain elevation',
   trafficUnavailable: 'Live traffic unavailable',
+  trafficLost: (s) => 'Live traffic lost — no update for ' + s + ' s',
   airspaceUnavailable: 'Airspace unavailable',
   trafficTitle: 'Traffic',
   trafficAltitude: 'Altitude',
