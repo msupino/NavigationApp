@@ -92,6 +92,28 @@ test('the green map button stops the channel playing; idle, it opens the list', 
   await expect(page.locator('#atc-modal')).not.toHaveClass(/hidden/); // idle: opens the list
 });
 
+// Asked: "can the green player show some indication to whats currently played?"
+test('the green map button names the channel playing, without moving the column', async ({ page }) => {
+  await boot(page);
+  const now = page.locator('.atc-fab-control .atc-fab-now');
+  await expect(now).toBeHidden();
+  const column = () => page.evaluate(() => [...document.querySelector('.leaflet-bottom.leaflet-right').children]
+    .map(c => { const r = c.getBoundingClientRect(); return [Math.round(r.top), Math.round(r.left)]; }));
+  const before = await column();
+  await page.evaluate(() => window.atcRadio.play('haifa-atis'));
+  await expect(now).toBeVisible();
+  await expect(now).toHaveText('LLHA \u00b7 ATIS');
+  expect(await column()).toEqual(before);
+  // Beside the button, to its left.
+  const [n, f] = await page.evaluate(() => [document.querySelector('.atc-fab-now').getBoundingClientRect().right,
+    document.getElementById('tool-atc-radio').getBoundingClientRect().left]);
+  expect(n).toBeLessThanOrEqual(f);
+  await page.evaluate(() => window.atcRadio.play('pluto-west'));
+  await expect(now).toHaveText('Pluto West');
+  await page.evaluate(() => window.atcRadio.stop());
+  await expect(now).toBeHidden();
+});
+
 test('a stream that does not start says so and releases the button', async ({ page }) => {
   await boot(page, { fail: true });
   await page.evaluate(() => window.atcRadio.open());

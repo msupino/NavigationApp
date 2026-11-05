@@ -187,6 +187,12 @@
       : str('atcRadioTitle', 'ATC radio');
     opener.title = label;
     opener.setAttribute('aria-label', label);
+    // The channel's name beside the green button, so the map says what is playing (asked).
+    const now = opener.parentNode && opener.parentNode.querySelector('.atc-fab-now');
+    if (now) {
+      now.textContent = c ? (c.icao ? c.icao + ' \u00b7 ' : '') + str(c.type, c.type) : '';
+      now.hidden = !c;
+    }
   }
 
   function open() { build(); modal.classList.remove('hidden'); const b = list.querySelector('button'); if (b) b.focus(); }

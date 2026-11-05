@@ -3475,7 +3475,28 @@ html:not([dir="rtl"]) .comm-section.has-atc .row:not(:has(.atc-inline)) > .val:h
    same "live" language as the inline airfield buttons. */
 /* Reserve the slot whether or not the button shows, so the gist turning the feature on (after
    first paint) fills it without shifting the column -- the strict CLS budget needs this. */
-.atc-fab-control { min-width: 44px; min-height: 44px; margin-bottom: 8px !important; }
+.atc-fab-control { position: relative; min-width: 44px; min-height: 44px; margin-bottom: 8px !important; }
+/* What is playing: a label to the left of the green button (the column is on the right in both
+   languages). Absolute, so it never moves the column; not a target -- the button stops. */
+.atc-fab-now {
+  position: absolute;
+  right: calc(100% + 8px);
+  top: 50%;
+  transform: translateY(-50%);
+  max-width: 46vw;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  padding: 5px 10px;
+  font: 600 13px/1.2 system-ui, sans-serif;
+  color: #fff;
+  background: rgba(20, 18, 18, 0.92);
+  border: 1px solid #2e7d32;
+  border-radius: 14px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.45);
+  pointer-events: none;
+}
+.atc-fab-now[hidden] { display: none; }
 .atc-fab {
   display: flex;
   align-items: center;
