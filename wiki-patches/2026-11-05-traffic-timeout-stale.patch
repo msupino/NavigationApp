@@ -1,0 +1,67 @@
+From 45549b239f6f81fa408c181d77d074e90f4ac558 Mon Sep 17 00:00:00 2001
+From: Marco <marco@supino.org>
+Date: Thu, 5 Nov 2026 16:33:34 +0000
+Subject: [PATCH] Live traffic: requests time out; silent-feed aircraft fade,
+ then go
+
+---
+ GPS-Track-Recording-he.md | 9 +++++++++
+ GPS-Track-Recording.md    | 9 +++++++++
+ 2 files changed, 18 insertions(+)
+
+diff --git a/GPS-Track-Recording-he.md b/GPS-Track-Recording-he.md
+index 5c52474..3d2bfb7 100644
+--- a/GPS-Track-Recording-he.md
++++ b/GPS-Track-Recording-he.md
+@@ -328,12 +328,21 @@ adsb.lol ומוסיף את כותרת ה־CORS, לדפי NavAid בלבד. הוא
+ | <span dir="ltr"><code>trafficRadiusNm</code></span> | מרחק הבקשה סביבכם (40 נ״מ). |
+ | <span dir="ltr"><code>trafficRefreshSec</code></span> | תדירות הרענון (8 שניות). |
+ | <span dir="ltr"><code>trafficFailsBeforeWarn</code></span> | כמה כשלונות רצופים לפני הודעה (3). |
++| <span dir="ltr"><code>trafficTimeoutSec</code></span> | אחרי כמה זמן בקשה ננטשת, כדי שהרענון הבא ינסה שוב (10 שניות). |
++| <span dir="ltr"><code>trafficStaleSec</code></span> | אין תשובה זמן כזה: המטוסים מתעמעמים (30 שניות). |
++| <span dir="ltr"><code>trafficDropSec</code></span> | אין תשובה זמן כזה: המטוסים יורדים מהמפה, עם הודעה (60 שניות). |
+ | <span dir="ltr"><code>trafficIconPx</code></span> | גודל סמל המטוס (22 פיקסלים). |
+ | <span dir="ltr"><code>trafficArrowColor</code></span> / <span dir="ltr"><code>trafficLabelColor</code></span> | צבע המטוס והתווית. מג׳נטה ולא אדום: אדום בתצוגה תעופתית פירושו לפעול עכשיו, וכאן מדובר במידע. |
+ 
+ בקשה בודדת שנכשלה אינה אומרת דבר ואינה מסירה את מה שכבר על המפה. רק אחרי כמה כשלונות
+ רצופים, וכשאין דבר על המפה, מוצגת ההודעה ״תעבורה חיה אינה זמינה״ — עם הסיבה בסוגריים.
+ 
++לכל בקשה יש זמן קצוב (<span dir="ltr"><code>trafficTimeoutSec</code></span>): בקשה שנתקעה נכשלת כמו כל אחרת,
++והרענון הבא מנסה שוב. כל עוד המקור שותק, המטוסים שלו **מתעמעמים** אחרי <span dir="ltr"><code>trafficStaleSec</code></span>
++— המיקומים מתיישנים — ואחרי <span dir="ltr"><code>trafficDropSec</code></span> הם **יורדים מהמפה**, עם ההודעה
++״התעבורה החיה אבדה — אין עדכון N שניות״: מטוס קפוא על המפה נראה עדכני. התשובה הבאה מחזירה אותם.
++מטוסים ממקלט בלוטות׳ מחובר הם חיים ואינם מתעמעמים.
++
+ ## הפרופיל של הקלטה
+ 
+ **פרופיל** פותח את הטיסה מתחת לשורה: **הגובה שנטס** ו**מהירות הקרקע** מול המרחק, עם התבליט
+diff --git a/GPS-Track-Recording.md b/GPS-Track-Recording.md
+index dc15e83..230f05d 100644
+--- a/GPS-Track-Recording.md
++++ b/GPS-Track-Recording.md
+@@ -385,6 +385,9 @@ the live app — the Traffic box is there, live in the apps, and live in a brows
+ | `trafficRadiusNm` | How far around you to ask for (40 nm). |
+ | `trafficRefreshSec` | How often (8 s). |
+ | `trafficFailsBeforeWarn` | Failed requests in a row before saying so (3). |
++| `trafficTimeoutSec` | Give up on a request after this long, so the next refresh asks again (10 s). |
++| `trafficStaleSec` | No answer for this long: the aircraft fade (30 s). |
++| `trafficDropSec` | No answer for this long: the aircraft go, with a message (60 s). |
+ | `trafficIconPx` | Aircraft size (22 px). |
+ | `trafficArrowColor` / `trafficLabelColor` | Aircraft and label colour. Magenta, not red: red on an aviation display means resolve it now, and this is information. |
+ 
+@@ -392,6 +395,12 @@ A single dropped request says nothing and leaves what is on the map alone. Only
+ several failures in a row, *and* with nothing on the map to look at, does it say *Live
+ traffic unavailable* — with the reason in brackets.
+ 
++Every request has a deadline (`trafficTimeoutSec`): one that hangs fails like any other, and the
++next refresh tries again. While the feed stays silent its aircraft **fade** after `trafficStaleSec`
++— their positions are getting old — and after `trafficDropSec` they **go**, with *Live traffic
++lost — no update for N s*: a frozen aeroplane on the map reads as current. The next answer brings
++them back. Aircraft from a connected Bluetooth receiver are live and never fade.
++
+ ## The profile of a recording
+ 
+ **Profile** opens the flight underneath the row: **altitude flown** and **ground speed**
+-- 
+2.43.0
+

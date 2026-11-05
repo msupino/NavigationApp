@@ -17,6 +17,10 @@
   let timer = 0;
   let inFlight = false;
   let fails = 0;               // consecutive failed polls; one blip is not an outage
+  let lastOkAt = 0;            // when the feed last answered (ms)
+  let stalePolled = false;     // the feed's aircraft are drawn faded: their positions are old
+  let lostSaid = false;        // the 'lost' message was given for this outage
+  const tuneSec = (k, d) => ((typeof tune === 'function' && tune(k)) || d) * 1000;
   // Bumped whenever the layer is torn down. A request already on the wire when the pilot
   // switches traffic off -- or when the fix stops -- would otherwise arrive afterwards and
   // draw its aeroplanes onto a map that is meant to be clear of them.
@@ -102,16 +106,32 @@
 
   // GET through the native bridge. Capacitor hands back a parsed body for JSON responses
   // and a string otherwise, so both have to be accepted. A browser fetches the relay.
+  // Every request has a deadline: one in flight at a time, so a request that hung held every later
+  // refresh off until the browser gave up -- minutes with no retry. Timed out, it fails like any
+  // other, and the next refresh asks again.
   async function getJson(url) {
+    const ms = tuneSec('trafficTimeoutSec', 10);
+    let timer = 0;
+    const deadline = new Promise((_, reject) => { timer = setTimeout(() => reject(new Error('timeout')), ms); });
     const http = nativeHttp();
-    if (!http) {
-      const res = await fetch(url, { headers: { Accept: 'application/json' }, cache: 'no-store' });
-      if (!res.ok) throw new Error('HTTP ' + res.status);
-      return res.json();
+    try {
+      if (!http) {
+        const ac = typeof AbortController === 'function' ? new AbortController() : null;
+        const req = fetch(url, { headers: { Accept: 'application/json' }, cache: 'no-store', signal: ac ? ac.signal : undefined })
+          .then((res) => { if (!res.ok) throw new Error('HTTP ' + res.status); return res.json(); });
+        try { return await Promise.race([req, deadline]); }
+        catch (e) { if (ac) ac.abort(); throw e; }
+      }
+      const req = http.request({ url, method: 'GET', headers: { Accept: 'application/json' },
+        connectTimeout: ms, readTimeout: ms })
+        .then((r) => {
+          if (!r || r.status < 200 || r.status >= 300) throw new Error('HTTP ' + (r && r.status));
+          return typeof r.data === 'string' ? JSON.parse(r.data) : r.data;
+        });
+      return await Promise.race([req, deadline]);
+    } finally {
+      clearTimeout(timer);
     }
-    const r = await http.request({ url, method: 'GET', headers: { Accept: 'application/json' } });
-    if (!r || r.status < 200 || r.status >= 300) throw new Error('HTTP ' + (r && r.status));
-    return typeof r.data === 'string' ? JSON.parse(r.data) : r.data;
   }
 
   // The arrow points where the aircraft is going, and carries what a pilot reads first: who
@@ -145,9 +165,13 @@
   function draw(list) {
     if (!group) group = L.layerGroup();
     group.clearLayers();
+    const fromFeed = new Set(polled);
     for (const a of list) {
       if (!Number.isFinite(a.lat) || !Number.isFinite(a.lon)) continue;
-      const m = L.marker([a.lat, a.lon], { icon: icon(a), keyboard: false, pane: 'markerPane',
+      const ic = icon(a);
+      // The feed's aircraft fade while the feed is silent; a receiver's own (external) are live.
+      if (stalePolled && fromFeed.has(a)) ic.options.className += ' traffic-stale';
+      const m = L.marker([a.lat, a.lon], { icon: ic, keyboard: false, pane: 'markerPane',
                                            title: a.flight || a.hex || '' });
       m._traffic = a;
       m.on('click', (e) => {
@@ -236,8 +260,33 @@
     render();
   };
 
+  // How old the feed's picture is. Faded past trafficStaleSec; past trafficDropSec the feed's
+  // aircraft go and the pilot is told once -- a frozen aeroplane on the map reads as current.
+  function ageOut() {
+    if (!lastOkAt || !polled.length) return;
+    const age = Date.now() - lastOkAt;
+    if (age >= tuneSec('trafficDropSec', 60)) {
+      polled = [];
+      stalePolled = false;
+      render();
+      if (!lostSaid && typeof showToast === 'function') {
+        lostSaid = true;
+        const s = Math.round(age / 1000);
+        showToast(typeof S.trafficLost === 'function' ? S.trafficLost(s) : 'Live traffic lost — no update for ' + s + ' s',
+          { warn: true });
+      }
+      return;
+    }
+    const stale = age >= tuneSec('trafficStaleSec', 30);
+    if (stale !== stalePolled) { stalePolled = stale; render(); }
+  }
+  window.trafficAgeOut = ageOut;
+
   function clear() {
     polled = [];
+    lastOkAt = 0;
+    stalePolled = false;
+    lostSaid = false;
     if (external.length && !switchedOff()) { render(); return; }
     if (group && map.hasLayer(group)) map.removeLayer(group);
     if (group) group.clearLayers();
@@ -246,6 +295,7 @@
   }
 
   async function poll() {
+    ageOut();
     if (inFlight) return;
     if (!on()) { clear(); return; }
     const myGen = generation;   // 'mine' below is the own-ship fix; do not shadow it
@@ -261,6 +311,9 @@
       // Own-ship is in the feed too when the transponder is on: it is already drawn, and a
       // second aeroplane on top of yourself reads as traffic in your lap (render drops it).
       polled = ((d && (d.ac || d.aircraft)) || []).map(normalize);
+      lastOkAt = Date.now();
+      stalePolled = false;
+      lostSaid = false;
       render();
       fails = 0;
       window.trafficLastError = null;
@@ -274,6 +327,7 @@
       // at, and say what went wrong, so the next question is answerable.
       fails += 1;
       window.trafficLastError = { at: Date.now(), why: (e && e.message) || String(e), fails };
+      ageOut();
       const quiet = Math.max(1, (typeof tune === 'function' && tune('trafficFailsBeforeWarn')) || 3);
       if (fails === quiet && !window.trafficAircraft.length && typeof showToast === 'function') {
         const why = (e && e.message) || '';
