@@ -3400,8 +3400,8 @@ body.theme-light .modal.sim-modal #sim-url { border-color: #c6ccd6; background: 
 .atc-list { display: grid; gap: 8px; }
 .atc-row {
   display: grid;
-  grid-template-columns: 1fr auto auto;
-  grid-template-areas: "name freq btn" "state state btn";
+  grid-template-columns: 1fr auto;
+  grid-template-areas: "name btn" "state btn";
   align-items: center;
   column-gap: 10px;
   row-gap: 2px;
@@ -3411,12 +3411,6 @@ body.theme-light .modal.sim-modal #sim-url { border-color: #c6ccd6; background: 
 }
 body.theme-light .atc-row { border-color: #d5dae2; }
 .atc-row .atc-name { grid-area: name; font: 600 15px/1.3 system-ui, sans-serif; }
-.atc-row .atc-freq {
-  grid-area: freq;
-  font: 400 14px/1.3 ui-monospace, SFMono-Regular, Menlo, monospace;
-  font-variant-numeric: tabular-nums;
-  color: var(--muted);
-}
 .atc-row .atc-state { grid-area: state; min-height: 1.2em; font: 400 12px/1.3 system-ui, sans-serif; color: var(--muted); }
 .atc-row.is-live .atc-state { color: #3ecf83; font-weight: 600; }
 body.theme-light .atc-row.is-live .atc-state { color: #1e7d45; }

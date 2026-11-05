@@ -34,7 +34,10 @@ test('the five channels, each played through its own link with a fresh timestamp
   await expect(page.locator('#atc-modal')).not.toHaveClass(/hidden/);
   await expect(page.locator('.atc-row')).toHaveCount(5);
   await expect(row(page, 'herzliya-twr').locator('.atc-name')).toHaveText('LLHZ · Tower');
-  await expect(row(page, 'haifa-atis').locator('.atc-freq')).toHaveText('135.40');
+  // No frequencies in the list: the airfield window shows each field's own, and a copy here would
+  // go stale when one changes -- the provider updates the channel (asked).
+  await expect(page.locator('#atc-list .atc-freq')).toHaveCount(0);
+  await expect(page.locator('#atc-list')).not.toContainText(/\d{3}\.\d{2}/);
   await expect(row(page, 'pluto-west').locator('.atc-name')).toHaveText('Pluto West');   // no airfield
 
   await row(page, 'herzliya-twr').locator('button').click();
@@ -79,7 +82,7 @@ test('the green map button stops the channel playing; idle, it opens the list', 
   await expect(fab).toHaveAttribute('aria-label', idle);
   await page.evaluate(() => window.atcRadio.play('pluto-west'));
   await expect(fab).toHaveClass(/active/);
-  await expect(fab).toHaveAttribute('aria-label', 'Stop Pluto West 118.40');
+  await expect(fab).toHaveAttribute('aria-label', 'Stop Pluto West');
   await fab.click();
   expect(await page.evaluate(() => window.atcRadio.current)).toBe(null);
   await expect(fab).toHaveAttribute('aria-pressed', 'false');
@@ -136,7 +139,7 @@ test('each airfield window has a small play button in each live frequency row, a
   await expect(comm(page).locator('[data-atc]')).toHaveCount(2);
   await expect(page.locator('#inspector .atc-row')).toHaveCount(0);       // no big Listen block
   const btn = comm(page).locator('[data-atc="herzliya-twr"] button');
-  await expect(btn).toHaveAttribute('aria-label', 'Listen LLHZ Tower 125.60');
+  await expect(btn).toHaveAttribute('aria-label', 'Listen LLHZ Tower');
   const box = await btn.boundingBox();
   expect(box.width).toBeLessThanOrEqual(36);                              // small, round
 
@@ -159,7 +162,7 @@ test('the airfield play button plays it, and the ATC list shows the same state',
   await inl.locator('button').click();
   await expect(inl).toHaveClass(/is-live/);
   await expect(inl.locator('.atc-state')).toHaveText('Live');
-  await expect(inl.locator('button')).toHaveAttribute('aria-label', 'Stop LLHA ATIS 135.40');
+  await expect(inl.locator('button')).toHaveAttribute('aria-label', 'Stop LLHA ATIS');
   expect(await page.evaluate(() => window.__atcPlays.pop())).toMatch(/workers\.dev\/haifa-atis\?ts=\d+$/);
   await page.evaluate(() => window.atcRadio.open());
   await expect(page.locator('#atc-list [data-atc="haifa-atis"] button')).toHaveAttribute('aria-pressed', 'true');
