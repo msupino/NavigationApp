@@ -157,7 +157,7 @@
   }
 
   // The arrow points where the aircraft is going, and carries what a pilot reads first: who
-  // it is and how high. Altitude in hundreds of feet, the way it is said on the radio.
+  // it is and how high. Altitude in hundreds of feet, shown as a flight level (FL).
   // A top-down aeroplane, the way every traffic display draws one: nose along the track, so
   // the shape alone says which way it is going before the label is read. Drawn as a path
   // rather than a glyph -- a font character (the old arrow) is whatever the device decides
@@ -170,7 +170,7 @@
   function icon(a) {
     const trk = Number.isFinite(a.track) ? a.track : 0;
     const fl = Number.isFinite(a.alt) ? Math.round(a.alt / 100) : null;
-    const label = [a.flight || a.hex || '', fl === null ? '' : (fl < 10 ? '0' : '') + fl]
+    const label = [a.flight || a.hex || '', fl === null ? '' : 'FL' + String(fl).padStart(3, '0')]
       .filter(Boolean).join(' ');
     const px = Math.round((typeof tune === 'function' && tune('trafficIconPx')) || 22);
     const svg = '<svg class="traffic-plane" viewBox="0 0 24 24" width="' + px + '" height="' + px
