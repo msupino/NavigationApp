@@ -30,7 +30,6 @@ test.describe('Desktop menubar layout', () => {
     await bootDesktop(page);
 
     const toolbar = page.locator('#toolbar');
-    await expect(page.locator('#tablet-layout-row')).toBeHidden();
     const box = await toolbar.boundingBox();
     expect(box).not.toBeNull();
     // Floating bar: detached from the top-left corner, not docked.
@@ -47,6 +46,8 @@ test.describe('Desktop menubar layout', () => {
     expect(mapBox).not.toBeNull();
     // Map fills the viewport behind the floating bar.
     expect(Math.round(mapBox.y)).toBeLessThanOrEqual(1);
+    await toolbar.locator('.tb-section[data-sec="settings"] .tb-section-head').click();
+    await expect(page.locator('#tablet-layout-row')).toBeHidden();
   });
 
   test('drag grip repositions the floating bar and persists the position', async ({ page }) => {

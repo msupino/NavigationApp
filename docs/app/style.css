@@ -563,6 +563,7 @@ body.deck-on #deck-sheet #wp-search { min-height: 48px; font-size: 16px; }
   gap: 4px;
   padding-bottom: 4px;
 }
+#toolbar #tablet-layout-row[hidden] { display: none !important; }
 .tb-section.open .tb-section-body { display: flex; }
 /* Sub-group label inside a section body (layout A): thin divider + caption. */
 /* Grouping box for a toggle + its dependent controls (e.g. IMS PWX overlay). */
