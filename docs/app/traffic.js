@@ -254,6 +254,11 @@
     if (window.trafficAircraft.length) draw(window.trafficAircraft);
     else if (group) { group.clearLayers(); if (map.hasLayer(group)) map.removeLayer(group); }
     dropSelectionIfGone();
+    // The selected transponder remains the same object by ICAO address while its report
+    // changes underneath it. Keep an already-open inspector in step with each feed/receiver
+    // update; refreshInspectorIfVisible deliberately leaves a closed panel closed.
+    if (state && state.selected && state.selected.type === 'traffic' &&
+        typeof refreshInspectorIfVisible === 'function') refreshInspectorIfVisible();
   }
   window.trafficSetExternal = function (list) {
     external = Array.isArray(list) ? list.filter(a => a && Number.isFinite(a.lat) && Number.isFinite(a.lon)) : [];

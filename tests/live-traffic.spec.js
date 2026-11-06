@@ -197,6 +197,24 @@ test('tapping one opens the inspector on it, in flight', async ({ page }) => {
   expect(out.rows).toMatch(/2225/);
 });
 
+test('the open inspector follows new reports for its selected aircraft', async ({ page }) => {
+  await boot(page);
+  await fly(page);
+  await page.evaluate(() => map.setView([32.10, 34.90], 10));
+  await page.locator('.traffic-mark').first().click({ force: true });
+  await expect(page.locator('#insp-body')).toContainText('15975 ft');
+
+  await page.evaluate(async (report) => {
+    window.__body = { ac: [report] };
+    await window.trafficPoll();
+  }, { ...AC[0], alt_baro: 17200, gs: 401, track: 301.2, lat: 32.12, lon: 34.93 });
+
+  await expect(page.locator('#insp-body')).toContainText('17200 ft');
+  await expect(page.locator('#insp-body')).toContainText('401 kt');
+  await expect(page.locator('#insp-body')).toContainText('301°');
+  await expect(page.locator('#insp-body')).toContainText(/32°07\.2/);
+});
+
 test('an aircraft that stops being heard takes its panel with it', async ({ page }) => {
   await boot(page);
   await fly(page);
