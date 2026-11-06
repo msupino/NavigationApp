@@ -22,7 +22,9 @@ test('the control sits in Settings, under the language, and shows 90 by default'
   await expect(el).toHaveValue('90');
   const order = await page.evaluate(() => {
     const body = document.querySelector('.tb-section[data-sec="settings"] .tb-section-body');
-    const rows = [...body.children].filter(r => r.tagName !== 'SCRIPT');
+    // Tablet layout choice is present in the DOM for tablet Settings but hidden on
+    // desktop. Assert the visual order of settings, excluding rows hidden by CSS/HTML.
+    const rows = [...body.children].filter(r => r.tagName !== 'SCRIPT' && !r.hidden);
     return {
       langIdx: rows.findIndex(r => r.querySelector('#lang-select')),
       themeIdx: rows.findIndex(r => r.querySelector('#theme-select')),

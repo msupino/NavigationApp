@@ -766,6 +766,8 @@ as a machine-readable registry.
   `inspZoomSmallest` and `inspZoomLargest` tunables.
 - `navaid.bearing` — map bearing in degrees (rotated-map support).
 - `navaid.theme` — `'dark'` / `'light'` for toolbar and panel chrome.
+- `navaid.tabletLayout` — optional device-local tablet menu choice: `'desktop'` or
+  `'mobile'`; absent means follow the gist's `featureTabletDesktop` default.
 - `navaid.yellowAlpha` — Label-opacity slider value (waypoint labels).
   (Kite/note opacity is not persisted here — it's the gist tune key `kiteNoteAlpha`.)
 - `navaid.mapOpacity.v2` — base-map opacity slider value.

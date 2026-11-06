@@ -12163,21 +12163,42 @@ document.getElementById('insp-close').onclick = () => {
 const toolbarDesktopMenuQuery = window.matchMedia
   ? window.matchMedia('(min-width: 681px) and (hover: hover) and (pointer: fine)')
   : null;
-// The gist's `featureTabletDesktop` hands a tablet (the iPad) the menubar anyway, to try it there.
-// style.css keys the menubar off html.menubar, which index.html sets on the query at first paint
-// and refreshToolbarDesktopMenu() keeps true to this.
+// The gist's `featureTabletDesktop` supplies the default tablet layout. A local Settings choice
+// can override it on this device, so an iPad user can choose the desktop menubar or phone deck.
 const toolbarTabletQuery = window.matchMedia
   ? window.matchMedia('(min-width: 681px) and (pointer: coarse)')
   : null;
+const TABLET_LAYOUT_KEY = 'navaid.tabletLayout';
 const toolbarDesktopMenuListeners = [];
+let tabletLayoutTransientChoice = null;
+
+function tabletLayoutPreference() {
+  if (tabletLayoutTransientChoice) return tabletLayoutTransientChoice;
+  try {
+    const value = localStorage.getItem(TABLET_LAYOUT_KEY);
+    return value === 'desktop' || value === 'mobile' ? value : 'auto';
+  } catch (e) { return 'auto'; }
+}
+
+function refreshTabletLayoutControl() {
+  const row = document.getElementById('tablet-layout-row');
+  const select = document.getElementById('tablet-layout');
+  if (!row || !select) return;
+  row.hidden = !(toolbarTabletQuery && toolbarTabletQuery.matches);
+  select.value = tabletLayoutPreference();
+}
 
 function toolbarUsesDesktopMenu() {
   if (toolbarDesktopMenuQuery && toolbarDesktopMenuQuery.matches) return true;
-  return !!(toolbarTabletQuery && toolbarTabletQuery.matches
-    && typeof tune === 'function' && tune('featureTabletDesktop') === true);
+  if (!(toolbarTabletQuery && toolbarTabletQuery.matches)) return false;
+  const preference = tabletLayoutPreference();
+  if (preference === 'desktop') return true;
+  if (preference === 'mobile') return false;
+  return typeof tune === 'function' && tune('featureTabletDesktop') === true;
 }
 
 function refreshToolbarDesktopMenu() {
+  refreshTabletLayoutControl();
   const on = toolbarUsesDesktopMenu();
   const root = document.documentElement;
   if (root.classList.contains('menubar') === on) return;
@@ -12187,6 +12208,20 @@ function refreshToolbarDesktopMenu() {
 window.NavAid = window.NavAid || {};
 NavAid.usesDesktopMenu = toolbarUsesDesktopMenu;
 NavAid.refreshDesktopMenu = refreshToolbarDesktopMenu;
+const tabletLayoutSelect = document.getElementById('tablet-layout');
+if (tabletLayoutSelect) {
+  tabletLayoutSelect.addEventListener('change', () => {
+    const value = tabletLayoutSelect.value;
+    tabletLayoutTransientChoice = value === 'desktop' || value === 'mobile' ? value : 'auto';
+    try {
+      if (value === 'desktop' || value === 'mobile') localStorage.setItem(TABLET_LAYOUT_KEY, value);
+      else localStorage.removeItem(TABLET_LAYOUT_KEY); // return to the gist-configured default
+    } catch (e) { /* honor the choice for this page even when storage is unavailable */ }
+    refreshToolbarDesktopMenu();
+    if (NavAid.refreshMobileDeck) NavAid.refreshMobileDeck();
+  });
+}
+refreshTabletLayoutControl();
 
 // The app's update row (installed app only). On the phone layout it is the toolbar's footer line;
 // the desktop menu bar has no footer, and hid it -- so the app on a Mac (a window wider than a
