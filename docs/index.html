@@ -116,8 +116,15 @@
       // before io.js strips a shared route's parameters from the address.
       window.__navaidFromSharedLink = /[?&](follow|pilots|r)=/.test(location.search);
       // The desktop menubar's CSS hangs off html.menubar (ui.js refreshToolbarDesktopMenu keeps
-      // it current); set here so a computer paints the menubar from the first frame.
-      if (window.matchMedia && matchMedia('(min-width: 681px) and (hover: hover) and (pointer: fine)').matches) {
+      // it current); set here so a computer or a tablet with a saved desktop choice paints it
+      // from the first frame.
+      var desktopPointer = window.matchMedia
+        && matchMedia('(min-width: 681px) and (hover: hover) and (pointer: fine)').matches;
+      var tabletPointer = window.matchMedia
+        && matchMedia('(min-width: 681px) and (pointer: coarse)').matches;
+      var tabletLayout = 'auto';
+      try { tabletLayout = localStorage.getItem('navaid.tabletLayout') || 'auto'; } catch (e) {}
+      if (desktopPointer || (tabletPointer && tabletLayout === 'desktop')) {
         h.classList.add('menubar');
       }
     }());
@@ -957,6 +964,14 @@
           <select id="theme-select">
             <option value="light" data-i18n="tbLightMode"></option>
             <option value="dark" data-i18n="tbDarkMode"></option>
+          </select>
+        </label>
+        <label id="tablet-layout-row" class="navtoggle" hidden data-i18n-title="tbTabletLayoutTitle">
+          <span data-i18n="tbTabletLayout"></span>
+          <select id="tablet-layout">
+            <option value="auto" data-i18n="tbTabletLayoutAuto"></option>
+            <option value="mobile" data-i18n="tbTabletLayoutMobile"></option>
+            <option value="desktop" data-i18n="tbTabletLayoutDesktop"></option>
           </select>
         </label>
         <script>
