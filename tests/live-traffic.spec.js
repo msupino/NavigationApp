@@ -263,6 +263,22 @@ test('the traffic inspector follows its aircraft until follow is stopped', async
   expect(await page.evaluate(() => window.trafficFollowTarget())).toBe('');
 });
 
+test('turning traffic off clears its temporary follow target', async ({ page }) => {
+  await boot(page);
+  await fly(page);
+  await page.evaluate(() => map.setView([32.10, 34.90], 10));
+  await page.locator('.traffic-mark').first().click({ force: true });
+  await page.locator('#insp-traffic-follow').click();
+  expect(await page.evaluate(() => window.trafficFollowTarget())).toBe('4c80b8');
+
+  await page.evaluate(() => {
+    const cb = document.getElementById('traffic-cb');
+    cb.checked = false;
+    cb.dispatchEvent(new Event('change', { bubbles: true }));
+  });
+  await expect.poll(() => page.evaluate(() => window.trafficFollowTarget())).toBe('');
+});
+
 test('an aircraft that stops being heard takes its panel with it', async ({ page }) => {
   await boot(page);
   await fly(page);

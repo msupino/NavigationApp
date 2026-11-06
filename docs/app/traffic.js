@@ -324,6 +324,7 @@
     stalePolled = false;
     lostSaid = false;
     if (external.length && !switchedOff()) { render(); return; }
+    followedHex = '';
     if (group && map.hasLayer(group)) map.removeLayer(group);
     if (group) group.clearLayers();
     window.trafficAircraft = [];
