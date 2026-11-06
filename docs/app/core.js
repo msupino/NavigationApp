@@ -3460,6 +3460,8 @@ window.S = Object.assign({
   trafficLost: (s) => 'Live traffic lost — no update for ' + s + ' s',
   airspaceUnavailable: 'Airspace unavailable',
   trafficTitle: 'Traffic',
+  trafficFollow: 'Follow aircraft',
+  trafficStopFollow: 'Stop following',
   trafficAltitude: 'Altitude',
   trafficGroundSpeed: 'Ground speed',
   trafficSquawk: 'Squawk',

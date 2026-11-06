@@ -12147,6 +12147,7 @@ function clampInspToViewport() {
 })();
 
 document.getElementById('insp-close').onclick = () => {
+  if (typeof window.trafficClearFollow === 'function') window.trafficClearFollow();
   state.selected = null;
   showInspector(); draw();
 };
