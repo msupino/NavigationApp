@@ -563,6 +563,7 @@ body.deck-on #deck-sheet #wp-search { min-height: 48px; font-size: 16px; }
   gap: 4px;
   padding-bottom: 4px;
 }
+#toolbar #tablet-layout-row[hidden] { display: none !important; }
 .tb-section.open .tb-section-body { display: flex; }
 /* Sub-group label inside a section body (layout A): thin divider + caption. */
 /* Grouping box for a toggle + its dependent controls (e.g. IMS PWX overlay). */
@@ -6350,6 +6351,7 @@ body.theme-light #toolbar button.danger:hover {
    beat the desktop media rule that flattens them in dark). */
 body.theme-light #toolbar .tb-group-box { border-color: #b8c0cc; }
 body.theme-light #toolbar .tb-layer-frame { border-color: #b8c0cc; }
+body.theme-light #toolbar .tb-frame-title { color: #5b6672; }
 /* The rules that trail a group / frame title are drawn as a ::after block, and only the
    standalone .tb-group-separator had a light-theme colour -- so on a light background those
    two lines stayed dark-theme charcoal while every other separator went pale grey. Same
