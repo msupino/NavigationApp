@@ -173,7 +173,7 @@ test('each mark says who and how high, pointing where it is going', async ({ pag
     return { text: el.textContent.trim(), rotated: el.querySelector('.traffic-arrow').style.transform };
   });
   expect(first.text).toContain('BBG802');       // trimmed: the feed pads callsigns to 8
-  expect(first.text).toContain('160');          // 15 975 ft, in hundreds, as it is said
+  expect(first.text).toContain('FL160');         // 15 975 ft, shown as flight level
   expect(first.rotated).toBe('rotate(284.9deg)');
 });
 
