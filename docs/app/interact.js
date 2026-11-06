@@ -4436,6 +4436,25 @@ function showInspector() {
     }
     title.value = ac.flight || ac.hex || (S.trafficTitle || 'Traffic');
     title.readOnly = true;
+    const followBtn = document.createElement('button');
+    followBtn.type = 'button';
+    followBtn.id = 'insp-traffic-follow';
+    followBtn.className = 'insp-btn';
+    const updateFollowButton = () => {
+      const following = typeof window.trafficFollowTarget === 'function' &&
+        window.trafficFollowTarget() === ac.hex;
+      followBtn.textContent = following
+        ? (S.trafficStopFollow || 'Stop following')
+        : (S.trafficFollow || 'Follow aircraft');
+      followBtn.setAttribute('aria-pressed', following ? 'true' : 'false');
+      followBtn.classList.toggle('insp-btn-on', following);
+    };
+    updateFollowButton();
+    followBtn.onclick = () => {
+      if (typeof window.trafficToggleFollow === 'function') window.trafficToggleFollow(ac.hex);
+      updateFollowButton();
+    };
+    body.appendChild(followBtn);
     body.appendChild(textRow(S.trafficAltitude || 'Altitude',
       Number.isFinite(ac.alt) ? Math.round(ac.alt) + ' ' + (S.unitFeet || 'ft') : '—'));
     body.appendChild(textRow(S.trafficGroundSpeed || 'Ground speed',

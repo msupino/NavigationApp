@@ -361,10 +361,10 @@ function onLivePosition(pos) {
     // gpsSetFollow, so the flying band was only ever applied by toggling the switch off and
     // on. A pilot who opened the app zoomed out over the whole route got their aeroplane
     // centred in that same country-wide view, which is the case the band exists for.
-    if (isFirst && gpsFollow) {
+    if (isFirst && gpsOwnshipFollowActive()) {
       map.setView([p.lat, p.lng], gpsFollowZoom(map.getZoom(), p.lat, p.lng));
     }
-    else if (gpsFollow) gpsFollowRecenter(p.lat, p.lng);
+    else if (gpsOwnshipFollowActive()) gpsFollowRecenter(p.lat, p.lng);
     gpsApplyHeadingUp();
   }
 }
@@ -516,12 +516,17 @@ try {
   const stored = localStorage.getItem(GPS_FOLLOW_KEY);
   if (stored !== null) gpsFollow = stored === '1';
 } catch (e) { /* storage unavailable: the default stands */ }
+// ADS-B follow temporarily owns the map center without changing the pilot's saved
+// own-aircraft follow preference.
+function gpsOwnshipFollowActive() {
+  return gpsFollow && !(typeof window.trafficFollowTarget === 'function' && window.trafficFollowTarget());
+}
 function gpsSetFollow(on) {
   gpsFollow = !!on;
   try { localStorage.setItem(GPS_FOLLOW_KEY, gpsFollow ? '1' : '0'); } catch (e) { /* */ }
   // Turning it back on should act now rather than at the next fix -- and the pan that
   // preceded the tap must not hold the map hostage for its grace period either.
-  if (gpsFollow && gpsOwn) {
+  if (gpsOwnshipFollowActive() && gpsOwn) {
     _gpsUserMovedAt = 0;
     gpsFollowRecenter(gpsOwn.lat, gpsOwn.lng,
       gpsFollowZoom(map && map.getZoom(), gpsOwn.lat, gpsOwn.lng));
@@ -1155,10 +1160,10 @@ function onGpsPosition(pos) {
   gpsCheckLegAlerts();
   scheduleDraw();
   // As onLivePosition: the first fix centres and frames (the flying band); later ones follow.
-  if (isFirst && gpsFollow && typeof map !== 'undefined') {
+  if (isFirst && gpsOwnshipFollowActive() && typeof map !== 'undefined') {
     map.setView([pt.lat, pt.lng], gpsFollowZoom(map.getZoom(), pt.lat, pt.lng));
   }
-  else if (gpsFollow) gpsFollowRecenter(pt.lat, pt.lng);
+  else if (gpsOwnshipFollowActive()) gpsFollowRecenter(pt.lat, pt.lng);
   gpsApplyHeadingUp();
 }
 
@@ -1690,7 +1695,7 @@ function gpsGlideTick() {
   if (wait >= 1000) return;                                   // nothing visible to gain: once per fix
   if (Date.now() - _gpsGlideFixAt <= GPS_GLIDE_HOLD_MS) {
     const p = gpsShownOwn();
-    if (gpsFollow && typeof gpsFollowRecenter === 'function') gpsFollowRecenter(p.lat, p.lng);
+    if (gpsOwnshipFollowActive() && typeof gpsFollowRecenter === 'function') gpsFollowRecenter(p.lat, p.lng);
     scheduleDraw();
   }
   _gpsGlideTimer = setTimeout(gpsGlideTick, wait);

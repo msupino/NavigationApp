@@ -1715,6 +1715,8 @@ window.S = {
   trafficLost: (s) => 'התעבורה החיה אבדה — אין עדכון ' + s + ' שניות',
   airspaceUnavailable: 'מרחב אווירי לא זמין',
   trafficTitle: 'תעבורה',
+  trafficFollow: 'עקוב אחר כלי הטיס',
+  trafficStopFollow: 'הפסק מעקב',
   trafficAltitude: 'גובה',
   trafficGroundSpeed: 'מהירות קרקע',
   trafficSquawk: 'משדר',

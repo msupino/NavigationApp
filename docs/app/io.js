@@ -10920,7 +10920,7 @@ async function _simFetch() {
     // copy of it, and requiring both meant the lock could never resume following after a pan
     // when the panel's flag was off -- the button looked live and did nothing. The panel's
     // duplicates are gone; the map buttons are the controls.
-    if ((typeof gpsFollow === 'undefined' || gpsFollow) &&
+    if ((typeof gpsOwnshipFollowActive !== 'function' || gpsOwnshipFollowActive()) &&
         (typeof gpsFollowSuspended !== 'function' || !gpsFollowSuspended())) {
       if (typeof gpsFollowRecenter === 'function') {
         gpsFollowRecenter(window.simAircraft.lat, window.simAircraft.lng);
