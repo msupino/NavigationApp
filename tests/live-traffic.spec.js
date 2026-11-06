@@ -215,6 +215,54 @@ test('the open inspector follows new reports for its selected aircraft', async (
   await expect(page.locator('#insp-body')).toContainText(/32°07\.2/);
 });
 
+test('the traffic inspector follows its aircraft until follow is stopped', async ({ page }) => {
+  await boot(page);
+  await fly(page);
+  await page.evaluate(() => map.setView([32.10, 34.90], 10));
+  await page.locator('.traffic-mark').first().click({ force: true });
+  const follow = page.locator('#insp-traffic-follow');
+  await expect(follow).toHaveText('Follow aircraft');
+
+  await follow.click();
+  await expect(follow).toHaveAttribute('aria-pressed', 'true');
+  const startState = await page.evaluate(() => ({
+    center: map.getCenter(),
+    ownFollow: gpsFollow,
+    storedFollow: localStorage.getItem('navaid.gpsFollow'),
+  }));
+  expect(startState.center.lat).toBeCloseTo(32.10, 2);
+  expect(startState.center.lng).toBeCloseTo(34.90, 2);
+  expect(startState.ownFollow).toBe(true);
+  expect(startState.storedFollow).toBeNull();
+
+  await page.evaluate(async (report) => {
+    window.__body = { ac: [report] };
+    await window.trafficPoll();
+  }, { ...AC[0], alt_baro: 16200, lat: 32.16, lon: 34.96 });
+  await expect.poll(() => page.evaluate(() => map.getCenter().lat)).toBeCloseTo(32.16, 2);
+  await expect.poll(() => page.evaluate(() => map.getCenter().lng)).toBeCloseTo(34.96, 2);
+  await expect(follow).toHaveText('Stop following');
+  await page.evaluate(() => {
+    window.__geoCb({ coords: { latitude: 32.05, longitude: 34.92, accuracy: 5 }, timestamp: Date.now() });
+  });
+  await expect.poll(() => page.evaluate(() => map.getCenter().lat)).toBeCloseTo(32.16, 2);
+
+  await follow.click();
+  await expect(follow).toHaveAttribute('aria-pressed', 'false');
+  const stoppedAt = await page.evaluate(() => map.getCenter());
+  await page.evaluate(async (report) => {
+    window.__body = { ac: [report] };
+    await window.trafficPoll();
+  }, { ...AC[0], lat: 32.20, lon: 35.02 });
+  await expect.poll(() => page.evaluate(() => map.getCenter().lat)).toBeCloseTo(stoppedAt.lat, 4);
+  await expect.poll(() => page.evaluate(() => map.getCenter().lng)).toBeCloseTo(stoppedAt.lng, 4);
+  expect(await page.evaluate(() => localStorage.getItem('navaid.gpsFollow'))).toBeNull();
+
+  await follow.click();
+  await page.locator('#insp-close').click();
+  expect(await page.evaluate(() => window.trafficFollowTarget())).toBe('');
+});
+
 test('an aircraft that stops being heard takes its panel with it', async ({ page }) => {
   await boot(page);
   await fly(page);

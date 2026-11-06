@@ -829,7 +829,9 @@ as a machine-readable registry.
   `featureLiveTraffic` in the gist decides whether the control is offered at all.
   The selected aircraft inspector refreshes on each receiver/feed report while it
   is open; when that aircraft drops out of the current traffic picture, the selection
-  and inspector are cleared.
+  and inspector are cleared. Its **Follow aircraft** inspector button temporarily
+  centers the map on that aircraft as reports arrive. Closing the inspector or choosing
+  **Stop following** clears this transient target; it does not change `navaid.gpsFollow`.
 - **Frequencies a NOTAM states:** `airfieldFreqChanges(icao)` (draw.js) reads a
   new tower or clearance frequency out of the live NOTAM feed, but only from a
   narrow grammar -- each pattern must name its service AND its frequency in one

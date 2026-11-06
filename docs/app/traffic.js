@@ -14,6 +14,7 @@
 
   const LAYER_KEY = 'navaid.showTraffic';
   let group = null;
+  let followedHex = '';
   let timer = 0;
   let inFlight = false;
   let fails = 0;               // consecutive failed polls; one blip is not an outage
@@ -69,6 +70,27 @@
     return typeof tune === 'function' ? tune('defaultShowTraffic') !== false : true;
   };
   window.trafficEnabled = on;
+  // Follow is a temporary target choice made in the selected aircraft's inspector. Keep it
+  // separate from navaid.gpsFollow, which is the pilot's saved own-aircraft preference.
+  window.trafficFollowTarget = () => followedHex;
+  window.trafficToggleFollow = function (hex) {
+    const key = String(hex || '');
+    if (!key || followedHex === key) {
+      followedHex = '';
+      return false;
+    }
+    const target = (window.trafficAircraft || []).find(a => a && a.hex === key);
+    if (!target) return false;
+    followedHex = key;
+    // This button is an explicit request to jump to the target, even if a recent hand pan
+    // temporarily suspended the normal fix-driven following.
+    if (typeof _gpsUserMovedAt === 'number') _gpsUserMovedAt = 0;
+    map.setView([target.lat, target.lon], map.getZoom());
+    return true;
+  };
+  window.trafficClearFollow = function (hex) {
+    if (!hex || followedHex === String(hex)) followedHex = '';
+  };
 
   // The feeds put the position in the path (adsb.lol: /v2/lat/32.05/lon/34.92/dist/40), so
   // the tunable is a template. A URL with no placeholders keeps the old query-string form,
@@ -181,6 +203,7 @@
         // to DomEvent throws before the selection is ever made.
         const dom = e && e.originalEvent;
         if (dom && L.DomEvent) L.DomEvent.stopPropagation(dom);
+        if (followedHex && followedHex !== a.hex) followedHex = '';
         state.selected = { type: 'traffic', hex: a.hex };
         if (typeof showInspector === 'function') showInspector();
       });
@@ -251,6 +274,14 @@
     catch (e) { ownFt = null; }
     const ownPa = ownPressureFt(ownFt);
     window.trafficAircraft = [...byHex.values()].filter(a => !isOwnShip(a, mine, ownHex, ownPa));
+    if (followedHex) {
+      const target = window.trafficAircraft.find(a => a && a.hex === followedHex);
+      if (!target) followedHex = '';
+      else if (typeof gpsFollowSuspended !== 'function' || !gpsFollowSuspended()) {
+        if (typeof gpsFollowRecenter === 'function') gpsFollowRecenter(target.lat, target.lon);
+        else map.setView([target.lat, target.lon], map.getZoom());
+      }
+    }
     if (window.trafficAircraft.length) draw(window.trafficAircraft);
     else if (group) { group.clearLayers(); if (map.hasLayer(group)) map.removeLayer(group); }
     dropSelectionIfGone();
