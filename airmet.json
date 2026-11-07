@@ -1,0 +1,57 @@
+{
+ "generatedAt": "2026-11-07T19:40:37.509Z",
+ "source": "IMS area warnings (ims.gov.il)",
+ "airmets": [
+  {
+   "id": "44108",
+   "hazard": "MT OBSC",
+   "validFrom": "2026-11-07T16:00:00.000Z",
+   "validTo": "2026-11-07T20:00:00.000Z",
+   "coords": [
+    [
+     33.35,
+     35.8
+    ],
+    [
+     32.95,
+     35.91667
+    ],
+    [
+     31.3,
+     35.16667
+    ],
+    [
+     31.38333,
+     34.88333
+    ]
+   ],
+   "raw": "LLLL AIRMET 18 VALID 071600/072000 LLBD- LLLL TEL AVIV FIR MT OBSC FCST WI N3321 E03548 - N3257 E03555 - N3118 E03510 - N3123 E03453 - N3321 E03548 STNR INTSF="
+  },
+  {
+   "id": "44109",
+   "hazard": "TS",
+   "validFrom": "2026-11-07T16:00:00.000Z",
+   "validTo": "2026-11-07T20:00:00.000Z",
+   "coords": [
+    [
+     33.28333,
+     34.83333
+    ],
+    [
+     33.25,
+     35.95
+    ],
+    [
+     30.73333,
+     34.41667
+    ],
+    [
+     32.41667,
+     33.66667
+    ]
+   ],
+   "raw": "LLLL AIRMET 19 VALID 071600/072000 LLBD- LLLL TEL AVIV FIR OCNL TS FCST WI N3317 E03450 - N3315 E03557 - N3044 E03425 - N3225 E03340 - N3317 E03450 TOP FL260 MOV SE 20KT WKN="
+  }
+ ],
+ "airfieldWarnings": {}
+}
