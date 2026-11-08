@@ -59,3 +59,18 @@ test('the traffic inspector labels the track כיוון in Hebrew', async ({ pag
   await page.waitForFunction(() => typeof S === 'object');
   expect(await page.evaluate(() => S.trafficTrack)).toBe('כיוון');
 });
+
+// The right-click menu mirrors the inspector's toggles, pressed state included: same blue.
+test('the right-click menu shows a pressed toggle in the same blue', async ({ page }) => {
+  await page.goto('?lang=en&nogist');
+  await page.waitForFunction(() => typeof showInspector === 'function' && window.NavAidContextMenu);
+  await page.evaluate(() => {
+    state.waypoints = [{ lat: 32.0, lng: 34.8, name: 'A', hotspot: true }, { lat: 32.3, lng: 35.0, name: 'B' }];
+    syncLegs(); draw();
+  });
+  const bg = await page.evaluate(() => {
+    const el = document.createElement('button'); el.className = 'ctx-item ctx-on'; document.body.appendChild(el);
+    const c = getComputedStyle(el).backgroundColor; el.remove(); return c;
+  });
+  expect(bg).toBe(BLUE);
+});

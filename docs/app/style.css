@@ -10262,15 +10262,16 @@ body.deck-on #gps-status { top: calc(var(--navaid-deck-strip-bottom, var(--navai
 .ctx-item .mi-icon { display: inline-flex; flex: 0 0 16px; opacity: 0.85; }
 .ctx-item:hover, .ctx-item:focus-visible { background: #3d3737; outline: none; }
 /* Pressed, as the panel's own toggles show it (.insp-btn-on): filled red with a white ring. */
+/* The inspector's pressed toggle, mirrored: the same selected blue (it was the same red). */
 .ctx-item.ctx-on,
 body.theme-light .ctx-item.ctx-on {
   font-weight: 900;
   color: #fff;
-  background: #b03636;
+  background: #1d6fe0;
   box-shadow: inset 0 0 0 1px #fff;
 }
 .ctx-item.ctx-on:hover, .ctx-item.ctx-on:focus-visible,
-body.theme-light .ctx-item.ctx-on:hover, body.theme-light .ctx-item.ctx-on:focus-visible { background: #c44141; }
+body.theme-light .ctx-item.ctx-on:hover, body.theme-light .ctx-item.ctx-on:focus-visible { background: #195fc2; }
 .ctx-item.ctx-on .mi-icon { opacity: 1; }
 .ctx-item.is-dim { opacity: 0.48; cursor: default; }   /* as .insp-btn:disabled */
 .ctx-item.ctx-danger { color: #ff8a80; }
