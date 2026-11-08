@@ -931,6 +931,10 @@ function orderMapControls(corner) {
   };
   const rows = Array.prototype.slice.call(corner.children);
   const sorted = rows.slice().sort((a, b) => rank(a) - rank(b));
+  // The phone's column is a reversed flex column (it wraps into a second column on a short
+  // screen, see style.css), where the DOM order reads bottom-up: `order` puts it back.
+  // Zoom, which ranks last, therefore stays at the bottom.
+  sorted.forEach((el, i) => { el.style.order = String(sorted.length - i); });
   // Only touch the DOM when the order actually differs: this runs on every fix.
   for (let i = 0; i < sorted.length; i++) {
     if (rows[i] !== sorted[i]) { sorted.forEach(el => corner.appendChild(el)); return; }
@@ -2214,10 +2218,19 @@ setInterval(refreshZuluClock, 1000);
   const label = (typeof S === 'object' && S && S.attribToggle) || 'Chart and map credits';
   btn.title = label;
   btn.setAttribute('aria-label', label);
-  btn.addEventListener('click', () => {
-    const open = el.classList.toggle('attrib-open');
+  const setOpen = (open) => {
+    el.classList.toggle('attrib-open', open);
     btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+  };
+  btn.addEventListener('click', () => setOpen(!el.classList.contains('attrib-open')));
+  // Opened over the coordinate readout, so it has to be easy to put away again: Escape, or a
+  // tap anywhere outside the notice (the toggle's own tap is handled above).
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && el.classList.contains('attrib-open')) setOpen(false);
   });
+  document.addEventListener('pointerdown', (e) => {
+    if (el.classList.contains('attrib-open') && !el.contains(e.target)) setOpen(false);
+  }, true);
   // Leaflet re-writes the notice as layers come and go (each tile layer contributes its
   // own credit), which would drop it straight back into the control beside our span. The
   // attribution control appends to the element it was given, so hand it the span.
