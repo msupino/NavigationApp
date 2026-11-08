@@ -1,0 +1,43 @@
+From 1d3295c882281ba0371d39ed1c47b3df82f5e8d3 Mon Sep 17 00:00:00 2001
+From: Marco <marco@supino.org>
+Date: Sun, 8 Nov 2026 14:44:11 +0000
+Subject: [PATCH] =?UTF-8?q?Next-leg=20alert:=20the=20clock-to-map-to-groun?=
+ =?UTF-8?q?d=20cue=20(=D7=A9.=D7=9E.=D7=A9)?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+---
+ GPS-Track-Recording-he.md | 2 +-
+ GPS-Track-Recording.md    | 2 +-
+ 2 files changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/GPS-Track-Recording-he.md b/GPS-Track-Recording-he.md
+index 3d2bfb7..51c1160 100644
+--- a/GPS-Track-Recording-he.md
++++ b/GPS-Track-Recording-he.md
+@@ -161,7 +161,7 @@ NavAid יכול להקליט את הנתיב שבאמת טסתם מה-GPS של 
+ 
+ | התראה | מתי |
+ | --- | --- |
+-| **קטע הבא** | כשתי דקות לפני נקודת הציון הבאה (חצי מכך בקטע קצר). מציינת את הנקודה ואת הקטע ש**אחריה** — גובה, מגמה וזמן — כך שהיא משמשת גם הכנה לפנייה. |
++| **קטע הבא** | כשתי דקות לפני נקודת הציון הבאה (חצי מכך בקטע קצר). זו קריאת **ש.מ.ש** — ההתראה נקראת *ש.מ.ש* והקריאה הקולית נפתחת ב"שעון, מפה, שטח": בודקים את השעון, מאתרים את הנקודה במפה ואז מחפשים אותה בשטח. מציינת את הנקודה ואת הקטע ש**אחריה** — גובה, מגמה וזמן — כך שהיא משמשת גם הכנה לפנייה. |
+ | **טופ** | מעל נקודת הציון, רגע קריאת ה-TOP בקשר. אם באותה נקודה יש שינוי תדר, ההתראה נושאת גם את התחנה והתדר. |
+ | **גובה** | סטייה של יותר מ-100 רגל (<span dir="ltr"><code>altToleranceFt</code></span>) מהגובה המתוכנן של הקטע. פעם אחת לכל סטייה, ושוב רק אחרי חזרה לטווח — ולכל היותר **פעמיים באותו קטע** (<span dir="ltr"><code>altMaxAlertsPerLeg</code></span>), כך שקטע שנטוס מעט מחוץ לתוכנית מדווח על כך ולא מציק לאורך כולו. |
+ | **סטייה מהמסלול** | שגיאת זווית מסלול מעל 10°, בטיימר עצמאי של שתי דקות. לפני אמצע הקטע — תיקון "כפול השגיאה"; אחריו — תיקון ישר אל הנקודה. שותקת 30 שניות אחרי טופ, בזמן שהפנייה לקטע החדש מתייצבת. |
+diff --git a/GPS-Track-Recording.md b/GPS-Track-Recording.md
+index 230f05d..550626c 100644
+--- a/GPS-Track-Recording.md
++++ b/GPS-Track-Recording.md
+@@ -178,7 +178,7 @@ watch show.
+ 
+ | Alert | When |
+ | --- | --- |
+-| **Next leg** | About two minutes out from the next waypoint (half that on a short leg). Names the point and the leg **after** it — altitude, heading and time — so it doubles as prep for the turn. |
++| **Next leg** | About two minutes out from the next waypoint (half that on a short leg). It is the **clock to map to ground** cue — the notification is titled *Clock to map to ground* and the spoken call opens with it: check the clock, find the point on the map, then look for it outside. Names the point and the leg **after** it — altitude, heading and time — so it doubles as prep for the turn. |
+ | **TOP** | Overhead the waypoint, the moment of the CVFR "TOP" radio call. If that waypoint changes frequency, the alert carries the station and frequency too. |
+ | **Altitude** | Once you leave the current leg's planned altitude by more than 100 ft (`altToleranceFt`). Fires once per excursion, again only after you return inside tolerance — and **at most twice on any one leg** (`altMaxAlertsPerLeg`), so a leg flown slightly off plan reports the fact instead of nagging the whole way. |
+ | **Off course** | Track-angle error past 10°, on its own two-minute timer. Before the leg's midpoint it gives the classic double-the-error intercept; past it, the correction direct to the waypoint. Stays quiet for 30 s after a TOP, while the turn onto the new leg settles. |
+-- 
+2.43.0
+
