@@ -1,48 +1,35 @@
 // Follow-ups from the code review of main.
 const { test, expect } = require('./_setup');
 
+// A position saved before the per-language split (the bare key) is adopted into this language's
+// key, not discarded, and the scoped value wins once it exists. (Exercised through the reader
+// itself: the legend no longer has a position -- it is a fixed dock -- and the reader is shared.)
 test('a position saved before the per-language split is adopted, not discarded', async ({ page }) => {
-  // Pre-split blobs live under the bare key. Every panel used to snap back to its
-  // default because only navaid.<key>.<lang> was read.
   await page.addInitScript(() => {
-    try {
-      localStorage.setItem('navaid.legendPos', JSON.stringify({ x: 240, y: 300 }));
-      localStorage.setItem('navaid.inspPos', JSON.stringify({ x: 120, y: 160 }));
-    } catch (e) {}
-  });
-  // A phone: only there is the legend card dragged (the desktop legend is a fixed dock).
-  await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto('?lang=en&nogist');
-  await page.waitForFunction(() => typeof navLangPosRead === 'function');
-  const legend = await page.evaluate(() => {
-    const r = document.getElementById('map-legend').getBoundingClientRect();
-    return { left: Math.round(r.left), top: Math.round(r.top) };
-  });
-  expect(legend.left).toBe(240);
-  // Adopted into this language's key, with the legacy key left for the other one.
-  expect(await page.evaluate(() => localStorage.getItem('navaid.legendPos.en'))).toBeTruthy();
-  expect(await page.evaluate(() => localStorage.getItem('navaid.legendPos'))).toBeTruthy();
-  // The scoped value wins once it exists.
-  await page.evaluate(() => localStorage.setItem('navaid.legendPos.en', JSON.stringify({ x: 200, y: 320 })));
-  await page.reload();
-  await page.waitForFunction(() => typeof navLangPosRead === 'function');
-  const after = await page.evaluate(() => Math.round(document.getElementById('map-legend').getBoundingClientRect().left));
-  expect(after).toBe(200);
-});
-
-// The legend's spot, not the clock's: the clock now drops its old spot once (it is fixed by
-// default), so it no longer exercises the legacy adoption.
-test('each language still adopts the legacy spot independently', async ({ page }) => {
-  await page.addInitScript(() => {
-    try { localStorage.setItem('navaid.legendPos', JSON.stringify({ x: 300, y: 200 })); } catch (e) {}
+    try { localStorage.setItem('navaid.inspPos', JSON.stringify({ x: 120, y: 160 })); } catch (e) {}
   });
   await page.setViewportSize({ width: 1280, height: 800 });
   await page.goto('?lang=en&nogist');
   await page.waitForFunction(() => typeof navLangPosRead === 'function');
-  expect(await page.evaluate(() => localStorage.getItem('navaid.legendPos.en'))).toBeTruthy();
-  await page.goto('?lang=he&nogist');
-  await page.waitForFunction(() => typeof navLangPosRead === 'function');
-  expect(await page.evaluate(() => localStorage.getItem('navaid.legendPos.he'))).toBeTruthy();
+  const read = () => page.evaluate(() => JSON.parse(navLangPosRead('navaid.inspPos') || 'null'));
+  expect(await read()).toEqual({ x: 120, y: 160 });
+  expect(await page.evaluate(() => localStorage.getItem('navaid.inspPos.en'))).toBeTruthy();
+  expect(await page.evaluate(() => localStorage.getItem('navaid.inspPos'))).toBeTruthy();   // left for the other language
+  await page.evaluate(() => localStorage.setItem('navaid.inspPos.en', JSON.stringify({ x: 400, y: 320 })));
+  expect(await read()).toEqual({ x: 400, y: 320 });
+});
+
+test('each language still adopts the legacy spot independently', async ({ page }) => {
+  await page.addInitScript(() => {
+    try { localStorage.setItem('navaid.inspPos', JSON.stringify({ x: 300, y: 200 })); } catch (e) {}
+  });
+  await page.setViewportSize({ width: 1280, height: 800 });
+  for (const lang of ['en', 'he']) {
+    await page.goto('?lang=' + lang + '&nogist');
+    await page.waitForFunction(() => typeof navLangPosRead === 'function');
+    await page.evaluate(() => navLangPosRead('navaid.inspPos'));
+    expect(await page.evaluate((l) => localStorage.getItem('navaid.inspPos.' + l), lang)).toBeTruthy();
+  }
 });
 
 test('an exported GPS track imports back into the library', async ({ page }) => {

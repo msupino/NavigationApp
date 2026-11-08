@@ -60,7 +60,8 @@
     // The heading line is drawn on the chart, not a control: a box over it is what the tour lights
     // (lineSpot below). Without a live position the line was described but nowhere on screen
     // (reported: "says about the flight line, but doesn't show it"); the preview draws one.
-    { sel: ['#tour-line-spot'], k: 'LiveLine' },
+    // Kept even with nothing to light (a live fix with no heading yet): it was always a step.
+    { sel: ['#tour-line-spot'], k: 'LiveLine', optional: true },
   ];
   const liveNow = () => typeof gpsPositionLive === 'function' && !!gpsPositionLive();
   const phone = () => document.body.classList.contains('deck-on');
@@ -78,7 +79,7 @@
     }
     return null;
   };
-  const stepsOf = (defs) => defs.filter((s) => (!s.only || (s.only === 'phone') === phone()) && (!s.sel || target(s)));
+  const stepsOf = (defs) => defs.filter((s) => (!s.only || (s.only === 'phone') === phone()) && (!s.sel || s.optional || target(s)));
   const steps = () => stepsOf(STEPS);
   const str = (k, d) => (typeof S === 'object' && S && S[k]) || d;
 

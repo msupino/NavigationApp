@@ -88,7 +88,8 @@ test('the phone bottom band does not pile up legend, coords and attribution', as
     state.legs = []; syncLegs(); draw();
     const get = sel => { const e = document.querySelector(sel); if (!e) return null;
       const r = e.getBoundingClientRect(); return r.height ? { top: r.top, bottom: r.bottom, left: r.left, right: r.right } : null; };
-    return { legend: get('#map-legend'),
+    return { legend: get('.legend-dock'),   // the dock (button + totals); the key opens above it
+
              coord: get('#coord-readout'), attrib: get('.leaflet-control-attribution') };
   });
   const hits = (a, b) => a && b && a.left < b.right && a.right > b.left && a.top < b.bottom && a.bottom > b.top;

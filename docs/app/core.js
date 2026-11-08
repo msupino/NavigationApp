@@ -1908,7 +1908,7 @@ window.S = Object.assign({
   tourCommfailTextPhone: 'Lost the radio? A route to the nearest field with a published procedure, with the squawk and the tower\u2019s phone. Beside it: the language.',
   tourMenuTitle: 'Menu',
   tourMenuText: 'Charts, extra layers (NOTAM, weather, airspace), the flight plan, and settings.',
-  tourMenuTextPhone: 'Menu: charts, layers (NOTAM, weather, airspace) and settings. Plan: the flight plan. The Legend in the corner explains the symbols.',
+  tourMenuTextPhone: 'Menu: charts, layers (NOTAM, weather, airspace) and settings. Plan: the flight plan. The Legend button at the bottom left opens the key to the symbols, with the route totals beside it.',
   tourMenuTextDesk: 'Save, My routes, the menus and the flight plan; then language, shortcuts (?), more links and the simulator. At the bottom: the Legend and the time slider.',
   tourSearchTitle: 'Find',
   tourSearchText: 'Type a waypoint or airfield, or several codes (LLHZ BAZRA DEROR) to build a route.',

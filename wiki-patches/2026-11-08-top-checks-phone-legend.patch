@@ -1,0 +1,72 @@
+From 56adc62299eb305311433ec66a02f6e03efec427 Mon Sep 17 00:00:00 2001
+From: Marco <marco@supino.org>
+Date: Sun, 8 Nov 2026 17:46:54 +0000
+Subject: [PATCH] =?UTF-8?q?TOP:=20leg-entry=20checks=20(FREDA=20/=20=D7=9B?=
+ =?UTF-8?q?=D7=96=D7=B4=D7=92=D7=9E=D7=B4=D7=93);=20the=20legend=20button?=
+ =?UTF-8?q?=20on=20phones=20too?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+---
+ Features-he.md            | 2 +-
+ Features.md               | 2 +-
+ GPS-Track-Recording-he.md | 2 +-
+ GPS-Track-Recording.md    | 2 +-
+ 4 files changed, 4 insertions(+), 4 deletions(-)
+
+diff --git a/Features-he.md b/Features-he.md
+index 686b3d9..3706704 100644
+--- a/Features-he.md
++++ b/Features-he.md
+@@ -67,7 +67,7 @@
+ - נקודות הדיווח מסומנות כמו במפה: **▲ מלא = נקודת דיווח חובה**, **△ ריק = לפי דרישה**. **הצג דיווחי חובה** מוסיף ▲ קטן ליד כל נקודת חובה שאחרת מוסתרת (ציון דרך של המסלול עליה, או שכבת הנקודות כבויה).
+ - **הצגת תחנות VOR** פורסת תחנות VOR/DME ישראליות. בורר **VOR ref** הסמוך בוחר את הייחוס לקריאות Radial/DME, ונשאר זמין גם כשהסמנים מוסתרים.
+ - **הצגת/הוספת שינויי תדר** מסמנת נקודות שינוי-ATC ידועות: נקודות מסלול תואמות מקבלות קריאות ברק הניתנות לעריכה עם אות-קריאה וטקסט תדר.
+-- ה**מקרא** הוא כפתור עגול בפינה השמאלית-תחתונה של המפה, ולצידו סיכום המסלול (קטעים, מרחק, זמן, דלק). לחיצה עליו פותחת את המקרא מעל הכפתור — שדה תעופה, שדה תעופה צבאי, נקודת דיווח חובה ולפי דרישה, נקודה חמה ותחנת VOR — ולחיצה נוספת (או <span dir="ltr"><code>Esc</code></span>) סוגרת אותו; הכפתור נשאר במקומו ונצבע כחול כשהמקרא פתוח. סיכום המסלול נשאר גלוי בכל מקרה. בטלפון המקרא הוא כרטיס שנפתח מהכותרת שלו וניתן לגרור אותו. הסמלים שבו מצוירים באותו קוד כמו במפה; במצב כהה כל סמל יושב על רקע בהיר.
++- ה**מקרא** הוא כפתור עגול בפינה השמאלית-תחתונה של המפה, ולצידו סיכום המסלול (קטעים, מרחק, זמן, דלק). לחיצה עליו פותחת את המקרא מעל הכפתור — שדה תעופה, שדה תעופה צבאי, נקודת דיווח חובה ולפי דרישה, נקודה חמה ותחנת VOR — ולחיצה נוספת (או <span dir="ltr"><code>Esc</code></span>) סוגרת אותו; הכפתור נשאר במקומו ונצבע כחול כשהמקרא פתוח. סיכום המסלול נשאר גלוי בכל מקרה. בטלפון זה אותו כפתור, שורה אחת מעל הקואורדינטות; המקרא נפתח לצד כפתורי העריכה, ו"חזרה" סוגר אותו. כשהמיקום שלכם מוצג בטלפון, הכפתור והסיכום מפנים את המקום למפה. הסמלים שבו מצוירים באותו קוד כמו במפה; במצב כהה כל סמל יושב על רקע בהיר.
+ - תוויות מופיעות בזום גבוה יותר; מתחת לכך רואים רק את הסמל.
+ - נקודה שהוצבה מסתירה כל סמן נקודת-ניווט או שדה החולק את מיקומה (מבוסס קרבה, כך שעדיין עובד אחרי שינוי שם).
+ - ה**חיפוש** נפתח כשכבת-על צפה (מרכז-עליון) — לוחצים **Ctrl-F / Cmd-F** בכל מקום, או על כפתור **🔍 חפש** בקטע עריכה. מתאים לשמות עבריים/אנגליים של נקודות ניווט ולתוויות ICAO/אנגלית/עברית של שדות; תקציב 12 התוצאות מחולק 6/6 בין שדות לנקודות. Enter קופץ להתאמה הראשונה; Escape סוגר.
+diff --git a/Features.md b/Features.md
+index b3e31b6..6b393de 100644
+--- a/Features.md
++++ b/Features.md
+@@ -66,7 +66,7 @@ The selected layer is remembered across reloads. See [Map Layers](Map-Layers) fo
+ - **Show mandatory reports** puts a small ▲ beside each compulsory point that is otherwise hidden (a route waypoint on it, or the waypoint layer off).
+ - **Show VOR stations** overlays Israeli VOR/DME stations. The adjacent **VOR ref** selector chooses the reference used for radial/DME readouts, and stays available even when station markers are hidden.
+ - **Show/Add Freq Changes** marks known ATC-change reporting points: matching route waypoints get editable lightning callouts with call sign and frequency text.
+-- The **Legend** is a round button at the bottom-left of the map, with the route totals (legs, distance, time, fuel) in a pill beside it. Pressing it opens the key above the button — airfield, military airfield, compulsory and on-request reporting points, hotspot and VOR station — and pressing it again (or Escape) closes it; the button stays in place and turns blue while the key is open. The route totals stay visible either way. On a phone the legend is a card that opens from its title and can be dragged. Its swatches are drawn by the same code as the map symbols; in dark mode each sits on a light chip.
++- The **Legend** is a round button at the bottom-left of the map, with the route totals (legs, distance, time, fuel) in a pill beside it. Pressing it opens the key above the button — airfield, military airfield, compulsory and on-request reporting points, hotspot and VOR station — and pressing it again (or Escape) closes it; the button stays in place and turns blue while the key is open. The route totals stay visible either way. On a phone it is the same button, one row above the coordinates; the key opens beside the edit buttons, and Back closes it. While your position is showing on a phone, the button and totals step aside to give the chart the room. Its swatches are drawn by the same code as the map symbols; in dark mode each sits on a light chip.
+ - Labels appear at higher zoom; below that you see only the symbol.
+ - A placed waypoint hides any nav-waypoint or airfield marker sharing its position (proximity-based, so it still works after rename).
+ - The **search** opens as a floating overlay (top-center) — press **Ctrl-F / Cmd-F** anywhere, or click the **🔍 Find** button in the **Edit** menu. Matches nav-waypoint Hebrew / English names and airfield ICAO / English / Hebrew labels; the 12-result budget is split 6/6 between airfields and nav-WPs. Enter jumps to the first match; Escape closes.
+diff --git a/GPS-Track-Recording-he.md b/GPS-Track-Recording-he.md
+index 51c1160..8501ab5 100644
+--- a/GPS-Track-Recording-he.md
++++ b/GPS-Track-Recording-he.md
+@@ -162,7 +162,7 @@ NavAid יכול להקליט את הנתיב שבאמת טסתם מה-GPS של 
+ | התראה | מתי |
+ | --- | --- |
+ | **קטע הבא** | כשתי דקות לפני נקודת הציון הבאה (חצי מכך בקטע קצר). זו קריאת **ש.מ.ש** — ההתראה נקראת *ש.מ.ש* והקריאה הקולית נפתחת ב"שעון, מפה, שטח": בודקים את השעון, מאתרים את הנקודה במפה ואז מחפשים אותה בשטח. מציינת את הנקודה ואת הקטע ש**אחריה** — גובה, מגמה וזמן — כך שהיא משמשת גם הכנה לפנייה. |
+-| **טופ** | מעל נקודת הציון, רגע קריאת ה-TOP בקשר. אם באותה נקודה יש שינוי תדר, ההתראה נושאת גם את התחנה והתדר. |
++| **טופ** | מעל נקודת הציון, רגע קריאת ה-TOP בקשר. ואחריה בד"ח צא כיוון עם נתוני הקטע החדש — **כז״גמ״ד**: כיוון (הכיוון החדש), זמן (זמן הקטע המתוכנן), גובה (הגובה המתוכנן), מנוע, דיווח (עם התדר החדש אם בנקודה יש שינוי תדר) — מוצג ונאמר בקול. בנקודה האחרונה — טופ בלבד. |
+ | **גובה** | סטייה של יותר מ-100 רגל (<span dir="ltr"><code>altToleranceFt</code></span>) מהגובה המתוכנן של הקטע. פעם אחת לכל סטייה, ושוב רק אחרי חזרה לטווח — ולכל היותר **פעמיים באותו קטע** (<span dir="ltr"><code>altMaxAlertsPerLeg</code></span>), כך שקטע שנטוס מעט מחוץ לתוכנית מדווח על כך ולא מציק לאורך כולו. |
+ | **סטייה מהמסלול** | שגיאת זווית מסלול מעל 10°, בטיימר עצמאי של שתי דקות. לפני אמצע הקטע — תיקון "כפול השגיאה"; אחריו — תיקון ישר אל הנקודה. שותקת 30 שניות אחרי טופ, בזמן שהפנייה לקטע החדש מתייצבת. |
+ | **מחוץ למסלול** | מיקום מחוץ לכל הקטעים (ראו למטה) במשך 15 שניות. מציינת את הנקודה הקרובה שעדיין לפניכם ואת המגמה אליה. |
+diff --git a/GPS-Track-Recording.md b/GPS-Track-Recording.md
+index 550626c..555b7b6 100644
+--- a/GPS-Track-Recording.md
++++ b/GPS-Track-Recording.md
+@@ -179,7 +179,7 @@ watch show.
+ | Alert | When |
+ | --- | --- |
+ | **Next leg** | About two minutes out from the next waypoint (half that on a short leg). It is the **clock to map to ground** cue — the notification is titled *Clock to map to ground* and the spoken call opens with it: check the clock, find the point on the map, then look for it outside. Names the point and the leg **after** it — altitude, heading and time — so it doubles as prep for the turn. |
+-| **TOP** | Overhead the waypoint, the moment of the CVFR "TOP" radio call. If that waypoint changes frequency, the alert carries the station and frequency too. |
++| **TOP** | Overhead the waypoint, the moment of the CVFR "TOP" radio call. Then the leg-entry checks with the new leg's figures — **FREDA**: fuel, radio (with the new frequency if this waypoint changes it), engine, direction (the new heading), altimeter (the planned altitude) — shown and spoken. At the last waypoint it is a plain TOP. |
+ | **Altitude** | Once you leave the current leg's planned altitude by more than 100 ft (`altToleranceFt`). Fires once per excursion, again only after you return inside tolerance — and **at most twice on any one leg** (`altMaxAlertsPerLeg`), so a leg flown slightly off plan reports the fact instead of nagging the whole way. |
+ | **Off course** | Track-angle error past 10°, on its own two-minute timer. Before the leg's midpoint it gives the classic double-the-error intercept; past it, the correction direct to the waypoint. Stays quiet for 30 s after a TOP, while the turn onto the new leg settles. |
+ | **Off route** | You are outside every leg (see below) for 15 s. Names the nearest waypoint still ahead and the course to it. |
+-- 
+2.43.0
+
