@@ -859,7 +859,13 @@
       for (const rec of records) {
         for (const node of rec.addedNodes) {
           if (node.nodeType !== 1) continue;
-          if (node.matches && node.matches('.modal-back, .sim-overlay')) { closeSheet(); return; }
+          if (!node.matches || !node.matches('.modal-back, .sim-overlay')) continue;
+          // A yes/no question (askYesNo, appConfirm) is not somewhere the menu sent the pilot: it
+          // asks about the menu's own button, and the answer comes back to it. Reported: Download
+          // on mobile data asked, the menu was gone by the time it was answered, and the restart
+          // offer that followed came up over the map instead of in the row that had asked.
+          if (node.querySelector(':scope > .follow-me-ask-modal')) continue;
+          closeSheet(); return;
         }
       }
     });
