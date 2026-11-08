@@ -1639,6 +1639,11 @@ function draw() {
   if (typeof drawTracks === 'function') drawTracks();       // saved-track overlays (flown lines)
   if (typeof drawGpsTrack === 'function') drawGpsTrack();   // GPS breadcrumb + own-ship (recording or live location)
   if (!gpsRecording && !gpsLiveOn && simOn && simAircraft) drawOwnShip(simAircraft, simAircraft.hdg, simAircraft.ias);  // sim own-ship
+  // The tour's sample aircraft (tour.js lineSpot): only while "Show the tour" previews the
+  // in-flight controls with no position of its own, so its heading-line step has a line to show.
+  else if (!gpsRecording && !gpsLiveOn && window.__tourDemoOwn && document.body.classList.contains('tour-live-preview')) {
+    drawOwnShip(window.__tourDemoOwn, window.__tourDemoOwn.hdg, window.__tourDemoOwn.gs);
+  }
   drawMeasure();
   // A follower gets the same dashed 2/5/10 NM predictor as an own-ship. Do not reuse the
   // own-ship's remembered heading when a remote fix omits track: silence is safer than a

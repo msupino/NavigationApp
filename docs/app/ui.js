@@ -2325,12 +2325,12 @@ setInterval(refreshZuluClock, 1000);
 // Bottom-left (above the coord readout) keeps it clear of the inspector
 // (top-right), the toolbar (top-left) and the rotate dial (bottom-right).
 //
-// Desktop (no phone deck): a dock instead of a card -- reported as looking unrelated to the map
+// A dock instead of a card -- reported as looking unrelated to the map
 // controls, taking room, and closing in the wrong place (the title it closed from sat under the
 // route totals, and the closed chip landed 170px lower). A round Legend button in the map-button
 // family, the route totals as their own pill beside it -- shown whether the key is open or not --
 // and the key opening ABOVE the button, so the button never moves and closes it where it opened.
-// The phone keeps the card: totals inside it, title as the toggle, draggable.
+// The phone has it too, one row up, clear of the coordinate readout (style.css).
 const legendCtrl = L.control({ position: 'bottomleft' });
 const legendDock = { wrap: null, row: null, btn: null };
 legendCtrl.onAdd = function () {
@@ -2355,328 +2355,56 @@ legendCtrl.onAdd = function () {
   return wrap;
 };
 legendCtrl.addTo(map);
-const legendDocked = () => !document.body.classList.contains('deck-on');
-// The route totals live in the dock on desktop and at the top of the card on the phone.
-let legendLayout = null;
-function placeLegendForLayout() {
+// Every layout (asked: the phone was "still using the old button and location"): the route
+// totals live in the dock beside the button; the key, opened by the button, sits above it.
+(function setUpLegendDock() {
   const el = document.getElementById('map-legend');
   const sum = document.getElementById('route-summary');
   if (!el || !legendDock.row) return;
-  const docked = legendDocked();
-  // body's class list changes for many reasons (measuring, a live fix...): only a change of layout moves anything.
-  if (docked === legendLayout) return;
-  legendLayout = docked;
-  legendDock.wrap.classList.toggle('legend-docked', docked);
-  if (docked) {
-    if (sum && sum.parentNode !== legendDock.row) legendDock.row.appendChild(sum);
-    // The phone's dragged spot does not apply to the dock: the key sits above its button.
-    for (const p of ['position', 'left', 'top', 'right', 'bottom', 'margin', 'maxWidth']) el.style[p] = '';
-  } else if (sum && sum.parentNode !== el) {
-    el.insertBefore(sum, el.firstChild);
-  }
-  // The title's role follows the layout (toggle on the phone, heading on the desktop).
-  if (typeof window.setLegendCollapsed === 'function') window.setLegendCollapsed(el.classList.contains('map-legend-collapsed'), false);
-}
-placeLegendForLayout();
-new MutationObserver(placeLegendForLayout).observe(document.body, { attributes: true, attributeFilter: ['class'] });
+  legendDock.wrap.classList.add('legend-docked');
+  if (sum) legendDock.row.appendChild(sum);
+  // A spot saved by the old draggable card no longer applies; the key's place is above its button.
+  for (const k of ['position', 'left', 'top', 'right', 'bottom', 'margin', 'maxWidth']) el.style[k] = '';
+})();
 // The map clock runs along the same bottom row: it starts right of the dock (style.css .map-time),
 // whose width changes with the route totals.
 function publishLegendDockWidth() {
   const root = document.documentElement;
   const row = legendDock.row;
-  if (!row || !legendDocked() || !row.getClientRects().length) { root.style.removeProperty('--navaid-legend-dock-clear'); return; }
+  if (!row || !row.getClientRects().length) { root.style.removeProperty('--navaid-legend-dock-clear'); return; }
   root.style.setProperty('--navaid-legend-dock-clear', Math.ceil(row.getBoundingClientRect().right + 12) + 'px');
 }
 if (legendDock.row && typeof ResizeObserver === 'function') new ResizeObserver(publishLegendDockWidth).observe(legendDock.row);
 addEventListener('resize', publishLegendDockWidth);
 
-// Draggable legend — drag it anywhere; the spot persists under
-// navaid.legendPos. Same pattern as the Zulu clock above.
-(function makeLegendDraggable() {
+// The key opens and closes from the button (or Escape, or Android Back -- backButtonStep). Closed
+// until asked for: it is the same six symbols every flight, and the totals stay out beside the
+// button either way. The choice is kept on this device.
+(function wireLegendKey() {
   const box = document.getElementById('map-legend');
   if (!box) return;
-  // On a phone the card is most of the bottom-left quarter of the screen, over the chart a
-  // pilot is trying to read, and it says the same six things on every flight. It starts
-  // collapsed to its title there -- tap to open, tap to close -- and the choice is kept per
-  // device. On the desktop the dock's Legend button opens and closes it (legendCtrl above).
   const COLLAPSE_KEY = 'navaid.legendCollapsed';
+  const title = box.querySelector('.map-legend-title');
+  if (title) { title.setAttribute('role', 'heading'); title.setAttribute('aria-level', '2'); }
   function setLegendCollapsed(on, persist) {
     box.classList.toggle('map-legend-collapsed', !!on);
     if (legendDock.btn) legendDock.btn.setAttribute('aria-expanded', on ? 'false' : 'true');
-    const title = box.querySelector('.map-legend-title');
-    // The title is the toggle on the phone; on the desktop it is the key's heading (the button opens it).
-    if (title && !legendDocked()) {
-      title.setAttribute('role', 'button');
-      title.setAttribute('tabindex', '0');
-      title.setAttribute('aria-expanded', on ? 'false' : 'true');
-    } else if (title) {
-      title.setAttribute('role', 'heading');
-      title.setAttribute('aria-level', '2');
-      title.removeAttribute('tabindex');
-      title.removeAttribute('aria-expanded');
-    }
     if (persist) {
       try { localStorage.setItem(COLLAPSE_KEY, on ? '1' : '0'); } catch (e) { /* storage unavailable */ }
     }
-    // Its size just changed, so make sure it is still on screen and clear of the chrome.
-    if (typeof window.reconcileLegendPosition === 'function') window.reconcileLegendPosition();
   }
-  (function initLegendCollapsed() {
-    let stored = null;
-    try { stored = localStorage.getItem(COLLAPSE_KEY); } catch (e) { /* storage unavailable */ }
-    // Closed until asked for, on the phone and now on the desktop dock too: the key is the same
-    // six symbols every flight, and the totals beside the button no longer go with it.
-    setLegendCollapsed(stored === null ? true : stored === '1', false);
-  })();
+  let stored = null;
+  try { stored = localStorage.getItem(COLLAPSE_KEY); } catch (e) { /* storage unavailable */ }
+  setLegendCollapsed(stored === null ? true : stored === '1', false);
   window.setLegendCollapsed = setLegendCollapsed;
-  if (legendDock.btn) {
-    legendDock.btn.addEventListener('click', () => setLegendCollapsed(!box.classList.contains('map-legend-collapsed'), true));
-    // Escape closes an open key and leaves focus on the button that opened it.
-    document.addEventListener('keydown', (e) => {
-      if (e.key !== 'Escape' || !legendDocked() || box.classList.contains('map-legend-collapsed')) return;
-      if (e.target && e.target.closest && e.target.closest('input, select, textarea, .modal-back')) return;
-      setLegendCollapsed(true, true);
-      if (box.contains(document.activeElement)) legendDock.btn.focus();
-    });
-  }
-
-  const KEY = 'navaid.legendPos';
-  const GAP = 6;
-  let positioned = false;
-
-  function viewportRect() {
-    const vv = window.visualViewport;
-    const r = {
-      left: vv ? vv.offsetLeft : 0,
-      top: vv ? vv.offsetTop : 0,
-      right: vv ? vv.offsetLeft + vv.width : window.innerWidth,
-      bottom: vv ? vv.offsetTop + vv.height : window.innerHeight,
-    };
-    // On the phone deck the chart is the space between the strip and the bottom bar: a card
-    // clamped to the window ran under the bar, and on the Low Alt chart -- whose legend has
-    // five more rows -- its lower half was hidden there.
-    if (document.body.classList.contains('deck-on')) {
-      const strip = document.getElementById('deck-strip');
-      const bar = document.getElementById('deck-bar');
-      if (strip && strip.getClientRects().length) r.top = Math.max(r.top, strip.getBoundingClientRect().bottom);
-      if (bar && bar.getClientRects().length) r.bottom = Math.min(r.bottom, bar.getBoundingClientRect().top);
-    }
-    return r;
-  }
-
-  // What the legend keeps clear of. The toolbar is NOT on this list: it opens over the map
-  // for as long as a menu is being used and then goes, and moving the card out of its way
-  // meant the card moved every time a layer was picked -- reported as the legend jumping
-  // around a phone screen. Being covered by the menu you are reading is not a problem; being
-  // somewhere new each time you close it is. The docked search panel stays, because it is
-  // not transient: it sits there until it is dismissed.
-  //
-  // The map clock is on the list for the same reason. It has a fixed place along the bottom
-  // of the chart and it DIMS rather than vanishes when nothing answers to it, so it is not
-  // something that comes and goes -- and below about 1150px the card reached across the
-  // clock's row and sat on top of the control at its left end: the Now button in English,
-  // the hour readout in Hebrew, each covered to the point of being unusable. The card moves
-  // instead, because the clock cannot: it is a fixed strip and the card is the thing with
-  // somewhere else to be.
-  function chromeRects() {
-    const search = document.getElementById('search-overlay');
-    const rects = [];
-    if (search && !search.classList.contains('hidden')) rects.push(search.getBoundingClientRect());
-    // The edit column is fixed chrome as well (top left, every layout). On a short phone the
-    // expanded card reached up over its Clear button.
-    const editCol = document.querySelector('.edit-col-ctrl');
-    if (editCol && editCol.getClientRects().length) rects.push(editCol.getBoundingClientRect());
-    const clock = document.getElementById('map-time');
-    // `hidden` is an attribute here, not a class, and the strip is also withdrawn by the
-    // gist and while a live position is showing.
-    if (clock && !clock.hidden && getComputedStyle(clock).display !== 'none') {
-      // The CONTROLS, not the strip. The strip spans the full width and is transparent and
-      // pointer-transparent; treating it as an obstacle would push the card off the bottom
-      // row at every width, including the wide screens where the two never met -- and an
-      // untouched legend would lose its Leaflet anchor for nothing.
-      let box = null;
-      for (const kid of clock.children) {
-        if (kid.hidden || getComputedStyle(kid).display === 'none') continue;
-        const k = kid.getBoundingClientRect();
-        if (!k.width || !k.height) continue;
-        box = box ? {
-          left: Math.min(box.left, k.left), top: Math.min(box.top, k.top),
-          right: Math.max(box.right, k.right), bottom: Math.max(box.bottom, k.bottom),
-        } : { left: k.left, top: k.top, right: k.right, bottom: k.bottom };
-      }
-      if (box) rects.push({ ...box, width: box.right - box.left, height: box.bottom - box.top });
-    }
-    return rects.filter(r => r.width && r.height);
-  }
-
-  function overlaps(x, y, w, h, obstacle) {
-    return x < obstacle.right && x + w > obstacle.left &&
-      y < obstacle.bottom && y + h > obstacle.top;
-  }
-
-  function choosePosition(wantX, wantY, obstacles) {
-    const vp = viewportRect();
-    const w = box.offsetWidth, h = box.offsetHeight;
-    const clampX = x => Math.max(vp.left, Math.min(vp.right - w, x));
-    const clampY = y => Math.max(vp.top, Math.min(vp.bottom - h, y));
-    const xs = [wantX, vp.left, vp.right - w];
-    const ys = [wantY, vp.top, vp.bottom - h];
-    obstacles.forEach(r => {
-      xs.push(r.left - w - GAP, r.right + GAP);
-      ys.push(r.top - h - GAP, r.bottom + GAP);
-    });
-    const candidates = [];
-    xs.forEach(x => ys.forEach(y => {
-      const cx = clampX(x), cy = clampY(y);
-      if (!obstacles.some(r => overlaps(cx, cy, w, h, r))) {
-        candidates.push({ x: cx, y: cy,
-          score: Math.pow(cx - wantX, 2) + Math.pow(cy - wantY, 2) });
-      }
-    }));
-    candidates.sort((a, b) => a.score - b.score);
-    return candidates[0] || { x: clampX(wantX), y: clampY(wantY) };
-  }
-
-  // Where the PILOT put it. Chrome that comes and goes -- an opened toolbar, the search
-  // overlay -- may shove the card aside, but that shove is not a decision: it is undone
-  // when the obstruction goes, and it is never written to storage. Saving it was why the
-  // legend walked down the screen on a phone, a step per time the toolbar was opened.
-  let home = null;
-  function persistPosition() {
-    const r = box.getBoundingClientRect();
-    home = { x: r.left, y: r.top };
-    try { localStorage.setItem(navLangPosKey(KEY), JSON.stringify(home)); }
-    catch (e) { /* storage unavailable */ }
-  }
-
-  function applyPos(x, y, persist) {
-    if (legendDocked()) return;          // the desktop dock has a fixed place (placeLegendForLayout)
-    box.style.maxWidth = '';
-    box.classList.remove('map-legend-constrained');
-    const obstacles = chromeRects();
-    let pos = choosePosition(x, y, obstacles);
-    const naturalWidth = box.offsetWidth;
-    if (obstacles.some(r => overlaps(pos.x, pos.y, naturalWidth, box.offsetHeight, r)) &&
-        window.innerWidth <= 680) {
-      const vp = viewportRect();
-      const sideWidth = obstacles.reduce((best, r) => Math.max(best,
-        r.left - vp.left - GAP, vp.right - r.right - GAP), 0);
-      if (sideWidth > 0 && sideWidth < naturalWidth) {
-        box.style.maxWidth = sideWidth + 'px';
-        box.classList.add('map-legend-constrained');
-      }
-      pos = choosePosition(x, y, obstacles);
-    }
-    positioned = true;
-    box.style.position = 'fixed';
-    box.style.left = pos.x + 'px';
-    box.style.top = pos.y + 'px';
-    box.style.right = 'auto';
-    box.style.bottom = 'auto';
-    box.style.margin = '0';
-    if (persist) persistPosition();
-  }
-  try {
-    const p = JSON.parse(navLangPosRead(KEY) || 'null');
-    if (p && Number.isFinite(p.x) && Number.isFinite(p.y)) {
-      home = { x: p.x, y: p.y };
-      applyPos(p.x, p.y, false);
-    }
-  } catch (e) { /* storage unavailable */ }
-  window.reconcileLegendPosition = function (opts = {}) {
-    if (document.documentElement.classList.contains('app-booting')) return;
-    if (legendDocked()) return;
-    const r = box.getBoundingClientRect();
-    const vp = viewportRect();
-    const outside = r.left < vp.left || r.top < vp.top ||
-      r.right > vp.right || r.bottom > vp.bottom;
-    const obstacles = chromeRects();
-    const obstructed = obstacles.some(obstacle =>
-      overlaps(r.left, r.top, r.width, r.height, obstacle));
-    // A legend the pilot has never dragged still has a place it belongs: where the stylesheet
-    // put it. Record that the first time we see it on screen, whether or not something is
-    // currently sitting over it -- being obstructed does not move where the card BELONGS,
-    // and a card first seen obstructed used to end up adopting the shove as its home, so
-    // the spot it was pushed to never gave way again once the obstruction went.
-    if (!home && !outside) home = { x: r.left, y: r.top };
-    // Where it is is fine: leave it exactly where it is. Re-applying a position it already
-    // holds is how a card starts drifting a pixel at a time.
-    if (!positioned && !outside && !obstructed) return;
-    // Aim at HOME, not at where the card happens to be. Expanding a legend near the bottom
-    // of a phone screen makes it too tall to fit, so it is clamped upwards; collapsing it
-    // again used to re-apply that clamped position and leave the card somewhere new --
-    // reported as the legend moving when it is expanded and closed. Home is what the card
-    // returns to the moment there is room for it again.
-    const want = home || { x: r.left, y: r.top };
-    // Only a drag decides where the legend lives, so only a drag writes to storage: a
-    // reflow that pushes the card clear of something must not be adopted as a new home.
-    applyPos(want.x, want.y, false);
-    void opts;
-  };
-  const bootObserver = new MutationObserver(() => {
-    if (!document.documentElement.classList.contains('app-booting')) {
-      window.reconcileLegendPosition();
-      bootObserver.disconnect();
-    }
+  if (!legendDock.btn) return;
+  legendDock.btn.addEventListener('click', () => setLegendCollapsed(!box.classList.contains('map-legend-collapsed'), true));
+  document.addEventListener('keydown', (e) => {
+    if (e.key !== 'Escape' || box.classList.contains('map-legend-collapsed')) return;
+    if (e.target && e.target.closest && e.target.closest('input, select, textarea, .modal-back')) return;
+    setLegendCollapsed(true, true);
+    if (box.contains(document.activeElement)) legendDock.btn.focus();
   });
-  if (document.documentElement.classList.contains('app-booting')) {
-    bootObserver.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
-  }
-  let resizeFrame = 0;
-  const onViewportResize = () => {
-    cancelAnimationFrame(resizeFrame);
-    resizeFrame = requestAnimationFrame(() => window.reconcileLegendPosition());
-  };
-  window.addEventListener('resize', onViewportResize);
-  if (window.visualViewport) window.visualViewport.addEventListener('resize', onViewportResize);
-  const toolbar = document.getElementById('toolbar');
-  if (toolbar && typeof ResizeObserver !== 'undefined') {
-    new ResizeObserver(onViewportResize).observe(toolbar);
-  }
-  function start(cx, cy) {
-    const r = box.getBoundingClientRect();
-    const off = { x: cx - r.left, y: cy - r.top };
-    box.classList.add('dragging');
-    let travelled = 0;
-    const move = (mx, my) => {
-      travelled = Math.max(travelled, Math.hypot(mx - cx, my - cy));
-      applyPos(mx - off.x, my - off.y, false);
-    };
-    const mm = ev => move(ev.clientX, ev.clientY);
-    const tm = ev => { if (ev.touches.length === 1) { ev.preventDefault(); move(ev.touches[0].clientX, ev.touches[0].clientY); } };
-    const end = (ev) => {
-      box.classList.remove('dragging');
-      // A press that never moved is a tap on the title, not a drag: open or close the card
-      // instead of writing a position it never left.
-      if (travelled < 4) {
-        const t = (ev && (ev.target || (ev.changedTouches && ev.changedTouches[0] &&
-          document.elementFromPoint(ev.changedTouches[0].clientX, ev.changedTouches[0].clientY))));
-        if (t && t.closest && t.closest('.map-legend-title')) {
-          setLegendCollapsed(!box.classList.contains('map-legend-collapsed'), true);
-          document.removeEventListener('mousemove', mm);
-          document.removeEventListener('mouseup', end);
-          window.removeEventListener('touchmove', tm);
-          window.removeEventListener('touchend', end);
-          return;
-        }
-      }
-      persistPosition();
-      document.removeEventListener('mousemove', mm);
-      document.removeEventListener('mouseup', end);
-      window.removeEventListener('touchmove', tm);
-      window.removeEventListener('touchend', end);
-    };
-    document.addEventListener('mousemove', mm);
-    document.addEventListener('mouseup', end);
-    window.addEventListener('touchmove', tm, { passive: false });
-    window.addEventListener('touchend', end);
-  }
-  // Dragged (and opened from its title) on the phone only; the desktop dock opens from its button.
-  box.addEventListener('mousedown', e => { if (legendDocked()) return; e.preventDefault(); start(e.clientX, e.clientY); });
-  box.addEventListener('touchstart', e => {
-    if (legendDocked()) return;
-    if (e.touches.length === 1) { e.preventDefault(); start(e.touches[0].clientX, e.touches[0].clientY); }
-  }, { passive: false });
 })();
 
 // --- live mouse coordinate readout ---------------------------------
@@ -13672,6 +13400,13 @@ function backButtonStep() {
     closeFlightPlan();
     return true;
   }
+  // The legend key, open over the chart: Back closes it, as its own button does -- after any window
+  // or the flight plan, which cover the dock (it steps aside under them) and are what the pilot sees.
+  const legendKey = document.getElementById('map-legend');
+  if (legendKey && !legendKey.classList.contains('map-legend-collapsed') && typeof window.setLegendCollapsed === 'function') {
+    window.setLegendCollapsed(true, true);
+    return true;
+  }
   // Windows that are not .modal-back backdrops: the simulator, the assistant, the More menu.
   const sim = document.getElementById('sim-modal');
   if (shown(sim)) { const x = document.getElementById('sim-modal-close'); if (x) x.click(); else sim.classList.add('hidden'); return true; }
@@ -13750,6 +13485,35 @@ function armAndroidBackButton(attempt) {
   });
 }
 window.backButtonStep = backButtonStep;
+
+// About, Privacy and Terms in the installed app. Their links open a new tab on the web; in the
+// app's web view a same-site page replaced NavAid itself -- no close button, and Back, finding
+// nothing of NavAid's open, offered to leave and restarted it (reported). There they open in a
+// window over the map with a close X, which Back closes like any other (backButtonStep above).
+// Caught for every link to them -- the menu's rows and the first-run notice's alike.
+const IN_APP_DOCS = { 'about.html': 'tbAbout', 'privacy.html': 'tbPrivacy', 'terms.html': 'tbTerms' };
+function openDocInApp(page, titleKey) {
+  if (typeof createDraggableModal !== 'function') return false;
+  const fallback = { tbAbout: 'About', tbPrivacy: 'Privacy', tbTerms: 'Terms' }[titleKey];
+  const modal = createDraggableModal((S && S[titleKey]) || fallback, 'modal wide doc-modal', null);
+  const frame = document.createElement('iframe');
+  frame.className = 'doc-modal-frame';
+  frame.title = (S && S[titleKey]) || fallback;
+  frame.src = page + '?lang=' + encodeURIComponent((window.__navLang === 'en') ? 'en' : 'he');
+  modal.box.appendChild(frame);
+  if (typeof modal.show === 'function') modal.show();
+  return true;
+}
+window.openDocInApp = openDocInApp;
+document.addEventListener('click', (e) => {
+  const cap = window.Capacitor;
+  if (!cap || typeof cap.isNativePlatform !== 'function' || !cap.isNativePlatform()) return;
+  const a = e.target && e.target.closest ? e.target.closest('a[href]') : null;
+  if (!a) return;
+  const page = (a.getAttribute('href') || '').split(/[?#]/)[0].replace(/^\.\//, '');
+  if (!Object.prototype.hasOwnProperty.call(IN_APP_DOCS, page)) return;
+  if (openDocInApp(page, IN_APP_DOCS[page])) e.preventDefault();
+}, true);
 window.armAndroidBackButton = armAndroidBackButton;
 
 function isNativeCapacitorShell() {

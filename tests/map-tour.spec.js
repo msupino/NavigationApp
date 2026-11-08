@@ -139,7 +139,7 @@ for (const [name, size, phoneLayout, lang] of [['phone', { width: 390, height: 8
     if (phoneLayout) {
       expect(out.lit.Commfail.lang).toBe(true);
       expect(out.lit.Menu.plan).toBe(true);
-      expect(out.lit.Menu.legend).toBe(false);          // named, not lit: it is at the bar's other end in Hebrew
+      expect(out.lit.Menu.legendBtn).toBe(false);       // named, not lit: it is at the screen's other end in Hebrew
       expect(out.lit.Menu.text).toMatch(/Legend|מקרא/);
     } else {
       expect(out.lit.Menu.toolbar).toBe(true);           // the whole bar, not just the legend

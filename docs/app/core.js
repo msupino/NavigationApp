@@ -103,6 +103,7 @@ NavAid.tuningDefaults = {
   livePredictorTurnSignificance: { value: 3, min: 1, max: 10, step: 0.5, label: 'Gentle turn must stand out from GPS scatter by (standard errors)' },
   legEtaLeadSec: { value: 120, min: 15, max: 600, step: 15, label: 'Next-leg call, this far ahead (s)' },
   legClockMapGround: { value: true, type: 'bool', label: 'Next-leg call opens with "clock to map to ground" (find the waypoint)' },
+  topChecklist: { value: true, type: 'bool', label: 'TOP call reads the leg-entry checks (FREDA / כז״גמ״ד) with the new leg\'s figures' },
   legCaptureNm: { value: 0.3, min: 0.05, max: 3, step: 0.05, label: 'TOP capture radius (NM)' },
   driftTrackErrorDeg: { value: 10, min: 2, max: 45, step: 1, label: 'Off-course alert at (°)' },
   driftCheckSec: { value: 120, min: 15, max: 900, step: 15, label: 'Off-course check every (s)' },
@@ -1304,7 +1305,7 @@ NavAid.tuningDefaults = {
 // interaction (hit testing), tools (alt pairs, export), and finally the
 // global colour palette.
 NavAid.tuningGroups = [
-  { name: 'Navigation', keys: ['magVarAuto', 'magneticVariationDeg', 'msaBufferFt', 'altimetryCorrection', 'geoidUndulationFt', 'followResumeMs', 'followZoomFloor', 'followZoomCeiling', 'followZoomCtrFloor', 'followZoomCtrCeiling', 'gpsReadoutFontPx', 'gpsReadoutRefitPx', 'alertNotifyTtlSec', 'alertIconColor', 'altToleranceFt', 'altMaxAlertsPerLeg', 'legEtaLeadSec', 'legClockMapGround', 'atisLeadSec', 'lastLightMarginMin', 'atisMarkerColor', 'atisMarkerRadiusPx', 'atisMarkerFontPx', 'liveHeadingEndLabel', 'legCaptureNm', 'driftTrackErrorDeg', 'driftCheckSec', 'coneUnknownSec', 'gpsMaxAccuracyM', 'gpsMinMoveM', 'gpsGlide', 'gpsGlideMinKt', 'gpsGlideMaxHz', 'vorReadoutMaxNm', 'measureLineColor', 'measureDotFill', 'measureLabelBg', 'measureLabelText', 'gpsStaleSec', 'qnhMaxAgeMin', 'qnhMoveNm', 'compassMaxKt', 'compassFallback', 'headingUpMinDeltaDeg', 'crosshairSizePx', 'crosshairWidthPx', 'crosshairColor', 'crosshairHaloColor', 'crosshairAlpha', 'atisMarkerFillAlpha', 'atisMarkerWidthPx'] },
+  { name: 'Navigation', keys: ['magVarAuto', 'magneticVariationDeg', 'msaBufferFt', 'altimetryCorrection', 'geoidUndulationFt', 'followResumeMs', 'followZoomFloor', 'followZoomCeiling', 'followZoomCtrFloor', 'followZoomCtrCeiling', 'gpsReadoutFontPx', 'gpsReadoutRefitPx', 'alertNotifyTtlSec', 'alertIconColor', 'altToleranceFt', 'altMaxAlertsPerLeg', 'legEtaLeadSec', 'legClockMapGround', 'topChecklist', 'atisLeadSec', 'lastLightMarginMin', 'atisMarkerColor', 'atisMarkerRadiusPx', 'atisMarkerFontPx', 'liveHeadingEndLabel', 'legCaptureNm', 'driftTrackErrorDeg', 'driftCheckSec', 'coneUnknownSec', 'gpsMaxAccuracyM', 'gpsMinMoveM', 'gpsGlide', 'gpsGlideMinKt', 'gpsGlideMaxHz', 'vorReadoutMaxNm', 'measureLineColor', 'measureDotFill', 'measureLabelBg', 'measureLabelText', 'gpsStaleSec', 'qnhMaxAgeMin', 'qnhMoveNm', 'compassMaxKt', 'compassFallback', 'headingUpMinDeltaDeg', 'crosshairSizePx', 'crosshairWidthPx', 'crosshairColor', 'crosshairHaloColor', 'crosshairAlpha', 'atisMarkerFillAlpha', 'atisMarkerWidthPx'] },
   { name: 'Performance defaults', keys: ['profileClimbFpm', 'profileClimbKt', 'defaultGph', 'defaultTaxiGal'] },
   { name: 'Altitude inference', keys: ['legAltInferMaxHops', 'legAltInferMaxDistRatio', 'legAltInferMaxExtraNm'] },
   { name: 'Plan card', keys: ['planCardBaseRowPx', 'planCardGripPx', 'planCardBgColor', 'planCardHeaderBgColor', 'planCardTotalBgColor', 'planCardStripeBgColor', 'planCardGridColor', 'planCardTextColor', 'planCardGripColor', 'planCardGripLineColor', 'planCardGripLineWidthPx'] },
@@ -1907,7 +1908,7 @@ window.S = Object.assign({
   tourCommfailTextPhone: 'Lost the radio? A route to the nearest field with a published procedure, with the squawk and the tower\u2019s phone. Beside it: the language.',
   tourMenuTitle: 'Menu',
   tourMenuText: 'Charts, extra layers (NOTAM, weather, airspace), the flight plan, and settings.',
-  tourMenuTextPhone: 'Menu: charts, layers (NOTAM, weather, airspace) and settings. Plan: the flight plan. The Legend in the corner explains the symbols.',
+  tourMenuTextPhone: 'Menu: charts, layers (NOTAM, weather, airspace) and settings. Plan: the flight plan. The Legend button at the bottom left opens the key to the symbols, with the route totals beside it.',
   tourMenuTextDesk: 'Save, My routes, the menus and the flight plan; then language, shortcuts (?), more links and the simulator. At the bottom: the Legend and the time slider.',
   tourSearchTitle: 'Find',
   tourSearchText: 'Type a waypoint or airfield, or several codes (LLHZ BAZRA DEROR) to build a route.',
@@ -3674,6 +3675,16 @@ window.S = Object.assign({
   // The overhead-the-waypoint moment -- CVFR radio phraseology's own "TOP <point>" call.
   watchAlertTopTitle: 'TOP',
   watchAlertTopBody: 'TOP',
+  // After the waypoint, the leg-entry checks with the new leg's own figures where the plan has
+  // them (asked). In English that is FREDA -- fuel, radio, engine, direction, altimeter; the
+  // Hebrew strings carry the Israeli כז״גמ״ד (בד"ח צא כיוון: heading, time, altitude, instruments,
+  // report). Every word is always there: it is a
+  // checklist, and a missing number is still a thing to check. `freq` is set when this waypoint
+  // changes frequency. `time` (the new leg's planned time) is the Hebrew list's זמן.
+  watchAlertTopChecklistBody: function (hdg, time, alt, freq) {
+    return ['Fuel', 'Radio' + (freq ? ' ' + freq : ''), 'Engine',
+      'Direction' + (hdg != null ? ' ' + hdg : ''), 'Altimeter' + (alt != null ? ' ' + alt + ' ft' : '')].join(' · ');
+  },
   watchAlertAltTitle: 'Altitude',
   watchAlertAltBody: function(actual, planned) {
     return actual + ' ft — planned ' + planned + ' ft';
@@ -3731,6 +3742,10 @@ window.S = Object.assign({
     return s;
   },
   speakAlertTop: function() { return 'Top.'; },
+  speakAlertTopChecklist: function (hdgDigits, hms, alt, freqDigits) {
+    return 'Top. Fuel. Radio' + (freqDigits ? ', ' + freqDigits : '') + '. Engine. Direction' +
+      (hdgDigits != null ? ' ' + hdgDigits : '') + '. Altimeter' + (alt != null ? ' ' + alt + ' feet' : '') + '.';
+  },
   // Shortly before a waypoint that changes frequency. Either half may be missing -- a
   // callout can name a station with no frequency, or a frequency with no station -- and
   // whichever is present is still worth hearing.
