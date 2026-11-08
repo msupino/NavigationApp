@@ -92,6 +92,11 @@ test('an update on mobile data is downloaded now, after asking, and waits for th
   expect(await row.locator('.app-update-progress').evaluate(b => b.value)).toBe(45);
   await page.evaluate(() => window.__ota.finish());
   await expect(row).toContainText('installs the next time NavAid starts');
+  // Asked once, and the menu is still there: its row offers the restart, no second question
+  // over the map (reported).
+  await expect(page.locator('#deck-sheet')).toBeVisible();
+  await expect(row.locator('.app-update-btn')).toHaveText('Restart now');
+  await expect(page.locator('.follow-me-ask-modal')).toHaveCount(0);
   await expect(row.locator('.app-update-progress')).toHaveAttribute('hidden', '');
   expect(await page.evaluate(() => (window.__ota.listeners.download || []).length)).toBe(0);   // listener removed
   expect(await page.evaluate(() => window.__ota.downloads)).toBe(1);
@@ -112,13 +117,23 @@ test('on Wi-Fi it downloads without asking', async ({ page }) => {
   await page.waitForFunction(() => typeof window.__ota.finish === 'function');
   await page.evaluate(() => window.__ota.finish());
   await expect(row).toContainText('installs the next time');
-  // No mobile-data question -- the only one is the offer to restart onto it now.
+  // No question at all: the row the pilot is looking at offers the restart.
+  await expect(row.locator('.app-update-btn')).toHaveText('Restart now');
+  await expect(page.locator('.follow-me-ask-modal')).toHaveCount(0);
+});
+
+// The menu put away while it downloaded: the row is out of sight, so the restart is asked for.
+test('a download that finishes with the menu closed offers the restart in a question', async ({ page }) => {
+  const row = await boot(page, { manifest: MANIFEST, network: 'cellular', running: '1.0-0000000' });
+  await row.locator('.app-update-btn').click();
+  await page.locator('.follow-me-ask-modal').getByRole('button', { name: 'Download now' }).click();
+  await page.waitForFunction(() => typeof window.__ota.finish === 'function');
+  await page.locator('.deck-sheet-close').click();
+  await expect(row).not.toBeInViewport();
+  await page.evaluate(() => window.__ota.finish());
   const ask = page.locator('.follow-me-ask-modal');
   await expect(ask).toHaveCount(1);
-  await expect(ask).not.toContainText('mobile data');
   await expect(ask.locator('.follow-me-ask-ok')).toHaveText('Restart now');
-  await ask.locator('.follow-me-ask-cancel').click();
-  await expect(row.locator('.app-update-btn')).toHaveText('Restart now');
 });
 
 // Reported: "when the APK downloads in the background because Wi-Fi is on, it is not shown by
