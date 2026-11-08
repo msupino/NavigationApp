@@ -1724,6 +1724,17 @@ function freqEditRow(label, opts) {
 // in UTC. Anything resting on sunrise/sunset or on the holiday calendar returns null --
 // unknown, and shown as nothing. A confident "not active now" that is wrong is the one
 // answer here that could put an aeroplane somewhere it must not be.
+// The schedule text as printed ("Sun 04:00 (UTCW) - Thu 19:00 (UTCW)", "Mon SR - Mon SS"), with
+// its English words (weekday, the UTC-winter suffix, sunrise / sunset) in the app's language.
+// airspaceActiveNow keeps reading the raw text; only what is shown goes through this.
+function airspaceHoursText(h) {
+  const days = S.airspaceDays || ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  return String(h)
+    .replace(/\b(Sun|Mon|Tue|Wed|Thu|Fri|Sat)\b/g, (d) => days[AIRSPACE_DAY[d.toLowerCase()]] || d)
+    .replace(/\(UTCW\)/g, '(' + (S.airspaceUtcw || 'UTCW') + ')')
+    .replace(/\bSR\b/g, S.airspaceSunrise || 'SR')
+    .replace(/\bSS\b/g, S.airspaceSunset || 'SS');
+}
 const AIRSPACE_DAY = { sun: 0, mon: 1, tue: 2, wed: 3, thu: 4, fri: 5, sat: 6 };
 function airspaceActiveNow(a, nowDate) {
   const hours = (a && a.hours) || [];
@@ -2119,7 +2130,7 @@ function airfieldPhoneRow(callSignId) {
   // A number is a Latin run inside Hebrew prose: isolate it, or the bidi algorithm moves the
   // area code to the wrong end of it.
   a.dir = 'ltr';
-  a.textContent = '☎ ' + shown;
+  a.textContent = shown;       // the row's label says Phone, and the link is a tel: link
   a.title = (S.callNumber || 'Call') + ' — ' + shown;
   row.append(l, a);
   return row;
@@ -2607,7 +2618,7 @@ function showSatellitePreviewModal(point, label) {
     lmap.setBearing(map.getBearing());
   }
   // Black-on-white zoom buttons, bottom-right — identical to the main map.
-  L.control.zoom({ position: 'bottomright' }).addTo(lmap);
+  L.control.zoom({ position: 'bottomright', zoomInTitle: S.zoomIn || 'Zoom in', zoomOutTitle: S.zoomOut || 'Zoom out' }).addTo(lmap);
   lmap.addControl(satelliteZoomControl(lmap));
   lmap.addControl(satelliteRotateControl(lmap));
   // Two-way bearing sync: rotating either map rotates the other.
@@ -3285,12 +3296,14 @@ function coordRow(lat, lng) {
 // reporting point and for the chart point itself -- tapped on the map, ZYAAR said nothing about
 // being a mandatory report until it was put on the route (reported).
 function appendReportingRow(body, name) {
+  // The row is labelled "Reporting"; the pin glyph the string carries is dropped, not drawn.
+  const plainLabel = (s) => (typeof window.navPlainLabel === 'function' ? window.navPlainLabel(s) : s);
   if (typeof reportingFor !== 'function') return;
   const rep = reportingFor(name);
   if (rep !== 'mandatory' && rep !== 'onRequest') return;
   const row = textRow(S.report || 'Reporting',
-    rep === 'mandatory' ? (S.reportingMandatory || '📍 Mandatory report')
-                        : (S.reportingOnRequest || '📍 Report on request'));
+    rep === 'mandatory' ? plainLabel(S.reportingMandatory || 'Mandatory report')
+                        : plainLabel(S.reportingOnRequest || 'Report on request'));
   row.classList.add('reporting-badge-row');
   body.appendChild(row);
 }
@@ -4356,7 +4369,7 @@ function showInspector() {
       const now = airspaceActiveNow(a);
       const state2 = now === true ? (S.airspaceActiveNow || 'active now')
         : now === false ? (S.airspaceNotActiveNow || 'not active now') : '';
-      const row = textRow(S.airspaceHours || 'Hours', a.hours.join(' · '));
+      const row = textRow(S.airspaceHours || 'Hours', a.hours.map(airspaceHoursText).join(' · '));
       if (state2) {
         const tag = document.createElement('span');
         tag.className = 'airspace-now' + (now ? ' is-active' : '');
@@ -4470,7 +4483,7 @@ function showInspector() {
     body.appendChild(textRow(S.trafficAltitude || 'Altitude',
       Number.isFinite(ac.alt) ? Math.round(ac.alt) + ' ' + (S.unitFeet || 'ft') : '—'));
     body.appendChild(textRow(S.trafficGroundSpeed || 'Ground speed',
-      Number.isFinite(ac.gs) ? Math.round(ac.gs) + ' kt' : '—'));
+      Number.isFinite(ac.gs) ? Math.round(ac.gs) + ' ' + (S.unitKt || 'kt') : '—'));
     body.appendChild(textRow(S.trafficTrack || 'Track',
       Number.isFinite(ac.track) ? String(Math.round(ac.track)).padStart(3, '0') + '°' : '—'));
     if (ac.type) body.appendChild(textRow(S.trafficType || 'Type', ac.type));

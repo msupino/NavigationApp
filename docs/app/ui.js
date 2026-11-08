@@ -38,8 +38,21 @@ function setButtonWhy(btn, why) {
   if (!btn) return;
   btn.disabled = false;
   btn.classList.toggle('is-dim', !!why);
-  if (why) { btn.setAttribute('aria-disabled', 'true'); btn.dataset.why = why; }
-  else { btn.removeAttribute('aria-disabled'); delete btn.dataset.why; }
+  // The reason is also the hover tooltip and the accessible description, so a mouse or a screen
+  // reader gets it without having to tap. The normal title is kept aside and put back when the
+  // button is live again.
+  if (why) {
+    if (btn.dataset.whyTitle === undefined) btn.dataset.whyTitle = btn.getAttribute('title') || '';
+    btn.setAttribute('aria-disabled', 'true'); btn.dataset.why = why;
+    btn.setAttribute('title', why); btn.setAttribute('aria-description', why);
+  } else {
+    btn.removeAttribute('aria-disabled'); delete btn.dataset.why;
+    btn.removeAttribute('aria-description');
+    if (btn.dataset.whyTitle !== undefined) {
+      if (btn.dataset.whyTitle) btn.setAttribute('title', btn.dataset.whyTitle); else btn.removeAttribute('title');
+      delete btn.dataset.whyTitle;
+    }
+  }
 }
 window.setButtonWhy = setButtonWhy;
 // One listener for all of them, in the capture phase so it runs before the button's own handler.
@@ -86,7 +99,9 @@ function refreshEmptyRouteHint() {
     document.body.appendChild(el);
     try { localStorage.setItem(EMPTY_HINT_KEY, '1'); } catch (e) { /* storage unavailable */ }
   }
-  el.textContent = S.emptyRouteHint || 'Click the map to add your first waypoint';
+  // A touch screen has no click: "Tap" where the primary pointer is coarse.
+  const coarse = !!(window.matchMedia && window.matchMedia('(pointer: coarse)').matches);
+  el.textContent = (coarse && S.emptyRouteHintTouch) || S.emptyRouteHint || 'Click the map to add your first waypoint';
   refreshPrimingCursor();
 }
 // While the map is primed to start a route (see routePrimingArmed in interact.js) a plain
@@ -232,7 +247,7 @@ dressMenus();
 const GLYPH_ICONS = { '🗑': 'trash', '↻': 'reset', '🔥': 'hotspot', '⏱': 'timer', '📡': 'antenna',
   '✈': 'plane', '+': 'plus', '➕': 'plus', '＋': 'plus', '📍': 'location', '⇄': 'reverse', '🧭': 'compass',
   '🔑': 'key', '📋': 'list', '🔗': 'link', '💾': 'save', '📂': 'folder', '⬇': 'download', '⬆': 'upload',
-  '🖨': 'print', '⊘': 'hide', '✓': 'check', '✔': 'check' };
+  '🖨': 'print', '⊘': 'hide', '✓': 'check', '✔': 'check', '⚠': 'warn', '✅': 'check' };
 // Every button carries an icon ("every button should have an icon, new or existing"). The ones
 // whose label has no glyph to key on are named by their id or class instead.
 const BUTTON_ICONS = { 'insp-direct-to': 'direct', 'insp-add-to-route': 'plus', 'insp-add-rp': 'plus', 'insp-vor-use-ref': 'compass',
@@ -248,6 +263,10 @@ function buttonIconName(btn) {
   return '';
 }
 window.navButtonIconName = buttonIconName;
+// A label that keeps its glyph in the string (other surfaces read it) but is SHOWN without it
+// where an icon stands beside it or none is needed: window titles, toasts, status lines.
+// navPlainLabel (core.js) strips the glyph set the menus strip; this maps it to the same icon the buttons get.
+window.navLabelIcon = (s) => buttonIconName({ textContent: String(s == null ? '' : s) });
 function dressByGlyph(btn) {
   if (!btn || btn.querySelector(':scope > .mi-icon') || typeof navIconSvg !== 'function') return;
   const name = buttonIconName(btn);
@@ -933,6 +952,51 @@ try { headingUpOn = lsGet(HEADING_UP_KEY) === '1'; } catch (e) { /* storage unav
 // was built for, next to the follow lock.
 const MAP_CONTROL_ORDER = ['voice-ctrl', 'orient-ctrl', 'follow-ctrl', 'follow-me-ctrl',
   'editlock-ctrl', 'measure-ctrl', 'atc-fab-control', 'assistant-fab-control', 'rotate-ctrl'];
+// How far the bottom-right control column reaches in from the right edge, for what sits beside it
+// (coordinates, the Zulu clock, the empty-route hint) -- measured on the phone deck, where a short
+// screen wraps the column into a second one (style.css) and the fixed 52/66 px clearance let the
+// second column land on the coordinates and the hint. One column: the CSS default, untouched.
+function syncMapControlClearance() {
+  const root = document.documentElement;
+  const corner = document.querySelector('.leaflet-bottom.leaflet-right');
+  if (!corner || !document.body.classList.contains('deck-on')) {
+    root.style.removeProperty('--navaid-map-ctrl-clear');
+    root.style.removeProperty('--navaid-map-ctrl-wrapped');
+    return;
+  }
+  const box = corner.getBoundingClientRect();
+  let left = Infinity, right = -Infinity;
+  for (const el of corner.children) {
+    if (el.offsetParent === null || getComputedStyle(el).position === 'absolute') continue;   // readouts sit beside, not in, the column
+    const r = el.getBoundingClientRect();
+    if (!r.width) continue;
+    left = Math.min(left, r.left); right = Math.max(right, r.right);
+  }
+  // Wrapped when the column is more than one control wide.
+  const wrapped = Number.isFinite(left) && right - left > 70;
+  if (wrapped) {
+    root.style.setProperty('--navaid-map-ctrl-clear', Math.ceil(box.right - left + 8) + 'px');
+    root.style.setProperty('--navaid-map-ctrl-wrapped', '1');
+  } else {
+    root.style.removeProperty('--navaid-map-ctrl-clear');
+    root.style.removeProperty('--navaid-map-ctrl-wrapped');
+  }
+}
+(function watchMapControlClearance() {
+  let queued = false;
+  const later = () => { if (!queued) { queued = true; requestAnimationFrame(() => { queued = false; syncMapControlClearance(); }); } };
+  addEventListener('resize', later);
+  const start = () => {
+    const corner = document.querySelector('.leaflet-bottom.leaflet-right');
+    if (!corner) { setTimeout(start, 500); return; }
+    if (typeof ResizeObserver === 'function') new ResizeObserver(later).observe(corner);
+    new MutationObserver(later).observe(corner, { childList: true, subtree: true, attributes: true, attributeFilter: ['class', 'hidden', 'style'] });
+    new MutationObserver(later).observe(document.body, { attributes: true, attributeFilter: ['class'] });
+    later();
+  };
+  start();
+})();
+
 function orderMapControls(corner) {
   if (!corner) return;
   const rank = (el) => {
@@ -943,6 +1007,10 @@ function orderMapControls(corner) {
   };
   const rows = Array.prototype.slice.call(corner.children);
   const sorted = rows.slice().sort((a, b) => rank(a) - rank(b));
+  // The phone's column is a reversed flex column (it wraps into a second column on a short
+  // screen, see style.css), where the DOM order reads bottom-up: `order` puts it back.
+  // Zoom, which ranks last, therefore stays at the bottom.
+  sorted.forEach((el, i) => { el.style.order = String(sorted.length - i); });
   // Only touch the DOM when the order actually differs: this runs on every fix.
   for (let i = 0; i < sorted.length; i++) {
     if (rows[i] !== sorted[i]) { sorted.forEach(el => corner.appendChild(el)); return; }
@@ -2110,8 +2178,8 @@ const zuluClockCtrl = L.control({ position: zuluClockMovable() ? 'topright' : 'b
 const zuluClockEl = L.DomUtil.create('div', 'leaflet-control zulu-clock');
 zuluClockEl.id = 'zulu-clock';
 zuluClockEl.dir = 'ltr';
-zuluClockEl.title = 'Zulu time (UTC)';
-zuluClockEl.setAttribute('aria-label', 'Zulu time (UTC)');
+zuluClockEl.title = S.zuluClockTitle || 'Zulu time (UTC)';
+zuluClockEl.setAttribute('aria-label', S.zuluClockTitle || 'Zulu time (UTC)');
 zuluClockEl.setAttribute('aria-live', 'off');
 zuluClockCtrl.onAdd = function () {
   zuluClockEl.classList.toggle('zulu-fixed', !zuluClockMovable());
@@ -2217,6 +2285,7 @@ setInterval(refreshZuluClock, 1000);
   if (!el) return;
   const body = document.createElement('span');
   body.className = 'attrib-body';
+  body.dir = 'ltr';   // proper names and URLs: in Hebrew they flowed RTL and wrapped in a scrambled order
   while (el.firstChild) body.appendChild(el.firstChild);
   const btn = document.createElement('button');
   btn.type = 'button';
@@ -2226,10 +2295,19 @@ setInterval(refreshZuluClock, 1000);
   const label = (typeof S === 'object' && S && S.attribToggle) || 'Chart and map credits';
   btn.title = label;
   btn.setAttribute('aria-label', label);
-  btn.addEventListener('click', () => {
-    const open = el.classList.toggle('attrib-open');
+  const setOpen = (open) => {
+    el.classList.toggle('attrib-open', open);
     btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+  };
+  btn.addEventListener('click', () => setOpen(!el.classList.contains('attrib-open')));
+  // Opened over the coordinate readout, so it has to be easy to put away again: Escape, or a
+  // tap anywhere outside the notice (the toggle's own tap is handled above).
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && el.classList.contains('attrib-open')) setOpen(false);
   });
+  document.addEventListener('pointerdown', (e) => {
+    if (el.classList.contains('attrib-open') && !el.contains(e.target)) setOpen(false);
+  }, true);
   // Leaflet re-writes the notice as layers come and go (each tile layer contributes its
   // own credit), which would drop it straight back into the control beside our span. The
   // attribution control appends to the element it was given, so hand it the span.
@@ -2588,6 +2666,10 @@ function refreshWindReadout() {
 // leaking through to the map underneath.
 coordBox.removeAttribute('aria-hidden');
 coordBox.title = S.gotoTitle;
+// Clickable, so reachable: a bare div was a mouse-only control. Enter/Space open the editor like a click.
+coordBox.setAttribute('role', 'button');
+coordBox.tabIndex = 0;
+coordBox.setAttribute('aria-label', S.gotoTitle);
 coordBox.classList.add('show', 'interactive');
 L.DomEvent.disableClickPropagation(coordBox);
 L.DomEvent.disableScrollPropagation(coordBox);
@@ -2637,6 +2719,10 @@ function showZoom() {
   const a = document.createElement('span'), b = document.createElement('span');
   a.textContent = zPart || ''; b.textContent = scalePart || '';
   zoomBox.replaceChildren(a, b);
+  // Read as one phrase ("Zoom 12 · 1:250 000"), not two stray spans.
+  zoomBox.setAttribute('role', 'img');
+  zoomBox.setAttribute('aria-label', zoomReadoutText(map.getZoom()));
+  zoomBox.title = zoomReadoutText(map.getZoom());
 }
 function showCoord(latlng) {
   if (gotoEditing) return;
@@ -2716,7 +2802,10 @@ function exitGotoEdit() {
   gotoEditing = false;
   coordBox.classList.remove('editing', 'error');
   coordBox.title = S.gotoTitle;
+  coordBox.setAttribute('role', 'button');
+  coordBox.setAttribute('aria-label', S.gotoTitle);
   showCenterCoord();
+  try { coordBox.focus({ preventScroll: true }); } catch (e) { /* */ }
 }
 // Break a signed decimal degree into integer degrees/minutes/seconds, with
 // the same 60->0 rollover carry as fmtLatLngDMS so the slots never read 60.
@@ -2791,7 +2880,9 @@ function enterGotoEdit() {
   const lat = dmsParts(c.lat);
   const lng = dmsParts(c.lng);
   coordBox.textContent = '';
-  coordBox.setAttribute('aria-label', S.gotoTitle);
+  // The inputs carry their own names; a button role around them would hide them.
+  coordBox.removeAttribute('role');
+  coordBox.removeAttribute('aria-label');
   coordBox.title = S.gotoError;
   const slots = [
     gotoSlot('goto-lat-d', lat.d, 2, S.latitude + ' deg'), gotoSep('°'),
@@ -2834,6 +2925,13 @@ function enterGotoEdit() {
   inputs[0].select();
 }
 coordBox.addEventListener('click', () => { if (!gotoEditing) enterGotoEdit(); });
+coordBox.addEventListener('keydown', (e) => {
+  if (gotoEditing || e.target !== coordBox || (e.key !== 'Enter' && e.key !== ' ')) return;
+  e.preventDefault();
+  enterGotoEdit();
+  const first = coordBox.querySelector('input');
+  if (first) first.focus();
+});
 // Leave edit mode only when focus exits the readout entirely. Registered once
 // (not per edit) so repeated open/close never stacks duplicate listeners.
 coordBox.addEventListener('focusout', e => {
@@ -5603,8 +5701,12 @@ function paintRouteFileRows() {
       const sub = save.querySelector('.rf-sub');
       if (sub) { sub.textContent = entry ? entry.name : ''; sub.hidden = !entry; }
       // Dimmed, never hidden or disabled: pressing it still says why there is nothing to save.
-      // (Not aria-disabled: that tells a screen reader it cannot be pressed, and pressing it is
-      // how the pilot hears why.)
+      // The reason is also the tooltip and accessible description, so hover and screen readers
+      // get it without a tap. Not setButtonWhy: that sets aria-disabled, which this row avoids.
+      // The reason on hover and for a screen reader -- but not aria-disabled: that tells a screen
+      // reader it cannot be pressed, and pressing it is how the pilot hears why.
+      const noSaveWhy = tooShort ? (S.errNothingToSave || S.errNeedWps || 'Nothing to save.') : '';
+      if (noSaveWhy) save.setAttribute('aria-description', noSaveWhy); else save.removeAttribute('aria-description');
       save.classList.toggle('is-dim', tooShort);
       const dot = save.querySelector('.rf-dot');
       if (dot) {
@@ -5612,7 +5714,7 @@ function paintRouteFileRows() {
         dot.title = dirty ? (S.routeFileUnsaved || 'Unsaved changes') : '';
       }
       save.setAttribute('aria-label', saveText + (dirty ? ' — ' + (S.routeFileUnsaved || 'Unsaved changes') : ''));
-      save.title = saveText + (dirty ? ' — ' + (S.routeFileUnsaved || 'Unsaved changes') : '');
+      save.title = noSaveWhy || (saveText + (dirty ? ' — ' + (S.routeFileUnsaved || 'Unsaved changes') : ''));
     }
     if (load) {
       load.querySelector('.rf-label').textContent = loadText;
@@ -5959,7 +6061,7 @@ window.followMeNewLinkOffered = followMeNewLinkOffered;
     // ignores the theme.
     const ask = S.followMeNewLinkConfirm || 'Start a new follow-me link?';
     const yes = typeof window.askYesNo === 'function'
-      ? await window.askYesNo(S.tbFollowMeNewLink || 'New link', ask, S.tbFollowMeNewLink || 'New link')
+      ? await window.askYesNo(S.tbFollowMeNewLink || 'New link', ask, window.navPlainLabel(S.tbFollowMeNewLink || 'New link'))
       : true;
     if (!yes) return;
     const link = await f.newLink();
@@ -6581,7 +6683,7 @@ document.getElementById('limit-kites-cb').onchange = e => {
 
   let urlProblemShown = false;
   function showUrlProblem(problem) {
-    statusEl.textContent = problem;
+    statusEl.textContent = window.navPlainLabel(problem);   // the status colour carries the warning
     statusEl.style.color = typeof tune === 'function'
       ? tune('simStatusErrColor') : '#e67e22';
     urlProblemShown = true;
@@ -8765,7 +8867,7 @@ function showNotamModal(only, opts) {
   const box = document.createElement('div');
   box.className = 'modal wide notam-modal';
   const close = document.createElement('button');
-  close.className = 'modal-close-x'; close.type = 'button'; close.textContent = '×';
+  close.className = 'modal-close-x'; close.type = 'button'; close.textContent = '\u2715';
   close.setAttribute('aria-label', 'Close');
   box.appendChild(close);
   // `only` = subset clicked on the map. Empty/absent → full active list.
@@ -9040,6 +9142,7 @@ function showNotamModal(only, opts) {
   box.appendChild(list);
   back.appendChild(box);
   document.body.appendChild(back);
+  makeWindowAccessible(back, box, h);
   // Give the sheet an explicit width AND height. Content changes (future
   // checkbox, search, ICAO filter) then affect only the scrollable list, not
   // the window around it. Native CSS resize lets the pilot choose a size; the

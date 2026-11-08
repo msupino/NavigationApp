@@ -210,6 +210,32 @@ function attachResizeGrip(el, opts) {
   return grip;
 }
 
+// Makes a hand-built window behave like createDraggableModal's: role="dialog", a name from its
+// visible title, focus moved inside on open and handed back when the backdrop leaves the page.
+// The restore watches the DOM rather than each window's close(), because these windows have
+// several ways out (X, Escape, backdrop, a sibling chart opening) and not all call one function.
+// aria-modal only when the backdrop blocks (`modal: false` for a click-through panel).
+function makeWindowAccessible(back, box, titleEl, options) {
+  const opts = options || {};
+  if (!box.getAttribute('role')) box.setAttribute('role', 'dialog');
+  if (opts.modal !== false) box.setAttribute('aria-modal', 'true');
+  if (titleEl && !box.getAttribute('aria-labelledby')) {
+    if (!titleEl.id) titleEl.id = 'win-title-' + (makeWindowAccessible._n = (makeWindowAccessible._n || 0) + 1);
+    box.setAttribute('aria-labelledby', titleEl.id);
+  }
+  const prev = document.activeElement;
+  const stop = box.querySelector('.modal-close-x') || box.querySelector('button, input, select, textarea, [href]');
+  if (stop) { try { stop.focus({ preventScroll: true }); } catch (e) { /* */ } }
+  if (typeof MutationObserver !== 'function') return;
+  const mo = new MutationObserver(() => {
+    if (back.isConnected) return;
+    mo.disconnect();
+    if (prev && prev.isConnected) { try { prev.focus({ preventScroll: true }); } catch (e) { /* */ } }
+  });
+  mo.observe(document.body, { childList: true });
+}
+window.makeWindowAccessible = makeWindowAccessible;
+
 function addModalCloseX(box, onClose, options = {}) {
   const x = document.createElement('button');
   x.className = 'modal-close-x';
@@ -3751,15 +3777,18 @@ function refreshOrientButton() {
   const btn = document.getElementById('page-orient');
   if (!btn) return;
   const isPortrait = pageOrient === 'portrait';
-  const icon = isPortrait ? '▯' : '▭';
+  // Drawn, not a text glyph (▯/▭ render per font and read as nothing): a page outline in the
+  // orientation the button will leave you in.
+  const icon = '<svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">'
+    + (isPortrait ? '<rect x="3.5" y="1.5" width="7" height="11" rx="1"/>' : '<rect x="1.5" y="3.5" width="11" height="7" rx="1"/>') + '</svg>';
   const label = isPortrait ? (S.portrait || 'Portrait') : (S.landscape || 'Landscape');
   const iconEl = btn.querySelector('.page-orient-icon');
   const labelEl = btn.querySelector('.page-orient-label');
   if (iconEl && labelEl) {
-    iconEl.textContent = icon;
+    iconEl.innerHTML = icon;
     labelEl.textContent = label;
   } else {
-    btn.textContent = icon + ' ' + label;
+    btn.textContent = label;
   }
   btn.classList.toggle('portrait', isPortrait);
 }
@@ -5875,6 +5904,7 @@ function showMetList(kind, list) {
   box.appendChild(listEl);
   back.appendChild(box);
   document.body.appendChild(back);
+  makeWindowAccessible(back, box, h);
   // Movable by its title, as the NOTAM list; each list remembers its own spot per language.
   stopDrag = makeModalDraggable(box, h, kind === 'sigmet' ? 'navaid.sigmetListPos' : 'navaid.airmetListPos');
   // Resizable like the NOTAM list. It opens fitted to its few warnings unless the pilot has
@@ -6231,7 +6261,7 @@ function showExportModal() {
   // shows/hides it immediately).
   const pageWarn = document.createElement('div');
   pageWarn.id = 'export-page-warn';
-  pageWarn.style.cssText = 'font-size:12px;color:#e53935;font-weight:600;padding:2px 0';
+  pageWarn.style.cssText = 'font-size:12px;font-weight:600;padding:2px 0';   // colour: style.css (#export-page-warn), per theme
   body.appendChild(pageWarn);
 
   box.appendChild(body);
@@ -6559,6 +6589,8 @@ function showExportModal() {
   // applied permanently.
   back.onclick = e => { if (e.target === back) dismissExport(); };
   document.body.appendChild(back);
+  // The floating panel leaves the map live under the pointer, so it is not aria-modal.
+  makeWindowAccessible(back, box, title, { modal: !floatPanel });
   updateExportPageWarn();   // now in the DOM — set the initial warning state
   updateExportPlanCb();     // and the initial plan-checkbox enabled state + label
   // Safety net: even on desktop, if the floating panel can't fit the viewport
@@ -8176,7 +8208,19 @@ function createDraggableModal(titleText, className, onClose, options = {}) {
   box.setAttribute('aria-labelledby', title.id);
   if (options.titleDir) title.dir = options.titleDir;
   if (options.titleBidi) title.style.unicodeBidi = options.titleBidi;
-  title.textContent = titleText || '';
+  // The strings keep their glyph ("📡 Freq table"); the window shows the drawn icon instead --
+  // emoji render in the platform's colour set, not NavAid's line set.
+  const plainTitle = typeof window.navPlainLabel === 'function' ? window.navPlainLabel(titleText) : (titleText || '');
+  const titleIcon = typeof window.navLabelIcon === 'function' && typeof navIconSvg === 'function'
+    ? window.navLabelIcon(titleText) : '';
+  title.textContent = plainTitle;
+  if (titleIcon && plainTitle !== (titleText || '')) {
+    const ic = document.createElement('span');
+    ic.className = 'mi-icon';
+    ic.setAttribute('aria-hidden', 'true');
+    ic.innerHTML = navIconSvg(titleIcon, 16);
+    title.prepend(ic);
+  }
   box.appendChild(title);
 
   let closed = false;
@@ -9207,7 +9251,8 @@ function createAltitudePairsPinButton(opts) {
   const pin = document.createElement('button');
   pin.type = 'button';
   pin.className = 'modal-close-action charts-alt-pin';
-  pin.textContent = '📌';
+  if (typeof navIconSvg === 'function') pin.innerHTML = navIconSvg('location', 16);   // a drawn pin, not the emoji
+  else pin.textContent = '\u25CF';
   const updatePinButton = () => {
     const title = opts.keepOpenOnFocus
       ? (S.altPairsPinnedTitle || S.altPairsPinTitle || 'Alt pairs stays open')
@@ -9472,6 +9517,18 @@ function renderAltitudePairsTable(altSection, opts) {
   table.appendChild(tbody);
   tableWrap.appendChild(table);
   altSection.appendChild(tableWrap);
+  // Same edge fade as the Freq table: the second altitude column, Type and NM are off the edge
+  // on a phone and nothing said the table scrolls. Self-removing on resize once the window is gone.
+  const markAltOverflow = () => {
+    if (!tableWrap.isConnected) { window.removeEventListener('resize', markAltOverflow); return; }
+    const max = tableWrap.scrollWidth - tableWrap.clientWidth;
+    const from = Math.abs(tableWrap.scrollLeft);
+    tableWrap.classList.toggle('scroll-start', max > 1 && from > 1);
+    tableWrap.classList.toggle('scroll-end', max > 1 && from < max - 1);
+  };
+  tableWrap.addEventListener('scroll', markAltOverflow, { passive: true });
+  window.addEventListener('resize', markAltOverflow);
+  requestAnimationFrame(markAltOverflow);
   const renderedRows = Array.from(tbody.querySelectorAll('tr')).map((tr, index) => ({
     tr,
     segment: segments[index],
@@ -10738,8 +10795,10 @@ let _simLastOk = null;
 function _simSetStatus(ok) {
   const el = window._simStatusEl || null;
   if (el) {
-    el.textContent = ok ? (S.tbSimStatusOk || '✅ Connected')
-                        : (S.tbSimStatusErr || '⚠ No data');
+    // Words with a drawn mark: the status colour already says ok / not ok.
+    const plain = (s) => (typeof window.navPlainLabel === 'function' ? window.navPlainLabel(s) : s);
+    el.textContent = ok ? plain(S.tbSimStatusOk || 'Connected')
+                        : plain(S.tbSimStatusErr || 'No data');
     el.style.color = ok ? tune('simStatusOkColor') : tune('simStatusErrColor');
   }
   if (ok === _simLastOk) return;
@@ -11070,7 +11129,16 @@ function fplIsolate(text) {
 }
 function fplSetBidiText(el, text) {
   el.textContent = '';
-  const str = String(text == null ? '' : text);
+  let str = String(text == null ? '' : text);
+  // A leading warning sign is drawn, not the emoji (the callers all write '⚠ ' + message).
+  if (/^\u26A0\uFE0F?\s/.test(str) && typeof navIconSvg === 'function') {
+    str = str.replace(/^\u26A0\uFE0F?\s+/, '');
+    const ic = document.createElement('span');
+    ic.className = 'mi-icon fpl-warn-icon';
+    ic.setAttribute('aria-hidden', 'true');
+    ic.innerHTML = navIconSvg('warn', 14);
+    el.appendChild(ic);
+  }
   let last = 0;
   str.replace(FPL_LATIN_RUN, (run, _g, idx) => {
     if (idx > last) el.appendChild(document.createTextNode(str.slice(last, idx)));
@@ -11237,6 +11305,7 @@ function showFplDialog(opts) {
   back.onclick = e => { if (e.target === back) close(); };
   back._navaidClose = close;
   document.body.appendChild(back);
+  makeWindowAccessible(back, box, title);
   fplDialogOpen = true;
   document.addEventListener('keydown', onEsc, true);
 
@@ -12208,7 +12277,12 @@ function showFplDialog(opts) {
       custom.className = 'fpl-warn';
       custom.id = 'fpl-custom-recipient';
       const lead = document.createElement('span');
-      lead.textContent = '⚠ ' + (S.fplCustomRecipient || '') + ' ';
+      const leadIc = document.createElement('span');
+      leadIc.className = 'mi-icon fpl-warn-icon';
+      leadIc.setAttribute('aria-hidden', 'true');
+      leadIc.innerHTML = typeof navIconSvg === 'function' ? navIconSvg('warn', 14) : '';
+      lead.textContent = (S.fplCustomRecipient || '') + ' ';
+      lead.prepend(leadIc);
       const addr = document.createElement('bdi');      // an address inside RTL text
       addr.className = 'fpl-custom-addr';
       addr.textContent = res.to;

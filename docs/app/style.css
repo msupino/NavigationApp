@@ -756,6 +756,20 @@ html[dir="rtl"] #toolbar {
    clipped; the menu is content-sized, so the row simply gets a little wider. */
 #toolbar #wp-size-val,
 #toolbar #leg-arrow-size-val { min-width: max-content; }
+/* Display menu: every readout the width of the longest ("1.00 (standard)", 78 px), and the
+   colour rows' reset pushed to the row's end. Slider rows measured their reset at three
+   different x (readout widths 33/55/78 px, colour rows right after the swatch); now they
+   share one right-hand column. */
+#toolbar:not(.multi-open):not(.deck-hosted) .tb-section[data-sec="display"] .slider-val,
+#toolbar:not(.multi-open):not(.deck-hosted) #wp-size-val, #toolbar:not(.multi-open):not(.deck-hosted) #leg-arrow-size-val, #toolbar:not(.multi-open):not(.deck-hosted) #minute-size-val { width: 78px; min-width: 78px; }
+#toolbar:not(.multi-open):not(.deck-hosted) .tb-section[data-sec="display"] .navtoggle > input[type="color"] { margin-inline-end: auto; }
+/* ...and every slider the same 90 px basis, as the wrapping size rows have, or the menu is sized by
+   those rows alone and the others' reset overflows it. */
+#toolbar:not(.multi-open):not(.deck-hosted) .tb-section[data-sec="display"] .navtoggle > input[type="range"] { flex: 1 1 90px; }
+/* (Not while several menus are open side by side: each is then a sixth of the screen, and a fixed
+   78px readout left the track no room at all.) */
+/* (Nor in the phone's Menu sheet, where a slider has its own full-width line: the fixed readout kept
+   it on the label's line and squeezed it under 120 px -- mobile-slider-reach.) */
 /* ...and because the suffix makes the row wider than the menu body at selector 1, the row is
    allowed to wrap rather than squeezing the slider: label + slider on one line, the readout
    and its reset on the next. The row's contents overflowed their own box by ~15px otherwise,
@@ -1320,7 +1334,7 @@ body.theme-dark #map-crosshair::after {
 :root {
   --navaid-mapbtn-bg: rgba(22, 30, 40, 0.82);
   --navaid-mapbtn-fg: #ffffff;
-  --navaid-mapbtn-on: #0b62d6;
+  --navaid-mapbtn-on: #1d6fe0;   /* the toolbar's selected blue, so "on" is one blue app-wide */
   --navaid-mapbtn-live: #1f8a4c;
   --navaid-mapbtn-warn: #b07a12;
 }
@@ -1462,6 +1476,20 @@ body.deck-on .leaflet-control.edit-col-ctrl {
 /* The ruler without a position: dimmed the same way, still tappable to say why. */
 .leaflet-control.measure-ctrl button.is-dim { opacity: 0.45; }
 .leaflet-control.edit-col-ctrl button:focus-visible {
+  outline: 2px solid #ffffff;
+  outline-offset: 2px;
+  box-shadow: 0 0 0 4px var(--navaid-mapbtn-on);
+}
+
+/* One focus ring across the map controls: the edit column's white outline and blue halo. The
+   ruler, rotate dial, heading field, zoom +/-, ATC radio and the clickable coordinate readout
+   fell back to the browser's default ring, which differs per browser and vanishes on the chart. */
+.leaflet-control.measure-ctrl button:focus-visible,
+#rotate-dial:focus-visible,
+#rotate-hdg:focus-visible,
+.leaflet-control-zoom a:focus-visible,
+#tool-atc-radio:focus-visible,
+#coord-readout:focus-visible {
   outline: 2px solid #ffffff;
   outline-offset: 2px;
   box-shadow: 0 0 0 4px var(--navaid-mapbtn-on);
@@ -3539,9 +3567,9 @@ html:not([dir="rtl"]) .comm-section.has-atc .row:not(:has(.atc-inline)) > .val:h
 .atc-fab:hover { background: rgba(40, 36, 36, 0.96); }
 .atc-fab:focus-visible { outline: 3px solid #3d8bfd; outline-offset: 2px; }
 .atc-fab svg { display: block; width: 24px; height: 24px; }
-.atc-fab.active { background: #2e7d32; border-color: #2e7d32; animation: atc-fab-live 1.8s ease-in-out infinite; }
-.atc-fab.active:hover { background: #276b2b; }
-@keyframes atc-fab-live { 50% { box-shadow: 0 3px 12px rgba(0, 0, 0, 0.5), 0 0 0 5px rgba(46, 125, 50, 0.28); } }
+.atc-fab.active { background: var(--navaid-mapbtn-live); border-color: var(--navaid-mapbtn-live); animation: atc-fab-live 1.8s ease-in-out infinite; }
+.atc-fab.active:hover { background: #197040; }
+@keyframes atc-fab-live { 50% { box-shadow: 0 3px 12px rgba(0, 0, 0, 0.5), 0 0 0 5px rgba(31, 138, 76, 0.28); } }
 @media (prefers-reduced-motion: reduce) { .atc-fab.active { animation: none; } }
 /* No light-theme override: the map's control column (zoom, lock, measure, the assistant
    launcher) stays dark in both themes, and this button is one of them. */
@@ -4544,7 +4572,7 @@ body.theme-light .airfield-refs { border-top-color: #d5dbe3; }
    the 30px of the layer choice beside them. The old charts button was 36px; a link must not
    be harder to hit than the button it replaced. */
 .airfield-refs :is(.insp-notam-link, .insp-charts-btn) { min-height: 24px; }
-body.deck-on .airfield-refs :is(.insp-notam-link, .insp-charts-btn) { min-height: 30px; }
+body.deck-on .airfield-refs :is(.insp-notam-link, .insp-charts-btn) { min-height: 44px; }
 
 /* Airport charts: two screens rather than twenty accordions. Screen one is a grid of fields,
    screen two is one field's plates. Every target here is thumb-sized -- this is read on a
@@ -4777,7 +4805,9 @@ body.theme-light .charts-cat-chip {
 }
 /* Route satellite mosaic (Charts → Satellite mosaic) */
 .route-mosaic-body { padding: 4px 2px 2px; }
-.route-mosaic-bar { margin: 0 2px 8px; display: flex; gap: 8px; align-items: center; }
+/* Wraps: with Size, Zoom, Layer and Print in one nowrap row the bar was 566px wide in a 321px
+   phone dialog and Print sat off-screen. */
+.route-mosaic-bar { margin: 0 2px 8px; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
 .route-mosaic-layer,
 .route-mosaic-print {
   font: inherit; font-size: 12px; padding: 4px 8px; border-radius: 5px;
@@ -5265,6 +5295,29 @@ body.theme-light .map-time-now { background: rgba(255, 255, 255, 0.95); }
   .map-time-now { background: rgba(255, 255, 255, 0.6); }
 }
 
+/* Dark theme: the clock was the one light pill among dark readouts (coords, zoom, zulu). Themed
+   like .coord-readout. The slider track is drawn here (the native one was rgb 157,150,142 on a
+   white pill = 2.9:1): a track that is >= 3:1 against its pill in each theme, same blue thumb. */
+body.theme-dark .map-time-read,
+body.theme-dark .map-time-charts,
+body.theme-dark .map-time-now {
+  color: #e8e8e8;
+  background: rgba(20, 18, 18, 0.9);
+  border-color: #3a3636;
+}
+.map-time input[type="range"] { -webkit-appearance: none; appearance: none; height: 20px; padding: 0 6px; --mt-track: #6b655e; }
+body.theme-dark .map-time input[type="range"] { background: rgba(20, 18, 18, 0.9); --mt-track: #9a948c; }
+.map-time input[type="range"]::-webkit-slider-runnable-track { height: 4px; border-radius: 2px; background: var(--mt-track); }
+.map-time input[type="range"]::-moz-range-track { height: 4px; border-radius: 2px; background: var(--mt-track); }
+.map-time input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; width: 16px; height: 16px; margin-top: -6px; border-radius: 50%; background: #0b6fb8; border: 2px solid #fff; box-sizing: border-box; }
+.map-time input[type="range"]::-moz-range-thumb { width: 16px; height: 16px; border-radius: 50%; background: #0b6fb8; border: 2px solid #fff; box-sizing: border-box; }
+@media (max-width: 680px), (pointer: coarse) {
+  body.theme-dark .map-time-read,
+  body.theme-dark .map-time-charts { background: none; }
+  body.theme-dark .map-time-now { background: rgba(20, 18, 18, 0.6); }
+  body.theme-dark .map-time input[type="range"] { background: none; }
+}
+
 /* Legend for the airfield-wind barb styles, under its toolbar switch. */
 .af-wind-legend { font-size: 10px; opacity: 0.75; margin-block-start: 2px; }
 .swx-fields { display: flex; flex-wrap: wrap; gap: 0 12px; margin-block-start: 2px; padding-inline-start: 22px; }
@@ -5372,8 +5425,8 @@ body.theme-light .airspace-now.is-active { color: #b3261e; }
 }
 .wx-refresh:disabled { opacity: 0.5; cursor: default; }
 /* Inline icon controls in the inspector (refresh, read aloud, the ↻ resets beside a slider or a
-   field) and its sliders: at least the web's 24px target (WCAG 2.2), 30px on a phone like the
-   panel's fields. They measured 20x18, 20x23 and a 16px-tall slider. */
+   field) and its sliders: at least the web's 24px target (WCAG 2.2), 44px on a phone. They
+   measured 20x18, 20x23 and a 16px-tall slider, then 30px on the phone. */
 #inspector .wx-refresh,
 #inspector .wx-speak,
 #inspector .slider-reset {
@@ -5384,10 +5437,10 @@ body.theme-light .airspace-now.is-active { color: #b3261e; }
 body.deck-on #inspector .wx-refresh,
 body.deck-on #inspector .wx-speak,
 body.deck-on #inspector .slider-reset,
-body.deck-on #inspector input[type="range"] { min-height: 30px; }
+body.deck-on #inspector input[type="range"] { min-height: 44px; }
 body.deck-on #inspector .wx-refresh,
 body.deck-on #inspector .wx-speak,
-body.deck-on #inspector .slider-reset { min-width: 30px; }
+body.deck-on #inspector .slider-reset { min-width: 44px; }
 /* Per-report read-aloud button, beside each METAR/TAF label. Same chrome-less treatment as
    the refresh control -- without a rule it rendered as a native light UA button inside the
    dark panel -- and the same dimmed disabled state (dim, never hide) when no speech engine. */
@@ -5591,7 +5644,9 @@ body.theme-light .wx-time-stale { color: #a86a00; }
    position, so it disappears when you reach the end and never lies about there being more.
    Both sides are handled because the Hebrew build scrolls the other way. */
 .charts-freq-table-wrap::before,
-.charts-freq-table-wrap::after {
+.charts-freq-table-wrap::after,
+.charts-alt-table-wrap::before,
+.charts-alt-table-wrap::after {
   content: '';
   position: sticky;
   top: 0;
@@ -5602,20 +5657,27 @@ body.theme-light .wx-time-stale { color: #a86a00; }
   opacity: 0;
   transition: opacity 120ms ease;
 }
-.charts-freq-table-wrap::before { float: inline-start; margin-inline-end: -28px;
+.charts-freq-table-wrap::before,
+.charts-alt-table-wrap::before { float: inline-start; margin-inline-end: -28px;
   background: linear-gradient(to right, rgba(20, 18, 18, 0.85), rgba(20, 18, 18, 0)); }
-.charts-freq-table-wrap::after { float: inline-end; margin-inline-start: -28px;
+.charts-freq-table-wrap::after,
+.charts-alt-table-wrap::after { float: inline-end; margin-inline-start: -28px;
   background: linear-gradient(to left, rgba(20, 18, 18, 0.85), rgba(20, 18, 18, 0)); }
 .charts-freq-table-wrap.scroll-start::before,
-.charts-freq-table-wrap.scroll-end::after { opacity: 1; }
-body.theme-light .charts-freq-table-wrap::before {
+.charts-freq-table-wrap.scroll-end::after,
+.charts-alt-table-wrap.scroll-start::before,
+.charts-alt-table-wrap.scroll-end::after { opacity: 1; }
+body.theme-light .charts-freq-table-wrap::before,
+body.theme-light .charts-alt-table-wrap::before {
   background: linear-gradient(to right, rgba(255, 255, 255, 0.92), rgba(255, 255, 255, 0));
 }
-body.theme-light .charts-freq-table-wrap::after {
+body.theme-light .charts-freq-table-wrap::after,
+body.theme-light .charts-alt-table-wrap::after {
   background: linear-gradient(to left, rgba(255, 255, 255, 0.92), rgba(255, 255, 255, 0));
 }
 .charts-alt-table-wrap {
   max-height: 340px;
+  position: relative;
   overflow: auto;
   border: 1px solid #393434;
   border-radius: 4px;
@@ -6830,8 +6892,9 @@ body.theme-light #tuning-panel summary {
   font-size: 15px;
   line-height: 1;
 }
+.page-orient-icon svg { display: block; }
 .page-orient-label {
-  display: none;
+  display: inline;   /* the word is shown everywhere: an icon alone left the button unlabelled on a phone */
   font-size: 13px;
   line-height: 1.1;
 }
@@ -7302,13 +7365,21 @@ html[data-theme="light"] #insp-body .insp-actions {
   #rotate-hdg { min-height: 44px; min-width: 56px; font-size: 15px; }
   #lang-select { min-height: 44px; font-size: 15px; }
   #search-close { min-width: 44px; min-height: 44px; }
+  /* 44px tall, so a measured box and a thumb agree. It was drawn 30px with a 44px ::before ring
+     reaching up. The negative margin takes back most of the 14px it adds, all of it above (the
+     bottom bar is right under it): its top edge lands exactly on the bottom of the zoom column
+     (10px, Leaflet's corner margin), so the two targets touch and never overlap. */
   .attrib-toggle { display: inline-flex; align-items: center; justify-content: center;
-                   min-width: 44px; min-height: 30px; position: relative; }
-  /* Drawn 30px tall to keep the attribution row slim; the tap area reaches the 44px minimum,
-     all of it upward -- the bottom bar sits right under it. */
-  .attrib-toggle::before { content: ''; position: absolute; inset: -14px 0 0 0; }
+                   min-width: 44px; min-height: 44px; margin-top: -10px; position: relative; }
   /* The safety notice's language picker: the first control a new user may need. */
   select.disclaimer-lang-select { min-height: 44px; }   /* outranks the base rule further down */
+  /* The rest of the first-run notice, measured on a 390px phone: Terms and Privacy were 14px
+     tall text links, and Accept was set at the modal-button size (11.5px) that keeps a row of
+     four long labels on one line -- it is the only button here. */
+  .disclaimer-links { font-size: 14px; }
+  .disclaimer-links a { display: inline-flex; align-items: center; min-height: 44px; padding-inline: 6px; }
+  .disclaimer-btns .disclaimer-accept { font-size: 14px; }
+  select.disclaimer-lang-select { font-size: 14px; letter-spacing: 0; }
   .leaflet-control-attribution.attrib-compact .attrib-body { display: none; }
   .leaflet-control-attribution.attrib-compact.attrib-open .attrib-body { display: inline; }
   .leaflet-control-attribution.attrib-compact { padding: 0 4px; }
@@ -7815,6 +7886,17 @@ html[dir="rtl"] .fpl-subfields {
 body.theme-light .fpl-adv-reset { color: #55504f; border-color: #d8d4d4; }
 body.theme-light .fpl-adv-reset:hover { color: #1c1a1a; border-color: #a9a4a4; }
 .fpl-modal .modal-btns { margin-top: 6px; }
+/* The action row stays in view while the form scrolls: at 1280x800 Continue and Cancel sat
+   half cut at the bottom of the scroller and had to be scrolled to. Sticky, on the dialog's
+   own background so the fields scroll under it. */
+.fpl-body > .modal-btns {
+  position: sticky;
+  bottom: 0;
+  z-index: 1;
+  padding: 8px 0 2px;
+  background: #2a2626;
+}
+body.theme-light .fpl-body > .modal-btns { background: #fafcff; }
 .fpl-ack { margin: 1px 0; }
 .fpl-primary { font-weight: 600; }
 /* Hebrew glyphs (ך, ן, ק) descend below the Latin baseline, and the base rule's tight
@@ -8654,7 +8736,11 @@ body.theme-light .route-library-gdrive-pii { color: #6b7787; border-inline-start
   overflow: hidden;
   text-overflow: ellipsis;
   flex: 0 1 auto;
-  min-width: 0;
+  /* Never squeezed to "D..": the numbers keep their space, but the name keeps six characters.
+     LTR-isolated so the ellipsis eats the END of the name -- in RTL it ate the start ("…R"). */
+  min-width: 6ch;
+  direction: ltr;
+  unicode-bidi: isolate;
 }
 .deck-strip-vals {
   margin-inline-start: auto;
@@ -8667,7 +8753,7 @@ body.theme-light .route-library-gdrive-pii { color: #6b7787; border-inline-start
    so by going quiet rather than by emptying. */
 .deck-strip:not(.deck-strip-live) .deck-strip-vals { opacity: .55; }
 .deck-strip-sub {
-  font-size: 10px;
+  font-size: 12px;
   color: #93a3b1;
   display: flex;
   gap: 10px;
@@ -8706,7 +8792,7 @@ body.theme-light .route-library-gdrive-pii { color: #6b7787; border-inline-start
 }
 .deck-btn i { font-style: normal; font-size: 18px; line-height: 1; display: grid; place-items: center; }
 .deck-btn i svg { display: block; }
-.deck-btn-label { font-size: 11px; font-weight: 600; letter-spacing: .02em; }
+.deck-btn-label { font-size: 12px; font-weight: 600; letter-spacing: .02em; }
 /* The strip's grid: the readout lines on one side, Comm fail on the other, spanning both. */
 body.deck-on .deck-strip { grid-template-columns: minmax(0, 1fr) auto auto; column-gap: 8px; align-items: center; }
 body.deck-on .deck-strip > .deck-strip-top,
@@ -8771,6 +8857,26 @@ body.theme-dark .deck-btn-here[aria-pressed="true"] { color: #6fdc9a; background
 /* The chart's own furniture moves up out of the deck's way, and the closed menu card gives
    up its corner: everything it held is on the deck or one tap inside it. */
 body.deck-on .leaflet-bottom { margin-bottom: calc(var(--navaid-deck-bar-h, 52px) + env(safe-area-inset-bottom, 0px)); }
+/* The bottom-right column is 12 controls tall with a fix driving the map (voice, orientation,
+   follow, follow-me, edit lock, measure, ATC, dial, readout, zoom): on a 360x640 or 375x667
+   phone it ran off the top, under the strip. Capped to the room between the strip and the
+   deck, it wraps into a second column on the left of the first instead (wrap-reverse keeps
+   zoom and the dial in the right-hand column; column-reverse + the reversed DOM order keep
+   the top-to-bottom order). On a tall phone the column fits and nothing moves. direction is
+   pinned LTR because the corner is physically right in Hebrew too. */
+body.deck-on .leaflet-bottom.leaflet-right {
+  --navaid-col-top: calc(var(--navaid-deck-strip-h, 46px) + 8px);
+  display: flex;
+  flex-flow: column-reverse wrap-reverse;
+  align-items: flex-end;
+  align-content: flex-start;
+  direction: ltr;
+  max-height: calc(100dvh - var(--navaid-col-top) - var(--navaid-deck-bar-h, 52px) - env(safe-area-inset-bottom, 0px));
+}
+/* The red REC pill sits under the strip on the right while recording: keep the column below it. */
+body.deck-on:has(#gps-rec-indicator:not([hidden])) .leaflet-bottom.leaflet-right {
+  --navaid-col-top: calc(var(--navaid-deck-strip-h, 46px) + 48px + 28px + 8px);
+}
 /* With the deck on, the old floating menu is off entirely: the menu lives in the deck's
    Menu sheet (deck.js hostToolbar) and nowhere else. It was hidden only while collapsed,
    so a wide touch screen -- an iPad, which starts it expanded -- showed both. Reported. */
@@ -8784,12 +8890,26 @@ body.deck-on #toolbar {
                    - env(safe-area-inset-bottom, 0px));
   overflow-y: auto;
 }
+/* The magnifier's settings sat at the map's bottom edge, under the deck: only its title row
+   showed and the zoom slider could not be reached. */
+body.deck-on #magnifier-settings { bottom: calc(var(--navaid-deck-bar-h, 52px) + 12px + env(safe-area-inset-bottom, 0px)); }
+/* ?tune=1: the panel's header and close were under the strip. Between the strip and the deck. */
+body.deck-on #tuning-panel {
+  top: calc(var(--navaid-deck-strip-bottom, var(--navaid-deck-strip-h, 46px)) + 8px);
+  max-height: calc(100dvh - var(--navaid-deck-strip-bottom, var(--navaid-deck-strip-h, 46px)) - var(--navaid-deck-bar-h, 52px) - 24px - env(safe-area-inset-bottom, 0px));
+}
 body.deck-on #inspector { bottom: calc(var(--navaid-deck-bar-h, 52px) + env(safe-area-inset-bottom, 0px)); }
 /* The bottom of a phone screen, in order upward: the deck, the route hint, the clock. Each
    was placed for a screen whose bottom edge was the map's; the deck moved that edge. */
 /* Above the bottom-right readout stack (coordinates 44 px, then the VOR, wind and SIGMET lines),
    not on it: the first-run hint lay across the coordinates. */
 body.deck-on #empty-route-hint { bottom: calc(var(--navaid-deck-bar-h, 52px) + 170px + env(safe-area-inset-bottom, 0px)); }
+/* The control column wrapped into two (short phone, ui.js syncMapControlClearance): the hint centres in
+   the map left of it, not on the whole screen, where the second column covered it. */
+html[style*="--navaid-map-ctrl-wrapped"] body.deck-on #empty-route-hint {
+  left: calc((100vw - var(--navaid-map-ctrl-clear)) / 2);
+  max-width: calc(100vw - var(--navaid-map-ctrl-clear) - 16px);
+}
 body.deck-on .map-time {
   bottom: calc(124px + env(safe-area-inset-bottom, 0px));
   /* Clear of the zoom column and its z-level readout, which the deck did not move. */
@@ -8898,6 +9018,25 @@ body.deck-on .overlay-loading { bottom: calc(var(--navaid-deck-bar-h, 52px) + 68
 /* Two ids and a class, to outrank the phone rules that put this row on screen. */
 .deck-sheet #toolbar.deck-hosted > #footer-links .footer-gps-group > .gps-footer-btn:not(#sim-trigger),
 .deck-sheet #toolbar.deck-hosted > #footer-links #gps-readout { display: none !important; }
+/* Touch targets in the phone Menu sheet. The menu was written for a desktop dropdown, so on the
+   phone its buttons were 36px, its selects, number fields and sliders 28-30px, its "reset to
+   default" buttons 30x30 and its tick boxes 18px in rows 18-20px high -- the whole menu under the
+   44px minimum, in flight. Scoped to the sheet (.deck-sheet exists only on the phone layout), so
+   the desktop menubar dropdowns are untouched. The selects, fields, swatches and resets are
+   raised where their own phone rules are, further down. A hidden row keeps its zero height (the
+   :not([hidden]) below), or the Charts menu would grow an empty 44px gap. */
+.deck-sheet #toolbar.deck-hosted button,
+.deck-sheet #toolbar.deck-hosted input[type="range"],
+.deck-sheet #toolbar.deck-hosted .navtoggle:not([hidden]) { min-height: 44px; }
+/* The magnetic-variation field and its E/W picker were 36 and 42px wide. */
+/* Height only for the E/W select: its own padding already makes it wider than 44, and a min-width
+   would stop it shrinking in its row (toolbar-mobile-size-selects). */
+.deck-sheet #toolbar.deck-hosted .tb-magvar :is(#magvar-deg, #magvar-ew) { min-height: 44px; }
+.deck-sheet #toolbar.deck-hosted .tb-magvar #magvar-deg { min-width: 44px; }
+/* The box stays a box (22px, up from 18); the label row around it is the 44px target. */
+.deck-sheet #toolbar.deck-hosted .navtoggle input:is([type="checkbox"], [type="radio"]) {
+  width: 22px; height: 22px; flex: none;
+}
 @media (prefers-reduced-motion: reduce) {
   .deck-sheet { transition: none; }
 }
@@ -9635,7 +9774,14 @@ body.deck-on #insp-close,
 body.deck-on #insp-zoom-in,
 body.deck-on #insp-zoom-out { min-width: 44px; min-height: 44px; }
 body.deck-on #inspector input:not([type=checkbox]):not([type=range]),
-body.deck-on #inspector select { min-height: 30px; }
+body.deck-on #inspector select { min-height: 44px; }
+/* The inspector's small controls, all raised to the 44px touch minimum on the phone: the
+   frequency reset (28x26), the hours toggle (28 high), the satellite zoom pair (28x25) and the
+   phone link (32). The round play button is already 32 drawn + a 6px ::after ring = 44. */
+body.deck-on #inspector :is(.commchange-freq-reset, .row-reset) { min-width: 44px; min-height: 44px; }
+body.deck-on #inspector .hours-toggle { min-height: 44px; }
+body.deck-on #inspector .sat-zoom-btn { min-width: 44px; min-height: 44px; }
+body.deck-on #inspector .airfield-phone-row .airfield-phone { min-height: 44px; }
 body.deck-on .route-file-btn { min-height: 44px; }
 /* The plan's text fields: 30px, not 44 (see the field family at the end of this file). They are fields in a dense form (the web target size,
    WCAG 2.2, is 24px); at 44 the plan outgrew the phone's chart space and could no longer sit
@@ -9656,7 +9802,7 @@ body.deck-on .satellite-expand-hint { min-height: 44px; display: inline-flex; al
 body.deck-on #toolbar .route-file-btn,
 body.deck-on .route-file-row .route-file-btn,
 body.deck-on .fp-route-file-row .route-file-btn { min-height: 44px; }
-body.deck-on .fp-columns-all { min-height: 36px; }
+body.deck-on .fp-columns-all { min-height: 44px; }
 body.deck-on .fp-del button { min-height: 36px; }
 body.deck-on .modal-btns button { min-width: 44px; min-height: 44px; }
 
@@ -9705,18 +9851,19 @@ body.theme-light #insp-body .insp-actions {
 }
 
 /* Phone menu sheet: every select and field in a row is one height -- side by side they read as
-   three sizes (44 / 22 / 18px). 30px: at 36-44 the box dwarfed its 14px text. The row, not the
-   box, is the touch area here, and 30 stays above the 24px web target size (WCAG 2.2). */
+   three sizes (44 / 22 / 18px). It was 30px (the row was meant to be the touch area), but a tap
+   on a select or a number field is a tap on the control itself, so the control is the 44px
+   touch minimum like the rest of the sheet. */
 body.deck-on #deck-sheet .tb-section-body select,
 body.deck-on #deck-sheet .tb-section-body input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]):not([type="file"]) {
-  min-height: 30px;
-  height: 30px;
+  min-height: 44px;
+  height: 44px;
   padding-top: 0;
   padding-bottom: 0;
   box-sizing: border-box;
 }
 body.deck-on #deck-sheet .tb-section-body .slider-reset,
-body.deck-on #deck-sheet #default-speed-reset { min-width: 30px; min-height: 30px; font-size: inherit; }
+body.deck-on #deck-sheet #default-speed-reset { min-width: 44px; min-height: 44px; font-size: inherit; }
 body.deck-on #deck-sheet .tb-magvar,
 body.deck-on #deck-sheet #lang-toggle,
 body.deck-on #deck-sheet .tb-section[data-sec="settings"] .tb-section-body > label { gap: 8px; align-items: center; }
@@ -9765,8 +9912,8 @@ body.theme-light #toolbar .tb-section-body .slider-reset { border-color: #858f9c
   :where(html.menubar) #toolbar .tb-section-body .slider-reset { min-width: 28px; min-height: 28px; }
   :where(html.menubar) #toolbar .tb-section-body input[type="color"] { min-height: 28px; min-width: 28px; box-sizing: border-box; }
 
-body.deck-on #deck-sheet .tb-section-body input[type="color"] { min-height: 30px; min-width: 36px; box-sizing: border-box; }
-body.deck-on #deck-sheet #tool-magnifier { min-height: 36px; font-size: 14px; }
+body.deck-on #deck-sheet .tb-section-body input[type="color"] { min-height: 44px; min-width: 44px; box-sizing: border-box; }
+body.deck-on #deck-sheet #tool-magnifier { min-height: 44px; font-size: 14px; }
 #toolbar .tb-section-body .navtoggle input[type="color"] { border-color: #8a8282; }
 body.theme-light #toolbar .tb-section-body .navtoggle input[type="color"] { border-color: #858f9c; }
 /* The browser draws a field's own parts (the number spinner, the open list) in the page's
@@ -9843,7 +9990,7 @@ body.theme-light #search-overlay #wp-search { border-color: #858f9c; }
 #toolbar .mi-select > .mi-face { display: none; }
 body.deck-on #deck-sheet .mi-select {
   display: flex; align-items: center; justify-content: center; gap: 6px;
-  min-height: 36px; box-sizing: border-box;
+  min-height: 44px; box-sizing: border-box;
   border: 1px solid #443f3f; border-radius: 5px; background: #2f2b2b; color: #e8e8e8;
   font-size: 14px; font-weight: 700;
 }
@@ -9852,7 +9999,8 @@ body.deck-on #deck-sheet .mi-select > .mi-icon { position: static; transform: no
 body.deck-on #deck-sheet .mi-select > .mi-face { display: inline; }
 body.deck-on #deck-sheet .mi-select::after { position: static; transform: translateY(-2px) rotate(45deg); margin-inline-start: 2px; }
 body.deck-on #deck-sheet .tb-section-body .mi-select > #export-select {
-  position: absolute; inset: 0; width: 100%; height: 100%; min-height: 0; margin: 0;
+  /* -1px: cover the wrapper's border too, so the whole 44px face is the select. */
+  position: absolute; inset: -1px; width: calc(100% + 2px); height: calc(100% + 2px); min-height: 0; margin: 0;
   opacity: 0; cursor: pointer;
 }
 body.deck-on #deck-sheet .mi-select:focus-within { outline: 2px solid #4c9bff; outline-offset: 1px; }
@@ -9905,7 +10053,10 @@ html[dir="rtl"] .wp-search-item { text-align: right; }
    …29.35" · 322°") ran under the language switch. While the position is live the switch steps
    aside -- nobody changes language mid-flight, and Settings still has it -- and the readout
    line is held to its own column, so nothing can paint under the buttons beside it. */
-.deck-strip.deck-strip-live .deck-strip-lang { display: none; }
+/* (Batch 5: it steps aside to its globe alone instead of vanishing -- a control that disappears
+   is not one a pilot can find again -- which frees the label's width for the route name.) */
+.deck-strip.deck-strip-live .deck-strip-lang .lang-quick-label { display: none; }
+.deck-strip.deck-strip-live .deck-strip-lang { padding: 0 11px; min-width: 44px; justify-content: center; }
 body.deck-on .deck-strip > .deck-strip-top { overflow: hidden; }
 
 /* NOTAMs in force, inside a bubble / leg panel. Amber like the NOTAM layer: this is the part
@@ -10329,3 +10480,122 @@ body.tour-live-preview #gps-rec-indicator { display: flex !important; }
   background: #195fc2;
   border-color: #195fc2;
 }
+
+/* Phone: the controls inside windows, at the 44px touch minimum. The review measured them at
+   13-30px (Saved routes, the NOTAM / SIGMET / AIRMET lists, Freq table, Alt pairs, Export PNG,
+   Route mosaic, Nav log, Offline maps, the magnifier settings, the simulator and ATC radio).
+   One rule for every window instead of a tweak per window. The flight plan's own text fields
+   are 30px by decision (see the field family above -- at 44 the plan outgrew the phone's chart
+   space): their rules are more specific than this one (it is written in :where()), so they keep it, and the plan's table
+   cells are excluded by name. Several windows share the plan's .flight-plan backdrop class, so it
+   cannot be the way to tell them apart. Tick boxes stay small (22px) and their label row is the
+   44px target. */
+body.deck-on :where(.modal-back, .sim-overlay, #magnifier-settings)
+  :where(button, select, input:is([type="text"], [type="search"], [type="number"], [type="date"], [type="time"], [type="range"]):not(.plan-name):not(.plan-num)) {
+  min-height: 44px;
+}
+/* Not the flight plan's row buttons: the plan table is dense by decision (see above), and 44px-wide
+   delete buttons pushed it into sideways scrolling on a phone. */
+body.deck-on :where(.modal-back, .sim-overlay, #magnifier-settings) :where(button:not(.fp-del button)) { min-width: 44px; }
+body.deck-on :where(.modal-back, .sim-overlay, #magnifier-settings)
+  :where(label:has(> input:is([type="checkbox"], [type="radio"]))) {
+  display: flex; align-items: center; gap: 8px; min-height: 44px;
+}
+body.deck-on :where(.modal-back, .sim-overlay, #magnifier-settings)
+  :where(input:is([type="checkbox"], [type="radio"])) { width: 22px; height: 22px; flex: none; }
+body.deck-on .sim-modal-close,
+body.deck-on #mag-settings-close,
+body.deck-on .ac-close,
+body.deck-on .fp-when-close { min-width: 44px; min-height: 44px; }
+/* The tables in windows (Freq table, Alt pairs, Nav log) share .flight-table with the plan, whose
+   cells keep the dense 28px above (.plan-name / .plan-num); the others' cells are 44px. */
+body.deck-on .modal-back .flight-table input:not(.plan-name):not(.plan-num),
+body.deck-on .modal-back .flight-table button { min-height: 44px; }
+
+/* Drawn icons where an emoji used to stand (window titles, the pin, route-check marks, FPL warnings). */
+.modal-title > .mi-icon { display: inline-grid; place-items: center; line-height: 0; vertical-align: -3px; margin-inline-end: 6px; }
+.modal-title > .mi-icon svg { display: block; }
+.charts-alt-pin svg { display: block; margin: auto; }
+.route-check-mark { display: inline-grid; place-items: center; line-height: 0; }
+.route-check-stop .route-check-mark { color: #ef4444; }
+.route-check-warn .route-check-mark { color: #e0a100; }
+.fpl-warn-icon { display: inline-grid; place-items: center; line-height: 0; vertical-align: -2px; margin-inline-end: 4px; }
+.fpl-warn-icon svg { display: block; }
+
+/* ---- UI review batch 5: visual consistency ---- */
+
+/* Print page size: A3 / A4 / A4x2 / orientation are a choice, but the desktop menu flattens every
+   button to transparent, so the unselected ones read as a caption. Outline them (the selected one
+   keeps its blue fill), and start the label on the first button row rather than centring it
+   between the two rows. */
+:where(html.menubar) #toolbar #page-buttons button:not([aria-pressed="true"]):not(.active) {
+  border-color: #5a5555;
+  background: rgba(255, 255, 255, 0.06);
+}
+:where(html.menubar) #toolbar #page-buttons button:not([aria-pressed="true"]):not(.active):hover { background: rgba(255, 255, 255, 0.12); }
+:where(html.menubar) body.theme-light #toolbar #page-buttons button:not([aria-pressed="true"]):not(.active) {
+  border-color: #aab2bf;
+  background: #fff;
+}
+:where(html.menubar) body.theme-light #toolbar #page-buttons button:not([aria-pressed="true"]):not(.active):hover { background: #eef3f9; }
+:where(html.menubar) .tb-print-submenu { align-items: start; }
+:where(html.menubar) .tb-section[data-sec="print"] .tb-print-label { display: flex; align-items: center; min-height: 28px; }
+#page-orient { justify-content: center; }
+
+/* Surfaces that let map labels ghost through their text: opaque, same colour as before. */
+#inspector { background: rgb(20, 18, 18); }
+body.theme-light #inspector,
+body.theme-light .modal { background: rgb(250, 252, 255); }
+body.theme-light .map-legend-collapsed { background: rgb(250, 252, 255); }
+.map-legend-collapsed { background: rgb(47, 43, 43); white-space: nowrap; }
+
+/* Offline maps: the buttons are the shared modal ones (offline-tiles.js adds .modal-btns); a
+   disabled one dims, and the Detail picker is a modal select instead of the browser's. */
+.offline-manager-actions button:disabled { opacity: 0.45; cursor: default; }
+.offline-area-detail { display: flex; align-items: center; gap: 8px; margin: 8px 0; font-size: 13px; }
+.offline-area-detail .offline-area-zoom {
+  flex: 1 1 auto; min-width: 0; font: inherit; font-size: 13px; color: inherit;
+  background: #2f2b2b; border: 1px solid #5a5555; border-radius: 6px; padding: 6px 8px; min-height: 32px;
+}
+body.theme-light .offline-area-detail .offline-area-zoom { background: #fff; border-color: #aab2bf; color: #1f252c; }
+body.deck-on .offline-area-detail .offline-area-zoom { min-height: 44px; }
+.offline-area-detail .offline-area-zoom:disabled { opacity: 0.5; }
+
+/* Phone Menu sheet footer: Terms, Privacy and About were unreachable (the "more" button and its
+   links are hidden on a phone, and the first-run notice is shown once). Show those three as
+   plain rows under the settings, and name the simulator button instead of leaving a bare plane.
+   Two ids and classes, to outrank the phone rules that hide them. */
+.deck-sheet #toolbar.deck-hosted #footer-more-menu {
+  display: flex !important;           /* beats [hidden]: the toggle that used to open it is not on a phone */
+  position: static;
+  flex-direction: row; flex-wrap: wrap;
+  padding: 0; border: 0; background: none; box-shadow: none;
+  white-space: normal;
+}
+.deck-sheet #toolbar.deck-hosted #footer-more { display: block; flex: 1 1 100%; }
+.deck-sheet #toolbar.deck-hosted #about-link,
+.deck-sheet #toolbar.deck-hosted #privacy-link,
+.deck-sheet #toolbar.deck-hosted #terms-link { display: inline-flex; min-height: 44px; padding: 0 10px; }
+.deck-sheet #toolbar.deck-hosted #footer-more-menu .footer-link-text { display: inline; font-size: 13px; }
+.deck-sheet #toolbar.deck-hosted > #footer-links #sim-trigger { width: auto; gap: 6px; padding: 0 10px; background: none; }
+.deck-sheet #toolbar.deck-hosted > #footer-links #sim-trigger .footer-link-text { display: inline; font-size: 13px; }
+.deck-sheet #toolbar.deck-hosted #footer-more-menu a,
+.deck-sheet #toolbar.deck-hosted > #footer-links #sim-trigger { color: #d6d1d1; }
+body.theme-light .deck-sheet #toolbar.deck-hosted #footer-more-menu a,
+body.theme-light .deck-sheet #toolbar.deck-hosted > #footer-links #sim-trigger { color: #38424d; }
+
+/* Export PNG "no page size" warning: the red was 3.5:1 on the dark box, 4.1:1 on the light one. */
+#export-page-warn { color: #ff8a80; }
+body.theme-light #export-page-warn { color: #b71c1c; }
+
+/* One primary blue for the dialogs' main action (the follow-me ask used its own two). */
+.follow-me-ask-actions .follow-me-ask-ok,
+body.theme-dark .follow-me-ask-actions .follow-me-ask-ok { background: #1d6fe0; border-color: #1d6fe0; color: #fff; }
+
+/* Phone: nothing a pilot reads is under 12px (the Zulu time, the Location label, the search hint,
+   the slider readouts and the build id were 10-11px). The desktop keeps its denser type. */
+body.deck-on :is(.search-hint, #app-version, #toolbar .slider-val) { font-size: 12px; }
+
+/* Live: the language button keeps 44px of the strip's grid (batch 5), so the name and the readout
+   share a line a few px tighter than before -- a tighter gap keeps five-digit altitudes whole at 360. */
+.deck-strip.deck-strip-live .deck-strip-top { gap: 6px; }

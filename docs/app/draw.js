@@ -1273,10 +1273,14 @@ function drawVerticalProfile(ctx, x, y, w, h, opts) {
     // lands on the very line it is describing — give it a backdrop rather than
     // guessing at a corner that happens to be free.
     const nw = ctx.measureText(note).width;
+    // The key runs along the same top band (from the right in an RTL interface, where it met
+    // this caption and the two overprinted), so the caption takes the row under it.
+    const noteH = tune('profileNoteBgHeightPx');
+    const ny = tune('profileLegend') === false ? y : y + noteH + 1;
     ctx.fillStyle = colorWithAlpha(tune('profileBgColor'), tune('profileNoteBgAlpha'));
-    ctx.fillRect(x + w - nw - 6, y + 1, nw + 5, tune('profileNoteBgHeightPx'));
+    ctx.fillRect(x + w - nw - 6, ny + 1, nw + 5, noteH);
     ctx.fillStyle = tune('profileTextColor');
-    ctx.fillText(note, x + w - 3, y + 2);
+    ctx.fillText(note, x + w - 3, ny + 2);
   }
   // TOC/TOD dots
   const dot = (m, color, label) => {
