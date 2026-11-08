@@ -84,3 +84,16 @@ test('on a phone the dock is clear of the coordinate readout', async ({ page }) 
   });
   expect(hit).toBe(false);
 });
+
+// A window opened over an open key is what Back closes first: the dock steps aside under it.
+test('on a phone, Back closes a window over an open key before the key', async ({ page }) => {
+  await boot(page, PHONE);
+  await page.locator('#legend-toggle').click();
+  await page.evaluate(() => { if (typeof showShortcutsHelp === 'function') showShortcutsHelp(); else createDraggableModal('x', 'modal').show(); });
+  await expect(page.locator('.modal-back')).toHaveCount(1);
+  expect(await page.evaluate(() => backButtonStep())).toBe(true);
+  await expect(page.locator('.modal-back')).toHaveCount(0);
+  expect((await state(page)).collapsed).toBe(false);             // the key is still open
+  expect(await page.evaluate(() => backButtonStep())).toBe(true);
+  expect((await state(page)).collapsed).toBe(true);
+});

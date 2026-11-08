@@ -13384,12 +13384,6 @@ function backButtonStep() {
   // The tour sits over everything: Back ends it, as its own Skip does.
   if (document.getElementById('map-tour') && window.NavAid && NavAid.tour) { NavAid.tour.close(); return true; }
   if (typeof closeQuickLayers === 'function' && closeQuickLayers()) return true;
-  // The legend key, open over the chart: Back closes it, as its own button does.
-  const legendKey = document.getElementById('map-legend');
-  if (legendKey && !legendKey.classList.contains('map-legend-collapsed') && typeof window.setLegendCollapsed === 'function') {
-    window.setLegendCollapsed(true, true);
-    return true;
-  }
   // A popover inside a panel closes before the panel (the flight plan's departure / Columns /
   // the aircraft's Figures).
   const pop = document.querySelector('details.fp-when[open], details.fp-columns[open], details.ac-custom[open]');
@@ -13404,6 +13398,13 @@ function backButtonStep() {
   }
   if (typeof fpOpen !== 'undefined' && fpOpen && typeof closeFlightPlan === 'function') {
     closeFlightPlan();
+    return true;
+  }
+  // The legend key, open over the chart: Back closes it, as its own button does -- after any window
+  // or the flight plan, which cover the dock (it steps aside under them) and are what the pilot sees.
+  const legendKey = document.getElementById('map-legend');
+  if (legendKey && !legendKey.classList.contains('map-legend-collapsed') && typeof window.setLegendCollapsed === 'function') {
+    window.setLegendCollapsed(true, true);
     return true;
   }
   // Windows that are not .modal-back backdrops: the simulator, the assistant, the More menu.
