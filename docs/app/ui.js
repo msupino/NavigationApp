@@ -420,6 +420,15 @@ const appUpdate = (function () {
       : action === 'restart' ? (S.appUpdateRestart || 'Restart now') : (S.appUpdateCheck || 'Check again');
     btn.dataset.action = action || '';
   }
+  // On screen and not covered: the menu still open where the pilot pressed Download.
+  function rowInView() {
+    if (row.hidden) return false;
+    const r = row.getBoundingClientRect();
+    if (!r.width || !r.height || r.bottom <= 0 || r.top >= innerHeight) return false;
+    const y = Math.min(Math.max(r.top + r.height / 2, 0), innerHeight - 1);
+    const hit = document.elementFromPoint(r.left + r.width / 2, y);
+    return !!hit && row.contains(hit);
+  }
   let refreshing = null;
   let refreshedAt = 0;
   async function refresh() {
@@ -472,8 +481,11 @@ const appUpdate = (function () {
     finally { pct = null; }
     if (r && (r.updated || r.pending)) {
       last = { state: 'pending', version: r.version || '' }; paint(last);
-      // Downloaded on request: offer the restart straight away rather than at the next start.
-      if (typeof o.offerRestart === 'function') o.offerRestart(r.version || '', { always: true });
+      // Downloaded on request: the restart is offered now rather than at the next start -- by
+      // this row's own Restart now while the menu is still open, by a question only when it was
+      // closed meanwhile. Reported: on mobile data, after "Download on mobile data?", a second
+      // question popped up outside the menu over the button that already said Restart now.
+      if (!rowInView() && typeof o.offerRestart === 'function') o.offerRestart(r.version || '', { always: true });
       return;
     }
     last = await o.status();
