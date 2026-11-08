@@ -43,17 +43,18 @@ test('a tap on the header does not collapse the phone bottom sheet', async ({ pa
   await boot(page, PHONE);
   await openPeleg(page);
   const full = await width(page);
+  const openedStyle = await inlineStyle(page);    // zoom is an intentional inline custom property
   expect(full).toBeGreaterThan(380);            // edge-to-edge sheet on a 412px screen
 
   await tapHeader(page);
   expect(await width(page)).toBe(full);         // unchanged by the tap
-  expect(await inlineStyle(page)).toBe('');     // and no inline geometry was written
+  expect(await inlineStyle(page)).toBe(openedStyle); // the tap wrote no inline geometry
 
   // ...and it is still the full-width sheet the next time it opens.
   await page.evaluate(() => document.getElementById('insp-close').click());
   await openPeleg(page);
   expect(await width(page)).toBe(full);
-  expect(await inlineStyle(page)).toBe('');
+  expect(await inlineStyle(page)).toBe(openedStyle);
 });
 
 test('repeated open/close on a phone keeps the same sheet geometry', async ({ page }) => {
