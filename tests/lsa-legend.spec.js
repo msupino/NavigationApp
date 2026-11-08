@@ -15,6 +15,8 @@ async function lowAlt(page) {
   });
   await page.waitForFunction(() => layerDataPrefix() === 'lsa');
   await page.evaluate(async () => { await loadCommChange(); await loadNavWaypoints(); draw(); });
+  // The legend starts closed; its rows are read with the key open (the desktop Legend button).
+  await page.evaluate(() => window.setLegendCollapsed(false, false));
 }
 
 test('Low Alt carries the chart\'s frequency-change points, with call signs that resolve', async ({ page }) => {
