@@ -38,8 +38,21 @@ function setButtonWhy(btn, why) {
   if (!btn) return;
   btn.disabled = false;
   btn.classList.toggle('is-dim', !!why);
-  if (why) { btn.setAttribute('aria-disabled', 'true'); btn.dataset.why = why; }
-  else { btn.removeAttribute('aria-disabled'); delete btn.dataset.why; }
+  // The reason is also the hover tooltip and the accessible description, so a mouse or a screen
+  // reader gets it without having to tap. The normal title is kept aside and put back when the
+  // button is live again.
+  if (why) {
+    if (btn.dataset.whyTitle === undefined) btn.dataset.whyTitle = btn.getAttribute('title') || '';
+    btn.setAttribute('aria-disabled', 'true'); btn.dataset.why = why;
+    btn.setAttribute('title', why); btn.setAttribute('aria-description', why);
+  } else {
+    btn.removeAttribute('aria-disabled'); delete btn.dataset.why;
+    btn.removeAttribute('aria-description');
+    if (btn.dataset.whyTitle !== undefined) {
+      if (btn.dataset.whyTitle) btn.setAttribute('title', btn.dataset.whyTitle); else btn.removeAttribute('title');
+      delete btn.dataset.whyTitle;
+    }
+  }
 }
 window.setButtonWhy = setButtonWhy;
 // One listener for all of them, in the capture phase so it runs before the button's own handler.
@@ -2589,6 +2602,10 @@ function refreshWindReadout() {
 // leaking through to the map underneath.
 coordBox.removeAttribute('aria-hidden');
 coordBox.title = S.gotoTitle;
+// Clickable, so reachable: a bare div was a mouse-only control. Enter/Space open the editor like a click.
+coordBox.setAttribute('role', 'button');
+coordBox.tabIndex = 0;
+coordBox.setAttribute('aria-label', S.gotoTitle);
 coordBox.classList.add('show', 'interactive');
 L.DomEvent.disableClickPropagation(coordBox);
 L.DomEvent.disableScrollPropagation(coordBox);
@@ -2638,6 +2655,10 @@ function showZoom() {
   const a = document.createElement('span'), b = document.createElement('span');
   a.textContent = zPart || ''; b.textContent = scalePart || '';
   zoomBox.replaceChildren(a, b);
+  // Read as one phrase ("Zoom 12 · 1:250 000"), not two stray spans.
+  zoomBox.setAttribute('role', 'img');
+  zoomBox.setAttribute('aria-label', zoomReadoutText(map.getZoom()));
+  zoomBox.title = zoomReadoutText(map.getZoom());
 }
 function showCoord(latlng) {
   if (gotoEditing) return;
@@ -2717,7 +2738,10 @@ function exitGotoEdit() {
   gotoEditing = false;
   coordBox.classList.remove('editing', 'error');
   coordBox.title = S.gotoTitle;
+  coordBox.setAttribute('role', 'button');
+  coordBox.setAttribute('aria-label', S.gotoTitle);
   showCenterCoord();
+  try { coordBox.focus({ preventScroll: true }); } catch (e) { /* */ }
 }
 // Break a signed decimal degree into integer degrees/minutes/seconds, with
 // the same 60->0 rollover carry as fmtLatLngDMS so the slots never read 60.
@@ -2792,7 +2816,9 @@ function enterGotoEdit() {
   const lat = dmsParts(c.lat);
   const lng = dmsParts(c.lng);
   coordBox.textContent = '';
-  coordBox.setAttribute('aria-label', S.gotoTitle);
+  // The inputs carry their own names; a button role around them would hide them.
+  coordBox.removeAttribute('role');
+  coordBox.removeAttribute('aria-label');
   coordBox.title = S.gotoError;
   const slots = [
     gotoSlot('goto-lat-d', lat.d, 2, S.latitude + ' deg'), gotoSep('°'),
@@ -2835,6 +2861,13 @@ function enterGotoEdit() {
   inputs[0].select();
 }
 coordBox.addEventListener('click', () => { if (!gotoEditing) enterGotoEdit(); });
+coordBox.addEventListener('keydown', (e) => {
+  if (gotoEditing || e.target !== coordBox || (e.key !== 'Enter' && e.key !== ' ')) return;
+  e.preventDefault();
+  enterGotoEdit();
+  const first = coordBox.querySelector('input');
+  if (first) first.focus();
+});
 // Leave edit mode only when focus exits the readout entirely. Registered once
 // (not per edit) so repeated open/close never stacks duplicate listeners.
 coordBox.addEventListener('focusout', e => {
@@ -5604,8 +5637,10 @@ function paintRouteFileRows() {
       const sub = save.querySelector('.rf-sub');
       if (sub) { sub.textContent = entry ? entry.name : ''; sub.hidden = !entry; }
       // Dimmed, never hidden or disabled: pressing it still says why there is nothing to save.
-      // (Not aria-disabled: that tells a screen reader it cannot be pressed, and pressing it is
-      // how the pilot hears why.)
+      // The reason is also the tooltip and accessible description, so hover and screen readers
+      // get it without a tap. Not setButtonWhy: that sets aria-disabled, which this row avoids.
+      const noSaveWhy = tooShort ? (S.errNothingToSave || S.errNeedWps || 'Nothing to save.') : '';
+      if (noSaveWhy) save.setAttribute('aria-description', noSaveWhy); else save.removeAttribute('aria-description');
       save.classList.toggle('is-dim', tooShort);
       const dot = save.querySelector('.rf-dot');
       if (dot) {
@@ -5613,7 +5648,7 @@ function paintRouteFileRows() {
         dot.title = dirty ? (S.routeFileUnsaved || 'Unsaved changes') : '';
       }
       save.setAttribute('aria-label', saveText + (dirty ? ' — ' + (S.routeFileUnsaved || 'Unsaved changes') : ''));
-      save.title = saveText + (dirty ? ' — ' + (S.routeFileUnsaved || 'Unsaved changes') : '');
+      save.title = noSaveWhy || (saveText + (dirty ? ' — ' + (S.routeFileUnsaved || 'Unsaved changes') : ''));
     }
     if (load) {
       load.querySelector('.rf-label').textContent = loadText;
@@ -9041,6 +9076,7 @@ function showNotamModal(only, opts) {
   box.appendChild(list);
   back.appendChild(box);
   document.body.appendChild(back);
+  makeWindowAccessible(back, box, h);
   // Give the sheet an explicit width AND height. Content changes (future
   // checkbox, search, ICAO filter) then affect only the scrollable list, not
   // the window around it. Native CSS resize lets the pilot choose a size; the

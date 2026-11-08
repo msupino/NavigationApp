@@ -1467,6 +1467,20 @@ body.deck-on .leaflet-control.edit-col-ctrl {
   box-shadow: 0 0 0 4px var(--navaid-mapbtn-on);
 }
 
+/* One focus ring across the map controls: the edit column's white outline and blue halo. The
+   ruler, rotate dial, heading field, zoom +/-, ATC radio and the clickable coordinate readout
+   fell back to the browser's default ring, which differs per browser and vanishes on the chart. */
+.leaflet-control.measure-ctrl button:focus-visible,
+#rotate-dial:focus-visible,
+#rotate-hdg:focus-visible,
+.leaflet-control-zoom a:focus-visible,
+#tool-atc-radio:focus-visible,
+#coord-readout:focus-visible {
+  outline: 2px solid #ffffff;
+  outline-offset: 2px;
+  box-shadow: 0 0 0 4px var(--navaid-mapbtn-on);
+}
+
 /* rotate dial — Google-Maps-style compass needle by the zoom buttons */
 .rotate-ctrl {
   display: flex;
