@@ -73,6 +73,43 @@
   // Follow is a temporary target choice made in the selected aircraft's inspector. Keep it
   // separate from navaid.gpsFollow, which is the pilot's saved own-aircraft preference.
   window.trafficFollowTarget = () => followedHex;
+  // Where a followed aircraft goes: the middle of the map you can SEE, not of the whole map. On a
+  // phone the inspector is a bottom sheet over the lower half -- and Stop following lives in it --
+  // so centring on the whole map parked the aircraft under the panel that follows it (reported).
+  // Worked in container pixels, so a rotated map (leaflet-rotate) needs no special case: the view
+  // only translates, and the target moves to the centre of what is left uncovered.
+  function visibleCentreFor(lat, lon) {
+    const ll = L.latLng(lat, lon);
+    const box = map.getContainer().getBoundingClientRect();
+    let top = box.top, bottom = box.bottom, left = box.left, right = box.right;
+    const shown = (el) => {
+      if (!el || el.hidden || el.classList.contains('hidden')) return null;
+      const cs = getComputedStyle(el);
+      if (cs.display === 'none' || cs.visibility === 'hidden') return null;
+      const r = el.getBoundingClientRect();
+      return r.width > 0 && r.height > 0 ? r : null;
+    };
+    const strip = shown(document.getElementById('deck-strip'));
+    if (strip) top = Math.max(top, strip.bottom);
+    const bar = shown(document.getElementById('deck-bar'));
+    if (bar) bottom = Math.min(bottom, bar.top);
+    const insp = shown(document.getElementById('inspector'));
+    if (insp) {
+      // Across most of the map it is a sheet (above or below); narrower, it is a side panel.
+      if (insp.width >= (right - left) * 0.6) {
+        if (insp.top > (top + bottom) / 2) bottom = Math.min(bottom, insp.top);
+        else top = Math.max(top, insp.bottom);
+      } else if (insp.left > (left + right) / 2) right = Math.min(right, insp.left);
+      else left = Math.max(left, insp.right);
+    }
+    // Too little left to aim at: the plain centre.
+    if (bottom - top < 80 || right - left < 80) return ll;
+    const cx = box.width / 2, cy = box.height / 2;
+    const vx = (left + right) / 2 - box.left, vy = (top + bottom) / 2 - box.top;
+    const at = map.latLngToContainerPoint(ll);
+    return map.containerPointToLatLng(L.point(at.x + cx - vx, at.y + cy - vy));
+  }
+
   window.trafficToggleFollow = function (hex) {
     const key = String(hex || '');
     if (!key || followedHex === key) {
@@ -85,7 +122,7 @@
     // This button is an explicit request to jump to the target, even if a recent hand pan
     // temporarily suspended the normal fix-driven following.
     if (typeof _gpsUserMovedAt === 'number') _gpsUserMovedAt = 0;
-    map.setView([target.lat, target.lon], map.getZoom());
+    map.setView(visibleCentreFor(target.lat, target.lon), map.getZoom());
     return true;
   };
   window.trafficClearFollow = function (hex) {
@@ -278,8 +315,9 @@
       const target = window.trafficAircraft.find(a => a && a.hex === followedHex);
       if (!target) followedHex = '';
       else if (typeof gpsFollowSuspended !== 'function' || !gpsFollowSuspended()) {
-        if (typeof gpsFollowRecenter === 'function') gpsFollowRecenter(target.lat, target.lon);
-        else map.setView([target.lat, target.lon], map.getZoom());
+        const c = visibleCentreFor(target.lat, target.lon);
+        if (typeof gpsFollowRecenter === 'function') gpsFollowRecenter(c.lat, c.lng);
+        else map.setView(c, map.getZoom());
       }
     }
     if (window.trafficAircraft.length) draw(window.trafficAircraft);

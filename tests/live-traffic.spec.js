@@ -61,6 +61,15 @@ const fly = (page, lat = 32.05, lng = 34.92) => page.evaluate(async ([la, ln]) =
 }, [lat, lng]);
 
 const marks = (page) => page.locator('.traffic-mark');
+// Where a followed aircraft sits on screen: on the map, and not under the inspector that follows it.
+const seen = (page, lat, lon) => page.evaluate(([la, lo]) => {
+  const box = map.getContainer().getBoundingClientRect();
+  const p = map.latLngToContainerPoint([la, lo]);
+  const x = box.left + p.x, y = box.top + p.y;
+  const i = document.getElementById('inspector').getBoundingClientRect();
+  return { onMap: x > box.left && x < box.right && y > box.top && y < box.bottom,
+    underPanel: x >= i.left && x <= i.right && y >= i.top && y <= i.bottom };
+}, [lat, lon]);
 const asked = (page) => page.evaluate(() => window.__asked || []);
 const frameShown = (page) => page.evaluate(() => {
   const f = document.getElementById('traffic-cb').closest('.tb-layer-frame');
@@ -226,12 +235,11 @@ test('the traffic inspector follows its aircraft until follow is stopped', async
   await follow.click();
   await expect(follow).toHaveAttribute('aria-pressed', 'true');
   const startState = await page.evaluate(() => ({
-    center: map.getCenter(),
     ownFollow: gpsFollow,
     storedFollow: localStorage.getItem('navaid.gpsFollow'),
   }));
-  expect(startState.center.lat).toBeCloseTo(32.10, 2);
-  expect(startState.center.lng).toBeCloseTo(34.90, 2);
+  // Centred in the map you can see -- beside the open inspector, not under it.
+  expect(await seen(page, 32.10, 34.90)).toEqual({ onMap: true, underPanel: false });
   expect(startState.ownFollow).toBe(true);
   expect(startState.storedFollow).toBeNull();
 
@@ -239,13 +247,14 @@ test('the traffic inspector follows its aircraft until follow is stopped', async
     window.__body = { ac: [report] };
     await window.trafficPoll();
   }, { ...AC[0], alt_baro: 16200, lat: 32.16, lon: 34.96 });
-  await expect.poll(() => page.evaluate(() => map.getCenter().lat)).toBeCloseTo(32.16, 2);
-  await expect.poll(() => page.evaluate(() => map.getCenter().lng)).toBeCloseTo(34.96, 2);
+  await expect.poll(() => seen(page, 32.16, 34.96)).toEqual({ onMap: true, underPanel: false });
+  const followedAt = await page.evaluate(() => map.getCenter());
   await expect(follow).toHaveText('Stop following');
   await page.evaluate(() => {
     window.__geoCb({ coords: { latitude: 32.05, longitude: 34.92, accuracy: 5 }, timestamp: Date.now() });
   });
-  await expect.poll(() => page.evaluate(() => map.getCenter().lat)).toBeCloseTo(32.16, 2);
+  // The pilot's own fix does not take the view back while an aircraft is followed.
+  await expect.poll(() => page.evaluate(() => map.getCenter().lat)).toBeCloseTo(followedAt.lat, 4);
 
   await follow.click();
   await expect(follow).toHaveAttribute('aria-pressed', 'false');
@@ -261,6 +270,29 @@ test('the traffic inspector follows its aircraft until follow is stopped', async
   await follow.click();
   await page.locator('#insp-close').click();
   expect(await page.evaluate(() => window.trafficFollowTarget())).toBe('');
+});
+
+// Reported: on a phone, following an aircraft put it in the middle of the screen -- under the
+// inspector sheet that carries Stop following. It goes to the middle of the map left uncovered.
+test('on a phone the followed aircraft sits above the inspector sheet, not under it', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await boot(page);
+  await fly(page);
+  await page.evaluate(() => map.setView([32.10, 34.90], 10));
+  await page.evaluate(() => { state.selected = { type: 'traffic', hex: '4c80b8' }; showInspector(); });
+  await page.locator('#insp-traffic-follow').click();
+  const r = await page.evaluate(() => {
+    const box = map.getContainer().getBoundingClientRect();
+    const p = map.latLngToContainerPoint([32.10, 34.90]);
+    const y = box.top + p.y;
+    const sheet = document.getElementById('inspector').getBoundingClientRect();
+    const strip = document.getElementById('deck-strip').getBoundingClientRect();
+    return { y, sheetTop: sheet.top, stripBottom: strip.bottom };
+  });
+  expect(r.y).toBeLessThan(r.sheetTop);
+  expect(r.y).toBeGreaterThan(r.stripBottom);
+  // Centred in that gap, give or take.
+  expect(Math.abs(r.y - (r.stripBottom + r.sheetTop) / 2)).toBeLessThan(12);
 });
 
 test('turning traffic off clears its temporary follow target', async ({ page }) => {
