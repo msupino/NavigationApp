@@ -58,6 +58,36 @@ test('the column keeps its top-to-bottom order when it wraps', async ({ page }) 
   expect(order.length).toBe(2);
 });
 
+// Seen in the before/after screenshots: wrapped, the second column landed on the coordinates and on
+// the empty-route hint. They step left of the whole column now; on a tall phone nothing moves.
+for (const [w, h, wraps] of [[360, 640, true], [390, 844, false]]) {
+  test(`coordinates and the hint stay clear of the control column at ${w}x${h}`, async ({ page }) => {
+    await boot(page, w, h);
+    const before = await page.evaluate(() => document.getElementById('coord-readout').getBoundingClientRect().right);
+    await goLive(page);
+    await page.waitForTimeout(800);
+    const r = await page.evaluate(() => {
+      const corner = document.querySelector('.rotate-ctrl').parentNode;
+      const items = [...corner.children].filter(e => e.getClientRects().length && getComputedStyle(e).position !== 'absolute')
+        .map(e => e.getBoundingClientRect());
+      const hit = (a, b) => a.left < b.right - 1 && b.left < a.right - 1 && a.top < b.bottom - 1 && b.top < a.bottom - 1;
+      const out = {};
+      for (const id of ['coord-readout', 'empty-route-hint']) {
+        const el = document.getElementById(id);
+        if (!el || !el.getClientRects().length) continue;
+        const b = el.getBoundingClientRect();
+        out[id] = { over: items.filter(i => hit(i, b)).length, left: b.left, right: b.right };
+      }
+      out.cols = new Set(items.map(i => Math.round(i.left))).size;
+      return out;
+    });
+    expect(r.cols > 1).toBe(wraps);
+    expect(r['coord-readout'].over).toBe(0);
+    if (r['empty-route-hint']) { expect(r['empty-route-hint'].over).toBe(0); expect(r['empty-route-hint'].left).toBeGreaterThanOrEqual(0); }
+    if (!wraps) expect(Math.round(r['coord-readout'].right)).toBe(Math.round(before));
+  });
+}
+
 test('magnifier settings sit above the deck on a phone', async ({ page }) => {
   await boot(page, 390, 844);
   await page.evaluate(() => { document.getElementById('magnifier-settings').classList.remove('hidden'); });

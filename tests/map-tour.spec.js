@@ -118,7 +118,9 @@ for (const [name, size, phoneLayout, lang] of [['phone', { width: 390, height: 8
     });
     expect(out.n).toBeLessThanOrEqual(10);
     expect(out.lit.Edit.fit).toBe(true);
-    expect(out.lit.Edit.text).toContain('[ ]');
+    // Fit is named in words now, not drawn as "[ ]" (UI review: a bracket pair is not an icon).
+    expect(out.lit.Edit.text).not.toContain('[ ]');
+    expect(out.lit.Edit.text).toMatch(/Fit|התאם למסך/);
     if (phoneLayout) {
       // The Menu spot is the three tabs, never the whole bar.
       expect(out.lit.Menu.toolbar).toBe(null);

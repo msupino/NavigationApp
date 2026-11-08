@@ -952,6 +952,51 @@ try { headingUpOn = lsGet(HEADING_UP_KEY) === '1'; } catch (e) { /* storage unav
 // was built for, next to the follow lock.
 const MAP_CONTROL_ORDER = ['voice-ctrl', 'orient-ctrl', 'follow-ctrl', 'follow-me-ctrl',
   'editlock-ctrl', 'measure-ctrl', 'atc-fab-control', 'assistant-fab-control', 'rotate-ctrl'];
+// How far the bottom-right control column reaches in from the right edge, for what sits beside it
+// (coordinates, the Zulu clock, the empty-route hint) -- measured on the phone deck, where a short
+// screen wraps the column into a second one (style.css) and the fixed 52/66 px clearance let the
+// second column land on the coordinates and the hint. One column: the CSS default, untouched.
+function syncMapControlClearance() {
+  const root = document.documentElement;
+  const corner = document.querySelector('.leaflet-bottom.leaflet-right');
+  if (!corner || !document.body.classList.contains('deck-on')) {
+    root.style.removeProperty('--navaid-map-ctrl-clear');
+    root.style.removeProperty('--navaid-map-ctrl-wrapped');
+    return;
+  }
+  const box = corner.getBoundingClientRect();
+  let left = Infinity, right = -Infinity;
+  for (const el of corner.children) {
+    if (el.offsetParent === null || getComputedStyle(el).position === 'absolute') continue;   // readouts sit beside, not in, the column
+    const r = el.getBoundingClientRect();
+    if (!r.width) continue;
+    left = Math.min(left, r.left); right = Math.max(right, r.right);
+  }
+  // Wrapped when the column is more than one control wide.
+  const wrapped = Number.isFinite(left) && right - left > 70;
+  if (wrapped) {
+    root.style.setProperty('--navaid-map-ctrl-clear', Math.ceil(box.right - left + 8) + 'px');
+    root.style.setProperty('--navaid-map-ctrl-wrapped', '1');
+  } else {
+    root.style.removeProperty('--navaid-map-ctrl-clear');
+    root.style.removeProperty('--navaid-map-ctrl-wrapped');
+  }
+}
+(function watchMapControlClearance() {
+  let queued = false;
+  const later = () => { if (!queued) { queued = true; requestAnimationFrame(() => { queued = false; syncMapControlClearance(); }); } };
+  addEventListener('resize', later);
+  const start = () => {
+    const corner = document.querySelector('.leaflet-bottom.leaflet-right');
+    if (!corner) { setTimeout(start, 500); return; }
+    if (typeof ResizeObserver === 'function') new ResizeObserver(later).observe(corner);
+    new MutationObserver(later).observe(corner, { childList: true, subtree: true, attributes: true, attributeFilter: ['class', 'hidden', 'style'] });
+    new MutationObserver(later).observe(document.body, { attributes: true, attributeFilter: ['class'] });
+    later();
+  };
+  start();
+})();
+
 function orderMapControls(corner) {
   if (!corner) return;
   const rank = (el) => {

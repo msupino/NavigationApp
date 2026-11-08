@@ -8902,6 +8902,12 @@ body.deck-on #inspector { bottom: calc(var(--navaid-deck-bar-h, 52px) + env(safe
 /* Above the bottom-right readout stack (coordinates 44 px, then the VOR, wind and SIGMET lines),
    not on it: the first-run hint lay across the coordinates. */
 body.deck-on #empty-route-hint { bottom: calc(var(--navaid-deck-bar-h, 52px) + 170px + env(safe-area-inset-bottom, 0px)); }
+/* The control column wrapped into two (short phone, ui.js syncMapControlClearance): the hint centres in
+   the map left of it, not on the whole screen, where the second column covered it. */
+html[style*="--navaid-map-ctrl-wrapped"] body.deck-on #empty-route-hint {
+  left: calc((100vw - var(--navaid-map-ctrl-clear)) / 2);
+  max-width: calc(100vw - var(--navaid-map-ctrl-clear) - 16px);
+}
 body.deck-on .map-time {
   bottom: calc(124px + env(safe-area-inset-bottom, 0px));
   /* Clear of the zoom column and its z-level readout, which the deck did not move. */
@@ -9021,7 +9027,10 @@ body.deck-on .overlay-loading { bottom: calc(var(--navaid-deck-bar-h, 52px) + 68
 .deck-sheet #toolbar.deck-hosted input[type="range"],
 .deck-sheet #toolbar.deck-hosted .navtoggle:not([hidden]) { min-height: 44px; }
 /* The magnetic-variation field and its E/W picker were 36 and 42px wide. */
-.deck-sheet #toolbar.deck-hosted .tb-magvar :is(#magvar-deg, #magvar-ew) { min-height: 44px; min-width: 44px; }
+/* Height only for the E/W select: its own padding already makes it wider than 44, and a min-width
+   would stop it shrinking in its row (toolbar-mobile-size-selects). */
+.deck-sheet #toolbar.deck-hosted .tb-magvar :is(#magvar-deg, #magvar-ew) { min-height: 44px; }
+.deck-sheet #toolbar.deck-hosted .tb-magvar #magvar-deg { min-width: 44px; }
 /* The box stays a box (22px, up from 18); the label row around it is the 44px target. */
 .deck-sheet #toolbar.deck-hosted .navtoggle input:is([type="checkbox"], [type="radio"]) {
   width: 22px; height: 22px; flex: none;
@@ -10483,7 +10492,9 @@ body.deck-on :where(.modal-back, .sim-overlay, #magnifier-settings)
   :where(button, select, input:is([type="text"], [type="search"], [type="number"], [type="date"], [type="time"], [type="range"]):not(.plan-name):not(.plan-num)) {
   min-height: 44px;
 }
-body.deck-on :where(.modal-back, .sim-overlay, #magnifier-settings) :where(button) { min-width: 44px; }
+/* Not the flight plan's row buttons: the plan table is dense by decision (see above), and 44px-wide
+   delete buttons pushed it into sideways scrolling on a phone. */
+body.deck-on :where(.modal-back, .sim-overlay, #magnifier-settings) :where(button:not(.fp-del button)) { min-width: 44px; }
 body.deck-on :where(.modal-back, .sim-overlay, #magnifier-settings)
   :where(label:has(> input:is([type="checkbox"], [type="radio"]))) {
   display: flex; align-items: center; gap: 8px; min-height: 44px;
