@@ -36,11 +36,29 @@ test('on a phone it starts collapsed, showing only its title', async ({ page }) 
   expect(s.expanded).toBe('false');
 });
 
-test('on a desktop it starts open', async ({ page }) => {
+// Desktop: a round Legend button opens the key ABOVE itself and closes it from the same spot --
+// reported: the old card closed from a title under the route totals and then landed 170px lower.
+test('on a desktop it starts closed; the button opens the key above itself and closes it in place', async ({ page }) => {
   await boot(page, DESKTOP);
-  const s = await state(page);
-  expect(s.collapsed).toBe(false);
-  expect(s.rowShown).toBe(true);
+  expect((await state(page)).collapsed).toBe(true);
+  const btn = page.locator('#legend-toggle');
+  await expect(btn).toHaveAttribute('aria-expanded', 'false');
+  const shut = await btn.boundingBox();
+  await btn.click();
+  await expect(btn).toHaveAttribute('aria-expanded', 'true');
+  const key = await page.locator('#map-legend').boundingBox();
+  expect(key.y + key.height).toBeLessThanOrEqual(shut.y);           // above the button
+  const open = await btn.boundingBox();
+  expect(Math.round(open.x)).toBe(Math.round(shut.x));             // the button did not move
+  expect(Math.round(open.y)).toBe(Math.round(shut.y));
+  expect(await page.evaluate(() => getComputedStyle(document.getElementById('legend-toggle')).backgroundColor))
+    .toBe('rgb(29, 111, 224)');                                    // toolbar blue while open
+  await page.keyboard.press('Escape');
+  await expect(btn).toHaveAttribute('aria-expanded', 'false');
+  await expect(page.locator('#map-legend')).toBeHidden();
+  await btn.click();
+  await btn.click();                                               // same spot closes it
+  await expect(page.locator('#map-legend')).toBeHidden();
 });
 
 test('tapping the title opens it, and tapping again closes it', async ({ page }) => {
