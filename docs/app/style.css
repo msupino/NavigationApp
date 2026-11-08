@@ -1998,6 +1998,11 @@ body.theme-light #aircraft-custom input {
      inline left/top/right values and are intentionally unaffected. */
   right: calc(12px + var(--navaid-map-ctrl-clear, 52px));
   width: 280px;
+  /* Wider with the text size (ui.js applyInspZoom sets --insp-zoom): the zoom reflows the body
+     inside the panel, and at 2x a 280 px panel left 115 px for a row -- not room for a play
+     button, a frequency and its reset. 280 px at 1x, as before; a min-width, so a panel the
+     pilot widened by hand keeps its width; never wider than the screen. */
+  min-width: min(calc(150px + 130px * var(--insp-zoom, 1)), calc(100vw - 24px));
   background: rgba(20, 18, 18, 0.95);
   border: 1px solid #3a3636;
   border-radius: 8px;
@@ -2026,7 +2031,8 @@ body.theme-light #aircraft-custom input {
    PHYSICAL bottom-right grip is right either way. Gated by featureInspectorResize and
    desktop-only, so the class is absent rather than a property overridden. */
 #inspector.insp-resizable {
-  min-width: 220px;
+  /* 220 px at 1x, as before; at larger text sizes the floor rises with it (see #inspector). */
+  min-width: min(calc(30px + 190px * var(--insp-zoom, 1)), calc(100vw - 24px));
   min-height: 120px;
   max-width: calc(100vw - 24px);
 }
@@ -3468,6 +3474,22 @@ body.theme-light .atc-inline.is-offline .atc-play { color: #c62828; border-color
 /* English: the button leads the value box (next to the label), so its gap and the reserved space
    on rows without one sit at the start. */
 .atc-inline.atc-inline-lead { margin-inline-start: 0; margin-inline-end: 6px; }
+/* A frequency value -- play button, frequency box, reset -- is one line, always. As an inline span
+   its parts wrapped onto three lines at the inspector's larger text sizes; the box gives up width
+   first (it holds six characters), the label keeps its word. */
+.row > .val:has(> .charts-freq-input) {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: nowrap;
+  min-width: 0;
+}
+/* When even that does not fit beside the label, the whole value drops under it, still one line. */
+.row:has(> .val > .charts-freq-input) { flex-wrap: wrap; row-gap: 4px; }
+.row:has(> .val > .charts-freq-input) > label { margin-inline-end: 6px; }
+.row:has(> .val > .charts-freq-input) > .val { margin-inline-start: auto; }
+.row > .val > .charts-freq-input { flex: 0 1 96px; min-width: 76px; }
+.row > .val > .commchange-freq-reset,
+.row > .val > .atc-inline { flex: 0 0 auto; }
 html:not([dir="rtl"]) .comm-section.has-atc .row:not(:has(.atc-inline)) > .val:has(input) { padding-inline-end: 0; padding-inline-start: 38px; }
 @keyframes atc-pulse { 50% { opacity: 0.55; } }
 @media (prefers-reduced-motion: reduce) { .atc-inline.is-connecting .atc-play { animation: none; } }
@@ -4985,7 +5007,11 @@ body.theme-light .msa-low .val { color: #c0392b; }
   color: #ffb1a8;
   font-weight: 700;
   font-size: 12px;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
 }
+.commchange-row .commchange-label > .nav-icon { flex: 0 0 auto; }
 .commchange-row .commchange-freq {
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   font-size: 11px;
@@ -5010,32 +5036,43 @@ body.theme-light .msa-low .val { color: #c0392b; }
    slot -- no boxed card. A thin divider between them, and the frequency lines up down the column. */
 .commchange-option {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 8px;
+  gap: 4px 8px;
   padding: 7px 2px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.08);
 }
 .commchange-option:last-child { border-bottom: 0; }
-.commchange-option-name {
-  flex: 1 1 auto;
+/* Name over code, taking the room left of the play slot and the frequency. Names break between
+   words only; "anywhere" split them mid-word ("Herzliy / a") whenever the panel was narrow. */
+.commchange-option-ident {
+  flex: 1 1 6em;
   min-width: 0;
-  overflow-wrap: anywhere;
+  display: flex;
+  flex-direction: column;
+}
+.commchange-option-name {
+  overflow-wrap: break-word;
   font-weight: 700;
 }
 .commchange-option-code {
-  flex: 0 0 auto;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   color: #b9b3b3;
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   font-size: 10px;
 }
 .commchange-option-freq {
   flex: 0 0 auto;
+  white-space: nowrap;
   color: #fff;
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   font-size: 13px;
 }
 /* The play slot: always there (empty when the station is not one NavAid plays), so the
    frequencies line up whether or not a row has a button -- the airfield rows do the same. */
+.commchange-option-tune { flex: 0 0 auto; margin-inline-start: auto; display: inline-flex; align-items: center; gap: 8px; }
 .commchange-option-play { flex: 0 0 32px; display: inline-flex; justify-content: center; align-items: center; }
 .commchange-option-play > .atc-inline { margin-inline-start: 0; }
 .commchange-template {
