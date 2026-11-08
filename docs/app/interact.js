@@ -331,7 +331,9 @@ function appendNavWaypointCommChangeInfo(body, name) {
   row.className = 'row col commchange-row commchange-map-row';
   const lbl = document.createElement('label');
   lbl.className = 'commchange-label';
-  lbl.textContent = S.commChangeBadge || '📡 Freq change point';
+  // A drawn antenna, not the emoji the string used to carry (it rendered in each OS's own colours).
+  if (typeof navIconSvg === 'function') lbl.innerHTML = navIconSvg('antenna', 14);
+  lbl.append(S.commChangeBadge || 'Freq change point');
   row.appendChild(lbl);
 
   const opts = typeof commCallSignOptions === 'function'
@@ -349,31 +351,41 @@ function appendNavWaypointCommChangeInfo(body, name) {
       item.className = 'val commchange-option';
       item.dataset.callSign = opt.id || '';
 
+      // The name with its code UNDER it, not beside: side by side, a long code (RAMAT_DAVID)
+      // took the width and the name broke inside its words ("Ram / at / Da / vid").
+      const ident = document.createElement('span');
+      ident.className = 'commchange-option-ident';
       const nameSpan = document.createElement('span');
       nameSpan.className = 'commchange-option-name';
       nameSpan.textContent = opt.label || opt.id || '';
-      item.appendChild(nameSpan);
+      ident.appendChild(nameSpan);
 
       if (opt.id) {
         const code = document.createElement('span');
         code.className = 'commchange-option-code';
         code.textContent = opt.id;
-        item.appendChild(code);
+        ident.appendChild(code);
       }
+      item.appendChild(ident);
 
       // The play slot between the station's name and its frequency, in either language (asked),
       // as in the airfield rows. Always there (atc-radio.js fills it for a station NavAid plays
       // live), so the frequencies line up with or without a button.
+      // Button and frequency in one unit: when the panel is narrow (its larger text sizes) the
+      // unit drops under the name whole, rather than the frequency wrapping away from its button.
+      const tune = document.createElement('span');
+      tune.className = 'commchange-option-tune';
       const play = document.createElement('span');
       play.className = 'commchange-option-play';
-      item.appendChild(play);
+      tune.appendChild(play);
       if (opt.freq) {
         const freq = document.createElement('span');
         freq.className = 'commchange-option-freq';
         freq.dir = 'ltr';
         freq.textContent = opt.freq + ' MHz';
-        item.appendChild(freq);
+        tune.appendChild(freq);
       }
+      item.appendChild(tune);
       if (window.atcRadio && typeof window.atcRadio.callSignAttach === 'function') window.atcRadio.callSignAttach(item);
       list.appendChild(item);
     }
@@ -4495,10 +4507,12 @@ function showInspector() {
     title.placeholder = ''; title.readOnly = true; title.oninput = null;
     appendPointCoordinateRows(body, nw);
     appendPlaceRows(body, nw);
-    appendNavWaypointCommChangeInfo(body, nw.name);
     appendSatelliteSnippet(body, nw, title.value);
     appendVorRadialRow(body, nw.lat, nw.lng); appendSurfaceWxRow(body, nw.lat, nw.lng);
     appendReportingRow(body, nw.name);
+    // After Reporting, where the route waypoint has it: the same point opened from the map or
+    // from the route reads in the same order.
+    appendNavWaypointCommChangeInfo(body, nw.name);
     appendDirectToButton(body, nw);
     appendAddToRouteButton(body, nw);
   } else {
@@ -4565,6 +4579,10 @@ function showInspector() {
       }
       const cc = commChangeMap && ccKey ? commChangeMap[ccKey] : null;
       if (linkedNote && typeof appendFreqEdit === 'function') {
+        // The chart's call signs with their frequencies and play buttons, as on the map point,
+        // and the editor for this route's callout under them. With only the editor, the same
+        // point showed one call sign and no way to listen once it was on the route.
+        if (cc && cc.commChange) appendNavWaypointCommChangeInfo(body, ccKey);
         appendFreqEdit(body, linkedNote, { deleteButton: true });
       } else if (cc && cc.commChange) {
         // The same frame the map waypoint shows (asked: match the styling between waypoint types):
