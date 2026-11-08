@@ -16,6 +16,13 @@ UI review: passed at <sha>
 A later push that touches the UI needs the UI review passed again. A push that touches no UI (a test,
 a relay, a comment) only needs the code review again.
 
+## When
+
+Right after the PR is opened, and again after every push to it -- **not** when the user asks for
+"to main". By then the markers should already name the current head, so "to main" is only the
+`gh pr ready` and the watch. (The user, Nov 8: "run UI review and code review after opening pr, not
+when asked to go to main".) Findings are fixed in the same PR before reporting it to the user.
+
 ## 1. Guidance first
 
 Invoke the `ui-ux-pro-max` skill for the change, and query it for the concern at hand, e.g.
@@ -57,9 +64,11 @@ and fall back to the checklist below. Don't present an empty search as guidance.
 
 ## 3. Look once
 
-Take screenshots of the changed element with Playwright: EN dark and HE light, at least one
-desktop (1280) and one phone (390), plus the tablet case if it applies. Read them, fix what they
-show, then move on. Don't build a loop of repeated screenshots. Delete the throwaway spec
+Take screenshots of the changed element with Playwright in **every combination**: light and dark
+x phone (390x844) and desktop (1280x800) x English and Hebrew -- eight shots, plus the tablet case
+if it applies (the user, Nov 8: "every UI change should be checked in dark light mobile and desktop,
+he and en"). One throwaway spec that loops over the eight and a contact sheet of them is enough.
+Read them, fix what they show, then move on, and say in the report which combinations were seen. Don't build a loop of repeated screenshots. Delete the throwaway spec
 (`tests/zz-*.spec.js`) afterwards.
 
 ## 4. Record it
