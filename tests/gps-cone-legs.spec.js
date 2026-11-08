@@ -109,7 +109,8 @@ test('the first waypoint of a session gets its approach call', async ({ page }) 
   });
   // Approaching BRAVO must be announced BEFORE arriving overhead it.
   expect(alerts.length).toBeGreaterThan(0);
-  expect(alerts[0]).toBe('Next leg');
+  // The next-leg call is titled "Clock to map to ground" -- the cue to find the waypoint.
+  expect(alerts[0]).toBe('Clock to map to ground');
   expect(alerts).toContain('TOP');
 });
 
@@ -146,7 +147,7 @@ test('GPS jitter inside a turn waypoint does not repeat its approach call', asyn
     window.gpsSendWatchAlert = orig;
     return seen;
   });
-  expect(alerts.filter(a => a.title === 'Next leg')).toHaveLength(1);
+  expect(alerts.filter(a => a.title === 'Clock to map to ground')).toHaveLength(1);
   expect(alerts.filter(a => a.title === 'TOP')).toHaveLength(1);
 });
 
