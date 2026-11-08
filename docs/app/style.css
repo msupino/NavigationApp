@@ -2478,18 +2478,18 @@ body.theme-light .insp-status {
 /* A latched state is emphasis, not an alarm: set/unset actions keep the same safe
    colours in both themes while bold text shows which state is active. */
 
-/* A pressed toggle has to look pressed, and there is one way it does it: filled red with a
-   plain white border. These used to say "on" with font-weight alone -- invisible on a small
-   button -- and then briefly in amber with a red ring, which was two accent colours doing
-   one job. Red is the panel's word for "there is something on the chart here", which is
-   exactly what a set mark means; the button's own label says which mark. */
+/* A pressed toggle has to look pressed, and there is one way it does it: filled with a plain
+   white border. These used to say "on" with font-weight alone -- invisible on a small button --
+   then in amber with a red ring, then in red. Red read as Delete, which sits in the same column
+   (UI review); pressed is the toolbar's selected blue, as everywhere else. The marks on the chart
+   keep their own colours; the button's label says which mark. Red stays for the danger button. */
 .insp-btn.insp-btn-on,
 .insp-btn.insp-btn-safe.insp-btn-on,
 body.theme-light .insp-btn.insp-btn-on,
 body.theme-light .insp-btn.insp-btn-safe.insp-btn-on {
   font-weight: 900;
   color: #fff;
-  background: #b03636;
+  background: #1d6fe0;
   /* The ring is 2 px to the eye but 1 px to the layout: a 2 px border made a pressed toggle
      2 px taller than its unpressed self and nudged every button below it. */
   border: 1px solid #fff;
@@ -2497,7 +2497,7 @@ body.theme-light .insp-btn.insp-btn-safe.insp-btn-on {
 }
 .insp-btn.insp-btn-safe.insp-btn-on:hover,
 body.theme-light .insp-btn.insp-btn-safe.insp-btn-on:hover {
-  background: #c44141;
+  background: #195fc2;
   border-color: #fff;
 }
 .insp-btn:disabled {
@@ -8819,13 +8819,14 @@ body.deck-on .deck-strip > .deck-strip-sub { grid-column: 1; }
 /* Running, not merely chosen. A tinted label was all that said Location was on, and on a
    sunlit screen at arm's length that is not a state -- it is a shade. The whole cell lights:
    a bar along the top edge, a tinted ground, and a heavier label. Record keeps the red it
-   already had, Location takes the green the app uses for a live fix, and the sheets take the
-   accent -- three different answers to "what is running", each the colour it is elsewhere. */
+   already had and Location the green the app uses for a live fix -- those are status. A sheet
+   that is open (Map, Menu, Plan) is simply selected, and selected is the toolbar's blue
+   everywhere (it was a magenta accent here alone; changed after the UI review). */
 .deck-btn[aria-pressed="true"] {
-  color: #a4145a;
+  color: #1554b0;
   font-weight: 700;
-  background: rgba(179, 23, 95, 0.12);
-  box-shadow: inset 0 3px 0 0 #b3175f;
+  background: rgba(29, 111, 224, 0.12);
+  box-shadow: inset 0 3px 0 0 #1d6fe0;
 }
 .deck-btn-record[aria-pressed="true"] {
   color: #96271a;
@@ -8853,7 +8854,7 @@ body.deck-on .deck-strip > .deck-strip-sub { grid-column: 1; }
 
 body.theme-dark .deck-bar { background: #161e26; color: #e8eef3; }
 body.theme-dark .deck-btn { color: #a9b6c1; }
-body.theme-dark .deck-btn[aria-pressed="true"] { color: #ff8dbd; background: rgba(255, 98, 168, .16); }
+body.theme-dark .deck-btn[aria-pressed="true"] { color: #8ab8ff; background: rgba(29, 111, 224, .24); }
 body.theme-dark .deck-btn-record[aria-pressed="true"] { color: #ff9c8d; background: rgba(192, 57, 43, .22); }
 body.theme-dark .deck-btn-here[aria-pressed="true"] { color: #6fdc9a; background: rgba(26, 122, 58, .24); }
 
