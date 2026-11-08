@@ -3255,14 +3255,15 @@ body.printing-plan .ac-custom { display: none !important; }
   .fp-scroll input[type="text"] { width: 4.85em; min-width: 0; }
   /* While a modal is open, the floating map legend and toolbar would overlap
      it on a small screen — hide them until it closes. */
-  body:has(.modal-back) .map-legend,
+  body:has(.modal-back) .legend-ctrl,
   body:has(.modal-back) #toolbar { display: none; }
   /* Same reasoning, different trigger: while a position source is live (recording,
      live location, or a connected simulator -- see gpsMapLocked() in gps.js, kept in
      sync every redraw in draw.js), the legend's chart-symbol key and route totals
      are exactly the screen space a phone needs for the map itself mid-flight. Desktop
-     has room for both, so this stays scoped to this mobile breakpoint. */
-  body.gps-tracking-active .map-legend { display: none; }
+     has room for both, so this stays scoped to this mobile breakpoint. The whole dock goes --
+     button and totals -- not the key alone, which left a lit button with nothing behind it. */
+  body.gps-tracking-active .legend-ctrl { display: none; }
   /* Saved-routes modal: the two-column rows (name | wrapped action buttons and
      name field | save button) don't fit a phone — the auto action/button column
      claims its full max-content width and starves the 1fr name to a few pixels,
@@ -10602,10 +10603,15 @@ body.deck-on :is(.search-hint, #app-version, #toolbar .slider-val) { font-size: 
    share a line a few px tighter than before -- a tighter gap keeps five-digit altitudes whole at 360. */
 .deck-strip.deck-strip-live .deck-strip-top { gap: 6px; }
 
-/* --- Desktop legend dock (ui.js legendCtrl / placeLegendForLayout) -------------------------
+/* About / Privacy / Terms in the installed app (ui.js openDocInApp): the page in a window, not
+   in place of the app. */
+.modal.doc-modal { display: flex; flex-direction: column; width: min(720px, calc(100vw - 24px)); }
+.modal.doc-modal .doc-modal-frame { flex: 1 1 auto; width: 100%; height: min(70vh, 640px); border: 0; border-radius: 6px; background: #fff; }
+
+/* --- Legend dock (ui.js legendCtrl / setUpLegendDock) -------------------------------------
    A round Legend button in the map-button family, the route totals as a pill beside it, and the
-   key opening above the button -- so the button that opened it is where it closes. The phone
-   (deck on) keeps the card; there the dock row is not shown. */
+   key opening above the button -- so the button that opened it is where it closes. Every layout;
+   on the phone it sits one row up (below). */
 .legend-ctrl:not(.legend-docked) .legend-dock { display: none; }
 .legend-ctrl.legend-docked { position: relative; }
 .legend-ctrl.legend-docked .legend-dock {
@@ -10698,3 +10704,24 @@ body.theme-light .legend-ctrl.legend-docked .map-legend { background: #fbfcfe; }
 .legend-ctrl.legend-docked .map-legend { color: #ece8e4; }
 body.theme-light .legend-ctrl.legend-docked .map-legend { color: #1d2530; }
 .legend-ctrl.legend-docked .map-legend-row { min-height: 24px; font-size: 13px; gap: 8px; }
+
+/* The phone has the dock too (asked). Its bottom row is the coordinate readout's, across the
+   middle of the screen: the dock sits one row up, clear of it, the key opening above as on the
+   desktop. */
+body.deck-on .legend-ctrl.legend-docked { margin-bottom: 58px; }
+/* A narrow phone with the Hebrew totals: the pill wraps rather than run under the zoom column. */
+body.deck-on .legend-ctrl.legend-docked #route-summary {
+  max-width: calc(100vw - 72px - var(--navaid-map-ctrl-clear, 52px));
+  height: auto;
+  min-height: 32px;
+  padding: 6px 12px;
+  line-height: 1.3;
+  white-space: normal;
+}
+/* ...and its key opens beside the edit column, not over it: on a short phone the column reaches
+   down to the dock's row, and an open key covered Clear (edit-column.spec). */
+body.deck-on .legend-ctrl.legend-docked .map-legend {
+  left: 52px;
+  width: min(248px, calc(100vw - 62px - var(--navaid-map-ctrl-clear, 52px) - 8px));
+}
+body.deck-on .legend-ctrl.legend-docked .map-legend::after { content: none; }

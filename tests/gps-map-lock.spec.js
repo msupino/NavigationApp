@@ -170,18 +170,18 @@ test.describe('legend hidden on mobile while a position source is live', () => {
   test('legend visible normally, hidden once live, visible again once stopped', async ({ page }) => {
     await boot(page);
     const before = await page.evaluate(() =>
-      getComputedStyle(document.getElementById('map-legend')).display);
+      getComputedStyle(document.querySelector('.legend-ctrl')).display);
     expect(before).not.toBe('none');
     const live = await page.evaluate(() => {
       window.gpsLiveOn = true;
       draw();   // gpsMapLocked() is synced at the top of draw(), not on the flag write itself
-      return getComputedStyle(document.getElementById('map-legend')).display;
+      return getComputedStyle(document.querySelector('.legend-ctrl')).display;
     });
     expect(live).toBe('none');
     const after = await page.evaluate(() => {
       window.gpsLiveOn = false;
       draw();
-      return getComputedStyle(document.getElementById('map-legend')).display;
+      return getComputedStyle(document.querySelector('.legend-ctrl')).display;
     });
     expect(after).not.toBe('none');
   });
@@ -192,7 +192,7 @@ test.describe('legend hidden on mobile while a position source is live', () => {
       const hidden = await page.evaluate((f) => {
         window[f] = true;
         draw();
-        const d = getComputedStyle(document.getElementById('map-legend')).display;
+        const d = getComputedStyle(document.querySelector('.legend-ctrl')).display;
         window[f] = false;
         draw();
         return d;

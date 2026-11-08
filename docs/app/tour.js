@@ -57,7 +57,11 @@
     { sel: ['#orient-toggle'], k: 'LiveOrient' },
     { sel: ['#voice-toggle'], k: 'LiveVoice' },
     { sel: ['#follow-me-map'], k: 'LiveShare' },
-    { sel: null, k: 'LiveLine' },
+    // The heading line is drawn on the chart, not a control: a box over it is what the tour lights
+    // (lineSpot below). Without a live position the line was described but nowhere on screen
+    // (reported: "says about the flight line, but doesn't show it"); the preview draws one.
+    // Kept even with nothing to light (a live fix with no heading yet): it was always a step.
+    { sel: ['#tour-line-spot'], k: 'LiveLine', optional: true },
   ];
   const liveNow = () => typeof gpsPositionLive === 'function' && !!gpsPositionLive();
   const phone = () => document.body.classList.contains('deck-on');
@@ -75,18 +79,68 @@
     }
     return null;
   };
-  const stepsOf = (defs) => defs.filter((s) => (!s.only || (s.only === 'phone') === phone()) && (!s.sel || target(s)));
+  const stepsOf = (defs) => defs.filter((s) => (!s.only || (s.only === 'phone') === phone()) && (!s.sel || s.optional || target(s)));
   const steps = () => stepsOf(STEPS);
   const str = (k, d) => (typeof S === 'object' && S && S[k]) || d;
 
   let root = null, list = [], i = 0, before = null, onKey = null, onResize = null, seenKeys = [SEEN_KEY];
   const PREVIEW = 'tour-live-preview';
 
+  // The heading line, for its step. Live: the aircraft's own. Otherwise, during the preview, a
+  // sample aircraft low in the middle of the chart heading up the screen, drawn by draw.js from
+  // window.__tourDemoOwn. The step lights a box from the aircraft to the line's 10 nm mark.
+  const LINE_NM = 10, DEMO_GS_KT = 100;
+  function lineSpot() {
+    if (typeof map === 'undefined' || !map) return;
+    let pos = null, hdg = null;
+    const own = typeof gpsOwn !== 'undefined' ? gpsOwn : null;
+    if (liveNow() && own && Number.isFinite(own.hdg)) {
+      pos = typeof gpsShownOwn === 'function' ? gpsShownOwn() : own;
+      hdg = own.hdg;
+      window.__tourDemoOwn = null;
+    } else if (document.body.classList.contains(PREVIEW)) {
+      const box = map.getContainer().getBoundingClientRect();
+      const at = map.containerPointToLatLng([box.width / 2, box.height * 0.72]);
+      // The heading that points up the screen, whatever the map's rotation.
+      const a = map.latLngToContainerPoint(at), n = map.latLngToContainerPoint([at.lat + 0.05, at.lng]);
+      hdg = (360 - Math.atan2(n.x - a.x, a.y - n.y) * 180 / Math.PI) % 360;
+      pos = { lat: at.lat, lng: at.lng, t: Date.now() };
+      window.__tourDemoOwn = { lat: pos.lat, lng: pos.lng, t: pos.t, hdg: hdg, gs: DEMO_GS_KT };
+      if (typeof draw === 'function') draw();
+    }
+    let el = document.getElementById('tour-line-spot');
+    if (!pos) { if (el) el.remove(); return; }
+    const r = hdg * Math.PI / 180;
+    const end = { lat: pos.lat + (LINE_NM / 60) * Math.cos(r),
+      lng: pos.lng + (LINE_NM / 60) * Math.sin(r) / Math.cos(pos.lat * Math.PI / 180) };
+    const box = map.getContainer().getBoundingClientRect();
+    const p = map.latLngToContainerPoint([pos.lat, pos.lng]), q = map.latLngToContainerPoint([end.lat, end.lng]);
+    const pad = 28;
+    const clampX = (x) => Math.max(box.left + 8, Math.min(box.right - 8, x));
+    const clampY = (y) => Math.max(box.top + 8, Math.min(box.bottom - 8, y));
+    const l = clampX(box.left + Math.min(p.x, q.x) - pad), rr = clampX(box.left + Math.max(p.x, q.x) + pad);
+    const t = clampY(box.top + Math.min(p.y, q.y) - pad), b = clampY(box.top + Math.max(p.y, q.y) + pad);
+    if (!el) {
+      el = document.createElement('div');
+      el.id = 'tour-line-spot';
+      el.setAttribute('aria-hidden', 'true');
+      el.style.cssText = 'position:fixed;pointer-events:none;z-index:1;';
+      document.body.appendChild(el);
+    }
+    Object.assign(el.style, { left: l + 'px', top: t + 'px', width: Math.max(1, rr - l) + 'px', height: Math.max(1, b - t) + 'px' });
+  }
+  function clearLineSpot() {
+    const el = document.getElementById('tour-line-spot');
+    if (el) el.remove();
+    if (window.__tourDemoOwn) { window.__tourDemoOwn = null; if (typeof draw === 'function') draw(); }
+  }
+
   function close(seen) {
     if (!root) return;
     root.remove();
     root = null;
     document.body.classList.remove(PREVIEW);
+    clearLineSpot();
     window.removeEventListener('keydown', onKey, true);
     window.removeEventListener('resize', onResize);
     if (seen) { try { for (const k of seenKeys) localStorage.setItem(k, '1'); } catch (e) { /* storage off */ } }
@@ -220,11 +274,12 @@
     // "Show the tour" with no live position: show the in-flight controls so their steps can
     // point at them (before the steps are chosen -- a step is kept only if its control shows).
     if (w === 'all' && !liveNow()) document.body.classList.add(PREVIEW);
+    if (w !== 'map') lineSpot();
     list = w === 'live' ? stepsOf(LIVE_STEPS) : w === 'all' ? steps().concat(stepsOf(LIVE_STEPS)) : steps();
     // A live tour of only the heading line is not worth stopping the pilot for.
-    if (w === 'live' && !list.some((s) => s.sel)) return false;
+    if (w === 'live' && !list.some((s) => s.sel && s.k !== 'LiveLine')) { clearLineSpot(); return false; }
     seenKeys = w === 'live' ? [LIVE_SEEN_KEY] : w === 'all' ? [SEEN_KEY, LIVE_SEEN_KEY] : [SEEN_KEY];
-    if (!list.length) { document.body.classList.remove(PREVIEW); return false; }
+    if (!list.length) { document.body.classList.remove(PREVIEW); clearLineSpot(); return false; }
     i = 0;
     before = document.activeElement;
     root = document.createElement('div');
