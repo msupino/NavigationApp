@@ -86,7 +86,9 @@ function refreshEmptyRouteHint() {
     document.body.appendChild(el);
     try { localStorage.setItem(EMPTY_HINT_KEY, '1'); } catch (e) { /* storage unavailable */ }
   }
-  el.textContent = S.emptyRouteHint || 'Click the map to add your first waypoint';
+  // A touch screen has no click: "Tap" where the primary pointer is coarse.
+  const coarse = !!(window.matchMedia && window.matchMedia('(pointer: coarse)').matches);
+  el.textContent = (coarse && S.emptyRouteHintTouch) || S.emptyRouteHint || 'Click the map to add your first waypoint';
   refreshPrimingCursor();
 }
 // While the map is primed to start a route (see routePrimingArmed in interact.js) a plain
@@ -232,7 +234,7 @@ dressMenus();
 const GLYPH_ICONS = { '🗑': 'trash', '↻': 'reset', '🔥': 'hotspot', '⏱': 'timer', '📡': 'antenna',
   '✈': 'plane', '+': 'plus', '➕': 'plus', '＋': 'plus', '📍': 'location', '⇄': 'reverse', '🧭': 'compass',
   '🔑': 'key', '📋': 'list', '🔗': 'link', '💾': 'save', '📂': 'folder', '⬇': 'download', '⬆': 'upload',
-  '🖨': 'print', '⊘': 'hide', '✓': 'check', '✔': 'check' };
+  '🖨': 'print', '⊘': 'hide', '✓': 'check', '✔': 'check', '⚠': 'warn', '✅': 'check' };
 // Every button carries an icon ("every button should have an icon, new or existing"). The ones
 // whose label has no glyph to key on are named by their id or class instead.
 const BUTTON_ICONS = { 'insp-direct-to': 'direct', 'insp-add-to-route': 'plus', 'insp-add-rp': 'plus', 'insp-vor-use-ref': 'compass',
@@ -248,6 +250,10 @@ function buttonIconName(btn) {
   return '';
 }
 window.navButtonIconName = buttonIconName;
+// A label that keeps its glyph in the string (other surfaces read it) but is SHOWN without it
+// where an icon stands beside it or none is needed: window titles, toasts, status lines.
+// navPlainLabel (core.js) strips the glyph set the menus strip; this maps it to the same icon the buttons get.
+window.navLabelIcon = (s) => buttonIconName({ textContent: String(s == null ? '' : s) });
 function dressByGlyph(btn) {
   if (!btn || btn.querySelector(':scope > .mi-icon') || typeof navIconSvg !== 'function') return;
   const name = buttonIconName(btn);
@@ -2102,8 +2108,8 @@ const zuluClockCtrl = L.control({ position: zuluClockMovable() ? 'topright' : 'b
 const zuluClockEl = L.DomUtil.create('div', 'leaflet-control zulu-clock');
 zuluClockEl.id = 'zulu-clock';
 zuluClockEl.dir = 'ltr';
-zuluClockEl.title = 'Zulu time (UTC)';
-zuluClockEl.setAttribute('aria-label', 'Zulu time (UTC)');
+zuluClockEl.title = S.zuluClockTitle || 'Zulu time (UTC)';
+zuluClockEl.setAttribute('aria-label', S.zuluClockTitle || 'Zulu time (UTC)');
 zuluClockEl.setAttribute('aria-live', 'off');
 zuluClockCtrl.onAdd = function () {
   zuluClockEl.classList.toggle('zulu-fixed', !zuluClockMovable());
@@ -5960,7 +5966,7 @@ window.followMeNewLinkOffered = followMeNewLinkOffered;
     // ignores the theme.
     const ask = S.followMeNewLinkConfirm || 'Start a new follow-me link?';
     const yes = typeof window.askYesNo === 'function'
-      ? await window.askYesNo(S.tbFollowMeNewLink || 'New link', ask, S.tbFollowMeNewLink || 'New link')
+      ? await window.askYesNo(S.tbFollowMeNewLink || 'New link', ask, window.navPlainLabel(S.tbFollowMeNewLink || 'New link'))
       : true;
     if (!yes) return;
     const link = await f.newLink();
@@ -6582,7 +6588,7 @@ document.getElementById('limit-kites-cb').onchange = e => {
 
   let urlProblemShown = false;
   function showUrlProblem(problem) {
-    statusEl.textContent = problem;
+    statusEl.textContent = window.navPlainLabel(problem);   // the status colour carries the warning
     statusEl.style.color = typeof tune === 'function'
       ? tune('simStatusErrColor') : '#e67e22';
     urlProblemShown = true;

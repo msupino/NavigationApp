@@ -8176,7 +8176,19 @@ function createDraggableModal(titleText, className, onClose, options = {}) {
   box.setAttribute('aria-labelledby', title.id);
   if (options.titleDir) title.dir = options.titleDir;
   if (options.titleBidi) title.style.unicodeBidi = options.titleBidi;
-  title.textContent = titleText || '';
+  // The strings keep their glyph ("📡 Freq table"); the window shows the drawn icon instead --
+  // emoji render in the platform's colour set, not NavAid's line set.
+  const plainTitle = typeof window.navPlainLabel === 'function' ? window.navPlainLabel(titleText) : (titleText || '');
+  const titleIcon = typeof window.navLabelIcon === 'function' && typeof navIconSvg === 'function'
+    ? window.navLabelIcon(titleText) : '';
+  title.textContent = plainTitle;
+  if (titleIcon && plainTitle !== (titleText || '')) {
+    const ic = document.createElement('span');
+    ic.className = 'mi-icon';
+    ic.setAttribute('aria-hidden', 'true');
+    ic.innerHTML = navIconSvg(titleIcon, 16);
+    title.prepend(ic);
+  }
   box.appendChild(title);
 
   let closed = false;
@@ -9207,7 +9219,8 @@ function createAltitudePairsPinButton(opts) {
   const pin = document.createElement('button');
   pin.type = 'button';
   pin.className = 'modal-close-action charts-alt-pin';
-  pin.textContent = '📌';
+  if (typeof navIconSvg === 'function') pin.innerHTML = navIconSvg('location', 16);   // a drawn pin, not the emoji
+  else pin.textContent = '\u25CF';
   const updatePinButton = () => {
     const title = opts.keepOpenOnFocus
       ? (S.altPairsPinnedTitle || S.altPairsPinTitle || 'Alt pairs stays open')
@@ -10738,8 +10751,10 @@ let _simLastOk = null;
 function _simSetStatus(ok) {
   const el = window._simStatusEl || null;
   if (el) {
-    el.textContent = ok ? (S.tbSimStatusOk || '✅ Connected')
-                        : (S.tbSimStatusErr || '⚠ No data');
+    // Words with a drawn mark: the status colour already says ok / not ok.
+    const plain = (s) => (typeof window.navPlainLabel === 'function' ? window.navPlainLabel(s) : s);
+    el.textContent = ok ? plain(S.tbSimStatusOk || 'Connected')
+                        : plain(S.tbSimStatusErr || 'No data');
     el.style.color = ok ? tune('simStatusOkColor') : tune('simStatusErrColor');
   }
   if (ok === _simLastOk) return;
@@ -11070,7 +11085,16 @@ function fplIsolate(text) {
 }
 function fplSetBidiText(el, text) {
   el.textContent = '';
-  const str = String(text == null ? '' : text);
+  let str = String(text == null ? '' : text);
+  // A leading warning sign is drawn, not the emoji (the callers all write '⚠ ' + message).
+  if (/^\u26A0\uFE0F?\s/.test(str) && typeof navIconSvg === 'function') {
+    str = str.replace(/^\u26A0\uFE0F?\s+/, '');
+    const ic = document.createElement('span');
+    ic.className = 'mi-icon fpl-warn-icon';
+    ic.setAttribute('aria-hidden', 'true');
+    ic.innerHTML = navIconSvg('warn', 14);
+    el.appendChild(ic);
+  }
   let last = 0;
   str.replace(FPL_LATIN_RUN, (run, _g, idx) => {
     if (idx > last) el.appendChild(document.createTextNode(str.slice(last, idx)));
@@ -12208,7 +12232,12 @@ function showFplDialog(opts) {
       custom.className = 'fpl-warn';
       custom.id = 'fpl-custom-recipient';
       const lead = document.createElement('span');
-      lead.textContent = '⚠ ' + (S.fplCustomRecipient || '') + ' ';
+      const leadIc = document.createElement('span');
+      leadIc.className = 'mi-icon fpl-warn-icon';
+      leadIc.setAttribute('aria-hidden', 'true');
+      leadIc.innerHTML = typeof navIconSvg === 'function' ? navIconSvg('warn', 14) : '';
+      lead.textContent = (S.fplCustomRecipient || '') + ' ';
+      lead.prepend(leadIc);
       const addr = document.createElement('bdi');      // an address inside RTL text
       addr.className = 'fpl-custom-addr';
       addr.textContent = res.to;

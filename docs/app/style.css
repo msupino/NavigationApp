@@ -10432,3 +10432,13 @@ body.deck-on .fp-when-close { min-width: 44px; min-height: 44px; }
    cells keep the dense 28px above (.plan-name / .plan-num); the others' cells are 44px. */
 body.deck-on .modal-back .flight-table input:not(.plan-name):not(.plan-num),
 body.deck-on .modal-back .flight-table button { min-height: 44px; }
+
+/* Drawn icons where an emoji used to stand (window titles, the pin, route-check marks, FPL warnings). */
+.modal-title > .mi-icon { display: inline-grid; place-items: center; line-height: 0; vertical-align: -3px; margin-inline-end: 6px; }
+.modal-title > .mi-icon svg { display: block; }
+.charts-alt-pin svg { display: block; margin: auto; }
+.route-check-mark { display: inline-grid; place-items: center; line-height: 0; }
+.route-check-stop .route-check-mark { color: #ef4444; }
+.route-check-warn .route-check-mark { color: #e0a100; }
+.fpl-warn-icon { display: inline-grid; place-items: center; line-height: 0; vertical-align: -2px; margin-inline-end: 4px; }
+.fpl-warn-icon svg { display: block; }
