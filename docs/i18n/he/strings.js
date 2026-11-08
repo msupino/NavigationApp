@@ -2064,6 +2064,11 @@ window.S = {
   },
   watchAlertTopTitle: 'TOP',
   watchAlertTopBody: 'TOP',
+  // בד"ח צא כיוון -- כז״גמ״ד: כיוון, זמן, גובה, מנוע, דיווח -- עם נתוני הקטע החדש כשיש.
+  watchAlertTopChecklistBody: function (hdg, time, alt, freq) {
+    return ['כיוון' + (hdg != null ? ' ' + hdg : ''), 'זמן' + (time ? ' ' + time : ''),
+      'גובה' + (alt != null ? ' ' + alt + ' רגל' : ''), 'מנוע', 'דיווח' + (freq ? ' ' + freq : '')].join(' · ');
+  },
   watchAlertAltTitle: 'גובה',
   watchAlertAltBody: function(actual, planned) {
     return actual + ' רגל — מתוכנן ' + planned + ' רגל';
@@ -2109,6 +2114,15 @@ window.S = {
     return s;
   },
   speakAlertTop: function() { return 'טופ.'; },
+  // נאמר "מגמה" ולא "כיוון" -- ראו speakAlertLeg: כיוון בלי ניקוד נקרא בקול כ"כיוון ש...".
+  speakAlertTopChecklist: function (hdgDigits, hms, alt, freqDigits) {
+    const t = [];
+    if (hms && hms.h) t.push(hms.h === 1 ? 'שעה' : hms.h + ' שעות');
+    if (hms && hms.m) t.push(hms.m === 1 ? 'דקה' : hms.m + ' דקות');
+    if (hms && hms.s) t.push(hms.s + ' שניות');
+    return 'טופ. מגמה' + (hdgDigits != null ? ' ' + hdgDigits : '') + '. זמן' + (t.length ? ' ' + t.join(' ') : '') +
+      '. גובה' + (alt != null ? ' ' + alt + ' רגל' : '') + '. מנוע. דיווח' + (freqDigits ? ', תדר ' + freqDigits : '') + '.';
+  },
   spokenDecimal: 'נקודה',
   speakAlertAlt: function(actual, planned) {
     return 'גובה ' + actual + ' רגל, מתוכנן ' + planned + '.';

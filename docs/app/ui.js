@@ -13673,6 +13673,35 @@ function armAndroidBackButton(attempt) {
   });
 }
 window.backButtonStep = backButtonStep;
+
+// About, Privacy and Terms in the installed app. Their links open a new tab on the web; in the
+// app's web view a same-site page replaced NavAid itself -- no close button, and Back, finding
+// nothing of NavAid's open, offered to leave and restarted it (reported). There they open in a
+// window over the map with a close X, which Back closes like any other (backButtonStep above).
+// Caught for every link to them -- the menu's rows and the first-run notice's alike.
+const IN_APP_DOCS = { 'about.html': 'tbAbout', 'privacy.html': 'tbPrivacy', 'terms.html': 'tbTerms' };
+function openDocInApp(page, titleKey) {
+  if (typeof createDraggableModal !== 'function') return false;
+  const fallback = { tbAbout: 'About', tbPrivacy: 'Privacy', tbTerms: 'Terms' }[titleKey];
+  const modal = createDraggableModal((S && S[titleKey]) || fallback, 'modal wide doc-modal', null);
+  const frame = document.createElement('iframe');
+  frame.className = 'doc-modal-frame';
+  frame.title = (S && S[titleKey]) || fallback;
+  frame.src = page + '?lang=' + encodeURIComponent((window.__navLang === 'en') ? 'en' : 'he');
+  modal.box.appendChild(frame);
+  if (typeof modal.show === 'function') modal.show();
+  return true;
+}
+window.openDocInApp = openDocInApp;
+document.addEventListener('click', (e) => {
+  const cap = window.Capacitor;
+  if (!cap || typeof cap.isNativePlatform !== 'function' || !cap.isNativePlatform()) return;
+  const a = e.target && e.target.closest ? e.target.closest('a[href]') : null;
+  if (!a) return;
+  const page = (a.getAttribute('href') || '').split(/[?#]/)[0].replace(/^\.\//, '');
+  if (!Object.prototype.hasOwnProperty.call(IN_APP_DOCS, page)) return;
+  if (openDocInApp(page, IN_APP_DOCS[page])) e.preventDefault();
+}, true);
 window.armAndroidBackButton = armAndroidBackButton;
 
 function isNativeCapacitorShell() {

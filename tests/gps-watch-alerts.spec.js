@@ -178,7 +178,7 @@ test.describe('leg-approach alert', () => {
     // separate TOP alert (index 1, unconditional on kite visibility) both fire.
     expect(out.length).toBe(2);
     expect(out[0].body).toBe('Approaching BRAVO');   // no altitude/heading suffix at all
-    expect(out[1].body).toBe('TOP');
+    expect(out[1].title).toBe('TOP');
   });
 
   test('does not repeat while still inside the ETA window for the same leg', async ({ page }) => {
@@ -227,9 +227,9 @@ test.describe('leg-approach alert', () => {
     expect(out.afterCapture).toBe(1);
     expect(out.notif.length).toBe(4);
     expect(out.notif[0].body).toContain('BRAVO');
-    expect(out.notif[1].body).toBe('TOP');
+    expect(out.notif[1].title).toBe('TOP');
     expect(out.notif[2].body).toContain('CHARLIE');
-    expect(out.notif[3].body).toBe('TOP');
+    expect(out.notif[3].title).toBe('TOP');
   });
 
   test('includes the NEXT leg\'s planned altitude and heading, not the leg being finished', async ({ page }) => {
@@ -320,7 +320,7 @@ test.describe('leg-approach alert', () => {
     });
     expect(out.length).toBe(2);   // leg-approach (index 0) + the same capture's TOP
     expect(out[0].body).toBe('Approaching BRAVO');   // no trailing ", N ft, hdg N°" at all
-    expect(out[1].body).toBe('TOP');
+    expect(out[1].title).toBe('TOP');
   });
 
   test('omits altitude when the next leg has none entered, keeps the heading', async ({ page }) => {
@@ -416,7 +416,7 @@ test.describe('TOP alert (overhead the waypoint)', () => {
       return window.__notifications.slice();
     });
     expect(out.length).toBe(2);
-    expect(out[1].body).toBe('TOP');
+    expect(out[1].title).toBe('TOP');
     expect(out[1].title).toContain('TOP');
   });
 
@@ -434,7 +434,7 @@ test.describe('TOP alert (overhead the waypoint)', () => {
       window.__liveCb(window.__fix(32.02, 34.0, { speedMs: 15.4 }));
       return window.__notifications.slice();
     });
-    expect(out.some((n) => n.body === 'TOP')).toBe(true);
+    expect(out.some((n) => n.title === 'TOP')).toBe(true);
   });
 
   test('does not re-fire while lingering at the same waypoint -- the pointer has already moved on', async ({ page }) => {
@@ -455,7 +455,7 @@ test.describe('TOP alert (overhead the waypoint)', () => {
       window.__liveCb(window.__fix(32.02, 34.00, { speedMs: 15.4 }));
       window.__liveCb(window.__fix(32.02, 34.00, { speedMs: 15.4 }));   // same fix again
       window.__liveCb(window.__fix(32.02, 34.00, { speedMs: 15.4 }));
-      return window.__notifications.filter((n) => n.body === 'TOP').length;
+      return window.__notifications.filter((n) => n.title === 'TOP').length;
     });
     expect(out).toBe(1);
   });
@@ -477,12 +477,12 @@ test.describe('TOP alert (overhead the waypoint)', () => {
       window.__liveCb(window.__fix(32.02, 34.00, { speedMs: 15.4 }));
       window.__liveCb(window.__fix(32.02, 34.00, { speedMs: 15.4 }));
       window.__liveCb(window.__fix(32.02, 34.00, { speedMs: 15.4 }));
-      const whileInside = window.__notifications.filter((n) => n.body === 'TOP').length;
+      const whileInside = window.__notifications.filter((n) => n.title === 'TOP').length;
 
       // More than 0.3 NM away re-arms the circle. Returning later is a new crossing.
       window.__liveCb(window.__fix(32.01, 34.00, { speedMs: 15.4 }));
       window.__liveCb(window.__fix(32.02, 34.00, { speedMs: 15.4 }));
-      const afterReturn = window.__notifications.filter((n) => n.body === 'TOP').length;
+      const afterReturn = window.__notifications.filter((n) => n.title === 'TOP').length;
       return { whileInside, afterReturn };
     });
     expect(out).toEqual({ whileInside: 1, afterReturn: 2 });

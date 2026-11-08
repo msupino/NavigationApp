@@ -102,6 +102,7 @@ NavAid.tuningDefaults = {
   livePredictorTurnGentleDegSec: { value: 0.25, min: 0, max: 3, step: 0.05, label: 'Curve predictor for a clear gentle turn down to (°/s)' },
   livePredictorTurnSignificance: { value: 3, min: 1, max: 10, step: 0.5, label: 'Gentle turn must stand out from GPS scatter by (standard errors)' },
   legEtaLeadSec: { value: 120, min: 15, max: 600, step: 15, label: 'Next-leg call, this far ahead (s)' },
+  topChecklist: { value: true, type: 'bool', label: 'TOP call reads the leg-entry checks (FREDA / כז״גמ״ד) with the new leg\'s figures' },
   legCaptureNm: { value: 0.3, min: 0.05, max: 3, step: 0.05, label: 'TOP capture radius (NM)' },
   driftTrackErrorDeg: { value: 10, min: 2, max: 45, step: 1, label: 'Off-course alert at (°)' },
   driftCheckSec: { value: 120, min: 15, max: 900, step: 15, label: 'Off-course check every (s)' },
@@ -1303,7 +1304,7 @@ NavAid.tuningDefaults = {
 // interaction (hit testing), tools (alt pairs, export), and finally the
 // global colour palette.
 NavAid.tuningGroups = [
-  { name: 'Navigation', keys: ['magVarAuto', 'magneticVariationDeg', 'msaBufferFt', 'altimetryCorrection', 'geoidUndulationFt', 'followResumeMs', 'followZoomFloor', 'followZoomCeiling', 'followZoomCtrFloor', 'followZoomCtrCeiling', 'gpsReadoutFontPx', 'gpsReadoutRefitPx', 'alertNotifyTtlSec', 'alertIconColor', 'altToleranceFt', 'altMaxAlertsPerLeg', 'legEtaLeadSec', 'atisLeadSec', 'lastLightMarginMin', 'atisMarkerColor', 'atisMarkerRadiusPx', 'atisMarkerFontPx', 'liveHeadingEndLabel', 'legCaptureNm', 'driftTrackErrorDeg', 'driftCheckSec', 'coneUnknownSec', 'gpsMaxAccuracyM', 'gpsMinMoveM', 'gpsGlide', 'gpsGlideMinKt', 'gpsGlideMaxHz', 'vorReadoutMaxNm', 'measureLineColor', 'measureDotFill', 'measureLabelBg', 'measureLabelText', 'gpsStaleSec', 'qnhMaxAgeMin', 'qnhMoveNm', 'compassMaxKt', 'compassFallback', 'headingUpMinDeltaDeg', 'crosshairSizePx', 'crosshairWidthPx', 'crosshairColor', 'crosshairHaloColor', 'crosshairAlpha', 'atisMarkerFillAlpha', 'atisMarkerWidthPx'] },
+  { name: 'Navigation', keys: ['magVarAuto', 'magneticVariationDeg', 'msaBufferFt', 'altimetryCorrection', 'geoidUndulationFt', 'followResumeMs', 'followZoomFloor', 'followZoomCeiling', 'followZoomCtrFloor', 'followZoomCtrCeiling', 'gpsReadoutFontPx', 'gpsReadoutRefitPx', 'alertNotifyTtlSec', 'alertIconColor', 'altToleranceFt', 'altMaxAlertsPerLeg', 'legEtaLeadSec', 'topChecklist', 'atisLeadSec', 'lastLightMarginMin', 'atisMarkerColor', 'atisMarkerRadiusPx', 'atisMarkerFontPx', 'liveHeadingEndLabel', 'legCaptureNm', 'driftTrackErrorDeg', 'driftCheckSec', 'coneUnknownSec', 'gpsMaxAccuracyM', 'gpsMinMoveM', 'gpsGlide', 'gpsGlideMinKt', 'gpsGlideMaxHz', 'vorReadoutMaxNm', 'measureLineColor', 'measureDotFill', 'measureLabelBg', 'measureLabelText', 'gpsStaleSec', 'qnhMaxAgeMin', 'qnhMoveNm', 'compassMaxKt', 'compassFallback', 'headingUpMinDeltaDeg', 'crosshairSizePx', 'crosshairWidthPx', 'crosshairColor', 'crosshairHaloColor', 'crosshairAlpha', 'atisMarkerFillAlpha', 'atisMarkerWidthPx'] },
   { name: 'Performance defaults', keys: ['profileClimbFpm', 'profileClimbKt', 'defaultGph', 'defaultTaxiGal'] },
   { name: 'Altitude inference', keys: ['legAltInferMaxHops', 'legAltInferMaxDistRatio', 'legAltInferMaxExtraNm'] },
   { name: 'Plan card', keys: ['planCardBaseRowPx', 'planCardGripPx', 'planCardBgColor', 'planCardHeaderBgColor', 'planCardTotalBgColor', 'planCardStripeBgColor', 'planCardGridColor', 'planCardTextColor', 'planCardGripColor', 'planCardGripLineColor', 'planCardGripLineWidthPx'] },
@@ -3666,6 +3667,15 @@ window.S = Object.assign({
   // The overhead-the-waypoint moment -- CVFR radio phraseology's own "TOP <point>" call.
   watchAlertTopTitle: 'TOP',
   watchAlertTopBody: 'TOP',
+  // After the waypoint, the leg-entry checks with the new leg's own figures where the plan has
+  // them (asked). In English that is FREDA -- fuel, radio, engine, direction, altimeter; the
+  // Hebrew strings carry the Israeli כז״גמ״ד (בד"ח צא כיוון). Every word is always there: it is a
+  // checklist, and a missing number is still a thing to check. `freq` is set when this waypoint
+  // changes frequency. `time` (the new leg's planned time) is the Hebrew list's זמן.
+  watchAlertTopChecklistBody: function (hdg, time, alt, freq) {
+    return ['Fuel', 'Radio' + (freq ? ' ' + freq : ''), 'Engine',
+      'Direction' + (hdg != null ? ' ' + hdg : ''), 'Altimeter' + (alt != null ? ' ' + alt + ' ft' : '')].join(' · ');
+  },
   watchAlertAltTitle: 'Altitude',
   watchAlertAltBody: function(actual, planned) {
     return actual + ' ft — planned ' + planned + ' ft';
@@ -3722,6 +3732,10 @@ window.S = Object.assign({
     return s;
   },
   speakAlertTop: function() { return 'Top.'; },
+  speakAlertTopChecklist: function (hdgDigits, hms, alt, freqDigits) {
+    return 'Top. Fuel. Radio' + (freqDigits ? ', ' + freqDigits : '') + '. Engine. Direction' +
+      (hdgDigits != null ? ' ' + hdgDigits : '') + '. Altimeter' + (alt != null ? ' ' + alt + ' feet' : '') + '.';
+  },
   // Shortly before a waypoint that changes frequency. Either half may be missing -- a
   // callout can name a station with no frequency, or a frequency with no station -- and
   // whichever is present is still worth hearing.

@@ -10599,3 +10599,8 @@ body.deck-on :is(.search-hint, #app-version, #toolbar .slider-val) { font-size: 
 /* Live: the language button keeps 44px of the strip's grid (batch 5), so the name and the readout
    share a line a few px tighter than before -- a tighter gap keeps five-digit altitudes whole at 360. */
 .deck-strip.deck-strip-live .deck-strip-top { gap: 6px; }
+
+/* About / Privacy / Terms in the installed app (ui.js openDocInApp): the page in a window, not
+   in place of the app. */
+.modal.doc-modal { display: flex; flex-direction: column; width: min(720px, calc(100vw - 24px)); }
+.modal.doc-modal .doc-modal-frame { flex: 1 1 auto; width: 100%; height: min(70vh, 640px); border: 0; border-radius: 6px; background: #fff; }
