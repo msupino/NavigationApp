@@ -4544,7 +4544,7 @@ body.theme-light .airfield-refs { border-top-color: #d5dbe3; }
    the 30px of the layer choice beside them. The old charts button was 36px; a link must not
    be harder to hit than the button it replaced. */
 .airfield-refs :is(.insp-notam-link, .insp-charts-btn) { min-height: 24px; }
-body.deck-on .airfield-refs :is(.insp-notam-link, .insp-charts-btn) { min-height: 30px; }
+body.deck-on .airfield-refs :is(.insp-notam-link, .insp-charts-btn) { min-height: 44px; }
 
 /* Airport charts: two screens rather than twenty accordions. Screen one is a grid of fields,
    screen two is one field's plates. Every target here is thumb-sized -- this is read on a
@@ -5374,8 +5374,8 @@ body.theme-light .airspace-now.is-active { color: #b3261e; }
 }
 .wx-refresh:disabled { opacity: 0.5; cursor: default; }
 /* Inline icon controls in the inspector (refresh, read aloud, the ↻ resets beside a slider or a
-   field) and its sliders: at least the web's 24px target (WCAG 2.2), 30px on a phone like the
-   panel's fields. They measured 20x18, 20x23 and a 16px-tall slider. */
+   field) and its sliders: at least the web's 24px target (WCAG 2.2), 44px on a phone. They
+   measured 20x18, 20x23 and a 16px-tall slider, then 30px on the phone. */
 #inspector .wx-refresh,
 #inspector .wx-speak,
 #inspector .slider-reset {
@@ -5386,10 +5386,10 @@ body.theme-light .airspace-now.is-active { color: #b3261e; }
 body.deck-on #inspector .wx-refresh,
 body.deck-on #inspector .wx-speak,
 body.deck-on #inspector .slider-reset,
-body.deck-on #inspector input[type="range"] { min-height: 30px; }
+body.deck-on #inspector input[type="range"] { min-height: 44px; }
 body.deck-on #inspector .wx-refresh,
 body.deck-on #inspector .wx-speak,
-body.deck-on #inspector .slider-reset { min-width: 30px; }
+body.deck-on #inspector .slider-reset { min-width: 44px; }
 /* Per-report read-aloud button, beside each METAR/TAF label. Same chrome-less treatment as
    the refresh control -- without a rule it rendered as a native light UA button inside the
    dark panel -- and the same dimmed disabled state (dim, never hide) when no speech engine. */
@@ -7304,13 +7304,21 @@ html[data-theme="light"] #insp-body .insp-actions {
   #rotate-hdg { min-height: 44px; min-width: 56px; font-size: 15px; }
   #lang-select { min-height: 44px; font-size: 15px; }
   #search-close { min-width: 44px; min-height: 44px; }
+  /* 44px tall, so a measured box and a thumb agree. It was drawn 30px with a 44px ::before ring
+     reaching up. The negative margin takes back most of the 14px it adds, all of it above (the
+     bottom bar is right under it): its top edge lands exactly on the bottom of the zoom column
+     (10px, Leaflet's corner margin), so the two targets touch and never overlap. */
   .attrib-toggle { display: inline-flex; align-items: center; justify-content: center;
-                   min-width: 44px; min-height: 30px; position: relative; }
-  /* Drawn 30px tall to keep the attribution row slim; the tap area reaches the 44px minimum,
-     all of it upward -- the bottom bar sits right under it. */
-  .attrib-toggle::before { content: ''; position: absolute; inset: -14px 0 0 0; }
+                   min-width: 44px; min-height: 44px; margin-top: -10px; position: relative; }
   /* The safety notice's language picker: the first control a new user may need. */
   select.disclaimer-lang-select { min-height: 44px; }   /* outranks the base rule further down */
+  /* The rest of the first-run notice, measured on a 390px phone: Terms and Privacy were 14px
+     tall text links, and Accept was set at the modal-button size (11.5px) that keeps a row of
+     four long labels on one line -- it is the only button here. */
+  .disclaimer-links { font-size: 14px; }
+  .disclaimer-links a { display: inline-flex; align-items: center; min-height: 44px; padding-inline: 6px; }
+  .disclaimer-btns .disclaimer-accept { font-size: 14px; }
+  select.disclaimer-lang-select { font-size: 14px; letter-spacing: 0; }
   .leaflet-control-attribution.attrib-compact .attrib-body { display: none; }
   .leaflet-control-attribution.attrib-compact.attrib-open .attrib-body { display: inline; }
   .leaflet-control-attribution.attrib-compact { padding: 0 4px; }
@@ -8939,6 +8947,22 @@ body.deck-on .overlay-loading { bottom: calc(var(--navaid-deck-bar-h, 52px) + 68
 /* Two ids and a class, to outrank the phone rules that put this row on screen. */
 .deck-sheet #toolbar.deck-hosted > #footer-links .footer-gps-group > .gps-footer-btn:not(#sim-trigger),
 .deck-sheet #toolbar.deck-hosted > #footer-links #gps-readout { display: none !important; }
+/* Touch targets in the phone Menu sheet. The menu was written for a desktop dropdown, so on the
+   phone its buttons were 36px, its selects, number fields and sliders 28-30px, its "reset to
+   default" buttons 30x30 and its tick boxes 18px in rows 18-20px high -- the whole menu under the
+   44px minimum, in flight. Scoped to the sheet (.deck-sheet exists only on the phone layout), so
+   the desktop menubar dropdowns are untouched. The selects, fields, swatches and resets are
+   raised where their own phone rules are, further down. A hidden row keeps its zero height (the
+   :not([hidden]) below), or the Charts menu would grow an empty 44px gap. */
+.deck-sheet #toolbar.deck-hosted button,
+.deck-sheet #toolbar.deck-hosted input[type="range"],
+.deck-sheet #toolbar.deck-hosted .navtoggle:not([hidden]) { min-height: 44px; }
+/* The magnetic-variation field and its E/W picker were 36 and 42px wide. */
+.deck-sheet #toolbar.deck-hosted .tb-magvar :is(#magvar-deg, #magvar-ew) { min-height: 44px; min-width: 44px; }
+/* The box stays a box (22px, up from 18); the label row around it is the 44px target. */
+.deck-sheet #toolbar.deck-hosted .navtoggle input:is([type="checkbox"], [type="radio"]) {
+  width: 22px; height: 22px; flex: none;
+}
 @media (prefers-reduced-motion: reduce) {
   .deck-sheet { transition: none; }
 }
@@ -9676,7 +9700,14 @@ body.deck-on #insp-close,
 body.deck-on #insp-zoom-in,
 body.deck-on #insp-zoom-out { min-width: 44px; min-height: 44px; }
 body.deck-on #inspector input:not([type=checkbox]):not([type=range]),
-body.deck-on #inspector select { min-height: 30px; }
+body.deck-on #inspector select { min-height: 44px; }
+/* The inspector's small controls, all raised to the 44px touch minimum on the phone: the
+   frequency reset (28x26), the hours toggle (28 high), the satellite zoom pair (28x25) and the
+   phone link (32). The round play button is already 32 drawn + a 6px ::after ring = 44. */
+body.deck-on #inspector :is(.commchange-freq-reset, .row-reset) { min-width: 44px; min-height: 44px; }
+body.deck-on #inspector .hours-toggle { min-height: 44px; }
+body.deck-on #inspector .sat-zoom-btn { min-width: 44px; min-height: 44px; }
+body.deck-on #inspector .airfield-phone-row .airfield-phone { min-height: 44px; }
 body.deck-on .route-file-btn { min-height: 44px; }
 /* The plan's text fields: 30px, not 44 (see the field family at the end of this file). They are fields in a dense form (the web target size,
    WCAG 2.2, is 24px); at 44 the plan outgrew the phone's chart space and could no longer sit
@@ -9697,7 +9728,7 @@ body.deck-on .satellite-expand-hint { min-height: 44px; display: inline-flex; al
 body.deck-on #toolbar .route-file-btn,
 body.deck-on .route-file-row .route-file-btn,
 body.deck-on .fp-route-file-row .route-file-btn { min-height: 44px; }
-body.deck-on .fp-columns-all { min-height: 36px; }
+body.deck-on .fp-columns-all { min-height: 44px; }
 body.deck-on .fp-del button { min-height: 36px; }
 body.deck-on .modal-btns button { min-width: 44px; min-height: 44px; }
 
@@ -9746,18 +9777,19 @@ body.theme-light #insp-body .insp-actions {
 }
 
 /* Phone menu sheet: every select and field in a row is one height -- side by side they read as
-   three sizes (44 / 22 / 18px). 30px: at 36-44 the box dwarfed its 14px text. The row, not the
-   box, is the touch area here, and 30 stays above the 24px web target size (WCAG 2.2). */
+   three sizes (44 / 22 / 18px). It was 30px (the row was meant to be the touch area), but a tap
+   on a select or a number field is a tap on the control itself, so the control is the 44px
+   touch minimum like the rest of the sheet. */
 body.deck-on #deck-sheet .tb-section-body select,
 body.deck-on #deck-sheet .tb-section-body input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]):not([type="file"]) {
-  min-height: 30px;
-  height: 30px;
+  min-height: 44px;
+  height: 44px;
   padding-top: 0;
   padding-bottom: 0;
   box-sizing: border-box;
 }
 body.deck-on #deck-sheet .tb-section-body .slider-reset,
-body.deck-on #deck-sheet #default-speed-reset { min-width: 30px; min-height: 30px; font-size: inherit; }
+body.deck-on #deck-sheet #default-speed-reset { min-width: 44px; min-height: 44px; font-size: inherit; }
 body.deck-on #deck-sheet .tb-magvar,
 body.deck-on #deck-sheet #lang-toggle,
 body.deck-on #deck-sheet .tb-section[data-sec="settings"] .tb-section-body > label { gap: 8px; align-items: center; }
@@ -9806,8 +9838,8 @@ body.theme-light #toolbar .tb-section-body .slider-reset { border-color: #858f9c
   :where(html.menubar) #toolbar .tb-section-body .slider-reset { min-width: 28px; min-height: 28px; }
   :where(html.menubar) #toolbar .tb-section-body input[type="color"] { min-height: 28px; min-width: 28px; box-sizing: border-box; }
 
-body.deck-on #deck-sheet .tb-section-body input[type="color"] { min-height: 30px; min-width: 36px; box-sizing: border-box; }
-body.deck-on #deck-sheet #tool-magnifier { min-height: 36px; font-size: 14px; }
+body.deck-on #deck-sheet .tb-section-body input[type="color"] { min-height: 44px; min-width: 44px; box-sizing: border-box; }
+body.deck-on #deck-sheet #tool-magnifier { min-height: 44px; font-size: 14px; }
 #toolbar .tb-section-body .navtoggle input[type="color"] { border-color: #8a8282; }
 body.theme-light #toolbar .tb-section-body .navtoggle input[type="color"] { border-color: #858f9c; }
 /* The browser draws a field's own parts (the number spinner, the open list) in the page's
@@ -9884,7 +9916,7 @@ body.theme-light #search-overlay #wp-search { border-color: #858f9c; }
 #toolbar .mi-select > .mi-face { display: none; }
 body.deck-on #deck-sheet .mi-select {
   display: flex; align-items: center; justify-content: center; gap: 6px;
-  min-height: 36px; box-sizing: border-box;
+  min-height: 44px; box-sizing: border-box;
   border: 1px solid #443f3f; border-radius: 5px; background: #2f2b2b; color: #e8e8e8;
   font-size: 14px; font-weight: 700;
 }
@@ -9893,7 +9925,8 @@ body.deck-on #deck-sheet .mi-select > .mi-icon { position: static; transform: no
 body.deck-on #deck-sheet .mi-select > .mi-face { display: inline; }
 body.deck-on #deck-sheet .mi-select::after { position: static; transform: translateY(-2px) rotate(45deg); margin-inline-start: 2px; }
 body.deck-on #deck-sheet .tb-section-body .mi-select > #export-select {
-  position: absolute; inset: 0; width: 100%; height: 100%; min-height: 0; margin: 0;
+  /* -1px: cover the wrapper's border too, so the whole 44px face is the select. */
+  position: absolute; inset: -1px; width: calc(100% + 2px); height: calc(100% + 2px); min-height: 0; margin: 0;
   opacity: 0; cursor: pointer;
 }
 body.deck-on #deck-sheet .mi-select:focus-within { outline: 2px solid #4c9bff; outline-offset: 1px; }
@@ -10370,3 +10403,32 @@ body.tour-live-preview #gps-rec-indicator { display: flex !important; }
   background: #195fc2;
   border-color: #195fc2;
 }
+
+/* Phone: the controls inside windows, at the 44px touch minimum. The review measured them at
+   13-30px (Saved routes, the NOTAM / SIGMET / AIRMET lists, Freq table, Alt pairs, Export PNG,
+   Route mosaic, Nav log, Offline maps, the magnifier settings, the simulator and ATC radio).
+   One rule for every window instead of a tweak per window. The flight plan's own text fields
+   are 30px by decision (see the field family above -- at 44 the plan outgrew the phone's chart
+   space): their rules are more specific than this one (it is written in :where()), so they keep it, and the plan's table
+   cells are excluded by name. Several windows share the plan's .flight-plan backdrop class, so it
+   cannot be the way to tell them apart. Tick boxes stay small (22px) and their label row is the
+   44px target. */
+body.deck-on :where(.modal-back, .sim-overlay, #magnifier-settings)
+  :where(button, select, input:is([type="text"], [type="search"], [type="number"], [type="date"], [type="time"], [type="range"]):not(.plan-name):not(.plan-num)) {
+  min-height: 44px;
+}
+body.deck-on :where(.modal-back, .sim-overlay, #magnifier-settings) :where(button) { min-width: 44px; }
+body.deck-on :where(.modal-back, .sim-overlay, #magnifier-settings)
+  :where(label:has(> input:is([type="checkbox"], [type="radio"]))) {
+  display: flex; align-items: center; gap: 8px; min-height: 44px;
+}
+body.deck-on :where(.modal-back, .sim-overlay, #magnifier-settings)
+  :where(input:is([type="checkbox"], [type="radio"])) { width: 22px; height: 22px; flex: none; }
+body.deck-on .sim-modal-close,
+body.deck-on #mag-settings-close,
+body.deck-on .ac-close,
+body.deck-on .fp-when-close { min-width: 44px; min-height: 44px; }
+/* The tables in windows (Freq table, Alt pairs, Nav log) share .flight-table with the plan, whose
+   cells keep the dense 28px above (.plan-name / .plan-num); the others' cells are 44px. */
+body.deck-on .modal-back .flight-table input:not(.plan-name):not(.plan-num),
+body.deck-on .modal-back .flight-table button { min-height: 44px; }
