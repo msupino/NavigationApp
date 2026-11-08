@@ -331,7 +331,7 @@ test.describe('Charts modal — frequency catalog table', () => {
     })).toEqual({ resize: 'both', overflow: 'hidden', minHeight: '220px' });
     const desheRow = page.locator('.charts-alt-table tbody tr', { hasText: 'DESHE ↔ ZALMN' });
     const pin = modal.locator('.modal-close-actions .charts-alt-pin');
-    await expect(pin).toHaveText('📌');
+    await expect(pin.locator('svg')).toHaveCount(1);   // a drawn pin (was the 📌 emoji)
     await expect(pin).toHaveAttribute('title', 'Keep Alt pairs open when focusing a pair');
     await expect(pin).toHaveAttribute('aria-pressed', 'false');
     await expect(desheRow.locator('.charts-alt-pair-button'))

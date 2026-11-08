@@ -929,7 +929,7 @@
             <button id="page-a4" data-i18n-title="tbPageA4Title">A4</button>
             <button id="page-a4x2" data-i18n-title="tbPageA4x2Title">A4×2</button>
             <button id="page-orient" type="button" data-i18n-title="tbOrientTitle">
-              <span class="page-orient-icon" aria-hidden="true">▭</span>
+              <span class="page-orient-icon" aria-hidden="true"></span>
               <span class="page-orient-label"></span>
             </button>
           </div>
@@ -1247,7 +1247,7 @@
        than a top-level toolbar section. -->
   <div id="sim-modal" class="sim-overlay hidden">
     <div class="modal sim-modal" role="dialog" aria-modal="true">
-      <button class="sim-modal-close" id="sim-modal-close" type="button" aria-label="Close">×</button>
+      <button class="sim-modal-close" id="sim-modal-close" type="button" data-i18n-title="modalCloseTitle" data-i18n-aria="modalCloseTitle" aria-label="Close">✕</button>
       <h3 class="sim-modal-title" data-i18n="tbSecSim">Simulator</h3>
       <!-- A form, in a form's order: the field (label above it), what to enter, the apps' Find
            X-Plane, the status, and the one action last. Connect closes the window. -->
@@ -1268,7 +1268,7 @@
        own stream link. Opened from View -> ATC radio. -->
   <div id="atc-modal" class="sim-overlay hidden">
     <div class="modal atc-modal" role="dialog" aria-modal="true" aria-labelledby="atc-modal-title">
-      <button class="sim-modal-close" id="atc-modal-close" type="button" data-i18n-aria="modalCloseTitle" aria-label="Close">×</button>
+      <button class="sim-modal-close" id="atc-modal-close" type="button" data-i18n-aria="modalCloseTitle" aria-label="Close">✕</button>
       <h3 class="sim-modal-title" id="atc-modal-title" data-i18n="atcRadio">ATC radio</h3>
       <p class="atc-note" data-i18n="atcRadioNote"></p>
       <div id="atc-list" class="atc-list"></div>
@@ -1287,11 +1287,11 @@
       <input type="text" id="wp-search" data-i18n-placeholder="tbSearchPlaceholder"
              data-i18n-title="tbSearchHint" autocomplete="off">
       <button id="search-clear" type="button" class="search-clear" hidden
-              data-i18n-title="tbSearchClear" aria-label="Clear">✕</button>
+              data-i18n-title="tbSearchClear" data-i18n-aria="tbSearchClear" aria-label="Clear">✕</button>
     </span>
     <button id="search-help" type="button" class="search-help" aria-expanded="false" aria-controls="search-examples"
             data-i18n-title="searchHelpTitle" data-i18n-aria="searchHelpTitle" aria-label="What can I search?">?</button>
-    <button id="search-close" type="button" data-i18n-title="modalCloseTitle" aria-label="Close">✕</button>
+    <button id="search-close" type="button" data-i18n-title="modalCloseTitle" data-i18n-aria="modalCloseTitle" aria-label="Close">✕</button>
     <small id="wp-search-hint" class="search-hint" data-i18n="tbSearchHint"></small>
     <div id="search-examples" class="search-examples" hidden></div>
     <div id="wp-search-results" class="hidden"></div>
