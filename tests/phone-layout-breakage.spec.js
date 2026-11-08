@@ -107,7 +107,7 @@ test('flight-plan dialog keeps Continue and Cancel in view while the form scroll
   });
   await expect(page.locator('#fpl-next')).toBeVisible();
   const r = await page.evaluate(() => {
-    const body = document.querySelector('.fpl-body'); const b = document.getElementById('fpl-next').getBoundingClientRect();
+    const body = document.querySelector('.fpl-body');
     body.scrollTop = 0;
     const after = document.getElementById('fpl-next').getBoundingClientRect();
     return { scrolls: body.scrollHeight > body.clientHeight, bottom: after.bottom, sbBottom: body.getBoundingClientRect().bottom, vh: innerHeight };
