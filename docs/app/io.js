@@ -6261,7 +6261,7 @@ function showExportModal() {
   // shows/hides it immediately).
   const pageWarn = document.createElement('div');
   pageWarn.id = 'export-page-warn';
-  pageWarn.style.cssText = 'font-size:12px;font-weight:600;padding:2px 0'   // colour: style.css (#export-page-warn), per theme;
+  pageWarn.style.cssText = 'font-size:12px;font-weight:600;padding:2px 0';   // colour: style.css (#export-page-warn), per theme
   body.appendChild(pageWarn);
 
   box.appendChild(body);
