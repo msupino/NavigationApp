@@ -641,7 +641,7 @@
     track.className = 'offline-manager-progress';
     const bar = document.createElement('span'); track.appendChild(bar);
     const actions = document.createElement('div');
-    actions.className = 'offline-manager-actions';
+    actions.className = 'offline-manager-actions modal-btns';   // the shared modal buttons, not the browser's
     c.append(layer, state, track, actions);
     return { card: c, state, bar, actions, track };
   }
@@ -702,6 +702,7 @@
             await deleteChart(name);
           });
         del.disabled = busy;
+        del.classList.add('btn-secondary');
         parts.actions.append(del);
       }
       host.appendChild(parts.card);
@@ -735,6 +736,7 @@
           await deleteArea(area.id);
         });
         del.disabled = busy;
+        del.classList.add('btn-secondary');
         parts.actions.append(del);
         box.appendChild(parts.card);
       }
@@ -771,7 +773,7 @@
         () => { downloadArea(layerName, Number(pick.value)).catch(() => {}); }, 'offline-area-add');
       add.disabled = !!why;
       const row = document.createElement('div');
-      row.className = 'offline-manager-actions';
+      row.className = 'offline-manager-actions modal-btns';
       row.appendChild(add);
       box.append(detail, row);
       if (why) {
@@ -852,6 +854,7 @@
         if (!await ask(question, t('offlineDelete', 'Clear offline CVFR'))) return;
         await deletePack();
       });
+    clear.classList.add('btn-secondary');   // removing is the quiet action beside the fetch
     cvfr.actions.append(repair, clear);
     const more = document.createElement('p');
     more.className = 'offline-manager-copy';

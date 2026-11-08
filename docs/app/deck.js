@@ -719,7 +719,7 @@
     }
     if (stripWidth < 0 || !stripRO) stripWidth = strip.clientWidth;
     // The route title shares the line, so it is part of what decides the fit.
-    const key = full + '|' + stripWidth + '|' + (stripLeg ? stripLeg.textContent : '');
+    const key = full + '|' + stripWidth + '|' + (stripLeg ? stripLeg.textContent : '') + '|' + strip.classList.contains('deck-strip-live');
     if (key === fittedKey) return;
     fittedKey = key;
     stripVals.textContent = full;
@@ -755,6 +755,9 @@
   function sync() {
     if (!strip) return;
     stripLeg.textContent = routeTitle();
+    // The live class decides how wide the language button is, so it is set BEFORE the readout is
+    // fitted to its line (it used to follow, and the fit measured the roomier, not-live strip).
+    strip.classList.toggle('deck-strip-live', !!(typeof gpsPositionLive === 'function' && gpsPositionLive()));
     fitStripVals(txt('gps-readout'));
     // Measurements read left to right in Hebrew as well; the readout's own element says so
     // and the copy on the strip has to say it too.

@@ -2215,6 +2215,7 @@ setInterval(refreshZuluClock, 1000);
   if (!el) return;
   const body = document.createElement('span');
   body.className = 'attrib-body';
+  body.dir = 'ltr';   // proper names and URLs: in Hebrew they flowed RTL and wrapped in a scrambled order
   while (el.firstChild) body.appendChild(el.firstChild);
   const btn = document.createElement('button');
   btn.type = 'button';
@@ -8772,7 +8773,7 @@ function showNotamModal(only, opts) {
   const box = document.createElement('div');
   box.className = 'modal wide notam-modal';
   const close = document.createElement('button');
-  close.className = 'modal-close-x'; close.type = 'button'; close.textContent = '×';
+  close.className = 'modal-close-x'; close.type = 'button'; close.textContent = '\u2715';
   close.setAttribute('aria-label', 'Close');
   box.appendChild(close);
   // `only` = subset clicked on the map. Empty/absent → full active list.

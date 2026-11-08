@@ -32,7 +32,7 @@ test('desktop: the menubar keeps a globe switch in sight, and stays one row', as
   await expect(page.locator('html')).toHaveAttribute('lang', 'en');
 });
 
-test('phone: in flight the switch steps aside, and the readout fits its own line', async ({ page }) => {
+test('phone: in flight the switch shrinks to its globe, and the readout fits its own line', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('?lang=he&nogist');
   await page.waitForSelector('#deck-strip .deck-strip-lang');
@@ -52,7 +52,7 @@ test('phone: in flight the switch steps aside, and the readout fits its own line
       fits: line.scrollWidth <= line.clientWidth + 1, vals };
   });
   expect(got.live).toBe(true);
-  expect(got.lang).toBe('none');                 // the instruments get the room
+  expect(got.lang).not.toBe('none');             // dimmed/shrunk, never hidden (batch 5); the label gives the room back
   expect(got.fits).toBe(true);                   // nothing runs under Comm fail
   for (const kept of ['105 kt', '402 ft', '322\u00b0']) expect(got.vals).toContain(kept);   // never dropped
 });

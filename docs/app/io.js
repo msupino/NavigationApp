@@ -3751,15 +3751,18 @@ function refreshOrientButton() {
   const btn = document.getElementById('page-orient');
   if (!btn) return;
   const isPortrait = pageOrient === 'portrait';
-  const icon = isPortrait ? '▯' : '▭';
+  // Drawn, not a text glyph (▯/▭ render per font and read as nothing): a page outline in the
+  // orientation the button will leave you in.
+  const icon = '<svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">'
+    + (isPortrait ? '<rect x="3.5" y="1.5" width="7" height="11" rx="1"/>' : '<rect x="1.5" y="3.5" width="11" height="7" rx="1"/>') + '</svg>';
   const label = isPortrait ? (S.portrait || 'Portrait') : (S.landscape || 'Landscape');
   const iconEl = btn.querySelector('.page-orient-icon');
   const labelEl = btn.querySelector('.page-orient-label');
   if (iconEl && labelEl) {
-    iconEl.textContent = icon;
+    iconEl.innerHTML = icon;
     labelEl.textContent = label;
   } else {
-    btn.textContent = icon + ' ' + label;
+    btn.textContent = label;
   }
   btn.classList.toggle('portrait', isPortrait);
 }
@@ -6231,7 +6234,7 @@ function showExportModal() {
   // shows/hides it immediately).
   const pageWarn = document.createElement('div');
   pageWarn.id = 'export-page-warn';
-  pageWarn.style.cssText = 'font-size:12px;color:#e53935;font-weight:600;padding:2px 0';
+  pageWarn.style.cssText = 'font-size:12px;font-weight:600;padding:2px 0'   // colour: style.css (#export-page-warn), per theme;
   body.appendChild(pageWarn);
 
   box.appendChild(body);
@@ -9485,6 +9488,18 @@ function renderAltitudePairsTable(altSection, opts) {
   table.appendChild(tbody);
   tableWrap.appendChild(table);
   altSection.appendChild(tableWrap);
+  // Same edge fade as the Freq table: the second altitude column, Type and NM are off the edge
+  // on a phone and nothing said the table scrolls. Self-removing on resize once the window is gone.
+  const markAltOverflow = () => {
+    if (!tableWrap.isConnected) { window.removeEventListener('resize', markAltOverflow); return; }
+    const max = tableWrap.scrollWidth - tableWrap.clientWidth;
+    const from = Math.abs(tableWrap.scrollLeft);
+    tableWrap.classList.toggle('scroll-start', max > 1 && from > 1);
+    tableWrap.classList.toggle('scroll-end', max > 1 && from < max - 1);
+  };
+  tableWrap.addEventListener('scroll', markAltOverflow, { passive: true });
+  window.addEventListener('resize', markAltOverflow);
+  requestAnimationFrame(markAltOverflow);
   const renderedRows = Array.from(tbody.querySelectorAll('tr')).map((tr, index) => ({
     tr,
     segment: segments[index],

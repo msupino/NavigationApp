@@ -10,8 +10,8 @@ for (const lang of ['he', 'en']) {
     await page.goto('?lang=' + lang + '&nogist');
     await page.waitForFunction(() => document.body.classList.contains('deck-on') && !!document.querySelector('.deck-strip-vals'));
     const r = await page.evaluate(async () => {
-      const st = document.createElement('style');                   // a phone with a large font
-      st.textContent = 'body .deck-strip .deck-strip-vals { font-size: 20px; }';
+      const st = document.createElement('style');                   // a phone with a large font (16px: the language button now stays on the line in flight)
+      st.textContent = 'body .deck-strip .deck-strip-vals { font-size: 16px; }';
       document.head.appendChild(st);
       new Function('gpsLiveOn = true')();
       document.getElementById('gps-readout').textContent = '451 kt · 34650 ft · 125°';   // showing location
@@ -35,7 +35,7 @@ test('a long flight drops its elapsed clock like a short one (125:30)', async ({
   await page.waitForFunction(() => document.body.classList.contains('deck-on') && !!document.querySelector('.deck-strip-vals'));
   const text = await page.evaluate(async () => {
     const st = document.createElement('style');
-    st.textContent = 'body .deck-strip .deck-strip-vals { font-size: 20px; }';
+    st.textContent = 'body .deck-strip .deck-strip-vals { font-size: 16px; }';
     document.head.appendChild(st);
     new Function('gpsLiveOn = true')();
     document.getElementById('gps-readout').textContent = '3120 pts · 125:30 · 451 kt · 34650 ft · 125°';
