@@ -5703,6 +5703,8 @@ function paintRouteFileRows() {
       // Dimmed, never hidden or disabled: pressing it still says why there is nothing to save.
       // The reason is also the tooltip and accessible description, so hover and screen readers
       // get it without a tap. Not setButtonWhy: that sets aria-disabled, which this row avoids.
+      // The reason on hover and for a screen reader -- but not aria-disabled: that tells a screen
+      // reader it cannot be pressed, and pressing it is how the pilot hears why.
       const noSaveWhy = tooShort ? (S.errNothingToSave || S.errNeedWps || 'Nothing to save.') : '';
       if (noSaveWhy) save.setAttribute('aria-description', noSaveWhy); else save.removeAttribute('aria-description');
       save.classList.toggle('is-dim', tooShort);
