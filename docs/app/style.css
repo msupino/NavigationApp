@@ -760,14 +760,16 @@ html[dir="rtl"] #toolbar {
    colour rows' reset pushed to the row's end. Slider rows measured their reset at three
    different x (readout widths 33/55/78 px, colour rows right after the swatch); now they
    share one right-hand column. */
-#toolbar:not(.multi-open) .tb-section[data-sec="display"] .slider-val,
-#toolbar:not(.multi-open) #wp-size-val, #toolbar:not(.multi-open) #leg-arrow-size-val, #toolbar:not(.multi-open) #minute-size-val { width: 78px; min-width: 78px; }
-#toolbar:not(.multi-open) .tb-section[data-sec="display"] .navtoggle > input[type="color"] { margin-inline-end: auto; }
+#toolbar:not(.multi-open):not(.deck-hosted) .tb-section[data-sec="display"] .slider-val,
+#toolbar:not(.multi-open):not(.deck-hosted) #wp-size-val, #toolbar:not(.multi-open):not(.deck-hosted) #leg-arrow-size-val, #toolbar:not(.multi-open):not(.deck-hosted) #minute-size-val { width: 78px; min-width: 78px; }
+#toolbar:not(.multi-open):not(.deck-hosted) .tb-section[data-sec="display"] .navtoggle > input[type="color"] { margin-inline-end: auto; }
 /* ...and every slider the same 90 px basis, as the wrapping size rows have, or the menu is sized by
    those rows alone and the others' reset overflows it. */
-#toolbar:not(.multi-open) .tb-section[data-sec="display"] .navtoggle > input[type="range"] { flex: 1 1 90px; }
+#toolbar:not(.multi-open):not(.deck-hosted) .tb-section[data-sec="display"] .navtoggle > input[type="range"] { flex: 1 1 90px; }
 /* (Not while several menus are open side by side: each is then a sixth of the screen, and a fixed
    78px readout left the track no room at all.) */
+/* (Nor in the phone's Menu sheet, where a slider has its own full-width line: the fixed readout kept
+   it on the label's line and squeezed it under 120 px -- mobile-slider-reach.) */
 /* ...and because the suffix makes the row wider than the menu body at selector 1, the row is
    allowed to wrap rather than squeezing the slider: label + slider on one line, the readout
    and its reset on the next. The row's contents overflowed their own box by ~15px otherwise,
