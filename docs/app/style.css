@@ -563,6 +563,7 @@ body.deck-on #deck-sheet #wp-search { min-height: 48px; font-size: 16px; }
   gap: 4px;
   padding-bottom: 4px;
 }
+#toolbar #tablet-layout-row[hidden] { display: none !important; }
 .tb-section.open .tb-section-body { display: flex; }
 /* Sub-group label inside a section body (layout A): thin divider + caption. */
 /* Grouping box for a toggle + its dependent controls (e.g. IMS PWX overlay). */
@@ -1517,6 +1518,22 @@ body.deck-on .leaflet-control.edit-col-ctrl {
   unicode-bidi: isolate;
 }
 .leaflet-control.zulu-clock.dragging { cursor: grabbing; }
+/* Fixed (gist zuluClockMovable off): in the readout stack left of the zoom buttons, always in the
+   slot above the VOR line -- it does not move when that line comes and goes (asked). The wind and
+   SIGMET lines step up past it, so nothing lands on it. Nothing to drag. */
+.leaflet-bottom.leaflet-right .leaflet-control.zulu-clock.zulu-fixed {
+  position: absolute;
+  right: var(--navaid-map-ctrl-clear);
+  bottom: var(--navaid-zulu-fixed-bottom, 70px);
+  top: auto;              /* the Hebrew top-left default sets these */
+  left: auto;
+  margin: 0;
+  transform: none;
+  cursor: default;
+  touch-action: auto;
+}
+body:not(.deck-on) .leaflet-bottom.leaflet-right:has(.zulu-clock.zulu-fixed) .wind-readout { bottom: 100px; }
+body:not(.deck-on) .leaflet-bottom.leaflet-right:has(.zulu-clock.zulu-fixed) .sigmet-readout { bottom: 120px; }
 
 /* GPS recording indicator: a red REC pill with a pulsing white dot, pinned to the top corner
    only while a track records. It was a 30px dark square with a red dot that faded to a quarter
@@ -1981,6 +1998,11 @@ body.theme-light #aircraft-custom input {
      inline left/top/right values and are intentionally unaffected. */
   right: calc(12px + var(--navaid-map-ctrl-clear, 52px));
   width: 280px;
+  /* Wider with the text size (ui.js applyInspZoom sets --insp-zoom): the zoom reflows the body
+     inside the panel, and at 2x a 280 px panel left 115 px for a row -- not room for a play
+     button, a frequency and its reset. 280 px at 1x, as before; a min-width, so a panel the
+     pilot widened by hand keeps its width; never wider than the screen. */
+  min-width: min(calc(150px + 130px * var(--insp-zoom, 1)), calc(100vw - 24px));
   background: rgba(20, 18, 18, 0.95);
   border: 1px solid #3a3636;
   border-radius: 8px;
@@ -2009,7 +2031,8 @@ body.theme-light #aircraft-custom input {
    PHYSICAL bottom-right grip is right either way. Gated by featureInspectorResize and
    desktop-only, so the class is absent rather than a property overridden. */
 #inspector.insp-resizable {
-  min-width: 220px;
+  /* 220 px at 1x, as before; at larger text sizes the floor rises with it (see #inspector). */
+  min-width: min(calc(30px + 190px * var(--insp-zoom, 1)), calc(100vw - 24px));
   min-height: 120px;
   max-width: calc(100vw - 24px);
 }
@@ -3384,8 +3407,8 @@ body.theme-light .modal.sim-modal #sim-url { border-color: #c6ccd6; background: 
 .atc-list { display: grid; gap: 8px; }
 .atc-row {
   display: grid;
-  grid-template-columns: 1fr auto auto;
-  grid-template-areas: "name freq btn" "state state btn";
+  grid-template-columns: 1fr auto;
+  grid-template-areas: "name btn" "state btn";
   align-items: center;
   column-gap: 10px;
   row-gap: 2px;
@@ -3395,12 +3418,6 @@ body.theme-light .modal.sim-modal #sim-url { border-color: #c6ccd6; background: 
 }
 body.theme-light .atc-row { border-color: #d5dae2; }
 .atc-row .atc-name { grid-area: name; font: 600 15px/1.3 system-ui, sans-serif; }
-.atc-row .atc-freq {
-  grid-area: freq;
-  font: 400 14px/1.3 ui-monospace, SFMono-Regular, Menlo, monospace;
-  font-variant-numeric: tabular-nums;
-  color: var(--muted);
-}
 .atc-row .atc-state { grid-area: state; min-height: 1.2em; font: 400 12px/1.3 system-ui, sans-serif; color: var(--muted); }
 .atc-row.is-live .atc-state { color: #3ecf83; font-weight: 600; }
 body.theme-light .atc-row.is-live .atc-state { color: #1e7d45; }
@@ -3457,6 +3474,22 @@ body.theme-light .atc-inline.is-offline .atc-play { color: #c62828; border-color
 /* English: the button leads the value box (next to the label), so its gap and the reserved space
    on rows without one sit at the start. */
 .atc-inline.atc-inline-lead { margin-inline-start: 0; margin-inline-end: 6px; }
+/* A frequency value -- play button, frequency box, reset -- is one line, always. As an inline span
+   its parts wrapped onto three lines at the inspector's larger text sizes; the box gives up width
+   first (it holds six characters), the label keeps its word. */
+.row > .val:has(> .charts-freq-input) {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: nowrap;
+  min-width: 0;
+}
+/* When even that does not fit beside the label, the whole value drops under it, still one line. */
+.row:has(> .val > .charts-freq-input) { flex-wrap: wrap; row-gap: 4px; }
+.row:has(> .val > .charts-freq-input) > label { margin-inline-end: 6px; }
+.row:has(> .val > .charts-freq-input) > .val { margin-inline-start: auto; }
+.row > .val > .charts-freq-input { flex: 0 1 96px; min-width: 76px; }
+.row > .val > .commchange-freq-reset,
+.row > .val > .atc-inline { flex: 0 0 auto; }
 html:not([dir="rtl"]) .comm-section.has-atc .row:not(:has(.atc-inline)) > .val:has(input) { padding-inline-end: 0; padding-inline-start: 38px; }
 @keyframes atc-pulse { 50% { opacity: 0.55; } }
 @media (prefers-reduced-motion: reduce) { .atc-inline.is-connecting .atc-play { animation: none; } }
@@ -3465,7 +3498,28 @@ html:not([dir="rtl"]) .comm-section.has-atc .row:not(:has(.atc-inline)) > .val:h
    same "live" language as the inline airfield buttons. */
 /* Reserve the slot whether or not the button shows, so the gist turning the feature on (after
    first paint) fills it without shifting the column -- the strict CLS budget needs this. */
-.atc-fab-control { min-width: 44px; min-height: 44px; margin-bottom: 8px !important; }
+.atc-fab-control { position: relative; min-width: 44px; min-height: 44px; margin-bottom: 8px !important; }
+/* What is playing: a label to the left of the green button (the column is on the right in both
+   languages). Absolute, so it never moves the column; not a target -- the button stops. */
+.atc-fab-now {
+  position: absolute;
+  right: calc(100% + 8px);
+  top: 50%;
+  transform: translateY(-50%);
+  max-width: 46vw;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  padding: 5px 10px;
+  font: 600 13px/1.2 system-ui, sans-serif;
+  color: #fff;
+  background: rgba(20, 18, 18, 0.92);
+  border: 1px solid #2e7d32;
+  border-radius: 14px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.45);
+  pointer-events: none;
+}
+.atc-fab-now[hidden] { display: none; }
 .atc-fab {
   display: flex;
   align-items: center;
@@ -4953,7 +5007,11 @@ body.theme-light .msa-low .val { color: #c0392b; }
   color: #ffb1a8;
   font-weight: 700;
   font-size: 12px;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
 }
+.commchange-row .commchange-label > .nav-icon { flex: 0 0 auto; }
 .commchange-row .commchange-freq {
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   font-size: 11px;
@@ -4978,32 +5036,43 @@ body.theme-light .msa-low .val { color: #c0392b; }
    slot -- no boxed card. A thin divider between them, and the frequency lines up down the column. */
 .commchange-option {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 8px;
+  gap: 4px 8px;
   padding: 7px 2px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.08);
 }
 .commchange-option:last-child { border-bottom: 0; }
-.commchange-option-name {
-  flex: 1 1 auto;
+/* Name over code, taking the room left of the play slot and the frequency. Names break between
+   words only; "anywhere" split them mid-word ("Herzliy / a") whenever the panel was narrow. */
+.commchange-option-ident {
+  flex: 1 1 6em;
   min-width: 0;
-  overflow-wrap: anywhere;
+  display: flex;
+  flex-direction: column;
+}
+.commchange-option-name {
+  overflow-wrap: break-word;
   font-weight: 700;
 }
 .commchange-option-code {
-  flex: 0 0 auto;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   color: #b9b3b3;
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   font-size: 10px;
 }
 .commchange-option-freq {
   flex: 0 0 auto;
+  white-space: nowrap;
   color: #fff;
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   font-size: 13px;
 }
 /* The play slot: always there (empty when the station is not one NavAid plays), so the
    frequencies line up whether or not a row has a button -- the airfield rows do the same. */
+.commchange-option-tune { flex: 0 0 auto; margin-inline-start: auto; display: inline-flex; align-items: center; gap: 8px; }
 .commchange-option-play { flex: 0 0 32px; display: inline-flex; justify-content: center; align-items: center; }
 .commchange-option-play > .atc-inline { margin-inline-start: 0; }
 .commchange-template {
@@ -6319,6 +6388,7 @@ body.theme-light #toolbar button.danger:hover {
    beat the desktop media rule that flattens them in dark). */
 body.theme-light #toolbar .tb-group-box { border-color: #b8c0cc; }
 body.theme-light #toolbar .tb-layer-frame { border-color: #b8c0cc; }
+body.theme-light #toolbar .tb-frame-title { color: #5b6672; }
 /* The rules that trail a group / frame title are drawn as a ::after block, and only the
    standalone .tb-group-separator had a light-theme colour -- so on a light background those
    two lines stayed dark-theme charcoal while every other separator went pale grey. Same
@@ -7391,6 +7461,10 @@ html[data-theme="light"] #insp-body .insp-actions {
   .leaflet-bottom.leaflet-right .vor-readout { bottom: 74px; }
   .leaflet-bottom.leaflet-right .wind-readout { bottom: 100px; }
   .leaflet-bottom.leaflet-right .sigmet-readout { bottom: 126px; }
+  /* The fixed Zulu clock: always above the VOR line's slot; wind and SIGMET step up past it. */
+  .leaflet-bottom.leaflet-right .zulu-clock.zulu-fixed { --navaid-zulu-fixed-bottom: 104px; }
+  body:not(.deck-on) .leaflet-bottom.leaflet-right:has(.zulu-clock.zulu-fixed) .wind-readout { bottom: 134px; }
+  body:not(.deck-on) .leaflet-bottom.leaflet-right:has(.zulu-clock.zulu-fixed) .sigmet-readout { bottom: 160px; }
   /* ...and while editing, the six DMS fields were a 22px-tall row. Grow the fields
      vertically only: the row is already 196px wide on a 375px screen, so widening
      them would push it off the edge. */
@@ -8203,6 +8277,8 @@ body.theme-light .ov-hide-btn { color: #1f252c; }
 /* Live ADS-B traffic: an arrow pointing where the aircraft is going, with its callsign and
    altitude beside it. Deliberately quieter than the own-ship and the route -- it is
    information about somebody else, and it must not be mistaken for either. */
+/* The feed has been silent a while: these positions are getting old (traffic.js ageOut). */
+.traffic-mark.traffic-stale { opacity: 0.4; filter: saturate(0.3); }
 .traffic-mark {
   display: flex; align-items: center; gap: 2px;
   pointer-events: auto; cursor: pointer;
@@ -8941,6 +9017,21 @@ body:not(.deck-on) .leaflet-bottom { padding-bottom: env(safe-area-inset-bottom,
   /* Except a question: a fixed-size yes/no or one-line answer does not grow, so it has no
      reason to sit at the top -- it is asked in the middle, where the eye already is. */
   .modal-back:has(> .follow-me-ask-modal) { align-items: center; }
+  /* ...but on a tablet with the desktop menubar (featureTabletDesktop) "the top of that space"
+     was the top of the screen, under the bar: the windows that open below the bar (Charts, the
+     NOTAM / MET lists, the nav log...) had their title and close button hidden behind it, and
+     on an iPad the bar wraps onto two rows (reported). Start the space at the bar's real bottom
+     (--navaid-toolbar-bottom, measured in ui.js). Touch only: a desktop with a mouse centres
+     its windows, clear of the bar, and is untouched. */
+  :where(html.menubar) body:not(.deck-on) .modal-back,
+  :where(html.menubar) body:not(.deck-on) .sim-overlay {
+    padding-top: var(--navaid-toolbar-bottom, 58px);
+  }
+  :where(html.menubar) body:not(.deck-on) .modal-back > .modal,
+  :where(html.menubar) body:not(.deck-on) .sim-overlay > .modal {
+    max-height: calc(100% - var(--navaid-toolbar-bottom, 58px));
+    overflow-y: auto;
+  }
 }
 
 /* The safety acknowledgement. Deliberately plain: it is read once, and the only thing on it

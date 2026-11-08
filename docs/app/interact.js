@@ -331,7 +331,9 @@ function appendNavWaypointCommChangeInfo(body, name) {
   row.className = 'row col commchange-row commchange-map-row';
   const lbl = document.createElement('label');
   lbl.className = 'commchange-label';
-  lbl.textContent = S.commChangeBadge || '📡 Freq change point';
+  // A drawn antenna, not the emoji the string used to carry (it rendered in each OS's own colours).
+  if (typeof navIconSvg === 'function') lbl.innerHTML = navIconSvg('antenna', 14);
+  lbl.append(S.commChangeBadge || 'Freq change point');
   row.appendChild(lbl);
 
   const opts = typeof commCallSignOptions === 'function'
@@ -349,31 +351,41 @@ function appendNavWaypointCommChangeInfo(body, name) {
       item.className = 'val commchange-option';
       item.dataset.callSign = opt.id || '';
 
+      // The name with its code UNDER it, not beside: side by side, a long code (RAMAT_DAVID)
+      // took the width and the name broke inside its words ("Ram / at / Da / vid").
+      const ident = document.createElement('span');
+      ident.className = 'commchange-option-ident';
       const nameSpan = document.createElement('span');
       nameSpan.className = 'commchange-option-name';
       nameSpan.textContent = opt.label || opt.id || '';
-      item.appendChild(nameSpan);
+      ident.appendChild(nameSpan);
 
       if (opt.id) {
         const code = document.createElement('span');
         code.className = 'commchange-option-code';
         code.textContent = opt.id;
-        item.appendChild(code);
+        ident.appendChild(code);
       }
+      item.appendChild(ident);
 
       // The play slot between the station's name and its frequency, in either language (asked),
       // as in the airfield rows. Always there (atc-radio.js fills it for a station NavAid plays
       // live), so the frequencies line up with or without a button.
+      // Button and frequency in one unit: when the panel is narrow (its larger text sizes) the
+      // unit drops under the name whole, rather than the frequency wrapping away from its button.
+      const tune = document.createElement('span');
+      tune.className = 'commchange-option-tune';
       const play = document.createElement('span');
       play.className = 'commchange-option-play';
-      item.appendChild(play);
+      tune.appendChild(play);
       if (opt.freq) {
         const freq = document.createElement('span');
         freq.className = 'commchange-option-freq';
         freq.dir = 'ltr';
         freq.textContent = opt.freq + ' MHz';
-        item.appendChild(freq);
+        tune.appendChild(freq);
       }
+      item.appendChild(tune);
       if (window.atcRadio && typeof window.atcRadio.callSignAttach === 'function') window.atcRadio.callSignAttach(item);
       list.appendChild(item);
     }
@@ -4436,6 +4448,25 @@ function showInspector() {
     }
     title.value = ac.flight || ac.hex || (S.trafficTitle || 'Traffic');
     title.readOnly = true;
+    const followBtn = document.createElement('button');
+    followBtn.type = 'button';
+    followBtn.id = 'insp-traffic-follow';
+    followBtn.className = 'insp-btn';
+    const updateFollowButton = () => {
+      const following = typeof window.trafficFollowTarget === 'function' &&
+        window.trafficFollowTarget() === ac.hex;
+      followBtn.textContent = following
+        ? (S.trafficStopFollow || 'Stop following')
+        : (S.trafficFollow || 'Follow aircraft');
+      followBtn.setAttribute('aria-pressed', following ? 'true' : 'false');
+      followBtn.classList.toggle('insp-btn-on', following);
+    };
+    updateFollowButton();
+    followBtn.onclick = () => {
+      if (typeof window.trafficToggleFollow === 'function') window.trafficToggleFollow(ac.hex);
+      updateFollowButton();
+    };
+    body.appendChild(followBtn);
     body.appendChild(textRow(S.trafficAltitude || 'Altitude',
       Number.isFinite(ac.alt) ? Math.round(ac.alt) + ' ' + (S.unitFeet || 'ft') : '—'));
     body.appendChild(textRow(S.trafficGroundSpeed || 'Ground speed',
@@ -4476,10 +4507,12 @@ function showInspector() {
     title.placeholder = ''; title.readOnly = true; title.oninput = null;
     appendPointCoordinateRows(body, nw);
     appendPlaceRows(body, nw);
-    appendNavWaypointCommChangeInfo(body, nw.name);
     appendSatelliteSnippet(body, nw, title.value);
     appendVorRadialRow(body, nw.lat, nw.lng); appendSurfaceWxRow(body, nw.lat, nw.lng);
     appendReportingRow(body, nw.name);
+    // After Reporting, where the route waypoint has it: the same point opened from the map or
+    // from the route reads in the same order.
+    appendNavWaypointCommChangeInfo(body, nw.name);
     appendDirectToButton(body, nw);
     appendAddToRouteButton(body, nw);
   } else {
@@ -4546,6 +4579,10 @@ function showInspector() {
       }
       const cc = commChangeMap && ccKey ? commChangeMap[ccKey] : null;
       if (linkedNote && typeof appendFreqEdit === 'function') {
+        // The chart's call signs with their frequencies and play buttons, as on the map point,
+        // and the editor for this route's callout under them. With only the editor, the same
+        // point showed one call sign and no way to listen once it was on the route.
+        if (cc && cc.commChange) appendNavWaypointCommChangeInfo(body, ccKey);
         appendFreqEdit(body, linkedNote, { deleteButton: true });
       } else if (cc && cc.commChange) {
         // The same frame the map waypoint shows (asked: match the styling between waypoint types):
@@ -6096,11 +6133,32 @@ window.addEventListener('keydown', e => {
   // waypoint behind the dialog, silently, with the route and the filed plan one point short.
   // Undo (Ctrl-Z) is deliberately still allowed: it is a recovery key, not a route edit.
   const modalOpen = !!document.querySelector('.modal-back');
+  // A shortcut does what its button does -- including saying no. When the button it stands for
+  // is dimmed, the key gives the button's reason (as a tap on it would) and does nothing. F fitted
+  // the map with Fit dimmed, Ctrl-Z rewrote a locked route with Undo dimmed (reported).
+  const refusedLikeButton = (...ids) => {
+    if (typeof window.refreshRouteButtons === 'function') window.refreshRouteButtons();
+    if (typeof window.refreshEditColumn === 'function') window.refreshEditColumn();
+    const b = ids.map(id => document.getElementById(id)).find(Boolean);
+    if (!b || b.getAttribute('aria-disabled') !== 'true' || !b.dataset.why) return false;
+    if (typeof showToast === 'function') showToast(b.dataset.why, { warn: true });
+    return true;
+  };
+  // The selection keys (D, Delete, X, Z) edit the route like the panel's buttons, which a locked
+  // route dims: the key refuses with the lock's own message.
+  const refusedByLock = () => {
+    if (!(typeof routeEditLocked === 'function' && routeEditLocked())) return false;
+    // A read-only pick (an airfield, a chart point) has nothing for these keys to change.
+    if (!state.selected || (state.selected.type !== 'wp' && state.selected.type !== 'note')) return false;
+    if (typeof showToast === 'function') showToast(S.editLockBlockedToast || 'Route is locked', { warn: true });
+    return true;
+  };
   // Ctrl/Cmd-Z undoes the last committed edit. Shift-Ctrl-Z (redo) is left
   // alone — there is no redo, so don't swallow it.
   if (shortcutKey(e, 'KeyZ', 'z') && (e.ctrlKey || e.metaKey) &&
       !e.altKey && !e.shiftKey) {
     e.preventDefault();
+    if (refusedLikeButton('edit-col-undo')) return;     // locked, or nothing to undo
     if (typeof undo === 'function') undo();
     return;
   }
@@ -6121,6 +6179,7 @@ window.addEventListener('keydown', e => {
   // overlay shortcut handled in ui.js — bail out so we don't shadow it.
   if (shortcutPlain(e, 'KeyF', 'f')) {
     e.preventDefault();
+    if (refusedLikeButton('edit-col-fit', 'fit')) return;   // nothing to fit yet
     fitToScreen();
     return;
   }
@@ -6173,6 +6232,7 @@ window.addEventListener('keydown', e => {
     if (modalOpen || !state.selected) return;
     const freqNote = selectedFreqNoteIndex();
     if (freqNote >= 0) {
+      if (refusedByLock()) return;
       const note = state.notes[freqNote];
       // Suppress so seedCommChangeNotes() doesn't re-seed it on the next
       // drag/add/toggle — matches the other freq-note delete paths.
@@ -6190,6 +6250,7 @@ window.addEventListener('keydown', e => {
     if (!wp || !wp.name || !showCommChange) return;
     const ccKey = waypointFreqChangeKey(wp);
     if (!ccKey || freqChangeNoteForKey(ccKey)) return;
+    if (refusedByLock()) return;
     const idx = addCommChangeNoteForWaypoint(wp, ccKey);
     if (idx >= 0) state.selected.freqNoteIndex = idx;
     draw(); showInspector();
@@ -6198,12 +6259,14 @@ window.addEventListener('keydown', e => {
   // D (no modifier): delete the selected waypoint or note (freq callout goes with its waypoint).
   if (shortcutPlain(e, 'KeyD', 'd')) {
     if (modalOpen || !state.selected) return;
+    if (refusedByLock()) return;
     deleteSelectedWpOrNote();
     return;
   }
   // Delete / Backspace: delete freq callout first, otherwise waypoint/note.
   if (e.key === 'Delete' || e.key === 'Backspace') {
     if (modalOpen || !state.selected) return;
+    if (refusedByLock()) return;
     const freqNote = selectedFreqNoteIndex();
     if (freqNote >= 0) {
       const note = state.notes[freqNote];

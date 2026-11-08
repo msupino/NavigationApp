@@ -42,7 +42,7 @@ test('Megiddo junction: Pluto West plays, Pluto East and Megiddo do not', async 
     ['PLUTO_EAST', null], ['PLUTO_WEST', 'pluto-west'], ['MEGIDDO', null],
   ]);
   const btn = page.locator('#inspector [data-call-sign="PLUTO_WEST"] [data-atc="pluto-west"] button');
-  await expect(btn).toHaveAttribute('aria-label', 'Listen Pluto West 118.40');
+  await expect(btn).toHaveAttribute('aria-label', 'Listen Pluto West');
   await btn.click();
   await expect(page.locator('#inspector [data-atc="pluto-west"]')).toHaveClass(/is-live/);
   expect(await page.evaluate(() => window.__atcPlays.pop())).toMatch(/\/pluto-west\?ts=\d+$/);

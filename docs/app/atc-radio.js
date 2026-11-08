@@ -5,15 +5,17 @@
 (function () {
   'use strict';
   const CHANNELS = [
+    // No frequencies here: the airfield window shows each field's own, from its data, and a copy
+    // here would go stale when one changes -- the provider updates the channel (asked).
     // callSign: the station's id in the frequency catalog (comm-change), so a waypoint's call-sign
     // list can offer its live channel too -- the tower for an airfield's call sign.
-    { id: 'herzliya-twr', icao: 'LLHZ', type: 'atcTower', freq: '125.60', callSign: 'HERZLIYA' },
-    { id: 'herzliya-clr', icao: 'LLHZ', type: 'atcClearance', freq: '118.55' },
-    { id: 'haifa-twr', icao: 'LLHA', type: 'atcTower', freq: '133.00', callSign: 'HAIFA' },
-    { id: 'haifa-atis', icao: 'LLHA', type: 'atis', freq: '135.40' },
+    { id: 'herzliya-twr', icao: 'LLHZ', type: 'atcTower', callSign: 'HERZLIYA' },
+    { id: 'herzliya-clr', icao: 'LLHZ', type: 'atcClearance' },
+    { id: 'haifa-twr', icao: 'LLHA', type: 'atcTower', callSign: 'HAIFA' },
+    { id: 'haifa-atis', icao: 'LLHA', type: 'atis' },
     // Pluto is the country-wide control, not an airfield's: in the list only, never in an
     // airfield's window.
-    { id: 'pluto-west', icao: null, type: 'atcPluto', freq: '118.40', callSign: 'PLUTO_WEST' },
+    { id: 'pluto-west', icao: null, type: 'atcPluto', callSign: 'PLUTO_WEST' },
   ];
   const str = (k, fb) => (typeof S !== 'undefined' && S[k]) || fb;
   const offered = () => typeof tune !== 'function' || tune('featureAtcRadio') !== false;
@@ -102,10 +104,6 @@
       const name = document.createElement('div');
       name.className = 'atc-name';
       name.textContent = withField && c.icao ? c.icao + ' · ' + str(c.type, c.type) : str(c.type, c.type);
-      const freq = document.createElement('div');
-      freq.className = 'atc-freq';
-      freq.dir = 'ltr';
-      freq.textContent = c.freq;
       const st = document.createElement('div');
       st.className = 'atc-state';
       st.setAttribute('role', 'status');
@@ -113,9 +111,9 @@
       const btn = document.createElement('button');
       btn.type = 'button';
       btn.className = 'atc-play';
-      btn.setAttribute('aria-label', (c.icao ? c.icao + ' ' : '') + str(c.type, c.type) + ' ' + c.freq);
+      btn.setAttribute('aria-label', (c.icao ? c.icao + ' ' : '') + str(c.type, c.type));
       btn.addEventListener('click', () => play(c.id));
-      row.append(name, freq, st, btn);
+      row.append(name, st, btn);
       const on = current === c.id;
       paintRow(row, on, on ? stateOf[c.id] : (stateOf[c.id] === 'atcOffline' ? 'atcOffline' : null));
       return row;
@@ -128,7 +126,7 @@
     const wrap = document.createElement('span');
     wrap.className = 'atc-inline';
     wrap.dataset.atc = c.id;
-    wrap.dataset.label = (c.icao ? c.icao + ' ' : '') + str(c.type, c.type) + ' ' + c.freq;
+    wrap.dataset.label = (c.icao ? c.icao + ' ' : '') + str(c.type, c.type);
     const btn = document.createElement('button');
     btn.type = 'button';
     btn.className = 'atc-play';
@@ -160,7 +158,6 @@
         const v = document.createElement('span');
         v.className = 'val';
         v.dir = 'ltr';
-        v.textContent = c.freq + ' ';
         row.append(l, v);
         const phone = sec.querySelector('.airfield-phone-row');
         sec.insertBefore(row, phone || null);
@@ -180,9 +177,22 @@
 
   // The opener stays lit while a channel plays, like the other switches: closing the window
   // does not stop the audio, and the lit button says where to stop it.
+  // While a channel plays the button stops it (ui.js), and says so: "Stop <channel>".
   function refreshOpener() {
     opener.setAttribute('aria-pressed', current ? 'true' : 'false');
     opener.classList.toggle('active', !!current);
+    const c = current && CHANNELS.find(ch => ch.id === current);
+    const label = c
+      ? str('atcStop', 'Stop') + ' ' + (c.icao ? c.icao + ' ' : '') + str(c.type, c.type)
+      : str('atcRadioTitle', 'ATC radio');
+    opener.title = label;
+    opener.setAttribute('aria-label', label);
+    // The channel's name beside the green button, so the map says what is playing (asked).
+    const now = opener.parentNode && opener.parentNode.querySelector('.atc-fab-now');
+    if (now) {
+      now.textContent = c ? (c.icao ? c.icao + ' \u00b7 ' : '') + str(c.type, c.type) : '';
+      now.hidden = !c;
+    }
   }
 
   function open() { build(); modal.classList.remove('hidden'); const b = list.querySelector('button'); if (b) b.focus(); }

@@ -965,6 +965,10 @@ NavAid.tuningDefaults = {
   inspectorDefaultTopPx: { value: 96, min: 40, max: 240, step: 1, label: 'Inspector default top (px)' },
   inspectorBottomGapPx: { value: 12, min: 0, max: 120, step: 1, label: 'Inspector bottom gap (px)' },
   floatingPanelGapPx: { value: 12, min: 0, max: 80, step: 1, label: 'Floating panel separation (px)' },
+  // Off: the clock sits fixed above the coordinate readout, left of the zoom buttons, and moves
+  // up past the VOR / wind / SIGMET lines when they show. On: it is draggable anywhere (the
+  // spot persists under navaid.clockPos), starting in the top corner.
+  zuluClockMovable: { value: false, type: 'bool', label: 'Zulu clock: draggable (off: fixed above the coordinates, left of the zoom buttons)' },
   zuluClockMinWidthPx: { value: 82, min: 40, max: 180, step: 1, label: 'Zulu clock min width (px)' },
   zuluClockPadYPx: { value: 5, min: 0, max: 24, step: 1, label: 'Zulu clock vertical padding (px)' },
   zuluClockPadXPx: { value: 8, min: 0, max: 36, step: 1, label: 'Zulu clock horizontal padding (px)' },
@@ -1274,6 +1278,16 @@ NavAid.tuningDefaults = {
     label: 'How often live traffic is refreshed (s)' },
   trafficFailsBeforeWarn: { value: 3, min: 1, max: 10, step: 1,
     label: 'Failed traffic requests in a row before saying so' },
+  // A request that hangs used to hold every later refresh off (one in flight at a time) until the
+  // browser gave up; timed out, it fails and the next refresh tries again.
+  trafficTimeoutSec: { value: 10, min: 3, max: 30, step: 1,
+    label: 'Give up on a live traffic request after (s)' },
+  // No good answer for this long: the feed's aircraft fade (their positions are getting old), and
+  // after the second, longer wait they go, with a message -- a frozen aeroplane reads as current.
+  trafficStaleSec: { value: 30, min: 10, max: 120, step: 5,
+    label: 'Fade live traffic when no update for (s)' },
+  trafficDropSec: { value: 60, min: 20, max: 300, step: 10,
+    label: 'Remove live traffic when no update for (s)' },
   // Not red. Red on an aviation display means resolve it now, and this is information --
   // magenta is what a traffic symbol wears on a moving map, and nothing else on the chart
   // uses it.
@@ -1311,7 +1325,7 @@ NavAid.tuningGroups = [
     'airspaceLabelFontPx'] },
   { name: 'ATC radio', keys: ['featureAtcRadio', 'atcRadioBase'] },
   { name: 'Live traffic', keys: ['featureLiveTraffic', 'defaultShowTraffic', 'trafficApiUrl', 'trafficWebApiUrl', 'trafficRadiusNm',
-    'trafficRefreshSec', 'trafficFailsBeforeWarn', 'trafficIconPx', 'trafficArrowColor',
+    'trafficRefreshSec', 'trafficFailsBeforeWarn', 'trafficTimeoutSec', 'trafficStaleSec', 'trafficDropSec', 'trafficIconPx', 'trafficArrowColor',
     'trafficLabelColor'] },
   { name: 'Follow me', keys: ['featureFollowMe', 'featureFollowMePublic', 'publicPilotsViewHash', 'followMePublicZoomGrow', 'followMePublicDimSec', 'followMePublicDropSec', 'followMeBroker', 'followMeRateSec',
     'followMeStaleSec', 'featureFollowMeHeartbeat', 'followMeHeartbeatSec', 'followMePlanePx', 'followMePlaneColor', 'featureFollowMeShareWhileViewing', 'featureFollowMeRoute', 'followMeRequireSignedLinks', 'followMeRouteCompress', 'followMeRouteMaxKb', 'followMeRouteDebounceMs', 'followMeStopMaxSec', 'followMeResumeHr',
@@ -1372,7 +1386,7 @@ NavAid.tuningGroups = [
   { name: 'Airfield wind', keys: ['afWindBarbLenPx', 'afWindBarbTickPx', 'afWindBarbTickGapPx', 'afWindBarbWidthPx', 'afWindCalmRadiusPx', 'afWindBarbColor', 'afWindOffsetPx', 'afWindLabelFontPx', 'afWindLabelHaloPx', 'afWindMinZoom', 'afWindLabelMinZoom', 'afWindGustDeltaKt', 'afWindRunwayMinKt', 'afWindCalmMaxKt', 'afWindCrossDeadbandKt', 'afWindCacheMin', 'afWindForecastDays', 'afWindSampleToleranceMin', 'afWindPennantWidthFactor', 'afWindPennantGapFactor', 'afWindFullTickSlantFactor', 'afWindHalfTickSlantFactor', 'afWindHalfTickLenFactor', 'afWindStartGapPx', 'afWindBarbHaloPx', 'afWindObsColor', 'afWindModelDashPx', 'afWindModelGapPx', 'afWindModelLabelAlpha', 'afWindObsMaxAgeMin', 'featureAirfieldWind'] },
   { name: 'Surface weather', keys: ['featureSurfaceWx', 'swxDotRingWidthPx', 'swxMinZoom', 'swxDotRadiusPx', 'swxLabelFontPx', 'swxLabelHaloPx', 'swxStationGapPx', 'swxMinSpacingPx', 'swxStationSpacingFactor', 'swxTempColor', 'swxWarnColor', 'swxCautionColor', 'swxQuietColor', 'swxSpreadWarnC', 'swxSpreadCautionC', 'swxBaseFtPerC', 'swxBaseWarnFt', 'swxBaseCautionFt', 'swxIsobarColor', 'swxIsobarWidthPx', 'swxIsobarMinLines', 'swxCentreFontPx', 'swxHighColor', 'swxLowColor', 'swxCentreRadiusSteps', 'swxCentreMinHpa', 'swxGridSouth', 'swxGridNorth', 'swxGridWest', 'swxGridEast', 'swxGridStepDeg', 'swxCacheMin', 'swxForecastDays', 'swxSampleToleranceMin', 'swxRetryMin'] },
   { name: 'Wind field', keys: ['windFieldDefaultAltFt', 'windFieldDefaultOpacity', 'windFieldGridDeg', 'windFieldFollowMap', 'windFieldMaxPoints', 'windFieldWest', 'windFieldEast', 'windFieldSouth', 'windFieldNorth', 'windFieldVelocityScale', 'windFieldParticleAge', 'windFieldParticleMultiplier', 'windFieldLineWidth', 'windFieldMaxVelocity', 'windFieldMinVelocity', 'windFieldFrameRate', 'windFieldHoursAhead', 'windFieldForecastDays'] },
-  { name: 'Chrome layout', keys: ['inspectorDefaultTopPx', 'inspectorBottomGapPx', 'floatingPanelGapPx', 'zuluClockMinWidthPx', 'zuluClockPadYPx', 'zuluClockPadXPx', 'zuluClockMarginTopPx', 'zuluClockMarginRightPx', 'zuluClockFontPx', 'zuluClockFontWeight', 'zuluClockLineHeight', 'zuluClockTextColor', 'zuluClockBgColor', 'zuluClockBgAlpha', 'zuluClockBorderColor', 'zuluClockBorderWidthPx', 'zuluClockBorderRadiusPx', 'zuluClockShadowYPx', 'zuluClockShadowBlurPx', 'zuluClockShadowAlpha', 'compassNeedleColor'] },
+  { name: 'Chrome layout', keys: ['inspectorDefaultTopPx', 'inspectorBottomGapPx', 'floatingPanelGapPx', 'zuluClockMovable', 'zuluClockMinWidthPx', 'zuluClockPadYPx', 'zuluClockPadXPx', 'zuluClockMarginTopPx', 'zuluClockMarginRightPx', 'zuluClockFontPx', 'zuluClockFontWeight', 'zuluClockLineHeight', 'zuluClockTextColor', 'zuluClockBgColor', 'zuluClockBgAlpha', 'zuluClockBorderColor', 'zuluClockBorderWidthPx', 'zuluClockBorderRadiusPx', 'zuluClockShadowYPx', 'zuluClockShadowBlurPx', 'zuluClockShadowAlpha', 'compassNeedleColor'] },
   // Includes the former 'First-run view' group: the first-run centre/zoom and the
   // fit-with-no-route view answer the same question, and a pilot tuning one wants the other
   // in front of them.
@@ -3094,7 +3108,7 @@ window.S = Object.assign({
   ppTipShare: 'Show yourself to other NavAid pilots and see them',
   tbShowPublicPilotsTitle: 'Everyone sharing their position publicly (Share → Public), from the NavAid relay. Not ADS-B.',
   tbShowTrafficApkOnly: 'In the app only: the ADS-B feeds refuse browser requests, so nothing could be drawn here. Install the NavAid app (Android, iPhone or iPad) and it works there.',
-  tbShowTrafficTitle: 'Aircraft heard on ADS-B. It asks around your position when you have one, and otherwise around the middle of the map, so it works while planning too. The arrow points where each one is going; its callsign and altitude in hundreds of feet are beside it.',
+  tbShowTrafficTitle: 'Aircraft heard on ADS-B. It asks around your position when you have one, and otherwise around the middle of the map, so it works while planning too. The arrow points where each one is going; its callsign and flight level (FL) are beside it.',
   tbPlateOpacity: 'Chart opacity',
   tbPlateOpacityTitle: 'Adjust the airfield-plate overlay opacity (shared by all plate layers)',
   tbPlateOpacityReset: 'Reset opacity',
@@ -3310,7 +3324,7 @@ window.S = Object.assign({
   legendLsaWeekend: 'LSA bubble, weekends only',
   legendParachute: 'Parachute drop zone',
   legendParaglider: 'Hang-glider / paraglider launch',
-  commChangeBadge: '📡 Freq change point',
+  commChangeBadge: 'Freq change point',
   commChangeNoteText: 'Freq change',
   commChangeCallSign: 'Waypoint',
   commChangeCallSigns: 'Call signs',
@@ -3443,8 +3457,11 @@ window.S = Object.assign({
   wxTitleNoMetar: 'Density altitude',
   daElevFromModel: 'terrain elevation',
   trafficUnavailable: 'Live traffic unavailable',
+  trafficLost: (s) => 'Live traffic lost — no update for ' + s + ' s',
   airspaceUnavailable: 'Airspace unavailable',
   trafficTitle: 'Traffic',
+  trafficFollow: 'Follow aircraft',
+  trafficStopFollow: 'Stop following',
   trafficAltitude: 'Altitude',
   trafficGroundSpeed: 'Ground speed',
   trafficSquawk: 'Squawk',
@@ -3480,9 +3497,15 @@ window.S = Object.assign({
   updateAvailable: 'New NavAid build available. Hard refresh or reload to update.',
   updateReload: 'Reload',
   updateDismiss: 'Dismiss',
-  tbLightMode: 'Light mode',
-  tbDarkMode: 'Dark mode',
+  tbLightMode: 'Light',
+  tbDarkMode: 'Dark',
   tbLightModeTitle: 'Switch between light and dark theme',
+  tbTheme: 'Theme',
+  tbTabletLayout: 'Tablet layout',
+  tbTabletLayoutTitle: 'Choose the tablet menu layout. Automatic follows the app\'s configured default.',
+  tbTabletLayoutAuto: 'Automatic',
+  tbTabletLayoutMobile: 'Mobile',
+  tbTabletLayoutDesktop: 'Desktop',
   tbClearStore: '🗑 Clear local store',
   tbClearStoreTitle: 'Delete all saved routes and settings stored on this device',
   tbClearStoreConfirm: 'Delete ALL saved routes and settings stored on this device? This cannot be undone.',

@@ -380,6 +380,8 @@ test.describe('Hidden tuning panel', () => {
 
   test('chrome layout controls drive the inspector and Zulu clock CSS', async ({ page }) => {
     await boot(page);
+    // The margins place the draggable clock in its corner; the fixed default sits in the readout stack.
+    await page.evaluate(() => { NavAid.tuning.zuluClockMovable = true; window.refreshZuluClockPlacement(); });
     await openTuneGroup(page, 'Chrome layout');
     await page.locator('#tune-inspectorDefaultTopPx-number').fill('110');
     await page.locator('#tune-inspectorBottomGapPx-number').fill('20');

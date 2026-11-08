@@ -61,6 +61,15 @@ const fly = (page, lat = 32.05, lng = 34.92) => page.evaluate(async ([la, ln]) =
 }, [lat, lng]);
 
 const marks = (page) => page.locator('.traffic-mark');
+// Where a followed aircraft sits on screen: on the map, and not under the inspector that follows it.
+const seen = (page, lat, lon) => page.evaluate(([la, lo]) => {
+  const box = map.getContainer().getBoundingClientRect();
+  const p = map.latLngToContainerPoint([la, lo]);
+  const x = box.left + p.x, y = box.top + p.y;
+  const i = document.getElementById('inspector').getBoundingClientRect();
+  return { onMap: x > box.left && x < box.right && y > box.top && y < box.bottom,
+    underPanel: x >= i.left && x <= i.right && y >= i.top && y <= i.bottom };
+}, [lat, lon]);
 const asked = (page) => page.evaluate(() => window.__asked || []);
 const frameShown = (page) => page.evaluate(() => {
   const f = document.getElementById('traffic-cb').closest('.tb-layer-frame');
@@ -173,7 +182,7 @@ test('each mark says who and how high, pointing where it is going', async ({ pag
     return { text: el.textContent.trim(), rotated: el.querySelector('.traffic-arrow').style.transform };
   });
   expect(first.text).toContain('BBG802');       // trimmed: the feed pads callsigns to 8
-  expect(first.text).toContain('160');          // 15 975 ft, in hundreds, as it is said
+  expect(first.text).toContain('FL160');         // 15 975 ft, shown as flight level
   expect(first.rotated).toBe('rotate(284.9deg)');
 });
 
@@ -195,6 +204,111 @@ test('tapping one opens the inspector on it, in flight', async ({ page }) => {
   expect(out.rows).toMatch(/377 kt/);
   expect(out.rows).toMatch(/A320/);
   expect(out.rows).toMatch(/2225/);
+});
+
+test('the open inspector follows new reports for its selected aircraft', async ({ page }) => {
+  await boot(page);
+  await fly(page);
+  await page.evaluate(() => map.setView([32.10, 34.90], 10));
+  await page.locator('.traffic-mark').first().click({ force: true });
+  await expect(page.locator('#insp-body')).toContainText('15975 ft');
+
+  await page.evaluate(async (report) => {
+    window.__body = { ac: [report] };
+    await window.trafficPoll();
+  }, { ...AC[0], alt_baro: 17200, gs: 401, track: 301.2, lat: 32.12, lon: 34.93 });
+
+  await expect(page.locator('#insp-body')).toContainText('17200 ft');
+  await expect(page.locator('#insp-body')).toContainText('401 kt');
+  await expect(page.locator('#insp-body')).toContainText('301°');
+  await expect(page.locator('#insp-body')).toContainText(/32°07\.2/);
+});
+
+test('the traffic inspector follows its aircraft until follow is stopped', async ({ page }) => {
+  await boot(page);
+  await fly(page);
+  await page.evaluate(() => map.setView([32.10, 34.90], 10));
+  await page.locator('.traffic-mark').first().click({ force: true });
+  const follow = page.locator('#insp-traffic-follow');
+  await expect(follow).toHaveText('Follow aircraft');
+
+  await follow.click();
+  await expect(follow).toHaveAttribute('aria-pressed', 'true');
+  const startState = await page.evaluate(() => ({
+    ownFollow: gpsFollow,
+    storedFollow: localStorage.getItem('navaid.gpsFollow'),
+  }));
+  // Centred in the map you can see -- beside the open inspector, not under it.
+  expect(await seen(page, 32.10, 34.90)).toEqual({ onMap: true, underPanel: false });
+  expect(startState.ownFollow).toBe(true);
+  expect(startState.storedFollow).toBeNull();
+
+  await page.evaluate(async (report) => {
+    window.__body = { ac: [report] };
+    await window.trafficPoll();
+  }, { ...AC[0], alt_baro: 16200, lat: 32.16, lon: 34.96 });
+  await expect.poll(() => seen(page, 32.16, 34.96)).toEqual({ onMap: true, underPanel: false });
+  const followedAt = await page.evaluate(() => map.getCenter());
+  await expect(follow).toHaveText('Stop following');
+  await page.evaluate(() => {
+    window.__geoCb({ coords: { latitude: 32.05, longitude: 34.92, accuracy: 5 }, timestamp: Date.now() });
+  });
+  // The pilot's own fix does not take the view back while an aircraft is followed.
+  await expect.poll(() => page.evaluate(() => map.getCenter().lat)).toBeCloseTo(followedAt.lat, 4);
+
+  await follow.click();
+  await expect(follow).toHaveAttribute('aria-pressed', 'false');
+  const stoppedAt = await page.evaluate(() => map.getCenter());
+  await page.evaluate(async (report) => {
+    window.__body = { ac: [report] };
+    await window.trafficPoll();
+  }, { ...AC[0], lat: 32.20, lon: 35.02 });
+  await expect.poll(() => page.evaluate(() => map.getCenter().lat)).toBeCloseTo(stoppedAt.lat, 4);
+  await expect.poll(() => page.evaluate(() => map.getCenter().lng)).toBeCloseTo(stoppedAt.lng, 4);
+  expect(await page.evaluate(() => localStorage.getItem('navaid.gpsFollow'))).toBeNull();
+
+  await follow.click();
+  await page.locator('#insp-close').click();
+  expect(await page.evaluate(() => window.trafficFollowTarget())).toBe('');
+});
+
+// Reported: on a phone, following an aircraft put it in the middle of the screen -- under the
+// inspector sheet that carries Stop following. It goes to the middle of the map left uncovered.
+test('on a phone the followed aircraft sits above the inspector sheet, not under it', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await boot(page);
+  await fly(page);
+  await page.evaluate(() => map.setView([32.10, 34.90], 10));
+  await page.evaluate(() => { state.selected = { type: 'traffic', hex: '4c80b8' }; showInspector(); });
+  await page.locator('#insp-traffic-follow').click();
+  const r = await page.evaluate(() => {
+    const box = map.getContainer().getBoundingClientRect();
+    const p = map.latLngToContainerPoint([32.10, 34.90]);
+    const y = box.top + p.y;
+    const sheet = document.getElementById('inspector').getBoundingClientRect();
+    const strip = document.getElementById('deck-strip').getBoundingClientRect();
+    return { y, sheetTop: sheet.top, stripBottom: strip.bottom };
+  });
+  expect(r.y).toBeLessThan(r.sheetTop);
+  expect(r.y).toBeGreaterThan(r.stripBottom);
+  // Centred in that gap, give or take.
+  expect(Math.abs(r.y - (r.stripBottom + r.sheetTop) / 2)).toBeLessThan(12);
+});
+
+test('turning traffic off clears its temporary follow target', async ({ page }) => {
+  await boot(page);
+  await fly(page);
+  await page.evaluate(() => map.setView([32.10, 34.90], 10));
+  await page.locator('.traffic-mark').first().click({ force: true });
+  await page.locator('#insp-traffic-follow').click();
+  expect(await page.evaluate(() => window.trafficFollowTarget())).toBe('4c80b8');
+
+  await page.evaluate(() => {
+    const cb = document.getElementById('traffic-cb');
+    cb.checked = false;
+    cb.dispatchEvent(new Event('change', { bubbles: true }));
+  });
+  await expect.poll(() => page.evaluate(() => window.trafficFollowTarget())).toBe('');
 });
 
 test('an aircraft that stops being heard takes its panel with it', async ({ page }) => {

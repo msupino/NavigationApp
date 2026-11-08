@@ -186,7 +186,6 @@ const MENU_ICONS = {
   undo: 'undo', clear: 'trash', fit: 'fit', 'tool-reset-all-markers': 'reset',
   'tool-reset-all-wp-names': 'reset', 'tool-magnifier': 'magnifier',
   'autoroute-btn': 'map', 'force-snap-btn': 'addWp', 'ret-btn': 'direct',
-  'theme-toggle': (b) => (/☀|light|בהיר/i.test(b.textContent) ? 'sun' : 'moon'),
   'route-templates': 'templates', 'freq-table': 'antenna', 'alt-pairs': 'altPairs',
   'nav-log': 'form', charts: 'charts', 'sigwx-btn': 'globe', 'pwx-btn': 'wind',
   'sigmet-btn': 'warn', 'airmet-btn': 'warn', 'route-check-btn': 'check', 'notam-list-btn': 'list',
@@ -1352,8 +1351,22 @@ atcRadioCtrl.onAdd = function () {
   setMapIcon(b, 'headset');
   b.title = (typeof S !== 'undefined' && S.atcRadioTitle) || 'ATC radio';
   b.setAttribute('aria-label', b.title);
-  b.addEventListener('click', () => { if (window.atcRadio && typeof window.atcRadio.open === 'function') window.atcRadio.open(); });
+  // Green (a channel playing): a tap stops it (asked). Otherwise it opens the channel list.
+  b.addEventListener('click', () => {
+    const r = window.atcRadio;
+    if (!r) return;
+    if (r.current && typeof r.stop === 'function') r.stop();
+    else if (typeof r.open === 'function') r.open();
+  });
   wrap.appendChild(b);
+  // What is playing, beside the green button (asked). Absolutely placed, so showing it never moves
+  // the column; the button's own label already says it to a screen reader.
+  const now = document.createElement('span');
+  now.className = 'atc-fab-now';
+  now.hidden = true;
+  now.setAttribute('aria-hidden', 'true');
+  now.dir = 'auto';
+  wrap.appendChild(now);
   // Ships off (gist turns it on). The wrapper reserves its slot from first paint (CSS min-size);
   // only the button is hidden when off. So the gist flipping it on -- after paint, on a cold load
   // lighthouse measures -- fills the reserved slot without moving any control (no layout shift).
@@ -2078,15 +2091,19 @@ function applyTuningCssVars() {
 }
 window.applyTuningCssVars = applyTuningCssVars;
 applyTuningCssVars();
-const zuluClockCtrl = L.control({ position: 'topright' });
+const zuluClockMovable = () => typeof tune === 'function' && tune('zuluClockMovable') === true;
+const zuluClockCtrl = L.control({ position: zuluClockMovable() ? 'topright' : 'bottomright' });
+// One element for the life of the page: the gist can move the control between corners
+// (setPosition re-runs onAdd), and the tick and the drag handlers hold on to this element.
+const zuluClockEl = L.DomUtil.create('div', 'leaflet-control zulu-clock');
+zuluClockEl.id = 'zulu-clock';
+zuluClockEl.dir = 'ltr';
+zuluClockEl.title = 'Zulu time (UTC)';
+zuluClockEl.setAttribute('aria-label', 'Zulu time (UTC)');
+zuluClockEl.setAttribute('aria-live', 'off');
 zuluClockCtrl.onAdd = function () {
-  const box = L.DomUtil.create('div', 'leaflet-control zulu-clock');
-  box.id = 'zulu-clock';
-  box.dir = 'ltr';
-  box.title = 'Zulu time (UTC)';
-  box.setAttribute('aria-label', 'Zulu time (UTC)');
-  box.setAttribute('aria-live', 'off');
-  return box;
+  zuluClockEl.classList.toggle('zulu-fixed', !zuluClockMovable());
+  return zuluClockEl;
 };
 zuluClockCtrl.addTo(map);
 const zuluClockBox = document.getElementById('zulu-clock');
@@ -2104,11 +2121,21 @@ setInterval(refreshZuluClock, 1000);
   const box = document.getElementById('zulu-clock');
   if (!box) return;
   const KEY = 'navaid.clockPos';
+  // One-time reset (asked): every device drops the spot its clock was dragged to, once. The clock
+  // is fixed by default now; if the gist makes it draggable again it starts from its corner, and a
+  // spot dragged after that is kept as before.
+  try {
+    if (localStorage.getItem('navaid.clockPosReset') !== '1') {
+      for (const k of [KEY, KEY + '.en', KEY + '.he']) localStorage.removeItem(k);
+      localStorage.setItem('navaid.clockPosReset', '1');
+    }
+  } catch (e) { /* storage unavailable */ }
   if (window.L && L.DomEvent) {
     L.DomEvent.disableClickPropagation(box);
     L.DomEvent.disableScrollPropagation(box);
   }
   function applyPos(x, y) {
+    if (!zuluClockMovable()) return;
     const maxX = Math.max(0, window.innerWidth - box.offsetWidth);
     const maxY = Math.max(0, window.innerHeight - box.offsetHeight);
     box.style.position = 'fixed';
@@ -2124,6 +2151,7 @@ setInterval(refreshZuluClock, 1000);
   } catch (e) { /* storage unavailable */ }
 
   function start(cx, cy) {
+    if (!zuluClockMovable()) return;
     const r = box.getBoundingClientRect();
     const off = { x: cx - r.left, y: cy - r.top };
     box.classList.add('dragging');
@@ -2145,10 +2173,26 @@ setInterval(refreshZuluClock, 1000);
     window.addEventListener('touchmove', tm, { passive: false });
     window.addEventListener('touchend', end);
   }
-  box.addEventListener('mousedown', e => { e.preventDefault(); start(e.clientX, e.clientY); });
+  box.addEventListener('mousedown', e => { if (!zuluClockMovable()) return; e.preventDefault(); start(e.clientX, e.clientY); });
   box.addEventListener('touchstart', e => {
+    if (!zuluClockMovable()) return;
     if (e.touches.length === 1) { e.preventDefault(); start(e.touches[0].clientX, e.touches[0].clientY); }
   }, { passive: false });
+  // The gist can switch it: fixed goes to the bottom-right slot (a dragged spot stays in storage
+  // for when it is draggable again); draggable goes back to the top corner, or that spot.
+  window.refreshZuluClockPlacement = function () {
+    const movable = zuluClockMovable();
+    const want = movable ? 'topright' : 'bottomright';
+    if (zuluClockCtrl.getPosition() !== want) zuluClockCtrl.setPosition(want);
+    box.classList.toggle('zulu-fixed', !movable);
+    for (const k of ['position', 'left', 'top', 'right', 'margin', 'transform']) box.style[k] = '';
+    if (movable) {
+      try {
+        const p = JSON.parse(navLangPosRead(KEY) || 'null');
+        if (p && Number.isFinite(p.x) && Number.isFinite(p.y)) applyPos(p.x, p.y);
+      } catch (e) { /* storage unavailable */ }
+    }
+  };
 })();
 // --- chart attribution, folded away on a phone -----------------------
 // The notice is required and must stay one tap away, but on a 390px screen it was a
@@ -11261,23 +11305,14 @@ function applyDisplayTheme() {
   // reads the body theme class, so refresh it now that the class is set.
   if (typeof applyTuningCssVars === 'function') applyTuningCssVars();
 }
-const THEME_TOGGLE_EL = document.getElementById('theme-toggle');
-// The button shows the mode it switches TO: in dark it offers "Light mode",
-// in light it offers "Dark mode".
-function updateThemeToggleLabel() {
-  if (!THEME_TOGGLE_EL) return;
-  const toLight = displayTheme !== 'light';
-  THEME_TOGGLE_EL.textContent = toLight
-    ? '☀️ ' + (S.tbLightMode || 'Light mode')
-    : '🌙 ' + (S.tbDarkMode || 'Dark mode');
-}
+// Settings -> Theme: a Light / Dark choice, the same kind of row as the language beside it.
+const THEME_SELECT_EL = document.getElementById('theme-select');
 applyDisplayTheme();
-updateThemeToggleLabel();
-if (THEME_TOGGLE_EL) {
-  THEME_TOGGLE_EL.onclick = () => {
-    displayTheme = displayTheme === 'light' ? 'dark' : 'light';
+if (THEME_SELECT_EL) {
+  THEME_SELECT_EL.value = displayTheme === 'light' ? 'light' : 'dark';
+  THEME_SELECT_EL.onchange = () => {
+    displayTheme = THEME_SELECT_EL.value === 'light' ? 'light' : 'dark';
     applyDisplayTheme();
-    updateThemeToggleLabel();
     try { localStorage.setItem(THEME_KEY, displayTheme); }
     catch (err) { /* storage unavailable */ }
   };
@@ -11895,6 +11930,9 @@ function applyInspZoom(next) {
   const z = Math.min(inspZoomMax(), Math.max(inspZoomMin(), Math.round(next * 20) / 20));
   const body = document.getElementById('insp-body');
   if (body) body.style.zoom = String(z);
+  // The panel's minimum width follows (style.css #inspector): larger text needs a wider row.
+  const panel = document.getElementById('inspector');
+  if (panel) panel.style.setProperty('--insp-zoom', String(z));
   try { localStorage.setItem(INSP_ZOOM_KEY, String(z)); } catch (e) { /* private mode */ }
   // Dimmed at the ends of the range, never removed.
   const out = document.getElementById('insp-zoom-out');
@@ -12112,6 +12150,7 @@ function clampInspToViewport() {
 })();
 
 document.getElementById('insp-close').onclick = () => {
+  if (typeof window.trafficClearFollow === 'function') window.trafficClearFollow();
   state.selected = null;
   showInspector(); draw();
 };
@@ -12128,21 +12167,42 @@ document.getElementById('insp-close').onclick = () => {
 const toolbarDesktopMenuQuery = window.matchMedia
   ? window.matchMedia('(min-width: 681px) and (hover: hover) and (pointer: fine)')
   : null;
-// The gist's `featureTabletDesktop` hands a tablet (the iPad) the menubar anyway, to try it there.
-// style.css keys the menubar off html.menubar, which index.html sets on the query at first paint
-// and refreshToolbarDesktopMenu() keeps true to this.
+// The gist's `featureTabletDesktop` supplies the default tablet layout. A local Settings choice
+// can override it on this device, so an iPad user can choose the desktop menubar or phone deck.
 const toolbarTabletQuery = window.matchMedia
   ? window.matchMedia('(min-width: 681px) and (pointer: coarse)')
   : null;
+const TABLET_LAYOUT_KEY = 'navaid.tabletLayout';
 const toolbarDesktopMenuListeners = [];
+let tabletLayoutTransientChoice = null;
+
+function tabletLayoutPreference() {
+  if (tabletLayoutTransientChoice) return tabletLayoutTransientChoice;
+  try {
+    const value = localStorage.getItem(TABLET_LAYOUT_KEY);
+    return value === 'desktop' || value === 'mobile' ? value : 'auto';
+  } catch (e) { return 'auto'; }
+}
+
+function refreshTabletLayoutControl() {
+  const row = document.getElementById('tablet-layout-row');
+  const select = document.getElementById('tablet-layout');
+  if (!row || !select) return;
+  row.hidden = !(toolbarTabletQuery && toolbarTabletQuery.matches);
+  select.value = tabletLayoutPreference();
+}
 
 function toolbarUsesDesktopMenu() {
   if (toolbarDesktopMenuQuery && toolbarDesktopMenuQuery.matches) return true;
-  return !!(toolbarTabletQuery && toolbarTabletQuery.matches
-    && typeof tune === 'function' && tune('featureTabletDesktop') === true);
+  if (!(toolbarTabletQuery && toolbarTabletQuery.matches)) return false;
+  const preference = tabletLayoutPreference();
+  if (preference === 'desktop') return true;
+  if (preference === 'mobile') return false;
+  return typeof tune === 'function' && tune('featureTabletDesktop') === true;
 }
 
 function refreshToolbarDesktopMenu() {
+  refreshTabletLayoutControl();
   const on = toolbarUsesDesktopMenu();
   const root = document.documentElement;
   if (root.classList.contains('menubar') === on) return;
@@ -12152,6 +12212,20 @@ function refreshToolbarDesktopMenu() {
 window.NavAid = window.NavAid || {};
 NavAid.usesDesktopMenu = toolbarUsesDesktopMenu;
 NavAid.refreshDesktopMenu = refreshToolbarDesktopMenu;
+const tabletLayoutSelect = document.getElementById('tablet-layout');
+if (tabletLayoutSelect) {
+  tabletLayoutSelect.addEventListener('change', () => {
+    const value = tabletLayoutSelect.value;
+    tabletLayoutTransientChoice = value === 'desktop' || value === 'mobile' ? value : 'auto';
+    try {
+      if (value === 'desktop' || value === 'mobile') localStorage.setItem(TABLET_LAYOUT_KEY, value);
+      else localStorage.removeItem(TABLET_LAYOUT_KEY); // return to the gist-configured default
+    } catch (e) { /* honor the choice for this page even when storage is unavailable */ }
+    refreshToolbarDesktopMenu();
+    if (NavAid.refreshMobileDeck) NavAid.refreshMobileDeck();
+  });
+}
+refreshTabletLayoutControl();
 
 // The app's update row (installed app only). On the phone layout it is the toolbar's footer line;
 // the desktop menu bar has no footer, and hid it -- so the app on a Mac (a window wider than a
@@ -13600,6 +13674,7 @@ if (typeof loadRemoteConfig === "function") {
     if (typeof refreshEmptyRouteHint === "function") refreshEmptyRouteHint();
     if (typeof refreshTrafficFeature === "function") refreshTrafficFeature();
     if (typeof window.refreshAtcRadioFeature === "function") window.refreshAtcRadioFeature();
+    if (typeof window.refreshZuluClockPlacement === "function") window.refreshZuluClockPlacement();
     // The gist may have turned base layers on or off -- rebuild the picker to match, and
     // the nav-data source list with it: its entries are those same charts.
     if (typeof rebuildLayerPicker === "function") rebuildLayerPicker();

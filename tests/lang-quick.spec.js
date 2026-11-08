@@ -77,8 +77,9 @@ for (const lang of ['he', 'en']) test(`settings rows stay one line with the cont
         edge: rtl ? Math.min(...ctrls.map(b => b.left)) : Math.max(...ctrls.map(b => b.right)) };
     }));
   // the settings rows: pressure unit, altitude from, brightness among them (the aircraft and its
-  // figures moved to the flight plan's Aircraft row)
-  expect(rows.length).toBe(6);
+  // figures moved to the flight plan's Aircraft row), and the Theme -- a row like the language,
+  // which must line up with the others (it was a full-width button there)
+  expect(rows.length).toBe(7);
   for (const r of rows) expect(r.spread).toBeLessThan(8);         // one line
   expect(Math.max(...rows.map(r => r.edge)) - Math.min(...rows.map(r => r.edge))).toBeLessThan(2);   // aligned
 });

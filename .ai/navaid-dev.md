@@ -756,6 +756,9 @@ as a machine-readable registry.
   `navLangPosRead()` adopts a legacy bare position key into the active
   language's key and leaves the bare key available for the other language.
   Position keys and other panel geometry are device-local.
+- `navaid.clockPosReset` — `'1'` once this device has dropped its old dragged
+  Zulu clock spot (the clock is fixed by default; gist `zuluClockMovable`).
+  Device-local.
 - `navaid.inspSize` — device-local desktop inspector width and height. The full
   panel is clamped to the viewport on opening and window resize. Phone layout
   ignores these dimensions without overwriting the saved desktop preference.
@@ -763,6 +766,8 @@ as a machine-readable registry.
   `inspZoomSmallest` and `inspZoomLargest` tunables.
 - `navaid.bearing` — map bearing in degrees (rotated-map support).
 - `navaid.theme` — `'dark'` / `'light'` for toolbar and panel chrome.
+- `navaid.tabletLayout` — optional device-local tablet menu choice: `'desktop'` or
+  `'mobile'`; absent means follow the gist's `featureTabletDesktop` default.
 - `navaid.yellowAlpha` — Label-opacity slider value (waypoint labels).
   (Kite/note opacity is not persisted here — it's the gist tune key `kiteNoteAlpha`.)
 - `navaid.mapOpacity.v2` — base-map opacity slider value.
@@ -822,6 +827,12 @@ as a machine-readable registry.
 - `navaid.showTraffic` — `'0'` / `'1'` for live ADS-B traffic. The switch exists
   everywhere but only works in the APK (the feeds refuse browser requests), and
   `featureLiveTraffic` in the gist decides whether the control is offered at all.
+  The selected aircraft inspector refreshes on each receiver/feed report while it
+  is open; when that aircraft drops out of the current traffic picture, the selection
+  and inspector are cleared. Its **Follow aircraft** inspector button temporarily
+  centers the map on that aircraft as reports arrive. Closing the inspector, turning
+  traffic off, or choosing **Stop following** clears this transient target; it does not
+  change `navaid.gpsFollow`.
 - **Frequencies a NOTAM states:** `airfieldFreqChanges(icao)` (draw.js) reads a
   new tower or clearance frequency out of the live NOTAM feed, but only from a
   narrow grammar -- each pattern must name its service AND its frequency in one

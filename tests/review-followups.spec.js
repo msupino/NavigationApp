@@ -29,17 +29,19 @@ test('a position saved before the per-language split is adopted, not discarded',
   expect(after).toBe(400);
 });
 
+// The legend's spot, not the clock's: the clock now drops its old spot once (it is fixed by
+// default), so it no longer exercises the legacy adoption.
 test('each language still adopts the legacy spot independently', async ({ page }) => {
   await page.addInitScript(() => {
-    try { localStorage.setItem('navaid.clockPos', JSON.stringify({ x: 300, y: 200 })); } catch (e) {}
+    try { localStorage.setItem('navaid.legendPos', JSON.stringify({ x: 300, y: 200 })); } catch (e) {}
   });
   await page.setViewportSize({ width: 1280, height: 800 });
   await page.goto('?lang=en&nogist');
   await page.waitForFunction(() => typeof navLangPosRead === 'function');
-  expect(await page.evaluate(() => localStorage.getItem('navaid.clockPos.en'))).toBeTruthy();
+  expect(await page.evaluate(() => localStorage.getItem('navaid.legendPos.en'))).toBeTruthy();
   await page.goto('?lang=he&nogist');
   await page.waitForFunction(() => typeof navLangPosRead === 'function');
-  expect(await page.evaluate(() => localStorage.getItem('navaid.clockPos.he'))).toBeTruthy();
+  expect(await page.evaluate(() => localStorage.getItem('navaid.legendPos.he'))).toBeTruthy();
 });
 
 test('an exported GPS track imports back into the library', async ({ page }) => {

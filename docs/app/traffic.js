@@ -14,9 +14,14 @@
 
   const LAYER_KEY = 'navaid.showTraffic';
   let group = null;
+  let followedHex = '';
   let timer = 0;
   let inFlight = false;
   let fails = 0;               // consecutive failed polls; one blip is not an outage
+  let lastOkAt = 0;            // when the feed last answered (ms)
+  let stalePolled = false;     // the feed's aircraft are drawn faded: their positions are old
+  let lostSaid = false;        // the 'lost' message was given for this outage
+  const tuneSec = (k, d) => ((typeof tune === 'function' && tune(k)) || d) * 1000;
   // Bumped whenever the layer is torn down. A request already on the wire when the pilot
   // switches traffic off -- or when the fix stops -- would otherwise arrive afterwards and
   // draw its aeroplanes onto a map that is meant to be clear of them.
@@ -65,6 +70,64 @@
     return typeof tune === 'function' ? tune('defaultShowTraffic') !== false : true;
   };
   window.trafficEnabled = on;
+  // Follow is a temporary target choice made in the selected aircraft's inspector. Keep it
+  // separate from navaid.gpsFollow, which is the pilot's saved own-aircraft preference.
+  window.trafficFollowTarget = () => followedHex;
+  // Where a followed aircraft goes: the middle of the map you can SEE, not of the whole map. On a
+  // phone the inspector is a bottom sheet over the lower half -- and Stop following lives in it --
+  // so centring on the whole map parked the aircraft under the panel that follows it (reported).
+  // Worked in container pixels, so a rotated map (leaflet-rotate) needs no special case: the view
+  // only translates, and the target moves to the centre of what is left uncovered.
+  function visibleCentreFor(lat, lon) {
+    const ll = L.latLng(lat, lon);
+    const box = map.getContainer().getBoundingClientRect();
+    let top = box.top, bottom = box.bottom, left = box.left, right = box.right;
+    const shown = (el) => {
+      if (!el || el.hidden || el.classList.contains('hidden')) return null;
+      const cs = getComputedStyle(el);
+      if (cs.display === 'none' || cs.visibility === 'hidden') return null;
+      const r = el.getBoundingClientRect();
+      return r.width > 0 && r.height > 0 ? r : null;
+    };
+    const strip = shown(document.getElementById('deck-strip'));
+    if (strip) top = Math.max(top, strip.bottom);
+    const bar = shown(document.getElementById('deck-bar'));
+    if (bar) bottom = Math.min(bottom, bar.top);
+    const insp = shown(document.getElementById('inspector'));
+    if (insp) {
+      // Across most of the map it is a sheet (above or below); narrower, it is a side panel.
+      if (insp.width >= (right - left) * 0.6) {
+        if (insp.top > (top + bottom) / 2) bottom = Math.min(bottom, insp.top);
+        else top = Math.max(top, insp.bottom);
+      } else if (insp.left > (left + right) / 2) right = Math.min(right, insp.left);
+      else left = Math.max(left, insp.right);
+    }
+    // Too little left to aim at: the plain centre.
+    if (bottom - top < 80 || right - left < 80) return ll;
+    const cx = box.width / 2, cy = box.height / 2;
+    const vx = (left + right) / 2 - box.left, vy = (top + bottom) / 2 - box.top;
+    const at = map.latLngToContainerPoint(ll);
+    return map.containerPointToLatLng(L.point(at.x + cx - vx, at.y + cy - vy));
+  }
+
+  window.trafficToggleFollow = function (hex) {
+    const key = String(hex || '');
+    if (!key || followedHex === key) {
+      followedHex = '';
+      return false;
+    }
+    const target = (window.trafficAircraft || []).find(a => a && a.hex === key);
+    if (!target) return false;
+    followedHex = key;
+    // This button is an explicit request to jump to the target, even if a recent hand pan
+    // temporarily suspended the normal fix-driven following.
+    if (typeof _gpsUserMovedAt === 'number') _gpsUserMovedAt = 0;
+    map.setView(visibleCentreFor(target.lat, target.lon), map.getZoom());
+    return true;
+  };
+  window.trafficClearFollow = function (hex) {
+    if (!hex || followedHex === String(hex)) followedHex = '';
+  };
 
   // The feeds put the position in the path (adsb.lol: /v2/lat/32.05/lon/34.92/dist/40), so
   // the tunable is a template. A URL with no placeholders keeps the old query-string form,
@@ -102,20 +165,36 @@
 
   // GET through the native bridge. Capacitor hands back a parsed body for JSON responses
   // and a string otherwise, so both have to be accepted. A browser fetches the relay.
+  // Every request has a deadline: one in flight at a time, so a request that hung held every later
+  // refresh off until the browser gave up -- minutes with no retry. Timed out, it fails like any
+  // other, and the next refresh asks again.
   async function getJson(url) {
+    const ms = tuneSec('trafficTimeoutSec', 10);
+    let timer = 0;
+    const deadline = new Promise((_, reject) => { timer = setTimeout(() => reject(new Error('timeout')), ms); });
     const http = nativeHttp();
-    if (!http) {
-      const res = await fetch(url, { headers: { Accept: 'application/json' }, cache: 'no-store' });
-      if (!res.ok) throw new Error('HTTP ' + res.status);
-      return res.json();
+    try {
+      if (!http) {
+        const ac = typeof AbortController === 'function' ? new AbortController() : null;
+        const req = fetch(url, { headers: { Accept: 'application/json' }, cache: 'no-store', signal: ac ? ac.signal : undefined })
+          .then((res) => { if (!res.ok) throw new Error('HTTP ' + res.status); return res.json(); });
+        try { return await Promise.race([req, deadline]); }
+        catch (e) { if (ac) ac.abort(); throw e; }
+      }
+      const req = http.request({ url, method: 'GET', headers: { Accept: 'application/json' },
+        connectTimeout: ms, readTimeout: ms })
+        .then((r) => {
+          if (!r || r.status < 200 || r.status >= 300) throw new Error('HTTP ' + (r && r.status));
+          return typeof r.data === 'string' ? JSON.parse(r.data) : r.data;
+        });
+      return await Promise.race([req, deadline]);
+    } finally {
+      clearTimeout(timer);
     }
-    const r = await http.request({ url, method: 'GET', headers: { Accept: 'application/json' } });
-    if (!r || r.status < 200 || r.status >= 300) throw new Error('HTTP ' + (r && r.status));
-    return typeof r.data === 'string' ? JSON.parse(r.data) : r.data;
   }
 
   // The arrow points where the aircraft is going, and carries what a pilot reads first: who
-  // it is and how high. Altitude in hundreds of feet, the way it is said on the radio.
+  // it is and how high. Altitude in hundreds of feet, shown as a flight level (FL).
   // A top-down aeroplane, the way every traffic display draws one: nose along the track, so
   // the shape alone says which way it is going before the label is read. Drawn as a path
   // rather than a glyph -- a font character (the old arrow) is whatever the device decides
@@ -128,7 +207,7 @@
   function icon(a) {
     const trk = Number.isFinite(a.track) ? a.track : 0;
     const fl = Number.isFinite(a.alt) ? Math.round(a.alt / 100) : null;
-    const label = [a.flight || a.hex || '', fl === null ? '' : (fl < 10 ? '0' : '') + fl]
+    const label = [a.flight || a.hex || '', fl === null ? '' : 'FL' + String(fl).padStart(3, '0')]
       .filter(Boolean).join(' ');
     const px = Math.round((typeof tune === 'function' && tune('trafficIconPx')) || 22);
     const svg = '<svg class="traffic-plane" viewBox="0 0 24 24" width="' + px + '" height="' + px
@@ -145,9 +224,13 @@
   function draw(list) {
     if (!group) group = L.layerGroup();
     group.clearLayers();
+    const fromFeed = new Set(polled);
     for (const a of list) {
       if (!Number.isFinite(a.lat) || !Number.isFinite(a.lon)) continue;
-      const m = L.marker([a.lat, a.lon], { icon: icon(a), keyboard: false, pane: 'markerPane',
+      const ic = icon(a);
+      // The feed's aircraft fade while the feed is silent; a receiver's own (external) are live.
+      if (stalePolled && fromFeed.has(a)) ic.options.className += ' traffic-stale';
+      const m = L.marker([a.lat, a.lon], { icon: ic, keyboard: false, pane: 'markerPane',
                                            title: a.flight || a.hex || '' });
       m._traffic = a;
       m.on('click', (e) => {
@@ -157,6 +240,7 @@
         // to DomEvent throws before the selection is ever made.
         const dom = e && e.originalEvent;
         if (dom && L.DomEvent) L.DomEvent.stopPropagation(dom);
+        if (followedHex && followedHex !== a.hex) followedHex = '';
         state.selected = { type: 'traffic', hex: a.hex };
         if (typeof showInspector === 'function') showInspector();
       });
@@ -227,18 +311,58 @@
     catch (e) { ownFt = null; }
     const ownPa = ownPressureFt(ownFt);
     window.trafficAircraft = [...byHex.values()].filter(a => !isOwnShip(a, mine, ownHex, ownPa));
+    if (followedHex) {
+      const target = window.trafficAircraft.find(a => a && a.hex === followedHex);
+      if (!target) followedHex = '';
+      else if (typeof gpsFollowSuspended !== 'function' || !gpsFollowSuspended()) {
+        const c = visibleCentreFor(target.lat, target.lon);
+        if (typeof gpsFollowRecenter === 'function') gpsFollowRecenter(c.lat, c.lng);
+        else map.setView(c, map.getZoom());
+      }
+    }
     if (window.trafficAircraft.length) draw(window.trafficAircraft);
     else if (group) { group.clearLayers(); if (map.hasLayer(group)) map.removeLayer(group); }
     dropSelectionIfGone();
+    // The selected transponder remains the same object by ICAO address while its report
+    // changes underneath it. Keep an already-open inspector in step with each feed/receiver
+    // update; refreshInspectorIfVisible deliberately leaves a closed panel closed.
+    if (state && state.selected && state.selected.type === 'traffic' &&
+        typeof refreshInspectorIfVisible === 'function') refreshInspectorIfVisible();
   }
   window.trafficSetExternal = function (list) {
     external = Array.isArray(list) ? list.filter(a => a && Number.isFinite(a.lat) && Number.isFinite(a.lon)) : [];
     render();
   };
 
+  // How old the feed's picture is. Faded past trafficStaleSec; past trafficDropSec the feed's
+  // aircraft go and the pilot is told once -- a frozen aeroplane on the map reads as current.
+  function ageOut() {
+    if (!lastOkAt || !polled.length) return;
+    const age = Date.now() - lastOkAt;
+    if (age >= tuneSec('trafficDropSec', 60)) {
+      polled = [];
+      stalePolled = false;
+      render();
+      if (!lostSaid && typeof showToast === 'function') {
+        lostSaid = true;
+        const s = Math.round(age / 1000);
+        showToast(typeof S.trafficLost === 'function' ? S.trafficLost(s) : 'Live traffic lost — no update for ' + s + ' s',
+          { warn: true });
+      }
+      return;
+    }
+    const stale = age >= tuneSec('trafficStaleSec', 30);
+    if (stale !== stalePolled) { stalePolled = stale; render(); }
+  }
+  window.trafficAgeOut = ageOut;
+
   function clear() {
     polled = [];
+    lastOkAt = 0;
+    stalePolled = false;
+    lostSaid = false;
     if (external.length && !switchedOff()) { render(); return; }
+    followedHex = '';
     if (group && map.hasLayer(group)) map.removeLayer(group);
     if (group) group.clearLayers();
     window.trafficAircraft = [];
@@ -246,6 +370,7 @@
   }
 
   async function poll() {
+    ageOut();
     if (inFlight) return;
     if (!on()) { clear(); return; }
     const myGen = generation;   // 'mine' below is the own-ship fix; do not shadow it
@@ -261,6 +386,9 @@
       // Own-ship is in the feed too when the transponder is on: it is already drawn, and a
       // second aeroplane on top of yourself reads as traffic in your lap (render drops it).
       polled = ((d && (d.ac || d.aircraft)) || []).map(normalize);
+      lastOkAt = Date.now();
+      stalePolled = false;
+      lostSaid = false;
       render();
       fails = 0;
       window.trafficLastError = null;
@@ -274,6 +402,7 @@
       // at, and say what went wrong, so the next question is answerable.
       fails += 1;
       window.trafficLastError = { at: Date.now(), why: (e && e.message) || String(e), fails };
+      ageOut();
       const quiet = Math.max(1, (typeof tune === 'function' && tune('trafficFailsBeforeWarn')) || 3);
       if (fails === quiet && !window.trafficAircraft.length && typeof showToast === 'function') {
         const why = (e && e.message) || '';

@@ -116,8 +116,15 @@
       // before io.js strips a shared route's parameters from the address.
       window.__navaidFromSharedLink = /[?&](follow|pilots|r)=/.test(location.search);
       // The desktop menubar's CSS hangs off html.menubar (ui.js refreshToolbarDesktopMenu keeps
-      // it current); set here so a computer paints the menubar from the first frame.
-      if (window.matchMedia && matchMedia('(min-width: 681px) and (hover: hover) and (pointer: fine)').matches) {
+      // it current); set here so a computer or a tablet with a saved desktop choice paints it
+      // from the first frame.
+      var desktopPointer = window.matchMedia
+        && matchMedia('(min-width: 681px) and (hover: hover) and (pointer: fine)').matches;
+      var tabletPointer = window.matchMedia
+        && matchMedia('(min-width: 681px) and (pointer: coarse)').matches;
+      var tabletLayout = 'auto';
+      try { tabletLayout = localStorage.getItem('navaid.tabletLayout') || 'auto'; } catch (e) {}
+      if (desktopPointer || (tabletPointer && tabletLayout === 'desktop')) {
         h.classList.add('menubar');
       }
     }());
@@ -481,7 +488,6 @@
     <div class="tb-section" data-sec="display">
       <div class="tb-section-head" tabindex="0" role="button" data-i18n-aria="tbSecDisplay"><span class="tb-sec-icon" aria-hidden="true" data-nav-icon="display"></span><span class="tb-sec-text"><span class="tb-section-title" data-i18n="tbSecDisplay"></span><span class="tb-sec-hint" aria-hidden="true" data-i18n="tbSecDisplayHint"></span></span></div>
       <div class="tb-section-body">
-        <button id="theme-toggle" type="button" data-i18n-title="tbLightModeTitle"></button>
         <!-- Grouped coarse to fine, separated by rules: the base map, then the waypoint
              controls, then the leg-arrow controls, then the line widths. Within a group
              the order is always size, opacity, colour. -->
@@ -949,6 +955,23 @@
           <select id="lang-select">
             <option value="he">עברית</option>
             <option value="en">English</option>
+          </select>
+        </label>
+        <!-- Dark / light: a setting, beside the language (moved from Display, asked), and the same
+             kind of row as the language -- a label and a choice, not a full-width button. -->
+        <label id="theme-row" class="navtoggle" data-i18n-title="tbLightModeTitle">
+          <span data-i18n="tbTheme"></span>
+          <select id="theme-select">
+            <option value="light" data-i18n="tbLightMode"></option>
+            <option value="dark" data-i18n="tbDarkMode"></option>
+          </select>
+        </label>
+        <label id="tablet-layout-row" class="navtoggle" hidden data-i18n-title="tbTabletLayoutTitle">
+          <span data-i18n="tbTabletLayout"></span>
+          <select id="tablet-layout">
+            <option value="auto" data-i18n="tbTabletLayoutAuto"></option>
+            <option value="mobile" data-i18n="tbTabletLayoutMobile"></option>
+            <option value="desktop" data-i18n="tbTabletLayoutDesktop"></option>
           </select>
         </label>
         <script>
