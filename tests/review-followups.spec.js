@@ -10,7 +10,8 @@ test('a position saved before the per-language split is adopted, not discarded',
       localStorage.setItem('navaid.inspPos', JSON.stringify({ x: 120, y: 160 }));
     } catch (e) {}
   });
-  await page.setViewportSize({ width: 1280, height: 800 });
+  // A phone: only there is the legend card dragged (the desktop legend is a fixed dock).
+  await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('?lang=en&nogist');
   await page.waitForFunction(() => typeof navLangPosRead === 'function');
   const legend = await page.evaluate(() => {
@@ -22,11 +23,11 @@ test('a position saved before the per-language split is adopted, not discarded',
   expect(await page.evaluate(() => localStorage.getItem('navaid.legendPos.en'))).toBeTruthy();
   expect(await page.evaluate(() => localStorage.getItem('navaid.legendPos'))).toBeTruthy();
   // The scoped value wins once it exists.
-  await page.evaluate(() => localStorage.setItem('navaid.legendPos.en', JSON.stringify({ x: 400, y: 320 })));
+  await page.evaluate(() => localStorage.setItem('navaid.legendPos.en', JSON.stringify({ x: 200, y: 320 })));
   await page.reload();
   await page.waitForFunction(() => typeof navLangPosRead === 'function');
   const after = await page.evaluate(() => Math.round(document.getElementById('map-legend').getBoundingClientRect().left));
-  expect(after).toBe(400);
+  expect(after).toBe(200);
 });
 
 // The legend's spot, not the clock's: the clock now drops its old spot once (it is fixed by
