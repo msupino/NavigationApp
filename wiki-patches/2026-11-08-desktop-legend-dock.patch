@@ -1,13 +1,15 @@
-From c1b2a225f7fb6649cc01e11caec15f1abf87e4e3 Mon Sep 17 00:00:00 2001
+From 1870e7511b30e6c6fd584702f808eb842e54ec3c Mon Sep 17 00:00:00 2001
 From: Marco <marco@supino.org>
 Date: Sun, 8 Nov 2026 14:19:29 +0000
 Subject: [PATCH] Desktop legend: a button that opens the key above it, route
  totals beside it
 
 ---
- Features-he.md | 2 +-
- Features.md    | 2 +-
- 2 files changed, 2 insertions(+), 2 deletions(-)
+ Features-he.md    | 2 +-
+ Features.md       | 2 +-
+ Quick-Start-he.md | 2 +-
+ Quick-Start.md    | 2 +-
+ 4 files changed, 4 insertions(+), 4 deletions(-)
 
 diff --git a/Features-he.md b/Features-he.md
 index 933e649..686b3d9 100644
@@ -35,6 +37,32 @@ index 42aeccd..b3e31b6 100644
  - Labels appear at higher zoom; below that you see only the symbol.
  - A placed waypoint hides any nav-waypoint or airfield marker sharing its position (proximity-based, so it still works after rename).
  - The **search** opens as a floating overlay (top-center) — press **Ctrl-F / Cmd-F** anywhere, or click the **🔍 Find** button in the **Edit** menu. Matches nav-waypoint Hebrew / English names and airfield ICAO / English / Hebrew labels; the 12-result budget is split 6/6 between airfields and nav-WPs. Enter jumps to the first match; Escape closes.
+diff --git a/Quick-Start-he.md b/Quick-Start-he.md
+index dbe0543..09245b3 100644
+--- a/Quick-Start-he.md
++++ b/Quick-Start-he.md
+@@ -61,7 +61,7 @@ NavAid מחשב מרחקים, כיוונים וזמני טיסה באופן חי
+ 
+ בהפעלה הראשונה, אחרי [הודעת הבטיחות](Safety-Notice-he), סיור קצר עובר על כפתורי המפה אחד אחד: כל השאר מתעמעם, טבעת כחולה מסמנת את הכפתור, בועה מסבירה מה הוא עושה וחץ כחול מצביע עליו. **הבא**, **הקודם** ו**דלג**, מונה צעדים, Escape ומקשי החצים (הפוכים בעברית).
+ 
+-- הצעדים: בדיקת מסלול, כפתורי העריכה (הטבעת מקיפה רק את הוספה, הערה, ביטול וניקוי), מדידה, נעילת העריכה, החוגה, המיקום שלכם, הקלטה, תקלת קשר, התפריט, ואז חיפוש (מחשב) או לחיצה ארוכה (טלפון). כפתור שלא מוצג על המסך מדולג.
++- הצעדים: בדיקת מסלול, כפתורי העריכה (הטבעת מקיפה רק את הוספה, הערה, ביטול וניקוי), מדידה, נעילת העריכה, המקרא וסיכום המסלול (מחשב), החוגה, המיקום שלכם, הקלטה, תקלת קשר, התפריט, ואז חיפוש (מחשב) או לחיצה ארוכה (טלפון). כפתור שלא מוצג על המסך מדולג.
+ - הסיור מוצג פעם אחת בכל מכשיר. **הגדרות ← הצג את הסיור** מציג אותו שוב. קישור ששותף (צפייה ב-Follow me, מסלול ששותף, קישור הטייסים) נפתח בלעדיו, והסיור נשאר לביקור הראשון שלכם.
+ - מתג ב-gist: <span dir="ltr"><code>featureTour</code></span> (פעיל כברירת מחדל). "הפחתת תנועה" עוצרת את תנועת החץ.
+ 
+diff --git a/Quick-Start.md b/Quick-Start.md
+index 4122c8b..26c8382 100644
+--- a/Quick-Start.md
++++ b/Quick-Start.md
+@@ -31,7 +31,7 @@ Your route is auto-saved in the browser. Reload the page and it's still there.
+ 
+ On the first launch, after the [safety notice](Safety-Notice), a short tour walks round the map's controls one at a time: everything else dims, a blue ring marks the control, a bubble says what it does and a blue arrow points at it. **Next**, **Back** and **Skip**, a step counter, Escape and the arrow keys (mirrored in Hebrew).
+ 
+-- Steps: Route check, the edit buttons (the ring covers Add, Note, Undo and Clear only), Measure, the edit lock, the dial, your position, Record, Comm fail, the menu, then Find (computer) or press-and-hold (phone). A control not on screen is left out.
++- Steps: Route check, the edit buttons (the ring covers Add, Note, Undo and Clear only), Measure, the edit lock, the legend and route totals (computer), the dial, your position, Record, Comm fail, the menu, then Find (computer) or press-and-hold (phone). A control not on screen is left out.
+ - It plays once per device. **Settings → Show the tour** plays it again. A shared link (a Follow me view, a shared route, the pilots link) opens without it, and it stays unseen for your own first visit.
+ - Gist switch `featureTour` (default on). Reduced motion stops the arrow's nudge.
+ 
 -- 
 2.43.0
 

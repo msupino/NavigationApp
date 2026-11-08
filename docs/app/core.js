@@ -1892,6 +1892,8 @@ window.S = Object.assign({
   tourMeasureText: 'With your position showing, tap the ruler, then a point: distance, bearing and time from the aircraft. Nothing is added to the route.',
   tourLockTitle: 'Edit lock',
   tourLockText: 'Shut, nothing on the route can move. It locks by itself while your position is showing.',
+  tourLegendTitle: 'Legend and route totals',
+  tourLegendText: 'The button opens the key to the chart symbols above it; press it again to close. Beside it, the route\u2019s legs, distance, time and fuel, once there is a route.',
   tourDialTitle: 'Turn and zoom the chart',
   tourDialText: 'Drag the dial to turn the chart, tap it to turn by 90°; the red needle points north; hold it for the compass. + and − zoom.',
   tourDialTextPhone: 'Drag the dial to turn the chart, tap it to turn by 90°; the red needle points north; hold it for the compass. + and − zoom; ⓘ shows the chart credits.',

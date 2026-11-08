@@ -22,6 +22,11 @@
     { sel: ['#edit-col-check'], k: 'Check', group: ['#edit-col-layers', '#edit-col-check'] },
     { sel: ['#measure-btn'], k: 'Measure' },
     { sel: ['#edit-lock'], k: 'Lock' },
+    // Desktop: the Legend button and the route totals beside it (asked: "add it to the tutorial").
+    // Its own step -- the one exception to "no new steps": nothing in the tour sits beside it, and
+    // lit with the edit column or the dial the ring spanned half the screen. The phone's legend is
+    // the card it always was and its tour stays at ten.
+    { sel: ['#legend-toggle'], k: 'Legend', only: 'desktop', group: ['#legend-toggle', '#route-summary'] },
     // No new steps for new buttons (ten is already plenty): a control joins the step it sits
     // beside, lit together. Zoom and the credits are the same column as the dial.
     { sel: ['.rotate-ctrl', '#rotate-dial'], k: 'Dial', group: ['.rotate-ctrl', '.leaflet-control-zoom', '.attrib-toggle'] },
