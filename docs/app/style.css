@@ -8980,6 +8980,21 @@ body:not(.deck-on) .leaflet-bottom { padding-bottom: env(safe-area-inset-bottom,
   /* Except a question: a fixed-size yes/no or one-line answer does not grow, so it has no
      reason to sit at the top -- it is asked in the middle, where the eye already is. */
   .modal-back:has(> .follow-me-ask-modal) { align-items: center; }
+  /* ...but on a tablet with the desktop menubar (featureTabletDesktop) "the top of that space"
+     was the top of the screen, under the bar: the windows that open below the bar (Charts, the
+     NOTAM / MET lists, the nav log...) had their title and close button hidden behind it, and
+     on an iPad the bar wraps onto two rows (reported). Start the space at the bar's real bottom
+     (--navaid-toolbar-bottom, measured in ui.js). Touch only: a desktop with a mouse centres
+     its windows, clear of the bar, and is untouched. */
+  :where(html.menubar) body:not(.deck-on) .modal-back,
+  :where(html.menubar) body:not(.deck-on) .sim-overlay {
+    padding-top: var(--navaid-toolbar-bottom, 58px);
+  }
+  :where(html.menubar) body:not(.deck-on) .modal-back > .modal,
+  :where(html.menubar) body:not(.deck-on) .sim-overlay > .modal {
+    max-height: calc(100% - var(--navaid-toolbar-bottom, 58px));
+    overflow-y: auto;
+  }
 }
 
 /* The safety acknowledgement. Deliberately plain: it is read once, and the only thing on it
