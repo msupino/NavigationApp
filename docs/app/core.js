@@ -1792,7 +1792,7 @@ window.S = Object.assign({
   report: 'Reporting',
   reportingMandatory: '📍 Mandatory report',
   reportingOnRequest: '📍 Report on request',
-  tbSearchPlaceholder: '🔍 Find navigation waypoint',
+  tbSearchPlaceholder: 'Find navigation waypoint',
   tbSearchHint: 'Tip: type space-separated waypoint codes (e.g. LLHZ BAZRA DEROR SHARO HADRA) and press Enter to build a route.',
   errSearchUnknown: function(t) { return 'Unknown waypoint: ' + t; },
   searchReplaceConfirm: 'Replace the current route with these waypoints?',
@@ -1887,7 +1887,7 @@ window.S = Object.assign({
   tourCheckTitle: 'Check the route',
   tourCheckText: 'Airspace, NOTAMs, SIGMET/AIRMET and ceiling against the route, at the time you plan to fly it. Dimmed until there is a route. Above it, Layers switches the chart and its overlays.',
   tourEditTitle: 'Edit the route',
-  tourEditText: 'Add a waypoint or a note, undo, clear the map; [ ] fits the page or the route to the screen. Tap a lit button again to stop.',
+  tourEditText: 'Add a waypoint or a note, undo, clear the map; Fit sizes the page or the route to the screen. Tap a lit button again to stop.',
   tourMeasureTitle: 'Measure',
   tourMeasureText: 'With your position showing, tap the ruler, then a point: distance, bearing and time from the aircraft. Nothing is added to the route.',
   tourLockTitle: 'Edit lock',
@@ -2053,6 +2053,7 @@ window.S = Object.assign({
   alreadyOnRoute: '✓ Already on the route',
   trackFlownTwiceToast: 'This leg is already flown out and back — a track can be flown twice, once each way',
   emptyRouteHint: 'Click a point on the map to start a route',
+  emptyRouteHintTouch: 'Tap a point on the map to start a route',   // coarse pointer: there is no click
   // Phone-width display labels. Full titles ("Time (mm:ss)", "Fuel (gal)") pushed the
   // table 111px past a 375px screen on their own. CSV/export headers are unaffected --
   // those come from fpHeaders, which is the export contract.
@@ -3180,7 +3181,7 @@ window.S = Object.assign({
   followMePublicNextToast: 'Public: from your next share',
   followMePublicOffToast: 'Not public: your link only',
   followMePublicHint: 'Identifier, position, altitude and speed, not encrypted, on Extra layers → Show public NavAid pilots. Your link stays private.',
-  followMeAskCode: 'Identifier, for example an aircraft code (4X-CDE)\n\nUses a public best-effort relay. Anyone with the link can view or submit positions.',
+  followMeAskCode: 'Identifier, for example an aircraft code (4X-CDE).\n\nUses a public best-effort relay. Anyone with the link can view or submit positions.',
   followMeNeedCode: 'Follow me needs an identifier — whoever opens the link has to know what it is following.',
   followMeStartFailed: 'Follow me could not start because this device cannot store the private session.',
   followMeWaiting: 'Follow me: waiting for a position…',
@@ -3431,6 +3432,12 @@ window.S = Object.assign({
   airspaceActivityNames: { TRG: 'Training', MIL: 'Military', MILOPS: 'Military operations',
     PARACHUTE: 'Parachuting', FIRE: 'Live fire', BALLOON: 'Balloon', CIVIL: 'Civil', OTHER: 'Other' },
   airspaceHours: 'Hours',
+  airspaceDays: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'],   // the schedule's weekday words
+  airspaceUtcw: 'UTCW',
+  airspaceSunrise: 'SR',
+  airspaceSunset: 'SS',
+  unitKt: 'kt',
+  zuluClockTitle: 'Zulu time (UTC)',
   airspaceActiveNow: 'active now',
   airspaceNotActiveNow: 'not active now',
   airspaceActivation: 'Activation',
@@ -3988,6 +3995,14 @@ if (typeof window !== 'undefined') {
   window.navIconSvg = navIconSvg; window.NAV_ICONS = NAV_ICONS; window.setNavIcon = setNavIcon;
 }
 
+// A label shown without the glyph its string carries (the strings keep it: other surfaces read
+// them). The same leading-glyph set the menus strip (LEADING_GLYPHS, ui.js); inline here because
+// applyI18n runs before ui.js has defined it.
+function navPlainLabel(s) {
+  return String(s == null ? '' : s).replace(/^[\s+\uFF0B\u2190-\u2BFF\u2600-\u27BF\uFE0F\u200D\p{Extended_Pictographic}]+/u, '');
+}
+window.navPlainLabel = navPlainLabel;
+
 function applyI18n() {
   document.querySelectorAll('[data-i18n]').forEach(el => {
     el.textContent = S[el.dataset.i18n] || '';
@@ -3996,10 +4011,10 @@ function applyI18n() {
     el.title = S[el.dataset.i18nTitle] || '';
   });
   document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
-    el.placeholder = S[el.dataset.i18nPlaceholder] || '';
+    el.placeholder = navPlainLabel(S[el.dataset.i18nPlaceholder]);
   });
   document.querySelectorAll('[data-i18n-aria]').forEach(el => {
-    el.setAttribute('aria-label', S[el.dataset.i18nAria] || '');
+    el.setAttribute('aria-label', navPlainLabel(S[el.dataset.i18nAria]));   // a screen reader says the word, not the glyph
   });
 }
 applyI18n();
@@ -6937,7 +6952,8 @@ const map = L.map('map', {
   // back without a build for anyone who wants it.
   touchRotate: _touchRotateGesture(),
 });
-L.control.zoom({ position: 'bottomright' }).addTo(map);
+// Leaflet's own button titles / aria-labels are English; the app's strings carry both languages.
+L.control.zoom({ position: 'bottomright', zoomInTitle: S.zoomIn || 'Zoom in', zoomOutTitle: S.zoomOut || 'Zoom out' }).addTo(map);
 
 // Trackpad pinch on a Mac. The app there is the iOS build in WebKit, which delivers a trackpad pinch
 // as gesturestart/gesturechange (a scale), not as two touches -- and the app's user-scalable=no

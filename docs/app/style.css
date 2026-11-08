@@ -10370,3 +10370,13 @@ body.tour-live-preview #gps-rec-indicator { display: flex !important; }
   background: #195fc2;
   border-color: #195fc2;
 }
+
+/* Drawn icons where an emoji used to stand (window titles, the pin, route-check marks, FPL warnings). */
+.modal-title > .mi-icon { display: inline-grid; place-items: center; line-height: 0; vertical-align: -3px; margin-inline-end: 6px; }
+.modal-title > .mi-icon svg { display: block; }
+.charts-alt-pin svg { display: block; margin: auto; }
+.route-check-mark { display: inline-grid; place-items: center; line-height: 0; }
+.route-check-stop .route-check-mark { color: #ef4444; }
+.route-check-warn .route-check-mark { color: #e0a100; }
+.fpl-warn-icon { display: inline-grid; place-items: center; line-height: 0; vertical-align: -2px; margin-inline-end: 4px; }
+.fpl-warn-icon svg { display: block; }
