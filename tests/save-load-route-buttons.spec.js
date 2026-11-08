@@ -136,7 +136,7 @@ test.describe('Edit-header Save / Load route buttons', () => {
     await expect(page.locator('#tool-save-route-wide')).toBeVisible();
     await expect(page.locator('#tool-load-route-wide')).toBeVisible();
     // Compact at 1280: the icons, the tooltip says what they do (labels from 1440 px).
-    await expect(page.locator('#tool-save-route-wide')).toHaveAttribute('title', /Save route/);
+    await expect(page.locator('#tool-save-route-wide')).toHaveAttribute('title', /Save route|Nothing to save/);   // empty route: the tooltip is the reason
     await expect(page.locator('#tool-save-route')).toBeHidden();
     // Load opens the Saved routes menu.
     await page.locator('#tool-load-route-wide').click();

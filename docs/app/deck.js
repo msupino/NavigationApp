@@ -86,7 +86,10 @@
     commBtn.innerHTML = (typeof navIconSvg === 'function' ? navIconSvg('commfail', 18) : '')
       + '<span class="deck-strip-commfail-label"></span>';
     commBtn.querySelector('.deck-strip-commfail-label').textContent = commLabel;
-    commBtn.setAttribute('aria-label', (typeof S === 'object' && S && S.commFailTitle) || commLabel);
+    // Label in name: the accessible name must start with the words on the button, or voice
+    // control ("tap Comm fail") finds nothing. The longer explanation follows after a colon.
+    const commHelp = (typeof S === 'object' && S && S.commFailTitle) || '';
+    commBtn.setAttribute('aria-label', commHelp ? (commHelp.indexOf(commLabel) === 0 ? commHelp : commLabel + ': ' + commHelp) : commLabel);
     commBtn.setAttribute('aria-pressed', 'false');
     commBtn.addEventListener('click', () => { click('commfail-btn'); sync(); });
     // Language, findable without reading the current one: a globe and the other language's name.
@@ -177,6 +180,8 @@
       || 'Drag to resize, tap to change height');
     sheetTitle = document.createElement('h2');
     sheetTitle.className = 'deck-sheet-title';
+    sheetTitle.id = 'deck-sheet-title';
+    sheet.setAttribute('aria-labelledby', sheetTitle.id);   // the dialog's accessible name
     const close = document.createElement('button');
     close.type = 'button';
     close.className = 'deck-sheet-close';
@@ -187,6 +192,11 @@
     sheetBody = document.createElement('div');
     sheetBody.className = 'deck-sheet-body';
     sheet.append(head, sheetBody);
+    // Escape closes from anywhere inside the sheet, not only the grip. A dialog (e.g. an ask
+    // card) opened over it handles its own Escape first and marks the event handled.
+    sheet.addEventListener('keydown', (ev) => {
+      if (ev.key === 'Escape' && !ev.defaultPrevented && ev.target.tagName !== 'INPUT' && ev.target.tagName !== 'SELECT' && ev.target.tagName !== 'TEXTAREA') closeSheet();
+    });
     document.body.appendChild(sheet);
     wireGrip(grip);
   }

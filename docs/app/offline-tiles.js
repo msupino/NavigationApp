@@ -869,6 +869,7 @@
     back.appendChild(box);
     back.onclick = event => { if (event.target === back) close(); };
     document.body.appendChild(back);
+    if (typeof makeWindowAccessible === 'function') makeWindowAccessible(back, box, title);
     manager = { back, box, state: cvfr.state, bar: cvfr.bar, repair, clear, packs };
     // The area button counts the tiles on screen, so it follows the map.
     if (typeof map !== 'undefined' && map.on) map.on('moveend', renderManager);

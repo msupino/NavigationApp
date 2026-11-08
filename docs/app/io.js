@@ -210,6 +210,32 @@ function attachResizeGrip(el, opts) {
   return grip;
 }
 
+// Makes a hand-built window behave like createDraggableModal's: role="dialog", a name from its
+// visible title, focus moved inside on open and handed back when the backdrop leaves the page.
+// The restore watches the DOM rather than each window's close(), because these windows have
+// several ways out (X, Escape, backdrop, a sibling chart opening) and not all call one function.
+// aria-modal only when the backdrop blocks (`modal: false` for a click-through panel).
+function makeWindowAccessible(back, box, titleEl, options) {
+  const opts = options || {};
+  if (!box.getAttribute('role')) box.setAttribute('role', 'dialog');
+  if (opts.modal !== false) box.setAttribute('aria-modal', 'true');
+  if (titleEl && !box.getAttribute('aria-labelledby')) {
+    if (!titleEl.id) titleEl.id = 'win-title-' + (makeWindowAccessible._n = (makeWindowAccessible._n || 0) + 1);
+    box.setAttribute('aria-labelledby', titleEl.id);
+  }
+  const prev = document.activeElement;
+  const stop = box.querySelector('.modal-close-x') || box.querySelector('button, input, select, textarea, [href]');
+  if (stop) { try { stop.focus({ preventScroll: true }); } catch (e) { /* */ } }
+  if (typeof MutationObserver !== 'function') return;
+  const mo = new MutationObserver(() => {
+    if (back.isConnected) return;
+    mo.disconnect();
+    if (prev && prev.isConnected) { try { prev.focus({ preventScroll: true }); } catch (e) { /* */ } }
+  });
+  mo.observe(document.body, { childList: true });
+}
+window.makeWindowAccessible = makeWindowAccessible;
+
 function addModalCloseX(box, onClose, options = {}) {
   const x = document.createElement('button');
   x.className = 'modal-close-x';
@@ -5878,6 +5904,7 @@ function showMetList(kind, list) {
   box.appendChild(listEl);
   back.appendChild(box);
   document.body.appendChild(back);
+  makeWindowAccessible(back, box, h);
   // Movable by its title, as the NOTAM list; each list remembers its own spot per language.
   stopDrag = makeModalDraggable(box, h, kind === 'sigmet' ? 'navaid.sigmetListPos' : 'navaid.airmetListPos');
   // Resizable like the NOTAM list. It opens fitted to its few warnings unless the pilot has
@@ -6562,6 +6589,8 @@ function showExportModal() {
   // applied permanently.
   back.onclick = e => { if (e.target === back) dismissExport(); };
   document.body.appendChild(back);
+  // The floating panel leaves the map live under the pointer, so it is not aria-modal.
+  makeWindowAccessible(back, box, title, { modal: !floatPanel });
   updateExportPageWarn();   // now in the DOM — set the initial warning state
   updateExportPlanCb();     // and the initial plan-checkbox enabled state + label
   // Safety net: even on desktop, if the floating panel can't fit the viewport
@@ -11276,6 +11305,7 @@ function showFplDialog(opts) {
   back.onclick = e => { if (e.target === back) close(); };
   back._navaidClose = close;
   document.body.appendChild(back);
+  makeWindowAccessible(back, box, title);
   fplDialogOpen = true;
   document.addEventListener('keydown', onEsc, true);
 
