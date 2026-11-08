@@ -230,7 +230,8 @@ test.describe('Desktop menubar layout', () => {
     await bootDesktop(page);
     // Toolbar version is hidden on desktop...
     await expect(page.locator('#app-version')).toBeHidden();
-    // ...and surfaced under the legend instead.
+    // ...and surfaced under the legend instead (in the key, which opens from the Legend button).
+    await page.locator('#legend-toggle').click();
     const lv = page.locator('#legend-version');
     await expect(lv).toBeVisible();
     await expect(lv).toHaveText(/^v\d/);

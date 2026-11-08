@@ -147,31 +147,26 @@ test.describe('Zulu clock', () => {
     expect(Math.abs(reloaded.y - after.y)).toBeLessThan(3);
   });
 
-  test('the legend can be dragged and the position persists across reload', async ({ page }) => {
+  // The desktop legend is a fixed dock: a drag does not move it, and a spot stored by the old
+  // draggable card is not applied (only the phone card is dragged).
+  test('the desktop legend keeps its corner: no drag, and a stored spot is ignored', async ({ page }) => {
+    await page.addInitScript(() => { try { localStorage.setItem('navaid.legendPos.en', JSON.stringify({ x: 500, y: 200 })); } catch (e) {} });
     await boot(page);
+    const btn = page.locator('#legend-toggle');
+    await btn.click();
     const legend = page.locator('#map-legend');
     await expect(legend).toBeVisible();
     const before = await legend.boundingBox();
     if (!before) throw new Error('no box');
-
-    await page.mouse.move(before.x + before.width / 2, before.y + before.height / 2);
+    expect(before.x).toBeLessThan(40);                    // in the corner, not at the stored x=500
+    await page.mouse.move(before.x + before.width / 2, before.y + 10);
     await page.mouse.down();
     await page.mouse.move(before.x + 260, before.y - 200, { steps: 6 });
     await page.mouse.up();
-
     const after = await legend.boundingBox();
     if (!after) throw new Error('no box');
-    expect(after.x).toBeGreaterThan(before.x + 140);
-    expect(after.y).toBeLessThan(before.y - 100);
-    expect(await page.evaluate(() => localStorage.getItem('navaid.legendPos.en'))).toBeTruthy();
-
-    await page.reload();
-    await page.waitForFunction(() =>
-      typeof map !== 'undefined' && document.getElementById('map-legend') !== null);
-    const reloaded = await legend.boundingBox();
-    if (!reloaded) throw new Error('no box');
-    expect(Math.abs(reloaded.x - after.x)).toBeLessThan(3);
-    expect(Math.abs(reloaded.y - after.y)).toBeLessThan(3);
+    expect(Math.abs(after.x - before.x)).toBeLessThan(2);
+    expect(Math.abs(after.y - before.y)).toBeLessThan(2);
   });
 
   test('a dragged widget is clamped fully inside the viewport', async ({ page }) => {
