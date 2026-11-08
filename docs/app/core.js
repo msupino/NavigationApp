@@ -3324,7 +3324,7 @@ window.S = Object.assign({
   legendLsaWeekend: 'LSA bubble, weekends only',
   legendParachute: 'Parachute drop zone',
   legendParaglider: 'Hang-glider / paraglider launch',
-  commChangeBadge: '📡 Freq change point',
+  commChangeBadge: 'Freq change point',
   commChangeNoteText: 'Freq change',
   commChangeCallSign: 'Waypoint',
   commChangeCallSigns: 'Call signs',

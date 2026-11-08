@@ -1570,7 +1570,7 @@ window.S = {
   legendParachute: 'אזור הצנחה',
   legendParaglider: 'המראת גלשני רחיפה',
   legendAtcChange: 'שינוי תדר',
-  commChangeBadge: '📡 נקודת שינוי תדר',
+  commChangeBadge: 'נקודת שינוי תדר',
   commChangeNoteText: 'שינוי תדר',
   commChangeCallSign: 'נקודת דיווח',
   commChangeCallSigns: 'אותות קריאה',

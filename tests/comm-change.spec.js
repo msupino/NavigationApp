@@ -645,7 +645,8 @@ test.describe('comm-change rendering (fixture-backed)', () => {
                hasReadOnlyBadge: !!insp.querySelector('.commchange-row') };
     }, TYONA);
     expect(out.noteCount).toBeGreaterThan(0);   // a callout note was seeded
-    expect(out.hasReadOnlyBadge).toBe(false);   // united inspector edits instead of duplicating badge
+    // The chart's call signs (with play buttons) stay above the editor, as on the map point (asked).
+    expect(out.hasReadOnlyBadge).toBe(true);
     expect(out.hasCallSignEditor).toBe(true);   // call-sign editor present
     expect(out.hasFreqInput).toBe(true);        // editable, not read-only
   });
