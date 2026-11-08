@@ -3775,12 +3775,14 @@ window.S = Object.assign({
   tbSecDisplay: 'Display',
   tbSecPrint: 'Print',
   tbSecBuild: 'Edit',
-  tbSecView: 'Map',
+  // "Chart", not "Map": the phone's bottom bar already has a Map button that SHOWS the chart;
+  // this menu SETS it up (UI review: two things named Map).
+  tbSecView: 'Chart',
   tbSecCharts: 'Charts',
   tbSecExport: 'Export/import',
   tbSecWeather: 'Extra layers',
   tbSecBuildHint: 'Add · undo · clear',
-  tbSecViewHint: 'Chart, overlays, route info',
+  tbSecViewHint: 'Base chart, overlays, route info',
   tbSecSettings: 'Settings',
   tbSecSettingsHint: 'Speed, variation, language, tables',
   tbLanguage: 'Language',

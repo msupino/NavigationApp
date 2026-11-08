@@ -83,7 +83,7 @@ test('Escape, a tap outside, and Back each close it', async ({ page }) => {
 test('Hebrew: the menu\'s own Hebrew names, laid out right to left', async ({ page }) => {
   await boot(page, 'he');
   await page.locator('#edit-col-layers').click();
-  await expect(page.locator('#quick-layers .ql-head').first()).toHaveText('מפה');
+  await expect(page.locator('#quick-layers .ql-head').first()).toHaveText('תרשים');   // "Chart", as in English
   expect(await page.evaluate(() => getComputedStyle(document.querySelector('#quick-layers .ql-row')).direction)).toBe('rtl');
   const g = await page.evaluate(() => ({ b: document.getElementById('edit-col-layers').getBoundingClientRect().toJSON(),
     p: document.getElementById('quick-layers').getBoundingClientRect().toJSON(), w: innerWidth }));

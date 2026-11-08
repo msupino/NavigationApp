@@ -1,0 +1,219 @@
+From 8b01681025e6f7f0f97a1fe036fd5933fd8741dd Mon Sep 17 00:00:00 2001
+From: Marco <marco@supino.org>
+Date: Sun, 8 Nov 2026 21:07:44 +0000
+Subject: [PATCH] =?UTF-8?q?The=20chart=20menu=20section=20is=20named=20Cha?=
+ =?UTF-8?q?rt=20(=D7=AA=D7=A8=D7=A9=D7=99=D7=9D),=20not=20Map?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+---
+ Features-he.md    | 4 ++--
+ Features.md       | 2 +-
+ Flight-Plan.md    | 2 +-
+ Map-Layers-he.md  | 2 +-
+ Map-Layers.md     | 2 +-
+ Route-and-Legs.md | 2 +-
+ The-Map-he.md     | 4 ++--
+ The-Map.md        | 2 +-
+ Toolbar-he.md     | 4 ++--
+ Toolbar.md        | 4 ++--
+ User-Guide-he.md  | 2 +-
+ User-Guide.md     | 2 +-
+ 12 files changed, 16 insertions(+), 16 deletions(-)
+
+diff --git a/Features-he.md b/Features-he.md
+index 3706704..351a4c6 100644
+--- a/Features-he.md
++++ b/Features-he.md
+@@ -15,7 +15,7 @@
+ | קטע | מטרה |
+ | --- | --- |
+ | **עריכה** | הוספת נקודה, הוספת הערה, חיפוש, היפוך, **ביטול**, ניקוי, התאמה, **איפוס כל מיקומי הסמנים**, **איפוס כל שמות הנקודות**, **ניתוב אוטומטי דרך נקודות דיווח**, **הצמדה לנקודה הקרובה** |
+-| **מפה** | שכבת בסיס, הצגת נקודות ניווט / שדות תעופה / תחנות VOR + ייחוס VOR / הצגת-הוספת שינויי תדר, **הצג זמן מצטבר**, **הצג קווי סחיפה**, **הצג דיווחי חובה**, נקודות חמות, **זכוכית מגדלת**, הצג מרחק קטע, הדגש הפרש |
++| **תרשים** | שכבת בסיס, הצגת נקודות ניווט / שדות תעופה / תחנות VOR + ייחוס VOR / הצגת-הוספת שינויי תדר, **הצג זמן מצטבר**, **הצג קווי סחיפה**, **הצג דיווחי חובה**, נקודות חמות, **זכוכית מגדלת**, הצג מרחק קטע, הדגש הפרש |
+ | **מראה** | שקיפות תווית, אטימות מפה, גודל נקודה, גודל חץ קטע, **עובי קו קטע**, **עובי קו סחיפה** |
+ | **תכנית טיסה** | פותח את טבלת תכנית הטיסה (+ייצוא CSV) — ראו [תוכנית טיסה](Flight-Plan-he) |
+ | **דפיות** | **תבניות מסלול**, טופס תכנון טיסה, מציג מפות גישה לשדות, **מפות SIGWX**, **מפות רוח/טמפ׳**, רשימות **SIGMET** ו-**AIRMET**, בדיקת מסלול, **רשימת NOTAM**, **בועות LSA** (גובה נמוך), **CVFR לא מקוון** |
+@@ -129,7 +129,7 @@
+ 
+ ## פקדים לכל רגל
+ 
+-לקטע **מפה** מתגים החלים על כל רגל:
++לקטע **תרשים** מתגים החלים על כל רגל:
+ 
+ - **הצג מסלול חזרה** — מצייר גם את הסימון/חץ של כיוון החזרה. **כבוי כברירת מחדל** — היכולת מושבתת; הגדירו <span dir="ltr"><code>featureShowReturn</code></span> בגיסט הכיול כדי להחזירה. במקומו, **🧭 כיוון המסלול** בוחר אילו עפיפונים לצייר ברגע שלמסלול יש נקודת חזרה.
+ - **הצג מרחק קטע** — תג מרחק צהוב באמצע כל רגל.
+diff --git a/Features.md b/Features.md
+index 6b393de..39c7c05 100644
+--- a/Features.md
++++ b/Features.md
+@@ -13,7 +13,7 @@ The toolbar (a menu bar on a computer, the deck's Menu sheet on a phone) is grou
+ | Section | Purpose |
+ | --- | --- |
+ | **Edit** | Add waypoint, add note, search, reverse, **undo**, clear, fit, **reset all marker positions**, **reset all waypoint names**, **auto-route through waypoints**, **snap to nearest point** |
+-| **Map** | Base layer, Show Nav-WP / Show Airfields / Show VOR stations + VOR ref / Show/Add Freq Changes, **Show cumulative time**, **Show drift lines**, **Show mandatory reports**, hotspots, **magnifier**, Show leg dist, Highlight diff |
++| **Chart** | Base layer, Show Nav-WP / Show Airfields / Show VOR stations + VOR ref / Show/Add Freq Changes, **Show cumulative time**, **Show drift lines**, **Show mandatory reports**, hotspots, **magnifier**, Show leg dist, Highlight diff |
+ | **Display** | Label transparency, map opacity, waypoint size, leg arrow size, **leg line width**, **drift line width** |
+ | **Flight plan** | Opens the flight plan table (+ CSV export) — see [Flight Plan](Flight-Plan) |
+ | **Charts** | **Route templates**, flight planning form, airport approach charts viewer, **SIGWX charts**, **wind/temp charts**, **SIGMET** and **AIRMET** lists, route check, **NOTAM list**, **LSA bubbles** (Low Alt), **offline CVFR** |
+diff --git a/Flight-Plan.md b/Flight-Plan.md
+index 54d0cd7..210d16e 100644
+--- a/Flight-Plan.md
++++ b/Flight-Plan.md
+@@ -141,7 +141,7 @@ The return table also shows Radial/DME when a VOR is active, calculated to the s
+ 
+ - Use the leg inspector for one-off edits, the Plan modal for bulk speed / altitude changes.
+ - The Fuel column totals the burn; it does **not** check it against anything. NavAid has no tank-capacity or reserve field and will never warn you that a route exceeds your endurance — compare the total against your own aircraft's usable fuel and your reserve minimum yourself. See [Fuel Calculator](Fuel-Calculator).
+-- For long routes that span altitude changes, use **Highlight diff** in the **Map** menu so you can spot climb / descent legs at a glance on the map while you edit the plan.
++- For long routes that span altitude changes, use **Highlight diff** in the **Chart** menu so you can spot climb / descent legs at a glance on the map while you edit the plan.
+ 
+ ## Filing it
+ 
+diff --git a/Map-Layers-he.md b/Map-Layers-he.md
+index 3150434..8b110f0 100644
+--- a/Map-Layers-he.md
++++ b/Map-Layers-he.md
+@@ -4,7 +4,7 @@
+ 
+ # שכבות מפה
+ 
+-ל-NavAid עשר שכבות מפת בסיס. בוחרים אחת מהן בעזרת תפריט **שכבה** בקטע **מפה** בסרגל
++ל-NavAid עשר שכבות מפת בסיס. בוחרים אחת מהן בעזרת תפריט **שכבה** בקטע **תרשים** בסרגל
+ הכלים; מחוון **בהירות השכבה** שמתחתיו מעמעם את זו שנבחרה, ו**מפת בסיס** (תצוגה) קובעת מה
+ נראה מתחתיה.
+ 
+diff --git a/Map-Layers.md b/Map-Layers.md
+index 15a7bb9..a075a23 100644
+--- a/Map-Layers.md
++++ b/Map-Layers.md
+@@ -3,7 +3,7 @@
+ # Map Layers
+ 
+ NavAid ships ten base-map layers. Pick one with the **Layer** dropdown in the toolbar's
+-**Map** section; the **Layer opacity** slider directly beneath it dims the one you
++**Chart** section; the **Layer opacity** slider directly beneath it dims the one you
+ picked, and **Base map** (Display) chooses what shows through underneath.
+ 
+ | Layer | Source | Notes |
+diff --git a/Route-and-Legs.md b/Route-and-Legs.md
+index 44d58b6..c16ccbe 100644
+--- a/Route-and-Legs.md
++++ b/Route-and-Legs.md
+@@ -85,7 +85,7 @@ A leg with **no altitude** is flown level for timing, and drawn dashed on the pr
+ - **Altitude / speed change outline**: with **Highlight alt/speed diff** on, a kite whose altitude
+   or speed differs from the nearest drawn kite before it is outlined. A kite not drawn (inside a
+   CTR, or hidden by hand) is not compared with, so the first kite on the chart is never outlined.
+-- **Drift lines** and **distance badges** are toggles in the Map menu.
++- **Drift lines** and **distance badges** are toggles in the Chart menu.
+ 
+ ### With the return path shown
+ 
+diff --git a/The-Map-he.md b/The-Map-he.md
+index ede27a7..c95269c 100644
+--- a/The-Map-he.md
++++ b/The-Map-he.md
+@@ -119,7 +119,7 @@ NavAid משתמש ב-[Leaflet](https://leafletjs.com/) להצגת מפות אי
+ 
+ ## שכבות
+ 
+-המפה תומכת בשכבות הבסיס הבאות, הניתנות לבחירה בקטע **מפה** בסרגל הכלים:
++המפה תומכת בשכבות הבסיס הבאות, הניתנות לבחירה בקטע **תרשים** בסרגל הכלים:
+ 
+ - **CVFR** — מפת פנאי"ם ( Controlled VFR) ישראלית (ברירת מחדל)
+ - **ניווט** — מפת ניווט ישראלית
+@@ -149,7 +149,7 @@ NavAid משתמש ב-[Leaflet](https://leafletjs.com/) להצגת מפות אי
+ הכפתור **שכבות** (גיליונות מוערמים) עומד בראש עמודת העריכה, מעל בדיקת המסלול. הוא פותח רשימה
+ קצרה ליד העמודה:
+ 
+-- **מפה**: מפות הבסיס. בחירה באחת מחליפה את המפה וסוגרת את הרשימה.
++- **תרשים**: מפות הבסיס. בחירה באחת מחליפה את המפה וסוגרת את הרשימה.
+ - **שכבות**: מתגים ל-NOTAM, מרחב אווירי, SIGMET, AIRMET, רוח לכל קטע, מפות שדות, תנועה
+   ו[מזג אוויר על הקרקע](Extra-Layers-he#מזג-אוויר-על-הקרקע), כל אחד אותו מתג כמו בתפריט. מתג
+   משאיר את הרשימה פתוחה, כך שאפשר להפוך כמה בביקור אחד.
+diff --git a/The-Map.md b/The-Map.md
+index b15e8e1..4315e38 100644
+--- a/The-Map.md
++++ b/The-Map.md
+@@ -88,7 +88,7 @@ Switching the base chart also swaps the **data** behind the overlays (nav waypoi
+ 
+ ## Overlays
+ 
+-Toggled in **Map**: nav waypoints, airfields, VOR stations, waypoint names, cumulative time, drift lines, frequency changes, leg distance, highlight speed/altitude changes, keep kites inside the leg, mandatory reporting points, snap-to-nearest. Weather, NOTAMs and [Terrain vs altitude](Extra-Layers#terrain-vs-altitude) live in **Extra layers**.
++Toggled in **Chart**: nav waypoints, airfields, VOR stations, waypoint names, cumulative time, drift lines, frequency changes, leg distance, highlight speed/altitude changes, keep kites inside the leg, mandatory reporting points, snap-to-nearest. Weather, NOTAMs and [Terrain vs altitude](Extra-Layers#terrain-vs-altitude) live in **Extra layers**.
+ 
+ **Chart symbols follow the zoom.** Airfields, reporting points, VOR stations and frequency-change
+ callouts can shrink as you zoom out (`symbolScaleSmallest`, between `symbolScaleMinZoom` and
+diff --git a/Toolbar-he.md b/Toolbar-he.md
+index da952f8..63b3a15 100644
+--- a/Toolbar-he.md
++++ b/Toolbar-he.md
+@@ -15,7 +15,7 @@
+ | סדר | קטע | רמז | תוכן |
+ |---|---|---|---|
+ | 1 | **עריכה** | הוספה · ביטול · ניקוי | הוסף ציון דרך, הוסף הערה, חפש, הפוך מסלול, ביטול, נקה מפה, התאם למסך, איפוס כל מיקומי הסמנים, איפוס כל שמות הנקודות, נקה אחסון, ניתוב אוטומטי דרך נקודות דיווח, הצמדה לנקודה הקרובה |
+-| 2 | **מפה** | מפת בסיס, שכבות, מידע מסלול | בורר שכבת בסיס + מתגי שכבות (ציוני ניווט, שדות תעופה, VOR + תחנת ייחוס, שינויי תדר, שמות נקודות, זמן מצטבר, קווי סחיפה, כיוון המסלול, מרחק קטע, הדגשת הפרש, שמירת עפיפונים בקטע, נקודות חמות, דיווחי חובה), זכוכית מגדלת |
++| 2 | **תרשים** | מפת בסיס, שכבות, מידע מסלול | בורר שכבת בסיס + מתגי שכבות (ציוני ניווט, שדות תעופה, VOR + תחנת ייחוס, שינויי תדר, שמות נקודות, זמן מצטבר, קווי סחיפה, כיוון המסלול, מרחק קטע, הדגשת הפרש, שמירת עפיפונים בקטע, נקודות חמות, דיווחי חובה), זכוכית מגדלת |
+ | 3 | **מראה** | תוויות, עפיפונים, שקיפות | מחוונים: שקיפות תוויות, בהירות מפה, גודל ציון דרך, גודל חץ קטע, עובי קו רגל, עובי קו סחיפה |
+ | 4 | **תכנית טיסה** | — | כפתור אחד: פותח את [תכנית הטיסה](Flight-Plan-he) |
+ | 5 | **דפיות** | דפיות, נתיבים, מזג אוויר | תבניות, טופס תכנון טיסה, דפיות שדות תעופה, מפות SIGWX, מפות רוח/טמפ׳, SIGMET, AIRMET, בדיקת מסלול, רשימת NOTAM, בועות LSA (גובה נמוך בלבד), CVFR לא מקוון |
+@@ -24,7 +24,7 @@
+ | 8 | **הדפסה** | עמוד, PNG, כרטיס תכנית | מסגרת A3 / A4 / A4×2, מתג לרוחב / לאורך, שמור PNG |
+ | 9 | **הגדרות** | מהירות, שינוי מגנטי, שפה, טבלאות | שפה, מצב תצוגה, מהירות ברירת מחדל, נטייה מגנטית, הקלטה אוטומטית עם מיקום, חלונית בזמן הצגת מיקום, ואחריהן טבלת התדרים וטבלת הנתיבים, וגרסת האפליקציה |
+ 
+-**מפה** ו**הגדרות** היו פעם קטע אחד, *תצוגה/הגדרה*. ב**הגדרות** נמצא עכשיו מה שקובעים פעם אחת: השפה, מהירות ברירת המחדל והנטייה המגנטית, ואחריהן שתי טבלאות העיון. הסימולטור הוא סמל ✈ קטן בתחתית סרגל הכלים.
++**תרשים** (לשעבר מפה) ו**הגדרות** היו פעם קטע אחד, *תצוגה/הגדרה*. ב**הגדרות** נמצא עכשיו מה שקובעים פעם אחת: השפה, מהירות ברירת המחדל והנטייה המגנטית, ואחריהן שתי טבלאות העיון. הסימולטור הוא סמל ✈ קטן בתחתית סרגל הכלים.
+ 
+ ### בטלפון ובטאבלט
+ 
+diff --git a/Toolbar.md b/Toolbar.md
+index fabd4c9..98e1ab6 100644
+--- a/Toolbar.md
++++ b/Toolbar.md
+@@ -13,7 +13,7 @@ Each header is a full-height row (52 px on a phone): a drawn icon, the title, a
+ | Order | Section | Hint | Contents |
+ |---|---|---|---|
+ | 1 | **Edit** | Add · undo · clear | Add waypoint, Add note, Find, Reverse route, Undo, Clear map, Fit to screen, Reset all marker positions, Reset all waypoint names, Auto-route through waypoints, Snap to nearest point, Clear local store |
+-| 2 | **Map** | Chart, overlays, route info | Base layer + overlay toggles (nav-WP, airfields, VOR + VOR ref, freq changes, waypoint names, cumulative time, drift lines, route direction, mid-leg distance, highlight diff, keep kites inside leg, hotspots, mandatory reports), magnifier |
++| 2 | **Chart** | Base chart, overlays, route info | Base layer + overlay toggles (nav-WP, airfields, VOR + VOR ref, freq changes, waypoint names, cumulative time, drift lines, route direction, mid-leg distance, highlight diff, keep kites inside leg, hotspots, mandatory reports), magnifier |
+ | 3 | **Display** | Labels, kites, opacity | Sliders: label opacity, map opacity, waypoint size, leg arrow size, leg line width, drift line width |
+ | 4 | **Flight plan** | — | One button: opens the [Flight Plan](Flight-Plan) |
+ | 5 | **Charts** | Plates, routes, weather | Templates, Flight planning form, Airport charts, SIGWX charts, Wind/temp charts, SIGMET, AIRMET, Route check, NOTAM list, LSA bubbles (Low Alt only), Offline CVFR |
+@@ -22,7 +22,7 @@ Each header is a full-height row (52 px on a phone): a drawn icon, the title, a
+ | 8 | **Print** | Page, PNG, plan card | A3 / A4 page frame, Landscape / Portrait toggle, Save PNG |
+ | 9 | **Settings** | Speed, variation, language, tables | Language, Theme, Default speed, Magnetic variation, Record automatically with location, Panel while showing position, then Freq table and Alt pairs, and the app version |
+ 
+-**Map** and **Settings** used to be one section, *View/Set*. Settings now holds what you set once: the language, the default speed and the magnetic variation, followed by the two reference tables.
++**Chart** (once named Map) and **Settings** used to be one section, *View/Set*. Settings now holds what you set once: the language, the default speed and the magnetic variation, followed by the two reference tables.
+ 
+ The **Simulator** is a small ✈ icon in the toolbar footer (next to Terms /
+ Privacy) that opens the [Simulator](Simulator-Connect) panel.
+diff --git a/User-Guide-he.md b/User-Guide-he.md
+index 724bd41..a02569b 100644
+--- a/User-Guide-he.md
++++ b/User-Guide-he.md
+@@ -18,7 +18,7 @@
+ הסרגל מכיל את הקטעים הבאים:
+ 
+ - **עריכה** — הוספת נקודת ציון, הוספת הערה, חיפוש, היפוך, ביטול, ניקוי.
+-- **מפה** — שכבת בסיס ומתגי השכבות והמידע על המסלול.
++- **תרשים** — שכבת בסיס ומתגי השכבות והמידע על המסלול.
+ - **מראה** — שקיפות, גודל נקודות, חצים, עובי קווים.
+ - **תכנית טיסה** — פותח את תכנית הטיסה.
+ - **דפיות** — תבניות, טופס תכנון, דפיות שדות, מפות מזג אוויר, SIGMET, AIRMET, רשימת NOTAM.
+diff --git a/User-Guide.md b/User-Guide.md
+index d972cf9..f370e44 100644
+--- a/User-Guide.md
++++ b/User-Guide.md
+@@ -87,7 +87,7 @@ See [Frequency Changes](Frequency-Changes).
+ 
+ ## VOR and radial/DME
+ 
+-- Select **VOR ref** in the **Map** menu, or click a VOR station marker and choose **Use as reference VOR**.
++- Select **VOR ref** in the **Chart** menu, or click a VOR station marker and choose **Use as reference VOR**.
+ - The selected VOR drives the separate bottom readout, inspector radial/DME rows and Flight Plan Radial/DME columns.
+ - The Flight Plan calculates Radial/DME to each leg's start point and allows a per-leg VOR override in the Radial cell.
+ 
+-- 
+2.43.0
+
