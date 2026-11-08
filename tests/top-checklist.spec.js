@@ -1,5 +1,5 @@
 // @ts-check
-// Asked: after TOP, the leg-entry checks -- Hebrew בד"ח צא כיוון, כז״גמ״ד (כיוון, זמן, גובה, מנוע,
+// Asked: after TOP, the leg-entry checks -- Hebrew בד"ח צא כיוון, כז״גמ״ד (כיוון, זמן, גובה, מכשירים,
 // דיווח); English FREDA (fuel, radio, engine, direction, altimeter) -- with the new leg's own
 // figures: the heading, its planned time, its altitude, and the frequency when this waypoint
 // changes it. Shown and spoken; at the last waypoint it stays a plain TOP; the gist can withdraw it.
@@ -60,11 +60,11 @@ test('Hebrew: כז״גמ״ד with the heading, the leg time and the altitude; מ
   await boot(page, 'he');
   const out = await overBravo(page, false);
   const top = out.notes.find(n => n.title === 'TOP');
-  expect(top.body).toMatch(/^כיוון \d{3} · זמן \d+:\d{2} · גובה 2500 רגל · מנוע · דיווח$/);
+  expect(top.body).toMatch(/^כיוון \d{3} · זמן \d+:\d{2} · גובה 2500 רגל · מכשירים · דיווח$/);
   const call = out.spoken.find(t => /^טופ\./.test(t));
   expect(call.startsWith('טופ. מגמה ')).toBe(true);           // never the homograph כיוון aloud
   expect(call).toContain('. זמן ');
-  expect(call).toContain('. גובה 2500 רגל. מנוע. דיווח.');
+  expect(call).toContain('. גובה 2500 רגל. מכשירים. דיווח.');
 });
 
 test('at the last waypoint it stays a plain TOP', async ({ page }) => {

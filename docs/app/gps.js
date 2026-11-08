@@ -2377,7 +2377,7 @@ function gpsCheckLegAlerts() {
       // see _gpsLastTopAt in gpsCheckDrift.
       _gpsLastTopAt = Date.now();
       // Then the essential checks for the new leg (asked; Hebrew בד"ח צא כיוון -- כז״גמ״ד):
-      // heading, time, altitude, engine, report -- with the new leg's figures, the same ones the two-minute call gave as prep.
+      // heading, time, altitude, instruments, report (English: FREDA) -- with the new leg's figures, the same ones the two-minute call gave as prep.
       // Not at the last waypoint: there is no leg to set up, so it stays a plain TOP.
       const checklist = (typeof tune !== 'function' || tune('topChecklist') !== false) &&
         !!wps[gpsAlertLegIndex + 2] && S && S.watchAlertTopChecklistBody;

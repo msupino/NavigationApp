@@ -3677,7 +3677,8 @@ window.S = Object.assign({
   watchAlertTopBody: 'TOP',
   // After the waypoint, the leg-entry checks with the new leg's own figures where the plan has
   // them (asked). In English that is FREDA -- fuel, radio, engine, direction, altimeter; the
-  // Hebrew strings carry the Israeli כז״גמ״ד (בד"ח צא כיוון). Every word is always there: it is a
+  // Hebrew strings carry the Israeli כז״גמ״ד (בד"ח צא כיוון: heading, time, altitude, instruments,
+  // report). Every word is always there: it is a
   // checklist, and a missing number is still a thing to check. `freq` is set when this waypoint
   // changes frequency. `time` (the new leg's planned time) is the Hebrew list's זמן.
   watchAlertTopChecklistBody: function (hdg, time, alt, freq) {

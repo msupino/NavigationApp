@@ -1,4 +1,4 @@
-From 56adc62299eb305311433ec66a02f6e03efec427 Mon Sep 17 00:00:00 2001
+From 18431fb50c697c5a062013ca23ac2df76f8b9343 Mon Sep 17 00:00:00 2001
 From: Marco <marco@supino.org>
 Date: Sun, 8 Nov 2026 17:46:54 +0000
 Subject: [PATCH] =?UTF-8?q?TOP:=20leg-entry=20checks=20(FREDA=20/=20=D7=9B?=
@@ -42,7 +42,7 @@ index b3e31b6..6b393de 100644
  - A placed waypoint hides any nav-waypoint or airfield marker sharing its position (proximity-based, so it still works after rename).
  - The **search** opens as a floating overlay (top-center) — press **Ctrl-F / Cmd-F** anywhere, or click the **🔍 Find** button in the **Edit** menu. Matches nav-waypoint Hebrew / English names and airfield ICAO / English / Hebrew labels; the 12-result budget is split 6/6 between airfields and nav-WPs. Enter jumps to the first match; Escape closes.
 diff --git a/GPS-Track-Recording-he.md b/GPS-Track-Recording-he.md
-index 51c1160..8501ab5 100644
+index 51c1160..aabafc8 100644
 --- a/GPS-Track-Recording-he.md
 +++ b/GPS-Track-Recording-he.md
 @@ -162,7 +162,7 @@ NavAid יכול להקליט את הנתיב שבאמת טסתם מה-GPS של 
@@ -50,7 +50,7 @@ index 51c1160..8501ab5 100644
  | --- | --- |
  | **קטע הבא** | כשתי דקות לפני נקודת הציון הבאה (חצי מכך בקטע קצר). זו קריאת **ש.מ.ש** — ההתראה נקראת *ש.מ.ש* והקריאה הקולית נפתחת ב"שעון, מפה, שטח": בודקים את השעון, מאתרים את הנקודה במפה ואז מחפשים אותה בשטח. מציינת את הנקודה ואת הקטע ש**אחריה** — גובה, מגמה וזמן — כך שהיא משמשת גם הכנה לפנייה. |
 -| **טופ** | מעל נקודת הציון, רגע קריאת ה-TOP בקשר. אם באותה נקודה יש שינוי תדר, ההתראה נושאת גם את התחנה והתדר. |
-+| **טופ** | מעל נקודת הציון, רגע קריאת ה-TOP בקשר. ואחריה בד"ח צא כיוון עם נתוני הקטע החדש — **כז״גמ״ד**: כיוון (הכיוון החדש), זמן (זמן הקטע המתוכנן), גובה (הגובה המתוכנן), מנוע, דיווח (עם התדר החדש אם בנקודה יש שינוי תדר) — מוצג ונאמר בקול. בנקודה האחרונה — טופ בלבד. |
++| **טופ** | מעל נקודת הציון, רגע קריאת ה-TOP בקשר. ואחריה בד"ח צא כיוון עם נתוני הקטע החדש — **כז״גמ״ד**: כיוון (הכיוון החדש), זמן (זמן הקטע המתוכנן), גובה (הגובה המתוכנן), מכשירים, דיווח (עם התדר החדש אם בנקודה יש שינוי תדר) — מוצג ונאמר בקול. בנקודה האחרונה — טופ בלבד. |
  | **גובה** | סטייה של יותר מ-100 רגל (<span dir="ltr"><code>altToleranceFt</code></span>) מהגובה המתוכנן של הקטע. פעם אחת לכל סטייה, ושוב רק אחרי חזרה לטווח — ולכל היותר **פעמיים באותו קטע** (<span dir="ltr"><code>altMaxAlertsPerLeg</code></span>), כך שקטע שנטוס מעט מחוץ לתוכנית מדווח על כך ולא מציק לאורך כולו. |
  | **סטייה מהמסלול** | שגיאת זווית מסלול מעל 10°, בטיימר עצמאי של שתי דקות. לפני אמצע הקטע — תיקון "כפול השגיאה"; אחריו — תיקון ישר אל הנקודה. שותקת 30 שניות אחרי טופ, בזמן שהפנייה לקטע החדש מתייצבת. |
  | **מחוץ למסלול** | מיקום מחוץ לכל הקטעים (ראו למטה) במשך 15 שניות. מציינת את הנקודה הקרובה שעדיין לפניכם ואת המגמה אליה. |

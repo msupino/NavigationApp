@@ -2067,10 +2067,10 @@ window.S = {
   },
   watchAlertTopTitle: 'TOP',
   watchAlertTopBody: 'TOP',
-  // בד"ח צא כיוון -- כז״גמ״ד: כיוון, זמן, גובה, מנוע, דיווח -- עם נתוני הקטע החדש כשיש.
+  // בד"ח צא כיוון -- כז״גמ״ד: כיוון, זמן, גובה, מכשירים, דיווח -- עם נתוני הקטע החדש כשיש.
   watchAlertTopChecklistBody: function (hdg, time, alt, freq) {
     return ['כיוון' + (hdg != null ? ' ' + hdg : ''), 'זמן' + (time ? ' ' + time : ''),
-      'גובה' + (alt != null ? ' ' + alt + ' רגל' : ''), 'מנוע', 'דיווח' + (freq ? ' ' + freq : '')].join(' · ');
+      'גובה' + (alt != null ? ' ' + alt + ' רגל' : ''), 'מכשירים', 'דיווח' + (freq ? ' ' + freq : '')].join(' · ');
   },
   watchAlertAltTitle: 'גובה',
   watchAlertAltBody: function(actual, planned) {
@@ -2126,7 +2126,7 @@ window.S = {
     if (hms && hms.m) t.push(hms.m === 1 ? 'דקה' : hms.m + ' דקות');
     if (hms && hms.s) t.push(hms.s + ' שניות');
     return 'טופ. מגמה' + (hdgDigits != null ? ' ' + hdgDigits : '') + '. זמן' + (t.length ? ' ' + t.join(' ') : '') +
-      '. גובה' + (alt != null ? ' ' + alt + ' רגל' : '') + '. מנוע. דיווח' + (freqDigits ? ', תדר ' + freqDigits : '') + '.';
+      '. גובה' + (alt != null ? ' ' + alt + ' רגל' : '') + '. מכשירים. דיווח' + (freqDigits ? ', תדר ' + freqDigits : '') + '.';
   },
   spokenDecimal: 'נקודה',
   speakAlertAlt: function(actual, planned) {
