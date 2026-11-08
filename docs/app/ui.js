@@ -2324,16 +2324,71 @@ setInterval(refreshZuluClock, 1000);
 // the map (a chart legend) instead of sitting inside the View menu.
 // Bottom-left (above the coord readout) keeps it clear of the inspector
 // (top-right), the toolbar (top-left) and the rotate dial (bottom-right).
+//
+// Desktop (no phone deck): a dock instead of a card -- reported as looking unrelated to the map
+// controls, taking room, and closing in the wrong place (the title it closed from sat under the
+// route totals, and the closed chip landed 170px lower). A round Legend button in the map-button
+// family, the route totals as their own pill beside it -- shown whether the key is open or not --
+// and the key opening ABOVE the button, so the button never moves and closes it where it opened.
+// The phone keeps the card: totals inside it, title as the toggle, draggable.
 const legendCtrl = L.control({ position: 'bottomleft' });
+const legendDock = { wrap: null, row: null, btn: null };
 legendCtrl.onAdd = function () {
-  const wrap = L.DomUtil.create('div', 'leaflet-control');
+  const wrap = L.DomUtil.create('div', 'leaflet-control legend-ctrl');
   const el = document.getElementById('map-legend');
   if (el) { el.style.display = ''; wrap.appendChild(el); }
+  const row = document.createElement('div');
+  row.className = 'legend-dock';
+  const btn = document.createElement('button');
+  btn.type = 'button';
+  btn.id = 'legend-toggle';
+  btn.className = 'legend-toggle';
+  btn.setAttribute('aria-controls', 'map-legend');
+  btn.setAttribute('aria-label', S.legendTitle || 'Legend');
+  btn.title = S.legendTitle || 'Legend';
+  if (typeof navIconSvg === 'function') btn.innerHTML = navIconSvg('list', 20);
+  row.appendChild(btn);
+  wrap.appendChild(row);
+  Object.assign(legendDock, { wrap, row, btn });
   L.DomEvent.disableClickPropagation(wrap);
   L.DomEvent.disableScrollPropagation(wrap);
   return wrap;
 };
 legendCtrl.addTo(map);
+const legendDocked = () => !document.body.classList.contains('deck-on');
+// The route totals live in the dock on desktop and at the top of the card on the phone.
+let legendLayout = null;
+function placeLegendForLayout() {
+  const el = document.getElementById('map-legend');
+  const sum = document.getElementById('route-summary');
+  if (!el || !legendDock.row) return;
+  const docked = legendDocked();
+  // body's class list changes for many reasons (measuring, a live fix...): only a change of layout moves anything.
+  if (docked === legendLayout) return;
+  legendLayout = docked;
+  legendDock.wrap.classList.toggle('legend-docked', docked);
+  if (docked) {
+    if (sum && sum.parentNode !== legendDock.row) legendDock.row.appendChild(sum);
+    // The phone's dragged spot does not apply to the dock: the key sits above its button.
+    for (const p of ['position', 'left', 'top', 'right', 'bottom', 'margin', 'maxWidth']) el.style[p] = '';
+  } else if (sum && sum.parentNode !== el) {
+    el.insertBefore(sum, el.firstChild);
+  }
+  // The title's role follows the layout (toggle on the phone, heading on the desktop).
+  if (typeof window.setLegendCollapsed === 'function') window.setLegendCollapsed(el.classList.contains('map-legend-collapsed'), false);
+}
+placeLegendForLayout();
+new MutationObserver(placeLegendForLayout).observe(document.body, { attributes: true, attributeFilter: ['class'] });
+// The map clock runs along the same bottom row: it starts right of the dock (style.css .map-time),
+// whose width changes with the route totals.
+function publishLegendDockWidth() {
+  const root = document.documentElement;
+  const row = legendDock.row;
+  if (!row || !legendDocked() || !row.getClientRects().length) { root.style.removeProperty('--navaid-legend-dock-clear'); return; }
+  root.style.setProperty('--navaid-legend-dock-clear', Math.ceil(row.getBoundingClientRect().right + 12) + 'px');
+}
+if (legendDock.row && typeof ResizeObserver === 'function') new ResizeObserver(publishLegendDockWidth).observe(legendDock.row);
+addEventListener('resize', publishLegendDockWidth);
 
 // Draggable legend — drag it anywhere; the spot persists under
 // navaid.legendPos. Same pattern as the Zulu clock above.
@@ -2343,16 +2398,22 @@ legendCtrl.addTo(map);
   // On a phone the card is most of the bottom-left quarter of the screen, over the chart a
   // pilot is trying to read, and it says the same six things on every flight. It starts
   // collapsed to its title there -- tap to open, tap to close -- and the choice is kept per
-  // device. Desktop is unchanged: there is room, and it stays open.
+  // device. On the desktop the dock's Legend button opens and closes it (legendCtrl above).
   const COLLAPSE_KEY = 'navaid.legendCollapsed';
-  const legendIsPhone = () => window.innerWidth <= 680;
   function setLegendCollapsed(on, persist) {
     box.classList.toggle('map-legend-collapsed', !!on);
+    if (legendDock.btn) legendDock.btn.setAttribute('aria-expanded', on ? 'false' : 'true');
     const title = box.querySelector('.map-legend-title');
-    if (title) {
+    // The title is the toggle on the phone; on the desktop it is the key's heading (the button opens it).
+    if (title && !legendDocked()) {
       title.setAttribute('role', 'button');
       title.setAttribute('tabindex', '0');
       title.setAttribute('aria-expanded', on ? 'false' : 'true');
+    } else if (title) {
+      title.setAttribute('role', 'heading');
+      title.setAttribute('aria-level', '2');
+      title.removeAttribute('tabindex');
+      title.removeAttribute('aria-expanded');
     }
     if (persist) {
       try { localStorage.setItem(COLLAPSE_KEY, on ? '1' : '0'); } catch (e) { /* storage unavailable */ }
@@ -2363,9 +2424,21 @@ legendCtrl.addTo(map);
   (function initLegendCollapsed() {
     let stored = null;
     try { stored = localStorage.getItem(COLLAPSE_KEY); } catch (e) { /* storage unavailable */ }
-    setLegendCollapsed(stored === null ? legendIsPhone() : stored === '1', false);
+    // Closed until asked for, on the phone and now on the desktop dock too: the key is the same
+    // six symbols every flight, and the totals beside the button no longer go with it.
+    setLegendCollapsed(stored === null ? true : stored === '1', false);
   })();
   window.setLegendCollapsed = setLegendCollapsed;
+  if (legendDock.btn) {
+    legendDock.btn.addEventListener('click', () => setLegendCollapsed(!box.classList.contains('map-legend-collapsed'), true));
+    // Escape closes an open key and leaves focus on the button that opened it.
+    document.addEventListener('keydown', (e) => {
+      if (e.key !== 'Escape' || !legendDocked() || box.classList.contains('map-legend-collapsed')) return;
+      if (e.target && e.target.closest && e.target.closest('input, select, textarea, .modal-back')) return;
+      setLegendCollapsed(true, true);
+      if (box.contains(document.activeElement)) legendDock.btn.focus();
+    });
+  }
 
   const KEY = 'navaid.legendPos';
   const GAP = 6;
@@ -2477,6 +2550,7 @@ legendCtrl.addTo(map);
   }
 
   function applyPos(x, y, persist) {
+    if (legendDocked()) return;          // the desktop dock has a fixed place (placeLegendForLayout)
     box.style.maxWidth = '';
     box.classList.remove('map-legend-constrained');
     const obstacles = chromeRects();
@@ -2511,6 +2585,7 @@ legendCtrl.addTo(map);
   } catch (e) { /* storage unavailable */ }
   window.reconcileLegendPosition = function (opts = {}) {
     if (document.documentElement.classList.contains('app-booting')) return;
+    if (legendDocked()) return;
     const r = box.getBoundingClientRect();
     const vp = viewportRect();
     const outside = r.left < vp.left || r.top < vp.top ||
@@ -2596,8 +2671,10 @@ legendCtrl.addTo(map);
     window.addEventListener('touchmove', tm, { passive: false });
     window.addEventListener('touchend', end);
   }
-  box.addEventListener('mousedown', e => { e.preventDefault(); start(e.clientX, e.clientY); });
+  // Dragged (and opened from its title) on the phone only; the desktop dock opens from its button.
+  box.addEventListener('mousedown', e => { if (legendDocked()) return; e.preventDefault(); start(e.clientX, e.clientY); });
   box.addEventListener('touchstart', e => {
+    if (legendDocked()) return;
     if (e.touches.length === 1) { e.preventDefault(); start(e.touches[0].clientX, e.touches[0].clientY); }
   }, { passive: false });
 })();

@@ -163,6 +163,8 @@ window.S = {
   tourMeasureText: 'כשהמיקום מוצג, הקישו על הסרגל ואז על נקודה: מרחק, כיוון וזמן מהמטוס. שום דבר לא נוסף למסלול.',
   tourLockTitle: 'נעילת עריכה',
   tourLockText: 'סגור — שום דבר במסלול לא זז. ננעל מעצמו כשמוצג מיקום.',
+  tourLegendTitle: 'מקרא וסיכום המסלול',
+  tourLegendText: 'הכפתור פותח מעליו את המקרא של סמלי המפה; לחיצה נוספת סוגרת. לצידו — קטעים, מרחק, זמן ודלק של המסלול, כשיש מסלול.',
   tourDialTitle: 'סיבוב והגדלת המפה',
   tourDialText: 'גררו את החוגה כדי לסובב את המפה, הקישו עליה לסיבוב של 90°; המחט האדומה מצביעה צפונה; לחיצה ארוכה פותחת מצפן. + ו-− מגדילים ומקטינים.',
   tourDialTextPhone: 'גררו את החוגה כדי לסובב את המפה, הקישו עליה לסיבוב של 90°; המחט האדומה מצביעה צפונה; לחיצה ארוכה פותחת מצפן. + ו-− מגדילים ומקטינים; ⓘ מציג את קרדיט המפות.',
@@ -2054,6 +2056,7 @@ window.S = {
   alertChannelName: 'התראות טיסה',
   alertChannelDescription: 'התראות בטיסה: קטע הבא, גובה, TOP, יציאה מהמסלול',
   watchAlertLegTitle: 'קטע הבא',
+  watchAlertLegTitleCmg: 'ש.מ.ש',
   watchAlertLegBody: function(wp, alt, hdg, time, freq) {
     const parts = [];
     if (alt != null) parts.push(alt + ' רגל');
@@ -2090,6 +2093,8 @@ window.S = {
     return 'מגמה ' + heading + '° ישירות אל ' + wp;
   },
   // ראו את ההערה בגרסה האנגלית: אלה הניסוחים המדוברים, ולא גוף ההתראה.
+  // Said in full: a speech engine reads the abbreviation ש.מ.ש as letters.
+  speakAlertClockMapGround: 'שעון, מפה, שטח.',
   speakAlertLeg: function(wp, alt, hdgDigits, hms, freqDigits) {
     let s = 'מתקרב אל ' + wp + '.';
     // ראו את ההערה בגרסה האנגלית: התדר נאמר לפני נתוני הקטע הבא.

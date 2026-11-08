@@ -5194,7 +5194,9 @@ body.theme-light .msa-low .val { color: #c0392b; }
   justify-content: center;
   /* Leave the right-hand column alone: the coordinate readout and the zoom keys live there,
      and a centred group with a long track was reaching under both. */
-  padding: 0 132px 0 10px;
+  /* Right: the coordinate readout's ~150px beside the zoom column; left: the legend dock (ui.js).
+     The group centres in what is left, its slider giving up width first. */
+  padding: 0 calc(var(--navaid-map-ctrl-clear, 52px) + 160px) 0 var(--navaid-legend-dock-clear, 10px);
   pointer-events: none;               /* the strip is not a control */
 }
 .map-time > * { pointer-events: auto; }
@@ -10604,3 +10606,100 @@ body.deck-on :is(.search-hint, #app-version, #toolbar .slider-val) { font-size: 
    in place of the app. */
 .modal.doc-modal { display: flex; flex-direction: column; width: min(720px, calc(100vw - 24px)); }
 .modal.doc-modal .doc-modal-frame { flex: 1 1 auto; width: 100%; height: min(70vh, 640px); border: 0; border-radius: 6px; background: #fff; }
+
+/* --- Desktop legend dock (ui.js legendCtrl / placeLegendForLayout) -------------------------
+   A round Legend button in the map-button family, the route totals as a pill beside it, and the
+   key opening above the button -- so the button that opened it is where it closes. The phone
+   (deck on) keeps the card; there the dock row is not shown. */
+.legend-ctrl:not(.legend-docked) .legend-dock { display: none; }
+.legend-ctrl.legend-docked { position: relative; }
+.legend-ctrl.legend-docked .legend-dock {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  direction: ltr;                 /* the button stays in the map's corner in Hebrew too */
+}
+.legend-ctrl.legend-docked .legend-toggle {
+  flex: none;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  color: var(--navaid-mapbtn-fg);
+  background: var(--navaid-mapbtn-bg);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+}
+.legend-ctrl.legend-docked .legend-toggle:hover { filter: brightness(1.15); }
+.legend-ctrl.legend-docked .legend-toggle[aria-expanded="true"] { background: var(--navaid-mapbtn-on); }
+.legend-ctrl.legend-docked .legend-toggle:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: 0;
+  box-shadow: 0 0 0 4px #1d6fe0;
+}
+.legend-ctrl.legend-docked .legend-toggle svg { display: block; }
+/* Route totals: their own pill, dark like the buttons in both themes, read in the page's
+   language order (plaintext), never wrapped. */
+.legend-ctrl.legend-docked #route-summary {
+  height: 32px;
+  display: flex;
+  align-items: center;
+  margin: 0;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 16px;
+  color: #fff;
+  background: var(--navaid-mapbtn-bg);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+  font-size: 13px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  unicode-bidi: plaintext;
+}
+.legend-ctrl.legend-docked #route-summary[style*="display: none"] { display: none !important; }
+/* The key: a panel over the button, pointing at it. Opaque, so map labels never sit in it. */
+.legend-ctrl.legend-docked .map-legend {
+  position: absolute;
+  left: 0;
+  bottom: calc(100% + 10px);
+  width: 248px;
+  margin: 0;
+  padding: 10px 12px 8px;
+  border: 0;
+  border-radius: 12px;
+  background: #1f1c1c;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.32);
+  cursor: default;
+  -webkit-user-select: text;
+  user-select: text;
+  touch-action: auto;
+}
+body.theme-light .legend-ctrl.legend-docked .map-legend { background: #fbfcfe; }
+.legend-ctrl.legend-docked .map-legend::after {
+  content: '';
+  position: absolute;
+  left: 16px;
+  bottom: -6px;
+  width: 12px;
+  height: 12px;
+  transform: rotate(45deg);
+  background: inherit;
+}
+.legend-ctrl.legend-docked .map-legend.map-legend-collapsed { display: none !important; }
+.legend-ctrl.legend-docked .map-legend .map-legend-title {
+  cursor: auto;
+  margin: 0 0 2px;
+  color: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  text-transform: none;
+  letter-spacing: 0;
+}
+.legend-ctrl.legend-docked .map-legend .map-legend-title::after { content: none; }
+.legend-ctrl.legend-docked .map-legend { color: #ece8e4; }
+body.theme-light .legend-ctrl.legend-docked .map-legend { color: #1d2530; }
+.legend-ctrl.legend-docked .map-legend-row { min-height: 24px; font-size: 13px; gap: 8px; }

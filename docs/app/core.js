@@ -102,6 +102,7 @@ NavAid.tuningDefaults = {
   livePredictorTurnGentleDegSec: { value: 0.25, min: 0, max: 3, step: 0.05, label: 'Curve predictor for a clear gentle turn down to (°/s)' },
   livePredictorTurnSignificance: { value: 3, min: 1, max: 10, step: 0.5, label: 'Gentle turn must stand out from GPS scatter by (standard errors)' },
   legEtaLeadSec: { value: 120, min: 15, max: 600, step: 15, label: 'Next-leg call, this far ahead (s)' },
+  legClockMapGround: { value: true, type: 'bool', label: 'Next-leg call opens with "clock to map to ground" (find the waypoint)' },
   topChecklist: { value: true, type: 'bool', label: 'TOP call reads the leg-entry checks (FREDA / כז״גמ״ד) with the new leg\'s figures' },
   legCaptureNm: { value: 0.3, min: 0.05, max: 3, step: 0.05, label: 'TOP capture radius (NM)' },
   driftTrackErrorDeg: { value: 10, min: 2, max: 45, step: 1, label: 'Off-course alert at (°)' },
@@ -1304,7 +1305,7 @@ NavAid.tuningDefaults = {
 // interaction (hit testing), tools (alt pairs, export), and finally the
 // global colour palette.
 NavAid.tuningGroups = [
-  { name: 'Navigation', keys: ['magVarAuto', 'magneticVariationDeg', 'msaBufferFt', 'altimetryCorrection', 'geoidUndulationFt', 'followResumeMs', 'followZoomFloor', 'followZoomCeiling', 'followZoomCtrFloor', 'followZoomCtrCeiling', 'gpsReadoutFontPx', 'gpsReadoutRefitPx', 'alertNotifyTtlSec', 'alertIconColor', 'altToleranceFt', 'altMaxAlertsPerLeg', 'legEtaLeadSec', 'topChecklist', 'atisLeadSec', 'lastLightMarginMin', 'atisMarkerColor', 'atisMarkerRadiusPx', 'atisMarkerFontPx', 'liveHeadingEndLabel', 'legCaptureNm', 'driftTrackErrorDeg', 'driftCheckSec', 'coneUnknownSec', 'gpsMaxAccuracyM', 'gpsMinMoveM', 'gpsGlide', 'gpsGlideMinKt', 'gpsGlideMaxHz', 'vorReadoutMaxNm', 'measureLineColor', 'measureDotFill', 'measureLabelBg', 'measureLabelText', 'gpsStaleSec', 'qnhMaxAgeMin', 'qnhMoveNm', 'compassMaxKt', 'compassFallback', 'headingUpMinDeltaDeg', 'crosshairSizePx', 'crosshairWidthPx', 'crosshairColor', 'crosshairHaloColor', 'crosshairAlpha', 'atisMarkerFillAlpha', 'atisMarkerWidthPx'] },
+  { name: 'Navigation', keys: ['magVarAuto', 'magneticVariationDeg', 'msaBufferFt', 'altimetryCorrection', 'geoidUndulationFt', 'followResumeMs', 'followZoomFloor', 'followZoomCeiling', 'followZoomCtrFloor', 'followZoomCtrCeiling', 'gpsReadoutFontPx', 'gpsReadoutRefitPx', 'alertNotifyTtlSec', 'alertIconColor', 'altToleranceFt', 'altMaxAlertsPerLeg', 'legEtaLeadSec', 'legClockMapGround', 'topChecklist', 'atisLeadSec', 'lastLightMarginMin', 'atisMarkerColor', 'atisMarkerRadiusPx', 'atisMarkerFontPx', 'liveHeadingEndLabel', 'legCaptureNm', 'driftTrackErrorDeg', 'driftCheckSec', 'coneUnknownSec', 'gpsMaxAccuracyM', 'gpsMinMoveM', 'gpsGlide', 'gpsGlideMinKt', 'gpsGlideMaxHz', 'vorReadoutMaxNm', 'measureLineColor', 'measureDotFill', 'measureLabelBg', 'measureLabelText', 'gpsStaleSec', 'qnhMaxAgeMin', 'qnhMoveNm', 'compassMaxKt', 'compassFallback', 'headingUpMinDeltaDeg', 'crosshairSizePx', 'crosshairWidthPx', 'crosshairColor', 'crosshairHaloColor', 'crosshairAlpha', 'atisMarkerFillAlpha', 'atisMarkerWidthPx'] },
   { name: 'Performance defaults', keys: ['profileClimbFpm', 'profileClimbKt', 'defaultGph', 'defaultTaxiGal'] },
   { name: 'Altitude inference', keys: ['legAltInferMaxHops', 'legAltInferMaxDistRatio', 'legAltInferMaxExtraNm'] },
   { name: 'Plan card', keys: ['planCardBaseRowPx', 'planCardGripPx', 'planCardBgColor', 'planCardHeaderBgColor', 'planCardTotalBgColor', 'planCardStripeBgColor', 'planCardGridColor', 'planCardTextColor', 'planCardGripColor', 'planCardGripLineColor', 'planCardGripLineWidthPx'] },
@@ -1893,6 +1894,8 @@ window.S = Object.assign({
   tourMeasureText: 'With your position showing, tap the ruler, then a point: distance, bearing and time from the aircraft. Nothing is added to the route.',
   tourLockTitle: 'Edit lock',
   tourLockText: 'Shut, nothing on the route can move. It locks by itself while your position is showing.',
+  tourLegendTitle: 'Legend and route totals',
+  tourLegendText: 'The button opens the key to the chart symbols above it; press it again to close. Beside it, the route\u2019s legs, distance, time and fuel, once there is a route.',
   tourDialTitle: 'Turn and zoom the chart',
   tourDialText: 'Drag the dial to turn the chart, tap it to turn by 90°; the red needle points north; hold it for the compass. + and − zoom.',
   tourDialTextPhone: 'Drag the dial to turn the chart, tap it to turn by 90°; the red needle points north; hold it for the compass. + and − zoom; ⓘ shows the chart credits.',
@@ -3647,6 +3650,11 @@ window.S = Object.assign({
   alertChannelName: 'Flight alerts',
   alertChannelDescription: 'In-flight alerts: next leg, altitude, TOP, off route',
   watchAlertLegTitle: 'Next leg',
+  // The same call, two minutes out, as the cue to find the waypoint -- the clock-to-map-to-ground
+  // technique: check the clock, find the point on the map, then look for it outside (asked;
+  // Hebrew ש.מ.ש -- שעון, מפה, שטח). It is the
+  // title, so the body a watch tile shows is not one character shorter.
+  watchAlertLegTitleCmg: 'Clock to map to ground',
   // alt/hdg/time describe the NEXT leg -- the one starting at `wp`, not the one ending
   // there -- so the alert doubles as prep for the turn, explicitly labelled as such (not
   // just implied by context). All three come from the PLAN (planned altitude, planned
@@ -3709,6 +3717,7 @@ window.S = Object.assign({
   // the heading already split into digits (see gpsSpokenDigits), and give a time in whole
   // minutes. A missing field is left out here exactly as it is left out of the
   // notification: never guessed.
+  speakAlertClockMapGround: 'Clock to map to ground.',
   speakAlertLeg: function(wp, alt, hdgDigits, hms, freqDigits) {
     let s = 'Approaching ' + wp + '.';
     // First, before the next leg's numbers: it is the one thing here that has to be acted

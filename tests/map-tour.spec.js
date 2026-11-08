@@ -110,13 +110,22 @@ for (const [name, size, phoneLayout, lang] of [['phone', { width: 390, height: 8
           const r = e.getBoundingClientRect(); return r.left >= box.l - 4 && r.right <= box.r + 4 && r.top >= box.t - 4 && r.bottom <= box.b + 4; };   // the spot stops just inside the screen edge
         res.lit[keys[k]] = { fit: inside('#edit-col-fit'), zoom: inside('.leaflet-control-zoom'), lang: inside('.deck-strip-lang'),
           plan: inside('.deck-btn-plan'), record: inside('.deck-btn-record'), legend: inside('.map-legend'), toolbar: inside('#toolbar'),
+          legendBtn: inside('#legend-toggle'), routeTotals: inside('#route-summary'), dial: inside('.rotate-ctrl'),
           text: document.querySelector('#map-tour .tour-text').textContent };
         document.querySelector('#map-tour .tour-next').click();
         await new Promise(r => setTimeout(r, 50));
       }
       return res;
     });
-    expect(out.n).toBeLessThanOrEqual(10);
+    // Ten on a phone; the desktop's one exception is its Legend step (asked: "add it to the tutorial").
+    expect(out.n).toBeLessThanOrEqual(phoneLayout ? 10 : 11);
+    if (phoneLayout) expect(out.keys).not.toContain('Legend');
+    else {
+      // The Legend button lit on its own (with the totals when there is a route), not the dial column.
+      expect(out.lit.Legend.legendBtn).toBe(true);
+      expect(out.lit.Legend.dial).toBe(false);
+      expect(out.lit.Legend.text).toMatch(/legs, distance, time and fuel/);
+    }
     expect(out.lit.Edit.fit).toBe(true);
     // Fit is named in words now, not drawn as "[ ]" (UI review: a bracket pair is not an icon).
     expect(out.lit.Edit.text).not.toContain('[ ]');

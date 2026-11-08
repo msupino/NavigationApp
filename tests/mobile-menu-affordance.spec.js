@@ -4,19 +4,19 @@
 // looked like it had no opener at all.
 const { test, expect } = require('./_setup');
 
-test('an untouched desktop legend keeps its Leaflet bottom anchor after resize', async ({ page }) => {
+test('the desktop legend button keeps its Leaflet bottom anchor after resize', async ({ page }) => {
   await page.setViewportSize({ width: 1200, height: 800 });
   await page.goto('?lang=en&nogist');
   await page.waitForFunction(() =>
     !document.documentElement.classList.contains('app-booting') &&
-    document.getElementById('map-legend').getBoundingClientRect().height > 0);
-  const before = await page.locator('#map-legend').boundingBox();
-  expect(before).not.toBeNull();
+    !!document.getElementById('legend-toggle') &&
+    document.getElementById('legend-toggle').getBoundingClientRect().height > 0);
+  const btn = page.locator('#legend-toggle');
+  const before = await btn.boundingBox();
   const beforeGap = 800 - (before.y + before.height);
-  expect(await page.locator('#map-legend').evaluate(el => el.style.position)).toBe('');
   await page.setViewportSize({ width: 1200, height: 1000 });
   await expect.poll(async () => {
-    const box = await page.locator('#map-legend').boundingBox();
+    const box = await btn.boundingBox();
     return Math.abs((1000 - (box.y + box.height)) - beforeGap);
   }).toBeLessThan(3);
   expect(await page.locator('#map-legend').evaluate(el => el.style.position)).toBe('');

@@ -2222,15 +2222,21 @@ function gpsCheckLegAlerts() {
       // point identifies the moment; which unit answers there is on the map callout already.
       const ccAt = gpsCommChangeAt(next);
       const ccFreq = ccAt ? ccAt.freq : '';
-      gpsSendWatchAlert((S && S.watchAlertLegTitle) || 'Next leg',
+      // Clock to map to ground (ש.מ.ש): the two-minute call is also the cue to find the waypoint --
+      // clock, map, then outside. It heads the call: the title of the notification, the first
+      // words spoken. One call, not a second alert a few seconds apart about the same point.
+      const cmg = (typeof tune !== 'function' || tune('legClockMapGround') !== false);
+      const legSpeech = (S && S.speakAlertLeg)
+        ? S.speakAlertLeg(gpsSpokenWaypoint(next, label, lang), nextLegAlt,
+            nextLegHdg == null ? null : gpsSpokenDigits(nextLegHdg, lang),
+            nextLegHms, ccFreq ? gpsSpokenFreq(ccFreq, lang) : null)
+        : null;
+      gpsSendWatchAlert(
+        (cmg && S && S.watchAlertLegTitleCmg) || (S && S.watchAlertLegTitle) || 'Next leg',
         (S && S.watchAlertLegBody)
           ? S.watchAlertLegBody(label, nextLegAlt, nextLegHdg, nextLegTime, ccFreq)
           : ('Approaching ' + label),
-        (S && S.speakAlertLeg)
-          ? S.speakAlertLeg(gpsSpokenWaypoint(next, label, lang), nextLegAlt,
-              nextLegHdg == null ? null : gpsSpokenDigits(nextLegHdg, lang),
-              nextLegHms, ccFreq ? gpsSpokenFreq(ccFreq, lang) : null)
-          : null);
+        legSpeech && cmg && S.speakAlertClockMapGround ? S.speakAlertClockMapGround + ' ' + legSpeech : legSpeech);
     }
   }
 

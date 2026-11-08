@@ -18,6 +18,10 @@
 // docked search panel but deliberately NOT around the toolbar, which comes and goes. The
 // clock belongs on that list: it has a fixed place and it DIMS rather than vanishing when
 // nothing answers to it. The card moves, because the clock cannot.
+//
+// Since the desktop legend became a dock (a Legend button and the route-totals pill, fixed at the
+// bottom-left), it is the clock row that leaves room: it starts right of the dock. What is
+// measured is the dock row -- the key itself opens above it, out of the clock's row.
 const { test, expect } = require('./_setup');
 
 async function boot(page, lang) {
@@ -38,7 +42,7 @@ async function boot(page, lang) {
 // Every control in the strip, measured against the legend, and hit-tested at its own edge
 // and centre: a rect that merely misses is not proof that a thumb lands on the control.
 const audit = page => page.evaluate(() => {
-  const legend = document.querySelector('.map-legend').getBoundingClientRect();
+  const legend = document.querySelector('.legend-dock').getBoundingClientRect();
   const out = { overlap: [], covered: [] };
   for (const id of ['map-time-now', 'map-time-read', 'map-time-slider']) {
     const el = document.getElementById(id);
@@ -68,21 +72,20 @@ for (const lang of ['en', 'he']) {
   });
 }
 
-test('the row is given back when the clock is withdrawn', async ({ page }) => {
+test('the dock keeps its corner whether the clock is there or withdrawn', async ({ page }) => {
   await boot(page, 'en');
   await page.setViewportSize({ width: 900, height: 800 });
   await expect.poll(() => audit(page).then(a => a.overlap)).toEqual([]);
-  const withClock = await page.evaluate(() =>
-    document.querySelector('.map-legend').getBoundingClientRect().bottom);
-
-  // The gist can withdraw the clock. The card should be free to use the row again rather
-  // than keeping a gap for something that is no longer there.
+  const at = () => page.evaluate(() => {
+    const b = document.getElementById('legend-toggle').getBoundingClientRect();
+    return [Math.round(b.left), Math.round(b.bottom)];
+  });
+  const withClock = await at();
+  // The gist can withdraw the clock; the dock has nothing to step around, so nothing moves.
   await page.evaluate(() => {
     NavAid.tuningDefaults.featureMapClock.value = false;
     NavAid.refreshMapClock();
   });
   await expect(page.locator('#map-time')).toBeHidden();
-  await expect.poll(() => page.evaluate(() =>
-    document.querySelector('.map-legend').getBoundingClientRect().bottom))
-    .toBeGreaterThan(withClock);
+  expect(await at()).toEqual(withClock);
 });
