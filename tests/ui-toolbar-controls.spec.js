@@ -74,6 +74,8 @@ test.describe('Display checkbox toggles', () => {
 test.describe('Map legend', () => {
   test('floats over the map (not in the toolbar) with airfield, waypoint, freq-change symbols', async ({ page }) => {
     await boot(page);
+    // The desktop key opens from its round Legend button (closed by default).
+    await page.locator('#legend-toggle').click();
     const legend = page.locator('#map-legend');
     await expect(legend).toBeVisible();
     await expect(legend).toContainText('Legend');
