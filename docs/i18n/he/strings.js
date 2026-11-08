@@ -2054,6 +2054,7 @@ window.S = {
   alertChannelName: 'התראות טיסה',
   alertChannelDescription: 'התראות בטיסה: קטע הבא, גובה, TOP, יציאה מהמסלול',
   watchAlertLegTitle: 'קטע הבא',
+  watchAlertLegTitleCmg: 'ש.מ.ש',
   watchAlertLegBody: function(wp, alt, hdg, time, freq) {
     const parts = [];
     if (alt != null) parts.push(alt + ' רגל');
@@ -2085,6 +2086,8 @@ window.S = {
     return 'מגמה ' + heading + '° ישירות אל ' + wp;
   },
   // ראו את ההערה בגרסה האנגלית: אלה הניסוחים המדוברים, ולא גוף ההתראה.
+  // Said in full: a speech engine reads the abbreviation ש.מ.ש as letters.
+  speakAlertClockMapGround: 'שעון, מפה, שטח.',
   speakAlertLeg: function(wp, alt, hdgDigits, hms, freqDigits) {
     let s = 'מתקרב אל ' + wp + '.';
     // ראו את ההערה בגרסה האנגלית: התדר נאמר לפני נתוני הקטע הבא.
