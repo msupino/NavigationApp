@@ -11943,6 +11943,9 @@ function applyInspZoom(next) {
   const z = Math.min(inspZoomMax(), Math.max(inspZoomMin(), Math.round(next * 20) / 20));
   const body = document.getElementById('insp-body');
   if (body) body.style.zoom = String(z);
+  // The panel's minimum width follows (style.css #inspector): larger text needs a wider row.
+  const panel = document.getElementById('inspector');
+  if (panel) panel.style.setProperty('--insp-zoom', String(z));
   try { localStorage.setItem(INSP_ZOOM_KEY, String(z)); } catch (e) { /* private mode */ }
   // Dimmed at the ends of the range, never removed.
   const out = document.getElementById('insp-zoom-out');
