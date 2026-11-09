@@ -584,7 +584,6 @@ public class BackgroundGeolocationPlugin: CAPPlugin, CAPBridgedPlugin, CLLocatio
     }
 }
 
-@objc(NavAidBridgeViewController)
 // The keyboard bars iOS puts under a focused text field. NavAid has no use for either -- every field
 // is in its own window with its own buttons -- and on a Mac (and an iPad with a keyboard) the
 // shortcuts bar showed as a dark, blurred strip across the bottom of the window whenever a field
@@ -633,6 +632,7 @@ enum NavAidKeyboardBars {
     }
 }
 
+@objc(NavAidBridgeViewController)
 class NavAidBridgeViewController: CAPBridgeViewController {
     private var keyboardBarsObserver: NSObjectProtocol?
 
