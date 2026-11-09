@@ -8364,8 +8364,13 @@ body.theme-light .ov-hide-btn { color: #1f252c; }
    information about somebody else, and it must not be mistaken for either. */
 /* The feed has been silent a while: these positions are getting old (traffic.js ageOut). */
 .traffic-mark.traffic-stale { opacity: 0.4; filter: saturate(0.3); }
+/* direction: ltr -- the aircraft must sit at the start of the box, where traffic.js anchors it
+   to its position. In Hebrew the row ran right to left, the aircraft went to the far end past
+   its label room, and every one was drawn tens of pixels east of where it is (reported as the
+   traffic "drifting" against the chart as the zoom changed). */
 .traffic-mark {
   display: flex; align-items: center; gap: 2px;
+  direction: ltr;
   pointer-events: auto; cursor: pointer;
   white-space: nowrap;
 }
@@ -8380,6 +8385,12 @@ body.theme-light .ov-hide-btn { color: #1f252c; }
   fill: var(--navaid-traffic-arrow, #b5179e);
   stroke: #fff; stroke-width: 1.1; stroke-linejoin: round; paint-order: stroke;
 }
+/* On the ground (traffic.js onGround): small, faded, no label -- no factor in the air. */
+.traffic-mark.traffic-ground { opacity: var(--navaid-traffic-ground-alpha, 0.55); }
+/* ...and unlabelled below airport zoom (traffic.js, trafficGroundLabelZoom). */
+.traffic-ground-unlabelled .traffic-mark.traffic-ground .traffic-label { display: none; }
+/* A label that would print over another (traffic.js declutterLabels): the aircraft alone. */
+.traffic-label.traffic-label-hidden { visibility: hidden; }
 .traffic-label {
   font: 700 10px/1.2 system-ui, sans-serif;
   color: var(--navaid-traffic-label, #7b1a6b);
