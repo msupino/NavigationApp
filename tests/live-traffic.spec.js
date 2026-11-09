@@ -505,3 +505,43 @@ test('the endpoint is settable, and the panel gives it a text field', async ({ p
   expect(control.range).toBe(false);       // not a slider for a URL
   expect(control.value).toContain('adsb.lol');
 });
+
+// Asked: "can ADS-B show a helicopter? it shows planes only, even if it is a heli". A helicopter
+// is drawn as one -- by its emitter category (A7, rotorcraft) or, where a report carries none,
+// by its type code. The inspector names it, and shows the aircraft type rather than the
+// report's source tag (it said "Type adsb_icao").
+test('a helicopter is drawn as a helicopter, and the inspector names its type', async ({ page }) => {
+  await boot(page);
+  await fly(page);
+  await page.evaluate(async (body) => { window.__body = body; await window.trafficPoll(); }, { ac: [
+    { hex: 'aaa001', flight: 'HELI1', lat: 32.06, lon: 34.93, alt_baro: 1500, track: 90, gs: 110, category: 'A7', type: 'adsb_icao' },
+    { hex: 'aaa002', flight: 'HELI2', lat: 32.07, lon: 34.94, alt_baro: 1200, track: 180, gs: 100, t: 'R44', type: 'mlat' },
+    { hex: 'aaa003', flight: 'PLANE', lat: 32.08, lon: 34.95, alt_baro: 3500, track: 270, gs: 140, t: 'C172', category: 'A1', type: 'adsb_icao' },
+  ] });
+  const kinds = await page.evaluate(() => [...document.querySelectorAll('.traffic-mark')].map(m =>
+    [m.querySelector('.traffic-label').textContent.split(' ')[0], m.querySelector('.traffic-heli') ? 'heli' : 'plane']).sort());
+  expect(kinds).toEqual([['HELI1', 'heli'], ['HELI2', 'heli'], ['PLANE', 'plane']]);
+  // The inspector: the aircraft type and the word, never the source tag.
+  const typeRow = async (hex) => page.evaluate((h) => {
+    state.selected = { type: 'traffic', hex: h }; showInspector();
+    const row = [...document.querySelectorAll('#inspector .row')].find(r => /Type/.test(r.textContent));
+    return row ? row.querySelector('.val').textContent : null;
+  }, hex);
+  expect(await typeRow('aaa001')).toBe('Helicopter');
+  expect(await typeRow('aaa002')).toBe('R44 · Helicopter');
+  expect(await typeRow('aaa003')).toBe('C172');
+});
+
+test('a GDL90 receiver target with the rotorcraft emitter category is drawn as a helicopter', async ({ page }) => {
+  await boot(page);
+  await fly(page);
+  await page.evaluate(() => window.trafficSetExternal([
+    { hex: 'bbb001', flight: 'RCV1', lat: 32.06, lon: 34.93, alt: 900, gs: 90, track: 45, type: '', category: 7, squawk: '' },
+    { hex: 'bbb002', flight: 'RCV2', lat: 32.07, lon: 34.95, alt: 2500, gs: 120, track: 45, type: '', category: 1, squawk: '' },
+  ], 'gdl90'));
+  await page.waitForTimeout(300);
+  const kinds = await page.evaluate(() => [...document.querySelectorAll('.traffic-mark')].map(m =>
+    [m.querySelector('.traffic-label').textContent.split(' ')[0], m.querySelector('.traffic-heli') ? 'heli' : 'plane'])
+    .filter(k => /^RCV/.test(k[0])).sort());
+  expect(kinds).toEqual([['RCV1', 'heli'], ['RCV2', 'plane']]);
+});

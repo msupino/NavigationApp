@@ -4486,7 +4486,10 @@ function showInspector() {
       Number.isFinite(ac.gs) ? Math.round(ac.gs) + ' ' + (S.unitKt || 'kt') : '—'));
     body.appendChild(textRow(S.trafficTrack || 'Track',
       Number.isFinite(ac.track) ? String(Math.round(ac.track)).padStart(3, '0') + '°' : '—'));
-    if (ac.type) body.appendChild(textRow(S.trafficType || 'Type', ac.type));
+    // The aircraft type, and the word when it is a helicopter (by its category or its type code).
+    const heli = typeof window.trafficIsRotorcraft === 'function' && window.trafficIsRotorcraft(ac);
+    const typeText = [ac.type, heli ? (S.trafficHelicopter || 'Helicopter') : ''].filter(Boolean).join(' · ');
+    if (typeText) body.appendChild(textRow(S.trafficType || 'Type', typeText));
     if (ac.squawk) body.appendChild(textRow(S.trafficSquawk || 'Squawk', ac.squawk));
     body.appendChild(coordRow(fmtLatLng(ac.lat, 'N', 'S'), fmtLatLng(ac.lon, 'E', 'W')));
   } else if (state.selected.type === 'coord') {

@@ -1730,6 +1730,7 @@ window.S = {
   trafficGroundSpeed: 'מהירות קרקע',
   trafficSquawk: 'משדר',
   trafficType: 'סוג',
+  trafficHelicopter: 'מסוק',
   // The direction of flight of the aircraft (asked): כיוון, not מסלול, which in this app is the route.
   trafficTrack: 'כיוון',
   plateOpenTab: 'פתח בלשונית חדשה',
