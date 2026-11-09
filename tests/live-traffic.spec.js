@@ -571,10 +571,6 @@ test('aircraft on the ground are quiet: small, faded, no label; a slow low helic
     { hex: 'ccc003', flight: 'HOVER', lat: 32.02, lon: 34.89, alt_baro: 300, gs: 10, track: 90, category: 'A7' },
     { hex: 'ccc004', flight: 'AIR', lat: 32.03, lon: 34.95, alt_baro: 4500, gs: 160, track: 90, t: 'C172' },
   ] });
-  const r = await page.evaluate(() => [...document.querySelectorAll('.traffic-mark')].map(m => {
-    const a = window.trafficAircraft.find(x => m.title ? false : true);
-    return [m.classList.contains('traffic-ground'), !!m.querySelector('.traffic-label'), m.querySelector('svg').getAttribute('width')];
-  }));
   const by = await page.evaluate(() => {
     const out = {};
     document.querySelectorAll('.traffic-mark').forEach(m => {
@@ -587,7 +583,6 @@ test('aircraft on the ground are quiet: small, faded, no label; a slow low helic
     });
     return out;
   });
-  void r;
   expect(by.GND1.ground && !by.GND1.label).toBe(true);
   expect(by.TAXI.ground && !by.TAXI.label).toBe(true);
   expect(by.HOVER.ground).toBe(false);                   // slow and low is how a helicopter flies
