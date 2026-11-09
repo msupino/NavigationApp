@@ -10711,9 +10711,18 @@ body.theme-light .legend-ctrl.legend-docked .map-legend { color: #1d2530; }
    middle of the screen: the dock sits one row up, clear of it, the key opening above as on the
    desktop. */
 body.deck-on .legend-ctrl.legend-docked { margin-bottom: 58px; }
-/* A narrow phone with the Hebrew totals: the pill wraps rather than run under the zoom column. */
+/* On a phone the totals have their own row, above the Legend button: beside it, the Hebrew totals
+   ("20 קטעים · 69.9 NM · 42:45 · 7.3 גלון") wrapped onto two lines and ran under the zoom buttons
+   (reported) -- the width limit there also left out the pill's own padding. Here the pill has the
+   width from the screen edge to the right-hand column, padding included, and only wraps if even
+   that is too little; the key opens above the whole dock. */
+body.deck-on .legend-ctrl.legend-docked .legend-dock {
+  flex-direction: column-reverse;
+  align-items: flex-start;
+}
 body.deck-on .legend-ctrl.legend-docked #route-summary {
-  max-width: calc(100vw - 72px - var(--navaid-map-ctrl-clear, 52px));
+  box-sizing: border-box;
+  max-width: calc(100vw - 20px - var(--navaid-map-ctrl-clear, 52px) - 8px);
   height: auto;
   min-height: 32px;
   padding: 6px 12px;
@@ -10727,3 +10736,9 @@ body.deck-on .legend-ctrl.legend-docked .map-legend {
   width: min(248px, calc(100vw - 62px - var(--navaid-map-ctrl-clear, 52px) - 8px));
 }
 body.deck-on .legend-ctrl.legend-docked .map-legend::after { content: none; }
+/* A short phone (the edit column reaches down to that row): the totals stay beside the button,
+   with the same corrected width -- padding included, clear of the right-hand column. */
+@media (max-height: 700px) {
+  body.deck-on .legend-ctrl.legend-docked .legend-dock { flex-direction: row; align-items: center; }
+  body.deck-on .legend-ctrl.legend-docked #route-summary { max-width: calc(100vw - 72px - var(--navaid-map-ctrl-clear, 52px) - 8px); }
+}
