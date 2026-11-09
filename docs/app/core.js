@@ -1306,7 +1306,7 @@ NavAid.tuningDefaults = {
   trafficGroundAlpha: { value: 0.55, min: 0.2, max: 1, step: 0.05, label: 'Live traffic on the ground: opacity' },
   // Zoomed in to airport scale the ground traffic's callsigns come back (asked: "zooming in restore
   // the plane info?"); further out they stay off.
-  trafficGroundLabelZoom: { value: 13, min: 8, max: 18, step: 1, label: 'Live traffic on the ground: callsigns from this zoom' },
+  trafficGroundLabelZoom: { value: 13, min: 8, max: 18, step: 1, label: 'Live traffic on the ground: call signs from this zoom' },
   trafficArrowColor: { value: '#b5179e', type: 'color', label: 'Live traffic aircraft color' },
   trafficLabelColor: { value: '#7b1a6b', type: 'color', label: 'Live traffic label color' },
   plateFieldZoom: { value: 11, min: 8, max: 14, step: 1,
