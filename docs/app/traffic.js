@@ -456,6 +456,35 @@
     if (state && state.selected && state.selected.type === 'traffic' &&
         typeof refreshInspectorIfVisible === 'function') refreshInspectorIfVisible();
   }
+  // Where the pilot can see this aircraft on the web -- on the map of the site the data came
+  // from (asked: "use same data origin"). Only for an aircraft the internet feed reports: one
+  // only a cockpit receiver hears has no page anywhere. Null when there is nothing to link to.
+  const VIEWERS = [
+    [/(^|\.)adsb\.lol$/i, 'adsb.lol', 'https://globe.adsb.lol/?icao={hex}'],
+    [/(^|\.)adsb\.fi$/i, 'adsb.fi', 'https://globe.adsb.fi/?icao={hex}'],
+    [/(^|\.)airplanes\.live$/i, 'airplanes.live', 'https://globe.airplanes.live/?icao={hex}'],
+    [/(^|\.)adsb\.one$/i, 'adsb.one', 'https://globe.adsb.one/?icao={hex}'],
+  ];
+  function viewLink(ac) {
+    const hex = String((ac && ac.hex) || '').toLowerCase();
+    if (!/^[0-9a-f]{6}$/.test(hex)) return null;               // a TIS-B/anonymous address has no page
+    if (!polled.some(a => a && String(a.hex).toLowerCase() === hex)) return null;
+    let tpl = String((typeof tune === 'function' && tune('trafficViewUrl')) || '').trim();
+    let site = '';
+    if (!tpl) {
+      let host = '';
+      try { host = new URL(String(tune('trafficApiUrl') || '').replace(/[{}]/g, '')).hostname; } catch (e) { return null; }
+      const v = VIEWERS.find(([re]) => re.test(host));
+      if (!v) return null;
+      site = v[1]; tpl = v[2];
+    }
+    let url;
+    try { url = new URL(tpl.split('{hex}').join(hex)); } catch (e) { return null; }
+    if (url.protocol !== 'https:') return null;
+    return { url: url.href, site: site || url.hostname.replace(/^(www|globe)\./, '') };
+  }
+  window.trafficViewLink = viewLink;
+
   window.trafficSetExternal = function (list) {
     external = Array.isArray(list) ? list.filter(a => a && Number.isFinite(a.lat) && Number.isFinite(a.lon)) : [];
     render();

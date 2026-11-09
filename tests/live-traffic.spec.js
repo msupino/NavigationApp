@@ -679,3 +679,31 @@ test('traffic is drawn above the chart overlay (runways), and stays on its posit
     expect(off).toBeLessThan(1.5);
   }
 });
+
+// Asked: a link from the traffic inspector to the aircraft on the web, "use same data origin" --
+// the public map of the site the feed comes from. None for an aircraft only a cockpit receiver
+// hears, and the gist can point it elsewhere. Never followed here (tests load no third party).
+test('the traffic inspector links to the aircraft on the feed’s own map', async ({ page }) => {
+  await boot(page);
+  await fly(page);
+  await page.evaluate(() => setTune('trafficApiUrl', 'https://api.adsb.lol/v2/lat/{lat}/lon/{lon}/dist/{dist}'));
+  const hex = await page.evaluate(() => window.trafficAircraft[0].hex);
+  await page.evaluate((h) => { state.selected = { type: 'traffic', hex: h }; showInspector(); }, hex);
+  const link = page.locator('#insp-traffic-view');
+  await expect(link).toHaveAttribute('href', `https://globe.adsb.lol/?icao=${hex.toLowerCase()}`);
+  await expect(link).toHaveAttribute('target', '_blank');
+  await expect(link).toContainText('adsb.lol');
+  // Another feed: its own map.
+  await page.evaluate(() => { setTune('trafficApiUrl', 'https://opendata.adsb.fi/api/v2/lat/{lat}/lon/{lon}/dist/{dist}'); showInspector(); });
+  await expect(link).toHaveAttribute('href', `https://globe.adsb.fi/?icao=${hex.toLowerCase()}`);
+  // The gist's own link.
+  await page.evaluate(() => { setTune('trafficViewUrl', 'https://example.org/ac/{hex}'); showInspector(); });
+  await expect(link).toHaveAttribute('href', `https://example.org/ac/${hex.toLowerCase()}`);
+  // Heard only by a receiver in the cockpit: no page anywhere, no link.
+  await page.evaluate(() => {
+    setTune('trafficViewUrl', '');
+    window.trafficSetExternal([{ hex: 'abcdef', flight: 'RCV1', lat: 32.06, lon: 34.93, alt: 2000, gs: 100, track: 0, type: '', squawk: '' }]);
+    state.selected = { type: 'traffic', hex: 'abcdef' }; showInspector();
+  });
+  await expect(page.locator('#insp-traffic-view')).toHaveCount(0);
+});

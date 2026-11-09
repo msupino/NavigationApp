@@ -4492,6 +4492,19 @@ function showInspector() {
     if (typeText) body.appendChild(textRow(S.trafficType || 'Type', typeText));
     if (ac.squawk) body.appendChild(textRow(S.trafficSquawk || 'Squawk', ac.squawk));
     body.appendChild(coordRow(fmtLatLng(ac.lat, 'N', 'S'), fmtLatLng(ac.lon, 'E', 'W')));
+    // The same aircraft on the web, on the map of the site the feed comes from.
+    const view = typeof window.trafficViewLink === 'function' && window.trafficViewLink(ac);
+    if (view) {
+      const a = document.createElement('a');
+      a.id = 'insp-traffic-view';
+      a.className = 'insp-btn insp-btn-safe insp-link-btn';
+      a.href = view.url;
+      a.target = '_blank';
+      a.rel = 'noopener noreferrer';
+      // The site name isolated, so a Latin host reads right inside the Hebrew sentence.
+      a.textContent = (S.trafficViewOn || 'Open on {site}').split('{site}').join('\u2068' + view.site + '\u2069');
+      body.appendChild(a);
+    }
   } else if (state.selected.type === 'coord') {
     // A point that is only a position: typed into the search box, not found in a dataset. It
     // gets an inspector so a coordinate off an exercise or a clearance can be LOOKED at -- where
