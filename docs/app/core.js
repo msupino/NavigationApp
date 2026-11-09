@@ -1304,6 +1304,9 @@ NavAid.tuningDefaults = {
   trafficGroundBelowFt: { value: 1000, min: 0, max: 3000, step: 100, label: 'Live traffic: ...and below this altitude (ft)' },
   trafficGroundScale: { value: 0.7, min: 0.4, max: 1, step: 0.05, label: 'Live traffic on the ground: size (x)' },
   trafficGroundAlpha: { value: 0.55, min: 0.2, max: 1, step: 0.05, label: 'Live traffic on the ground: opacity' },
+  // Zoomed in to airport scale the ground traffic's callsigns come back (asked: "zooming in restore
+  // the plane info?"); further out they stay off.
+  trafficGroundLabelZoom: { value: 13, min: 8, max: 18, step: 1, label: 'Live traffic on the ground: callsigns from this zoom' },
   trafficArrowColor: { value: '#b5179e', type: 'color', label: 'Live traffic aircraft color' },
   trafficLabelColor: { value: '#7b1a6b', type: 'color', label: 'Live traffic label color' },
   plateFieldZoom: { value: 11, min: 8, max: 14, step: 1,
@@ -1337,7 +1340,7 @@ NavAid.tuningGroups = [
     'airspaceLabelFontPx'] },
   { name: 'ATC radio', keys: ['featureAtcRadio', 'atcRadioBase'] },
   { name: 'Live traffic', keys: ['featureLiveTraffic', 'defaultShowTraffic', 'trafficApiUrl', 'trafficWebApiUrl', 'trafficRadiusNm',
-    'trafficRefreshSec', 'trafficFailsBeforeWarn', 'trafficTimeoutSec', 'trafficStaleSec', 'trafficDropSec', 'trafficIconPx', 'trafficGroundKt', 'trafficGroundBelowFt', 'trafficGroundScale', 'trafficGroundAlpha', 'trafficArrowColor',
+    'trafficRefreshSec', 'trafficFailsBeforeWarn', 'trafficTimeoutSec', 'trafficStaleSec', 'trafficDropSec', 'trafficIconPx', 'trafficGroundKt', 'trafficGroundBelowFt', 'trafficGroundScale', 'trafficGroundAlpha', 'trafficGroundLabelZoom', 'trafficArrowColor',
     'trafficLabelColor'] },
   { name: 'Follow me', keys: ['featureFollowMe', 'featureFollowMePublic', 'publicPilotsViewHash', 'followMePublicZoomGrow', 'followMePublicDimSec', 'followMePublicDropSec', 'followMeBroker', 'followMeRateSec',
     'followMeStaleSec', 'featureFollowMeHeartbeat', 'followMeHeartbeatSec', 'followMePlanePx', 'followMePlaneColor', 'featureFollowMeShareWhileViewing', 'featureFollowMeRoute', 'followMeRequireSignedLinks', 'followMeRouteCompress', 'followMeRouteMaxKb', 'followMeRouteDebounceMs', 'followMeStopMaxSec', 'followMeResumeHr',

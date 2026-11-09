@@ -269,7 +269,9 @@
       iconSize: [px + 38, px + 4],
       iconAnchor: [Math.round(px / 2), Math.round(px / 2)],
       html: '<span class="traffic-arrow" style="transform:rotate(' + trk + 'deg)">' + svg + '</span>'
-          + (ground ? '' : '<span class="traffic-label">' + escapeXml(label) + '</span>'),
+          // On the ground: the callsign only (an altitude means nothing there), shown from airport
+          // zoom in (map class traffic-ground-unlabelled, set on zoom) and decluttered like the rest.
+          + '<span class="traffic-label">' + escapeXml(ground ? (a.flight || a.hex || '') : label) + '</span>',
     });
   }
 
@@ -309,6 +311,8 @@
   function declutterLabels() {
     if (!group) return;
     const sel = state && state.selected && state.selected.type === 'traffic' ? state.selected.hex : '';
+    const zoomLabels = (typeof tune === 'function') ? tune('trafficGroundLabelZoom') : 13;
+    map.getContainer().classList.toggle('traffic-ground-unlabelled', map.getZoom() < zoomLabels);
     const marks = [];
     group.eachLayer((m) => {
       const el = m.getElement && m.getElement();
@@ -321,6 +325,7 @@
     for (const x of marks) {
       x.lab.classList.remove('traffic-label-hidden');
       const r = x.lab.getBoundingClientRect();
+      if (!r.width) continue;               // a ground label zoomed out: not drawn, takes no room
       const hit = kept.some(k => r.left < k.right && k.left < r.right && r.top < k.bottom && k.top < r.bottom);
       if (hit) x.lab.classList.add('traffic-label-hidden'); else kept.push(r);
     }

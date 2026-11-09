@@ -8382,6 +8382,8 @@ body.theme-light .ov-hide-btn { color: #1f252c; }
 }
 /* On the ground (traffic.js onGround): small, faded, no label -- no factor in the air. */
 .traffic-mark.traffic-ground { opacity: var(--navaid-traffic-ground-alpha, 0.55); }
+/* ...and unlabelled below airport zoom (traffic.js, trafficGroundLabelZoom). */
+.traffic-ground-unlabelled .traffic-mark.traffic-ground .traffic-label { display: none; }
 /* A label that would print over another (traffic.js declutterLabels): the aircraft alone. */
 .traffic-label.traffic-label-hidden { visibility: hidden; }
 .traffic-label {

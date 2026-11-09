@@ -366,11 +366,19 @@ test('it reads either spelling of the feed', async ({ page }) => {
 test('an aircraft on the ground is drawn quiet, named on hover', async ({ page }) => {
   await boot(page, { body: { ac: [{ hex: 'gnd001', flight: 'ELY7', lat: 32.10, lon: 34.90, alt_baro: 'ground', track: 0 }] } });
   await fly(page);
-  const el = await page.evaluate(() => { const m = document.querySelector('.traffic-mark');
-    return { text: m.textContent.trim(), title: m.title, ground: m.classList.contains('traffic-ground') }; });
+  await page.evaluate(() => map.setView([32.10, 34.90], 11, { animate: false }));
+  await page.waitForTimeout(200);
+  const el = await page.evaluate(() => { const m = document.querySelector('.traffic-mark'); const l = m.querySelector('.traffic-label');
+    return { shown: !!(l && l.getClientRects().length), title: m.title, ground: m.classList.contains('traffic-ground') }; });
   expect(el.ground).toBe(true);
-  expect(el.text).toBe('');
+  expect(el.shown).toBe(false);
   expect(el.title).toBe('ELY7');
+  // Asked: "zooming in restore the plane info?" -- at airport zoom the callsign comes back (no altitude).
+  await page.evaluate(() => map.setView([32.10, 34.90], 14, { animate: false }));
+  await page.waitForTimeout(200);
+  const near = await page.evaluate(() => { const l = document.querySelector('.traffic-mark .traffic-label');
+    return { shown: !!(l && l.getClientRects().length), text: l.textContent }; });
+  expect(near).toEqual({ shown: true, text: 'ELY7' });
 });
 
 // One dropped request is not an outage. The feed times out or rate-limits now and then, and
@@ -556,6 +564,7 @@ test('a GDL90 receiver target with the rotorcraft emitter category is drawn as a
 test('aircraft on the ground are quiet: small, faded, no label; a slow low helicopter is not', async ({ page }) => {
   await boot(page);
   await fly(page);
+  await page.evaluate(() => map.setView([32.02, 34.90], 11, { animate: false }));   // below airport zoom
   await page.evaluate(async (body) => { window.__body = body; await window.trafficPoll(); }, { ac: [
     { hex: 'ccc001', flight: 'GND1', lat: 32.00, lon: 34.87, alt_baro: 'ground', gs: 12, track: 90, t: 'B738' },
     { hex: 'ccc002', flight: 'TAXI', lat: 32.01, lon: 34.88, alt_baro: 150, gs: 18, track: 90, t: 'A320' },
@@ -573,7 +582,7 @@ test('aircraft on the ground are quiet: small, faded, no label; a slow low helic
       const hex = (window.trafficAircraft.find(a => {
         const p = map.latLngToLayerPoint([a.lat, a.lon]); const b = L.DomUtil.getPosition(m); return b && Math.abs(b.x - p.x) < 1 && Math.abs(b.y - p.y) < 1;
       }) || {}).flight;
-      out[hex] = { ground: m.classList.contains('traffic-ground'), label: !!lab, px: Number(m.querySelector('svg').getAttribute('width')),
+      out[hex] = { ground: m.classList.contains('traffic-ground'), label: !!(lab && lab.getClientRects().length && !lab.classList.contains('traffic-label-hidden')), px: Number(m.querySelector('svg').getAttribute('width')),
         opacity: Number(getComputedStyle(m).opacity) };
     });
     return out;
