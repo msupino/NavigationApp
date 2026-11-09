@@ -645,6 +645,12 @@ jobs:
         # a run with `timeout: 1800000` logged that value and still aborted after 115 status
         # polls (~606 s), i.e. the 600000 default. So the only way to keep inside its ceiling
         # is to make the deployment FASTER, which is what the artifact trim above does.
+        #
+        # A Pages deployment is named after the commit (its ID is the SHA). On 2026-11-09 dev's
+        # 4cf0486 got a deployment stuck "queued" on GitHub's side, and every re-run of that
+        # commit -- six, with an empty "Current status:" for ten minutes each -- hung behind it,
+        # while PR previews (other SHAs) published fine in between. Re-running cannot clear it:
+        # the way out is a new commit on the branch, which gets a fresh deployment.
         uses: actions/deploy-pages@v4
 
       - name: Create PR deployment
