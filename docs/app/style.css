@@ -1,3 +1,8 @@
+/* The map button columns' gap to the screen edges: Leaflet's 10 px, set from the gist
+   (mapCtrlLeftEdgePx / mapCtrlRightEdgePx, ui.js applyTuningCssVars). First in the sheet, so
+   a control with a margin of its own (the movable Zulu clock) keeps it. */
+.leaflet-left .leaflet-control { margin-left: var(--navaid-map-ctrl-left-edge, 10px); }
+.leaflet-right .leaflet-control { margin-right: var(--navaid-map-ctrl-right-edge, 10px); }
 * { margin: 0; padding: 0; box-sizing: border-box; }
 
 /* Visually hidden but kept in the accessibility/render tree (crawlable). */
@@ -1392,12 +1397,13 @@ body.theme-dark #map-crosshair::after {
   /* Desktop: top left in both languages, under the menubar and the docked search card
      (placeEditColumn sets the exact top from the card). */
   margin-top: 150px;
-  margin-left: 12px !important;
+  /* 2 px further in than the gist's edge gap (mapCtrlLeftEdgePx): 12 px at its 10. */
+  margin-left: calc(var(--navaid-map-ctrl-left-edge, 10px) + 2px) !important;
 }
 body.deck-on .leaflet-control.edit-col-ctrl {
   /* The map runs under the deck's top strip: start below it. */
   margin-top: calc(var(--navaid-deck-strip-h, 46px) + 10px) !important;
-  margin-left: calc(10px + env(safe-area-inset-left, 0px)) !important;
+  margin-left: calc(var(--navaid-map-ctrl-left-edge, 10px) + env(safe-area-inset-left, 0px)) !important;
 }
 .leaflet-control.edit-col-ctrl button {
   width: 44px;
@@ -8888,7 +8894,10 @@ body.deck-on .leaflet-bottom.leaflet-right {
   --navaid-col-top: calc(var(--navaid-deck-strip-h, 46px) + 8px);
   display: flex;
   flex-flow: column-reverse wrap-reverse;
-  align-items: flex-end;
+  /* flex-START: wrap-reverse swaps the cross axis, so this is the right-hand edge. flex-end put every
+     control flush with the LEFT of a column as wide as the widest one (the 56 px dial), and the
+     44 px buttons stood 22 px off the screen edge against the left column's 10 (reported). */
+  align-items: flex-start;
   align-content: flex-start;
   direction: ltr;
   max-height: calc(100dvh - var(--navaid-col-top) - var(--navaid-deck-bar-h, 52px) - env(safe-area-inset-bottom, 0px));

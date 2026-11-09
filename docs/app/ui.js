@@ -2107,6 +2107,9 @@ function applyTuningCssVars() {
   root.setProperty('--navaid-traffic-ground-alpha', String(tune('trafficGroundAlpha')));
   // The route totals in the legend dock (style.css .legend-docked #route-summary).
   px('--navaid-route-summary-font', 'routeSummaryFontPx');
+  // The map's button columns: their gap to the screen edges (style.css, the map controls).
+  px('--navaid-map-ctrl-left-edge', 'mapCtrlLeftEdgePx');
+  px('--navaid-map-ctrl-right-edge', 'mapCtrlRightEdgePx');
   if (typeof window.fitRouteSummary === 'function') window.fitRouteSummary(true);
   // Centre crosshair (touch): size, line thickness and both colours, so it can be dialled
   // in against whichever chart it has to stay visible over.
