@@ -52,6 +52,9 @@ android {
     buildFeatures {
         compose true
     }
+    testOptions {
+        unitTests.includeAndroidResources = true
+    }
 }
 
 dependencies {
@@ -66,6 +69,12 @@ dependencies {
     implementation "androidx.wear.watchface:watchface-complications-data-source-ktx:1.2.1"
     implementation "androidx.concurrent:concurrent-futures:1.2.0"
     testImplementation "junit:junit:$junitVersion"
+    // Screenshots of the watch screen on the JVM (NavScreenshotTest): Robolectric draws Compose
+    // with native graphics, round, at Pixel Watch size -- no emulator.
+    testImplementation "org.robolectric:robolectric:4.14.1"
+    testImplementation "androidx.compose.ui:ui-test-junit4:1.7.8"
+    testImplementation "androidx.test.ext:junit:1.2.1"
+    debugImplementation "androidx.compose.ui:ui-test-manifest:1.7.8"
     // Android's own org.json is a stub in local unit tests.
     testImplementation "org.json:json:20240303"
 }

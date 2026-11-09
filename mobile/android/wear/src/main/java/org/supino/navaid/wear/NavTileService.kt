@@ -41,14 +41,14 @@ class NavTileService : TileService() {
         if (p == null || fresh == NavPicture.Freshness.GONE) {
             lines += getString(R.string.no_data) to 15f
         } else {
+            if (dim) lines += getString(R.string.age, p.ageSec(now)) to 13f
             if (p.offRoute) lines += getString(R.string.off_route) to 18f
             else if (p.wp != null) {
                 lines += p.wp to 16f
-                lines += "${Fmt.bearing(p.brgMag)}  ${Fmt.distance(p.distNm)}" to 22f
-                lines += "${getString(R.string.ete)} ${Fmt.duration(p.eteNow(now))}  ${Fmt.zulu(p.etaUtc)}" to 14f
+                lines += "\u2066${Fmt.bearing(p.brgMag)}  ${Fmt.distance(p.distNm)}\u2069" to 22f
+                lines += "\u2066${getString(R.string.ete)} ${Fmt.duration(p.eteNow(now))}  ${Fmt.zulu(p.etaUtc)}\u2069" to 14f
             }
-            lines += "${Fmt.speed(p.gsKt)}  ${Fmt.altitude(p.altFt, p.altPlanFt)}" to 13f
-            if (dim) lines += getString(R.string.age, p.ageSec(now)) to 13f
+            lines += "\u2066${Fmt.speed(p.gsKt)}  ${Fmt.altitude(p.altFt, p.altPlanFt)}\u2069" to 13f
         }
         val col = LayoutElementBuilders.Column.Builder()
             .setHorizontalAlignment(LayoutElementBuilders.HORIZONTAL_ALIGN_CENTER)
