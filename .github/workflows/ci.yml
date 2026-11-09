@@ -54,7 +54,7 @@ jobs:
       github.head_ref != 'dev' ||
       github.base_ref != 'main'
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 20                # the watch module brings Compose and Wear dependencies
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -81,7 +81,9 @@ jobs:
           cd mobile
           npx cap sync android
           cd android
-          ./gradlew testDebugUnitTest
+          # testDebugUnitTest covers every module, the Wear OS companion (:wear) included;
+          # assembling it proves the watch app (Compose, Tiles, complication) still builds.
+          ./gradlew testDebugUnitTest :wear:assembleDebug
 
   native-ios:
     # Skip the dev -> main promotion PR. It is opened by GITHUB_TOKEN, so its

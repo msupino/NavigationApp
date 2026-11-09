@@ -83,7 +83,7 @@ project adds the **glanceable live picture** that notifications cannot give.
 **Settings.**
 - `featureWear` (gist, **default on in code**, matching the rule just applied to the ATC radio).
   It is the switch for the bridge and costs nothing without a watch.
-- `wearSendSec` (2) and `wearStaleSec` (10) are gist tunables. The watch's stale thresholds
+- `wearSendSec` (2) and `wearStaleSec` (10) are gist settings. The watch's stale thresholds
   arrive in the payload, so the gist governs them too.
 
 **Watch screen layout** (round, 1 glance):
@@ -117,8 +117,9 @@ Grey and "12 s old" when stale. Large type, high contrast, dark background (as W
 - The watch launcher icon (from the app's icon).
 - Tile refresh: request on DataItem change, with a fallback freshness interval.
 
-## Open, for Marco
+## Decided with Marco
 
-1. **Distribution:** is sideloading with `adb` acceptable, or should this be prepared for the
-   Play Store? Play needs a Play listing for the phone app too, which NavAid does not have today.
-2. **The watch:** which one do you have? It sets the real test device and confirms Wear OS 3+.
+- **Test watch:** Pixel Watch 5 (current Wear OS; well above the API 30 minimum).
+- **Distribution (my call, Marco can change it):** the watch APK is attached to the GitHub
+  release beside the phone APK and installed over Wi-Fi with `adb`, as the phone APK ships today.
+  A Play Store listing can come later.

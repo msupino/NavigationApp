@@ -1,0 +1,48 @@
+From bcdc569b6f0ac296133e19183aa4a187e6bbc5a3 Mon Sep 17 00:00:00 2001
+From: Marco <marco@supino.org>
+Date: Mon, 9 Nov 2026 11:58:24 +0000
+Subject: [PATCH] Wear OS watch: the next waypoint, ETE/ETA and leg timer on
+ the wrist
+
+---
+ Features-he.md | 6 ++++++
+ Features.md    | 6 ++++++
+ 2 files changed, 12 insertions(+)
+
+diff --git a/Features-he.md b/Features-he.md
+index ceef021..7ba5024 100644
+--- a/Features-he.md
++++ b/Features-he.md
+@@ -313,6 +313,12 @@ NavAid יכול להקליט את הנתיב שבאמת טסתם מ-GPS המכש
+ — שרתי הנתונים דוחים בקשות מדפדפן — ולכן בדפדפן המתג מוצג מעומעם עם הסיבה. גם מקלט ADS-B בתא
+ (Stratux, SkyEcho, Sentry) יכול להזין אותה, ב-Wi-Fi (<span dir="ltr"><code>featureGdl90</code></span>, כבוי כברירת מחדל).
+ 
++## בשעון (Wear OS, אפליקציית אנדרואיד)
++
++כשהמיקום מוצג, שעון Wear OS מצומד (Wear OS 3 ואילך, למשל Pixel Watch) מציג את מה שמבט אחד צריך: **לאן הלאה, ומתי**. הוא מציג את ציון הדרך הבא ואת מקומו במסלול (<span dir="ltr">3/7</span>), את הכיוון המגנטי והמרחק אליו, את ה-<span dir="ltr">ETE</span> לפי מהירות הקרקע בפועל ואת ה-<span dir="ltr">ETA</span> בזולו, את הזמן בקטע הנוכחי, מהירות קרקע, וגובה לצד הגובה המתוכנן של הקטע. הנתונים מגיעים מהטלפון, כמו במפה ובהתרעות; השעון רק סופר את הזמן. מחוץ למסלול הוא כותב **מחוץ למסלול**. תמונה ישנה מ-10 שניות מאפירה ומציינת את גילה, ואחרי דקה בלי הטלפון הוא כותב **אין נתונים מהטלפון**, כדי שמספר קפוא לא ייקרא כעדכני.
++
++זו אפליקציית השעון של NavAid, עם מסך, אריח (החלקה מפני השעון) וסיבוך לכל פני שעון (ה-<span dir="ltr">ETE</span> מתחת לציון הדרך). קובץ ה-APK שלה מצורף לגרסת האנדרואיד לצד זה של הטלפון, ומותקן בניפוי באגים אלחוטי; השלבים ב-<span dir="ltr"><code>mobile/README.md</code></span>. ההתרעות בטיסה מגיעות לשעון גם בלעדיה, כהתראות. גיסט: <span dir="ltr"><code>featureWear</code></span> (פעיל), <span dir="ltr"><code>wearSendSec</code></span> (2 שנ׳), <span dir="ltr"><code>wearStaleSec</code></span> (10 שנ׳).
++
+ ## חבילות מפה לא-מקוונות
+ 
+ מעבר למטמון האריחים הפסיבי, **⬇ הורד מפות לא-מקוונות** (קטע דפיות, שכבות מפה בלבד)
+diff --git a/Features.md b/Features.md
+index 247440f..f733f6e 100644
+--- a/Features.md
++++ b/Features.md
+@@ -336,6 +336,12 @@ browser the switch is shown dimmed with the reason. See
+ [GPS Track Recording](GPS-Track-Recording#traffic-around-you-ads-b). A cockpit ADS-B receiver
+ (Stratux, SkyEcho, Sentry) can feed it too, over Wi-Fi (`featureGdl90`, off by default).
+ 
++## On your watch (Wear OS, Android app)
++
++With your position showing, a paired Wear OS watch (Wear OS 3 or later, such as a Pixel Watch) shows the one thing a glance needs: **where next, and when**. It shows the next waypoint and how far along the route it is (*3/7*), its magnetic bearing and distance, the ETE at your actual ground speed and the ETA in Zulu, time on this leg, ground speed, and altitude beside the leg's planned altitude. The figures come from the phone, the same as the map and the alerts; the watch only counts the clock. Off the route it says **Off route**. A picture older than 10 seconds greys and says its age, and after a minute without the phone it says **No data from phone**, so a frozen number never reads as current.
++
++It is the NavAid watch app, with a screen, a tile (swipe from the watch face) and a complication for any watch face (the ETE under the waypoint). Its APK is attached to the Android release beside the phone's, and installed over Wi-Fi debugging; the steps are in `mobile/README.md`. The in-flight alerts already reach the watch without it, as notifications. Gist: `featureWear` (on), `wearSendSec` (2 s), `wearStaleSec` (10 s).
++
+ ## Offline map packs
+ 
+ Beyond the passive tile cache, **⬇ Download offline maps** (Charts section, chart
+-- 
+2.43.0
+

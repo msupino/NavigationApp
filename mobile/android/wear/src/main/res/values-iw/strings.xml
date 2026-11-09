@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">NavAid</string>
+    <string name="tile_label">NavAid: ציון הדרך הבא</string>
+    <string name="complication_label">NavAid: ציון הדרך הבא</string>
+    <string name="no_data">אין נתונים מהטלפון</string>
+    <string name="start_on_phone">הציגו את המיקום ב-NavAid בטלפון</string>
+    <string name="off_route">מחוץ למסלול</string>
+    <string name="ete">ETE</string>
+    <string name="eta">ETA</string>
+    <string name="leg">קטע</string>
+    <string name="age">לפני %1$d שנ׳</string>
+</resources>
