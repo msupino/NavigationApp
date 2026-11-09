@@ -18,7 +18,7 @@ async function boot(page) {
   });
   await page.goto('?lang=en&nogist');
   await page.waitForFunction(() => typeof state !== 'undefined' && !!window.atcRadio);
-  await page.evaluate(() => { NavAid.tuning.featureAtcRadio = true; refreshAtcRadioFeature(); });   // ships off
+  await page.evaluate(() => { NavAid.tuning.featureAtcRadio = true; refreshAtcRadioFeature(); });   // ships on; set explicitly
   await page.evaluate(() => loadNavWaypoints());
   await page.waitForFunction(() => Array.isArray(window.navWP) && window.navWP.length > 0);
   await page.evaluate(() => loadCommChange());

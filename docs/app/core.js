@@ -1245,7 +1245,7 @@ NavAid.tuningDefaults = {
   // it on for everyone flying with the app, without an app release.
   featureLiveTraffic: { value: false, type: 'bool', label: 'Feature: live ADS-B traffic' },
   // Live ATC audio
-  featureAtcRadio: { value: false, type: 'bool', label: 'Feature: live ATC radio (Herzliya, Haifa)' },
+  featureAtcRadio: { value: true, type: 'bool', label: 'Feature: live ATC radio (Herzliya, Haifa)' },
   atcRadioBase: { value: 'https://navaid-atc.marco-956.workers.dev/', type: 'text',
     label: 'Where the live ATC channels are played from (<base><channel id>)' },
   featureDensityAltitude: { value: true, type: 'bool', label: 'Feature: density altitude in the airfield panel' },

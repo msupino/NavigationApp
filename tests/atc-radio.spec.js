@@ -18,8 +18,8 @@ async function boot(page, opts = {}) {
   }, !!opts.fail);
   await page.goto('?lang=' + (opts.lang || 'en') + '&nogist');
   await page.waitForFunction(() => !!(window.atcRadio && document.getElementById('tool-atc-radio')));
-  // Ships off (featureAtcRadio defaults false); turn it on for the tests that exercise it. The
-  // withdrawal tests set it back to false themselves.
+  // Ships on (featureAtcRadio, as the gist has it); set explicitly so these tests do not hang on
+  // the default. The withdrawal tests set it back to false themselves.
   await page.evaluate(() => {
     if (window.NavAid && NavAid.tuning) NavAid.tuning.featureAtcRadio = true;
     if (typeof window.refreshAtcRadioFeature === 'function') window.refreshAtcRadioFeature();
@@ -223,4 +223,14 @@ test('withdrawn by the gist, the airfield window carries no channels', async ({ 
   await openField(page, 'LLHZ');
   await expect(page.locator('#inspector .comm-section')).toBeVisible();
   await expect(page.locator('#inspector [data-atc]')).toHaveCount(0);
+});
+
+// Asked: "why screenshots don't show the ATC listen button? gist enables it and code disables it --
+// make default enabled". With no gist at all the feature is on, and the listen button is on the map.
+test('the ATC radio is on by default, without a gist', async ({ page }) => {
+  await page.goto('?lang=en&nogist');
+  await page.waitForFunction(() => !!(window.atcRadio && document.getElementById('tool-atc-radio')));
+  await page.waitForTimeout(500);
+  expect(await page.evaluate(() => tune('featureAtcRadio'))).toBe(true);
+  await expect(page.locator('.atc-fab-control')).toBeVisible();
 });
