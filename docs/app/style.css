@@ -10720,6 +10720,10 @@ body.deck-on .legend-ctrl.legend-docked .legend-dock {
   flex-direction: column-reverse;
   align-items: flex-start;
 }
+/* With the totals above it, the button itself can sit on the coordinate readout's row, left of
+   it (the readout starts well right of the 44 px button): the dock drops back down to the corner
+   (asked: "can lower legend and summary"). The pill above the button clears the readout. */
+body.deck-on .legend-ctrl.legend-docked { margin-bottom: 10px; }
 body.deck-on .legend-ctrl.legend-docked #route-summary {
   box-sizing: border-box;
   max-width: calc(100vw - 20px - var(--navaid-map-ctrl-clear, 52px) - 8px);
@@ -10739,6 +10743,8 @@ body.deck-on .legend-ctrl.legend-docked .map-legend::after { content: none; }
 /* A short phone (the edit column reaches down to that row): the totals stay beside the button,
    with the same corrected width -- padding included, clear of the right-hand column. */
 @media (max-height: 700px) {
+  /* ...where it is beside the button, it is on the readout's row, so the dock stays one row up. */
+  body.deck-on .legend-ctrl.legend-docked { margin-bottom: 58px; }
   body.deck-on .legend-ctrl.legend-docked .legend-dock { flex-direction: row; align-items: center; }
   body.deck-on .legend-ctrl.legend-docked #route-summary { max-width: calc(100vw - 72px - var(--navaid-map-ctrl-clear, 52px) - 8px); }
 }
