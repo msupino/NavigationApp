@@ -75,14 +75,20 @@ test('the choice is remembered on this device', async ({ page }) => {
 });
 
 // The phone dock sits one row up, clear of the coordinate readout across the bottom.
-test('on a phone the dock is clear of the coordinate readout', async ({ page }) => {
+// What is drawn, not the dock's box: with the totals above the button the box is an L, and its
+// empty corner over the readout is not on screen.
+test('on a phone the button and the totals are clear of the coordinate readout', async ({ page }) => {
   await boot(page, PHONE);
   const hit = await page.evaluate(() => {
-    const a = document.querySelector('.legend-dock').getBoundingClientRect();
+    const wps = [{ lat: 32.0, lng: 34.8, name: 'A' }, { lat: 32.3, lng: 35.0, name: 'B' }];
+    state.waypoints = wps; syncLegs(); draw();
     const b = document.getElementById('coord-readout').getBoundingClientRect();
-    return a.left < b.right && b.left < a.right && a.top < b.bottom && b.top < a.bottom;
+    return ['#legend-toggle', '#route-summary'].map(s => {
+      const a = document.querySelector(s).getBoundingClientRect();
+      return a.width > 0 && a.left < b.right && b.left < a.right && a.top < b.bottom && b.top < a.bottom;
+    });
   });
-  expect(hit).toBe(false);
+  expect(hit).toEqual([false, false]);
 });
 
 // A window opened over an open key is what Back closes first: the dock steps aside under it.
@@ -97,3 +103,23 @@ test('on a phone, Back closes a window over an open key before the key', async (
   expect(await page.evaluate(() => backButtonStep())).toBe(true);
   expect((await state(page)).collapsed).toBe(true);
 });
+
+// Reported: on a phone the Hebrew totals wrapped and ran under the zoom buttons (the width limit
+// left out the pill's padding). They take their own row above the button now; on a short phone,
+// where the edit column reaches that row, they stay beside it. Never under the zoom column.
+for (const [w, h, stacked] of [[445, 1000, true], [390, 844, true], [360, 640, false]]) {
+  test(`route totals at ${w}x${h} are ${stacked ? 'above' : 'beside'} the button and clear of the zoom column`, async ({ page }) => {
+    await boot(page, { width: w, height: h }, null, 'he');
+    const r = await page.evaluate(() => {
+      const wps = []; for (let i = 0; i <= 20; i++) wps.push({ lat: 31.25 + i * 0.03, lng: 34.75, name: 'P' + i });
+      state.waypoints = wps; syncLegs(); state.legs.forEach(l => { l.flightSpeed = 98; }); draw();
+      const b = (s) => document.querySelector(s).getBoundingClientRect();
+      const p = b('#route-summary'), k = b('#legend-toggle'), z = b('.leaflet-control-zoom'), e = b('.edit-col-ctrl');
+      const hit = (a, c) => a.left < c.right && c.left < a.right && a.top < c.bottom && c.top < a.bottom;
+      return { above: p.bottom <= k.top, beside: p.left >= k.right, zoom: hit(p, z), edit: hit(p, e) };
+    });
+    expect(stacked ? r.above : r.beside).toBe(true);
+    expect(r.zoom).toBe(false);
+    expect(r.edit).toBe(false);
+  });
+}
