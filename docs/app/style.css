@@ -10731,7 +10731,14 @@ body.deck-on .legend-ctrl.legend-docked #route-summary {
   min-height: 32px;
   padding: 6px 12px;
   line-height: 1.3;
-  white-space: normal;
+  /* One line, always (asked: "default should not wrap"): ui.js fitRouteSummary steps the text down
+     from routeSummaryFontPx until it fits the width here, to no less than 10 px. */
+  white-space: nowrap;
+  overflow: hidden;
+  /* Not the width ratchet (draw.js reserveSummaryWidth: an inline min-width of the widest the totals
+     have ever been, so the old card did not jump) -- on a phone it beat max-width and pushed the
+     pill under the zoom buttons; and a flex item's own auto minimum is the whole unwrapped line. */
+  min-width: 0 !important;
 }
 /* ...and its key opens beside the edit column, not over it: on a short phone the column reaches
    down to the dock's row, and an open key covered Clear (edit-column.spec). */

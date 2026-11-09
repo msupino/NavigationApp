@@ -133,3 +133,25 @@ test('the gist sets the route totals text size (routeSummaryFontPx)', async ({ p
   await page.evaluate(() => { NavAid.tuning.routeSummaryFontPx = 11; applyTuningCssVars(); });
   expect(await size()).toBe('11px');
 });
+
+// Asked: "default should not wrap". Where 13 px does not fit (a narrow phone, long Hebrew totals,
+// a device that draws text larger) the totals shrink to one line instead of wrapping.
+for (const [w, h] of [[360, 640], [390, 844]]) {
+  test(`the route totals stay on one line at ${w}x${h}, even with long Hebrew totals`, async ({ page }) => {
+    await boot(page, { width: w, height: h }, null, 'he');
+    const r = await page.evaluate(async () => {
+      const wps = []; for (let i = 0; i <= 20; i++) wps.push({ lat: 31.25 + i * 0.03, lng: 34.75, name: 'P' + i });
+      state.waypoints = wps; syncLegs(); state.legs.forEach(l => { l.flightSpeed = 98; }); draw();
+      // A device that renders text larger: start from 16 px.
+      NavAid.tuning.routeSummaryFontPx = 16; applyTuningCssVars();
+      await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
+      const el = document.getElementById('route-summary');
+      const cs = getComputedStyle(el);
+      const lines = Math.round((el.clientHeight - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom)) / parseFloat(cs.lineHeight));
+      return { lines, fits: el.scrollWidth <= el.clientWidth + 1, size: parseFloat(cs.fontSize) };
+    });
+    expect(r.lines).toBe(1);
+    expect(r.fits).toBe(true);
+    expect(r.size).toBeGreaterThanOrEqual(10);
+  });
+}
