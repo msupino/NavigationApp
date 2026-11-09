@@ -642,10 +642,12 @@ test('a negative pressure altitude is labelled FL-003, not FL0-3', async ({ page
   await boot(page, { body: { ac: [
     { hex: 'neg001', flight: '4XCDE', lat: 32.81, lon: 35.04, alt_baro: -300, gs: 90, track: 340, t: 'C172' },
     { hex: 'neg002', flight: '4XZRO', lat: 32.83, lon: 35.06, alt_baro: 20, gs: 90, track: 340, t: 'C172' },
+    // Masada (LLMZ) lies about 1,270 ft below sea level: a circuit there is a negative flight level.
+    { hex: 'neg003', flight: '4XMZD', lat: 32.84, lon: 35.07, alt_baro: -1300, gs: 80, track: 340, t: 'C172' },
   ] } });
   await fly(page, 32.82, 35.05);
   const labels = await page.evaluate(() => [...document.querySelectorAll('.traffic-label')].map(l => l.textContent).sort());
-  expect(labels).toEqual(['4XCDE FL-003', '4XZRO FL000']);
+  expect(labels).toEqual(['4XCDE FL-003', '4XMZD FL-013', '4XZRO FL000']);
 });
 
 // Reported (Haifa): an aircraft on a runway was hidden by the runway. Runways, the route and its
