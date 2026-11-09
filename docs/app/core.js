@@ -1274,6 +1274,11 @@ NavAid.tuningDefaults = {
     label: 'Where live traffic is fetched from (empty turns it off)' },
   // The feeds send no CORS header, so a browser needs a relay that adds one (relay/traffic, a
   // Cloudflare Worker). Empty: no live traffic in a browser, the switch dimmed with the reason.
+  // The traffic inspector's "Open on <site>" link. Empty: the public map of the site trafficApiUrl
+  // fetches from (adsb.lol, adsb.fi, airplanes.live, adsb.one), so the pilot sees the same data
+  // there; a feed it does not know gets no link. {hex} is the aircraft's ICAO address.
+  trafficViewUrl: { value: '', type: 'text',
+    label: 'Live traffic: link to see an aircraft on the web, {hex} filled in (empty: the feed\u2019s own map)' },
   trafficWebApiUrl: { value: '', type: 'text',
     label: 'Live traffic in a browser: the CORS relay, same {lat}/{lon}/{dist} template (empty: apps only)' },
   trafficRadiusNm: { value: 40, min: 5, max: 150, step: 5,
@@ -1339,7 +1344,7 @@ NavAid.tuningGroups = [
     'airspaceTmaColor', 'airspaceCtrColor', 'airspaceFillAlpha', 'airspaceLineWidthPx', 'airspaceLabelMinZoom',
     'airspaceLabelFontPx'] },
   { name: 'ATC radio', keys: ['featureAtcRadio', 'atcRadioBase'] },
-  { name: 'Live traffic', keys: ['featureLiveTraffic', 'defaultShowTraffic', 'trafficApiUrl', 'trafficWebApiUrl', 'trafficRadiusNm',
+  { name: 'Live traffic', keys: ['featureLiveTraffic', 'defaultShowTraffic', 'trafficApiUrl', 'trafficViewUrl', 'trafficWebApiUrl', 'trafficRadiusNm',
     'trafficRefreshSec', 'trafficFailsBeforeWarn', 'trafficTimeoutSec', 'trafficStaleSec', 'trafficDropSec', 'trafficIconPx', 'trafficGroundKt', 'trafficGroundBelowFt', 'trafficGroundScale', 'trafficGroundAlpha', 'trafficGroundLabelZoom', 'trafficArrowColor',
     'trafficLabelColor'] },
   { name: 'Follow me', keys: ['featureFollowMe', 'featureFollowMePublic', 'publicPilotsViewHash', 'followMePublicZoomGrow', 'followMePublicDimSec', 'followMePublicDropSec', 'followMeBroker', 'followMeRateSec',
@@ -3491,6 +3496,7 @@ window.S = Object.assign({
   trafficSquawk: 'Squawk',
   trafficType: 'Type',
   trafficHelicopter: 'Helicopter',
+  trafficViewOn: 'Open on {site}',
   trafficTrack: 'Track',
   plateDownload: 'Download',
   // A file leaves the app either through the browser's download or, on the phone, through

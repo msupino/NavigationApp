@@ -2458,6 +2458,11 @@ body.theme-light .insp-btn.insp-btn-safe {
 }
 body.theme-light .insp-btn.insp-btn-safe:hover { background: #e2e7ee; border-color: #c9d2dd; }
 body.theme-light .insp-btn.insp-btn-safe:disabled:hover { background: #eef1f5; }
+/* A link that leaves the app (the traffic inspector's "Open on adsb.lol"), dressed as the button
+   beside it: a block the panel's width, centred, no underline. */
+a.insp-btn.insp-link-btn {
+  display: block; box-sizing: border-box; text-align: center; text-decoration: none;
+}
 /* A state the pilot has to READ, not infer from a button's weight: the line above the
    turning-point action says in words that this point is the turn, and where that came
    from. Quiet, not an alarm -- it reports, it does not ask for anything. */
