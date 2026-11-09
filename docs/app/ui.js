@@ -2104,6 +2104,9 @@ function applyTuningCssVars() {
   px('--navaid-inspector-default-top', 'inspectorDefaultTopPx');
   // Speed / altitude / heading: cockpit data, read at arm's length.
   px('--navaid-gps-readout-font', 'gpsReadoutFontPx');
+  // The route totals in the legend dock (style.css .legend-docked #route-summary).
+  px('--navaid-route-summary-font', 'routeSummaryFontPx');
+  if (typeof window.fitRouteSummary === 'function') window.fitRouteSummary(true);
   // Centre crosshair (touch): size, line thickness and both colours, so it can be dialled
   // in against whichever chart it has to stay visible over.
   px('--navaid-crosshair-size', 'crosshairSizePx');
@@ -2375,6 +2378,39 @@ function publishLegendDockWidth() {
   root.style.setProperty('--navaid-legend-dock-clear', Math.ceil(row.getBoundingClientRect().right + 12) + 'px');
 }
 if (legendDock.row && typeof ResizeObserver === 'function') new ResizeObserver(publishLegendDockWidth).observe(legendDock.row);
+
+// The route totals on one line (asked: "default should not wrap"). The gist's routeSummaryFontPx
+// is the size they start at; where the room beside the zoom column is too small for that -- the
+// Hebrew totals on an iPhone wrapped at 13 px -- the text steps down until it fits, to 10 px at
+// the least. Refitted when the totals change and when the window or the setting does.
+// var, not const/let: applyTuningCssVars (earlier in this file) calls fitRouteSummary at load.
+var ROUTE_SUMMARY_MIN_PX = 10;
+var routeSummaryFitKey = '';
+function fitRouteSummary(force) {
+  const el = document.getElementById('route-summary');
+  if (!el) return;
+  // Its own font-size change is a style mutation too: refit only when what it depends on changed.
+  const key = el.textContent + '|' + el.style.display + '|' + innerWidth + '|' +
+    getComputedStyle(document.documentElement).getPropertyValue('--navaid-route-summary-font');
+  if (!force && key === routeSummaryFitKey) return;
+  routeSummaryFitKey = key;
+  el.style.fontSize = '';
+  if (!el.getClientRects().length || el.scrollWidth <= el.clientWidth + 1) return;
+  let size = parseFloat(getComputedStyle(el).fontSize) || 13;
+  while (size > ROUTE_SUMMARY_MIN_PX && el.scrollWidth > el.clientWidth + 1) {
+    size = Math.max(ROUTE_SUMMARY_MIN_PX, size - 0.5);
+    el.style.fontSize = size + 'px';
+  }
+}
+window.fitRouteSummary = fitRouteSummary;
+(function watchRouteSummary() {
+  const el = document.getElementById('route-summary');
+  if (!el) return;
+  let queued = false;
+  const later = () => { if (!queued) { queued = true; requestAnimationFrame(() => { queued = false; fitRouteSummary(); }); } };
+  new MutationObserver(later).observe(el, { childList: true, characterData: true, subtree: true, attributes: true, attributeFilter: ['style'] });
+  addEventListener('resize', later);
+})();
 addEventListener('resize', publishLegendDockWidth);
 
 // The key opens and closes from the button (or Escape, or Android Back -- backButtonStep). Closed
