@@ -148,6 +148,33 @@
   // One aeroplane, from whichever spelling the feed uses. adsb.lol and its cousins say
   // `ac`, alt_baro (which reads "ground" for one on the runway) and `t` for the type;
   // a proxy of one's own would more likely say `aircraft`, `alt` and `type`.
+  // adsb.lol's `type` is where the report came FROM (adsb_icao, mlat, tisb_...), not the aircraft:
+  // the inspector showed "Type adsb_icao". The aircraft is `t`; `type` counts only when it is not
+  // one of those source tags (a proxy of one's own may well put the aircraft there).
+  const SOURCE_TAG = /^(adsb|adsr|tisb|mlat|mode_?s|adsc|uat|other|unknown)/i;
+  // The emitter category says what the aircraft is: A7 is a rotorcraft. Feeds send it as "A7";
+  // a GDL90 receiver as a number (gdl90.js), mapped to the same letters here.
+  function emitterCategory(v) {
+    if (typeof v === 'string' && /^[A-D][0-7]$/i.test(v.trim())) return v.trim().toUpperCase();
+    if (typeof v === 'number' && Number.isFinite(v)) {
+      if (v >= 1 && v <= 7) return 'A' + v;
+      if (v >= 9 && v <= 15) return 'B' + (v - 8);
+      if (v >= 17 && v <= 21) return 'C' + (v - 16);
+    }
+    return '';
+  }
+  // Helicopters by type code, for the reports that carry a type but no category (ICAO Doc 8643
+  // designators of the rotorcraft seen in Israel's airspace and the common civil ones).
+  const HELI_TYPES = new Set(['R22', 'R44', 'R66', 'AS50', 'AS55', 'AS65', 'AS32', 'AS3B', 'EC20', 'EC25',
+    'EC30', 'EC35', 'EC45', 'EC55', 'EC75', 'H125', 'H130', 'H135', 'H145', 'H155', 'H160', 'H175',
+    'B06', 'B06T', 'B407', 'B412', 'B427', 'B429', 'B430', 'B47G', 'B505', 'A109', 'A119', 'A139',
+    'A149', 'A169', 'A189', 'S76', 'S92', 'S61', 'S64', 'H60', 'H64', 'H47', 'UH1', 'UH1Y', 'MI8',
+    'MI17', 'K226', 'BK17', 'B105', 'EH10', 'NH90', 'H500', 'MD52', 'MD60', 'G2CA', 'CABR']);
+  function rotorcraft(a) {
+    // The category as either spelling: a receiver's targets reach the map without normalize().
+    return emitterCategory(a.category) === 'A7' || HELI_TYPES.has(String(a.type || '').toUpperCase());
+  }
+  window.trafficIsRotorcraft = rotorcraft;
   function normalize(a) {
     const num = (v) => (typeof v === 'number' && Number.isFinite(v) ? v : null);
     const alt = num(a.alt) !== null ? a.alt
@@ -158,7 +185,8 @@
       lat: num(a.lat), lon: num(a.lon !== undefined ? a.lon : a.lng),
       alt: num(alt), gs: num(a.gs !== undefined ? a.gs : a.speed),
       track: num(a.track !== undefined ? a.track : a.heading),
-      type: String(a.type || a.t || '').trim(),
+      type: String(a.t || (SOURCE_TAG.test(String(a.type || '')) ? '' : a.type) || '').trim(),
+      category: emitterCategory(a.category),
       squawk: String(a.squawk || '').trim(),
     };
   }
@@ -203,6 +231,14 @@
   const PLANE = 'M12 1.6 13.35 6.4 13.35 9.6 22.4 14.9 22.4 17 13.35 14.3 13.35 19.4'
               + ' 16.1 21.3 16.1 22.6 12 21.4 7.9 22.6 7.9 21.3 10.65 19.4 10.65 14.3'
               + ' 1.6 17 1.6 14.9 10.65 9.6 10.65 6.4Z';
+  // A helicopter, top down the same way (asked: "it shows planes only, even if it is a heli"):
+  // the two main-rotor blades crossed over the cabin, the tail boom aft and the tail rotor across
+  // its end -- so the nose is still the end without the tail, and the track still reads.
+  const HELI = 'M3.33 3.67 19.33 19.67 20.67 18.33 4.67 2.33Z'
+             + 'M20.67 3.67 4.67 19.67 3.33 18.33 19.33 2.33Z'
+             + 'M12 6.2C14.1 6.2 15.4 8.4 15.4 11 15.4 13.6 14.1 15.8 12 15.8 9.9 15.8 8.6 13.6 8.6 11 8.6 8.4 9.9 6.2 12 6.2Z'
+             + 'M11.2 15.4H12.8V21.6H11.2Z'
+             + 'M9.2 20.8H14.8V22.6H9.2Z';
 
   function icon(a) {
     const trk = Number.isFinite(a.track) ? a.track : 0;
@@ -210,8 +246,9 @@
     const label = [a.flight || a.hex || '', fl === null ? '' : 'FL' + String(fl).padStart(3, '0')]
       .filter(Boolean).join(' ');
     const px = Math.round((typeof tune === 'function' && tune('trafficIconPx')) || 22);
-    const svg = '<svg class="traffic-plane" viewBox="0 0 24 24" width="' + px + '" height="' + px
-      + '" aria-hidden="true"><path d="' + PLANE + '"/></svg>';
+    const heli = rotorcraft(a);
+    const svg = '<svg class="traffic-plane' + (heli ? ' traffic-heli' : '') + '" viewBox="0 0 24 24" width="' + px + '" height="' + px
+      + '" aria-hidden="true"><path d="' + (heli ? HELI : PLANE) + '"/></svg>';
     return L.divIcon({
       className: 'traffic-mark',
       iconSize: [px + 38, px + 4],
