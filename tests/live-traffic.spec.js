@@ -575,9 +575,7 @@ test('aircraft on the ground are quiet: small, faded, no label; a slow low helic
     const out = {};
     document.querySelectorAll('.traffic-mark').forEach(m => {
       const lab = m.querySelector('.traffic-label');
-      const hex = (window.trafficAircraft.find(a => {
-        const p = map.latLngToLayerPoint([a.lat, a.lon]); const b = L.DomUtil.getPosition(m); return b && Math.abs(b.x - p.x) < 1 && Math.abs(b.y - p.y) < 1;
-      }) || {}).flight;
+      const hex = m.title;
       out[hex] = { ground: m.classList.contains('traffic-ground'), label: !!(lab && lab.getClientRects().length && !lab.classList.contains('traffic-label-hidden')), px: Number(m.querySelector('svg').getAttribute('width')),
         opacity: Number(getComputedStyle(m).opacity) };
     });
@@ -637,3 +635,45 @@ for (const lang of ['en', 'he']) {
     }
   });
 }
+
+// Reported (Haifa): a pressure altitude below zero was labelled "FL0-3" -- the padding went in front
+// of the sign. It reads FL-003, and FL000 for an aircraft right at the standard pressure level.
+test('a negative pressure altitude is labelled FL-003, not FL0-3', async ({ page }) => {
+  await boot(page, { body: { ac: [
+    { hex: 'neg001', flight: '4XCDE', lat: 32.81, lon: 35.04, alt_baro: -300, gs: 90, track: 340, t: 'C172' },
+    { hex: 'neg002', flight: '4XZRO', lat: 32.83, lon: 35.06, alt_baro: 20, gs: 90, track: 340, t: 'C172' },
+  ] } });
+  await fly(page, 32.82, 35.05);
+  const labels = await page.evaluate(() => [...document.querySelectorAll('.traffic-label')].map(l => l.textContent).sort());
+  expect(labels).toEqual(['4XCDE FL-003', '4XZRO FL000']);
+});
+
+// Reported (Haifa): an aircraft on a runway was hidden by the runway. Runways, the route and its
+// waypoints are painted on #overlay, a canvas above the whole Leaflet map, so traffic lives in its
+// own pane on the map container, above that canvas -- and still on its position as the map moves.
+test('traffic is drawn above the chart overlay (runways), and stays on its position when panned', async ({ page }) => {
+  await boot(page, { body: { ac: [{ hex: 'rwy001', flight: '4XCDE', lat: 32.81, lon: 35.043, alt_baro: 500, gs: 70, track: 340, t: 'C172' }] } });
+  await fly(page, 32.82, 35.05);
+  const z = await page.evaluate(() => {
+    const m = document.querySelector('.traffic-mark');
+    const pane = m.parentElement;
+    const zOf = (el) => Number(getComputedStyle(el).zIndex) || 0;
+    // The stacking contexts that decide it are the direct children of the map container.
+    const top = (el) => { while (el.parentElement && el.parentElement !== map.getContainer() && el.parentElement !== document.body) el = el.parentElement; return el; };
+    const ov = document.getElementById('overlay');
+    return { paneOnContainer: pane.parentElement === map.getContainer(), traffic: zOf(top(m)), overlay: zOf(ov),
+      overlayAfterMap: !!(map.getContainer().compareDocumentPosition(ov) & Node.DOCUMENT_POSITION_FOLLOWING) };
+  });
+  expect(z.paneOnContainer).toBe(true);
+  expect(z.traffic).toBeGreaterThan(z.overlay);
+  for (const dx of [0, 120]) {
+    await page.evaluate((d) => map.panBy([d, 60], { animate: false }), dx);
+    await page.waitForTimeout(100);
+    const off = await page.evaluate(() => {
+      const a = window.trafficAircraft[0], want = map.latLngToContainerPoint([a.lat, a.lon]);
+      const c = map.getContainer().getBoundingClientRect(), r = document.querySelector('.traffic-mark svg').getBoundingClientRect();
+      return Math.hypot(r.left + r.width / 2 - c.left - want.x, r.top + r.height / 2 - c.top - want.y);
+    });
+    expect(off).toBeLessThan(1.5);
+  }
+});
