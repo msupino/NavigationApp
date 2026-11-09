@@ -8364,8 +8364,13 @@ body.theme-light .ov-hide-btn { color: #1f252c; }
    information about somebody else, and it must not be mistaken for either. */
 /* The feed has been silent a while: these positions are getting old (traffic.js ageOut). */
 .traffic-mark.traffic-stale { opacity: 0.4; filter: saturate(0.3); }
+/* direction: ltr -- the aircraft must sit at the start of the box, where traffic.js anchors it
+   to its position. In Hebrew the row ran right to left, the aircraft went to the far end past
+   its label room, and every one was drawn tens of pixels east of where it is (reported as the
+   traffic "drifting" against the chart as the zoom changed). */
 .traffic-mark {
   display: flex; align-items: center; gap: 2px;
+  direction: ltr;
   pointer-events: auto; cursor: pointer;
   white-space: nowrap;
 }

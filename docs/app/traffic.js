@@ -267,7 +267,8 @@
       // On the ground: smaller, faded, and no label (tap still opens the inspector).
       className: 'traffic-mark' + (ground ? ' traffic-ground' : ''),
       iconSize: [px + 38, px + 4],
-      iconAnchor: [Math.round(px / 2), Math.round(px / 2)],
+      // The aircraft's centre: the start of the box (direction: ltr, style.css), centred in its height.
+      iconAnchor: [Math.round(px / 2), Math.round((px + 4) / 2)],
       html: '<span class="traffic-arrow" style="transform:rotate(' + trk + 'deg)">' + svg + '</span>'
           // On the ground: the callsign only (an altitude means nothing there), shown from airport
           // zoom in (map class traffic-ground-unlabelled, set on zoom) and decluttered like the rest.

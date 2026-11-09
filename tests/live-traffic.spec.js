@@ -44,7 +44,7 @@ async function stubNative(page, opts) {
 
 async function boot(page, opts) {
   await stubNative(page, opts);
-  await page.goto('?lang=en&nogist');
+  await page.goto(`?lang=${(opts && opts.lang) || 'en'}&nogist`);
   await page.waitForFunction(() => typeof window.trafficRefresh === 'function');
   // The feature is off in the shipped gist (featureLiveTraffic): turn it on the way the
   // gist would, so these tests are about the layer rather than the switch above it.
@@ -612,3 +612,28 @@ test('labels that would overprint: one shows; the selected aircraft keeps its la
   await page.evaluate((h) => { state.selected = { type: 'traffic', hex: h }; showInspector(); window.trafficDeclutter(); }, hex);
   expect(await shown()).toEqual([hidden]);
 });
+
+// Reported: "location still drifts" -- in Hebrew the marker's row ran right to left, so the aircraft
+// sat at the far end of its box, east of the point it is anchored to, and slid against the chart
+// as the zoom changed. The aircraft's centre is its position, in either language, at any zoom.
+for (const lang of ['en', 'he']) {
+  test(`the aircraft is drawn on its position (${lang})`, async ({ page }) => {
+    await boot(page, { lang, body: { ac: [
+      { hex: 'pos001', flight: 'ISR972', lat: 32.005, lon: 34.877, alt_baro: 3000, gs: 150, track: 90, t: 'B738' },
+      { hex: 'pos002', flight: 'BBG252', lat: 32.000, lon: 34.890, alt_baro: 'ground', gs: 5, track: 0, t: 'B738' },
+    ] } });
+    await fly(page);
+    for (const z of [10, 14]) {
+      await page.evaluate((zz) => map.setView([32.003, 34.884], zz, { animate: false }), z);
+      await page.waitForTimeout(150);
+      const off = await page.evaluate(() => window.trafficAircraft.map((a) => {
+        const want = map.latLngToContainerPoint([a.lat, a.lon]);
+        const c = map.getContainer().getBoundingClientRect();
+        const el = [...document.querySelectorAll('.traffic-mark')].find(m => m.title === a.flight);
+        const r = el.querySelector('svg').getBoundingClientRect();
+        return Math.hypot(r.left + r.width / 2 - c.left - want.x, r.top + r.height / 2 - c.top - want.y);
+      }));
+      for (const d of off) expect(d).toBeLessThan(1.5);
+    }
+  });
+}
