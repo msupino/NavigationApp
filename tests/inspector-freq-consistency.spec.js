@@ -15,7 +15,7 @@ async function boot(page) {
   await page.waitForFunction(() => typeof state !== 'undefined' && !!window.atcRadio
     && Array.isArray(window.airfields) && typeof addRoutePoint === 'function');
   await page.evaluate(async () => {
-    NavAid.tuning.featureAtcRadio = true; refreshAtcRadioFeature();   // ships off
+    NavAid.tuning.featureAtcRadio = true; refreshAtcRadioFeature();   // ships on; set explicitly
     await loadNavWaypoints(); await loadCommChange();
     window.showCommChange = true;
     window.appConfirm = async () => true; window.askYesNo = async () => true;
