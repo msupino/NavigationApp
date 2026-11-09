@@ -59,6 +59,10 @@ NavAid.tuningDefaults = {
   // kneeboard. Bigger by default, and tunable from there.
   gpsReadoutFontPx: { value: 16, min: 9, max: 32, step: 1, label: 'GPS readout text (px)' },
   // Asked (an iPhone wrapped the Hebrew totals onto two lines at the default size).
+  // How far the map's button columns stand in from the screen edges (Leaflet's own 10 px). Asked
+  // with a phone screenshot: the right-hand icons to the edge, the middle of the chart clear.
+  mapCtrlLeftEdgePx: { value: 10, min: 0, max: 40, step: 1, label: 'Map buttons: left column, gap to the screen edge (px)' },
+  mapCtrlRightEdgePx: { value: 10, min: 0, max: 40, step: 1, label: 'Map buttons: right column, gap to the screen edge (px)' },
   routeSummaryFontPx: { value: 13, min: 9, max: 22, step: 1, label: 'Route totals beside the Legend button, text (px)' },
   gpsReadoutRefitPx: { value: 16, min: 0, max: 80, step: 1, label: 'GPS readout re-fit slack (px)' },
   // The touch crosshair that marks what the coordinate readout is reading.
@@ -1245,7 +1249,7 @@ NavAid.tuningDefaults = {
   // it on for everyone flying with the app, without an app release.
   featureLiveTraffic: { value: false, type: 'bool', label: 'Feature: live ADS-B traffic' },
   // Live ATC audio
-  featureAtcRadio: { value: false, type: 'bool', label: 'Feature: live ATC radio (Herzliya, Haifa)' },
+  featureAtcRadio: { value: true, type: 'bool', label: 'Feature: live ATC radio (Herzliya, Haifa)' },
   atcRadioBase: { value: 'https://navaid-atc.marco-956.workers.dev/', type: 'text',
     label: 'Where the live ATC channels are played from (<base><channel id>)' },
   featureDensityAltitude: { value: true, type: 'bool', label: 'Feature: density altitude in the airfield panel' },
@@ -1355,6 +1359,7 @@ NavAid.tuningGroups = [
   { name: 'Zoom', keys: ['inspZoomSmallest', 'inspZoomLargest', 'inspZoomStep', 'plateZoomMax', 'plateZoomStep', 'plateZoomDoubleTap', 'wxStaleAfterMin'] },
   { name: 'Satellite', keys: ['satellitePreviewZoom', 'satelliteExpandedZoom', 'satelliteMinZoom', 'satelliteMaxZoom', 'satelliteChartOverscale', 'satellitePreviewWidthPx', 'satellitePreviewHeightPx', 'satelliteMarkerRadiusPx', 'satelliteMarkerColor', 'satelliteMarkerWeightPx', 'satelliteMarkerAlpha'] },
   { name: 'Go-to marker', keys: ['gotoMarkerColor', 'gotoMarkerFillColor', 'gotoMarkerRadiusPx', 'gotoMarkerWeightPx', 'gotoMarkerFillAlpha'] },
+  { name: 'Map buttons', keys: ['mapCtrlLeftEdgePx', 'mapCtrlRightEdgePx'] },
   { name: 'Map label zoom', keys: ['airfieldLabelMinZoom', 'navWpLabelMinZoom', 'vorLabelMinZoom'] },
   { name: 'Wind', keys: ['windDir', 'windSpeed'] },
   { name: 'Magnifier', keys: ['magBaselineZoom', 'magMaxExp'] },

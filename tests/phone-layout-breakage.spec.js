@@ -49,9 +49,10 @@ test('the column keeps its top-to-bottom order when it wraps', async ({ page }) 
   const order = await page.evaluate(() => {
     const corner = document.querySelector('.rotate-ctrl').parentNode;
     const rank = ['voice-ctrl', 'orient-ctrl', 'follow-ctrl', 'follow-me-ctrl', 'editlock-ctrl', 'measure-ctrl', 'atc-fab-control', 'rotate-ctrl'];
-    // Within one visual column, a higher rank sits lower.
+    // Within one visual column, a higher rank sits lower. A column is the controls sharing a RIGHT
+    // edge: they are right-aligned (the right-hand ones on the screen edge), and differ in width.
     const by = {};
-    for (const c of rank) { const el = corner.querySelector('.' + c); if (el && el.getClientRects().length) { const b = el.getBoundingClientRect(); (by[Math.round(b.left)] = by[Math.round(b.left)] || []).push([b.top, rank.indexOf(c)]); } }
+    for (const c of rank) { const el = corner.querySelector('.' + c); if (el && el.getClientRects().length) { const b = el.getBoundingClientRect(); (by[Math.round(b.right)] = by[Math.round(b.right)] || []).push([b.top, rank.indexOf(c)]); } }
     return Object.values(by).map(col => col.sort((a, b) => a[0] - b[0]).map(x => x[1]));
   });
   for (const col of order) expect(col).toEqual([...col].sort((a, b) => a - b));
@@ -78,7 +79,8 @@ for (const [w, h, wraps] of [[360, 640, true], [390, 844, false]]) {
         const b = el.getBoundingClientRect();
         out[id] = { over: items.filter(i => hit(i, b)).length, left: b.left, right: b.right };
       }
-      out.cols = new Set(items.map(i => Math.round(i.left))).size;
+      // Columns by their shared right edge: the controls are right-aligned and differ in width.
+      out.cols = new Set(items.map(i => Math.round(i.right))).size;
       return out;
     });
     expect(r.cols > 1).toBe(wraps);
