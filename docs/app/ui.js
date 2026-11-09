@@ -2104,6 +2104,7 @@ function applyTuningCssVars() {
   px('--navaid-inspector-default-top', 'inspectorDefaultTopPx');
   // Speed / altitude / heading: cockpit data, read at arm's length.
   px('--navaid-gps-readout-font', 'gpsReadoutFontPx');
+  root.setProperty('--navaid-traffic-ground-alpha', String(tune('trafficGroundAlpha')));
   // The route totals in the legend dock (style.css .legend-docked #route-summary).
   px('--navaid-route-summary-font', 'routeSummaryFontPx');
   if (typeof window.fitRouteSummary === 'function') window.fitRouteSummary(true);

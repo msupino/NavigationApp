@@ -44,7 +44,7 @@ async function stubNative(page, opts) {
 
 async function boot(page, opts) {
   await stubNative(page, opts);
-  await page.goto('?lang=en&nogist');
+  await page.goto(`?lang=${(opts && opts.lang) || 'en'}&nogist`);
   await page.waitForFunction(() => typeof window.trafficRefresh === 'function');
   // The feature is off in the shipped gist (featureLiveTraffic): turn it on the way the
   // gist would, so these tests are about the layer rather than the switch above it.
@@ -361,12 +361,24 @@ test('it reads either spelling of the feed', async ({ page }) => {
 });
 
 // An aeroplane on the runway reports alt_baro "ground", not a number.
-test('an aircraft on the ground is drawn without an altitude', async ({ page }) => {
+// On the ground it is drawn quiet -- no label at all (asked, decluttering a busy airport); it is
+// still named on hover (the marker's title) and on a tap (the inspector).
+test('an aircraft on the ground is drawn quiet, named on hover', async ({ page }) => {
   await boot(page, { body: { ac: [{ hex: 'gnd001', flight: 'ELY7', lat: 32.10, lon: 34.90, alt_baro: 'ground', track: 0 }] } });
   await fly(page);
-  const el = await page.evaluate(() => document.querySelector('.traffic-mark').textContent.trim());
-  expect(el).toContain('ELY7');
-  expect(el).not.toMatch(/\d\d\d/);
+  await page.evaluate(() => map.setView([32.10, 34.90], 11, { animate: false }));
+  await page.waitForTimeout(200);
+  const el = await page.evaluate(() => { const m = document.querySelector('.traffic-mark'); const l = m.querySelector('.traffic-label');
+    return { shown: !!(l && l.getClientRects().length), title: m.title, ground: m.classList.contains('traffic-ground') }; });
+  expect(el.ground).toBe(true);
+  expect(el.shown).toBe(false);
+  expect(el.title).toBe('ELY7');
+  // Asked: "zooming in restore the plane info?" -- at airport zoom the callsign comes back (no altitude).
+  await page.evaluate(() => map.setView([32.10, 34.90], 14, { animate: false }));
+  await page.waitForTimeout(200);
+  const near = await page.evaluate(() => { const l = document.querySelector('.traffic-mark .traffic-label');
+    return { shown: !!(l && l.getClientRects().length), text: l.textContent }; });
+  expect(near).toEqual({ shown: true, text: 'ELY7' });
 });
 
 // One dropped request is not an outage. The feed times out or rate-limits now and then, and
@@ -545,3 +557,83 @@ test('a GDL90 receiver target with the rotorcraft emitter category is drawn as a
     .filter(k => /^RCV/.test(k[0])).sort());
   expect(kinds).toEqual([['RCV1', 'heli'], ['RCV2', 'plane']]);
 });
+
+// Asked, with a Ben Gurion screenshot: aircraft on the ground covered the map, and zoomed out the
+// labels overprinted each other. On the ground: smaller, faded, no label. Overlapping labels:
+// the first keeps it; the followed or selected aircraft goes first.
+test('aircraft on the ground are quiet: small, faded, no label; a slow low helicopter is not', async ({ page }) => {
+  await boot(page);
+  await fly(page);
+  await page.evaluate(() => map.setView([32.02, 34.90], 11, { animate: false }));   // below airport zoom
+  await page.evaluate(async (body) => { window.__body = body; await window.trafficPoll(); }, { ac: [
+    { hex: 'ccc001', flight: 'GND1', lat: 32.00, lon: 34.87, alt_baro: 'ground', gs: 12, track: 90, t: 'B738' },
+    { hex: 'ccc002', flight: 'TAXI', lat: 32.01, lon: 34.88, alt_baro: 150, gs: 18, track: 90, t: 'A320' },
+    { hex: 'ccc003', flight: 'HOVER', lat: 32.02, lon: 34.89, alt_baro: 300, gs: 10, track: 90, category: 'A7' },
+    { hex: 'ccc004', flight: 'AIR', lat: 32.03, lon: 34.95, alt_baro: 4500, gs: 160, track: 90, t: 'C172' },
+  ] });
+  const by = await page.evaluate(() => {
+    const out = {};
+    document.querySelectorAll('.traffic-mark').forEach(m => {
+      const lab = m.querySelector('.traffic-label');
+      const hex = (window.trafficAircraft.find(a => {
+        const p = map.latLngToLayerPoint([a.lat, a.lon]); const b = L.DomUtil.getPosition(m); return b && Math.abs(b.x - p.x) < 1 && Math.abs(b.y - p.y) < 1;
+      }) || {}).flight;
+      out[hex] = { ground: m.classList.contains('traffic-ground'), label: !!(lab && lab.getClientRects().length && !lab.classList.contains('traffic-label-hidden')), px: Number(m.querySelector('svg').getAttribute('width')),
+        opacity: Number(getComputedStyle(m).opacity) };
+    });
+    return out;
+  });
+  expect(by.GND1.ground && !by.GND1.label).toBe(true);
+  expect(by.TAXI.ground && !by.TAXI.label).toBe(true);
+  expect(by.HOVER.ground).toBe(false);                   // slow and low is how a helicopter flies
+  expect(by.AIR.ground).toBe(false);
+  expect(by.GND1.px).toBeLessThan(by.AIR.px);
+  expect(by.GND1.opacity).toBeLessThan(1);
+});
+
+test('labels that would overprint: one shows; the selected aircraft keeps its label', async ({ page }) => {
+  await boot(page);
+  await fly(page);
+  await page.evaluate(() => map.setView([32.05, 34.90], 8, { animate: false }));
+  await page.evaluate(async (body) => { window.__body = body; await window.trafficPoll(); }, { ac: [
+    { hex: 'ddd001', flight: 'ONE', lat: 32.050, lon: 34.900, alt_baro: 5000, gs: 200, track: 90, t: 'A320' },
+    { hex: 'ddd002', flight: 'TWO', lat: 32.052, lon: 34.902, alt_baro: 6000, gs: 210, track: 90, t: 'A320' },
+  ] });
+  await page.waitForTimeout(200);
+  const shown = () => page.evaluate(() => [...document.querySelectorAll('.traffic-label')]
+    .filter(l => !l.classList.contains('traffic-label-hidden')).map(l => l.textContent.split(' ')[0]));
+  expect((await shown()).length).toBe(1);
+  // Select the one whose label is hidden: its label comes first now.
+  const hidden = await page.evaluate(() => {
+    const l = [...document.querySelectorAll('.traffic-label')].find(x => x.classList.contains('traffic-label-hidden'));
+    return l.textContent.split(' ')[0];
+  });
+  const hex = hidden === 'ONE' ? 'ddd001' : 'ddd002';
+  await page.evaluate((h) => { state.selected = { type: 'traffic', hex: h }; showInspector(); window.trafficDeclutter(); }, hex);
+  expect(await shown()).toEqual([hidden]);
+});
+
+// Reported: "location still drifts" -- in Hebrew the marker's row ran right to left, so the aircraft
+// sat at the far end of its box, east of the point it is anchored to, and slid against the chart
+// as the zoom changed. The aircraft's centre is its position, in either language, at any zoom.
+for (const lang of ['en', 'he']) {
+  test(`the aircraft is drawn on its position (${lang})`, async ({ page }) => {
+    await boot(page, { lang, body: { ac: [
+      { hex: 'pos001', flight: 'ISR972', lat: 32.005, lon: 34.877, alt_baro: 3000, gs: 150, track: 90, t: 'B738' },
+      { hex: 'pos002', flight: 'BBG252', lat: 32.000, lon: 34.890, alt_baro: 'ground', gs: 5, track: 0, t: 'B738' },
+    ] } });
+    await fly(page);
+    for (const z of [10, 14]) {
+      await page.evaluate((zz) => map.setView([32.003, 34.884], zz, { animate: false }), z);
+      await page.waitForTimeout(150);
+      const off = await page.evaluate(() => window.trafficAircraft.map((a) => {
+        const want = map.latLngToContainerPoint([a.lat, a.lon]);
+        const c = map.getContainer().getBoundingClientRect();
+        const el = [...document.querySelectorAll('.traffic-mark')].find(m => m.title === a.flight);
+        const r = el.querySelector('svg').getBoundingClientRect();
+        return Math.hypot(r.left + r.width / 2 - c.left - want.x, r.top + r.height / 2 - c.top - want.y);
+      }));
+      for (const d of off) expect(d).toBeLessThan(1.5);
+    }
+  });
+}
