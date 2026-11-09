@@ -1296,6 +1296,14 @@ NavAid.tuningDefaults = {
   // magenta is what a traffic symbol wears on a moving map, and nothing else on the chart
   // uses it.
   trafficIconPx: { value: 22, min: 12, max: 40, step: 1, label: 'Live traffic aircraft size (px)' },
+  // On the ground: reported so ("ground", a receiver's on-ground flag), or an aeroplane slower than
+  // trafficGroundKt below trafficGroundBelowFt (never a helicopter -- slow and low is how they fly).
+  // Drawn smaller and faded, without a label: a busy airport covered the map in aircraft that are no
+  // factor in the air (asked, with a Ben Gurion screenshot).
+  trafficGroundKt: { value: 40, min: 0, max: 80, step: 5, label: 'Live traffic: on the ground below this speed (kt)' },
+  trafficGroundBelowFt: { value: 1000, min: 0, max: 3000, step: 100, label: 'Live traffic: ...and below this altitude (ft)' },
+  trafficGroundScale: { value: 0.7, min: 0.4, max: 1, step: 0.05, label: 'Live traffic on the ground: size (x)' },
+  trafficGroundAlpha: { value: 0.55, min: 0.2, max: 1, step: 0.05, label: 'Live traffic on the ground: opacity' },
   trafficArrowColor: { value: '#b5179e', type: 'color', label: 'Live traffic aircraft color' },
   trafficLabelColor: { value: '#7b1a6b', type: 'color', label: 'Live traffic label color' },
   plateFieldZoom: { value: 11, min: 8, max: 14, step: 1,
@@ -1329,7 +1337,7 @@ NavAid.tuningGroups = [
     'airspaceLabelFontPx'] },
   { name: 'ATC radio', keys: ['featureAtcRadio', 'atcRadioBase'] },
   { name: 'Live traffic', keys: ['featureLiveTraffic', 'defaultShowTraffic', 'trafficApiUrl', 'trafficWebApiUrl', 'trafficRadiusNm',
-    'trafficRefreshSec', 'trafficFailsBeforeWarn', 'trafficTimeoutSec', 'trafficStaleSec', 'trafficDropSec', 'trafficIconPx', 'trafficArrowColor',
+    'trafficRefreshSec', 'trafficFailsBeforeWarn', 'trafficTimeoutSec', 'trafficStaleSec', 'trafficDropSec', 'trafficIconPx', 'trafficGroundKt', 'trafficGroundBelowFt', 'trafficGroundScale', 'trafficGroundAlpha', 'trafficArrowColor',
     'trafficLabelColor'] },
   { name: 'Follow me', keys: ['featureFollowMe', 'featureFollowMePublic', 'publicPilotsViewHash', 'followMePublicZoomGrow', 'followMePublicDimSec', 'followMePublicDropSec', 'followMeBroker', 'followMeRateSec',
     'followMeStaleSec', 'featureFollowMeHeartbeat', 'followMeHeartbeatSec', 'followMePlanePx', 'followMePlaneColor', 'featureFollowMeShareWhileViewing', 'featureFollowMeRoute', 'followMeRequireSignedLinks', 'followMeRouteCompress', 'followMeRouteMaxKb', 'followMeRouteDebounceMs', 'followMeStopMaxSec', 'followMeResumeHr',

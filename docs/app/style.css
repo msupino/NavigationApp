@@ -8380,6 +8380,10 @@ body.theme-light .ov-hide-btn { color: #1f252c; }
   fill: var(--navaid-traffic-arrow, #b5179e);
   stroke: #fff; stroke-width: 1.1; stroke-linejoin: round; paint-order: stroke;
 }
+/* On the ground (traffic.js onGround): small, faded, no label -- no factor in the air. */
+.traffic-mark.traffic-ground { opacity: var(--navaid-traffic-ground-alpha, 0.55); }
+/* A label that would print over another (traffic.js declutterLabels): the aircraft alone. */
+.traffic-label.traffic-label-hidden { visibility: hidden; }
 .traffic-label {
   font: 700 10px/1.2 system-ui, sans-serif;
   color: var(--navaid-traffic-label, #7b1a6b);

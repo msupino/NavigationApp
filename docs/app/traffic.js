@@ -175,6 +175,16 @@
     return emitterCategory(a.category) === 'A7' || HELI_TYPES.has(String(a.type || '').toUpperCase());
   }
   window.trafficIsRotorcraft = rotorcraft;
+  // On the ground: reported so, or an aeroplane taxiing (slow and low). Never a helicopter by
+  // speed -- a slow, low helicopter is very likely flying.
+  function onGround(a) {
+    if (a.ground === true) return true;
+    if (rotorcraft(a)) return false;
+    const kt = (typeof tune === 'function') ? tune('trafficGroundKt') : 40;
+    const ft = (typeof tune === 'function') ? tune('trafficGroundBelowFt') : 1000;
+    return Number.isFinite(a.gs) && a.gs < kt && (!Number.isFinite(a.alt) || a.alt < ft);
+  }
+  window.trafficOnGround = onGround;
   function normalize(a) {
     const num = (v) => (typeof v === 'number' && Number.isFinite(v) ? v : null);
     const alt = num(a.alt) !== null ? a.alt
@@ -187,6 +197,8 @@
       track: num(a.track !== undefined ? a.track : a.heading),
       type: String(a.t || (SOURCE_TAG.test(String(a.type || '')) ? '' : a.type) || '').trim(),
       category: emitterCategory(a.category),
+      // adsb.lol says alt_baro "ground" for one on the surface; a proxy may say ground: true.
+      ground: a.alt_baro === 'ground' || a.ground === true,
       squawk: String(a.squawk || '').trim(),
     };
   }
@@ -245,16 +257,19 @@
     const fl = Number.isFinite(a.alt) ? Math.round(a.alt / 100) : null;
     const label = [a.flight || a.hex || '', fl === null ? '' : 'FL' + String(fl).padStart(3, '0')]
       .filter(Boolean).join(' ');
-    const px = Math.round((typeof tune === 'function' && tune('trafficIconPx')) || 22);
+    const ground = onGround(a);
+    const full = Math.round((typeof tune === 'function' && tune('trafficIconPx')) || 22);
+    const px = ground ? Math.round(full * ((typeof tune === 'function' && tune('trafficGroundScale')) || 0.7)) : full;
     const heli = rotorcraft(a);
     const svg = '<svg class="traffic-plane' + (heli ? ' traffic-heli' : '') + '" viewBox="0 0 24 24" width="' + px + '" height="' + px
       + '" aria-hidden="true"><path d="' + (heli ? HELI : PLANE) + '"/></svg>';
     return L.divIcon({
-      className: 'traffic-mark',
+      // On the ground: smaller, faded, and no label (tap still opens the inspector).
+      className: 'traffic-mark' + (ground ? ' traffic-ground' : ''),
       iconSize: [px + 38, px + 4],
       iconAnchor: [Math.round(px / 2), Math.round(px / 2)],
       html: '<span class="traffic-arrow" style="transform:rotate(' + trk + 'deg)">' + svg + '</span>'
-          + '<span class="traffic-label">' + escapeXml(label) + '</span>',
+          + (ground ? '' : '<span class="traffic-label">' + escapeXml(label) + '</span>'),
     });
   }
 
@@ -280,11 +295,44 @@
         if (followedHex && followedHex !== a.hex) followedHex = '';
         state.selected = { type: 'traffic', hex: a.hex };
         if (typeof showInspector === 'function') showInspector();
+        declutterSoon();     // the selected one's label comes first now
       });
       m.addTo(group);
     }
     if (!map.hasLayer(group)) group.addTo(map);
+    declutterSoon();
   }
+
+  // Labels that would print over one another: the first keeps its label, the others show the
+  // aircraft alone (a tap still names it). The followed and the selected aircraft go first. Zoomed
+  // out over a busy airfield the labels had overprinted into nothing readable (reported).
+  function declutterLabels() {
+    if (!group) return;
+    const sel = state && state.selected && state.selected.type === 'traffic' ? state.selected.hex : '';
+    const marks = [];
+    group.eachLayer((m) => {
+      const el = m.getElement && m.getElement();
+      const lab = el && el.querySelector('.traffic-label');
+      if (lab) marks.push({ a: m._traffic || {}, lab });
+    });
+    const rank = (x) => (x.a.hex && x.a.hex === followedHex ? 0 : x.a.hex && x.a.hex === sel ? 1 : 2);
+    marks.sort((p, q) => rank(p) - rank(q));
+    const kept = [];
+    for (const x of marks) {
+      x.lab.classList.remove('traffic-label-hidden');
+      const r = x.lab.getBoundingClientRect();
+      const hit = kept.some(k => r.left < k.right && k.left < r.right && r.top < k.bottom && k.top < r.bottom);
+      if (hit) x.lab.classList.add('traffic-label-hidden'); else kept.push(r);
+    }
+  }
+  let declutterQueued = false;
+  function declutterSoon() {
+    if (declutterQueued) return;
+    declutterQueued = true;
+    requestAnimationFrame(() => { declutterQueued = false; declutterLabels(); });
+  }
+  window.trafficDeclutter = declutterLabels;
+  map.on('zoomend', declutterSoon);
 
   // An inspector open on an aircraft nobody is receiving any more has nothing to show, and
   // leaving its last-known altitude on screen is worse than showing nothing: it reads as
