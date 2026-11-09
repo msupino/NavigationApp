@@ -3479,6 +3479,7 @@ window.S = Object.assign({
   trafficGroundSpeed: 'Ground speed',
   trafficSquawk: 'Squawk',
   trafficType: 'Type',
+  trafficHelicopter: 'Helicopter',
   trafficTrack: 'Track',
   plateDownload: 'Download',
   // A file leaves the app either through the browser's download or, on the phone, through
