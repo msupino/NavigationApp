@@ -1,0 +1,40 @@
+From 9bb2f4a9c547b06c8ff2179cc9dfeeb646d85e57 Mon Sep 17 00:00:00 2001
+From: Marco <marco@supino.org>
+Date: Mon, 9 Nov 2026 06:00:42 +0000
+Subject: [PATCH] Legend on phones: totals above the button; their text size in
+ the gist
+
+---
+ Features-he.md | 2 +-
+ Features.md    | 2 +-
+ 2 files changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/Features-he.md b/Features-he.md
+index 351a4c6..e64592c 100644
+--- a/Features-he.md
++++ b/Features-he.md
+@@ -67,7 +67,7 @@
+ - נקודות הדיווח מסומנות כמו במפה: **▲ מלא = נקודת דיווח חובה**, **△ ריק = לפי דרישה**. **הצג דיווחי חובה** מוסיף ▲ קטן ליד כל נקודת חובה שאחרת מוסתרת (ציון דרך של המסלול עליה, או שכבת הנקודות כבויה).
+ - **הצגת תחנות VOR** פורסת תחנות VOR/DME ישראליות. בורר **VOR ref** הסמוך בוחר את הייחוס לקריאות Radial/DME, ונשאר זמין גם כשהסמנים מוסתרים.
+ - **הצגת/הוספת שינויי תדר** מסמנת נקודות שינוי-ATC ידועות: נקודות מסלול תואמות מקבלות קריאות ברק הניתנות לעריכה עם אות-קריאה וטקסט תדר.
+-- ה**מקרא** הוא כפתור עגול בפינה השמאלית-תחתונה של המפה, ולצידו סיכום המסלול (קטעים, מרחק, זמן, דלק). לחיצה עליו פותחת את המקרא מעל הכפתור — שדה תעופה, שדה תעופה צבאי, נקודת דיווח חובה ולפי דרישה, נקודה חמה ותחנת VOR — ולחיצה נוספת (או <span dir="ltr"><code>Esc</code></span>) סוגרת אותו; הכפתור נשאר במקומו ונצבע כחול כשהמקרא פתוח. סיכום המסלול נשאר גלוי בכל מקרה. בטלפון זה אותו כפתור, שורה אחת מעל הקואורדינטות; המקרא נפתח לצד כפתורי העריכה, ו"חזרה" סוגר אותו. כשהמיקום שלכם מוצג בטלפון, הכפתור והסיכום מפנים את המקום למפה. הסמלים שבו מצוירים באותו קוד כמו במפה; במצב כהה כל סמל יושב על רקע בהיר.
++- ה**מקרא** הוא כפתור עגול בפינה השמאלית-תחתונה של המפה, ולצידו סיכום המסלול (קטעים, מרחק, זמן, דלק). לחיצה עליו פותחת את המקרא מעל הכפתור — שדה תעופה, שדה תעופה צבאי, נקודת דיווח חובה ולפי דרישה, נקודה חמה ותחנת VOR — ולחיצה נוספת (או <span dir="ltr"><code>Esc</code></span>) סוגרת אותו; הכפתור נשאר במקומו ונצבע כחול כשהמקרא פתוח. סיכום המסלול נשאר גלוי בכל מקרה. בטלפון זה אותו כפתור בפינה השמאלית התחתונה, בגובה הקואורדינטות, וסיכום המסלול בשורה משלו מעליו (לצידו, שורה אחת מעל, בטלפון נמוך); המקרא נפתח לצד כפתורי העריכה, ו"חזרה" סוגר אותו. גודל הטקסט של הסיכום נקבע בהגדרת ה-gist <span dir="ltr"><code>routeSummaryFontPx</code></span> (13 פיקסלים). כשהמיקום שלכם מוצג בטלפון, הכפתור והסיכום מפנים את המקום למפה. הסמלים שבו מצוירים באותו קוד כמו במפה; במצב כהה כל סמל יושב על רקע בהיר.
+ - תוויות מופיעות בזום גבוה יותר; מתחת לכך רואים רק את הסמל.
+ - נקודה שהוצבה מסתירה כל סמן נקודת-ניווט או שדה החולק את מיקומה (מבוסס קרבה, כך שעדיין עובד אחרי שינוי שם).
+ - ה**חיפוש** נפתח כשכבת-על צפה (מרכז-עליון) — לוחצים **Ctrl-F / Cmd-F** בכל מקום, או על כפתור **🔍 חפש** בקטע עריכה. מתאים לשמות עבריים/אנגליים של נקודות ניווט ולתוויות ICAO/אנגלית/עברית של שדות; תקציב 12 התוצאות מחולק 6/6 בין שדות לנקודות. Enter קופץ להתאמה הראשונה; Escape סוגר.
+diff --git a/Features.md b/Features.md
+index 39c7c05..8bc842c 100644
+--- a/Features.md
++++ b/Features.md
+@@ -66,7 +66,7 @@ The selected layer is remembered across reloads. See [Map Layers](Map-Layers) fo
+ - **Show mandatory reports** puts a small ▲ beside each compulsory point that is otherwise hidden (a route waypoint on it, or the waypoint layer off).
+ - **Show VOR stations** overlays Israeli VOR/DME stations. The adjacent **VOR ref** selector chooses the reference used for radial/DME readouts, and stays available even when station markers are hidden.
+ - **Show/Add Freq Changes** marks known ATC-change reporting points: matching route waypoints get editable lightning callouts with call sign and frequency text.
+-- The **Legend** is a round button at the bottom-left of the map, with the route totals (legs, distance, time, fuel) in a pill beside it. Pressing it opens the key above the button — airfield, military airfield, compulsory and on-request reporting points, hotspot and VOR station — and pressing it again (or Escape) closes it; the button stays in place and turns blue while the key is open. The route totals stay visible either way. On a phone it is the same button, one row above the coordinates; the key opens beside the edit buttons, and Back closes it. While your position is showing on a phone, the button and totals step aside to give the chart the room. Its swatches are drawn by the same code as the map symbols; in dark mode each sits on a light chip.
++- The **Legend** is a round button at the bottom-left of the map, with the route totals (legs, distance, time, fuel) in a pill beside it. Pressing it opens the key above the button — airfield, military airfield, compulsory and on-request reporting points, hotspot and VOR station — and pressing it again (or Escape) closes it; the button stays in place and turns blue while the key is open. The route totals stay visible either way. On a phone it is the same button in the bottom-left corner, level with the coordinates, with the route totals on their own row above it (beside it, one row up, on a short phone); the key opens beside the edit buttons, and Back closes it. The totals' text size is the gist setting `routeSummaryFontPx` (13 px). While your position is showing on a phone, the button and totals step aside to give the chart the room. Its swatches are drawn by the same code as the map symbols; in dark mode each sits on a light chip.
+ - Labels appear at higher zoom; below that you see only the symbol.
+ - A placed waypoint hides any nav-waypoint or airfield marker sharing its position (proximity-based, so it still works after rename).
+ - The **search** opens as a floating overlay (top-center) — press **Ctrl-F / Cmd-F** anywhere, or click the **🔍 Find** button in the **Edit** menu. Matches nav-waypoint Hebrew / English names and airfield ICAO / English / Hebrew labels; the 12-result budget is split 6/6 between airfields and nav-WPs. Enter jumps to the first match; Escape closes.
+-- 
+2.43.0
+

@@ -123,3 +123,13 @@ for (const [w, h, stacked] of [[445, 1000, true], [390, 844, true], [360, 640, f
     expect(r.edit).toBe(false);
   });
 }
+
+// Asked: a gist setting for the totals text size (an iPhone wrapped them at the default).
+test('the gist sets the route totals text size (routeSummaryFontPx)', async ({ page }) => {
+  await boot(page, PHONE, null, 'he');
+  const size = () => page.evaluate(() => getComputedStyle(document.getElementById('route-summary')).fontSize);
+  await page.evaluate(() => { state.waypoints = [{ lat: 32.0, lng: 34.8, name: 'A' }, { lat: 32.3, lng: 35.0, name: 'B' }]; syncLegs(); draw(); });
+  expect(await size()).toBe('13px');                       // the default
+  await page.evaluate(() => { NavAid.tuning.routeSummaryFontPx = 11; applyTuningCssVars(); });
+  expect(await size()).toBe('11px');
+});
