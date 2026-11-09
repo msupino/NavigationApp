@@ -615,11 +615,34 @@ enum NavAidKeyboardBars {
         }
         if let subclass = subclass { object_setClass(content, subclass) }
     }
+
+    // WebKit may set the shortcuts bar's buttons again when a field takes focus, so they are
+    // cleared each time iOS announces the keyboard too (it does for the bar alone, with a
+    // hardware keyboard on an iPad or a Mac).
+    static func keepHidden(in webView: WKWebView?) -> NSObjectProtocol {
+        return NotificationCenter.default.addObserver(
+            forName: UIResponder.keyboardWillShowNotification, object: nil, queue: .main
+        ) { [weak webView] _ in
+            guard let webView = webView,
+                  let content = webView.scrollView.subviews.first(where: {
+                      String(describing: type(of: $0)).hasPrefix("WKContent")
+                  }) else { return }
+            content.inputAssistantItem.leadingBarButtonGroups = []
+            content.inputAssistantItem.trailingBarButtonGroups = []
+        }
+    }
 }
 
 class NavAidBridgeViewController: CAPBridgeViewController {
+    private var keyboardBarsObserver: NSObjectProtocol?
+
+    deinit {
+        if let observer = keyboardBarsObserver { NotificationCenter.default.removeObserver(observer) }
+    }
+
     override func capacitorDidLoad() {
         NavAidKeyboardBars.hide(in: webView)
+        keyboardBarsObserver = NavAidKeyboardBars.keepHidden(in: webView)
         bridge?.registerPluginInstance(XPlaneDiscoveryPlugin())
         bridge?.registerPluginInstance(BarometerPlugin())
         bridge?.registerPluginInstance(LocationQualityPlugin())
