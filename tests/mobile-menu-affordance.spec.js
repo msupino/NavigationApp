@@ -88,16 +88,19 @@ test('the phone bottom band does not pile up legend, coords and attribution', as
     state.legs = []; syncLegs(); draw();
     const get = sel => { const e = document.querySelector(sel); if (!e) return null;
       const r = e.getBoundingClientRect(); return r.height ? { top: r.top, bottom: r.bottom, left: r.left, right: r.right } : null; };
-    return { legend: get('.legend-dock'),   // the dock (button + totals); the key opens above it
+    // What the dock draws -- the button and the totals pill -- not its box, which is an L.
+    return { legend: get('#legend-toggle'), totals: get('#route-summary'),
 
              coord: get('#coord-readout'), attrib: get('.leaflet-control-attribution') };
   });
   const hits = (a, b) => a && b && a.left < b.right && a.right > b.left && a.top < b.bottom && a.bottom > b.top;
   expect(boxes.legend).not.toBeNull();
   expect(boxes.attrib).not.toBeNull();
-  // The legend must sit clear of the attribution, which wraps to two lines here.
-  expect(boxes.legend.bottom).toBeLessThanOrEqual(boxes.attrib.top + 1);
-  expect(hits(boxes.legend, boxes.coord)).toBe(false);
+  // Clear of the attribution (two lines here) and of the coordinates.
+  for (const b of [boxes.legend, boxes.totals]) {
+    expect(hits(b, boxes.attrib)).toBe(false);
+    expect(hits(b, boxes.coord)).toBe(false);
+  }
 });
 
 test('the search tip retires after the first search and stays gone', async ({ page }) => {

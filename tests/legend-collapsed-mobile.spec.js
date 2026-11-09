@@ -75,14 +75,20 @@ test('the choice is remembered on this device', async ({ page }) => {
 });
 
 // The phone dock sits one row up, clear of the coordinate readout across the bottom.
-test('on a phone the dock is clear of the coordinate readout', async ({ page }) => {
+// What is drawn, not the dock's box: with the totals above the button the box is an L, and its
+// empty corner over the readout is not on screen.
+test('on a phone the button and the totals are clear of the coordinate readout', async ({ page }) => {
   await boot(page, PHONE);
   const hit = await page.evaluate(() => {
-    const a = document.querySelector('.legend-dock').getBoundingClientRect();
+    const wps = [{ lat: 32.0, lng: 34.8, name: 'A' }, { lat: 32.3, lng: 35.0, name: 'B' }];
+    state.waypoints = wps; syncLegs(); draw();
     const b = document.getElementById('coord-readout').getBoundingClientRect();
-    return a.left < b.right && b.left < a.right && a.top < b.bottom && b.top < a.bottom;
+    return ['#legend-toggle', '#route-summary'].map(s => {
+      const a = document.querySelector(s).getBoundingClientRect();
+      return a.width > 0 && a.left < b.right && b.left < a.right && a.top < b.bottom && b.top < a.bottom;
+    });
   });
-  expect(hit).toBe(false);
+  expect(hit).toEqual([false, false]);
 });
 
 // A window opened over an open key is what Back closes first: the dock steps aside under it.
