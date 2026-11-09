@@ -255,7 +255,9 @@
   function icon(a) {
     const trk = Number.isFinite(a.track) ? a.track : 0;
     const fl = Number.isFinite(a.alt) ? Math.round(a.alt / 100) : null;
-    const label = [a.flight || a.hex || '', fl === null ? '' : 'FL' + String(fl).padStart(3, '0')]
+    // Below the standard pressure level (a high-pressure day, an airfield near the sea) the pressure
+    // altitude is negative: the sign goes before the padding -- FL-003, not "FL0-3" (reported, Haifa).
+    const label = [a.flight || a.hex || '', fl === null ? '' : 'FL' + (fl < 0 ? '-' : '') + String(Math.abs(fl)).padStart(3, '0')]
       .filter(Boolean).join(' ');
     const ground = onGround(a);
     const full = Math.round((typeof tune === 'function' && tune('trafficIconPx')) || 22);
@@ -276,8 +278,42 @@
     });
   }
 
+  // The route, waypoints, airfields and their runways are painted on #overlay, a canvas above the
+  // WHOLE Leaflet map (followme.js explains the stacking). A marker in the map's own markerPane is
+  // therefore under all of it -- an aircraft on a runway was hidden by the runway (reported, Haifa).
+  // So traffic gets its own pane on the map container, above that canvas and just below the
+  // follow-me aircraft, and its markers are placed in container pixels, by hand: a pane outside
+  // the map pane gets none of Leaflet's pan/zoom transform.
+  const TRAFFIC_PANE_Z = 638;
+  function trafficPane() {
+    let p = map.getPane('traffic');
+    if (!p) {
+      p = map.createPane('traffic', map.getContainer());
+      p.style.zIndex = String(TRAFFIC_PANE_Z);
+      p.style.pointerEvents = 'none';            // the map stays draggable between aircraft
+    }
+    return p;
+  }
+  const TrafficMarker = L.Marker.extend({
+    _setPos(_pos) {
+      L.Marker.prototype._setPos.call(this, this._map.latLngToContainerPoint(this._latlng).round());
+    },
+    // Placed in container pixels, so Leaflet's zoom animation (layer pixels) would throw it off;
+    // it is put back in place on every zoom step instead.
+    getEvents() {
+      const ev = L.Marker.prototype.getEvents.call(this);
+      delete ev.zoomanim;
+      return ev;
+    },
+  });
+  function placeAll() {
+    if (group) group.eachLayer((m) => { if (m._map) m.update(); });
+  }
+  map.on('move zoom viewreset resize rotate', placeAll);
+
   function draw(list) {
     if (!group) group = L.layerGroup();
+    trafficPane();
     group.clearLayers();
     const fromFeed = new Set(polled);
     for (const a of list) {
@@ -285,7 +321,7 @@
       const ic = icon(a);
       // The feed's aircraft fade while the feed is silent; a receiver's own (external) are live.
       if (stalePolled && fromFeed.has(a)) ic.options.className += ' traffic-stale';
-      const m = L.marker([a.lat, a.lon], { icon: ic, keyboard: false, pane: 'markerPane',
+      const m = new TrafficMarker([a.lat, a.lon], { icon: ic, keyboard: false, pane: 'traffic',
                                            title: a.flight || a.hex || '' });
       m._traffic = a;
       m.on('click', (e) => {
