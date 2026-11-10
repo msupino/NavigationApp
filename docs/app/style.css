@@ -3527,6 +3527,11 @@ body.theme-light .atc-inline.is-offline .atc-play { color: #c62828; border-color
 .row:has(> .val > .charts-freq-input) { flex-wrap: wrap; row-gap: 4px; }
 .row:has(> .val > .charts-freq-input) > label { margin-inline-end: 6px; }
 .row:has(> .val > .charts-freq-input) > .val { margin-inline-start: auto; }
+/* ...but the value box is dir="ltr" (a frequency reads left to right), and a logical margin follows
+   the box's OWN direction: in a Hebrew row "inline-start: auto" became margin-LEFT, which pushed the
+   value against its label -- so each row's box started wherever its label ended, and "ראשי" and
+   "קלירנס" stood at different places (reported). In Hebrew the free space is on the box's right. */
+html[dir="rtl"] .row:has(> .val > .charts-freq-input) > .val { margin-left: 0; margin-right: auto; }
 .row > .val > .charts-freq-input { flex: 0 1 96px; min-width: 76px; }
 .row > .val > .commchange-freq-reset,
 .row > .val > .atc-inline { flex: 0 0 auto; }
