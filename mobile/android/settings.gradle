@@ -1,4 +1,6 @@
 include ':app'
+// The Wear OS companion: next waypoint, ETE/ETA and leg timer on the wrist (docs/superpowers/specs/2026-11-09-wear-os-companion-design.md).
+include ':wear'
 include ':capacitor-cordova-android-plugins'
 project(':capacitor-cordova-android-plugins').projectDir = new File('./capacitor-cordova-android-plugins/')
 

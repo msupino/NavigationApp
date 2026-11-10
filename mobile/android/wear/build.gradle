@@ -1,0 +1,80 @@
+apply plugin: 'com.android.application'
+apply plugin: 'org.jetbrains.kotlin.android'
+apply plugin: 'org.jetbrains.kotlin.plugin.compose'
+
+// The NavAid watch app: the live picture the phone sends (WearBridgePlugin, docs/app/wear.js).
+// Same applicationId and the same signing key as the phone app -- the Wearable Data Layer only
+// connects apps that match on both. Release: ./gradlew :wear:assembleRelease, attached to the
+// same GitHub release as navaid-wear-<version>.apk, installed over adb (Wi-Fi debugging).
+def keystoreProps = new Properties()
+def keystorePropsFile = rootProject.file('keystore.properties')
+if (keystorePropsFile.exists()) {
+    keystoreProps.load(new FileInputStream(keystorePropsFile))
+}
+
+android {
+    namespace = "org.supino.navaid.wear"
+    compileSdk = rootProject.ext.compileSdkVersion
+    defaultConfig {
+        applicationId "org.supino.navaid"
+        minSdkVersion 30                 // Wear OS 3+
+        targetSdkVersion rootProject.ext.targetSdkVersion
+        versionCode 1
+        versionName "1.0"
+    }
+    signingConfigs {
+        if (keystorePropsFile.exists()) {
+            release {
+                // The phone app's path, which resolves against app/ unless it is absolute.
+                def ks = new File(keystoreProps['storeFile'])
+                storeFile ks.isAbsolute() ? ks : rootProject.file('app/' + keystoreProps['storeFile'])
+                storePassword keystoreProps['storePassword']
+                keyAlias keystoreProps['keyAlias']
+                keyPassword keystoreProps['keyPassword']
+            }
+        }
+    }
+    buildTypes {
+        release {
+            minifyEnabled false
+            if (keystorePropsFile.exists()) {
+                signingConfig signingConfigs.release
+            }
+        }
+    }
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+    kotlinOptions {
+        jvmTarget = '17'
+    }
+    buildFeatures {
+        compose true
+    }
+    testOptions {
+        unitTests.includeAndroidResources = true
+    }
+}
+
+dependencies {
+    implementation "com.google.android.gms:play-services-wearable:$playServicesWearableVersion"
+    implementation "org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.9.0"
+    implementation "androidx.activity:activity-compose:1.11.0"
+    implementation "androidx.wear.compose:compose-material:1.4.1"
+    implementation "androidx.wear.compose:compose-foundation:1.4.1"
+    implementation "androidx.wear.tiles:tiles:1.4.1"
+    implementation "androidx.wear.protolayout:protolayout:1.2.1"
+    implementation "androidx.wear.protolayout:protolayout-material:1.2.1"
+    implementation "androidx.wear.watchface:watchface-complications-data-source-ktx:1.2.1"
+    implementation "androidx.concurrent:concurrent-futures:1.2.0"
+    testImplementation "junit:junit:$junitVersion"
+    // Screenshots of the watch screen on the JVM (NavScreenshotTest): Robolectric draws Compose
+    // with native graphics, round, at Pixel Watch size -- no emulator.
+    testImplementation "org.robolectric:robolectric:4.14.1"
+    testImplementation "androidx.compose.ui:ui-test-junit4:1.7.8"
+    testImplementation "androidx.test.ext:junit:1.2.1"
+    debugImplementation "androidx.compose.ui:ui-test-manifest:1.7.8"
+    // Android's own org.json is a stub in local unit tests.
+    testImplementation "org.json:json:20240303"
+}
