@@ -59,6 +59,27 @@ test('the column keeps its top-to-bottom order when it wraps', async ({ page }) 
   expect(order.length).toBe(2);
 });
 
+// Reported from an iPhone while recording: "why voice and north up icons moved down?". The column is
+// built bottom-up (column-reverse), so a wrapped second column filled from the BOTTOM and its
+// controls landed by the coordinates, mid-screen. It starts level with the first column now.
+test('a wrapped second column starts at the top, level with the first', async ({ page }) => {
+  await boot(page, 360, 640);
+  await goLive(page);
+  await page.waitForTimeout(600);
+  const tops = await page.evaluate(() => {
+    const corner = document.querySelector('.rotate-ctrl').parentNode;
+    const by = {};
+    for (const e of corner.children) {
+      if (!e.getClientRects().length || getComputedStyle(e).position === 'absolute' || e.classList.contains('leaflet-control-attribution')) continue;
+      const b = e.getBoundingClientRect(); const k = Math.round(b.right);
+      by[k] = Math.min(by[k] === undefined ? Infinity : by[k], b.top);
+    }
+    return Object.values(by);
+  });
+  expect(tops.length).toBe(2);
+  expect(Math.abs(tops[0] - tops[1])).toBeLessThanOrEqual(2);
+});
+
 // Seen in the before/after screenshots: wrapped, the second column landed on the coordinates and on
 // the empty-route hint. They step left of the whole column now; on a tall phone nothing moves.
 for (const [w, h, wraps] of [[360, 640, true], [390, 844, false]]) {
