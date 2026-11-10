@@ -1146,6 +1146,7 @@ function routeSnapshotForStorage() {
       return enc;
     }),
     notes: state.notes,
+    ...((state.labelTurns || []).length ? { labelTurns: sanitizeLabelTurns(state.labelTurns) } : {}),
     commChangeSuppressions: routeCommChangeSuppressions(),
     ...(wind && wind.speed > 0 ? { wind } : {}),
     // The route's altitude-layer pin travels with undo/session snapshots so
@@ -1162,6 +1163,22 @@ function routeSnapshotForStorage() {
 // travels on the wire: an ident string or nothing. An unknown ident is kept rather
 // than dropped -- legVorObj() already falls back to the global VOR when vorByIdent
 // cannot resolve it, so a route saved against another nav-data release still loads.
+// Label-turn areas as they travel on the wire: four corners and an angle. Anything malformed is
+// dropped rather than guessed at (a turned label in the wrong place is worse than an upright one).
+const LABEL_TURN_DEGS = [90, 180, 270, 'leg'];
+function sanitizeLabelTurns(a) {
+  if (!Array.isArray(a)) return [];
+  const out = [];
+  for (const t of a.slice(0, 50)) {
+    if (!t || !Array.isArray(t.pts) || t.pts.length !== 4 || !LABEL_TURN_DEGS.includes(t.deg)) continue;
+    const pts = t.pts.map(p => (Array.isArray(p) && Number.isFinite(+p[0]) && Number.isFinite(+p[1])
+      && Math.abs(+p[0]) <= 90 && Math.abs(+p[1]) <= 180) ? [r5(+p[0]), r5(+p[1])] : null);
+    if (pts.some(p => !p)) continue;
+    out.push({ pts, deg: t.deg });
+  }
+  return out;
+}
+window.sanitizeLabelTurns = sanitizeLabelTurns;
 function sanitizeVorRef(v) {
   if (typeof v !== 'string') return null;
   const t = v.trim().toUpperCase();
@@ -1225,6 +1242,8 @@ function serializeRoute() {
     })),
   };
   if (commChangeSuppressions.length) data.commChangeSuppressions = commChangeSuppressions;
+  const turns = sanitizeLabelTurns(state.labelTurns);
+  if (turns.length) data.labelTurns = turns;          // none = omit
   const wind = encodeWind(state.wind);
   if (wind && wind.speed > 0) data.wind = wind;     // calm = omit
   const bearing = currentMapBearing();
@@ -3032,6 +3051,7 @@ function loadGpx(file) {
       state.waypoints = wps;
       state.legs = [];
       state.notes = [];
+      state.labelTurns = [];
       state.commChangeSuppressions = [];
       state.wind = { dir: 270, speed: 0 };   // imported route carries no route-wide wind — don't inherit the previous route's
       syncLegs();
@@ -3103,6 +3123,7 @@ function loadPln(file) {
       state.waypoints = wps;
       state.legs = [];
       state.notes = [];
+      state.labelTurns = [];
       state.commChangeSuppressions = [];
       state.wind = { dir: 270, speed: 0 };   // imported route carries no route-wide wind — don't inherit the previous route's
       syncLegs();
@@ -3357,6 +3378,7 @@ function applyRouteData(d) {
       ? { rp: { leg: n.rp.leg, t: Number.isFinite(n.rp.t) ? n.rp.t : 0.5 } } : {}),
   }));
   state.commChangeSuppressions = storedCommChangeSuppressions(d);
+  state.labelTurns = sanitizeLabelTurns(d.labelTurns);
   state.wind = storedWind(d);
   if (typeof window.refreshWindInputs === 'function') window.refreshWindInputs();
   syncLegs();
@@ -7714,6 +7736,7 @@ function applyRouteSnapshot(snap) {
     })) : [];
   state.notes = Array.isArray(snap.notes) ? snap.notes : [];
   state.commChangeSuppressions = storedCommChangeSuppressions(snap);
+  state.labelTurns = sanitizeLabelTurns(snap.labelTurns);
   // Restore the snapshot's altitude-layer pin (null for pre-pin snapshots)
   // so the restored route is not re-pinned to — and rewritten from —
   // whichever layer happens to be displayed at undo time.
@@ -7822,6 +7845,7 @@ function restoreRoute() {
       ? { rp: { leg: n.rp.leg, t: Number.isFinite(n.rp.t) ? n.rp.t : 0.5 } } : {}),
   }));
   state.commChangeSuppressions = storedCommChangeSuppressions(d);
+  state.labelTurns = sanitizeLabelTurns(d.labelTurns);
   state.wind = storedWind(d);
   // Restore the altitude-layer pin before syncLegs so the restored route
   // derives (and re-derives on endpoint changes) only from its own layer.
@@ -10091,6 +10115,7 @@ function tryLoadRouteFromUrl() {
   }));
   state.legs = r.legs;
   state.notes = [];
+  state.labelTurns = [];
   state.commChangeSuppressions = [];
   if (Array.isArray(r.suppressions) && r.suppressions.length) {
     state.commChangeSuppressions = r.suppressions.slice();

@@ -10818,3 +10818,29 @@ body.deck-on .legend-ctrl.legend-docked .map-legend::after { content: none; }
   body.deck-on .legend-ctrl.legend-docked .legend-dock { flex-direction: row; align-items: center; }
   body.deck-on .legend-ctrl.legend-docked #route-summary { max-width: calc(100vw - 72px - var(--navaid-map-ctrl-clear, 52px) - 8px); }
 }
+
+/* Turn labels (label-turn.js): the box being dragged, and the angle picker. */
+#map.label-turning, #map.label-turning .leaflet-interactive { cursor: crosshair; }
+.label-turn-band {
+  position: absolute;
+  z-index: 650;
+  border: 2px dashed #1d6fe0;
+  background: rgba(29, 111, 224, 0.10);
+  pointer-events: none;
+}
+.label-turn-choices { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 4px; }
+.label-turn-choice {
+  min-height: 44px;
+  padding: 8px 10px;
+  font: 600 14px/1.2 system-ui, sans-serif;
+  border-radius: 8px;
+  border: 1px solid #c9d2dd;
+  background: #eef1f5;
+  color: #1f252c;
+  cursor: pointer;
+}
+.label-turn-choice.is-current { background: #1d6fe0; border-color: #1d6fe0; color: #fff; }
+body.theme-dark .label-turn-choice { background: #2f2b2b; border-color: #4b4646; color: #e8e8e8; }
+body.theme-dark .label-turn-choice.is-current { background: #1d6fe0; border-color: #1d6fe0; color: #fff; }
+.label-turn-remove { color: #b02a2a; }
+body.theme-dark .label-turn-remove { color: #ff8a8a; }

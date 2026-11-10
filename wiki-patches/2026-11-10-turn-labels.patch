@@ -1,0 +1,47 @@
+From 3cfccfdbb3f8a7b97c22b0c027270c316ea5ab84 Mon Sep 17 00:00:00 2001
+From: Marco <marco@supino.org>
+Date: Tue, 10 Nov 2026 10:41:29 +0000
+Subject: [PATCH] Edit: Turn labels -- NavAid's labels turned in a box, to read
+ along a leg
+
+---
+ Features-he.md | 3 ++-
+ Features.md    | 1 +
+ 2 files changed, 3 insertions(+), 1 deletion(-)
+
+diff --git a/Features-he.md b/Features-he.md
+index ceef021..a36d7e5 100644
+--- a/Features-he.md
++++ b/Features-he.md
+@@ -14,7 +14,7 @@
+ 
+ | קטע | מטרה |
+ | --- | --- |
+-| **עריכה** | הוספת נקודה, הוספת הערה, חיפוש, היפוך, **ביטול**, ניקוי, התאמה, **איפוס כל מיקומי הסמנים**, **איפוס כל שמות הנקודות**, **ניתוב אוטומטי דרך נקודות דיווח**, **הצמדה לנקודה הקרובה** |
++| **עריכה** | הוספת נקודה, הוספת הערה, חיפוש, היפוך, **ביטול**, ניקוי, התאמה, **איפוס כל מיקומי הסמנים**, **איפוס כל שמות הנקודות**, **סיבוב תוויות**, **ניתוב אוטומטי דרך נקודות דיווח**, **הצמדה לנקודה הקרובה** |
+ | **תרשים** | שכבת בסיס, הצגת נקודות ניווט / שדות תעופה / תחנות VOR + ייחוס VOR / הצגת-הוספת שינויי תדר, **הצג זמן מצטבר**, **הצג קווי סחיפה**, **הצג דיווחי חובה**, נקודות חמות, **זכוכית מגדלת**, הצג מרחק קטע, הדגש הפרש |
+ | **מראה** | שקיפות תווית, אטימות מפה, גודל נקודה, גודל חץ קטע, **עובי קו קטע**, **עובי קו סחיפה** |
+ | **תכנית טיסה** | פותח את טבלת תכנית הטיסה (+ייצוא CSV) — ראו [תוכנית טיסה](Flight-Plan-he) |
+@@ -41,6 +41,7 @@
+ - **↶ ביטול (Undo)** (**Ctrl-Z**) — חזרה אחורה על העריכה, ההזזה או המחיקה האחרונה.
+ - **↺ איפוס כל מיקומי הסמנים** — החזרת היסט סמן המידע של כל רגל (כיוון / גובה / זמן) למקומו המוגדר.
+ - **↺ איפוס כל שמות הנקודות** — קביעת כל שם לנקודת הייחוס הקרובה, או ניקוי כשמחוץ לרשת.
++- **סיבוב תוויות** — למסלול שמשנה כיוון (חיפה דרומה לחדרה, ואז מזרחה לראש פינה): סיבוב הטקסט של NavAid בחלק מהמפה, כך שייקרא ישר כשמסובבים את המכשיר לאותו קטע. גוררים מלבן על התוויות ובוחרים **90° שמאלה**, **180°**, **90° ימינה** או **לאורך הקטע** (מול הקטע שעובר במלבן). שמות, נתוני תיבות הקטעים, מרחקים ותוויות תדר מסתובבים סביב מרכזם; תיבות הקטעים שומרות על צורתן וכיוונן, והנתונים שבהן רק מתהפכים בתוך התאים. הטקסט המודפס של המפה עצמה הוא חלק מהתמונה ואינו מסתובב. הקשה על מלבן משנה או מסירה אותו; <span dir="ltr">Escape</span> יוצא מהכלי. המלבנים מסומנים רק כשהכלי פעיל, נשמרים עם המסלול (לא בקישור שיתוף), וחלים גם על ההדפסה וייצוא ה-<span dir="ltr">PNG</span> של NavAid.
+ - **🔍 זכוכית מגדלת** (**M**) — ראו [זכוכית מגדלת](#זכוכית-מגדלת) למטה.
+ - **מעבר לקואורדינטות** — לוחצים על קריאת הקואורדינטות בפינה הימנית-תחתונה ומקלידים או מדביקים קואורדינטה (למשל <span dir="ltr"><code>32°00'17"N 34°43'38"E</code></span>, או עשרוני פשוט) כדי למרכז את המפה שם.
+ 
+diff --git a/Features.md b/Features.md
+index 247440f..7788729 100644
+--- a/Features.md
++++ b/Features.md
+@@ -40,6 +40,7 @@ Below the sections you'll see live totals — **Waypoints**, **Legs**, **Distanc
+ - **↶ Undo** (**Ctrl-Z**) — step back the last edit, move, or delete.
+ - **↺ Reset all marker positions** — return every leg's info-marker offset (heading / altitude / time kite) to its default spot.
+ - **↺ Reset all waypoint names** — set each name to its nearest reference point, or clear it when off-grid.
++- **Turn labels** — for a route that changes direction (Haifa south to Hadera, then east to Rosh Pina), turn NavAid's own text in part of the map so it reads upright when you turn the device to that leg. Drag a box over the labels and pick **90° left**, **180°**, **90° right** or **Along the leg** (faces the leg that runs through the box). Names, the leg boxes' figures, distances and callouts turn about their own centres; the leg boxes keep their shape and direction, and their figures only flip within their cells. The chart's own printed text is part of the image and does not turn. Tap a box to change or remove it; Escape leaves the tool. The boxes are outlined only while the tool is on, are saved with the route (not in a share link), and apply to NavAid's print and PNG export too.
+ - **🔍 Magnifier** (**M**) — see [Magnifier](#magnifier) below.
+ - **Go to coordinates** — click the bottom-right coordinate readout and type or paste a coordinate (e.g. `32°00'17"N 34°43'38"E`, or plain decimals) to recentre the map there.
+ 
+-- 
+2.43.0
+

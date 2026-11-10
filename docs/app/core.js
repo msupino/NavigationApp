@@ -1307,6 +1307,14 @@ NavAid.tuningDefaults = {
   // Not red. Red on an aviation display means resolve it now, and this is information --
   // magenta is what a traffic symbol wears on a moving map, and nothing else on the chart
   // uses it.
+  // Turn-labels areas (label-turn.js), outlined only while the tool is on.
+  labelTurnColor: { value: '#1d6fe0', type: 'color', label: 'Turn labels: area outline and badge colour' },
+  labelTurnTextColor: { value: '#ffffff', type: 'color', label: 'Turn labels: badge text colour' },
+  labelTurnFillAlpha: { value: 0.08, min: 0, max: 0.5, step: 0.01, label: 'Turn labels: area fill opacity' },
+  labelTurnLineWidthPx: { value: 2, min: 0.5, max: 6, step: 0.5, label: 'Turn labels: outline width (px)' },
+  labelTurnDashPx: { value: 6, min: 0, max: 20, step: 1, label: 'Turn labels: outline dash (px)' },
+  labelTurnGapPx: { value: 4, min: 0, max: 20, step: 1, label: 'Turn labels: outline gap (px)' },
+  labelTurnFontPx: { value: 13, min: 9, max: 24, step: 1, label: 'Turn labels: badge text (px)' },
   trafficIconPx: { value: 22, min: 12, max: 40, step: 1, label: 'Live traffic aircraft size (px)' },
   // On the ground: reported so ("ground", a receiver's on-ground flag), or an aeroplane slower than
   // trafficGroundKt below trafficGroundBelowFt (never a helicopter -- slow and low is how they fly).
@@ -1363,6 +1371,7 @@ NavAid.tuningGroups = [
   { name: 'Satellite', keys: ['satellitePreviewZoom', 'satelliteExpandedZoom', 'satelliteMinZoom', 'satelliteMaxZoom', 'satelliteChartOverscale', 'satellitePreviewWidthPx', 'satellitePreviewHeightPx', 'satelliteMarkerRadiusPx', 'satelliteMarkerColor', 'satelliteMarkerWeightPx', 'satelliteMarkerAlpha'] },
   { name: 'Go-to marker', keys: ['gotoMarkerColor', 'gotoMarkerFillColor', 'gotoMarkerRadiusPx', 'gotoMarkerWeightPx', 'gotoMarkerFillAlpha'] },
   { name: 'Map buttons', keys: ['mapCtrlLeftEdgePx', 'mapCtrlRightEdgePx'] },
+  { name: 'Turn labels', keys: ['labelTurnColor', 'labelTurnTextColor', 'labelTurnFillAlpha', 'labelTurnLineWidthPx', 'labelTurnDashPx', 'labelTurnGapPx', 'labelTurnFontPx'] },
   { name: 'Map label zoom', keys: ['airfieldLabelMinZoom', 'navWpLabelMinZoom', 'vorLabelMinZoom'] },
   { name: 'Wind', keys: ['windDir', 'windSpeed'] },
   { name: 'Magnifier', keys: ['magBaselineZoom', 'magMaxExp'] },
@@ -3067,6 +3076,16 @@ window.S = Object.assign({
   measureTitle: 'Measure from the aircraft: tap a point for its distance, bearing and time',
   measureHintLive: 'Tap a point: distance and time from the aircraft',
   whyMeasureNoPosition: 'Measure works from your position: turn on Location',
+  tbLabelTurn: 'Turn labels',
+  tbLabelTurnTitle: 'Drag a box over part of the route: its labels turn to read upright when you turn the device to that leg',
+  labelTurnHint: 'Drag a box over the labels to turn. Tap a box to change or remove it.',
+  labelTurnPickTitle: 'Turn the labels',
+  labelTurnLeft: '90° left',
+  labelTurn180: '180°',
+  labelTurnRight: '90° right',
+  labelTurnLeg: 'Along the leg',
+  labelTurnLegShort: 'leg',
+  labelTurnRemove: 'Remove',
   measureEte: function (min, kt) {
     const t = min < 60 ? min + ' min' : Math.floor(min / 60) + ' h ' + String(min % 60).padStart(2, '0');
     return t + ' at ' + kt + ' kt';
@@ -3994,6 +4013,8 @@ const NAV_ICONS = {
   trash: '<path d="M6.2 7.5 7.3 20h9.4l1.1-12.5"/><path d="M4 7.5h16M9.5 7.5V4.5h5v3M10.3 11v5.5M13.7 11v5.5"/>',
   fit: '<path d="M4 9V4h5M15 4h5v5M20 15v5h-5M9 20H4v-5"/><circle cx="12" cy="12" r="2"/>',
   reset: '<path d="M4.5 12a7.5 7.5 0 1 0 2.2-5.3"/><path d="M4.5 4v4.5H9"/>',
+  // Turn labels: a letter A with an arrow round it.
+  turnText: '<path d="M8.5 16 12 7l3.5 9M9.8 13h4.4"/><path d="M19.5 12a7.5 7.5 0 1 1-2.2-5.3"/><path d="M19.5 4v4.5H15"/>',
   compass: '<circle cx="12" cy="12" r="9"/><path d="m15.5 8.5-2.2 4.8-4.8 2.2 2.2-4.8z"/>',
   moon: '<path d="M19.5 14.5A8 8 0 1 1 9.5 4.5a6.5 6.5 0 0 0 10 10z"/>',
   sun: '<circle cx="12" cy="12" r="4"/><path d="M12 2.5v2M12 19.5v2M2.5 12h2M19.5 12h2M5.3 5.3l1.4 1.4M17.3 17.3l1.4 1.4M5.3 18.7l1.4-1.4M17.3 6.7l1.4-1.4"/>',
@@ -4079,7 +4100,10 @@ const state = {
   legs: [],                 // per-leg attributes (see newLeg)
   notes: [],                // [{ lat, lng, text }] — free-text annotations
   commChangeSuppressions: [], // canonical comm-change callouts the user deleted
-  mode: null,               // 'add' | 'note' | null (= inspect)
+  // Areas whose labels are drawn turned (label-turn.js): [{ pts: [[lat,lng] x4], deg: 90|180|270|'leg' }].
+  // Only NavAid's own text turns -- names, leg boxes, distances, callouts -- never the chart image.
+  labelTurns: [],
+  mode: null,               // 'add' | 'note' | 'turn' | null (= inspect)
   selected: null,           // { type:'wp'|'leg'|'note', index }
   wind: { dir: tune('windDir'), speed: tune('windSpeed') }, // route-wide wind: dir °true FROM, kt; 0 = calm; default is tunable
 };

@@ -159,7 +159,16 @@ function setMode(mode) {
   // here keeps them in sync no matter which mode we entered or left.
   addBtn.setAttribute('aria-pressed', String(mode === 'add'));
   noteBtn.setAttribute('aria-pressed', String(mode === 'note'));
+  // Turn labels (label-turn.js): its own button, the same one-tool-at-a-time rule.
+  const turnBtn = document.getElementById('tool-label-turn');
+  if (turnBtn) {
+    turnBtn.classList.toggle('active', mode === 'turn');
+    turnBtn.setAttribute('aria-pressed', String(mode === 'turn'));
+  }
   document.getElementById('map').classList.toggle('add', mode === 'add' || mode === 'note');
+  document.getElementById('map').classList.toggle('label-turning', mode === 'turn');
+  if (typeof window.labelTurnModeChanged === 'function') window.labelTurnModeChanged(mode === 'turn');
+  if (typeof draw === 'function') draw();   // the areas' outlines show only in the tool
   if (typeof window.refreshEditColumn === 'function') window.refreshEditColumn();
   if (typeof refreshEmptyRouteHint === 'function') refreshEmptyRouteHint();
 }
@@ -199,7 +208,7 @@ dressLangQuick(document.getElementById('lang-quick'));
 const MENU_ICONS = {
   'tool-add': 'addWp', 'tool-note': 'addNote', 'search-trigger': 'search', reverse: 'reverse',
   undo: 'undo', clear: 'trash', fit: 'fit', 'tool-reset-all-markers': 'reset',
-  'tool-reset-all-wp-names': 'reset', 'tool-magnifier': 'magnifier',
+  'tool-reset-all-wp-names': 'reset', 'tool-magnifier': 'magnifier', 'tool-label-turn': 'turnText',
   'autoroute-btn': 'map', 'force-snap-btn': 'addWp', 'ret-btn': 'direct',
   'route-templates': 'templates', 'freq-table': 'antenna', 'alt-pairs': 'altPairs',
   'nav-log': 'form', charts: 'charts', 'sigwx-btn': 'globe', 'pwx-btn': 'wind',
@@ -1502,7 +1511,7 @@ function measureToggle(on, quiet) {
   if (want && !measureLiveFrom()) { refreshMeasureControl(); return; }      // dimmed: nothing to measure from
   m.on = want;
   m.from = null; m.to = null;
-  if (m.on && (state.mode === 'add' || state.mode === 'note')) setMode(null);   // one map tool at a time
+  if (m.on && (state.mode === 'add' || state.mode === 'note' || state.mode === 'turn')) setMode(null);   // one map tool at a time
   measureSave();
   refreshMeasureControl();
   if (m.on && !quiet && typeof showToast === 'function') {
@@ -3017,7 +3026,8 @@ async function buildRouteFromQuery(raw) {
     lat: w.lat, lng: w.lng, name: w.name,
   }));
   state.legs = [];
-  state.notes = [];                       // fresh route: drop the previous route's freehand notes (seedCommChangeNotes re-adds comm notes)
+  state.notes = [];
+  state.labelTurns = [];                       // fresh route: drop the previous route's freehand notes (seedCommChangeNotes re-adds comm notes)
   state.commChangeSuppressions = [];
   state.wind = { dir: 270, speed: 0 };     // search-built route carries no wind — don't inherit the previous route's
   state.selected = null;
@@ -5285,6 +5295,7 @@ document.getElementById('clear').onclick = async () => {
   state.waypoints = [];
   state.legs = [];
   state.notes = [];
+  state.labelTurns = [];
   state.commChangeSuppressions = [];
   state.wind = { dir: 270, speed: 0 };     // cleared route: reset wind so a new hand-built route doesn't inherit it
   state.selected = null;

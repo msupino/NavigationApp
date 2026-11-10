@@ -400,6 +400,8 @@
     <button id="fit" data-i18n="tbFit" data-i18n-title="tbFitTitle"></button>
     <button id="tool-reset-all-markers" type="button" data-i18n="tbResetAllMarkers" data-i18n-title="tbResetAllMarkersTitle"></button>
     <button id="tool-reset-all-wp-names" type="button" data-i18n="tbResetAllWpNames" data-i18n-title="tbResetAllWpNamesTitle"></button>
+    <!-- Turn labels in an area (label-turn.js): a tool like Add / Note -- drag a box, pick the angle. -->
+    <button id="tool-label-turn" type="button" aria-pressed="false" data-i18n="tbLabelTurn" data-i18n-title="tbLabelTurnTitle"></button>
     <!-- How adding a point behaves -- route building, so here after the tools that build, not
          under Map with what is drawn. Toggle buttons, not checkbox rows: Edit is a list of
          buttons, and on reads in the toolbar's selected blue like any pressed one. Each drives
@@ -1466,6 +1468,7 @@
         'app/device-extras.js' + v,
         'app/compass.js' + v,
         'app/gdl90.js' + v,
+        'app/label-turn.js' + v,
         'app/ble-gps.js' + v,
         'app/tour.js' + v,
         'app/atc-radio.js' + v,
