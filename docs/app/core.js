@@ -1943,7 +1943,7 @@ window.S = Object.assign({
   recIndicatorLabel: 'REC',
   recIndicatorTitle: 'Recording the flight',
   tourLiveRecTitle: 'Recording',
-  tourLiveRecText: 'The red REC sign: this flight is being recorded. It stops with Record, or when you turn Location off, and is kept in Saved routes.',
+  tourLiveRecText: 'Red while this flight is being recorded (on a phone, the Record button itself). It stops with Record, or when you turn Location off, and is kept in Saved routes.',
   tourLiveReadTitle: 'Speed, altitude, track',
   tourLiveReadText: 'Your ground speed, altitude and magnetic track, from the GPS.',
   tourLiveStatusTitle: 'GPS quality',
