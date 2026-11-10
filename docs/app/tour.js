@@ -50,7 +50,8 @@
   // their steps are left out then.
   const LIVE_SEEN_KEY = 'navaid.liveTourSeen';
   const LIVE_STEPS = [
-    { sel: ['#gps-rec-indicator'], k: 'LiveRec' },
+    // The REC pill on a desktop; on a phone, the deck's Record button, which is the sign there.
+    { sel: ['#gps-rec-indicator', '.deck-btn-record'], k: 'LiveRec' },
     { sel: ['.deck-strip-vals', '#gps-readout'], k: 'LiveRead' },
     { sel: ['#gps-status'], k: 'LiveStatus' },
     { sel: ['#follow-lock'], k: 'LiveFollow' },

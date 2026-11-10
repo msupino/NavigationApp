@@ -1608,9 +1608,13 @@ body:not(.deck-on) .leaflet-bottom.leaflet-right:has(.zulu-clock.zulu-fixed) .si
 }
 @keyframes gps-rec-pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.35; } }
 @media (prefers-reduced-motion: reduce) { #gps-rec-indicator .gps-rec-dot { animation: none; } }
-/* Phone: under the GPS chip, which shares the row under the strip -- the wider pill would sit
-   on its end. */
-body.deck-on #gps-rec-indicator { top: calc(var(--navaid-deck-strip-h, 46px) + 48px); }
+/* Phone: no pill. It sat top-right under the strip and pushed the right-hand control column down
+   below it, so that on an iPhone the column no longer fitted and its top controls (voice, north
+   up) wrapped away from the right edge (reported: "find another place for the record, they should
+   not move from the right of the screen"). The deck's Record button is the sign there instead:
+   solid red with its icon pulsing while a flight records (.deck-btn-record below). */
+body.deck-on #gps-rec-indicator,
+body.deck-on.tour-live-preview #gps-rec-indicator { display: none !important; }
 /* Desktop: under the Zulu clock, on its side. At 58px it sat over the clock's last digits in
    English, and in Hebrew -- clock top-LEFT, the docked search card top-right -- under the card:
    recording showed nothing. */
@@ -8871,10 +8875,20 @@ body.deck-on .deck-strip > .deck-strip-sub { grid-column: 1; }
   background: rgba(29, 111, 224, 0.12);
   box-shadow: inset 0 3px 0 0 #1d6fe0;
 }
-.deck-btn-record[aria-pressed="true"] {
-  color: #96271a;
-  background: rgba(192, 57, 43, 0.14);
-  box-shadow: inset 0 3px 0 0 #c0392b;
+.deck-btn-record[aria-pressed="true"],
+body.tour-live-preview .deck-btn-record {
+  /* The phone's recording sign (the floating REC pill is off on a phone): the REC pill's own red,
+     white, and the icon pulsing -- unmistakable at a glance, in both themes. */
+  color: #fff;
+  font-weight: 800;
+  background: #d7263d;
+  box-shadow: inset 0 3px 0 0 #fff;
+}
+.deck-btn-record[aria-pressed="true"] i,
+body.tour-live-preview .deck-btn-record i { animation: gps-rec-pulse 1.3s ease-in-out infinite; }
+@media (prefers-reduced-motion: reduce) {
+  .deck-btn-record[aria-pressed="true"] i,
+  body.tour-live-preview .deck-btn-record i { animation: none; }
 }
 .deck-btn-here[aria-pressed="true"] {
   color: #14602f;
@@ -8898,7 +8912,8 @@ body.deck-on .deck-strip > .deck-strip-sub { grid-column: 1; }
 body.theme-dark .deck-bar { background: #161e26; color: #e8eef3; }
 body.theme-dark .deck-btn { color: #a9b6c1; }
 body.theme-dark .deck-btn[aria-pressed="true"] { color: #8ab8ff; background: rgba(29, 111, 224, .24); }
-body.theme-dark .deck-btn-record[aria-pressed="true"] { color: #ff9c8d; background: rgba(192, 57, 43, .22); }
+body.theme-dark .deck-btn-record[aria-pressed="true"],
+body.theme-dark.tour-live-preview .deck-btn-record { color: #fff; background: #d7263d; }
 body.theme-dark .deck-btn-here[aria-pressed="true"] { color: #6fdc9a; background: rgba(26, 122, 58, .24); }
 
 /* The chart's own furniture moves up out of the deck's way, and the closed menu card gives
@@ -8920,12 +8935,14 @@ body.deck-on .leaflet-bottom.leaflet-right {
      44 px buttons stood 22 px off the screen edge against the left column's 10 (reported). */
   align-items: flex-start;
   align-content: flex-start;
+  /* flex-END: in a column-reverse column that is the TOP. A column that fits is exactly as tall as
+     its controls, so this moves nothing; once it wraps (a short phone, or an iPhone while
+     recording: the REC pill and the safe areas take the room), the second column starts level with
+     the first, beside where its controls were, instead of falling to the bottom by the coordinates
+     (reported: "why voice and north up icons moved down?"). */
+  justify-content: flex-end;
   direction: ltr;
   max-height: calc(100dvh - var(--navaid-col-top) - var(--navaid-deck-bar-h, 52px) - env(safe-area-inset-bottom, 0px));
-}
-/* The red REC pill sits under the strip on the right while recording: keep the column below it. */
-body.deck-on:has(#gps-rec-indicator:not([hidden])) .leaflet-bottom.leaflet-right {
-  --navaid-col-top: calc(var(--navaid-deck-strip-h, 46px) + 48px + 28px + 8px);
 }
 /* With the deck on, the old floating menu is off entirely: the menu lives in the deck's
    Menu sheet (deck.js hostToolbar) and nowhere else. It was hidden only while collapsed,
