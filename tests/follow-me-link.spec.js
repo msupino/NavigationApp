@@ -626,23 +626,23 @@ test('the map control appears with the position source, and only if offered', as
   const seen = await page.evaluate(() => {
     const wrap = () => document.getElementById('follow-me-map').parentNode;
     const shown = () => wrap().style.display !== 'none';
+    const dim = () => document.getElementById('follow-me-map').getAttribute('aria-disabled') === 'true';
     const out = {};
     // Feature off: nothing, whatever the GPS is doing.
     setTune('featureFollowMe', false);
     window.gpsLiveOn = true;
     refreshFollowMeMapControl();
     out.offNoControl = shown();
-    // Offered, but no position to share: still nothing -- a switch for nothing is worse
-    // than no switch.
+    // Offered, but no position to share: there, dimmed with the reason (dim, never hide).
     setTune('featureFollowMe', true);
     window.gpsLiveOn = false;
     window.gpsRecording = false;
     refreshFollowMeMapControl();
-    out.noFix = shown();
-    // Offered and live: there it is.
+    out.noFix = [shown(), dim()];
+    // Offered and live: live.
     window.gpsLiveOn = true;
     refreshFollowMeMapControl();
-    out.live = shown();
+    out.live = [shown(), dim()];
     // Recording counts too.
     window.gpsLiveOn = false;
     window.gpsRecording = true;
@@ -652,8 +652,8 @@ test('the map control appears with the position source, and only if offered', as
     return out;
   });
   expect(seen.offNoControl).toBe(false);
-  expect(seen.noFix).toBe(false);
-  expect(seen.live).toBe(true);
+  expect(seen.noFix).toEqual([true, true]);
+  expect(seen.live).toEqual([true, false]);
   expect(seen.recording).toBe(true);
 });
 

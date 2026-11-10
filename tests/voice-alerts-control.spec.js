@@ -19,13 +19,18 @@ async function boot(page) {
 const shown = (page) => page.evaluate(() =>
   getComputedStyle(document.getElementById('voice-toggle').parentNode).display !== 'none');
 
-test('it appears only while a fix is driving the map', async ({ page }) => {
+// Asked: "we have a rule of never hide, just dim". It used to appear only with a fix. Whether
+// alerts are spoken is a choice a pilot makes on the ground too, so it is always there and live.
+test('it is always there and always live, with or without a fix', async ({ page }) => {
   await boot(page);
-  expect(await shown(page)).toBe(false);
+  const dim = () => page.evaluate(() => document.getElementById('voice-toggle').getAttribute('aria-disabled'));
+  expect(await shown(page)).toBe(true);
+  expect(await dim()).toBe(null);
   await page.evaluate(() => startLiveLocation());
   expect(await shown(page)).toBe(true);
   await page.evaluate(() => stopLiveLocation());
-  expect(await shown(page)).toBe(false);
+  expect(await shown(page)).toBe(true);
+  expect(await dim()).toBe(null);
 });
 
 test('it sits above the orientation button, at the top of the column', async ({ page }) => {

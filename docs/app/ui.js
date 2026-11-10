@@ -1088,8 +1088,9 @@ const voiceBtn = document.getElementById('voice-toggle');
 function refreshVoiceControl() {
   const wrap = voiceBtn && voiceBtn.parentNode;
   if (!wrap) return;
-  const tracking = typeof gpsPositionLive === 'function' ? gpsPositionLive() : false;
-  wrap.style.display = tracking ? '' : 'none';
+  // Always there, and always live: whether alerts are spoken is a choice a pilot can make on the
+  // ground, before the first fix (the rule: dim, never hide -- and never dim what still works).
+  wrap.style.display = '';
   orderMapControls(wrap.parentNode);
   const on = window.voiceAlerts === true;
   setMapIcon(voiceBtn, on ? 'voiceOn' : 'voiceOff');
@@ -1105,8 +1106,6 @@ function refreshVoiceControl() {
   voiceBtn.setAttribute('aria-label', label);
 }
 window.refreshVoiceControl = refreshVoiceControl;
-// Hidden until a fix is driving the map -- without this first call the button is visible from
-// boot, since nothing has set its display yet.
 refreshVoiceControl();
 voiceBtn.onclick = () => {
   window.voiceAlerts = !(window.voiceAlerts === true);
@@ -1200,7 +1199,7 @@ function refreshOrientControl() {
   const following = !!(window.NavAid && NavAid.followMe &&
     typeof NavAid.followMe.viewing === 'function' && NavAid.followMe.viewing());
   const tracking = ownShip || following;
-  wrap.style.display = tracking ? '' : 'none';
+  wrap.style.display = '';
   orderMapControls(wrap.parentNode);
   // Three states, not two: the dial can leave the chart pointing anywhere, and a button
   // that still claimed "north up" over a map turned 40 degrees would be describing
@@ -1223,6 +1222,12 @@ function refreshOrientControl() {
                                        : (S.orientNorthUp || 'North up — tap to hold your heading up'));
   orientBtn.title = label;
   orientBtn.setAttribute('aria-label', label);
+  // Always shown (dim, never hide). With no aircraft there is no heading to hold up: dimmed, and a
+  // tap says why -- unless the chart has been turned by hand, when a tap still straightens it.
+  if (typeof setButtonWhy === 'function') {
+    setButtonWhy(orientBtn, (tracking || rotated) ? null
+      : (S.whyOrientNoPosition || 'Heading up turns the chart with your track: turn on Location'));
+  }
 }
 window.refreshOrientControl = refreshOrientControl;
 
@@ -1287,7 +1292,8 @@ function refreshGpsFollowControl() {
   const wrap = followBtn && followBtn.parentNode;
   if (!wrap) return;
   const tracking = typeof gpsPositionLive === 'function' ? gpsPositionLive() : false;
-  wrap.style.display = tracking ? '' : 'none';
+  // Always shown (dim, never hide): with no position there is no aircraft to hold the map on.
+  wrap.style.display = '';
   orderMapControls(wrap.parentNode);
   const on = typeof gpsFollow === 'undefined' ? true : gpsFollow;
   // The VOR symbol, not a padlock: this one holds the MAP ONTO the aircraft, and the padlock
@@ -1300,6 +1306,10 @@ function refreshGpsFollowControl() {
                    : (S.followLockOff || 'Not following — tap to follow the aircraft');
   followBtn.title = label;
   followBtn.setAttribute('aria-label', label);
+  if (typeof setButtonWhy === 'function') {
+    setButtonWhy(followBtn, tracking ? null
+      : (S.whyFollowNoPosition || 'Follow keeps your aircraft in view: turn on Location'));
+  }
 }
 // --- Follow me — beside the follow lock, and only while there is a position to share -----
 // It lived in the Export menu, which is where you go to save a file, not where you are
@@ -1322,8 +1332,9 @@ function refreshFollowMeMapControl() {
   const live = (typeof gpsPositionLive === 'function' && gpsPositionLive())
     || (typeof gpsRecording !== 'undefined' && gpsRecording);
   const offered = typeof tune === 'function' && tune('featureFollowMe') === true;
-  // Same rule as the follow lock: no position, no control -- there would be nothing to share.
-  wrap.style.display = (offered && live) ? '' : 'none';
+  // Only the gist removes it (featureFollowMe). Without a position there is nothing to share:
+  // dimmed, and a tap says so -- unless a share is already running, which a tap must still stop.
+  wrap.style.display = offered ? '' : 'none';
   orderMapControls(wrap.parentNode);
   const status = F && typeof F.status === 'function' ? F.status() : 'idle';
   const active = status !== 'idle';
@@ -1342,6 +1353,10 @@ function refreshFollowMeMapControl() {
           : (S.tbFollowMeTitle || 'Share a best-effort live position link');
   followMeBtn.title = label;
   followMeBtn.setAttribute('aria-label', label);
+  if (typeof setButtonWhy === 'function') {
+    setButtonWhy(followMeBtn, (live || active) ? null
+      : (S.followMeNoFix || 'Follow me needs a position: turn on Location or Record first.'));
+  }
 }
 window.refreshFollowMeMapControl = refreshFollowMeMapControl;
 followMeBtn.onclick = () => {

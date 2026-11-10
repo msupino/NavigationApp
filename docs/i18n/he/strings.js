@@ -1297,6 +1297,8 @@ window.S = {
   measureTitle: 'מדידה מהמטוס: הקישו על נקודה למרחק, לכיוון ולזמן',
   measureHintLive: 'הקישו על נקודה: מרחק וזמן מהמטוס',
   whyMeasureNoPosition: 'המדידה עובדת מהמיקום שלכם: הפעילו מיקום',
+  whyFollowNoPosition: 'מעקב אחרי המטוס שומר אותו בתצוגה: הפעילו מיקום',
+  whyOrientNoPosition: 'כיוון התקדמות מסובב את המפה לפי הכיוון שלכם: הפעילו מיקום',
   measureEte: function (min, kt) {
     const t = min < 60 ? min + ' דק׳' : Math.floor(min / 60) + ' ש׳ ' + String(min % 60).padStart(2, '0') + ' דק׳';
     return t + ' ב-' + kt + ' קשר';

@@ -69,8 +69,11 @@ test('Hebrew has every in-flight step', async ({ page }) => {
 test('Show the tour plays the in-flight steps too, with Location off', async ({ page }) => {
   await page.goto('?lang=en&nogist');
   await page.waitForFunction(() => window.NavAid && NavAid.tour && document.getElementById('tour-replay'));
-  const hiddenBefore = await page.evaluate(() => getComputedStyle(document.querySelector('.follow-ctrl')).display);
-  expect(hiddenBefore).toBe('none');
+  // Always there now (dim, never hide): dimmed with no position.
+  const before = await page.evaluate(() => [getComputedStyle(document.querySelector('.follow-ctrl')).display,
+    document.getElementById('follow-lock').getAttribute('aria-disabled')]);
+  expect(before[0]).not.toBe('none');
+  expect(before[1]).toBe('true');
   await page.evaluate(() => document.getElementById('tour-replay').click());
   await expect(page.locator('#map-tour')).toBeVisible();
   const titles = [];
@@ -80,8 +83,8 @@ test('Show the tour plays the in-flight steps too, with Location off', async ({ 
   }
   expect(titles).toEqual(expect.arrayContaining(['Recording', 'Follow', 'North up or heading up', 'Spoken alerts', 'The heading line']));
   expect(titles.at(-1)).toBe('The heading line');
-  // Put away again: the preview ends with the tour.
+  // The preview ends with the tour: the REC sign goes, the follow switch is dimmed again.
   expect(await page.evaluate(() => [document.body.classList.contains('tour-live-preview'),
     getComputedStyle(document.querySelector('.follow-ctrl')).display,
-    getComputedStyle(document.getElementById('gps-rec-indicator')).display])).toEqual([false, 'none', 'none']);
+    getComputedStyle(document.getElementById('gps-rec-indicator')).display]).then(([p, f, r]) => [p, f !== 'none', r])).toEqual([false, true, 'none']);
 });
