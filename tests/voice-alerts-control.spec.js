@@ -14,18 +14,32 @@ async function boot(page) {
   await page.goto('?lang=en&nogist');
   await page.waitForFunction(() => typeof startLiveLocation === 'function' &&
     !!document.getElementById('voice-toggle'));
+  // A route: every spoken alert follows one, and without it the button is dimmed.
+  await page.evaluate(() => { state.waypoints = [{ lat: 32.18, lng: 34.83, name: 'LLHZ' }, { lat: 32.3, lng: 34.95, name: 'ONE' }]; syncLegs(); draw(); });
 }
 
 const shown = (page) => page.evaluate(() =>
   getComputedStyle(document.getElementById('voice-toggle').parentNode).display !== 'none');
 
-test('it appears only while a fix is driving the map', async ({ page }) => {
+// Asked: "we have a rule of never hide, just dim", then "what's the point in voice alerts without
+// route on map?". Always there. Every spoken alert follows the route, so with none it is dimmed
+// with that reason (a tap changes nothing); with a route it is live, with or without a fix.
+test('always there: dimmed without a route, live with one, fix or not', async ({ page }) => {
   await boot(page);
-  expect(await shown(page)).toBe(false);
-  await page.evaluate(() => startLiveLocation());
+  const dim = () => page.evaluate(() => document.getElementById('voice-toggle').getAttribute('aria-disabled'));
+  await page.evaluate(() => { state.waypoints = []; syncLegs(); draw(); });
   expect(await shown(page)).toBe(true);
+  expect(await dim()).toBe('true');
+  const before = await page.evaluate(() => window.voiceAlerts === true);
+  await page.evaluate(() => document.getElementById('voice-toggle').click());
+  expect(await page.evaluate(() => window.voiceAlerts === true)).toBe(before);
+  await page.evaluate(() => { state.waypoints = [{ lat: 32.18, lng: 34.83, name: 'LLHZ' }, { lat: 32.3, lng: 34.95, name: 'ONE' }]; syncLegs(); draw(); });
+  expect(await dim()).toBe(null);                     // a route, no fix yet: live
+  await page.evaluate(() => startLiveLocation());
+  expect(await dim()).toBe(null);
   await page.evaluate(() => stopLiveLocation());
-  expect(await shown(page)).toBe(false);
+  expect(await shown(page)).toBe(true);
+  expect(await dim()).toBe(null);
 });
 
 test('it sits above the orientation button, at the top of the column', async ({ page }) => {
@@ -112,7 +126,7 @@ test('and says it in Hebrew too', async ({ page }) => {
   });
   await page.goto('?lang=he&nogist');
   await page.waitForFunction(() => !!document.getElementById('voice-toggle'));
-  await page.evaluate(() => startLiveLocation());
+  await page.evaluate(() => { state.waypoints = [{ lat: 32.18, lng: 34.83, name: 'LLHZ' }, { lat: 32.3, lng: 34.95, name: 'ONE' }]; syncLegs(); draw(); startLiveLocation(); });
   await page.click('#voice-toggle');
   await expect(page.locator('.toast')).toHaveText(/התראות קוליות פעילות/);
 });

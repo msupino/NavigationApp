@@ -434,7 +434,9 @@ const appUpdate = (function () {
     // on that menu says there is an update to take (download or restart).
     const settingsSec = document.querySelector('#toolbar .tb-section[data-sec="settings"]');
     if (settingsSec) settingsSec.classList.toggle('has-app-update', action === 'download' || action === 'restart');
-    btn.hidden = !action || !!busy;
+    // Never hidden (never hide a button): while it checks or downloads it is dimmed, and says so.
+    btn.hidden = false;
+    setButtonWhy(btn, busy ? line : (action ? null : line));
     btn.textContent = action === 'download' ? (S.appUpdateDownload || 'Download now')
       : action === 'restart' ? (S.appUpdateRestart || 'Restart now') : (S.appUpdateCheck || 'Check again');
     btn.dataset.action = action || '';
@@ -961,24 +963,38 @@ function syncMapControlClearance() {
   const corner = document.querySelector('.leaflet-bottom.leaflet-right');
   if (!corner || !document.body.classList.contains('deck-on')) {
     root.style.removeProperty('--navaid-map-ctrl-clear');
+    root.style.removeProperty('--navaid-map-ctrl-clear-low');
     root.style.removeProperty('--navaid-map-ctrl-wrapped');
     return;
   }
   const box = corner.getBoundingClientRect();
-  let left = Infinity, right = -Infinity;
+  // The bottom row -- the legend, its route totals, the coordinates -- only has to clear the
+  // controls that come down to it. A wrapped second column starts at the top (#2932), so counting
+  // it there squeezed the totals to two lines on a 360x640 phone once the in-flight buttons were
+  // always shown (dim, never hide).
+  const dock = document.querySelector('.legend-ctrl.legend-docked');
+  const coords = document.getElementById('coord-readout');
+  const tops = [box.bottom - 120];
+  for (const el of [dock, coords]) if (el && el.getClientRects().length) tops.push(el.getBoundingClientRect().top);
+  const bandTop = Math.min(...tops);
+  let left = Infinity, right = -Infinity, leftLow = Infinity;
   for (const el of corner.children) {
     if (el.offsetParent === null || getComputedStyle(el).position === 'absolute') continue;   // readouts sit beside, not in, the column
     const r = el.getBoundingClientRect();
     if (!r.width) continue;
     left = Math.min(left, r.left); right = Math.max(right, r.right);
+    if (r.bottom > bandTop) leftLow = Math.min(leftLow, r.left);
   }
   // Wrapped when the column is more than one control wide.
   const wrapped = Number.isFinite(left) && right - left > 70;
   if (wrapped) {
     root.style.setProperty('--navaid-map-ctrl-clear', Math.ceil(box.right - left + 8) + 'px');
     root.style.setProperty('--navaid-map-ctrl-wrapped', '1');
+    if (Number.isFinite(leftLow)) root.style.setProperty('--navaid-map-ctrl-clear-low', Math.ceil(box.right - leftLow + 8) + 'px');
+    else root.style.removeProperty('--navaid-map-ctrl-clear-low');
   } else {
     root.style.removeProperty('--navaid-map-ctrl-clear');
+    root.style.removeProperty('--navaid-map-ctrl-clear-low');
     root.style.removeProperty('--navaid-map-ctrl-wrapped');
   }
 }
@@ -1088,8 +1104,11 @@ const voiceBtn = document.getElementById('voice-toggle');
 function refreshVoiceControl() {
   const wrap = voiceBtn && voiceBtn.parentNode;
   if (!wrap) return;
-  const tracking = typeof gpsPositionLive === 'function' ? gpsPositionLive() : false;
-  wrap.style.display = tracking ? '' : 'none';
+  // Always there (dim, never hide). Every spoken alert follows the route -- the leg and next-leg
+  // calls, altitude, TOP, drift and off-route, the destination's ATIS, hours and last light -- so
+  // with no route it is dimmed with that reason (refreshRouteButtons); with one it is live even
+  // before the first fix, since speaking or not is a choice made on the ground.
+  wrap.style.display = '';
   orderMapControls(wrap.parentNode);
   const on = window.voiceAlerts === true;
   setMapIcon(voiceBtn, on ? 'voiceOn' : 'voiceOff');
@@ -1101,12 +1120,11 @@ function refreshVoiceControl() {
   voiceBtn.setAttribute('aria-pressed', on ? 'true' : 'false');
   const label = on ? (S.voiceOnTitle || 'Alerts are spoken — tap to silence them')
                    : (S.voiceOffTitle || 'Alerts are silent — tap to have them spoken');
-  voiceBtn.title = label;
   voiceBtn.setAttribute('aria-label', label);
+  // While dimmed the title is the reason (setButtonWhy); the label waits to be put back.
+  if (voiceBtn.dataset.why) voiceBtn.dataset.whyTitle = label; else voiceBtn.title = label;
 }
 window.refreshVoiceControl = refreshVoiceControl;
-// Hidden until a fix is driving the map -- without this first call the button is visible from
-// boot, since nothing has set its display yet.
 refreshVoiceControl();
 voiceBtn.onclick = () => {
   window.voiceAlerts = !(window.voiceAlerts === true);
@@ -1200,7 +1218,7 @@ function refreshOrientControl() {
   const following = !!(window.NavAid && NavAid.followMe &&
     typeof NavAid.followMe.viewing === 'function' && NavAid.followMe.viewing());
   const tracking = ownShip || following;
-  wrap.style.display = tracking ? '' : 'none';
+  wrap.style.display = '';
   orderMapControls(wrap.parentNode);
   // Three states, not two: the dial can leave the chart pointing anywhere, and a button
   // that still claimed "north up" over a map turned 40 degrees would be describing
@@ -1223,6 +1241,12 @@ function refreshOrientControl() {
                                        : (S.orientNorthUp || 'North up — tap to hold your heading up'));
   orientBtn.title = label;
   orientBtn.setAttribute('aria-label', label);
+  // Always shown (dim, never hide). With no aircraft there is no heading to hold up: dimmed, and a
+  // tap says why -- unless the chart has been turned by hand, when a tap still straightens it.
+  if (typeof setButtonWhy === 'function') {
+    setButtonWhy(orientBtn, (tracking || rotated) ? null
+      : (S.whyOrientNoPosition || 'Heading up turns the chart with your track: turn on Location'));
+  }
 }
 window.refreshOrientControl = refreshOrientControl;
 
@@ -1287,7 +1311,8 @@ function refreshGpsFollowControl() {
   const wrap = followBtn && followBtn.parentNode;
   if (!wrap) return;
   const tracking = typeof gpsPositionLive === 'function' ? gpsPositionLive() : false;
-  wrap.style.display = tracking ? '' : 'none';
+  // Always shown (dim, never hide): with no position there is no aircraft to hold the map on.
+  wrap.style.display = '';
   orderMapControls(wrap.parentNode);
   const on = typeof gpsFollow === 'undefined' ? true : gpsFollow;
   // The VOR symbol, not a padlock: this one holds the MAP ONTO the aircraft, and the padlock
@@ -1300,6 +1325,10 @@ function refreshGpsFollowControl() {
                    : (S.followLockOff || 'Not following — tap to follow the aircraft');
   followBtn.title = label;
   followBtn.setAttribute('aria-label', label);
+  if (typeof setButtonWhy === 'function') {
+    setButtonWhy(followBtn, tracking ? null
+      : (S.whyFollowNoPosition || 'Follow keeps your aircraft in view: turn on Location'));
+  }
 }
 // --- Follow me — beside the follow lock, and only while there is a position to share -----
 // It lived in the Export menu, which is where you go to save a file, not where you are
@@ -1322,8 +1351,9 @@ function refreshFollowMeMapControl() {
   const live = (typeof gpsPositionLive === 'function' && gpsPositionLive())
     || (typeof gpsRecording !== 'undefined' && gpsRecording);
   const offered = typeof tune === 'function' && tune('featureFollowMe') === true;
-  // Same rule as the follow lock: no position, no control -- there would be nothing to share.
-  wrap.style.display = (offered && live) ? '' : 'none';
+  // Only the gist removes it (featureFollowMe). Without a position there is nothing to share:
+  // dimmed, and a tap says so -- unless a share is already running, which a tap must still stop.
+  wrap.style.display = offered ? '' : 'none';
   orderMapControls(wrap.parentNode);
   const status = F && typeof F.status === 'function' ? F.status() : 'idle';
   const active = status !== 'idle';
@@ -1342,6 +1372,10 @@ function refreshFollowMeMapControl() {
           : (S.tbFollowMeTitle || 'Share a best-effort live position link');
   followMeBtn.title = label;
   followMeBtn.setAttribute('aria-label', label);
+  if (typeof setButtonWhy === 'function') {
+    setButtonWhy(followMeBtn, (live || active) ? null
+      : (S.followMeNoFix || 'Follow me needs a position: turn on Location or Record first.'));
+  }
 }
 window.refreshFollowMeMapControl = refreshFollowMeMapControl;
 followMeBtn.onclick = () => {
@@ -1802,7 +1836,9 @@ function refreshEditColumn() {
   const lockWhy = locked ? (S.editLockBlockedToast || 'Route is locked — unlock it to edit') : null;
   const empty = !(state.waypoints && state.waypoints.length) && !(state.notes && state.notes.length)
     && !(typeof measureOn === 'function' && measureOn())
-    && !document.querySelector('.tb-section[data-sec="weather"] input[type="checkbox"]:checked')
+    // LSA bubbles ticked on a chart other than Low Alt draw nothing (the box stays there, dimmed --
+    // never hidden): not something on the map to clear.
+    && !document.querySelector('.tb-section[data-sec="weather"] input[type="checkbox"]:checked:not(#lsa-cb[aria-disabled="true"])')
     // A recorded flight shown from Saved routes is cleared too (see the #clear handler).
     && !(typeof shownTracks !== 'undefined' && Array.isArray(shownTracks) && shownTracks.length)
     // So is the A3/A4 page frame: on an otherwise empty map it was the one thing left, and
@@ -1858,6 +1894,8 @@ function refreshRouteButtons() {
   why('share', needTwo);
   why('fly', needTwo);
   why('mosaic-btn', wps ? '' : (S.mosaicEmpty || 'Add route waypoints first.'));
+  // Every spoken alert follows the route: with none, nothing would ever be said.
+  why('voice-toggle', wps < 2 ? (S.whyVoiceNoRoute || 'Spoken alerts follow your route: draw a route first.') : '');
   // Route check: the gist withdrawing it keeps its own disabled state (refreshRouteCheckBtn).
   const rc = document.getElementById('route-check-btn');
   if (rc && !(typeof tune === 'function' && tune('featureRouteCheck') === false)) {
@@ -5873,7 +5911,11 @@ window.followMeNewLinkOffered = followMeNewLinkOffered;
     // sharing yesterday and have since thought better of who has it.
     if (newBtn) {
       const held = !!(f && typeof f._stored === 'function' && f._stored());
-      newBtn.hidden = !followMeOffered() || !followMeNewLinkOffered() || !held;
+      // Only the gist removes it. With no link on this device there is nothing to retire: dimmed,
+      // and a tap says so (never hide a button).
+      newBtn.hidden = !followMeOffered() || !followMeNewLinkOffered();
+      if (!held) setButtonWhy(newBtn, S.whyFollowMeNoLink || 'No follow-me link on this device yet: the next share makes one');
+      else if (newBtn.dataset.why) setButtonWhy(newBtn, null);
       newBtn.disabled = status === 'stopping';
     }
     const active = status !== 'idle';
@@ -10264,15 +10306,21 @@ if (lsaCb) {
 // once areas load). Clicking a row zooms to it and highlights it.
 function refreshLsaListBtn() {
   const onLsa = typeof layerDataPrefix === 'function' && layerDataPrefix() === 'lsa';
-  // The whole LSA control group belongs to the Low Alt layer only — bubbles
-  // exist nowhere else, so hide the toggle + list button on other layers.
+  // The bubbles exist on the Low Alt layer only. The toggle and the list button used to be hidden
+  // everywhere else; never hide a button -- dimmed, and a tap says where they are (asked: "never
+  // hide buttons").
   const grp = document.getElementById('lsa-group');
-  if (grp) grp.hidden = !onLsa;
-  // The list button follows the overlay toggle too: with bubbles hidden, the
-  // list's "locate" would zoom to an unpainted bubble (drawAreas early-returns),
-  // so the button is only shown when the overlay is actually on.
+  if (grp) grp.hidden = false;
+  const offLayer = onLsa ? '' : (S.whyLsaOtherChart || 'LSA bubbles are on the Low Alt chart: switch Chart to it');
+  if (typeof setLayerIdle === 'function') setLayerIdle('lsa-cb', !onLsa, offLayer);
+  // The list follows the overlay too: with the bubbles off, its "locate" would zoom to a bubble
+  // that is not drawn (drawAreas early-returns) -- so it is dimmed then, with the reason.
   const btn = document.getElementById('lsa-list-btn');
-  if (btn) btn.hidden = !(onLsa && showLsaBubbles && Array.isArray(areas) && areas.length > 0);
+  if (btn) {
+    btn.hidden = false;
+    setButtonWhy(btn, offLayer || (!showLsaBubbles ? (S.whyLsaBubblesOff || 'Turn on Show LSA bubbles first')
+      : (!(Array.isArray(areas) && areas.length > 0) ? (S.whyLsaNoAreas || 'The LSA bubbles have not loaded yet') : null)));
+  }
 }
 function showLsaChart() {
   if (typeof closeOpenChartModals === 'function') closeOpenChartModals();

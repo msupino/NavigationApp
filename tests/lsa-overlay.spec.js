@@ -105,13 +105,16 @@ test('LSA bubble chart: list button appears on Low Alt, modal lists bubbles, row
   // toBeVisible() is unreliable).
   expect(await page.locator('#lsa-group').evaluate(el => el.hidden)).toBe(false);
   expect(await page.locator('#lsa-list-btn').evaluate(el => el.hidden)).toBe(false);
-  // ...and the whole group hides again on a non-LSA layer.
+  // ...and on a non-LSA layer both stay, dimmed with the reason (never hide a button).
   await page.evaluate(async () => {
     for (const x in layers) if (map.hasLayer(layers[x])) map.removeLayer(layers[x]);
     map.addLayer(layers['CVFR']);
     if (typeof reloadLayerDatasets === 'function') await reloadLayerDatasets(); else { window.areas = null; await loadAreas(); }
   });
-  expect(await page.locator('#lsa-group').evaluate(el => el.hidden)).toBe(true);
+  expect(await page.locator('#lsa-group').evaluate(el => el.hidden)).toBe(false);
+  expect(await page.evaluate(() => [document.getElementById('lsa-cb').getAttribute('aria-disabled'),
+    document.getElementById('lsa-list-btn').getAttribute('aria-disabled'),
+    document.getElementById('lsa-list-btn').hidden])).toEqual(['true', 'true', false]);
   // back to Low Alt for the chart interaction below.
   await page.evaluate(async () => {
     for (const x in layers) if (map.hasLayer(layers[x])) map.removeLayer(layers[x]);
@@ -176,7 +179,8 @@ test('"Show LSA bubbles" toggle (Extra layers) hides/shows the overlay and persi
     map.addLayer(layers['Low Alt']); window.areas = null; await loadAreas();
     map.setView([31.4, 34.9], 9);
     const fills = () => { let n = 0; const o = octx.fill; octx.fill = function (...a) { n++; return o.apply(this, a); }; drawAreas(); octx.fill = o; return n; };
-    const listHidden = () => document.getElementById('lsa-list-btn').hidden;
+    // Never hidden now: "hidden" here means dimmed with a reason (aria-disabled), still on screen.
+    const listHidden = () => { const b = document.getElementById('lsa-list-btn'); return !b.hidden && b.getAttribute('aria-disabled') === 'true'; };
     const el = document.getElementById('lsa-cb');
     el.checked = false; el.dispatchEvent(new Event('change'));
     const off = { fills: fills(), g: window.showLsaBubbles, ls: localStorage.getItem('navaid.showLsaBubbles'), listHidden: listHidden() };
