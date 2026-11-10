@@ -186,7 +186,7 @@ window.S = {
   recIndicatorLabel: 'מקליט',
   recIndicatorTitle: 'הטיסה מוקלטת',
   tourLiveRecTitle: 'הקלטה',
-  tourLiveRecText: 'הסימן האדום מקליט: הטיסה מוקלטת. ההקלטה נעצרת בכפתור הקלטה, או כשמכבים את המיקום, ונשמרת במסלולים שמורים.',
+  tourLiveRecText: 'אדום כשהטיסה מוקלטת (בטלפון: כפתור הקלטה עצמו). ההקלטה נעצרת בכפתור הקלטה, או כשמכבים את המיקום, ונשמרת במסלולים שמורים.',
   tourLiveReadTitle: 'מהירות, גובה, כיוון',
   tourLiveReadText: 'מהירות הקרקע, הגובה והכיוון המגנטי שלכם, מה-GPS.',
   tourLiveStatusTitle: 'איכות ה-GPS',
