@@ -1822,7 +1822,9 @@ function refreshEditColumn() {
   const lockWhy = locked ? (S.editLockBlockedToast || 'Route is locked — unlock it to edit') : null;
   const empty = !(state.waypoints && state.waypoints.length) && !(state.notes && state.notes.length)
     && !(typeof measureOn === 'function' && measureOn())
-    && !document.querySelector('.tb-section[data-sec="weather"] input[type="checkbox"]:checked')
+    // LSA bubbles ticked on a chart other than Low Alt draw nothing (the box stays there, dimmed --
+    // never hidden): not something on the map to clear.
+    && !document.querySelector('.tb-section[data-sec="weather"] input[type="checkbox"]:checked:not(#lsa-cb[aria-disabled="true"])')
     // A recorded flight shown from Saved routes is cleared too (see the #clear handler).
     && !(typeof shownTracks !== 'undefined' && Array.isArray(shownTracks) && shownTracks.length)
     // So is the A3/A4 page frame: on an otherwise empty map it was the one thing left, and
