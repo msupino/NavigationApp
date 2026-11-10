@@ -25,13 +25,22 @@ const centre = (page) => page.evaluate(() => ({ lat: map.getCenter().lat, lng: m
 const shown = (page) => page.evaluate(() =>
   getComputedStyle(document.getElementById('follow-lock').parentNode).display !== 'none');
 
-test('the switch appears only while a fix is driving the map', async ({ page }) => {
+// Asked: "we have a rule of never hide, just dim". Always there; with nothing to follow it is
+// dimmed and a tap says why -- and the tap does not change the switch.
+test('the switch is always there, dimmed with a reason until a fix drives the map', async ({ page }) => {
   await boot(page);
-  expect(await shown(page)).toBe(false);          // nothing to follow yet
+  const dim = () => page.evaluate(() => document.getElementById('follow-lock').getAttribute('aria-disabled'));
+  expect(await shown(page)).toBe(true);
+  expect(await dim()).toBe('true');
+  const before = await page.evaluate(() => gpsFollow);
+  await page.evaluate(() => document.getElementById('follow-lock').click());   // a pilot's tap: refused, with a toast
+  expect(await page.evaluate(() => gpsFollow)).toBe(before);
   await page.evaluate(() => startLiveLocation());
   expect(await shown(page)).toBe(true);
+  expect(await dim()).toBe(null);
   await page.evaluate(() => stopLiveLocation());
-  expect(await shown(page)).toBe(false);
+  expect(await shown(page)).toBe(true);
+  expect(await dim()).toBe('true');
 });
 
 test('on by default, and it says which state it is in', async ({ page }) => {
