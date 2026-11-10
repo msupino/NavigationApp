@@ -8920,6 +8920,12 @@ body.deck-on .leaflet-bottom.leaflet-right {
      44 px buttons stood 22 px off the screen edge against the left column's 10 (reported). */
   align-items: flex-start;
   align-content: flex-start;
+  /* flex-END: in a column-reverse column that is the TOP. A column that fits is exactly as tall as
+     its controls, so this moves nothing; once it wraps (a short phone, or an iPhone while
+     recording: the REC pill and the safe areas take the room), the second column starts level with
+     the first, beside where its controls were, instead of falling to the bottom by the coordinates
+     (reported: "why voice and north up icons moved down?"). */
+  justify-content: flex-end;
   direction: ltr;
   max-height: calc(100dvh - var(--navaid-col-top) - var(--navaid-deck-bar-h, 52px) - env(safe-area-inset-bottom, 0px));
 }
