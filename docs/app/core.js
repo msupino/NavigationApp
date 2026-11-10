@@ -3072,6 +3072,7 @@ window.S = Object.assign({
   whyMeasureNoPosition: 'Measure works from your position: turn on Location',
   whyFollowNoPosition: 'Follow keeps your aircraft in view: turn on Location',
   whyVoiceNoRoute: 'Spoken alerts follow your route: draw a route first.',
+  whyVoiceNoPosition: 'Spoken alerts follow your position along the route: turn on Location',
   whyLsaOtherChart: 'LSA bubbles are on the Low Alt chart: switch Chart to it',
   whyLsaBubblesOff: 'Turn on Show LSA bubbles first',
   whyLsaNoAreas: 'The LSA bubbles have not loaded yet',

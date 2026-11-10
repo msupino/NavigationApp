@@ -24,7 +24,7 @@ const shown = (page) => page.evaluate(() =>
 // Asked: "we have a rule of never hide, just dim", then "what's the point in voice alerts without
 // route on map?". Always there. Every spoken alert follows the route, so with none it is dimmed
 // with that reason (a tap changes nothing); with a route it is live, with or without a fix.
-test('always there: dimmed without a route, live with one, fix or not', async ({ page }) => {
+test('always there: dimmed without a route or a position, live with both', async ({ page }) => {
   await boot(page);
   const dim = () => page.evaluate(() => document.getElementById('voice-toggle').getAttribute('aria-disabled'));
   await page.evaluate(() => { state.waypoints = []; syncLegs(); draw(); });
@@ -34,12 +34,15 @@ test('always there: dimmed without a route, live with one, fix or not', async ({
   await page.evaluate(() => document.getElementById('voice-toggle').click());
   expect(await page.evaluate(() => window.voiceAlerts === true)).toBe(before);
   await page.evaluate(() => { state.waypoints = [{ lat: 32.18, lng: 34.83, name: 'LLHZ' }, { lat: 32.3, lng: 34.95, name: 'ONE' }]; syncLegs(); draw(); });
-  expect(await dim()).toBe(null);                     // a route, no fix yet: live
+  // Reported: "the voice button is enabled on my app even when no location". A route, no position:
+  // still dimmed, with the location reason; a position makes it live; stopping dims it again.
+  expect(await dim()).toBe('true');
+  expect(await page.evaluate(() => document.getElementById('voice-toggle').dataset.why)).toMatch(/Location/);
   await page.evaluate(() => startLiveLocation());
   expect(await dim()).toBe(null);
   await page.evaluate(() => stopLiveLocation());
   expect(await shown(page)).toBe(true);
-  expect(await dim()).toBe(null);
+  expect(await dim()).toBe('true');
 });
 
 test('it sits above the orientation button, at the top of the column', async ({ page }) => {

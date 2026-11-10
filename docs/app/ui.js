@@ -1101,14 +1101,24 @@ voiceCtrl.onAdd = function () {
 };
 voiceCtrl.addTo(map);
 const voiceBtn = document.getElementById('voice-toggle');
+// Why the voice button is dimmed, or '' when it is live. Every spoken alert follows the route --
+// the leg and next-leg calls, altitude, TOP, drift and off-route, the destination's ATIS, hours
+// and last light -- and is set off by the position, so both are needed (reported: "the voice
+// button is enabled on my app even when no location"). No route first: it is the bigger gap.
+function voiceDimWhy() {
+  if (!(state.waypoints && state.waypoints.length >= 2)) return S.whyVoiceNoRoute || 'Spoken alerts follow your route: draw a route first.';
+  const live = typeof gpsPositionLive === 'function' && gpsPositionLive();
+  if (!live) return S.whyVoiceNoPosition || 'Spoken alerts follow your position along the route: turn on Location';
+  return '';
+}
+window.voiceDimWhy = voiceDimWhy;
 function refreshVoiceControl() {
   const wrap = voiceBtn && voiceBtn.parentNode;
   if (!wrap) return;
-  // Always there (dim, never hide). Every spoken alert follows the route -- the leg and next-leg
-  // calls, altitude, TOP, drift and off-route, the destination's ATIS, hours and last light -- so
-  // with no route it is dimmed with that reason (refreshRouteButtons); with one it is live even
-  // before the first fix, since speaking or not is a choice made on the ground.
+  // Always there (dim, never hide); dimmed, with the reason, until there is something to speak
+  // about (voiceDimWhy): a route AND a position.
   wrap.style.display = '';
+  if (typeof setButtonWhy === 'function') setButtonWhy(voiceBtn, voiceDimWhy() || null);
   orderMapControls(wrap.parentNode);
   const on = window.voiceAlerts === true;
   setMapIcon(voiceBtn, on ? 'voiceOn' : 'voiceOff');
@@ -1895,7 +1905,7 @@ function refreshRouteButtons() {
   why('fly', needTwo);
   why('mosaic-btn', wps ? '' : (S.mosaicEmpty || 'Add route waypoints first.'));
   // Every spoken alert follows the route: with none, nothing would ever be said.
-  why('voice-toggle', wps < 2 ? (S.whyVoiceNoRoute || 'Spoken alerts follow your route: draw a route first.') : '');
+  why('voice-toggle', voiceDimWhy());
   // Route check: the gist withdrawing it keeps its own disabled state (refreshRouteCheckBtn).
   const rc = document.getElementById('route-check-btn');
   if (rc && !(typeof tune === 'function' && tune('featureRouteCheck') === false)) {
