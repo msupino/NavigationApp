@@ -1,0 +1,39 @@
+From 47c330d8f73ba36c06c4eebbee5b8a1729f66c48 Mon Sep 17 00:00:00 2001
+From: Marco <marco@supino.org>
+Date: Tue, 10 Nov 2026 12:46:03 +0000
+Subject: [PATCH] Display: labels on a leg turn with its nav kite
+
+---
+ Features-he.md | 2 +-
+ Features.md    | 2 +-
+ 2 files changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/Features-he.md b/Features-he.md
+index ceef021..3e02429 100644
+--- a/Features-he.md
++++ b/Features-he.md
+@@ -154,7 +154,7 @@
+ ## תצוגה (Display)
+ 
+ - **הצג שמות ציוני דרך** — כשכבוי, נקודות מצוירות כעיגולים ממוספרים. כשפעיל, השם (או מספר הרצף אם אין שם) מצויר בתוך העיגול.
+-- **⟳** — סיבוב כל תוויות שמות הנקודות ב-90°.
++- **סיבוב התוויות עם החצים** (פעיל כברירת מחדל) — כל סימון על קטע נקרא כמו המספרים שבחץ הניווט של אותו קטע, כך שכשמסובבים את המפה המודפסת לטיסת קטע, כולם נקראים עם החץ שלו, בלי קשר לסיבוב המפה עצמה. שם כל ציון דרך מונח לאורך קו הבסיס של חץ הקטע שנכנס אליו (את השם קוראים בהתקרבות; נקודת היציאה — לפי הקטע הראשון שיוצא ממנה): חץ שמצביע ל-<span dir="ltr">270</span> מניח אותו על קו <span dir="ltr">360–180</span>. הזמנים המצטברים, סימוני הדקות, מרחק אמצע הקטע, נקודות הזיהוי ותוויות התדר מסתובבים באותו אופן. חץ מוסתר (בתוך CTR, לפני תחילת הזמן) נספר באותה מידה. כבוי: השמות ישרים והשאר ישר על המסך, כמו קודם.
+ - מחווני **שקיפות תוויות**, **בהירות מפה**, **גודל ציון דרך**, **גודל חץ קטע**.
+ - **עובי קו קטע** — עובי קו המסלול.
+ - **עובי קו סחיפה** — עובי קווי ייחוס הסחיפה של 10° (כש-**הצג קווי סחיפה** פעיל).
+diff --git a/Features.md b/Features.md
+index 247440f..87e50b3 100644
+--- a/Features.md
++++ b/Features.md
+@@ -163,7 +163,7 @@ passes without calling (`commChangeSuppressions`).
+ ## Display
+ 
+ - **Show Waypoint names** — when off, waypoints render as plain numbered circles. When on, the name (or the sequence number if no name set) is drawn inside the circle. Snapped nav waypoints carry their published name automatically.
+-- **⟳** — rotate all waypoint name labels 90° (useful if you want labels reading along the route).
++- **Turn labels with the kites** (on by default) — every mark on a leg reads the way that leg's nav kite figures read, so when you turn the printed chart to fly a leg, all of them read with its kite, whatever the map's own rotation. Each waypoint's name lies along the bottom line of the kite of the leg flown into it (you read it while approaching; the departure point takes its first leg out): an arrow pointing 270 puts it on the 360–180 line. The cumulative times, minute numbers, mid-leg distance, identification points and frequency callouts turn the same way. A hidden kite (inside a CTR, before the clock) counts all the same. Off: names level and the rest upright on the screen, as before.
+ - **Label Transparency** slider - opacity of every label background.
+ - **Map opacity** slider - base map brightness on screen and in PNG export.
+ - **Waypoint size** slider — waypoint name / number font + circle size.
+-- 
+2.43.0
+
