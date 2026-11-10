@@ -1562,7 +1562,7 @@ body.deck-on .leaflet-control.edit-col-ctrl {
    SIGMET lines step up past it, so nothing lands on it. Nothing to drag. */
 .leaflet-bottom.leaflet-right .leaflet-control.zulu-clock.zulu-fixed {
   position: absolute;
-  right: var(--navaid-map-ctrl-clear);
+  right: var(--navaid-map-ctrl-clear-low, var(--navaid-map-ctrl-clear));
   bottom: var(--navaid-zulu-fixed-bottom, 70px);
   top: auto;              /* the Hebrew top-left default sets these */
   left: auto;
@@ -1710,7 +1710,8 @@ html[dir="rtl"] .leaflet-control.zulu-clock {
 :root { --navaid-map-ctrl-clear: 52px; }
 .leaflet-bottom.leaflet-right .coord-readout {
   position: absolute;
-  right: var(--navaid-map-ctrl-clear);
+  /* The bottom row: clear of the controls that come down to it, not of a column wrapped above. */
+  right: var(--navaid-map-ctrl-clear-low, var(--navaid-map-ctrl-clear));
   bottom: 26px;            /* clears the Leaflet attribution row */
   margin: 0;
 }
@@ -10800,7 +10801,8 @@ body.deck-on .legend-ctrl.legend-docked .legend-dock {
 body.deck-on .legend-ctrl.legend-docked { margin-bottom: 10px; }
 body.deck-on .legend-ctrl.legend-docked #route-summary {
   box-sizing: border-box;
-  max-width: calc(100vw - 20px - var(--navaid-map-ctrl-clear, 52px) - 8px);
+  /* The bottom row's clearance: only the controls that come down to this row (ui.js). */
+  max-width: calc(100vw - 20px - var(--navaid-map-ctrl-clear-low, var(--navaid-map-ctrl-clear, 52px)) - 8px);
   height: auto;
   min-height: 32px;
   padding: 6px 12px;
@@ -10818,7 +10820,7 @@ body.deck-on .legend-ctrl.legend-docked #route-summary {
    down to the dock's row, and an open key covered Clear (edit-column.spec). */
 body.deck-on .legend-ctrl.legend-docked .map-legend {
   left: 52px;
-  width: min(248px, calc(100vw - 62px - var(--navaid-map-ctrl-clear, 52px) - 8px));
+  width: min(248px, calc(100vw - 62px - var(--navaid-map-ctrl-clear-low, var(--navaid-map-ctrl-clear, 52px)) - 8px));
 }
 body.deck-on .legend-ctrl.legend-docked .map-legend::after { content: none; }
 /* A short phone (the edit column reaches down to that row): the totals stay beside the button,
@@ -10827,5 +10829,5 @@ body.deck-on .legend-ctrl.legend-docked .map-legend::after { content: none; }
   /* ...where it is beside the button, it is on the readout's row, so the dock stays one row up. */
   body.deck-on .legend-ctrl.legend-docked { margin-bottom: 58px; }
   body.deck-on .legend-ctrl.legend-docked .legend-dock { flex-direction: row; align-items: center; }
-  body.deck-on .legend-ctrl.legend-docked #route-summary { max-width: calc(100vw - 72px - var(--navaid-map-ctrl-clear, 52px) - 8px); }
+  body.deck-on .legend-ctrl.legend-docked #route-summary { max-width: calc(100vw - 72px - var(--navaid-map-ctrl-clear-low, var(--navaid-map-ctrl-clear, 52px)) - 8px); }
 }

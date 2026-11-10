@@ -963,24 +963,38 @@ function syncMapControlClearance() {
   const corner = document.querySelector('.leaflet-bottom.leaflet-right');
   if (!corner || !document.body.classList.contains('deck-on')) {
     root.style.removeProperty('--navaid-map-ctrl-clear');
+    root.style.removeProperty('--navaid-map-ctrl-clear-low');
     root.style.removeProperty('--navaid-map-ctrl-wrapped');
     return;
   }
   const box = corner.getBoundingClientRect();
-  let left = Infinity, right = -Infinity;
+  // The bottom row -- the legend, its route totals, the coordinates -- only has to clear the
+  // controls that come down to it. A wrapped second column starts at the top (#2932), so counting
+  // it there squeezed the totals to two lines on a 360x640 phone once the in-flight buttons were
+  // always shown (dim, never hide).
+  const dock = document.querySelector('.legend-ctrl.legend-docked');
+  const coords = document.getElementById('coord-readout');
+  const tops = [box.bottom - 120];
+  for (const el of [dock, coords]) if (el && el.getClientRects().length) tops.push(el.getBoundingClientRect().top);
+  const bandTop = Math.min(...tops);
+  let left = Infinity, right = -Infinity, leftLow = Infinity;
   for (const el of corner.children) {
     if (el.offsetParent === null || getComputedStyle(el).position === 'absolute') continue;   // readouts sit beside, not in, the column
     const r = el.getBoundingClientRect();
     if (!r.width) continue;
     left = Math.min(left, r.left); right = Math.max(right, r.right);
+    if (r.bottom > bandTop) leftLow = Math.min(leftLow, r.left);
   }
   // Wrapped when the column is more than one control wide.
   const wrapped = Number.isFinite(left) && right - left > 70;
   if (wrapped) {
     root.style.setProperty('--navaid-map-ctrl-clear', Math.ceil(box.right - left + 8) + 'px');
     root.style.setProperty('--navaid-map-ctrl-wrapped', '1');
+    if (Number.isFinite(leftLow)) root.style.setProperty('--navaid-map-ctrl-clear-low', Math.ceil(box.right - leftLow + 8) + 'px');
+    else root.style.removeProperty('--navaid-map-ctrl-clear-low');
   } else {
     root.style.removeProperty('--navaid-map-ctrl-clear');
+    root.style.removeProperty('--navaid-map-ctrl-clear-low');
     root.style.removeProperty('--navaid-map-ctrl-wrapped');
   }
 }
