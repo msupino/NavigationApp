@@ -1250,6 +1250,9 @@ NavAid.tuningDefaults = {
   featureLiveTraffic: { value: false, type: 'bool', label: 'Feature: live ADS-B traffic' },
   // Live ATC audio
   featureAtcRadio: { value: true, type: 'bool', label: 'Feature: live ATC radio (Herzliya, Haifa)' },
+  // The channel's full name beside the green map button, for this long after it starts; then a
+  // small airfield badge on the button's edge, clear of the chart's middle. 0: always in full.
+  atcNowLabelSec: { value: 4, min: 0, max: 30, step: 1, label: 'ATC radio: show the playing channel in full for (s)' },
   atcRadioBase: { value: 'https://navaid-atc.marco-956.workers.dev/', type: 'text',
     label: 'Where the live ATC channels are played from (<base><channel id>)' },
   featureDensityAltitude: { value: true, type: 'bool', label: 'Feature: density altitude in the airfield panel' },
@@ -1347,7 +1350,7 @@ NavAid.tuningGroups = [
   { name: 'Airspace', keys: ['defaultShowAirspace', 'airspaceProhibitedColor', 'airspaceRestrictedColor',
     'airspaceTmaColor', 'airspaceCtrColor', 'airspaceFillAlpha', 'airspaceLineWidthPx', 'airspaceLabelMinZoom',
     'airspaceLabelFontPx'] },
-  { name: 'ATC radio', keys: ['featureAtcRadio', 'atcRadioBase'] },
+  { name: 'ATC radio', keys: ['featureAtcRadio', 'atcNowLabelSec', 'atcRadioBase'] },
   { name: 'Live traffic', keys: ['featureLiveTraffic', 'defaultShowTraffic', 'trafficApiUrl', 'trafficViewUrl', 'trafficWebApiUrl', 'trafficRadiusNm',
     'trafficRefreshSec', 'trafficFailsBeforeWarn', 'trafficTimeoutSec', 'trafficStaleSec', 'trafficDropSec', 'trafficIconPx', 'trafficGroundKt', 'trafficGroundBelowFt', 'trafficGroundScale', 'trafficGroundAlpha', 'trafficGroundLabelZoom', 'trafficArrowColor',
     'trafficLabelColor'] },
