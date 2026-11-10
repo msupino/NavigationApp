@@ -166,7 +166,7 @@ test('Edit is split into groups by kind', async ({ page }) => {
     ['tool-add', 'tool-note', 'search-trigger'],
     ['reverse', 'ret-btn'],
     ['undo', 'clear'],
-    ['fit', 'tool-reset-all-markers', 'tool-reset-all-wp-names'],
+    ['fit', 'tool-reset-all-markers', 'tool-reset-all-wp-names', 'tool-label-turn'],
     ['autoroute-btn', 'force-snap-btn'],
   ]);
 });
