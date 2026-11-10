@@ -6238,14 +6238,15 @@ function selectionVisible() {
 // "make each wp label match the base of the nav arrow -- if it points 270, the label 360-180,
 // regardless of the map orientation", so that "when I rotate a printed map, the text is always
 // aligned with the nav kite arrow", along the kite's bottom line. The kite draws its figures at
-// flightAng + 90° (along its base, drawLegArrowBody); the name takes the angle of the NEXT kite --
-// the leg leaving the waypoint -- and the last waypoint the last kite (asked). Screen angles, so a
-// turned map turns them with the kites. With the checkbox off: level, as before.
+// flightAng + 90° (along its base, drawLegArrowBody); the name takes the angle of the kite of the
+// leg ARRIVING at the waypoint -- the name is read while flying in, with the chart turned for that
+// leg; once over the point it is no longer needed (asked). The departure point has no leg in, so it
+// takes its first leg out. Screen angles, so a turned map turns them with the kites. With the
+// checkbox off: level, as before.
 function wpNameAngle(i) {
   if (typeof autoWpNameAngle === 'undefined' || !autoWpNameAngle) return 0;
   const wps = state.waypoints;
-  const last = i >= wps.length - 1;
-  const a = last ? wps[i - 1] : wps[i], b = last ? wps[i] : wps[i + 1];
+  const a = i > 0 ? wps[i - 1] : wps[i], b = i > 0 ? wps[i] : wps[i + 1];
   if (!a || !b) return 0;
   const pa = proj(a), pb = proj(b);
   if (Math.hypot(pb.x - pa.x, pb.y - pa.y) < 1) return 0;

@@ -1,4 +1,4 @@
-From ac94ca3eddd45bfb44decb73e83b875b81b7d7cc Mon Sep 17 00:00:00 2001
+From 29a31d1e419ad7658bcabce2c61bef03f0154b6e Mon Sep 17 00:00:00 2001
 From: Marco <marco@supino.org>
 Date: Tue, 10 Nov 2026 12:46:03 +0000
 Subject: [PATCH] Display: waypoint names turn with the next nav kite
@@ -9,7 +9,7 @@ Subject: [PATCH] Display: waypoint names turn with the next nav kite
  2 files changed, 2 insertions(+), 2 deletions(-)
 
 diff --git a/Features-he.md b/Features-he.md
-index ceef021..b08279b 100644
+index ceef021..6f04579 100644
 --- a/Features-he.md
 +++ b/Features-he.md
 @@ -154,7 +154,7 @@
@@ -17,12 +17,12 @@ index ceef021..b08279b 100644
  
  - **הצג שמות ציוני דרך** — כשכבוי, נקודות מצוירות כעיגולים ממוספרים. כשפעיל, השם (או מספר הרצף אם אין שם) מצויר בתוך העיגול.
 -- **⟳** — סיבוב כל תוויות שמות הנקודות ב-90°.
-+- **סיבוב השמות עם החצים** (פעיל כברירת מחדל) — שם כל ציון דרך מונח לאורך קו הבסיס של חץ הניווט הבא (הקטע שיוצא מהנקודה; בנקודה האחרונה — החץ האחרון), ונקרא כמו המספרים שבחץ: חץ שמצביע ל-<span dir="ltr">270</span> מניח את השם על קו <span dir="ltr">360–180</span>. מסובבים את המפה המודפסת לטיסת קטע, והשמות נקראים עם החצים שלו, בלי קשר לסיבוב המפה עצמה. כשכבוי — השמות מצוירים ישר, כמו קודם.
++- **סיבוב השמות עם החצים** (פעיל כברירת מחדל) — שם כל ציון דרך מונח לאורך קו הבסיס של חץ הניווט של הקטע שנכנס אליו (את השם קוראים בהתקרבות לנקודה; נקודת היציאה — לפי הקטע הראשון שיוצא ממנה), ונקרא כמו המספרים שבחץ: חץ שמצביע ל-<span dir="ltr">270</span> מניח את השם על קו <span dir="ltr">360–180</span>. מסובבים את המפה המודפסת לטיסת קטע, והשמות נקראים עם החצים שלו, בלי קשר לסיבוב המפה עצמה. כשכבוי — השמות מצוירים ישר, כמו קודם.
  - מחווני **שקיפות תוויות**, **בהירות מפה**, **גודל ציון דרך**, **גודל חץ קטע**.
  - **עובי קו קטע** — עובי קו המסלול.
  - **עובי קו סחיפה** — עובי קווי ייחוס הסחיפה של 10° (כש-**הצג קווי סחיפה** פעיל).
 diff --git a/Features.md b/Features.md
-index 247440f..07c0e3d 100644
+index 247440f..120b194 100644
 --- a/Features.md
 +++ b/Features.md
 @@ -163,7 +163,7 @@ passes without calling (`commChangeSuppressions`).
@@ -30,7 +30,7 @@ index 247440f..07c0e3d 100644
  
  - **Show Waypoint names** — when off, waypoints render as plain numbered circles. When on, the name (or the sequence number if no name set) is drawn inside the circle. Snapped nav waypoints carry their published name automatically.
 -- **⟳** — rotate all waypoint name labels 90° (useful if you want labels reading along the route).
-+- **Turn names with the kites** (on by default) — each waypoint's name lies along the bottom line of the next nav kite (the leg leaving the waypoint; the last waypoint, the last kite), and reads the way that kite's figures read: an arrow pointing 270 puts its name on the 360–180 line. Turn the printed chart to fly a leg and the names read with its kites, whatever the map's own rotation. Off: the names are drawn level, as before.
++- **Turn names with the kites** (on by default) — each waypoint's name lies along the bottom line of the nav kite of the leg flown into it (you read the name while approaching it; the departure point takes its first leg out), and reads the way that kite's figures read: an arrow pointing 270 puts its name on the 360–180 line. Turn the printed chart to fly a leg and the names read with its kites, whatever the map's own rotation. Off: the names are drawn level, as before.
  - **Label Transparency** slider - opacity of every label background.
  - **Map opacity** slider - base map brightness on screen and in PNG export.
  - **Waypoint size** slider — waypoint name / number font + circle size.

@@ -2,7 +2,8 @@
 // Asked: "make each wp label match the base of the nav arrow -- if it points 270, the label should
 // be 360-180, regardless of the map orientation", "so when I rotate a printed map, the text is
 // always aligned with the nav kite arrow", "with a checkbox ... default on". Each waypoint's name
-// is drawn at its next kite's figure angle (the leg leaving it); the last waypoint, the last kite.
+// is drawn at the figure angle of the kite of the leg arriving at it (asked, after first trying the
+// next leg: "I don't care about the point once I am on it"); the departure point, its first leg out.
 const { test, expect } = require('./_setup');
 
 async function boot(page) {
@@ -37,15 +38,15 @@ const read = (page) => page.evaluate(() => {
   return { names: ['NORTHA', 'SOUTHB', 'WESTC', 'EASTD'].map(at), kites: ['2000', '2500', '3000'].map(at) };
 });
 
-test('each name lies along its next kite; the last waypoint along the last kite', async ({ page }) => {
+test('each name lies along the kite of its leg in; the departure point along its leg out', async ({ page }) => {
   await boot(page);
   const r = await read(page);
   // Kites: leg 0 runs south, leg 1 west, leg 2 east.
   expect(r.kites).toEqual([180, 270, 90]);
-  // A name reads like the next kite (the leg leaving it); the last waypoint like the last kite.
-  expect(r.names).toEqual([r.kites[0], r.kites[1], r.kites[2], r.kites[2]]);
-  // "If it points 270, the label 360-180": SOUTHB's next arrow points 270, its name runs N-S.
-  expect(r.names[1] % 180).toBe(90);
+  // A name reads like the kite of the leg arriving at it; the departure point like its leg out.
+  expect(r.names).toEqual([r.kites[0], r.kites[0], r.kites[1], r.kites[2]]);
+  // "If it points 270, the label 360-180": the arrow into WESTC points 270, its name runs N-S.
+  expect(r.names[2] % 180).toBe(90);
 });
 
 test('regardless of the map orientation: a turned map turns the names with the kites', async ({ page }) => {
@@ -55,7 +56,7 @@ test('regardless of the map orientation: a turned map turns the names with the k
     map.setBearing(30); draw();
     window.__texts = []; window.__logTexts = true; draw(); window.__logTexts = false;
     const at = (t) => (window.__texts.find(x => x.text === t) || {}).deg;
-    const out = { names: ['NORTHA', 'SOUTHB', 'WESTC'].map(at), kites: ['2000', '2500', '3000'].map(at) };
+    const out = { names: ['SOUTHB', 'WESTC', 'EASTD'].map(at), kites: ['2000', '2500', '3000'].map(at) };
     map.setBearing(0);
     return out;
   });
