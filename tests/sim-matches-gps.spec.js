@@ -50,7 +50,7 @@ test('the simulator shows the same in-flight furniture as a real fix', async ({ 
   await boot(page);
   const idle = await survey(page);
   expect(idle.positionLive).toBe(false);
-  expect(idle.voiceBtn).toBe(false);
+  expect(idle.voiceBtn).toBe(true);     // always there now -- dimmed, never hidden
   expect(idle.atisMarker).toBe(false);
 
   await page.evaluate(() => startLiveLocation());
@@ -124,16 +124,19 @@ test('the in-flight column keeps a fixed order however often it refreshes', asyn
   expect(await order()).toEqual(first);
 });
 
-test('connecting the simulator brings the column up; disconnecting takes it away', async ({ page }) => {
+// The in-flight buttons are always there now (dim, never hide): connecting the simulator lights
+// orientation and follow, disconnecting dims them again.
+test('connecting the simulator lights the in-flight buttons; disconnecting dims them', async ({ page }) => {
   await boot(page);
-  const shown = () => page.evaluate(() => ['voice-toggle', 'orient-toggle', 'follow-lock']
-    .map(id => getComputedStyle(document.getElementById(id).parentNode).display !== 'none'));
-  expect(await shown()).toEqual([false, false, false]);
+  const st = () => page.evaluate(() => ['orient-toggle', 'follow-lock']
+    .map(id => [getComputedStyle(document.getElementById(id).parentNode).display !== 'none',
+      document.getElementById(id).getAttribute('aria-disabled') === 'true']));
+  expect(await st()).toEqual([[true, true], [true, true]]);
   // simStart()/simStop() without a bridge to poll: the state change is what is under test.
   await page.evaluate(() => { window.simOn = true; simRefreshFlightControls(); });
-  expect(await shown()).toEqual([true, true, true]);
+  expect(await st()).toEqual([[true, false], [true, false]]);
   await page.evaluate(() => { window.simOn = false; simRefreshFlightControls(); });
-  expect(await shown()).toEqual([false, false, false]);
+  expect(await st()).toEqual([[true, true], [true, true]]);
 });
 
 // Reported: the orientation and follow-lock buttons did nothing in sim. The sim poll called
@@ -144,6 +147,8 @@ test('the follow lock and heading-up work off a simulator feed', async ({ page }
   const out = await page.evaluate(async () => {
     window.simOn = true; window.simFollow = true;
     window.simAircraft = { lat: 32.60, lng: 35.00, hdg: 90, alt: 2000, gs: 100 };
+    // What connecting does: the in-flight buttons light (dimmed until there is a position).
+    simRefreshFlightControls();
     // What the sim poll now does with a fresh sample.
     const feed = () => {
       gpsOwn = { lat: simAircraft.lat, lng: simAircraft.lng, hdg: simAircraft.hdg, t: Date.now() };

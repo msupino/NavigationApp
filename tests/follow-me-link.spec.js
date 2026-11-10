@@ -626,23 +626,23 @@ test('the map control appears with the position source, and only if offered', as
   const seen = await page.evaluate(() => {
     const wrap = () => document.getElementById('follow-me-map').parentNode;
     const shown = () => wrap().style.display !== 'none';
+    const dim = () => document.getElementById('follow-me-map').getAttribute('aria-disabled') === 'true';
     const out = {};
     // Feature off: nothing, whatever the GPS is doing.
     setTune('featureFollowMe', false);
     window.gpsLiveOn = true;
     refreshFollowMeMapControl();
     out.offNoControl = shown();
-    // Offered, but no position to share: still nothing -- a switch for nothing is worse
-    // than no switch.
+    // Offered, but no position to share: there, dimmed with the reason (dim, never hide).
     setTune('featureFollowMe', true);
     window.gpsLiveOn = false;
     window.gpsRecording = false;
     refreshFollowMeMapControl();
-    out.noFix = shown();
-    // Offered and live: there it is.
+    out.noFix = [shown(), dim()];
+    // Offered and live: live.
     window.gpsLiveOn = true;
     refreshFollowMeMapControl();
-    out.live = shown();
+    out.live = [shown(), dim()];
     // Recording counts too.
     window.gpsLiveOn = false;
     window.gpsRecording = true;
@@ -652,8 +652,8 @@ test('the map control appears with the position source, and only if offered', as
     return out;
   });
   expect(seen.offNoControl).toBe(false);
-  expect(seen.noFix).toBe(false);
-  expect(seen.live).toBe(true);
+  expect(seen.noFix).toEqual([true, true]);
+  expect(seen.live).toEqual([true, false]);
   expect(seen.recording).toBe(true);
 });
 
@@ -2059,14 +2059,16 @@ test.describe('New link, in the interface', () => {
     });
   };
 
-  test('it is offered once this device holds a link, and not before', async ({ page }) => {
+  // Never hidden (asked: "never hide buttons"): with no link it is there, dimmed with the reason.
+  test('it is there before a link exists, dimmed; live once this device holds one', async ({ page }) => {
     await boot(page);
     await wire(page);
-    // Nothing shared yet: nothing to burn.
-    expect(await page.evaluate(() => document.getElementById('follow-me-new').hidden)).toBe(true);
+    const st = () => page.evaluate(() => { const b = document.getElementById('follow-me-new'); return [b.hidden, b.getAttribute('aria-disabled')]; });
+    // Nothing shared yet: nothing to burn -- shown, dimmed.
+    expect(await st()).toEqual([false, 'true']);
     await shareOnce(page, '4X-NEW');
     await page.evaluate(() => refreshFollowMeControl());
-    expect(await page.evaluate(() => document.getElementById('follow-me-new').hidden)).toBe(false);
+    expect(await st()).toEqual([false, null]);
   });
 
   test('pressing it replaces the link and says the old one is dead', async ({ page }) => {
