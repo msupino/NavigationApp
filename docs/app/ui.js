@@ -434,7 +434,9 @@ const appUpdate = (function () {
     // on that menu says there is an update to take (download or restart).
     const settingsSec = document.querySelector('#toolbar .tb-section[data-sec="settings"]');
     if (settingsSec) settingsSec.classList.toggle('has-app-update', action === 'download' || action === 'restart');
-    btn.hidden = !action || !!busy;
+    // Never hidden (never hide a button): while it checks or downloads it is dimmed, and says so.
+    btn.hidden = false;
+    setButtonWhy(btn, busy ? line : (action ? null : line));
     btn.textContent = action === 'download' ? (S.appUpdateDownload || 'Download now')
       : action === 'restart' ? (S.appUpdateRestart || 'Restart now') : (S.appUpdateCheck || 'Check again');
     btn.dataset.action = action || '';
@@ -5893,7 +5895,11 @@ window.followMeNewLinkOffered = followMeNewLinkOffered;
     // sharing yesterday and have since thought better of who has it.
     if (newBtn) {
       const held = !!(f && typeof f._stored === 'function' && f._stored());
-      newBtn.hidden = !followMeOffered() || !followMeNewLinkOffered() || !held;
+      // Only the gist removes it. With no link on this device there is nothing to retire: dimmed,
+      // and a tap says so (never hide a button).
+      newBtn.hidden = !followMeOffered() || !followMeNewLinkOffered();
+      if (!held) setButtonWhy(newBtn, S.whyFollowMeNoLink || 'No follow-me link on this device yet: the next share makes one');
+      else if (newBtn.dataset.why) setButtonWhy(newBtn, null);
       newBtn.disabled = status === 'stopping';
     }
     const active = status !== 'idle';
@@ -10266,15 +10272,21 @@ if (lsaCb) {
 // once areas load). Clicking a row zooms to it and highlights it.
 function refreshLsaListBtn() {
   const onLsa = typeof layerDataPrefix === 'function' && layerDataPrefix() === 'lsa';
-  // The whole LSA control group belongs to the Low Alt layer only — bubbles
-  // exist nowhere else, so hide the toggle + list button on other layers.
+  // The bubbles exist on the Low Alt layer only. The toggle and the list button used to be hidden
+  // everywhere else; never hide a button -- dimmed, and a tap says where they are (asked: "never
+  // hide buttons").
   const grp = document.getElementById('lsa-group');
-  if (grp) grp.hidden = !onLsa;
-  // The list button follows the overlay toggle too: with bubbles hidden, the
-  // list's "locate" would zoom to an unpainted bubble (drawAreas early-returns),
-  // so the button is only shown when the overlay is actually on.
+  if (grp) grp.hidden = false;
+  const offLayer = onLsa ? '' : (S.whyLsaOtherChart || 'LSA bubbles are on the Low Alt chart: switch Chart to it');
+  if (typeof setLayerIdle === 'function') setLayerIdle('lsa-cb', !onLsa, offLayer);
+  // The list follows the overlay too: with the bubbles off, its "locate" would zoom to a bubble
+  // that is not drawn (drawAreas early-returns) -- so it is dimmed then, with the reason.
   const btn = document.getElementById('lsa-list-btn');
-  if (btn) btn.hidden = !(onLsa && showLsaBubbles && Array.isArray(areas) && areas.length > 0);
+  if (btn) {
+    btn.hidden = false;
+    setButtonWhy(btn, offLayer || (!showLsaBubbles ? (S.whyLsaBubblesOff || 'Turn on Show LSA bubbles first')
+      : (!(Array.isArray(areas) && areas.length > 0) ? (S.whyLsaNoAreas || 'The LSA bubbles have not loaded yet') : null)));
+  }
 }
 function showLsaChart() {
   if (typeof closeOpenChartModals === 'function') closeOpenChartModals();

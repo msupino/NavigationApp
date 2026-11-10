@@ -2059,14 +2059,16 @@ test.describe('New link, in the interface', () => {
     });
   };
 
-  test('it is offered once this device holds a link, and not before', async ({ page }) => {
+  // Never hidden (asked: "never hide buttons"): with no link it is there, dimmed with the reason.
+  test('it is there before a link exists, dimmed; live once this device holds one', async ({ page }) => {
     await boot(page);
     await wire(page);
-    // Nothing shared yet: nothing to burn.
-    expect(await page.evaluate(() => document.getElementById('follow-me-new').hidden)).toBe(true);
+    const st = () => page.evaluate(() => { const b = document.getElementById('follow-me-new'); return [b.hidden, b.getAttribute('aria-disabled')]; });
+    // Nothing shared yet: nothing to burn -- shown, dimmed.
+    expect(await st()).toEqual([false, 'true']);
     await shareOnce(page, '4X-NEW');
     await page.evaluate(() => refreshFollowMeControl());
-    expect(await page.evaluate(() => document.getElementById('follow-me-new').hidden)).toBe(false);
+    expect(await st()).toEqual([false, null]);
   });
 
   test('pressing it replaces the link and says the old one is dead', async ({ page }) => {

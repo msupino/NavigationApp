@@ -3069,6 +3069,10 @@ window.S = Object.assign({
   whyMeasureNoPosition: 'Measure works from your position: turn on Location',
   whyFollowNoPosition: 'Follow keeps your aircraft in view: turn on Location',
   whyVoiceNoRoute: 'Spoken alerts follow your route: draw a route first.',
+  whyLsaOtherChart: 'LSA bubbles are on the Low Alt chart: switch Chart to it',
+  whyLsaBubblesOff: 'Turn on Show LSA bubbles first',
+  whyLsaNoAreas: 'The LSA bubbles have not loaded yet',
+  whyFollowMeNoLink: 'No follow-me link on this device yet: the next share makes one',
   whyOrientNoPosition: 'Heading up turns the chart with your track: turn on Location',
   measureEte: function (min, kt) {
     const t = min < 60 ? min + ' min' : Math.floor(min / 60) + ' h ' + String(min % 60).padStart(2, '0');

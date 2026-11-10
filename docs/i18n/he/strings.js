@@ -1299,6 +1299,10 @@ window.S = {
   whyMeasureNoPosition: 'המדידה עובדת מהמיקום שלכם: הפעילו מיקום',
   whyFollowNoPosition: 'מעקב אחרי המטוס שומר אותו בתצוגה: הפעילו מיקום',
   whyVoiceNoRoute: 'ההתראות הקוליות עוקבות אחרי המסלול: שרטטו קודם מסלול.',
+  whyLsaOtherChart: 'בועות LSA נמצאות במפת גובה נמוך: עברו אליה במפה',
+  whyLsaBubblesOff: 'הפעילו קודם את הצגת בועות גובה נמוך',
+  whyLsaNoAreas: 'בועות ה-LSA עוד לא נטענו',
+  whyFollowMeNoLink: 'אין עדיין קישור מעקב במכשיר הזה: השיתוף הבא ייצור אחד',
   whyOrientNoPosition: 'כיוון התקדמות מסובב את המפה לפי הכיוון שלכם: הפעילו מיקום',
   measureEte: function (min, kt) {
     const t = min < 60 ? min + ' דק׳' : Math.floor(min / 60) + ' ש׳ ' + String(min % 60).padStart(2, '0') + ' דק׳';
