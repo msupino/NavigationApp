@@ -126,6 +126,8 @@ test('the in-flight column draws one icon set, no emoji', async ({ page }) => {
 
 test('voice and edit-lock icons follow their state', async ({ page }) => {
   await boot(page);
+  // A route: spoken alerts follow one, and without it the voice button is dimmed.
+  await page.evaluate(() => { state.waypoints = [{ lat: 32.18, lng: 34.83, name: 'LLHZ' }, { lat: 32.3, lng: 34.95, name: 'ONE' }]; syncLegs(); draw(); });
   const icon = (id) => page.evaluate((i) => document.getElementById(i).dataset.icon, id);
   const before = await icon('voice-toggle');
   await page.click('#voice-toggle');
