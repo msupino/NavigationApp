@@ -3560,6 +3560,22 @@ html:not([dir="rtl"]) .comm-section.has-atc .row:not(:has(.atc-inline)) > .val:h
   pointer-events: none;
 }
 .atc-fab-now[hidden] { display: none; }
+/* After atcNowLabelSec: only the airfield, on the button's lower edge, at the screen edge -- the
+   full label had sat across the chart's middle (reported). Still absolute: the column never moves. */
+.atc-fab-now.atc-fab-now-badge {
+  right: auto;
+  left: 50%;
+  top: auto;
+  bottom: -7px;
+  transform: translateX(-50%);
+  max-width: 64px;
+  padding: 1px 5px;
+  font: 700 10px/1.25 system-ui, sans-serif;
+  border-radius: 8px;
+  border-color: #fff;
+  background: var(--navaid-mapbtn-live, #1f8a4c);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.45);
+}
 .atc-fab {
   display: flex;
   align-items: center;
