@@ -1584,142 +1584,6 @@ function drawMeasure() {
   });
   octx.restore();
 }
-// --- label-turn areas (label-turn.js) ------------------------------------------------------
-// Asked: on a route that turns -- Haifa south to Hadera, then east to Rosh Pina -- the labels
-// read upright only on the leg flown north; "select area and rotate all text inside that area".
-// Every piece of NavAid's own text drawn on the chart between labelTurnBegin() and
-// labelTurnEnd() whose centre falls inside a turn area is drawn turned about its own centre:
-// names, the leg boxes' figures, distances, callouts. Only the words turn -- the kites, discs and
-// lines keep their shape and direction -- and the chart image is never touched.
-let _labelTurn = null;
-// Text inside a leg box sits in a narrow cell along the leg: turned 90° it spilt across its
-// neighbours. Inside a box it may only flip -- as drawn or turned 180°, whichever reads closer to
-// the area's angle (set by drawLegArrow / drawCumTimeArrow while they draw).
-let _labelTurnAxisOnly = 0;
-// Each area on screen now: its corners in the canvas's CSS pixels and the angle (radians,
-// clockwise -- the way the device is turned to read it).
-function labelTurnAreas() {
-  const turns = (typeof state !== 'undefined' && Array.isArray(state.labelTurns)) ? state.labelTurns : [];
-  const out = [];
-  for (const t of turns) {
-    if (!t || !Array.isArray(t.pts) || t.pts.length !== 4) continue;
-    const poly = t.pts.map(p => proj({ lat: p[0], lng: p[1] }));
-    let deg = t.deg;
-    if (deg === 'leg') deg = labelTurnLegDeg(poly);
-    if (!Number.isFinite(deg) || ((deg % 360) + 360) % 360 === 0) continue;
-    out.push({ poly, ang: deg * Math.PI / 180, deg });
-  }
-  return out;
-}
-// "Along the leg": the leg that runs furthest through the area, as the screen bearing a pilot
-// turns the device to (clockwise from up). None through it: no turn.
-function labelTurnLegDeg(poly) {
-  const wps = (typeof state !== 'undefined' && state.waypoints) || [];
-  let best = 0, bestDeg = 0;
-  for (let i = 0; i + 1 < wps.length; i++) {
-    const a = proj(wps[i]), b = proj(wps[i + 1]);
-    let n = 0;
-    for (let k = 0; k <= 24; k++) {
-      const f = k / 24;
-      if (labelTurnInside(poly, a.x + (b.x - a.x) * f, a.y + (b.y - a.y) * f)) n++;
-    }
-    const len = n * Math.hypot(b.x - a.x, b.y - a.y);
-    if (len > best) { best = len; bestDeg = Math.round(Math.atan2(b.x - a.x, a.y - b.y) * 180 / Math.PI); }
-  }
-  return best > 0 ? bestDeg : 0;
-}
-function labelTurnInside(poly, x, y) {
-  let inside = false;
-  for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
-    const a = poly[i], b = poly[j];
-    if ((a.y > y) !== (b.y > y) && x < (b.x - a.x) * (y - a.y) / (b.y - a.y) + a.x) inside = !inside;
-  }
-  return inside;
-}
-// fillText / strokeText on this context turn when their text sits in an area. Installed once per
-// context (the PNG export draws on a context of its own); a no-op outside Begin/End.
-function labelTurnWrap(ctx) {
-  if (!ctx || ctx.__labelTurnWrapped) return;
-  const turned = (orig) => function (text, x, y, maxWidth) {
-    const call = () => (maxWidth === undefined ? orig.call(this, text, x, y) : orig.call(this, text, x, y, maxWidth));
-    const lt = _labelTurn;
-    if (!lt || lt.ctx !== this) return call();
-    const m = this.measureText(String(text));
-    const w = maxWidth === undefined ? m.width : Math.min(m.width, maxWidth);
-    const rtl = this.direction === 'rtl';
-    const al = this.textAlign;
-    let cx = x;
-    if (al === 'left' || (al === 'start' && !rtl) || (al === 'end' && rtl)) cx = x + w / 2;
-    else if (al === 'right' || (al === 'end' && !rtl) || (al === 'start' && rtl)) cx = x - w / 2;
-    const cy = y + ((m.actualBoundingBoxDescent || 0) - (m.actualBoundingBoxAscent || 0)) / 2;
-    const p = lt.inv.multiply(this.getTransform()).transformPoint(new DOMPoint(cx, cy));
-    const area = lt.areas.find(a => labelTurnInside(a.poly, p.x, p.y));
-    if (!area) return call();
-    let ang = area.ang;
-    if (_labelTurnAxisOnly) {
-      // Keep it along its cell: as drawn, or flipped 180° -- whichever leaves the text closer to
-      // the angle asked for (what the text is drawn at now is in its transform).
-      const tm = lt.inv.multiply(this.getTransform());
-      const now = Math.atan2(tm.b, tm.a);
-      const dist = (x) => Math.abs(Math.atan2(Math.sin(x - ang), Math.cos(x - ang)));
-      ang = dist(now + Math.PI) + 1e-6 < dist(now) ? Math.PI : 0;
-      if (!ang) return call();
-    }
-    this.save();
-    this.translate(cx, cy);
-    this.rotate(ang);
-    this.translate(-cx, -cy);
-    try { return call(); } finally { this.restore(); }
-  };
-  ctx.fillText = turned(ctx.fillText);
-  ctx.strokeText = turned(ctx.strokeText);
-  ctx.__labelTurnWrapped = true;
-}
-function labelTurnBegin() {
-  _labelTurn = null;
-  const areas = labelTurnAreas();
-  if (!areas.length || typeof DOMMatrix === 'undefined') return;
-  labelTurnWrap(octx);
-  // The context's own scale (device pixels, an export's page scale) maps the CSS pixels the areas
-  // are in; undo it so a text's place can be compared with them.
-  _labelTurn = { ctx: octx, inv: octx.getTransform().inverse(), areas };
-}
-function labelTurnEnd() { _labelTurn = null; }
-// While the Turn labels tool is on, the areas are outlined, each with its angle, so they can be
-// found and changed; otherwise they are invisible -- the chart stays clean.
-function drawLabelTurnOutlines() {
-  if (typeof state === 'undefined' || state.mode !== 'turn') return;
-  const turns = Array.isArray(state.labelTurns) ? state.labelTurns : [];
-  octx.save();
-  for (const t of turns) {
-    if (!t || !Array.isArray(t.pts) || t.pts.length !== 4) continue;
-    const poly = t.pts.map(p => proj({ lat: p[0], lng: p[1] }));
-    octx.beginPath();
-    poly.forEach((p, i) => (i ? octx.lineTo(p.x, p.y) : octx.moveTo(p.x, p.y)));
-    octx.closePath();
-    octx.fillStyle = colorWithAlpha(tune('labelTurnColor'), tune('labelTurnFillAlpha'));
-    octx.fill();
-    octx.setLineDash([tune('labelTurnDashPx'), tune('labelTurnGapPx')]);
-    octx.lineWidth = tune('labelTurnLineWidthPx');
-    octx.strokeStyle = tune('labelTurnColor');
-    octx.stroke();
-    octx.setLineDash([]);
-    const label = t.deg === 'leg' ? '↕ ' + ((S && S.labelTurnLegShort) || 'leg') : t.deg + '°';
-    const c = poly.reduce((s, p) => ({ x: s.x + p.x / 4, y: s.y + p.y / 4 }), { x: 0, y: 0 });
-    octx.font = `bold ${tune('labelTurnFontPx')}px sans-serif`;
-    octx.textAlign = 'center';
-    octx.textBaseline = 'middle';
-    const fpx = tune('labelTurnFontPx');
-    const w = octx.measureText(label).width + fpx;
-    octx.fillStyle = tune('labelTurnColor');
-    octx.fillRect(c.x - w / 2, c.y - fpx * 0.8, w, fpx * 1.6);
-    octx.fillStyle = tune('labelTurnTextColor');
-    octx.fillText(label, c.x, c.y);
-  }
-  octx.restore();
-}
-window.labelTurnAreas = labelTurnAreas;
-
 function draw() {
   // Import and startup both render only after their complete route state is installed.
   pruneTurnCommChangeNotes();
@@ -1735,7 +1599,6 @@ function draw() {
     document.body.classList.toggle('gps-tracking-active', gpsMapLocked());
   }
   octx.clearRect(0, 0, vw(), vh());
-  labelTurnBegin();
   // Ground colouring first: it is the chart's own backdrop, so everything else -- airspace,
   // the route, the overlays -- draws on top of it rather than being tinted by it.
   if (window.showMsa) { drawTerrainTint(); drawTerrainWarnings(); }
@@ -1772,8 +1635,6 @@ function draw() {
   if (window.showNotam && Array.isArray(notams) && notams.length) drawNotamAirportMarkers();
   drawNotes();
   flushKites();      // both kinds of kite, above the callouts -- see queueKite
-  labelTurnEnd();    // NavAid's own chart labels end here: what follows is not turned
-  drawLabelTurnOutlines();
   if (window.showProfile) drawProfileMarkers();
   if (typeof drawTracks === 'function') drawTracks();       // saved-track overlays (flown lines)
   if (typeof drawGpsTrack === 'function') drawGpsTrack();   // GPS breadcrumb + own-ship (recording or live location)
@@ -6174,11 +6035,6 @@ function traceArrowBox(ctx, width, height, headLength) {
 }
 // `ret`: a way-back kite, its time upright for the chart turned round to fly home.
 function drawCumTimeArrow(cx, cy, flightAng, cumTime, accent, fill, sc, ret) {
-  _labelTurnAxisOnly++;
-  try { return drawCumTimeArrowBody(cx, cy, flightAng, cumTime, accent, fill, sc, ret); }
-  finally { _labelTurnAxisOnly--; }
-}
-function drawCumTimeArrowBody(cx, cy, flightAng, cumTime, accent, fill, sc, ret) {
   sc = sc ?? 1;
   // Fixed GROUND size — cumKitePrintHeightMm tall at the 1:250,000 scale (× the
   // legArrowSize selector) — so it scales with the map like its position and
@@ -6228,11 +6084,6 @@ function drawCumTimeArrowBody(cx, cy, flightAng, cumTime, accent, fill, sc, ret)
 // triangle (heading) pointing in the flight direction. Text runs across the
 // marker and is locked to its orientation.
 function drawLegArrow(cx, cy, flightAng, head, time, alt, accent, fill, halo, sc) {
-  _labelTurnAxisOnly++;
-  try { return drawLegArrowBody(cx, cy, flightAng, head, time, alt, accent, fill, halo, sc); }
-  finally { _labelTurnAxisOnly--; }
-}
-function drawLegArrowBody(cx, cy, flightAng, head, time, alt, accent, fill, halo, sc) {
   sc = sc ?? 1;
   // The whole kite is a fixed GROUND size — kitePrintHeightMm tall at the
   // 1:250,000 scale (× the legArrowSize selector) — so it scales with the map

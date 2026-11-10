@@ -355,7 +355,6 @@
       if (typeof currentRouteLibraryId !== 'undefined') currentRouteLibraryId = null;
       state.legs = [];
       state.notes = [];
-      state.labelTurns = [];
       state.commChangeSuppressions = [];
       state.wind = { dir: 270, speed: 0 };
       state.waypoints = parsed.waypoints;

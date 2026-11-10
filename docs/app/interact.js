@@ -6137,7 +6137,7 @@ window.addEventListener('keydown', e => {
     if (shortcutTypingTarget(t)) {
       return;
     }
-    if (state.mode === 'add' || state.mode === 'note' || state.mode === 'turn') {
+    if (state.mode === 'add' || state.mode === 'note') {
       e.preventDefault();
       if (typeof setMode === 'function') setMode(null);
       draw();

@@ -1297,16 +1297,6 @@ window.S = {
   measureTitle: 'מדידה מהמטוס: הקישו על נקודה למרחק, לכיוון ולזמן',
   measureHintLive: 'הקישו על נקודה: מרחק וזמן מהמטוס',
   whyMeasureNoPosition: 'המדידה עובדת מהמיקום שלכם: הפעילו מיקום',
-  tbLabelTurn: 'סיבוב תוויות',
-  tbLabelTurnTitle: 'גררו מלבן על חלק מהמסלול: התוויות שבתוכו מסתובבות כך שייקראו ישר כשמסובבים את המכשיר לאותו קטע',
-  labelTurnHint: 'גררו מלבן על התוויות לסיבוב. הקישו על מלבן כדי לשנות או להסיר אותו.',
-  labelTurnPickTitle: 'סיבוב התוויות',
-  labelTurnLeft: '90° שמאלה',
-  labelTurn180: '180°',
-  labelTurnRight: '90° ימינה',
-  labelTurnLeg: 'לאורך הקטע',
-  labelTurnLegShort: 'קטע',
-  labelTurnRemove: 'הסרה',
   measureEte: function (min, kt) {
     const t = min < 60 ? min + ' דק׳' : Math.floor(min / 60) + ' ש׳ ' + String(min % 60).padStart(2, '0') + ' דק׳';
     return t + ' ב-' + kt + ' קשר';
