@@ -90,3 +90,42 @@ test('a hidden kite turns the name all the same', async ({ page }) => {
   expect(r.hidden).toEqual(r.shown);
   expect(r.shown.some(d => d !== 0)).toBe(true);
 });
+
+// Asked: "cumulative times should also look the same, same orientation -- unless the checkbox is
+// off". A south-bound leg's kite figures read upside down on a north-up screen (180°): with the
+// checkbox on, its cumulative time reads the same way; off, it turns upright as before.
+test('cumulative times read like their leg’s kite; off, upright as before', async ({ page }) => {
+  await boot(page);
+  const times = () => page.evaluate(() => {
+    window.__texts = []; window.__logTexts = true; draw(); window.__logTexts = false;
+    return window.__texts.filter(t => /^\d+:\d\d$/.test(t.text)).map(t => t.deg);
+  });
+  const near = (list, d) => list.filter(x => Math.abs(((x - d + 540) % 360) - 180) < 30).length;
+  const on = await times();
+  await page.locator('#wpname-angle-cb').evaluate(el => { el.checked = false; el.dispatchEvent(new Event('change')); });
+  const off = await times();
+  // On: the south leg's kite time AND its cumulative time read at 180°; off, the cumulative one turns.
+  expect(near(on, 180)).toBeGreaterThan(near(off, 180));
+});
+
+// "...and identification point, and other leg marks": the minute numbers, the leg distance and an
+// identification-point oval read at their leg's kite-figure angle with the checkbox on; off, as before.
+test('minute marks, leg distances and identification points read like their leg’s kite', async ({ page }) => {
+  await boot(page);
+  const look = () => page.evaluate(() => {
+    window.showMidLeg = true;
+    state.notes = [{ lat: 32.6, lng: 35.0, text: 'IPX', rp: { leg: 0, t: 0.5 } }];
+    window.__texts = []; window.__logTexts = true; draw(); window.__logTexts = false;
+    const deg = (t) => (window.__texts.find(x => x.text === t) || {}).deg;
+    return { kite: deg('2000'), minute: deg('2'), ip: ((Math.round(noteDrawAngle(state.notes[0]) * 180 / Math.PI) % 360) + 360) % 360,
+      dist: (window.__texts.find(x => /^\d+\.\d$/.test(x.text)) || {}).deg };
+  });
+  const on = await look();
+  expect(on.kite).toBe(180);                 // the south-bound leg
+  expect(on.minute).toBe(180);
+  expect(on.ip).toBe(180);
+  expect(on.dist).toBe(180);
+  await page.locator('#wpname-angle-cb').evaluate(el => { el.checked = false; el.dispatchEvent(new Event('change')); });
+  const off = await look();
+  expect([off.minute, off.ip, off.dist]).toEqual([0, 0, 0]);
+});

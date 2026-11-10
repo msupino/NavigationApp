@@ -5792,7 +5792,8 @@ function drawLegs() {
       const cumY = sb.y + dy * cumAlong + ny * cumPerp;
       queueCumTimeArrow(cumX, cumY,
         Math.atan2(sb.y - cumY, sb.x - cumX),
-        cumInStr, tune('inkColor'), tintFill(tune('cumKiteFillColor'), tune('kiteNoteAlpha')), zoomScale);
+        cumInStr, tune('inkColor'), tintFill(tune('cumKiteFillColor'), tune('kiteNoteAlpha')), zoomScale,
+        false, ang + Math.PI / 2);   // its leg's kite figures (drawLegArrow) -- the angle to read alike
     }
 
     // Belt and braces: the feature flag is checked at the draw site too, so a stored or
@@ -5820,10 +5821,11 @@ function drawLegs() {
         const cumRetY = sa.y + dy * cumRetAlong + ny * cumRetPerp;
         queueCumTimeArrow(cumRetX, cumRetY,
           Math.atan2(sa.y - cumRetY, sa.x - cumRetX),
-          cumOutArr[i], tune('inkColor'), tintFill(tune('returnCumKiteFillColor'), tune('kiteNoteAlpha')), zoomScale, true);
+          cumOutArr[i], tune('inkColor'), tintFill(tune('returnCumKiteFillColor'), tune('kiteNoteAlpha')), zoomScale, true,
+          ang + Math.PI + Math.PI / 2);   // the way back's kite figures
       }
     }
-    if (showMidLeg) drawDistanceBadge(mid.x, mid.y, dist);
+    if (showMidLeg) drawDistanceBadge(mid.x, mid.y, dist, legMarksWithKites() ? ang + Math.PI / 2 : 0);
 
     // Wind arrow: show the wind that applies to each leg — the
     // route-wide wind, or a per-leg override where one is set. A leg that
@@ -5928,6 +5930,9 @@ function drawDriftLines(sa, sb) {
 function drawMinuteMarkers(sa, sb, durH, color, flip) {
   const totalMin = durH * 60;
   if (totalMin < 1) return;
+  // With "Turn names with the kites": every number at its leg's kite-figure angle (sa -> sb is the
+  // direction flown, the way back included), not level / turned round.
+  const kiteAng = legMarksWithKites() ? Math.atan2(sb.y - sa.y, sb.x - sa.x) + Math.PI / 2 : null;
   let dx = sb.x - sa.x, dy = sb.y - sa.y;
   const len = Math.hypot(dx, dy) || 1;
   dx /= len; dy /= len;
@@ -5960,10 +5965,10 @@ function drawMinuteMarkers(sa, sb, durH, color, flip) {
       const ty = py + ny * (tick + tune('minuteLabelOffsetPx') * k);
       octx.fillStyle = ink;
       octx.font = `bold ${fontPx}px sans-serif`;
-      if (flip) {
+      if (kiteAng !== null || flip) {
         octx.save();
         octx.translate(tx, ty);
-        octx.rotate(Math.PI);
+        octx.rotate(kiteAng !== null ? kiteAng : Math.PI);
         octx.fillText(String(m), 0, 0);
         octx.restore();
       } else {
@@ -6034,7 +6039,10 @@ function traceArrowBox(ctx, width, height, headLength) {
   ctx.closePath();
 }
 // `ret`: a way-back kite, its time upright for the chart turned round to fly home.
-function drawCumTimeArrow(cx, cy, flightAng, cumTime, accent, fill, sc, ret) {
+// `kiteTextAng`: the angle its leg's nav kite draws its figures at. With "Turn names with the
+// kites" on, the time reads the same way as them -- asked: "cumulative times should also look the
+// same, same orientation, unless the checkbox is off" -- instead of turning upright on the screen.
+function drawCumTimeArrow(cx, cy, flightAng, cumTime, accent, fill, sc, ret, kiteTextAng) {
   sc = sc ?? 1;
   // Fixed GROUND size — cumKitePrintHeightMm tall at the 1:250,000 scale (× the
   // legArrowSize selector) — so it scales with the map like its position and
@@ -6070,7 +6078,11 @@ function drawCumTimeArrow(cx, cy, flightAng, cumTime, accent, fill, sc, ret) {
   octx.translate(p.x, p.y);
   // Text orientation matches the navigation kite (flightAng+π = ang+π/2 when kite is at ang-π/2).
   let textAng = flightAng + Math.PI;
-  if (ret ? Math.cos(textAng) > 0 : Math.cos(textAng) < 0) textAng += Math.PI;
+  if (legMarksWithKites() && Number.isFinite(kiteTextAng)) {
+    // Along the arrow, whichever way round is nearer the kite's own figures (the arrow can be
+    // dragged off square to its leg, so its text cannot always be exactly theirs).
+    textAng = nearerWayRound(textAng, kiteTextAng);
+  } else if (ret ? Math.cos(textAng) > 0 : Math.cos(textAng) < 0) textAng += Math.PI;
   octx.rotate(textAng);
   octx.font = `bold ${fontPx}px sans-serif`;
   octx.textAlign = 'center';
@@ -6185,7 +6197,8 @@ function drawRotText(x, y, ang, text, font, color) {
   octx.restore();
 }
 
-function drawDistanceBadge(cx, cy, dist) {
+// `ang`: the leg's kite-figure angle with "Turn names with the kites" on; 0 draws it level.
+function drawDistanceBadge(cx, cy, dist, ang) {
   octx.beginPath();
   octx.arc(cx, cy, tune('distanceBadgeRadiusPx'), 0, Math.PI * 2);
   octx.fillStyle = tintFill(tune('distanceBadgeFillColor'));
@@ -6197,7 +6210,13 @@ function drawDistanceBadge(cx, cy, dist) {
   octx.font = `bold ${tune('distanceBadgeFontPx')}px sans-serif`;
   octx.textAlign = 'center';
   octx.textBaseline = 'middle';
-  octx.fillText(dist.toFixed(1), cx, cy);
+  if (ang) {
+    octx.save(); octx.translate(cx, cy); octx.rotate(ang);
+    octx.fillText(dist.toFixed(1), 0, 0);
+    octx.restore();
+  } else {
+    octx.fillText(dist.toFixed(1), cx, cy);
+  }
   octx.textAlign = 'left';
 }
 
@@ -6253,6 +6272,15 @@ function wpNameAngle(i) {
   return Math.atan2(pb.y - pa.y, pb.x - pa.x) + Math.PI / 2;
 }
 window.wpNameAngle = wpNameAngle;
+// "Turn names with the kites" covers every mark that sits on a leg (asked: "cumulative times
+// should also look the same ... and identification point ... and other leg marks"): with it on,
+// each reads at its leg's kite-figure angle instead of turning upright on the screen.
+function legMarksWithKites() { return typeof autoWpNameAngle !== 'undefined' && !!autoWpNameAngle; }
+// Of a text's two ways round along its own line, the one nearer `want`.
+function nearerWayRound(ang, want) {
+  const off = (a) => Math.abs(Math.atan2(Math.sin(a - want), Math.cos(a - want)));
+  return off(ang + Math.PI) < off(ang) ? ang + Math.PI : ang;
+}
 function drawWaypoints() {
   window.__hotspotWaypointIndexes = [];
   for (let i = 0; i < state.waypoints.length; i++) {
@@ -6346,7 +6374,9 @@ function noteDrawAngle(n) {
   if (!A || !B) return 0;
   const pa = proj(A), pb = proj(B);
   let ang = Math.atan2(pb.y - pa.y, pb.x - pa.x) + Math.PI / 2;
-  if (ang > Math.PI / 2 || ang < -Math.PI / 2) ang += Math.PI;
+  // Upright on the screen -- unless "Turn names with the kites" is on: then exactly its leg's
+  // kite figures (leg angle + 90°), so a chart turned to fly the leg reads it with them.
+  if (!legMarksWithKites() && (ang > Math.PI / 2 || ang < -Math.PI / 2)) ang += Math.PI;
   // An identification-point oval is aligned ACROSS its leg by rule, so its own angle is
   // added to that rather than replacing it. hitNote shares this function, so the clickable
   // region turns with whatever is painted.
@@ -6488,8 +6518,17 @@ function commCalloutGeom(n) {
   const ty = textSeg ? textSeg.a.y + (textSeg.b.y - textSeg.a.y) * textT : fp.y;
   let textAngle = textSeg ? Math.atan2(textSeg.b.y - textSeg.a.y, textSeg.b.x - textSeg.a.x)
                           : Math.atan2(uy, ux);
-  // Upright to read -- for a way-back callout, upright on the chart turned round to fly home.
-  if (n && n.ret ? Math.cos(textAngle) > 0 : Math.cos(textAngle) < 0) textAngle += Math.PI;
+  // With "Turn names with the kites", the way round nearer the kite of the leg flown INTO its
+  // waypoint (the way back: its leg back into it); otherwise upright to read -- for a way-back
+  // callout, upright on the chart turned round to fly home.
+  const wps = state.waypoints;
+  const legIn = routeIdx < 0 ? null : (n && n.ret
+    ? (wps[routeIdx + 1] ? [wps[routeIdx + 1], wps[routeIdx]] : (wps[routeIdx - 1] ? [wps[routeIdx], wps[routeIdx - 1]] : null))
+    : (wps[routeIdx - 1] ? [wps[routeIdx - 1], wps[routeIdx]] : (wps[routeIdx + 1] ? [wps[routeIdx], wps[routeIdx + 1]] : null)));
+  if (legMarksWithKites() && legIn) {
+    const pa = proj(legIn[0]), pb = proj(legIn[1]);
+    textAngle = nearerWayRound(textAngle, Math.atan2(pb.y - pa.y, pb.x - pa.x) + Math.PI / 2);
+  } else if (n && n.ret ? Math.cos(textAngle) > 0 : Math.cos(textAngle) < 0) textAngle += Math.PI;
   const textGap = tune('commChangeTextGapPx');
   return {
     target: tp, targetCenter, targetRadius, startGap, tail: fp, bends, bend1, bend2,

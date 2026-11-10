@@ -1779,8 +1779,8 @@ window.S = Object.assign({
   tbShowHotspots: 'Show hotspots',                  // Route hotspot visibility toggle
   tbShowHotspotsTitle: 'Show hotspot highlighting without changing waypoint hotspot settings',
   tbShowWpNames: 'Show waypoint names',             // Display toggle
-  tbAutoWpNameAngle: 'Turn names with the kites',
-  tbAutoWpNameAngleTitle: 'Each waypoint name lies along its leg\u2019s kite, read the way the kite\u2019s figures read: turn the printed chart to fly a leg and the names beside it read upright too',
+  tbAutoWpNameAngle: 'Turn labels with the kites',
+  tbAutoWpNameAngleTitle: 'Waypoint names, cumulative times, minute marks, leg distances, identification points and frequency callouts read the way their leg\u2019s kite figures read: turn the printed chart to fly a leg and they all read with its kite. Off: upright on the screen',
   tbShowWpNamesTitle: 'Show waypoint names (off = empty circle)',
   sliderStandardSuffix: '(standard)',
   tbWpSize: 'Waypoint size',                        // Display slider label
