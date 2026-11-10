@@ -6234,6 +6234,24 @@ function waypointGeom(i) {
 function selectionVisible() {
   return !(window.NavAid && NavAid.exporting);
 }
+// The angle a waypoint's name is drawn at (radians, screen), or 0 when it is drawn level. Asked:
+// "make each wp label match the base of the nav arrow -- if it points 270, the label 360-180,
+// regardless of the map orientation", so that "when I rotate a printed map, the text is always
+// aligned with the nav kite arrow", along the kite's bottom line. The kite draws its figures at
+// flightAng + 90° (along its base, drawLegArrowBody); the name takes the angle of the NEXT kite --
+// the leg leaving the waypoint -- and the last waypoint the last kite (asked). Screen angles, so a
+// turned map turns them with the kites. With the checkbox off: level, as before.
+function wpNameAngle(i) {
+  if (typeof autoWpNameAngle === 'undefined' || !autoWpNameAngle) return 0;
+  const wps = state.waypoints;
+  const last = i >= wps.length - 1;
+  const a = last ? wps[i - 1] : wps[i], b = last ? wps[i] : wps[i + 1];
+  if (!a || !b) return 0;
+  const pa = proj(a), pb = proj(b);
+  if (Math.hypot(pb.x - pa.x, pb.y - pa.y) < 1) return 0;
+  return Math.atan2(pb.y - pa.y, pb.x - pa.x) + Math.PI / 2;
+}
+window.wpNameAngle = wpNameAngle;
 function drawWaypoints() {
   window.__hotspotWaypointIndexes = [];
   for (let i = 0; i < state.waypoints.length; i++) {
@@ -6270,7 +6288,17 @@ function drawWaypoints() {
     octx.fillStyle = tune('inkColor');
     octx.textAlign = 'center';
     octx.textBaseline = 'middle';
-    octx.fillText(label, s.x, s.y);
+    // Along its leg's kite (wpNameAngle); the disc is round, so the name fits it at any angle.
+    const ang = label ? wpNameAngle(i) : 0;
+    if (ang) {
+      octx.save();
+      octx.translate(s.x, s.y);
+      octx.rotate(ang);
+      octx.fillText(label, 0, 0);
+      octx.restore();
+    } else {
+      octx.fillText(label, s.x, s.y);
+    }
     octx.textAlign = 'left';
   }
 }

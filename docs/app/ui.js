@@ -6750,6 +6750,24 @@ document.getElementById('wpname-cb').onchange = e => {
   catch (err) { /* storage unavailable */ }
   draw();
 };
+// Names turned with their leg's kite (draw.js wpNameAngle). On by default.
+const WPNAME_ANGLE_KEY = 'navaid.autoWpNameAngle';
+try {
+  const sa = lsGet(WPNAME_ANGLE_KEY);
+  if (sa !== null) window.autoWpNameAngle = sa === '1';
+} catch (e) { /* storage unavailable */ }
+{
+  const cb = document.getElementById('wpname-angle-cb');
+  if (cb) {
+    cb.checked = autoWpNameAngle;
+    cb.onchange = (e) => {
+      window.autoWpNameAngle = e.target.checked;
+      try { localStorage.setItem(WPNAME_ANGLE_KEY, autoWpNameAngle ? '1' : '0'); }
+      catch (err) { /* storage unavailable */ }
+      draw();
+    };
+  }
+}
 // The panel while a position is showing. Off by default: in flight the map is what is being
 // read, and a tap meant to check where you are -- or a stray one on a kneeboard -- should not
 // put a waypoint panel over the chart. But that rule had no control on screen and no voice,
@@ -15441,6 +15459,7 @@ NavAid.defaultVisibilityMap = [
   ['vor-cb', 'navaid.showVorStations', 'defaultShowVor'],
   ['hotspot-cb', 'navaid.showHotspots2', 'defaultShowHotspots'],
   ['wpname-cb', 'navaid.showWpNames', 'defaultShowWpNames'],
+  ['wpname-angle-cb', 'navaid.autoWpNameAngle', 'defaultAutoWpNameAngle'],
   ['cumtime-cb', 'navaid.showCumTime', 'defaultShowCumTime'],
   ['drift-cb', 'navaid.showDrift', 'defaultShowDrift'],
   // Not a layer, but the same contract: a gist default until the pilot says otherwise, and

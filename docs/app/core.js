@@ -1209,6 +1209,7 @@ NavAid.tuningDefaults = {
   defaultShowVor: { value: true, type: 'bool', label: 'Default: show VOR stations' },
   defaultShowHotspots: { value: true, type: 'bool', label: 'Default: show route hotspots' },
   defaultShowWpNames: { value: true, type: 'bool', label: 'Default: show waypoint names' },
+  defaultAutoWpNameAngle: { value: true, type: 'bool', label: 'Default: waypoint names turned to their leg\u2019s kite' },
   defaultShowCumTime: { value: true, type: 'bool', label: 'Default: show cumulative time' },
   defaultShowDrift: { value: true, type: 'bool', label: 'Default: show drift lines' },
   defaultShowCommChange: { value: true, type: 'bool', label: 'Default: show comm-change rings' },
@@ -1428,7 +1429,7 @@ NavAid.tuningGroups = [
     'defaultViewZoom', 'defaultViewLat', 'defaultViewLng'] },
   { name: 'Export', keys: ['exportBgColor', 'fpTableBorderWidthPx', 'fpTableGridWidthPx'] },
   { name: 'Global palette', keys: ['inkColor', 'selectedColor', 'labelFillColor', 'kiteTextColor', 'legKiteHaloColor', 'kiteNoteAlpha'] },
-  { name: 'Default layer visibility', keys: ['defaultShowNavWP', 'defaultShowAirfields', 'defaultShowVor', 'defaultShowHotspots', 'defaultShowWpNames', 'defaultShowCumTime', 'defaultShowDrift', 'defaultShowCommChange', 'defaultVoiceAlerts', 'defaultShowMidLeg', 'defaultHighlightDiff', 'defaultLimitLegKites', 'defaultShowMsa', 'defaultShowReporting', 'defaultForceSnap', 'defaultShowReturn', 'featureShowReturn', 'featureFplReturnJoin', 'offlineAutoCvfr', 'offlineCvfrUnmeteredOnly', 'offlineCvfrMinZoom', 'offlineCvfrMaxZoom', 'offlineCvfrStartSec', 'featureRouteIntro', 'featureTour', 'defaultPressureUnit', 'defaultAltSource', 'featureGpsStatus', 'featureKeepAwake', 'featureHaptics', 'featureBrightness', 'featureBarometer', 'featureBatteryWarn', 'featureFullscreenFlight', 'featureGdl90', 'featureBleGps', 'featureSatZoomButtons', 'featureInspectorResize', 'featureInspectorWhileTracking', 'featureAssistant', 'featureAutoRecord', 'defaultAutoRecord', 'autoRecordMinSec', 'autoRecordMinNm', 'recordResumeMin', 'featureSearchClose', 'featureTabletDesktop', 'featureMenubarDrag', 'featureSearchDrag', 'featureDisclaimer', 'featureOtaUpdates', 'featureNavLog', 'reverseWarnMs', 'notamSeenDays', 'toastReadWpm', 'toastNoticeMs', 'toastMinMs', 'toastWarnMinMs', 'toastMaxMs', 'reverseWarnBlink', 'reverseRotatesMap', 'addToRouteOpensInspector', 'defaultShowNotam', 'defaultShowAirmet', 'defaultShowSigmet', 'defaultShowWind', 'defaultWindField', 'defaultAirfieldWind', 'defaultSurfaceWx', 'defaultImsPwx', 'defaultSigwxOv', 'defaultShowLsaBubbles', 'defaultAutoRoute', 'defaultShowCircuit', 'defaultShowTraining', 'defaultShowCvfr', 'defaultShowHeli', 'defaultShowCommfail', 'defaultShowAdc', 'defaultShowIfr', 'plateFieldZoom'] },
+  { name: 'Default layer visibility', keys: ['defaultShowNavWP', 'defaultShowAirfields', 'defaultShowVor', 'defaultShowHotspots', 'defaultShowWpNames', 'defaultAutoWpNameAngle', 'defaultShowCumTime', 'defaultShowDrift', 'defaultShowCommChange', 'defaultVoiceAlerts', 'defaultShowMidLeg', 'defaultHighlightDiff', 'defaultLimitLegKites', 'defaultShowMsa', 'defaultShowReporting', 'defaultForceSnap', 'defaultShowReturn', 'featureShowReturn', 'featureFplReturnJoin', 'offlineAutoCvfr', 'offlineCvfrUnmeteredOnly', 'offlineCvfrMinZoom', 'offlineCvfrMaxZoom', 'offlineCvfrStartSec', 'featureRouteIntro', 'featureTour', 'defaultPressureUnit', 'defaultAltSource', 'featureGpsStatus', 'featureKeepAwake', 'featureHaptics', 'featureBrightness', 'featureBarometer', 'featureBatteryWarn', 'featureFullscreenFlight', 'featureGdl90', 'featureBleGps', 'featureSatZoomButtons', 'featureInspectorResize', 'featureInspectorWhileTracking', 'featureAssistant', 'featureAutoRecord', 'defaultAutoRecord', 'autoRecordMinSec', 'autoRecordMinNm', 'recordResumeMin', 'featureSearchClose', 'featureTabletDesktop', 'featureMenubarDrag', 'featureSearchDrag', 'featureDisclaimer', 'featureOtaUpdates', 'featureNavLog', 'reverseWarnMs', 'notamSeenDays', 'toastReadWpm', 'toastNoticeMs', 'toastMinMs', 'toastWarnMinMs', 'toastMaxMs', 'reverseWarnBlink', 'reverseRotatesMap', 'addToRouteOpensInspector', 'defaultShowNotam', 'defaultShowAirmet', 'defaultShowSigmet', 'defaultShowWind', 'defaultWindField', 'defaultAirfieldWind', 'defaultSurfaceWx', 'defaultImsPwx', 'defaultSigwxOv', 'defaultShowLsaBubbles', 'defaultAutoRoute', 'defaultShowCircuit', 'defaultShowTraining', 'defaultShowCvfr', 'defaultShowHeli', 'defaultShowCommfail', 'defaultShowAdc', 'defaultShowIfr', 'plateFieldZoom'] },
 ];
 // Padding pair + maxZoom for a fitBounds call, from the tuning registry. Every "frame the
 // map on X" call goes through this instead of carrying its own literals.
@@ -1778,6 +1779,8 @@ window.S = Object.assign({
   tbShowHotspots: 'Show hotspots',                  // Route hotspot visibility toggle
   tbShowHotspotsTitle: 'Show hotspot highlighting without changing waypoint hotspot settings',
   tbShowWpNames: 'Show waypoint names',             // Display toggle
+  tbAutoWpNameAngle: 'Turn names with the kites',
+  tbAutoWpNameAngleTitle: 'Each waypoint name lies along its leg\u2019s kite, read the way the kite\u2019s figures read: turn the printed chart to fly a leg and the names beside it read upright too',
   tbShowWpNamesTitle: 'Show waypoint names (off = empty circle)',
   sliderStandardSuffix: '(standard)',
   tbWpSize: 'Waypoint size',                        // Display slider label
@@ -4170,6 +4173,10 @@ var notams = null;          // null = not loaded; [] or populated once fetched
 var notamMeta = null;       // { generatedAt } of the loaded NOTAM file
 var notamBorders = null;    // null = not loaded; { LEBANON:[[ [lat,lng]... ]], ... } border arcs
 var showWpNames = true;     // draw waypoint names (off = empty circle)
+// Turn each waypoint's name to its leg's kite (draw.js wpNameAngle): the name lies along the kite's
+// base, read the way the kite's own figures read, so a chart turned to fly a leg reads the names
+// beside its kites. On by default; the Display checkbox and the gist (defaultAutoWpNameAngle).
+var autoWpNameAngle = true;
 var showHotspots = true;    // show hotspot styling without changing per-waypoint choices
 var yellowAlpha = 0.5;    // opacity of waypoint label backgrounds (Label-opacity slider, default 50%)
 // Kite + note fill opacity is not a Display slider — it's the gist-overridable
