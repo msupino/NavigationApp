@@ -74,3 +74,18 @@ test('the checkbox: on by default, off draws the names level, and the choice is 
   await page.waitForFunction(() => typeof window.wpNameAngle === 'function');
   expect(await page.locator('#wpname-angle-cb').evaluate(el => el.checked)).toBe(false);
 });
+
+// Asked: "works on hidden nav kite as well? like inside a CTR". The angle is the leg's own, not the
+// drawn kite's: a leg whose kite is not drawn (hidden by hand, inside the CTR, before the clock)
+// turns its waypoint's name exactly as if it were.
+test('a hidden kite turns the name all the same', async ({ page }) => {
+  await boot(page);
+  const r = await page.evaluate(() => {
+    const deg = () => state.waypoints.map((_, i) => Math.round(wpNameAngle(i) * 180 / Math.PI));
+    const shown = deg();
+    state.legs.forEach(l => { l.hideKite = 1; }); draw();
+    return { shown, hidden: deg() };
+  });
+  expect(r.hidden).toEqual(r.shown);
+  expect(r.shown.some(d => d !== 0)).toBe(true);
+});
