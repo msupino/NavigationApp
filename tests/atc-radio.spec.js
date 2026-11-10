@@ -114,6 +114,33 @@ test('the green map button names the channel playing, without moving the column'
   await expect(now).toBeHidden();
 });
 
+// Reported, with a screenshot: the playing channel's label sat across the middle of the chart, on
+// the crosshair. Full for atcNowLabelSec after it starts, then a small airfield badge on the
+// button's lower edge -- inside the column, at the screen edge.
+test('the playing label shrinks to an airfield badge on the button after a few seconds', async ({ page }) => {
+  await boot(page);
+  await page.evaluate(() => setTune('atcNowLabelSec', 1));
+  const now = page.locator('.atc-fab-control .atc-fab-now');
+  await page.evaluate(() => window.atcRadio.play('haifa-atis'));
+  await expect(now).toHaveText('LLHA \u00b7 ATIS');
+  await expect(now).toHaveText('LLHA', { timeout: 3000 });
+  await expect(now).toHaveClass(/atc-fab-now-badge/);
+  const r = await page.evaluate(() => {
+    const n = document.querySelector('.atc-fab-now').getBoundingClientRect();
+    const b = document.getElementById('tool-atc-radio').getBoundingClientRect();
+    return { inside: n.left >= b.left - 12 && n.right <= b.right + 12, below: n.top > b.top + b.height / 2 };
+  });
+  expect(r).toEqual({ inside: true, below: true });
+  // Another channel: named in full again, then its own badge.
+  await page.evaluate(() => window.atcRadio.play('pluto-west'));
+  await expect(now).toHaveText('Pluto West');
+  await expect(now).toHaveText('Pluto', { timeout: 3000 });
+  // 0 keeps the full label.
+  await page.evaluate(() => { window.atcRadio.stop(); setTune('atcNowLabelSec', 0); window.atcRadio.play('haifa-atis'); });
+  await page.waitForTimeout(1500);
+  await expect(now).toHaveText('LLHA \u00b7 ATIS');
+});
+
 test('a stream that does not start says so and releases the button', async ({ page }) => {
   await boot(page, { fail: true });
   await page.evaluate(() => window.atcRadio.open());
