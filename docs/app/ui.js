@@ -1088,8 +1088,10 @@ const voiceBtn = document.getElementById('voice-toggle');
 function refreshVoiceControl() {
   const wrap = voiceBtn && voiceBtn.parentNode;
   if (!wrap) return;
-  // Always there, and always live: whether alerts are spoken is a choice a pilot can make on the
-  // ground, before the first fix (the rule: dim, never hide -- and never dim what still works).
+  // Always there (dim, never hide). Every spoken alert follows the route -- the leg and next-leg
+  // calls, altitude, TOP, drift and off-route, the destination's ATIS, hours and last light -- so
+  // with no route it is dimmed with that reason (refreshRouteButtons); with one it is live even
+  // before the first fix, since speaking or not is a choice made on the ground.
   wrap.style.display = '';
   orderMapControls(wrap.parentNode);
   const on = window.voiceAlerts === true;
@@ -1102,8 +1104,9 @@ function refreshVoiceControl() {
   voiceBtn.setAttribute('aria-pressed', on ? 'true' : 'false');
   const label = on ? (S.voiceOnTitle || 'Alerts are spoken — tap to silence them')
                    : (S.voiceOffTitle || 'Alerts are silent — tap to have them spoken');
-  voiceBtn.title = label;
   voiceBtn.setAttribute('aria-label', label);
+  // While dimmed the title is the reason (setButtonWhy); the label waits to be put back.
+  if (voiceBtn.dataset.why) voiceBtn.dataset.whyTitle = label; else voiceBtn.title = label;
 }
 window.refreshVoiceControl = refreshVoiceControl;
 refreshVoiceControl();
@@ -1873,6 +1876,8 @@ function refreshRouteButtons() {
   why('share', needTwo);
   why('fly', needTwo);
   why('mosaic-btn', wps ? '' : (S.mosaicEmpty || 'Add route waypoints first.'));
+  // Every spoken alert follows the route: with none, nothing would ever be said.
+  why('voice-toggle', wps < 2 ? (S.whyVoiceNoRoute || 'Spoken alerts follow your route: draw a route first.') : '');
   // Route check: the gist withdrawing it keeps its own disabled state (refreshRouteCheckBtn).
   const rc = document.getElementById('route-check-btn');
   if (rc && !(typeof tune === 'function' && tune('featureRouteCheck') === false)) {

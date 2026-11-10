@@ -1482,6 +1482,7 @@ body.deck-on .leaflet-control.edit-col-ctrl {
 /* The ruler without a position: dimmed the same way, still tappable to say why. */
 .leaflet-control.measure-ctrl button.is-dim { opacity: 0.45; }
 /* The in-flight buttons are always there (dim, never hide): without a position, dimmed the same way. */
+.leaflet-control.voice-ctrl button.is-dim,
 .leaflet-control.orient-ctrl button.is-dim,
 .leaflet-control.follow-ctrl button.is-dim,
 .leaflet-control.follow-me-ctrl button.is-dim { opacity: 0.45; }

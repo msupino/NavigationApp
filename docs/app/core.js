@@ -3068,6 +3068,7 @@ window.S = Object.assign({
   measureHintLive: 'Tap a point: distance and time from the aircraft',
   whyMeasureNoPosition: 'Measure works from your position: turn on Location',
   whyFollowNoPosition: 'Follow keeps your aircraft in view: turn on Location',
+  whyVoiceNoRoute: 'Spoken alerts follow your route: draw a route first.',
   whyOrientNoPosition: 'Heading up turns the chart with your track: turn on Location',
   measureEte: function (min, kt) {
     const t = min < 60 ? min + ' min' : Math.floor(min / 60) + ' h ' + String(min % 60).padStart(2, '0');
