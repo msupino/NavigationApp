@@ -801,7 +801,8 @@ html[dir="rtl"] #toolbar {
 }
 #toolbar .slider-reset:hover { color: #fff; }
 #toolbar .navtoggle .hint { color: #8a8484; font-size: 12px; }
-#toolbar .navtoggle input[type="number"] {
+#toolbar .navtoggle input[type="number"],
+.ac-settings-body input[type="number"], .ac-settings-body input[type="text"] {
   width: 56px;
   font: inherit;
   font-size: 13px;
@@ -1940,7 +1941,8 @@ body.theme-dark .leaflet-control-zoom a:hover {
 }
 .wp-search-item:hover,
 .wp-search-item.active { background: #1d6fe0; color: #fff; }
-#toolbar .navtoggle select {
+#toolbar .navtoggle select,
+.ac-settings-body select {
   font: inherit;
   font-size: 11px;
   color: #e8e8e8;
@@ -1968,7 +1970,8 @@ body.theme-dark .leaflet-control-zoom a:hover {
   cursor: pointer;
 }
 /* RTL: the chevron and the text padding swap sides with the layout. */
-html[dir="rtl"] #toolbar .navtoggle select {
+html[dir="rtl"] #toolbar .navtoggle select,
+html[dir="rtl"] .ac-settings-body select {
   padding: 2px 6px 2px 20px;
   background-position: left 6px center;
 }
@@ -6445,6 +6448,9 @@ body.theme-light #toolbar .slider-reset,
 body.theme-light #toolbar #export-select,
 body.theme-light #toolbar .navtoggle select,
 body.theme-light #toolbar .navtoggle input[type="number"],
+body.theme-light .ac-settings-body select,
+body.theme-light .ac-settings-body input[type="number"],
+body.theme-light .ac-settings-body input[type="text"],
 body.theme-light #wp-search,
 body.theme-light #search-overlay #wp-search,
 body.theme-light .row input[type="number"],
@@ -8297,12 +8303,14 @@ body.theme-light .xc-navaid-foot { color: #5f6670; }
    input rule above: that one sets the `background` SHORTHAND, which resets
    background-image, so declaring the chevron earlier lost it and the select rendered with
    no arrow at all. */
-body.theme-light #toolbar .navtoggle select {
+body.theme-light #toolbar .navtoggle select,
+body.theme-light .ac-settings-body select {
   background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%231f252c' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
   background-repeat: no-repeat;
   background-position: right 6px center;
 }
-html[dir="rtl"] body.theme-light #toolbar .navtoggle select {
+html[dir="rtl"] body.theme-light #toolbar .navtoggle select,
+html[dir="rtl"] body.theme-light .ac-settings-body select {
   background-position: left 6px center;
 }
 
@@ -10831,3 +10839,27 @@ body.deck-on .legend-ctrl.legend-docked .map-legend::after { content: none; }
   body.deck-on .legend-ctrl.legend-docked .legend-dock { flex-direction: row; align-items: center; }
   body.deck-on .legend-ctrl.legend-docked #route-summary { max-width: calc(100vw - 72px - var(--navaid-map-ctrl-clear-low, var(--navaid-map-ctrl-clear, 52px)) - 8px); }
 }
+
+/* Settings -> Route -> Aircraft (ui.js wireAircraftSettings): the flight plan's aircraft panel in a
+   window of its own. The figures popover is the window's body here, open and in the flow: its
+   own button and heading (title, X) would only repeat the window's. */
+.ac-settings-modal { max-width: min(480px, calc(100vw - 24px)); }
+.ac-settings-body { display: flex; flex-direction: column; align-items: flex-start; gap: 10px; }
+.ac-settings-body .ac-panel { display: flex; flex-direction: column; align-items: flex-start; gap: 10px; width: 100%; }
+.ac-settings-body .ac-custom { position: static; margin: 0; width: 100%; }
+.ac-settings-body .ac-custom > summary,
+.ac-settings-body .ac-head { display: none; }
+.ac-settings-body .ac-menu {
+  position: static; width: auto; max-width: none; padding: 0;
+  background: transparent; border: 0; box-shadow: none; color: inherit;
+}
+body.theme-light .ac-settings-body .ac-menu { background: transparent; border: 0; box-shadow: none; }
+body.deck-on .ac-settings-body select, body.deck-on .ac-settings-body input[type="number"] { min-height: 40px; }
+/* One figure a row, its name at the start and its box at the end, as the Settings menu's rows. */
+.ac-settings-body .ac-type-row { width: 100%; }
+.ac-settings-body .ac-type-row select { width: 100%; }
+.ac-settings-body .ac-custom-grid { flex-direction: column; flex-wrap: nowrap; gap: 8px; width: 100%; }
+.ac-settings-body .ac-custom-grid > label { display: flex; justify-content: space-between; gap: 12px; width: 100%; }
+.ac-settings-body .ac-custom-grid input[type="number"] { width: 80px; font-size: 13px; padding: 4px 6px; }
+.ac-settings-body select { font-size: 13px; padding-block: 4px; }
+.ac-settings-body .ac-own-row select { min-width: 80px; }

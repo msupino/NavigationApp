@@ -4259,7 +4259,8 @@ function showFlightPlan() {
     // The aircraft panel goes back to its home, ready for the next plan.
     const panel = document.getElementById('ac-panel');
     const home = document.getElementById('ac-panel-home');
-    if (panel && home && panel.parentNode !== home) home.appendChild(panel);
+    // Not while the Settings aircraft window holds it: that window puts it home as it closes.
+    if (panel && home && panel.parentNode !== home && !panel.closest('.ac-settings-body')) home.appendChild(panel);
   };
 
   loadAircraft();
