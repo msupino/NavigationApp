@@ -2816,6 +2816,10 @@ body.theme-dark #toolbar button.gps-footer-btn[aria-pressed="true"] .footer-link
   font-size: 13px;
 }
 .notam-updated { font-size: 11px; opacity: 0.7; margin: 0 0 8px; }
+/* Stale feed: the freshness line becomes a caution (ui.js notamStale) -- the list may be missing
+   NOTAMs published since the last good scrape. Amber, full strength, in both themes. */
+.notam-updated.notam-stale { opacity: 1; font-weight: 600; color: #ffb74d; }
+body.theme-light .notam-updated.notam-stale { color: #9a5a00; }
 /* NOTAM time frame: "Active" is the default and "All" adds the ones not in force yet. The
    rows it adds carry when they start, so the extra items are distinguishable from the ones
    that matter now. */

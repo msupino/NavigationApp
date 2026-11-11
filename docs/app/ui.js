@@ -8555,6 +8555,22 @@ const notamListBtn = document.getElementById('notam-list-btn');
 const notamControls = document.getElementById('notam-controls');
 const notamTimeEl = document.getElementById('notam-time');
 const notamTimeVal = document.getElementById('notam-time-val');
+// NOTAM feed age. The file carries generatedAt; past notamStaleHours since then the pilot is
+// warned the list may be out of date -- the feed can wedge (the IAA site's bot wall), and a
+// day-old list that looks current is the false-safe this app refuses elsewhere. 0 h = never warn.
+function notamAgeHours() {
+  if (!notamMeta || !notamMeta.generatedAt) return null;
+  const t = new Date(notamMeta.generatedAt);
+  if (isNaN(t)) return null;
+  return (Date.now() - t.getTime()) / 3600000;
+}
+function notamStale() {
+  const h = typeof tune === 'function' ? tune('notamStaleHours') : 6;
+  if (!(h > 0)) return false;
+  const age = notamAgeHours();
+  return age != null && age > h;
+}
+window.notamStale = notamStale;
 const notamUpdatedEl = document.getElementById('notam-updated');
 function refreshNotamListBtn() {
   const have = Array.isArray(notams) && notams.length;
@@ -8604,11 +8620,16 @@ function refreshNotamListBtn() {
   // Feed freshness, shown in the panel (not just the list modal).
   if (notamUpdatedEl) {
     let txt = '';
+    const stale = notamStale();
     if (notamMeta && notamMeta.generatedAt) {
       const t = new Date(notamMeta.generatedAt);
-      if (!isNaN(t) && S.notamUpdated) txt = S.notamUpdated(t.toISOString().slice(0, 16).replace('T', ' ') + 'Z');
+      if (!isNaN(t) && S.notamUpdated) {
+        txt = S.notamUpdated(t.toISOString().slice(0, 16).replace('T', ' ') + 'Z');
+        if (stale && S.notamStaleNote) txt += ' \u2014 ' + S.notamStaleNote;
+      }
     }
     notamUpdatedEl.textContent = txt;
+    notamUpdatedEl.classList.toggle('notam-stale', stale && !!txt);
   }
 }
 // Shared time-slider clock: "HH:MMZ", prefixed with "MM-DD " when the instant
@@ -8948,7 +8969,11 @@ function showNotamModal(only, opts) {
     const u = document.createElement('div');
     u.className = 'notam-updated';
     const t = new Date(notamMeta.generatedAt);
-    if (!isNaN(t)) u.textContent = (S.notamUpdated ? S.notamUpdated(t.toISOString().slice(0, 16).replace('T', ' ') + 'Z') : '');
+    if (!isNaN(t)) {
+      let txt = (S.notamUpdated ? S.notamUpdated(t.toISOString().slice(0, 16).replace('T', ' ') + 'Z') : '');
+      if (notamStale() && S.notamStaleNote) { txt += ' \u2014 ' + S.notamStaleNote; u.classList.add('notam-stale'); }
+      u.textContent = txt;
+    }
     box.appendChild(u);
   }
   // Airfield/global filter. Every NOTAM carries an ICAO: LLLL = FIR-wide
