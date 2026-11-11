@@ -8624,7 +8624,7 @@ function refreshNotamListBtn() {
     if (notamMeta && notamMeta.generatedAt) {
       const t = new Date(notamMeta.generatedAt);
       if (!isNaN(t) && S.notamUpdated) {
-        txt = S.notamUpdated(t.toISOString().slice(0, 16).replace('T', ' ') + 'Z');
+        txt = S.notamUpdated((typeof notamStampUtc === 'function' ? notamStampUtc(t) : t.toISOString().slice(0, 16).replace('T', ' ') + 'Z'));
         if (stale && S.notamStaleNote) txt += ' \u2014 ' + S.notamStaleNote;
       }
     }
@@ -8976,7 +8976,7 @@ function showNotamModal(only, opts) {
     u.className = 'notam-updated';
     const t = new Date(notamMeta.generatedAt);
     if (!isNaN(t)) {
-      let txt = (S.notamUpdated ? S.notamUpdated(t.toISOString().slice(0, 16).replace('T', ' ') + 'Z') : '');
+      let txt = (S.notamUpdated ? S.notamUpdated((typeof notamStampUtc === 'function' ? notamStampUtc(t) : t.toISOString().slice(0, 16).replace('T', ' ') + 'Z')) : '');
       if (notamStale() && S.notamStaleNote) { txt += ' \u2014 ' + S.notamStaleNote; u.classList.add('notam-stale'); }
       u.textContent = txt;
     }
@@ -10348,7 +10348,7 @@ function refreshMetUpdated(kind) {
   const meta = kind === 'sigmet' ? window.sigmetMeta : window.airmetMeta;
   const t = meta && meta.generatedAt ? new Date(meta.generatedAt) : null;
   const txt = (t && !isNaN(t) && typeof S.notamUpdated === 'function')
-    ? S.notamUpdated(t.toISOString().slice(0, 16).replace('T', ' ') + 'Z') : '';
+    ? S.notamUpdated((typeof notamStampUtc === 'function' ? notamStampUtc(t) : t.toISOString().slice(0, 16).replace('T', ' ') + 'Z')) : '';
   el.textContent = txt;
   el.hidden = !(on && txt);
 }
@@ -11497,6 +11497,19 @@ if (THEME_SELECT_EL) {
     applyDisplayTheme();
     try { localStorage.setItem(THEME_KEY, displayTheme); }
     catch (err) { /* storage unavailable */ }
+  };
+}
+// Date format: how every user-visible date is written (navDateFormat / fmtDate in core.js).
+// Changing it redraws so a shown stamp -- the NOTAM "updated" line -- re-renders at once.
+const DATE_FORMAT_EL = document.getElementById('date-format');
+if (DATE_FORMAT_EL) {
+  DATE_FORMAT_EL.value = (typeof navDateFormat === 'function') ? navDateFormat() : 'dmy';
+  DATE_FORMAT_EL.onchange = () => {
+    const v = DATE_FORMAT_EL.value;
+    try { localStorage.setItem('navaid.dateFormat', (v === 'mdy' || v === 'ymd') ? v : 'dmy'); }
+    catch (err) { /* storage unavailable */ }
+    if (typeof draw === 'function') draw();
+    if (typeof refreshNotamListBtn === 'function') refreshNotamListBtn();
   };
 }
 // Clear store: wipe every navaid.* key (routes, saved-route library, all

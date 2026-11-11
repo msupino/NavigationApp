@@ -416,6 +416,7 @@ const GDRIVE_SETTINGS_KEYS = [
   'navaid.vorFreqOverrides', 'navaid.vorRef', 'navaid.navDataPrefix',
   'navaid.defaultSpeed', 'navaid.profileVS', 'navaid.geTourSpeed', 'navaid.etaZulu',
   'navaid.magVarAuto', 'navaid.magVarManual', 'navaid.pressureUnit',
+  'navaid.dateFormat',   // display preference: how user-visible dates are written
   // The pilot/aircraft profile follows the user across devices when settings sync is
   // explicitly enabled. The filing destination (aisEmail) stays device-local because it
   // decides where a plan is sent.

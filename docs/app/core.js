@@ -3574,6 +3574,11 @@ window.S = Object.assign({
   tbDarkMode: 'Dark',
   tbLightModeTitle: 'Switch between light and dark theme',
   tbTheme: 'Theme',
+  tbDateFormat: 'Date format',
+  tbDateFormatTitle: 'How dates are written across the app',
+  tbDateFormatDmy: 'DD/MM/YYYY',
+  tbDateFormatMdy: 'MM/DD/YYYY',
+  tbDateFormatYmd: 'YYYY-MM-DD',
   tbTabletLayout: 'Tablet layout',
   tbTabletLayoutTitle: 'Choose the tablet menu layout. Automatic follows the app\'s configured default.',
   tbTabletLayoutAuto: 'Automatic',
@@ -6075,6 +6080,41 @@ function setAirfieldFreqOverride(key, val) {
   const o = airfieldFreqOverrides();
   if (val) o[key] = val; else delete o[key];
   try { localStorage.setItem('navaid.airfieldFreqOverrides', JSON.stringify(o)); } catch (e) { /* ignore */ }
+}
+
+// --- user-visible date formatting -------------------------------------
+// One setting, navaid.dateFormat, decides how every date the pilot reads is written. Israel's
+// civil default is day-first, so 'dmy' (DD/MM/YYYY). Filenames and machine formats (the X-Plane
+// FDR header, an <input type=date>'s ISO value) keep their own fixed form and do not call these.
+function navDateFormat() {
+  try { const v = localStorage.getItem('navaid.dateFormat'); if (v === 'dmy' || v === 'mdy' || v === 'ymd') return v; } catch (e) { /* ignore */ }
+  return 'dmy';
+}
+function fmtDateParts(Y, M, D) {
+  const m = String(M).padStart(2, '0'), d = String(D).padStart(2, '0');
+  switch (navDateFormat()) {
+    case 'mdy': return m + '/' + d + '/' + Y;
+    case 'ymd': return Y + '-' + m + '-' + d;
+    default:    return d + '/' + m + '/' + Y;
+  }
+}
+function fmtDate(d) {
+  const t = (d instanceof Date) ? d : new Date(d);
+  if (isNaN(t)) return '';
+  return fmtDateParts(t.getFullYear(), t.getMonth() + 1, t.getDate());
+}
+function fmtDateUtc(d) {
+  const t = (d instanceof Date) ? d : new Date(d);
+  if (isNaN(t)) return '';
+  return fmtDateParts(t.getUTCFullYear(), t.getUTCMonth() + 1, t.getUTCDate());
+}
+// A feed's "updated" stamp: the date in the pilot's chosen format, the time in Zulu (aviation
+// reads UTC), e.g. 11/11/2026 13:45Z.
+function notamStampUtc(d) {
+  const t = (d instanceof Date) ? d : new Date(d);
+  if (isNaN(t)) return '';
+  const hh = String(t.getUTCHours()).padStart(2, '0'), mm = String(t.getUTCMinutes()).padStart(2, '0');
+  return fmtDateUtc(t) + ' ' + hh + ':' + mm + 'Z';
 }
 // Override-aware labelled parts for an airfield field ('clearance' | 'atis').
 function airfieldFieldParts(af, field) {
