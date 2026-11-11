@@ -28,6 +28,7 @@ test('the control sits in Settings, under the language, and shows 90 by default'
     return {
       langIdx: rows.findIndex(r => r.querySelector('#lang-select')),
       themeIdx: rows.findIndex(r => r.querySelector('#theme-select')),
+      dateIdx: rows.findIndex(r => r.querySelector('#date-format')),
       speedIdx: rows.findIndex(r => r.querySelector('#default-speed')),
       magvarIdx: rows.findIndex(r => r.querySelector('#magvar-mode')),
       sameSection: !!body.querySelector('#default-speed'),
@@ -37,9 +38,11 @@ test('the control sits in Settings, under the language, and shows 90 by default'
   // Layer, then the slider that dims it, then this. The opacity slider moved here from
   // Display when the map under the chart became a chart of its own. The speed itself is set
   // once for the aircraft, so it lives in Settings with the variation and the language.
-  // Language, then the Theme (a setting beside it), then this.
+  // Language, then the Theme (a setting beside it), then the Date format (a locale/display
+  // preference, grouped with them), then this.
   expect(order.themeIdx).toBe(order.langIdx + 1);
-  expect(order.speedIdx).toBe(order.themeIdx + 1);
+  expect(order.dateIdx).toBe(order.themeIdx + 1);
+  expect(order.speedIdx).toBe(order.dateIdx + 1);
   expect(order.magvarIdx).toBe(order.speedIdx + 1);
 });
 
