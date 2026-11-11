@@ -1,0 +1,79 @@
+From cc2e82dbfa21a0cc2d6b49ac4aaf3b7bbb0c801a Mon Sep 17 00:00:00 2001
+From: Marco <marco@supino.org>
+Date: Wed, 11 Nov 2026 06:06:56 +0000
+Subject: [PATCH] Settings and Persistence: Drive backs up every setting;
+ aircraft and pilot data sync without the box
+
+---
+ Settings-and-Persistence-he.md | 17 ++++++++++++-----
+ Settings-and-Persistence.md    | 26 ++++++++++++++++++++------
+ 2 files changed, 32 insertions(+), 11 deletions(-)
+
+diff --git a/Settings-and-Persistence-he.md b/Settings-and-Persistence-he.md
+index 813f28b..9e7986f 100644
+--- a/Settings-and-Persistence-he.md
++++ b/Settings-and-Persistence-he.md
+@@ -13,11 +13,18 @@ NavAid שומר מצב דפדפן במפתחות <span dir="ltr"><code>navaid.*<
+ 
+ ## Google Drive
+ 
+-הסנכרון הוא אופציונלי. מסלולים שמורים מסונכרנים בקובץ app-data נפרד. כאשר
+-**Sync settings too** פעיל, snapshot של הגדרות מורשות מסונכרן עם tombstones,
+-טיפול בקונפליקטים, חותמות זמן מונוטוניות ו־baseline מקומי. מפתחות API, מיקום
+-חלונות, המסלול הפעיל והגדרות שקובעות לאן מידע נשלח (למשל יעד הגשת תכנית טיסה)
+-נשארים במכשיר.
++הסנכרון הוא אופציונלי: שום דבר לא עולה ל‑Drive עד שלוחצים **סנכרן עם Google Drive** ב**מסלולים שמורים**. בכל סנכרון:
++
++| מה | התיבה לא מסומנת | **השתמש בהגדרות מ‑Drive במכשיר הזה** מסומנת |
++|---|---|---|
++| מסלולים שמורים (ומסלולי GPS שמורים) | מסונכרנים לשני הכיוונים | מסונכרנים לשני הכיוונים |
++| כלי הטיס שלך והנתונים שלו, מהירות ברירת מחדל, קצב טיפוס, פרטי הטייס בטופס תוכנית הטיסה, התיקונים שלך לתדרים ולמיקום מפות | מסונכרנים לשני הכיוונים | מסונכרנים לשני הכיוונים |
++| הגדרות תצוגה: שכבות, צבעים, גדלים, שקיפות, הגדרות דף, שפה, ספק ומודל AI | **מגובות** בלבד; ההגדרות של המכשיר הזה נשמרות | מסונכרנות לשני הכיוונים |
++| מפתחות API, כתובת ההגשה ל‑AIS, מיקומי חלונות, מצב תצוגה, המסלול הפעיל, מתגים של המכשיר (קול, מעקב, נעילה, בהירות, שיתוף, מפות לא מקוונות) | לא יוצאים מהמכשיר | לא יוצאים מהמכשיר |
++
++- המסלולים נשמרים ב‑<span dir="ltr"><code>navaid-routes.json</code></span>, וההגדרות מסונכרנות ב‑<span dir="ltr"><code>navaid-settings.json</code></span>. כשהתיבה לא מסומנת, המכשיר לא נוגע בהגדרות התצוגה של המכשירים האחרים בקובץ הזה.
++- **גיבוי:** כל סנכרון כותב גם את כל ההגדרות של המכשיר ל‑<span dir="ltr"><code>navaid-settings-backup.json</code></span>, מסומנת או לא. **שחזר הגדרות מ‑Drive** מחזיר אותן למכשיר הזה, פעם אחת, וטוען מחדש. מכשיר שעוד לא גיבה נשאל קודם, כך שהסנכרון הראשון של טלפון חדש לא דורס את הגיבוי האמיתי בלי לשאול.
++- ההערה מתחת לתיבה אומרת זאת במפורש: הגיבוי כולל את פרטי הטייס (שם, רישיון, טלפון, דוא״ל) ואת כלי הטיס.
+ 
+ רוב העריכה מקומית. תוכן מסלול/פרופיל יוצא מהמכשיר רק כאשר המשתמש מפעיל Drive,
+ שולח בקשה לספק AI או מגיש תכנית טיסה. בנוסף מתבצעות בקשות רגילות למפות, לנכסי
+diff --git a/Settings-and-Persistence.md b/Settings-and-Persistence.md
+index ab21a72..37e33ec 100644
+--- a/Settings-and-Persistence.md
++++ b/Settings-and-Persistence.md
+@@ -13,12 +13,26 @@ families and sync protocol.
+ 
+ ## Google Drive
+ 
+-Drive features are opt-in. Saved routes sync in their own app-data file. When
+-**Sync settings too** is enabled, an allowlisted settings snapshot syncs in a
+-separate file with tombstones, conflict handling, monotonic timestamps, and a
+-local baseline snapshot. API keys, panel geometry, the working route, and any
+-setting that controls where data is sent (such as the AIS filing destination)
+-remain device-local.
++Drive is opt-in: nothing goes to Drive until you press **Sync with Google Drive** in
++**Saved routes**. On every Sync:
++
++| What | Box unticked | **Use settings from Drive on this device** ticked |
++|---|---|---|
++| Saved routes (and saved GPS tracks) | synced both ways | synced both ways |
++| Your aircraft and its figures, default speed, climb rate, the flight plan form's pilot details, your frequency and chart-placement corrections | synced both ways | synced both ways |
++| Display settings: layers, overlays, colours, sizes, opacities, page setup, language, AI provider and model | **backed up** only; this device's own are kept | synced both ways |
++| API keys, the AIS filing address, window positions, theme, the working route, per-device switches (voice, follow, lock, brightness, sharing, offline maps) | never leave the device | never leave the device |
++
++- Routes are in `navaid-routes.json`. Settings sync both ways in `navaid-settings.json`, with
++  tombstones, conflict handling, monotonic timestamps and a local baseline snapshot. Unticked,
++  a device leaves the other devices' display settings in that file untouched.
++- **Backup:** every Sync also writes all of this device's settings to
++  `navaid-settings-backup.json`, ticked or not. **Restore settings from Drive** brings them back
++  on this device, once, and reloads. A device that has never backed up is asked first
++  (*Restore it on this device?*, then *Replace the backup?*), so a new phone's first Sync
++  never overwrites the real backup unasked.
++- The note under the box says it plainly: the backup includes your pilot details (name,
++  licence, phone, email) and aircraft.
+ 
+ Clearing browser storage removes local state but does not implicitly delete
+ Drive app-data. The route library UI owns its Drive actions.
+-- 
+2.43.0
+

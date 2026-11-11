@@ -2106,10 +2106,16 @@ window.S = Object.assign({
   vorDmeOnlyReadout: function (dme) { return dme + ' NM (DME only)'; },
   searchKindRouteWp: 'on your route',
   searchKindNote: 'note',
-  routeLibraryGdriveSyncSettings: 'Sync settings too',
+  routeLibraryGdriveSyncSettings: 'Use settings from Drive on this device',
   // Named in full because the pilot profile is personal data leaving the device, and
   // a checkbox reading "settings" does not suggest a licence number is among them.
-  routeLibraryGdriveSyncPii: 'Also uploads your pilot details (name, licence, phone, email) and aircraft profile to Drive. The AIS filing address and AI keys never leave this device.',
+  routeLibraryGdriveSyncPii: 'Sync backs up your settings to your Google Drive, with your pilot details (name, licence, phone, email) and aircraft. The AIS filing address and AI keys never leave this device.',
+  routeLibraryGdriveSyncSettingsTitle: 'Display settings (layers, colours, sizes and the like) from your other devices. Your aircraft, pilot details and corrections sync either way.',
+  routeLibraryGdriveRestore: 'Restore settings from Drive',
+  routeLibraryGdriveRestoreConfirm: 'Replace this device\u2019s settings with the backup on Google Drive? The app reloads.',
+  routeLibraryGdriveRestoreNone: 'No settings backup on Drive yet',
+  routeLibraryGdriveFirstBackup: function (when) { return 'Google Drive has a settings backup from ' + when + '. Restore it on this device?'; },
+  routeLibraryGdriveReplaceBackup: 'Replace the backup on Google Drive with this device\u2019s settings?',
   routeLibraryGdriveSettingsApplied: 'Settings updated — reloading…',
   routeLibraryGdriveFirstSyncConflict: 'This device and Google Drive both have settings for: {keys}.\n\nOK = REPLACE this device\'s values with the ones from Drive.\nCancel = do nothing (sync again to choose).',
   routeLibraryGdriveKeepThisDevice: 'Keep THIS device\'s settings and update Google Drive?',

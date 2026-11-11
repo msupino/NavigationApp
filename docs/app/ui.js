@@ -4300,14 +4300,35 @@ function showRouteLibraryModal(focusSave) {
       if (typeof setSettingsSyncEnabled === 'function') setSettingsSyncEnabled(setChk.checked);
       syncSetHint();
     };
-    setLabel.append(setChk, document.createTextNode(' ' + (S.routeLibraryGdriveSyncSettings || 'Sync settings too')));
-    // Shown only while the box is ticked — it describes what the tick is currently doing,
-    // not a standing warning about the sync button beside it, which uploads none of this.
+    setLabel.title = S.routeLibraryGdriveSyncSettingsTitle || '';
+    setLabel.append(setChk, document.createTextNode(' ' + (S.routeLibraryGdriveSyncSettings || 'Use settings from Drive on this device')));
+    // Always shown: every Sync backs up the settings, the pilot's details among them, ticked
+    // or not -- the box only decides whether this device takes the display settings back.
     const setHint = document.createElement('div');
     setHint.className = 'route-library-gdrive-pii';
     setHint.textContent = S.routeLibraryGdriveSyncPii || '';
-    const syncSetHint = () => { setHint.hidden = !setChk.checked; };
-    syncSetHint();
+    const syncSetHint = () => {};
+    // Restore: the backup's settings on this device, once, ticked or not.
+    const restoreBtn = document.createElement('button');
+    restoreBtn.type = 'button';
+    restoreBtn.className = 'route-library-gdrive-restore';
+    restoreBtn.textContent = S.routeLibraryGdriveRestore || 'Restore settings from Drive';
+    restoreBtn.onclick = async () => {
+      if (typeof gdriveRestoreSettings !== 'function') return;
+      const ok = await appConfirm(S.routeLibraryGdriveRestoreConfirm ||
+        'Replace this device\u2019s settings with the backup on Google Drive? The app reloads.',
+        S.routeLibraryGdriveRestore || 'Restore');
+      if (!ok) return;
+      restoreBtn.disabled = true;
+      setStatus(S.routeLibraryGdriveSyncing || 'Syncing…');
+      gdriveRestoreSettings().then(res => {
+        if (res && res.none) { setStatus(S.routeLibraryGdriveRestoreNone || 'No settings backup on Drive yet'); return; }
+        setStatus(S.routeLibraryGdriveSettingsApplied || 'Settings updated — reloading…');
+        setTimeout(() => location.reload(), 700);
+      }).catch(err => {
+        setStatus((S.routeLibraryGdriveError || 'Sync failed') + (err && err.message ? ': ' + err.message : ''));
+      }).then(() => { restoreBtn.disabled = false; });
+    };
     syncBtn.onclick = () => {
       syncBtn.disabled = true;
       setStatus(S.routeLibraryGdriveSyncing || 'Syncing…');
@@ -4336,6 +4357,19 @@ function showRouteLibraryModal(focusSave) {
             },
           });
         })
+        // Then the backup: every setting, ticked or not. A device that never backed up meets an
+        // existing backup with a question, so a new phone does not replace the real one.
+        .then(res => (typeof gdriveBackupSettings !== 'function' || (res && res.needsChoice)) ? res
+          : gdriveBackupSettings({
+            resolveFirstBackup: async at => {
+              const when = at ? new Date(at).toLocaleString(window.__navLang === 'he' ? 'he-IL' : 'en-GB') : '';
+              const ask = typeof S.routeLibraryGdriveFirstBackup === 'function' ? S.routeLibraryGdriveFirstBackup(when)
+                : 'Google Drive has a settings backup from ' + when + '. Restore it on this device?';
+              if (await appConfirm(ask, S.routeLibraryGdriveRestore || 'Restore')) return 'restore';
+              return (await appConfirm(S.routeLibraryGdriveReplaceBackup ||
+                'Replace the backup on Google Drive with this device\u2019s settings?')) ? 'replace' : 'abort';
+            },
+          }).then(b => (b && b.restored) ? Object.assign({}, res, { applied: true }) : res))
         .then(res => {
           if (res && res.needsChoice) {
             setStatus(S.routeLibraryGdriveSettingsSkipped ||
@@ -4357,7 +4391,7 @@ function showRouteLibraryModal(focusSave) {
         })
         .then(() => { syncBtn.disabled = false; });
     };
-    gd.append(syncBtn, setLabel, setHint, status);
+    gd.append(syncBtn, restoreBtn, setLabel, setHint, status);
     body.append(gd);
   }
 

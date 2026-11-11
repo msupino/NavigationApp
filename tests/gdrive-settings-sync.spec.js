@@ -4,7 +4,11 @@
 // and the opt-in flag. Verifies device-local + secret keys never sync.
 const { test, expect } = require('./_setup');
 
-async function boot(page) {
+// The engine is exercised with "Use settings from Drive" ticked: that is when every allowlisted
+// key syncs. Unticked, only the pilot's data does (GDRIVE_ALWAYS_KEYS) -- see the tests at the end.
+const tick = (page) => page.addInitScript(() => { try { localStorage.setItem('navaid.syncSettings', '1'); } catch (e) {} });
+async function boot(page, opts) {
+  if (!(opts && opts.unticked)) await tick(page);
   await page.goto('?lang=en');
   await page.waitForFunction(() =>
     typeof collectSyncableSettings === 'function' &&
@@ -115,8 +119,8 @@ test('merge is last-write-wins by updatedAt, ties keep local', async ({ page }) 
   expect(r.noRemote).toBe('local');
 });
 
-test('the route library shows a "Sync settings too" checkbox that persists the opt-in', async ({ page }) => {
-  await boot(page);
+test('the route library shows a "Use settings from Drive" checkbox that persists the opt-in', async ({ page }) => {
+  await boot(page, { unticked: true });
   await page.waitForFunction(() => typeof showRouteLibraryModal === 'function' && gdriveConfigured());
   await page.evaluate(() => showRouteLibraryModal());
   const chk = page.locator('.route-library-gdrive-settings input[type="checkbox"]');
@@ -127,28 +131,25 @@ test('the route library shows a "Sync settings too" checkbox that persists the o
   expect(await page.evaluate(() => localStorage.getItem('navaid.syncSettings'))).toBe('1');
 });
 
-test('the opt-in names the personal data it uploads, once it is ticked', async ({ page }) => {
-  await boot(page);
+test('the backup names the personal data it uploads, ticked or not', async ({ page }) => {
+  await boot(page, { unticked: true });
   await page.waitForFunction(() => typeof showRouteLibraryModal === 'function' && gdriveConfigured());
   await page.evaluate(() => showRouteLibraryModal());
   const hint = page.locator('.route-library-gdrive-pii');
   const chk = page.locator('.route-library-gdrive-settings input');
-  // Unticked, nothing of this is uploaded: the plain sync button carries routes only,
-  // so a standing warning here would describe something that is not happening.
+  // Every Sync backs the settings up, the pilot's details among them, so the line is always
+  // there: the box decides only what this device takes back.
   await expect(chk).not.toBeChecked();
-  await expect(hint).toBeHidden();
-  await chk.check();
   await expect(hint).toBeVisible();
   const txt = (await hint.textContent()) || '';
   // "settings" reads as preferences; the licence number is the word that corrects that.
   expect(txt.toLowerCase()).toContain('licence');
   expect(txt).toMatch(/never leave this device/i);
   // navaid.fpl.replyTo is the pilot's own address and IS on the allowlist, so the line
-  // must name email — "the AIS filing address stays local" otherwise reads as "no
-  // address leaves", which is the opposite of what happens.
+  // must name email.
   expect(txt.toLowerCase()).toContain('email');
-  await chk.uncheck();
-  await expect(hint).toBeHidden();             // and it goes away with the opt-in
+  await chk.check();
+  await expect(hint).toBeVisible();
 });
 
 test('the upload disclosure is translated, not left in English', async ({ page }) => {
@@ -424,6 +425,7 @@ test('an explicit null is a tombstone: it deletes the key instead of being ignor
 });
 
 test('a key deleted since the last sync is published as a tombstone, and a remote tombstone is carried forward', async ({ page }) => {
+  await tick(page);
   await page.goto('?lang=en');
   await page.waitForFunction(() => typeof _settingsPublishValues === 'function');
   const r = await page.evaluate(() => {
@@ -548,7 +550,7 @@ test('a rejected write is rolled back, leaving nothing half-applied', async ({ p
 });
 
 test('settings sync is opt-in and off by default', async ({ page }) => {
-  await boot(page);
+  await boot(page, { unticked: true });
   const r = await page.evaluate(() => {
     const before = settingsSyncEnabled();
     setSettingsSyncEnabled(true);
@@ -586,8 +588,9 @@ async function stubDrive(page, remoteBlob) {
   });
 }
 
-async function bootSync(page, remoteBlob) {
+async function bootSync(page, remoteBlob, opts) {
   await stubDrive(page, remoteBlob);
+  if (!(opts && opts.unticked)) await tick(page);
   await page.goto('?lang=en');
   await page.waitForFunction(() => typeof _gdriveSyncSettingsOnce === 'function');
   await page.evaluate(() => {
@@ -708,4 +711,118 @@ test('an established device removes legacy credentials but preserves the flight 
   expect(Object.keys(out.uploaded.values).some(k => k.startsWith('navaid.ai.key.'))).toBe(false);
   expect(out.uploaded.values['navaid.fpl.pic']).toBe('Legacy Pilot');
   expect(out.uploaded.values['navaid.fpl.cell']).toBe('0500000000');
+});
+
+// --- unticked: the pilot's data still syncs; every setting is backed up ---------------------
+// Asked: "settings are not saved or not loaded on checkbox? cuz it's also a type of backup", then
+// "apply it, also review what's synced, if more things are relevant, add them to the sync
+// without the checkbox". Unticked, the aircraft, the pilot's details and the corrections still
+// sync two-way; display settings stay as they are on Drive, untouched; and every Sync writes a
+// backup of everything, which Restore brings back.
+test('unticked: the pilot data syncs, display settings neither go up nor come down', async ({ page }) => {
+  await bootSync(page, { updatedAt: 1000, values: { 'navaid.layer': 'nav', 'navaid.aircraftProfiles': '[]' } }, { unticked: true });
+  const r = await page.evaluate(async () => {
+    localStorage.setItem('navaid.settingsSyncedAt', '2000');
+    localStorage.setItem('navaid.settingsSnapshot', JSON.stringify({}));
+    localStorage.setItem('navaid.settingsSnapKeys', JSON.stringify(GDRIVE_ALWAYS_KEYS));
+    localStorage.setItem('navaid.layer', 'heli');                      // a display setting
+    localStorage.setItem('navaid.fpl.pic', 'Test Pilot');              // the pilot's data
+    await _gdriveSyncSettingsOnce(() => 'local');
+    return { up: window.__uploaded && window.__uploaded.values, layer: localStorage.getItem('navaid.layer'),
+      always: GDRIVE_ALWAYS_KEYS };
+  });
+  expect(r.always).toEqual(expect.arrayContaining(['navaid.aircraft', 'navaid.aircraftProfiles',
+    'navaid.fpl.pic', 'navaid.airfieldFreqOverrides', 'navaid.overlayBoundsOverrides']));
+  expect(r.always).not.toContain('navaid.layer');
+  expect(r.up['navaid.fpl.pic']).toBe('Test Pilot');     // the pilot's data went up
+  expect(r.up['navaid.layer']).toBe('nav');              // the other devices' choice, carried over
+  expect(r.layer).toBe('heli');                          // and this device's own, kept
+});
+
+test('unticked, a newer remote brings the aircraft but not the display settings', async ({ page }) => {
+  await bootSync(page, { updatedAt: 9e12, values: { 'navaid.layer': 'nav', 'navaid.fpl.reg': 'ABC' } }, { unticked: true });
+  const r = await page.evaluate(async () => {
+    localStorage.setItem('navaid.settingsSyncedAt', '2000');
+    localStorage.setItem('navaid.settingsSnapshot', JSON.stringify({}));
+    localStorage.setItem('navaid.settingsSnapKeys', JSON.stringify(GDRIVE_ALWAYS_KEYS));
+    localStorage.setItem('navaid.layer', 'heli');
+    const res = await _gdriveSyncSettingsOnce(() => 'local');
+    return { res, layer: localStorage.getItem('navaid.layer'), reg: localStorage.getItem('navaid.fpl.reg') };
+  });
+  expect(r.reg).toBe('ABC');
+  expect(r.layer).toBe('heli');
+});
+
+async function stubBackup(page, backup) {
+  await page.route(/googleapis\.com\/drive\/v3\/files\?/, r =>
+    r.fulfill({ status: 200, contentType: 'application/json',
+      body: JSON.stringify({ files: backup ? [{ id: 'b1', name: 'navaid-settings-backup.json', version: '3' }] : [] }) }));
+  await page.route(/drive\/v3\/files\/b1\?alt=media/, r =>
+    r.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(backup) }));
+  await page.route(/upload\/drive\/v3\/files/, async r => {
+    // A new file goes up as multipart (metadata, then the content): take the content part.
+    const raw = r.request().postData() || '{}';
+    const m = raw.match(/\{"updatedAt"[\s\S]*\}\}/);
+    await page.evaluate(body => { window.__uploaded = JSON.parse(body); }, m ? m[0] : raw);
+    r.fulfill({ status: 200, contentType: 'application/json', body: '{"id":"b1"}' });
+  });
+  await page.goto('?lang=en');
+  await page.waitForFunction(() => typeof gdriveBackupSettings === 'function');
+  await page.evaluate(() => { window.__uploaded = null; window.gdriveHeaders = () => ({ Authorization: 'Bearer test' });
+    window.gdriveConnected = () => true; });
+}
+
+test('every Sync backs up every setting, ticked or not', async ({ page }) => {
+  await stubBackup(page, null);
+  const r = await page.evaluate(async () => {
+    localStorage.setItem('navaid.layer', 'heli');
+    localStorage.setItem('navaid.fpl.pic', 'Test Pilot');
+    localStorage.setItem('navaid.ai.key.anthropic', 'sk-secret');
+    await _gdriveBackupSettingsOnce({});
+    return { up: window.__uploaded, at: localStorage.getItem('navaid.settingsBackupAt') };
+  });
+  expect(r.up.values['navaid.layer']).toBe('heli');
+  expect(r.up.values['navaid.fpl.pic']).toBe('Test Pilot');
+  expect(r.up.values['navaid.ai.key.anthropic']).toBeUndefined();
+  expect(r.at).toBeTruthy();
+});
+
+test('a new device meets an existing backup with a question, never overwriting it unasked', async ({ page }) => {
+  await stubBackup(page, { updatedAt: 1700000000000, values: { 'navaid.layer': 'nav', 'navaid.fpl.pic': 'Real Pilot' } });
+  const r = await page.evaluate(async () => {
+    localStorage.setItem('navaid.layer', 'heli');
+    const asked = [];
+    const dismissed = await _gdriveBackupSettingsOnce({ resolveFirstBackup: at => { asked.push(at); return 'abort'; } });
+    const upAfterDismiss = window.__uploaded;
+    const restored = await _gdriveBackupSettingsOnce({ resolveFirstBackup: () => 'restore' });
+    return { asked, dismissed, upAfterDismiss, restored, layer: localStorage.getItem('navaid.layer'),
+      pic: localStorage.getItem('navaid.fpl.pic') };
+  });
+  expect(r.asked).toEqual([1700000000000]);
+  expect(r.dismissed.skipped).toBe(true);
+  expect(r.upAfterDismiss).toBeNull();
+  expect(r.restored.restored).toBe(true);
+  expect(r.layer).toBe('nav');                 // every setting, even unticked
+  expect(r.pic).toBe('Real Pilot');
+});
+
+test('Restore brings the backup back; with none it says so', async ({ page }) => {
+  await stubBackup(page, { updatedAt: 1, values: { 'navaid.layer': 'nav', 'navaid.ai.key.x': 'sk' } });
+  const r = await page.evaluate(async () => {
+    const res = await gdriveRestoreSettings();
+    return { res, layer: localStorage.getItem('navaid.layer'), key: localStorage.getItem('navaid.ai.key.x') };
+  });
+  expect(r.res.restored).toBe(true);
+  expect(r.layer).toBe('nav');
+  expect(r.key).toBeNull();                    // only allowlisted keys, never a foreign one
+});
+
+test('the Restore button is in the Drive row, in both languages', async ({ page }) => {
+  for (const lang of ['en', 'he']) {
+    await page.goto('?lang=' + lang);
+    await page.waitForFunction(() => typeof showRouteLibraryModal === 'function' && gdriveConfigured());
+    await page.evaluate(() => showRouteLibraryModal());
+    await expect(page.locator('.route-library-gdrive-restore')).toBeVisible();
+    await expect(page.locator('.route-library-gdrive-restore')).toHaveText(lang === 'he' ? 'שחזר הגדרות מ‑Drive' : 'Restore settings from Drive');
+  }
 });
