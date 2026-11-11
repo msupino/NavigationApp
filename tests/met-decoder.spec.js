@@ -151,7 +151,7 @@ test('the AIRMET and SIGMET toggles say when their feed was updated, as the NOTA
     return { off, on: ['airmet', 'sigmet'].map(k => { const e = document.getElementById(k + '-updated'); return e.hidden ? null : e.textContent; }) };
   });
   expect(got.off).toEqual([true, true]);
-  expect(got.on).toEqual(['Updated 2026-10-02 21:25Z', 'Updated 2026-10-02 21:20Z']);
+  expect(got.on).toEqual(['Updated 02/10/2026 21:25Z', 'Updated 02/10/2026 21:20Z']);
 });
 
 // A neighbouring FIR's warning whose area runs far beyond the region (Jeddah: thunderstorms N of
