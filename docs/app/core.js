@@ -6077,10 +6077,28 @@ function airfieldFreqOverrides() {
   try { return JSON.parse(localStorage.getItem('navaid.airfieldFreqOverrides') || '{}') || {}; }
   catch (e) { return {}; }
 }
+// A small, important setting must not be lost to a localStorage already full of reclaimable
+// cache. On a quota error, drop what can be re-fetched (the gist config cache -- a few KB,
+// re-read on the next load) and try once more; if it still will not fit, tell the pilot rather
+// than dropping the write in silence. Silence is what made an edited frequency "not stick".
+function navSetItemCritical(key, value) {
+  try { localStorage.setItem(key, value); return true; }
+  catch (e) {
+    try { if (typeof GIST_CACHE_KEY === 'string') localStorage.removeItem(GIST_CACHE_KEY); } catch (_) { /* ignore */ }
+    try { localStorage.setItem(key, value); return true; }
+    catch (_) {
+      if (typeof showToast === 'function') {
+        showToast((typeof S === 'object' && S && S.errStorageFull)
+          || 'Storage is full — delete some saved routes or export them.', { warn: true });
+      }
+      return false;
+    }
+  }
+}
 function setAirfieldFreqOverride(key, val) {
   const o = airfieldFreqOverrides();
   if (val) o[key] = val; else delete o[key];
-  try { localStorage.setItem('navaid.airfieldFreqOverrides', JSON.stringify(o)); } catch (e) { /* ignore */ }
+  return navSetItemCritical('navaid.airfieldFreqOverrides', JSON.stringify(o));
 }
 
 // --- user-visible date formatting -------------------------------------
@@ -6155,7 +6173,7 @@ function vorFreqOverrides() {
 function setVorFreqOverride(ident, val) {
   const o = vorFreqOverrides();
   if (val) o[ident] = val; else delete o[ident];
-  try { localStorage.setItem('navaid.vorFreqOverrides', JSON.stringify(o)); } catch (e) { /* ignore */ }
+  return navSetItemCritical('navaid.vorFreqOverrides', JSON.stringify(o));
 }
 // Effective (override-aware) frequency for a VOR object.
 function vorEffectiveFreq(v) {
