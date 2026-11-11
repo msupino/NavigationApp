@@ -2182,7 +2182,6 @@ function appendAirfieldFrequencyRows(body, af) {
   if (id) {
     const crow = typeof commCatalogCallSignRow === 'function' ? commCatalogCallSignRow(id) : null;
     if (crow) {
-      const fmt = v => (typeof commFormatFreq === 'function' ? commFormatFreq(v) : v) + ' MHz';
       const extra = [
         ['secondary', S.secondary || 'Secondary'], ['ground', S.ground || 'Ground'],
         ['groundWest', S.groundWest || 'Ground W'], ['groundEast', S.groundEast || 'Ground E'],
@@ -2190,10 +2189,18 @@ function appendAirfieldFrequencyRows(body, af) {
         ['tmaPrimary', S.tma || 'TMA'], ['tmaSecondary', S.tmaSecondary || 'TMA 2'],
       ];
       for (const [field, label] of extra) {
-        const v = crow[field] && String(crow[field]).trim();
-        if (!v) continue;
-        const r = textRow(label, fmt(v));
-        r.classList.add('secondary-freq-row');
+        const base = crow[field] && String(crow[field]).trim();
+        if (!base) continue;
+        // Editable like the primary -- its own key in the same airfieldFreqOverrides map (Drive
+        // synced). "cat:" namespaces it off the clearance/ATIS field-part keys (name|field|i).
+        const def = typeof commFormatFreq === 'function' ? commFormatFreq(base) : base;
+        const key = af.name + '|cat:' + field;
+        const r = freqEditRow(label, {
+          value: airfieldFreqOverrides()[key] || def, def, rowClass: 'secondary-freq-row',
+          isOverride: () => { const o = airfieldFreqOverrides()[key]; return !!o && o !== def; },
+          commit: n => { setAirfieldFreqOverride(key, n === def ? '' : n); return n; },
+          onReset: () => { setAirfieldFreqOverride(key, ''); return def; },
+        });
         body.appendChild(r);
       }
     }
