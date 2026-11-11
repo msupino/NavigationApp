@@ -91,7 +91,7 @@ test('the NOTAM feed demands near-complete detail and records its coverage', () 
   expect(yml).not.toMatch(/uniq\.length \* 0\.5/);
   expect(yml).toMatch(/Math\.ceil\(uniq\.length \* 0\.9\)/);
   // Coverage travels with the payload, so a consumer can tell a full list from a clipped one.
-  expect(yml).toContain('out.detailOk = detailOk;');
+  expect(yml).toContain('out.detailOk = ok;');
   expect(yml).toContain('out.detailTotal = uniq.length;');
   // Publishing nothing is loud, and not a green check.
   expect(yml).toMatch(/::error::Not publishing/);
