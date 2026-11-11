@@ -476,6 +476,7 @@ window.S = {
   notamModalTitle: 'NOTAM פעילים',
   notamNew: 'חדש',
   notamNewCount: function (n) { return n + ' חדשים'; },
+  notamNewWord: 'חדשים',
   notamNone: 'אין NOTAM פעילים.',
   notamUnavailable: 'NOTAM אינם זמינים.',
   // Wrap the Latin date/time in an LTR isolate (LRI/PDI) so the RTL context
