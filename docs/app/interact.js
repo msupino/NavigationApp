@@ -2175,6 +2175,29 @@ function appendAirfieldFrequencyRows(body, af) {
       refreshAirfieldInspectorAfterCommCatalog(af);
     }
   }
+  // The catalog carries a fuller set than airfields.json -- a secondary tower frequency (most
+  // controlled fields), and ground / approach / TMA at Ben Gurion. Show every one a field
+  // publishes, read-only, right after the primary (asked: "add all known freqs, LLHA/LLHZ have
+  // secondary"). The primary stays the editable one a NOTAM can change; these are reference.
+  if (id) {
+    const crow = typeof commCatalogCallSignRow === 'function' ? commCatalogCallSignRow(id) : null;
+    if (crow) {
+      const fmt = v => (typeof commFormatFreq === 'function' ? commFormatFreq(v) : v) + ' MHz';
+      const extra = [
+        ['secondary', S.secondary || 'Secondary'], ['ground', S.ground || 'Ground'],
+        ['groundWest', S.groundWest || 'Ground W'], ['groundEast', S.groundEast || 'Ground E'],
+        ['appPrimary', S.approach || 'Approach'], ['appSecondary', S.approachSecondary || 'Approach 2'],
+        ['tmaPrimary', S.tma || 'TMA'], ['tmaSecondary', S.tmaSecondary || 'TMA 2'],
+      ];
+      for (const [field, label] of extra) {
+        const v = crow[field] && String(crow[field]).trim();
+        if (!v) continue;
+        const r = textRow(label, fmt(v));
+        r.classList.add('secondary-freq-row');
+        body.appendChild(r);
+      }
+    }
+  }
   // Clearance / ATIS — one editable numeric field per labelled part (#freq).
   const appendFieldParts = (field, label, rowClass) => {
     const parts = typeof airfieldFieldParts === 'function' ? airfieldFieldParts(af, field) : [];
