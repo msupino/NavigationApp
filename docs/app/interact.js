@@ -3312,6 +3312,15 @@ function airfieldInspectorTitle(af) {
   return referenceInspectorTitle(af, 'airfield');
 }
 
+// "4,324 ft (1,318 m) × 98 ft (30 m)": feet from the published metres.
+const FT_PER_M = 1 / 0.3048;
+function runwayDimsText(d) {
+  const n = (v) => Math.round(v).toLocaleString('en-US');
+  // Non-breaking inside each figure, so a narrow panel wraps only at the \u00d7, never mid-figure.
+  const both = (m) => n(m * FT_PER_M) + '\u00a0ft\u00a0(' + n(m) + '\u00a0m)';
+  return both(d.lengthM) + ' \u00d7 ' + both(d.widthM);
+}
+window.runwayDimsText = runwayDimsText;
 function appendAirfieldDetailRows(body, af, label) {
   // What kind of field the chart says it is (its legend's rectangle colour), and the chart's
   // field block: longest runway, lighting, hard surface.
@@ -3321,11 +3330,23 @@ function appendAirfieldDetailRows(body, af, label) {
   if (Number.isFinite(af.elev_ft)) {
     body.appendChild(textRow(S.elevation || 'Elevation', af.elev_ft + ' ft'));
   }
-  if (Number.isFinite(af.runwayLengthM)) {
-    const bits = [af.runwayLengthM + ' m'];
-    if (af.hardRunway) bits.push(S.airfieldHardRunway || 'hard, all weather');
-    if (af.lighting === 'minimal') bits.push(S.airfieldMinimalLighting || 'minimal lighting');
-    body.appendChild(textRow(S.airfieldLongestRunway || 'Runway', bits.join(' · ')));
+  // Each runway's length and width as its AIP chart publishes them: feet first, metres in
+  // brackets (asked: "its length in ft and (m) and width"). The LSA chart's field block -- hard
+  // surface, lighting -- follows on its own row. A field without them shows the field block's
+  // longest-runway figure as before.
+  const extras = [];
+  if (af.hardRunway) extras.push(S.airfieldHardRunway || 'hard, all weather');
+  if (af.lighting === 'minimal') extras.push(S.airfieldMinimalLighting || 'minimal lighting');
+  const dims = Array.isArray(af.runwayDims) ? af.runwayDims : [];
+  if (dims.length) {
+    for (const d of dims) {
+      const row = textRow((S.airfieldLongestRunway || 'Runway') + '\u00a0' + d.rwy, runwayDimsText(d));
+      row.classList.add('rwy-dims-row');
+      body.appendChild(row);
+    }
+    if (extras.length) body.appendChild(textRow(S.airfieldLongestRunway || 'Runway', extras.join(' · ')));
+  } else if (Number.isFinite(af.runwayLengthM)) {
+    body.appendChild(textRow(S.airfieldLongestRunway || 'Runway', [af.runwayLengthM + ' m'].concat(extras).join(' · ')));
   }
   // Published hours before the radios: whether the field is there to be used at all comes
   // before how to talk to it.

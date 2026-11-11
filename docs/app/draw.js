@@ -3771,6 +3771,9 @@ async function loadAirfields() {
       // The LSA chart legend's strip class and field block (see airfields.json _chartClass).
       chartClass: a.chartClass || null,
       runwayLengthM: Number.isFinite(a.runwayLengthM) ? a.runwayLengthM : null,
+      // Each runway's published length and width in metres, from its AIP chart (section 9 / AD 2.12).
+      runwayDims: Array.isArray(a.runwayDims) ? a.runwayDims.filter(r => r && typeof r.rwy === 'string'
+        && Number.isFinite(r.lengthM) && Number.isFinite(r.widthM)).map(r => ({ rwy: r.rwy, lengthM: r.lengthM, widthM: r.widthM })) : null,
       lighting: a.lighting || null,
       hardRunway: a.hardRunway === true,
       // Prior-parking coordination the AIP requires at this field (address/phone + rule),
