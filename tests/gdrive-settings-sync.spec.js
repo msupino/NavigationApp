@@ -144,7 +144,7 @@ test('the backup names the personal data it uploads, ticked or not', async ({ pa
   const txt = (await hint.textContent()) || '';
   // "settings" reads as preferences; the licence number is the word that corrects that.
   expect(txt.toLowerCase()).toContain('licence');
-  expect(txt).toMatch(/never leave this device/i);
+  expect(txt).toMatch(/never leaves? this device/i);
   // navaid.fpl.replyTo is the pilot's own address and IS on the allowlist, so the line
   // must name email.
   expect(txt.toLowerCase()).toContain('email');
@@ -824,5 +824,23 @@ test('the Restore button is in the Drive row, in both languages', async ({ page 
     await page.evaluate(() => showRouteLibraryModal());
     await expect(page.locator('.route-library-gdrive-restore')).toBeVisible();
     await expect(page.locator('.route-library-gdrive-restore')).toHaveText(lang === 'he' ? 'שחזר הגדרות מ‑Drive' : 'Restore settings from Drive');
+  }
+});
+
+// Asked: "AI keys sync is not relevant when AI assistance is disabled from gist -- in the sync note".
+test('the sync note names AI keys only while the gist offers the assistant', async ({ page }) => {
+  for (const [on, lang] of [[false, 'en'], [true, 'en'], [false, 'he']]) {
+    await page.goto('?lang=' + lang + '&nogist');      // the flag set here, not a gist arriving later
+    await page.waitForFunction(() => typeof showRouteLibraryModal === 'function' && gdriveConfigured() && typeof tune === 'function');
+    const txt = await page.evaluate((on) => {
+      NavAid.tuning.featureAssistant = on;
+      // The library reopens itself after a reload (it remembers being open): close it first, so
+      // the note read is the one built with this flag.
+      document.querySelectorAll('.modal-back').forEach(b => b._navaidClose && b._navaidClose());
+      showRouteLibraryModal();
+      return document.querySelector('.route-library-gdrive-pii').textContent;
+    }, on);
+    expect(/\bAI\b|ה‑AI/.test(txt)).toBe(on);
+    expect(txt).toMatch(lang === 'he' ? /AIS/ : /AIS filing address/);
   }
 });
