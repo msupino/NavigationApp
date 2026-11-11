@@ -1023,6 +1023,13 @@ function validateAirfields(d) {
     if (Object.prototype.hasOwnProperty.call(a, 'runwayLengthM')) {
       _v(a, 'runwayLengthM', 'number', p, errs);
     }
+    if (Object.prototype.hasOwnProperty.call(a, 'runwayDims') && _v(a, 'runwayDims', 'array', p, errs)) {
+      a.runwayDims.forEach((r, j) => {
+        if (!r || typeof r.rwy !== 'string' || !Number.isFinite(r.lengthM) || !Number.isFinite(r.widthM)) {
+          errs.push(p + '.runwayDims[' + j + ']: expected { rwy: string, lengthM: number, widthM: number }');
+        }
+      });
+    }
     if (Object.prototype.hasOwnProperty.call(a, 'atis')) {
       _v(a, 'atis', 'string', p, errs);
     }
@@ -4259,7 +4266,8 @@ function showFlightPlan() {
     // The aircraft panel goes back to its home, ready for the next plan.
     const panel = document.getElementById('ac-panel');
     const home = document.getElementById('ac-panel-home');
-    if (panel && home && panel.parentNode !== home) home.appendChild(panel);
+    // Not while the Settings aircraft window holds it: that window puts it home as it closes.
+    if (panel && home && panel.parentNode !== home && !panel.closest('.ac-settings-body')) home.appendChild(panel);
   };
 
   loadAircraft();

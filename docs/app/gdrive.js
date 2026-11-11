@@ -435,6 +435,14 @@ const GDRIVE_SETTINGS_KEYS = [
   'navaid.ai.model.deepseek',
   'navaid.ai.model.orcarouter',
 ];
+// The pilot's own DATA, not display preferences: synced on every Sync whether or not
+// "Use settings from Drive" is ticked, like the saved routes (asked: "if more things are
+// relevant, add them to the sync without the checkbox"). The aircraft and its figures, the
+// pilot and flight plan form details, and the corrections to frequencies and chart placement.
+// Every key here is also in GDRIVE_SETTINGS_KEYS, which stays the full list.
+const GDRIVE_ALWAYS_KEYS = GDRIVE_SETTINGS_KEYS.filter(k =>
+  /^navaid\.(aircraft|aircraftProfiles|defaultSpeed|profileVS|airfieldFreqOverrides|commFreqOverrides|vorFreqOverrides|overlayBoundsOverrides)$/.test(k)
+  || /^navaid\.fpl\./.test(k));
 const SETTINGS_ENABLED_KEY = 'navaid.syncSettings';   // '1' when opted in (device-local, never synced)
 const SETTINGS_SYNCED_AT_KEY = 'navaid.settingsSyncedAt';
 const SETTINGS_SNAP_KEY = 'navaid.settingsSnapshot';
@@ -451,11 +459,13 @@ function _lsDel(k) { try { localStorage.removeItem(k); return true; } catch (e) 
 
 function settingsSyncEnabled() { return _lsGet(SETTINGS_ENABLED_KEY) === '1'; }
 function setSettingsSyncEnabled(on) { _lsSet(SETTINGS_ENABLED_KEY, on ? '1' : '0'); }
+// The keys this device syncs two-way now: all of them when ticked, the pilot's data otherwise.
+function _syncKeys() { return settingsSyncEnabled() ? GDRIVE_SETTINGS_KEYS : GDRIVE_ALWAYS_KEYS; }
 
 // Snapshot of the allowlisted keys currently in localStorage → { key: string }.
-function collectSyncableSettings() {
+function collectSyncableSettings(keys) {
   const out = {};
-  for (const k of GDRIVE_SETTINGS_KEYS) {
+  for (const k of (keys || _syncKeys())) {
     const v = _lsGet(k);
     if (v !== null) out[k] = v;
   }
@@ -482,12 +492,12 @@ function collectSyncableSettings() {
 //
 // Throws if any write was rejected (quota), so the caller aborts BEFORE recording
 // parity rather than remembering a partial apply as complete.
-function applySyncableSettings(values) {
+function applySyncableSettings(values, keys) {
   if (!values || typeof values !== 'object') return false;
   let changed = false;
   const failed = [];
   const undo = [];               // [key, previousValue|null] for rollback
-  for (const k of GDRIVE_SETTINGS_KEYS) {
+  for (const k of (keys || _syncKeys())) {
     if (!Object.prototype.hasOwnProperty.call(values, k)) continue;
     const next = values[k];
     const prev = _lsGet(k);
@@ -528,7 +538,7 @@ function applySyncableSettings(values) {
 // resurrected by the next upload.
 function _settingsPublishValues(values, snapValues, remoteValues) {
   const out = Object.assign({}, values);
-  for (const k of GDRIVE_SETTINGS_KEYS) {
+  for (const k of _syncKeys()) {
     if (Object.prototype.hasOwnProperty.call(values, k)) continue;   // still set here
     const knownBefore = snapValues &&
       Object.prototype.hasOwnProperty.call(snapValues, k) && snapValues[k] !== null;
@@ -541,7 +551,7 @@ function _settingsPublishValues(values, snapValues, remoteValues) {
 
 function _sameSettingsValues(a, b) {
   if (!a || !b) return false;
-  for (const k of GDRIVE_SETTINGS_KEYS) {
+  for (const k of _syncKeys()) {
     const ha = Object.prototype.hasOwnProperty.call(a, k);
     const hb = Object.prototype.hasOwnProperty.call(b, k);
     if (ha !== hb) return false;
@@ -577,7 +587,7 @@ function _settingsChangedLocally(values, snapValues, snapKeys) {
   // device instead, which costs at most this device's unsynced edits.
   if (!snapValues) return false;
   const has = (o, k) => Object.prototype.hasOwnProperty.call(o, k);
-  for (const k of GDRIVE_SETTINGS_KEYS) {
+  for (const k of _syncKeys()) {
     if (!has(snapValues, k)) {
       // The key list says whether this key was even syncable when the snapshot was written.
       // _adoptLegacySnapshot guarantees a list exists, so "absent from the snapshot AND
@@ -623,7 +633,7 @@ function _recordSettingsSynced(values, stamp) {
   // stored file stays diffable, and so a snapshot built by Object.assign (the
   // first-sync union) and one built here are byte-identical for the same values.
   const canon = {};
-  for (const k of GDRIVE_SETTINGS_KEYS) {
+  for (const k of _syncKeys()) {
     if (values && Object.prototype.hasOwnProperty.call(values, k) && values[k] !== null) {
       canon[k] = values[k];
     }
@@ -633,7 +643,7 @@ function _recordSettingsSynced(values, stamp) {
   // Which keys this snapshot had an opinion about, so a later build can tell "the allowlist
   // gained this key" from "the pilot has since set it". Best-effort: a build without it
   // falls back to treating absence as an edit.
-  _settingsSnapKeysMem = GDRIVE_SETTINGS_KEYS.slice();
+  _settingsSnapKeysMem = _syncKeys().slice();
   if (!_lsSet(SETTINGS_SNAP_KEY, canonStr)) {
     // Do NOT throw: by now the values are applied locally and/or already uploaded,
     // so rejecting would leave storage and the running app disagreeing and skip the
@@ -680,7 +690,7 @@ function mergeSettings(local, remote) {
 // nothing on any device is overwritten.
 function _adoptLegacySnapshot(values, snapValues, stamp) {
   const adopted = Object.assign({}, snapValues);
-  for (const k of GDRIVE_SETTINGS_KEYS) {
+  for (const k of _syncKeys()) {
     if (Object.prototype.hasOwnProperty.call(snapValues, k)) continue;
     if (Object.prototype.hasOwnProperty.call(values, k)) adopted[k] = values[k];
   }
@@ -729,7 +739,7 @@ function _localSettingsBlob(remoteAt) {
   // exists for exactly one call rather than forever.
   if (snap !== null && snapValues && !snapKeys) {
     snapValues = _adoptLegacySnapshot(values, snapValues, syncedAt);
-    snapKeys = GDRIVE_SETTINGS_KEYS.slice();
+    snapKeys = _syncKeys().slice();
   }
   const changedLocally = snap !== null
     && _settingsChangedLocally(values, snapValues, snapKeys);
@@ -819,10 +829,18 @@ function _gdriveSyncSettingsOnce(resolveFirstConflict) {
         k.startsWith('navaid.ai.key.')));
       const local = _localSettingsBlob(remoteAt);
 
+      // Unticked, this device syncs only the pilot's data: the other devices' display
+      // settings in the file are carried over untouched, never dropped by its upload.
+      const passThrough = {};
+      if (remoteValues && !settingsSyncEnabled()) {
+        for (const k of GDRIVE_SETTINGS_KEYS) {
+          if (GDRIVE_ALWAYS_KEYS.indexOf(k) === -1 && Object.prototype.hasOwnProperty.call(remoteValues, k)) passThrough[k] = remoteValues[k];
+        }
+      }
       const push = (values, stamp, snapshot) =>
         gdriveAssertUnchanged(file && file.id, seen)
           .then(() => gdriveUploadJson(file && file.id, GDRIVE_SETTINGS_FILE,
-            { updatedAt: stamp, values }))
+            { updatedAt: stamp, values: Object.assign({}, passThrough, values) }))
           .then(() => {
             // `snapshot === null` means "the caller records parity itself, after it has
             // applied": see the union branch, where recording `merged` here left a snapshot
@@ -840,7 +858,7 @@ function _gdriveSyncSettingsOnce(resolveFirstConflict) {
       // a resolver this device's values win (and nothing it has is ever lost).
       if (local.firstSync && remoteOk) {
         const conflicts = [];
-        for (const k of GDRIVE_SETTINGS_KEYS) {
+        for (const k of _syncKeys()) {
           if (!Object.prototype.hasOwnProperty.call(local.values, k)) continue;
           if (!Object.prototype.hasOwnProperty.call(remoteValues, k)) continue;
           const rv = remoteValues[k];
@@ -865,7 +883,7 @@ function _gdriveSyncSettingsOnce(resolveFirstConflict) {
           const preferRemote = side === 'remote';
           const merged = {};
           const incoming = {};
-          for (const k of GDRIVE_SETTINGS_KEYS) {
+          for (const k of _syncKeys()) {
             const haveLocal = Object.prototype.hasOwnProperty.call(local.values, k);
             const haveRemote = Object.prototype.hasOwnProperty.call(remoteValues, k);
             const rv = haveRemote ? remoteValues[k] : undefined;
@@ -940,16 +958,62 @@ function _gdriveSyncSettingsOnce(resolveFirstConflict) {
 
 // Two-way settings sync for the manual button: connect (reusing the route
 // flow's token), then one pass. Retries once on a token lapse like gdriveSync.
+// Ticked, every allowlisted setting; unticked, the pilot's data only (GDRIVE_ALWAYS_KEYS).
 function gdriveSyncSettings(opts) {
-  if (!settingsSyncEnabled()) return Promise.resolve({ applied: false, skipped: true });
   const resolver = opts && opts.resolveFirstConflict;
-  const once = () => _gdriveSyncSettingsOnce(resolver);
+  return _withDrive(() => _gdriveSyncSettingsOnce(resolver));
+}
+// Connect (reusing the route flow's token), run `once`, and retry once on a token lapse.
+function _withDrive(once) {
   const connect = gdriveConnected() ? Promise.resolve()
     : gdriveConnect(false).catch(err => (_nativeSocialLogin() ? Promise.reject(err) : gdriveConnect(true)));
   return connect.then(once).catch(err => {
     if (_isAuthError(err)) { _gdriveToken = null; return gdriveConnect(true).then(once); }
     throw err;
   });
+}
+
+// --- settings backup (always) ---------------------------------------------------
+// Every allowlisted setting of this device, written to a file of its own on every Sync,
+// ticked or not (asked: "it's also a type of backup"). Nothing reads it but Restore, so it
+// never changes another device by itself. A device that has never backed up or restored meets
+// an existing backup with a question first: a new phone's first Sync would otherwise replace
+// the pilot's real backup with its own empty defaults.
+const GDRIVE_SETTINGS_BACKUP_FILE = 'navaid-settings-backup.json';
+const SETTINGS_BACKUP_AT_KEY = 'navaid.settingsBackupAt';   // device-local: this device's last backup or restore
+function _readSettingsBackup(file) {
+  return gdriveDownloadJson(file.id).then(b =>
+    (b && typeof b === 'object' && b.values && typeof b.values === 'object') ? b : null);
+}
+function _restoreFrom(backup) {
+  // Only allowlisted keys, as a sync applies them; throws (rolled back) when storage is full.
+  const applied = applySyncableSettings(backup.values, GDRIVE_SETTINGS_KEYS);
+  _lsSet(SETTINGS_BACKUP_AT_KEY, String(Date.now()));
+  return { applied, restored: true };
+}
+// opts.resolveFirstBackup(updatedAt) -> 'restore' | 'replace' | anything else (do nothing).
+function _gdriveBackupSettingsOnce(opts) {
+  return gdriveFindNamed(GDRIVE_SETTINGS_BACKUP_FILE).then(file => {
+    const upload = () => gdriveUploadJson(file && file.id, GDRIVE_SETTINGS_BACKUP_FILE,
+      { updatedAt: Date.now(), values: collectSyncableSettings(GDRIVE_SETTINGS_KEYS) })
+      .then(() => { _lsSet(SETTINGS_BACKUP_AT_KEY, String(Date.now())); return { backedUp: true }; });
+    if (!file || _lsGet(SETTINGS_BACKUP_AT_KEY)) return upload();
+    return _readSettingsBackup(file).then(backup => {
+      if (!backup) return upload();                      // unreadable: nothing worth keeping
+      const ask = opts && typeof opts.resolveFirstBackup === 'function'
+        ? Promise.resolve(opts.resolveFirstBackup(+backup.updatedAt || 0)).catch(() => 'abort')
+        : Promise.resolve('abort');                      // never overwrite without asking
+      return ask.then(side => side === 'restore' ? _restoreFrom(backup)
+        : side === 'replace' ? upload() : { skipped: true });
+    });
+  });
+}
+function gdriveBackupSettings(opts) { return _withDrive(() => _gdriveBackupSettingsOnce(opts)); }
+// Restore: every setting from the backup, once, ticked or not. { none: true } when there is none.
+function gdriveRestoreSettings() {
+  return _withDrive(() => gdriveFindNamed(GDRIVE_SETTINGS_BACKUP_FILE).then(file =>
+    (file ? _readSettingsBackup(file) : Promise.resolve(null))
+      .then(backup => backup ? _restoreFrom(backup) : { none: true })));
 }
 
 if (typeof window !== 'undefined') {
@@ -966,4 +1030,7 @@ if (typeof window !== 'undefined') {
   window.applySyncableSettings = applySyncableSettings;
   window.mergeSettings = mergeSettings;
   window.GDRIVE_SETTINGS_KEYS = GDRIVE_SETTINGS_KEYS;
+  window.GDRIVE_ALWAYS_KEYS = GDRIVE_ALWAYS_KEYS;
+  window.gdriveBackupSettings = gdriveBackupSettings;
+  window.gdriveRestoreSettings = gdriveRestoreSettings;
 }

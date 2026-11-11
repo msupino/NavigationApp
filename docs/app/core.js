@@ -1761,7 +1761,7 @@ window.S = Object.assign({
   commfailUrl: 'data/commfail.json?v=2',
   worldCountriesUrl: 'data/world-countries.json?v=2',  // country outlines + names, always offline  // published comm-failure entry points per field
   navWpSearchField: 'en',              // which locale label to show/search in results
-  airfieldsUrl: 'data/airfields.json?v=43',  // resolved relative to index.html (docs/)
+  airfieldsUrl: 'data/airfields.json?v=44',  // resolved relative to index.html (docs/)
   airfieldHoursUrl: 'data/airfield-hours.json?v=1',  // published hours (airfield-hours.js)
   airfieldLabelField: 'en',            // which locale label to show on the overlay
   routeTemplatesUrl: 'data/route-templates.json?v=3', // ready-made route templates
@@ -2106,10 +2106,16 @@ window.S = Object.assign({
   vorDmeOnlyReadout: function (dme) { return dme + ' NM (DME only)'; },
   searchKindRouteWp: 'on your route',
   searchKindNote: 'note',
-  routeLibraryGdriveSyncSettings: 'Sync settings too',
+  routeLibraryGdriveSyncSettings: 'Use settings from Drive on this device',
   // Named in full because the pilot profile is personal data leaving the device, and
   // a checkbox reading "settings" does not suggest a licence number is among them.
-  routeLibraryGdriveSyncPii: 'Also uploads your pilot details (name, licence, phone, email) and aircraft profile to Drive. The AIS filing address and AI keys never leave this device.',
+  routeLibraryGdriveSyncPii: 'Sync backs up your settings to your Google Drive, with your pilot details (name, licence, phone, email) and aircraft. The AIS filing address and AI keys never leave this device.',
+  routeLibraryGdriveSyncSettingsTitle: 'Display settings (layers, colours, sizes and the like) from your other devices. Your aircraft, pilot details and corrections sync either way.',
+  routeLibraryGdriveRestore: 'Restore settings from Drive',
+  routeLibraryGdriveRestoreConfirm: 'Replace this device\u2019s settings with the backup on Google Drive? The app reloads.',
+  routeLibraryGdriveRestoreNone: 'No settings backup on Drive yet',
+  routeLibraryGdriveFirstBackup: function (when) { return 'Google Drive has a settings backup from ' + when + '. Restore it on this device?'; },
+  routeLibraryGdriveReplaceBackup: 'Replace the backup on Google Drive with this device\u2019s settings?',
   routeLibraryGdriveSettingsApplied: 'Settings updated — reloading…',
   routeLibraryGdriveFirstSyncConflict: 'This device and Google Drive both have settings for: {keys}.\n\nOK = REPLACE this device\'s values with the ones from Drive.\nCancel = do nothing (sync again to choose).',
   routeLibraryGdriveKeepThisDevice: 'Keep THIS device\'s settings and update Google Drive?',
@@ -2456,6 +2462,8 @@ window.S = Object.assign({
   todTitle: 'Top of descent',
   tbAircraft: 'Aircraft',
   tbAircraftCustom: 'Custom figures',
+  tbAircraftSettings: 'Aircraft',
+  tbAircraftSettingsTitle: 'Your aircraft: call sign, type, fuel and climb figures. No route needed',
   tbAircraftType: 'Aircraft type',
   tbAircraftTypeTitle: 'Fills the figures below with the type\u2019s typical values, and is the type the flight plan files',
   tbUsableFuel: 'Usable fuel (gal)',
@@ -2464,6 +2472,7 @@ window.S = Object.assign({
   tbClimbKtTitle: 'For the climb on the vertical profile',
   tbAircraftRestore: function (type) { return 'Restore ' + type + ' figures'; },
   whyAircraftAsType: 'Every figure is the type\u2019s already',
+  whyAircraftNoTypeFigures: 'This type has no listed figures to restore',
   aircraftChangedFrom: function (v) { return 'Changed from the type\u2019s ' + v; },
   acCallSign: 'Call sign',
   acCallSignTitle: 'The aircraft\u2019s call sign, after 4X-: its name here, and what the flight plan form files',

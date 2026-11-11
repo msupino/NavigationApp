@@ -1065,6 +1065,11 @@
         <label class="navtoggle" data-i18n-title="tbInspectorTrackingTitle">
           <input type="checkbox" id="insp-tracking-cb"> <span data-i18n="tbInspectorTracking"></span>
         </label>
+        <!-- The route's own settings, set without a route: the pilot's aircraft (call sign, type,
+             fuel and climb figures), which otherwise shows only in an open flight plan (asked).
+             The button opens the flight plan's aircraft panel in a window of its own (ui.js). -->
+        <div class="tb-group" data-i18n="tbSecRoute"></div>
+        <button id="aircraft-settings" type="button" data-i18n="tbAircraftSettings" data-i18n-title="tbAircraftSettingsTitle"></button>
         <!-- Reference tables a pilot sets up once and consults: the frequency table and the
              altitude pairs, moved here from Charts. -->
         <div class="tb-group-separator" aria-hidden="true"></div>

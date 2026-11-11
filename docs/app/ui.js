@@ -201,7 +201,7 @@ const MENU_ICONS = {
   undo: 'undo', clear: 'trash', fit: 'fit', 'tool-reset-all-markers': 'reset',
   'tool-reset-all-wp-names': 'reset', 'tool-magnifier': 'magnifier',
   'autoroute-btn': 'map', 'force-snap-btn': 'addWp', 'ret-btn': 'direct',
-  'route-templates': 'templates', 'freq-table': 'antenna', 'alt-pairs': 'altPairs',
+  'route-templates': 'templates', 'freq-table': 'antenna', 'aircraft-settings': 'plane', 'alt-pairs': 'altPairs',
   'nav-log': 'form', charts: 'charts', 'sigwx-btn': 'globe', 'pwx-btn': 'wind',
   'sigmet-btn': 'warn', 'airmet-btn': 'warn', 'route-check-btn': 'check', 'notam-list-btn': 'list',
   'lsa-list-btn': 'list', 'mosaic-btn': 'mosaic', 'offline-tiles-btn': 'download',
@@ -4300,14 +4300,35 @@ function showRouteLibraryModal(focusSave) {
       if (typeof setSettingsSyncEnabled === 'function') setSettingsSyncEnabled(setChk.checked);
       syncSetHint();
     };
-    setLabel.append(setChk, document.createTextNode(' ' + (S.routeLibraryGdriveSyncSettings || 'Sync settings too')));
-    // Shown only while the box is ticked — it describes what the tick is currently doing,
-    // not a standing warning about the sync button beside it, which uploads none of this.
+    setLabel.title = S.routeLibraryGdriveSyncSettingsTitle || '';
+    setLabel.append(setChk, document.createTextNode(' ' + (S.routeLibraryGdriveSyncSettings || 'Use settings from Drive on this device')));
+    // Always shown: every Sync backs up the settings, the pilot's details among them, ticked
+    // or not -- the box only decides whether this device takes the display settings back.
     const setHint = document.createElement('div');
     setHint.className = 'route-library-gdrive-pii';
     setHint.textContent = S.routeLibraryGdriveSyncPii || '';
-    const syncSetHint = () => { setHint.hidden = !setChk.checked; };
-    syncSetHint();
+    const syncSetHint = () => {};
+    // Restore: the backup's settings on this device, once, ticked or not.
+    const restoreBtn = document.createElement('button');
+    restoreBtn.type = 'button';
+    restoreBtn.className = 'route-library-gdrive-restore';
+    restoreBtn.textContent = S.routeLibraryGdriveRestore || 'Restore settings from Drive';
+    restoreBtn.onclick = async () => {
+      if (typeof gdriveRestoreSettings !== 'function') return;
+      const ok = await appConfirm(S.routeLibraryGdriveRestoreConfirm ||
+        'Replace this device\u2019s settings with the backup on Google Drive? The app reloads.',
+        S.routeLibraryGdriveRestore || 'Restore');
+      if (!ok) return;
+      restoreBtn.disabled = true;
+      setStatus(S.routeLibraryGdriveSyncing || 'Syncing…');
+      gdriveRestoreSettings().then(res => {
+        if (res && res.none) { setStatus(S.routeLibraryGdriveRestoreNone || 'No settings backup on Drive yet'); return; }
+        setStatus(S.routeLibraryGdriveSettingsApplied || 'Settings updated — reloading…');
+        setTimeout(() => location.reload(), 700);
+      }).catch(err => {
+        setStatus((S.routeLibraryGdriveError || 'Sync failed') + (err && err.message ? ': ' + err.message : ''));
+      }).then(() => { restoreBtn.disabled = false; });
+    };
     syncBtn.onclick = () => {
       syncBtn.disabled = true;
       setStatus(S.routeLibraryGdriveSyncing || 'Syncing…');
@@ -4336,6 +4357,19 @@ function showRouteLibraryModal(focusSave) {
             },
           });
         })
+        // Then the backup: every setting, ticked or not. A device that never backed up meets an
+        // existing backup with a question, so a new phone does not replace the real one.
+        .then(res => (typeof gdriveBackupSettings !== 'function' || (res && res.needsChoice)) ? res
+          : gdriveBackupSettings({
+            resolveFirstBackup: async at => {
+              const when = at ? new Date(at).toLocaleString(window.__navLang === 'he' ? 'he-IL' : 'en-GB') : '';
+              const ask = typeof S.routeLibraryGdriveFirstBackup === 'function' ? S.routeLibraryGdriveFirstBackup(when)
+                : 'Google Drive has a settings backup from ' + when + '. Restore it on this device?';
+              if (await appConfirm(ask, S.routeLibraryGdriveRestore || 'Restore')) return 'restore';
+              return (await appConfirm(S.routeLibraryGdriveReplaceBackup ||
+                'Replace the backup on Google Drive with this device\u2019s settings?')) ? 'replace' : 'abort';
+            },
+          }).then(b => (b && b.restored) ? Object.assign({}, res, { applied: true }) : res))
         .then(res => {
           if (res && res.needsChoice) {
             setStatus(S.routeLibraryGdriveSettingsSkipped ||
@@ -4357,7 +4391,7 @@ function showRouteLibraryModal(focusSave) {
         })
         .then(() => { syncBtn.disabled = false; });
     };
-    gd.append(syncBtn, setLabel, setHint, status);
+    gd.append(syncBtn, restoreBtn, setLabel, setHint, status);
     body.append(gd);
   }
 
@@ -8258,11 +8292,17 @@ function refreshSettingsAircraft() {
       ? lab.dataset.baseTitle + ' — ' + S.aircraftChangedFrom(d) : lab.dataset.baseTitle;
     if (changed) any = true;
   }
+  // The Settings window's fuel boxes (wireAircraftSettings), while it is open.
+  for (const [id, f] of [['acs-gph', 'gph'], ['acs-taxi', 'taxiGal']]) {
+    const el = document.getElementById(id);
+    if (el && document.activeElement !== el) el.value = Number(a[f]) >= 0 ? a[f] : '';
+  }
   const restore = acEl('ac-restore');
   if (restore) {
-    restore.hidden = !listed;
-    restore.textContent = listed ? (typeof S.tbAircraftRestore === 'function' ? S.tbAircraftRestore(a.type) : 'Restore ' + a.type + ' figures') : '';
-    if (typeof setButtonWhy === 'function') setButtonWhy(restore, any ? null : (S.whyAircraftAsType || 'Every figure is the type’s already'));
+    // Dimmed, never hidden: a type typed under Other has no figures of its own to restore.
+    restore.textContent = typeof S.tbAircraftRestore === 'function' ? S.tbAircraftRestore(listed ? a.type : (a.type || '\u2014')) : 'Restore figures';
+    if (typeof setButtonWhy === 'function') setButtonWhy(restore, !listed ? (S.whyAircraftNoTypeFigures || 'This type has no listed figures to restore')
+      : any ? null : (S.whyAircraftAsType || 'Every figure is the type’s already'));
   }
   const del = acEl('ac-profile-delete');
   if (del && typeof setButtonWhy === 'function') setButtonWhy(del, prof ? null : (S.whyAcNoProfile || 'Choose one of your own aircraft first'));
@@ -8417,6 +8457,78 @@ window.refreshSettingsAircraft = refreshSettingsAircraft;
     if (fig && fig.open && !fig.contains(e.target) && !(e.target.closest && e.target.closest('.modal-back:not(.flight-plan)'))) fig.open = false;
   }, true);
   refreshSettingsAircraft();
+})();
+
+// Settings -> Route -> Aircraft: the aircraft panel in a window of its own, so the pilot's aircraft
+// can be set up and seen without a route (asked: "the planes can only be defined or seen if there
+// is a route"). The panel is the flight plan's own, moved in while the window is open and put back
+// where it was; its figures popover is the window's body. The two fuel figures the plan shows as
+// its Gal/hour and Taxi boxes are here too, so the whole aircraft is set in one place.
+(function wireAircraftSettings() {
+  const btn = document.getElementById('aircraft-settings');
+  if (!btn || !AC_PANEL) return;
+  const fuelRow = (id, label, title, min, max, step) => {
+    const lab = document.createElement('label');
+    lab.className = 'ac-field';
+    lab.title = title || '';
+    const sp = document.createElement('span');
+    sp.textContent = label;
+    const inp = document.createElement('input');
+    inp.type = 'number'; inp.id = id; inp.min = min; inp.max = max; inp.step = step;
+    inp.inputMode = 'decimal';
+    lab.append(sp, inp);
+    return lab;
+  };
+  btn.addEventListener('click', () => {
+    if (typeof createDraggableModal !== 'function' || document.querySelector('.ac-settings-modal')) return;
+    // With no flight plan open nothing has loaded the aircraft in use yet: the stored one.
+    const planOpen = typeof fpOpen !== 'undefined' && fpOpen;
+    if (!aircraft && !planOpen && typeof loadAircraft === 'function') loadAircraft();
+    const from = AC_PANEL.parentNode;
+    const next = AC_PANEL.nextSibling;
+    const fig = acEl('ac-custom');
+    const wasOpen = !!(fig && fig.open);
+    const m = createDraggableModal(S.tbAircraft || 'Aircraft', 'modal ac-settings-modal', () => {
+      for (const id of ['acs-gph', 'acs-taxi']) { const el = document.getElementById(id); if (el) el.closest('label').remove(); }
+      if (fig) fig.open = wasOpen;
+      // Back where it was -- or home, if that was a flight plan that has closed meanwhile.
+      const home = document.getElementById('ac-panel-home');
+      if (from && from.isConnected) from.insertBefore(AC_PANEL, next && next.parentNode === from ? next : null);
+      else if (home) home.appendChild(AC_PANEL);
+      if (typeof refreshSettingsAircraft === 'function') refreshSettingsAircraft();
+    });
+    const body = document.createElement('div');
+    body.className = 'ac-settings-body';
+    body.appendChild(AC_PANEL);
+    m.box.appendChild(body);
+    // Fuel burn and the taxi allowance: the aircraft's, as the plan's boxes set them. In the
+    // figures' own grid, after the fuel it carries, and taken out again when the window closes.
+    const gphRow = fuelRow('acs-gph', S.tbGph, S.tbGphTitle, 1, 50, 0.5);
+    const taxiRow = fuelRow('acs-taxi', S.tbTaxiGal, S.tbTaxiGalTitle, 0, 20, 0.1);
+    gphRow.dataset.field = 'gph';
+    taxiRow.dataset.field = 'taxiGal';
+    const grid = AC_PANEL.querySelector('.ac-custom-grid');
+    const usable = AC_PANEL.querySelector('.ac-field[data-field="usableGal"]');
+    if (grid) grid.insertBefore(taxiRow, usable ? usable.nextSibling : null);
+    if (grid) grid.insertBefore(gphRow, taxiRow);
+    if (fig) fig.open = true;
+    for (const [id, f] of [['acs-gph', 'gph'], ['acs-taxi', 'taxiGal']]) {
+      const el = body.querySelector('#' + id);
+      el.addEventListener('input', () => {
+        const v = parseFloat(el.value);
+        if (!(f === 'taxiGal' ? v >= 0 : v > 0)) return;
+        aircraft = Object.assign({}, aircraft || { gph: tune('defaultGph'), taxiGal: tune('defaultTaxiGal') }, { [f]: v });
+        if (typeof saveAircraft === 'function') saveAircraft();
+        // The open plan's own box follows, and its fuel figures with it.
+        const fpBox = document.getElementById(f === 'gph' ? 'aircraft-gph' : 'aircraft-taxi');
+        if (fpBox) { fpBox.value = v; fpBox.dispatchEvent(new Event('input')); }
+        refreshSettingsAircraft();
+        draw();
+      });
+    }
+    m.show();
+    refreshSettingsAircraft();                                // on the page now: its boxes filled
+  });
 })();
 
 const routeCheckBtn = document.getElementById('route-check-btn');
