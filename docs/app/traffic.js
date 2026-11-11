@@ -353,6 +353,23 @@
         // to DomEvent throws before the selection is ever made.
         const dom = e && e.originalEvent;
         if (dom && L.DomEvent) L.DomEvent.stopPropagation(dom);
+        // A plane sitting over an airfield (or a VOR, a reporting point) should not silently grab
+        // the tap -- the pilot may have meant the thing under it. Gather what else is at this
+        // point; if anything, offer the multi-item chooser with the aeroplane among the choices.
+        let others = [];
+        try {
+          const cp = e && e.containerPoint;
+          if (cp && typeof hitOverlayMarkerCandidates === 'function') {
+            others = hitOverlayMarkerCandidates(cp.x, cp.y) || [];
+          }
+        } catch (_) { others = []; }
+        if (others.length && typeof showPointChoice === 'function') {
+          if (followedHex && followedHex !== a.hex) followedHex = '';
+          if (showPointChoice([{ type: 'traffic', hex: a.hex, aircraft: a }].concat(others))) {
+            declutterSoon();
+            return;
+          }
+        }
         if (followedHex && followedHex !== a.hex) followedHex = '';
         state.selected = { type: 'traffic', hex: a.hex };
         if (typeof showInspector === 'function') showInspector();

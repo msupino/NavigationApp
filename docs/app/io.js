@@ -1546,7 +1546,8 @@ function fplParkingUntilLabel() {
 // reads: "260902" sat next to a formatted "02/09/2026" in the same message.
 function fplDofToDisplay(dof) {
   const m = /^(\d{2})(\d{2})(\d{2})$/.exec(String(dof || ''));
-  return m ? `${m[3]}/${m[2]}/20${m[1]}` : '';
+  if (!m) return '';
+  return (typeof fmtDate === 'function') ? fmtDate(new Date(Date.UTC(2000 + +m[1], +m[2] - 1, +m[3]))) : `${m[3]}/${m[2]}/20${m[1]}`;
 }
 
 function fplDofToIsoDate(dof) {
@@ -5855,7 +5856,7 @@ function showMetList(kind, list) {
   if (gen && !isNaN(gen) && typeof S.notamUpdated === 'function') {
     const u = document.createElement('div');
     u.className = 'notam-updated';
-    u.textContent = S.notamUpdated(gen.toISOString().slice(0, 16).replace('T', ' ') + 'Z');
+    u.textContent = S.notamUpdated((typeof notamStampUtc === 'function' ? notamStampUtc(gen) : gen.toISOString().slice(0, 16).replace('T', ' ') + 'Z'));
     box.appendChild(u);
   }
   const listEl = document.createElement('div');
