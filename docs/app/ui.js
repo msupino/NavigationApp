@@ -4309,7 +4309,7 @@ function showRouteLibraryModal(focusSave) {
     // AI keys are named only while the gist offers the assistant: with it withdrawn there are
     // no keys to speak of (asked: "AI keys sync is not relevant when AI assistance is disabled").
     const aiOn = typeof tune !== 'function' || tune('featureAssistant') !== false;
-    setHint.textContent = (aiOn ? S.routeLibraryGdriveSyncPii : (S.routeLibraryGdriveSyncPiiNoAi || S.routeLibraryGdriveSyncPii)) || '';
+    setHint.textContent = (S.routeLibraryGdriveSyncPii || '') + (aiOn && S.routeLibraryGdriveSyncPiiAi ? ' ' + S.routeLibraryGdriveSyncPiiAi : '');
     const syncSetHint = () => {};
     // Restore: the backup's settings on this device, once, ticked or not.
     const restoreBtn = document.createElement('button');

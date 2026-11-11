@@ -2109,8 +2109,8 @@ window.S = Object.assign({
   routeLibraryGdriveSyncSettings: 'Use settings from Drive on this device',
   // Named in full because the pilot profile is personal data leaving the device, and
   // a checkbox reading "settings" does not suggest a licence number is among them.
-  routeLibraryGdriveSyncPii: 'Sync backs up your settings to your Google Drive, with your pilot details (name, licence, phone, email) and aircraft. The AIS filing address and AI keys never leave this device.',
-  routeLibraryGdriveSyncPiiNoAi: 'Sync backs up your settings to your Google Drive, with your pilot details (name, licence, phone, email) and aircraft. The AIS filing address never leaves this device.',
+  routeLibraryGdriveSyncPii: 'Sync backs up your settings to your Google Drive, with your pilot details (name, licence, phone, email) and aircraft. The AIS filing address never leaves this device.',
+  routeLibraryGdriveSyncPiiAi: 'Nor do AI keys.',
   routeLibraryGdriveSyncSettingsTitle: 'Display settings (layers, colours, sizes and the like) from your other devices. Your aircraft, pilot details and corrections sync either way.',
   routeLibraryGdriveRestore: 'Restore settings from Drive',
   routeLibraryGdriveRestoreConfirm: 'Replace this device\u2019s settings with the backup on Google Drive? The app reloads.',
