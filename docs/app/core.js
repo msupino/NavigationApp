@@ -1837,6 +1837,7 @@ window.S = Object.assign({
   choosePointVor: 'VOR station',
   choosePointCommChange: 'Freq-change arrow',
   choosePointNotam: 'NOTAM',
+  choosePointAircraft: 'Aircraft',
   tbSearchClear: 'Clear the box',
   // "?" beside the search box: what it understands, as examples to tap.
   searchHelpTitle: 'What can I search?',

@@ -77,6 +77,7 @@ window.S = {
   choosePointVor: 'תחנת VOR',
   choosePointCommChange: 'חץ שינוי תדר',
   choosePointNotam: 'NOTAM',
+  choosePointAircraft: 'מטוס',
   tbSearchClear: 'ניקוי התיבה',
   searchHelpTitle: 'מה אפשר לחפש?',
   searchExIntro: 'הקישו על דוגמה כדי לנסות:',
