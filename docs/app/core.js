@@ -2227,6 +2227,7 @@ window.S = Object.assign({
   notamModalTitle: 'Active NOTAMs',
   notamNew: 'NEW',
   notamNewCount: function (n) { return n + ' new'; },
+  notamNewWord: 'new',
   notamNone: 'No active NOTAMs.',
   notamUnavailable: 'NOTAMs unavailable.',
   notamUpdated: function(t) { return 'Updated ' + t; },

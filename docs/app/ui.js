@@ -8952,15 +8952,15 @@ function showNotamModal(only, opts) {
     const ic = Array.from(new Set(subset.map(n => String(n.icao || '').toUpperCase()).filter(Boolean)));
     const scope = ic.length === 1 ? notamAirfieldLabel(ic[0]) : 'LLLL';
     const fresh = subset.filter(n => notamIsNew(n, seenBefore, firstRun)).length;
-    // Bidi: in Hebrew the title is an RTL line, and the "<total> · <new>" tail is two numbers
-    // round a middot. Left to the bidi algorithm they swap -- 56 · 2 read as 2 · 56 (reported).
-    // Isolate the count tail LTR so the numbers keep their order, and the scope first-strong so a
-    // Hebrew airfield name (בן גוריון) still renders right while LLLL stays LTR. (U+2066 LRI,
-    // U+2068 FSI, U+2069 PDI.)
-    const count = subset.length + (fresh ? ' · ' + (typeof S.notamNewCount === 'function'
-      ? S.notamNewCount(fresh) : fresh + ' new') : '');
+    // Bidi: in Hebrew the title is an RTL line, and the "<total> · <new> new" tail reorders --
+    // the two numbers swap, or the whole count flips, however it is wrapped. First-strong-isolate
+    // each piece -- the scope, the total, the new count -- so every number keeps LTR while the
+    // dash, the middot and the Hebrew "new" flow with the line. (U+2068 FSI, U+2069 PDI.)
+    const fsi = (x) => '\u2068' + x + '\u2069';
+    const word = S.notamNewWord || 'new';
+    const count = fsi(subset.length) + (fresh ? ' \u00b7 ' + fsi(fresh) + ' ' + word : '');
     h.textContent = (S.notamModalTitle || 'Active NOTAMs')
-      + ' (\u2068' + scope + '\u2069) \u2066\u2014 ' + count + '\u2069';
+      + ' (' + fsi(scope) + ') \u2014 ' + count;
   };
   updateTitle(shown);
   box.appendChild(h);
