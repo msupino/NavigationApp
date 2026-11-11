@@ -707,3 +707,41 @@ test('the traffic inspector links to the aircraft on the feed’s own map', asyn
   });
   await expect(page.locator('#insp-traffic-view')).toHaveCount(0);
 });
+
+// Reported: "followed plane is in corner", then "check mobile follow as well". A zoom scales the
+// map about the middle of the whole map, but the followed aircraft is held in the middle of the
+// part you can see, so each zoom carried it further off, into a corner. It is put back the
+// moment a zoom ends; and after a pan it comes back when the pan's grace ends, not at the next
+// report. On a desktop with the panel at the side, and a phone with the panel as a bottom sheet.
+for (const [dev, vp] of [['desktop', { width: 1000, height: 506 }], ['phone', { width: 390, height: 844 }]]) {
+  test(`a followed aircraft stays where it is held when the map zooms or after a pan, ${dev}`, async ({ page }) => {
+    await page.setViewportSize(vp);
+    await boot(page);
+    await page.evaluate(() => map.setView([32.10, 34.90], 10));
+    await page.locator('.traffic-mark').first().click({ force: true });
+    await page.locator('#insp-traffic-follow').click();
+    const at = () => page.evaluate(() => {
+      const p = map.latLngToContainerPoint([32.10, 34.90]);
+      return { x: Math.round(p.x), y: Math.round(p.y) };
+    });
+    const held = await at();
+    expect(await seen(page, 32.10, 34.90)).toEqual({ onMap: true, underPanel: false });
+    // Zoom in twice and out once, as the buttons do (no gesture on the map, so no grace).
+    for (const dz of [1, 1, -1]) {
+      await page.evaluate((dz) => map.setZoom(map.getZoom() + dz, { animate: false }), dz);
+      const now = await at();
+      expect(Math.abs(now.x - held.x)).toBeLessThanOrEqual(2);
+      expect(Math.abs(now.y - held.y)).toBeLessThanOrEqual(2);
+    }
+    // A pan holds the view for its grace period, then the aircraft comes back -- with no report.
+    await page.evaluate(() => { setTune('followResumeMs', 800); setTune('trafficRefreshSec', 60); refreshTrafficFeature(); });
+    // Too small a move to ask the feed again: only the end of the grace can bring it back.
+    await page.evaluate(() => { gpsNoteUserMapMove(); map.panBy([28, 22], { animate: false }); });
+    const panned = await at();
+    expect(Math.abs(panned.x - held.x) + Math.abs(panned.y - held.y)).toBeGreaterThan(30);
+    await expect.poll(async () => {
+      const now = await at();
+      return Math.abs(now.x - held.x) <= 2 && Math.abs(now.y - held.y) <= 2;
+    }, { timeout: 3000 }).toBe(true);
+  });
+}
