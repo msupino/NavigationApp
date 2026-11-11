@@ -125,6 +125,28 @@
     map.setView(visibleCentreFor(target.lat, target.lon), map.getZoom());
     return true;
   };
+  // A zoom scales the map about the middle of the WHOLE map, but a followed aircraft is held in
+  // the middle of the part you can see -- so every zoom carried it further from there, and a
+  // few zooms in put it in a corner (reported: "followed plane is in corner"). Put it back the
+  // moment the zoom ends, whatever made it: the buttons, a wheel, a pinch. Zooming is not
+  // asking to look somewhere else; a pan is, and still holds the view for its grace period.
+  function recentreFollowed() {
+    if (!followedHex) return;
+    const target = (window.trafficAircraft || []).find(a => a && a.hex === followedHex);
+    if (!target) return;
+    map.setView(visibleCentreFor(target.lat, target.lon), map.getZoom(), { animate: false });
+  }
+  map.on('zoomend', recentreFollowed);
+  // A pan holds the view for its grace period; when that ends, the aircraft comes back then,
+  // not at the next report (up to trafficRefreshSec later), as the pilot's own aircraft does.
+  let resumeTimer = 0;
+  map.on('moveend', () => {
+    if (!followedHex || typeof gpsFollowSuspended !== 'function' || !gpsFollowSuspended()) return;
+    clearTimeout(resumeTimer);
+    const left = (typeof _gpsUserMovedAt === 'number' ? _gpsUserMovedAt : 0)
+      + (typeof gpsFollowGraceMs === 'function' ? gpsFollowGraceMs() : 5000) - Date.now();
+    resumeTimer = setTimeout(() => { if (!gpsFollowSuspended()) recentreFollowed(); }, Math.max(0, left) + 50);
+  });
   window.trafficClearFollow = function (hex) {
     if (!hex || followedHex === String(hex)) followedHex = '';
   };
