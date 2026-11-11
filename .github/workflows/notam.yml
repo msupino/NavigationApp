@@ -1,16 +1,13 @@
 name: Update NOTAMs (IAA → notam-data)
 
-# Scrapes Israel NOTAMs from the IAA Mobile AeroInfo site
-# (brin.iaa.gov.il/MobileAeroinfo) — the authoritative national source, no
-# credentials needed. FAA SWIM / autorouter only carry the international
-# A-series FIR NOTAMs; the domestic C-series (airfield / CVFR / UAS / airspace
-# closures) live only here.
+# Israel NOTAMs — the authoritative national source. FAA SWIM /
+# autorouter only carry the international A-series FIR NOTAMs; the domestic C-series (airfield /
+# CVFR / UAS / airspace closures) live only here.
 #
-# Flow: GET maiNotam.aspx (list of active NOTAMs → rowIDs), then
-# GET maiDetails.aspx?rowID=..&mode=notam for each (full ICAO NOTAM: Q/A/B/C/E).
-# Parse validity (B/C) + geometry (Q-line circle / item-E coordinate polygon),
-# publish notam.json to the orphan `notam-data` branch. The site sits behind
-# Radware bot protection — a session cookie is forwarded across requests.
+# The hourly job fetches the NOTAM JSON from a relay whose URL is configured in the tuning gist
+# (`notamWorkerUrl`), so the endpoint is not hard-coded in the repo. The relay returns the full
+# raw ICAO text per NOTAM; this job parses validity (B/C) + geometry (Q-line circle / item-E
+# coordinate polygon) and publishes notam.json to the orphan `notam-data` branch.
 #
 # This is a CVFR / LSA (VFR) planner, so IFR-only and checklist NOTAMs are
 # filtered out by the Q-line traffic field (keep V / IV, drop I / K).
@@ -22,7 +19,7 @@ on:
 
 # The only scheduled publisher that declared neither: without `permissions` the job took the
 # repository default scopes -- on a permissive repo that is write access to issues, PRs,
-# actions and packages -- for a step that curls an external site and regex-parses its HTML.
+# actions and packages -- for a step that fetches an external endpoint and parses its JSON.
 # Without a concurrency group, a workflow_dispatch fired inside the hourly run's window gave
 # two runs force-pushing notam-data, where whichever finished last won: an older snapshot
 # could overwrite a newer one. Both siblings (aviation-data, ims-charts) guard this already.
@@ -43,33 +40,17 @@ jobs:
           mkdir -p out
           node --input-type=module <<'NODE'
           import { writeFileSync } from 'node:fs';
-          import { execFileSync } from 'node:child_process';
-          import { tmpdir } from 'node:os';
-          import { join } from 'node:path';
-          const BASE = 'https://brin.iaa.gov.il/MobileAeroinfo';
-          const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36';
-          const out = { generatedAt: new Date().toISOString(), source: 'IAA (brin.iaa.gov.il MobileAeroinfo)', fir: 'LLLL', notams: [] };
+          // The NOTAM relay URL comes from the app's tuning gist (notamWorkerUrl); a default is used
+          // until that key is set. The relay returns the full raw ICAO text per NOTAM, so every
+          // parser below (geometry, B/C/E, Q-line) is unchanged -- only the acquisition differs.
+          const CONFIG_URL = 'https://gist.githubusercontent.com/msupino/12c6e9d9dfcd783ffbeaa06246783840/raw/navaid-config.json';
+          const DEFAULT_WORKER = 'https://notams-fetch.marco-956.workers.dev/';
+          // Israel's FIR always has many active NOTAMs; a response with far fewer is a degraded
+          // relay/upstream, not a quiet day. Refuse to publish it so generatedAt does NOT refresh
+          // and charts-monitor sees the feed go stale, instead of a thin list passed off as complete.
+          const MIN_NOTAMS = 10;
+          const out = { generatedAt: new Date().toISOString(), source: 'IAA (via relay)', fir: 'LLLL', notams: [] };
           let fetched = false;
-
-          // The site's Radware layer blocks Node's fetch (TLS fingerprint) but
-          // serves curl. Shell out to curl with a shared cookie jar so the
-          // ASP.NET session + Radware cookies persist across list → detail GETs.
-          const JAR = join(tmpdir(), 'iaa-notam-jar.txt');
-          function get(url) {
-            try {
-              return {
-                // -f: exit non-zero on HTTP >=400 so the catch fires (a 4xx/5xx
-                // error page must not be treated as a successful body). The
-                // Radware block page returns 200, so it's caught by the text
-                // checks at the call sites instead.
-                status: 200,
-                text: execFileSync('curl', ['-sS', '-k', '-f', '-m', '30', '-A', UA, '-b', JAR, '-c', JAR,
-                  '-H', 'Referer: ' + BASE + '/maiNotam.aspx',
-                  '-H', 'Accept: text/html,application/xhtml+xml', url],
-                  { encoding: 'utf8', maxBuffer: 20 * 1024 * 1024 }),
-              };
-            } catch (e) { return { status: 0, text: '' }; }
-          }
 
           // --- geometry from the raw ICAO NOTAM ---
           // Q-line trailing field: DDMM[NS]DDDMM[EW]RRR (RRR = radius NM; 000/999 = FIR-wide → skip).
@@ -123,92 +104,66 @@ jobs:
           const iso = (s) => { const m = String(s).match(/^(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})$/); return m ? `20${m[1]}-${m[2]}-${m[3]}T${m[4]}:${m[5]}:00Z` : ''; };
 
           async function run() {
-            try { execFileSync('rm', ['-f', JAR]); } catch (e) { /* fresh jar */ }
-            const list = await get(BASE + '/maiNotam.aspx');
-            if (list.status !== 200) { console.error('list HTTP ' + list.status); return; }
-            const html = list.text.replace(/&#39;/g, "'");
-            if (/Block ID|Error 100/.test(html)) { console.error('list blocked by Radware'); return; }
-            const rows = [];
-            const re = /rowClicked\('(\d+)'\)">[\s\S]*?DivRecordID">([A-Z]\d+\/\d+)<\/td><td[^>]*>\s*([A-Z]{4})/g;
-            let m; while ((m = re.exec(html))) rows.push({ rowID: m[1], id: m[2], icao: m[3] });
-            // Dedup by NOTAM id up front so the publish threshold below compares
-            // like-for-like (detailOk counts unique NOTAMs).
-            const uniq = [...new Map(rows.map(r => [r.id, r])).values()];
-            console.error('list rows:', rows.length, '| unique:', uniq.length);
-            if (!uniq.length) { console.error('no rows parsed — aborting (keep last-good)'); return; }
-
-            let detailOk = 0, skipped = 0;
-            for (const row of uniq) {
-              let raw = '', start = '', end = '', text = '', traffic = '', type = '';
-              try {
-                const d = await get(BASE + '/maiDetails.aspx?rowID=' + row.rowID + '&scrpos=0&mode=notam');
-                if (d.status === 200 && !/Block ID|Error 100/.test(d.text) && /NOTAM NO:/.test(d.text)) {
-                  // Flatten to text; parse fields (Q/B/C/E) + the Valid From/To
-                  // header straight out of it — no fragile paren wrapper.
-                  raw = d.text
-                    .replace(/<script[\s\S]*?<\/script>/gi, ' ')
-                    .replace(/<style[\s\S]*?<\/style>/gi, ' ')
-                    .replace(/<[^>]+>/g, ' ').replace(/&nbsp;/g, ' ')
-                    .replace(/&#39;/g, "'").replace(/&amp;/g, '&').replace(/\s+/g, ' ')
-                    .split(/IAA Site|Go Back|חזור אחורה/)[0];   // drop the page footer
-                  detailOk++;
-                  const b = raw.match(/\bB\)\s*(\d{10})/), c = raw.match(/\bC\)\s*(\d{10}|PERM)/i);
-                  const vf = raw.match(/Valid From:\s*(\d{2})\/(\d{2})\/(\d{4})\s+(\d{2}):(\d{2})/);
-                  const vt = raw.match(/Valid To:\s*(\d{2})\/(\d{2})\/(\d{4})\s+(\d{2}):(\d{2})/);
-                  start = b ? iso(b[1]) : (vf ? `${vf[3]}-${vf[2]}-${vf[1]}T${vf[4]}:${vf[5]}:00Z` : '');
-                  end = c ? (/PERM/i.test(c[1]) ? 'PERM' : iso(c[1]))
-                          : (vt ? `${vt[3]}-${vt[2]}-${vt[1]}T${vt[4]}:${vt[5]}:00Z` : '');
-                  // Item-E up to the next real ICAO field. Anchor F)/G) to a
-                  // limit token so a stray 'F)'/'G)' inside the prose doesn't
-                  // truncate the text.
-                  const e = raw.match(/\bE\)\s*([\s\S]*?)\s*(?:\bF\)\s*(?:GND|SFC|FL|UNL|AMSL|AGL|\d)|\bG\)\s*(?:GND|SFC|FL|UNL|AMSL|\d)|$)/);
-                  text = e ? e[1].trim() : '';
-                  // The item-E capture includes the NOTAM's wrapping ')' — strip
-                  // it only when parens are unbalanced (a lone trailing close),
-                  // so legitimate text like "(SEE AIP)" is preserved.
-                  if (text && (text.match(/\)/g) || []).length > (text.match(/\(/g) || []).length) text = text.replace(/\)\s*$/, '').trim();
-                  // Q-line: '<FIR>/Q<code>/<traffic>/...'. Match the traffic field
-                  // directly (I=IFR, V=VFR, IV=both, K=checklist) so a missing
-                  // item-A can't blank it (which would fail the filter open). Also
-                  // grab the 4-char Q-code (subject/condition) for decodeNotam.
-                  const tm = raw.match(/\bQ\)\s*[A-Z]{4}\/Q[A-Z]{4}\/([IVK]+)\b/);
-                  traffic = tm ? tm[1].toUpperCase() : '';
-                  const qc = raw.match(/\bQ\)\s*[A-Z]{4}\/Q([A-Z]{4})\b/);
-                  type = qc ? qc[1] : '';
-                }
-              } catch (e) { /* skip this NOTAM's detail */ }
-              // Detail failed to parse → don't publish a text-less placeholder
-              // (would show a NOTAM whose text is just its id).
-              if (!raw) { await new Promise(s => setTimeout(s, 120)); continue; }
-              // Skip IFR-only and checklist NOTAMs (not relevant to VFR/LSA).
-              // Unknown traffic ('') is kept — better shown than wrongly hidden.
-              if (traffic === 'I' || traffic === 'K') { skipped++; await new Promise(s => setTimeout(s, 120)); continue; }
-              out.notams.push({ id: row.id, icao: row.icao, type, text: text || row.id, start, end, geom: geomFromRaw(raw, row.icao) });
-              await new Promise(s => setTimeout(s, 120));   // gentle on the site
+            let WORKER = DEFAULT_WORKER;
+            try {
+              const cfg = await (await fetch(CONFIG_URL)).json();
+              if (cfg && cfg.notamWorkerUrl) WORKER = cfg.notamWorkerUrl;
+            } catch (e) { console.error('config gist fetch failed, using default relay:', e.message); }
+            let arr;
+            try {
+              const res = await fetch(WORKER, { headers: { accept: 'application/json' } });
+              if (!res.ok) { console.error('relay HTTP ' + res.status); return; }
+              arr = await res.json();
+            } catch (e) { console.error('relay fetch failed:', e.message); return; }
+            // The relay returns 502 (not a challenge page) when the source is unavailable, caught above.
+            if (!Array.isArray(arr)) { console.error('relay did not return an array -- keep last-good'); return; }
+            // Dedup by NOTAM id so the publish threshold compares like-for-like.
+            const uniq = [...new Map(arr.filter(x => x && x.notamID && x.messageText).map(x => [x.notamID, x])).values()];
+            console.error('relay NOTAMs:', arr.length, '| unique:', uniq.length);
+            if (uniq.length < MIN_NOTAMS) {
+              console.error('::error::only ' + uniq.length + ' NOTAMs (< ' + MIN_NOTAMS +
+                ') -- degraded worker/upstream. Keeping last-good so the monitor flags staleness.');
+              return;
             }
-            console.error('NOTAMs:', out.notams.length, '| detail OK:', detailOk,
-              '| skipped IFR/checklist:', skipped,
+
+            let ok = 0, skipped = 0;
+            for (const it of uniq) {
+              // The worker carries the full raw ICAO text (Q/A/B/C/E). Flatten to one line so the
+              // field regexes behave exactly as they did on the scraped single-line text.
+              const raw = String(it.messageText).replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+              if (!raw) continue;
+              ok++;
+              const icao = String(it.locationIndicator || '').toUpperCase();
+              const b = raw.match(/\bB\)\s*(\d{10})/), c = raw.match(/\bC\)\s*(\d{10}|PERM)/i);
+              // The worker also carries validFromDate/validToDate (DD/MM/YYYY HH:MM) as a fallback.
+              const vf = String(it.validFromDate || '').match(/(\d{2})\/(\d{2})\/(\d{4})\s+(\d{2}):(\d{2})/);
+              const vt = String(it.validToDate || '').match(/(\d{2})\/(\d{2})\/(\d{4})\s+(\d{2}):(\d{2})/);
+              const start = b ? iso(b[1]) : (vf ? `${vf[3]}-${vf[2]}-${vf[1]}T${vf[4]}:${vf[5]}:00Z` : '');
+              const end = c ? (/PERM/i.test(c[1]) ? 'PERM' : iso(c[1]))
+                            : (vt ? `${vt[3]}-${vt[2]}-${vt[1]}T${vt[4]}:${vt[5]}:00Z` : '');
+              const e = raw.match(/\bE\)\s*([\s\S]*?)\s*(?:\bF\)\s*(?:GND|SFC|FL|UNL|AMSL|AGL|\d)|\bG\)\s*(?:GND|SFC|FL|UNL|AMSL|\d)|$)/);
+              let text = e ? e[1].trim() : '';
+              if (text && (text.match(/\)/g) || []).length > (text.match(/\(/g) || []).length) text = text.replace(/\)\s*$/, '').trim();
+              const tm = raw.match(/\bQ\)\s*[A-Z]{4}\/Q[A-Z]{4}\/([IVK]+)\b/);
+              const traffic = tm ? tm[1].toUpperCase() : '';
+              const qc = raw.match(/\bQ\)\s*[A-Z]{4}\/Q([A-Z]{4})\b/);
+              const type = qc ? qc[1] : '';
+              // Skip IFR-only and checklist NOTAMs (not relevant to VFR/LSA). Unknown traffic kept.
+              if (traffic === 'I' || traffic === 'K') { skipped++; continue; }
+              out.notams.push({ id: it.notamID, icao, type, text: text || it.notamID, start, end, geom: geomFromRaw(raw, icao) });
+            }
+            out.detailOk = ok;
+            out.detailTotal = uniq.length;
+            console.error('NOTAMs:', out.notams.length, '| parsed:', ok, '| skipped IFR/checklist:', skipped,
               '| with geom:', out.notams.filter(n => n.geom).length,
               '| with dates:', out.notams.filter(n => n.start || n.end).length);
-            // Publish only when nearly every detail page parsed. At the old 50% a Radware
-            // throttle that let the list through but blocked half the detail pages published a
-            // HALF list under a fresh generatedAt: the missing NOTAMs -- which can include a
-            // CVFR route closure or an active danger area -- were indistinguishable from "no
-            // NOTAM there", and the staleness monitor stayed green because the timestamp was
-            // current. A partial list presented as complete is the false-safe value this repo
-            // refuses elsewhere (see terrain.js on MSA).
-            out.detailOk = detailOk;
-            out.detailTotal = uniq.length;
-            if (detailOk >= Math.max(1, Math.ceil(uniq.length * 0.9))) {
+            // Publish only when nearly every NOTAM parsed -- a half list presented as complete is
+            // the false-safe this repo refuses (see terrain.js on MSA).
+            if (ok >= Math.max(MIN_NOTAMS, Math.ceil(uniq.length * 0.9))) {
               fetched = true;
-              if (detailOk < uniq.length) {
-                console.error('::warning::NOTAM detail incomplete: ' + detailOk + '/' +
-                  uniq.length + ' pages parsed; publishing with coverage recorded.');
-              }
+              if (ok < uniq.length) console.error('::warning::parsed ' + ok + '/' + uniq.length + '; publishing.');
             } else {
-              console.error('::error::NOTAM detail too incomplete to publish: ' + detailOk +
-                '/' + uniq.length + ' pages parsed. Keeping last-good; the feed will not' +
-                ' advance until this succeeds.');
+              console.error('::error::too few parsed: ' + ok + '/' + uniq.length + '. Keeping last-good.');
             }
           }
           await run().catch(e => console.error('fetch failed:', e.message));
