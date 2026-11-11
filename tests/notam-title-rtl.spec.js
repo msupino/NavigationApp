@@ -30,11 +30,14 @@ async function open(page, lang) {
 
 const LRI = '⁦', FSI = '⁨', PDI = '⁩';
 
-test('the count tail is LTR-isolated so total and new keep their order', async ({ page }) => {
+test('each number is first-strong isolated so the Hebrew count keeps its order', async ({ page }) => {
   const t = await open(page, 'he');
-  expect(t).toContain('3 · 2');                                    // logical order kept (total · new)
-  expect(new RegExp(LRI + '[^' + PDI + ']*3 · 2[^' + PDI + ']*' + PDI).test(t)).toBe(true);  // tail isolated LTR
-  expect(new RegExp(FSI + 'LLLL[^' + PDI + ']*' + PDI).test(t)).toBe(true);                        // scope first-strong isolated
+  expect(t).toContain(FSI + '3' + PDI);                 // total, isolated
+  expect(t).toContain(FSI + '2' + PDI);                 // new count, isolated
+  expect(t).toContain('חדשים');                          // the Hebrew "new" flows with the line
+  expect(new RegExp(FSI + 'LLLL[^' + PDI + ']*' + PDI).test(t)).toBe(true);   // scope first-strong isolated
+  // Logical order is total then new; the per-number isolates keep each LTR under RTL.
+  expect(t.replace(new RegExp('[' + LRI + FSI + PDI + ']', 'g'), '')).toContain('3 · 2 חדשים');
 });
 
 test('English title is unchanged in substance', async ({ page }) => {

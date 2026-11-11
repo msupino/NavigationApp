@@ -237,11 +237,20 @@ jobs:
                 fi
                 # The wiki follows main: its patches go in when the code they describe is live.
                 # A bot merge would not start the wiki workflow on its own (see Deploy above).
+                # Dispatch it ONLY when this promotion actually brought a wiki patch -- otherwise
+                # the job would clone the wiki for nothing. Fail-safe: dispatch unless the file
+                # list is known and carries no wiki-patches/ change (a manual run still works).
                 if [ "$BASE" = "main" ]; then
-                  gh workflow run "Apply wiki patches" --ref main || {
-                    echo "::error::Failed to dispatch Apply wiki patches -- run it by hand"
-                    FAILED=1
-                  }
+                  WIKI_CHANGED=$(gh api "repos/${{ github.repository }}/commits/main" \
+                    --jq '[.files[]?.filename // empty] | map(select(startswith("wiki-patches/"))) | length' 2>/dev/null || echo "?")
+                  if [ "$WIKI_CHANGED" = "0" ]; then
+                    echo "No wiki-patches in this promotion -- not dispatching the wiki job."
+                  else
+                    gh workflow run "Apply wiki patches" --ref main || {
+                      echo "::error::Failed to dispatch Apply wiki patches -- run it by hand"
+                      FAILED=1
+                    }
+                  fi
                 fi
                 # The merge itself succeeded, but a dropped dispatch means the promo PR
                 # never appears. Fail loudly rather than reporting success.

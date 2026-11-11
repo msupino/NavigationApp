@@ -1,0 +1,52 @@
+From cff1b1ef206ca7ecc6d2b41f5aaf714252841bb6 Mon Sep 17 00:00:00 2001
+From: Marco <marco@supino.org>
+Date: Wed, 11 Nov 2026 13:12:45 +0000
+Subject: [PATCH] Inspector: the comm frame now shows secondary / ground /
+ approach / TMA frequencies
+
+---
+ Inspector-he.md | 7 +++++--
+ Inspector.md    | 9 ++++++---
+ 2 files changed, 11 insertions(+), 5 deletions(-)
+
+diff --git a/Inspector-he.md b/Inspector-he.md
+index 1515c2e..9081813 100644
+--- a/Inspector-he.md
++++ b/Inspector-he.md
+@@ -145,8 +145,11 @@ DA  = PA + 120 × (T − ISA)
+ 
+ ## שדה תעופה: קשר
+ 
+-תדרי ראשי, אישור ו-ATIS יושבים במסגרת נפרדת עם כותרת. בשדה שיש בו שלושתם אלו חמש שורות של
+-מספרים חשופים, שנקראות כרשימת הגדרות ולא כמכשירי הקשר שיש לכוון.
++התדר הראשי יושב במסגרת נפרדת עם כותרת, ואחריו כל תדר אחר שהשדה מפרסם: תדר מגדל **משני** (ברוב
++השדות המבוקרים — חיפה <span dir="ltr">127.80</span>, הרצליה <span dir="ltr">129.40</span>, …), ובמקום
++שיש להם — תדרי **קרקע**, **גישה** ו-<span dir="ltr">TMA</span> (בן גוריון), ואז **קלירנס** ו-<span dir="ltr">ATIS</span>.
++התדר המשני ותדרי המרחב הם לקריאה בלבד; הראשי הוא הניתן לעריכה ושה-NOTAM יכול לשנות. המסגרת מקבצת
++אותם כך שייקראו כמכשירי הקשר שיש לכוון, ולא כרשימת הגדרות.
+ 
+ אחרי התדרים, שורת **טלפון** מציגה את המספר המפורסם של השדה כקישור שמחייג (☎), לאישור בטלפון,
+ לשדה סגור או לקשר שאבד. היא נקראת *טלפון* ולא *מגדל*, כי ברוב השדות אין מגדל. שדה ללא מספר
+diff --git a/Inspector.md b/Inspector.md
+index 4dda210..24226ee 100644
+--- a/Inspector.md
++++ b/Inspector.md
+@@ -154,9 +154,12 @@ that page's amendment and hash; `scripts/aip-drift.py` reports a page the CAA ha
+ 
+ ## Airfield: Communication
+ 
+-Primary, Clearance and ATIS sit in their own titled frame. On a field with all three this is
+-five rows of bare numbers otherwise, which reads as a list of settings rather than as the
+-radios to set.
++Primary sits in its own titled frame, and after it every other frequency the field publishes:
++a **Secondary** tower frequency (most controlled fields — Haifa 127.80, Herzliya 129.40, …), and
++where the field has them its **Ground**, **Approach** and **TMA** frequencies (Ben Gurion), then
++**Clearance** and **ATIS**. The secondary and area frequencies are read-only reference; the primary
++is the editable one a NOTAM can change. The frame groups them so they read as the radios to set,
++not a list of settings.
+ 
+ After the frequencies, a **Phone** row gives the field's published number as a link that dials
+ it (☎), for a clearance by phone, a closed field or a dead radio. It is labelled *Phone*, not
+-- 
+2.43.0
+
