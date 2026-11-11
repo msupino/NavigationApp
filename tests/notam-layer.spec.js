@@ -474,6 +474,52 @@ test('prose border NOTAMs are geocoded to buffer polygons', async ({ page }) => 
   expect(g.lngMax).toBeLessThan(35.95);
 });
 
+test('border buffers do not self-intersect at sharp salients (Hermon, Eilat)', async ({ page }) => {
+  // The one-sided inland buffer self-folded where a border salient is narrower than the offset
+  // (the Syria/Hermon spike, the Egypt/Eilat triangle). notamDeloop strips the loop.
+  await boot(page, { generatedAt: '2026-06-23T09:00:00Z', notams: [
+    { id: 'SYR/26', type: 'AELC', end: 'PERM', geom: null, icao: 'LLLL',
+      text: 'AN AREA FM SYRIA BOUNDRAY TO 6KM WB CLSD TO ALL DOM FLT.' },
+    { id: 'EGY/26', type: 'AELC', end: 'PERM', geom: null, icao: 'LLLL',
+      text: 'OPS OF FLT FM EGYPT BOUNDRAY TO 6KM WB REQUIRES TRANSPONDER.' },
+  ] });
+  await page.locator('#notam-cb').check();
+  const r = await page.evaluate(async () => {
+    if (typeof loadNotamBorders === 'function') await loadNotamBorders();
+    if (typeof buildNotamBorderAreas === 'function') buildNotamBorderAreas();
+    const cross = (p1, p2, p3, p4) => {
+      const d1x = p2[0] - p1[0], d1y = p2[1] - p1[1], d2x = p4[0] - p3[0], d2y = p4[1] - p3[1];
+      const den = d1x * d2y - d1y * d2x; if (Math.abs(den) < 1e-12) return false;
+      const t = ((p3[0] - p1[0]) * d2y - (p3[1] - p1[1]) * d2x) / den;
+      const u = ((p3[0] - p1[0]) * d1y - (p3[1] - p1[1]) * d1x) / den;
+      return t > 1e-9 && t < 1 - 1e-9 && u > 1e-9 && u < 1 - 1e-9;
+    };
+    const selfInts = (coords) => {
+      const kx = 111.32 * Math.cos(coords[0][0] * Math.PI / 180);
+      const xy = coords.map(c => [c[1] * kx, c[0] * 110.57]);
+      let c = 0; const n = xy.length - 1;
+      for (let i = 0; i < n; i++) for (let j = i + 2; j < n; j++) {
+        if (i === 0 && j === n - 1) continue;
+        if (cross(xy[i], xy[i + 1], xy[j], xy[j + 1])) c++;
+      }
+      return c;
+    };
+    const out = {};
+    for (const id of ['SYR/26', 'EGY/26']) {
+      const nn = notams.find(x => x.id === id);
+      out[id] = nn && nn.geom && nn.geom.type === 'polygon'
+        ? { pts: nn.geom.coords.length, si: selfInts(nn.geom.coords), border: nn.geom._border } : null;
+    }
+    return out;
+  });
+  expect(r['SYR/26']).not.toBeNull();
+  expect(r['SYR/26'].border).toBe('SYRIA');
+  expect(r['SYR/26'].si).toBe(0);              // the Hermon spike is gone
+  expect(r['EGY/26']).not.toBeNull();
+  expect(r['EGY/26'].border).toBe('EGYPT');
+  expect(r['EGY/26'].si).toBe(0);              // the Eilat triangle is gone
+});
+
 test('a point within the border buffer is detected as inside the NOTAM', async ({ page }) => {
   await boot(page, { generatedAt: '2026-06-23T09:00:00Z', notams: [
     { id: 'BORDER/26', type: 'AELC', end: 'PERM', geom: null, icao: 'LLLL',

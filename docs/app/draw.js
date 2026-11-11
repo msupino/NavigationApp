@@ -1779,6 +1779,44 @@ function notamSimplify(pts, tolKm) {
   }
   return [pts[0], pts[pts.length - 1]];
 }
+// Remove self-intersection loops from a ring. A one-sided inland buffer self-folds where the
+// border salient is narrower than the offset (the Hermon spike, the Eilat convergence): the
+// offset edge crosses itself and draws an arrow/triangle. At each crossing, splice in the
+// crossing point and keep the larger-area sub-ring (the main strip), dropping the small spike
+// loop. Planar km space (x = lng·cos(refLat), y = lat) is accurate enough at these extents.
+function notamRingCross(p1, p2, p3, p4) {
+  const d1x = p2[0] - p1[0], d1y = p2[1] - p1[1], d2x = p4[0] - p3[0], d2y = p4[1] - p3[1];
+  const den = d1x * d2y - d1y * d2x;
+  if (Math.abs(den) < 1e-12) return null;
+  const t = ((p3[0] - p1[0]) * d2y - (p3[1] - p1[1]) * d2x) / den;
+  const u = ((p3[0] - p1[0]) * d1y - (p3[1] - p1[1]) * d1x) / den;
+  if (t > 1e-9 && t < 1 - 1e-9 && u > 1e-9 && u < 1 - 1e-9) return [p1[0] + t * d1x, p1[1] + t * d1y];
+  return null;
+}
+function notamDeloop(ring) {
+  if (!Array.isArray(ring) || ring.length < 4) return ring;
+  const refLat = ring.reduce((a, p) => a + p[0], 0) / ring.length;
+  const kx = 111.32 * Math.cos(refLat * Math.PI / 180) || 1e-6;
+  let xy = ring.map(p => [p[1] * kx, p[0] * 110.57]);          // [x, y] km
+  const area = r => { let a = 0; for (let k = 0; k < r.length - 1; k++) a += r[k][0] * r[k + 1][1] - r[k + 1][0] * r[k][1]; return Math.abs(a) / 2; };
+  let guard = 0;
+  while (guard++ < 4000) {
+    const n = xy.length - 1; let hit = null;
+    for (let i = 0; i < n && !hit; i++) {
+      for (let j = i + 2; j < n; j++) {
+        if (i === 0 && j === n - 1) continue;                   // shared closing vertex, not a crossing
+        const ip = notamRingCross(xy[i], xy[i + 1], xy[j], xy[j + 1]);
+        if (ip) { hit = [i, j, ip]; break; }
+      }
+    }
+    if (!hit) break;
+    const [i, j, ip] = hit;
+    const inner = [ip].concat(xy.slice(i + 1, j + 1)); inner.push(ip);
+    const outer = xy.slice(0, i + 1).concat([ip], xy.slice(j + 1));
+    xy = area(outer) >= area(inner) ? outer : inner;
+  }
+  return xy.map(q => [q[1] / 110.57, q[0] / kx]);
+}
 function notamBorderBuffer(arc, km) {
   if (!Array.isArray(arc) || arc.length < 2 || !(km > 0)) return null;
   // Drop near-duplicate vertices (zero-length tangents), then simplify.
@@ -1811,7 +1849,7 @@ function notamBorderBuffer(arc, km) {
   }
   const ring = arc.concat(off.reverse());
   ring.push(arc[0]);
-  return ring;
+  return notamDeloop(ring);
 }
 // Parse a prose border NOTAM → buffer polygon. Matches e.g.
 // "FM LEBANON BOUNDRAY TO 8KM SB" (BOUNDRAY is the source's spelling).
