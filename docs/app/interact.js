@@ -2177,8 +2177,8 @@ function appendAirfieldFrequencyRows(body, af) {
   }
   // The catalog carries a fuller set than airfields.json -- a secondary tower frequency (most
   // controlled fields), and ground / approach / TMA at Ben Gurion. Show every one a field
-  // publishes, read-only, right after the primary (asked: "add all known freqs, LLHA/LLHZ have
-  // secondary"). The primary stays the editable one a NOTAM can change; these are reference.
+  // publishes, right after the primary (asked: "add all known freqs, LLHA/LLHZ have secondary").
+  // Each is editable like the primary (its own override key, below), so any freq can be corrected.
   if (id) {
     const crow = typeof commCatalogCallSignRow === 'function' ? commCatalogCallSignRow(id) : null;
     if (crow) {
