@@ -95,7 +95,9 @@ test('the airfield panel says what kind of field the chart shows, and its runway
     return document.getElementById('insp-body').textContent;
   }, icao);
   const ros = await rows('LLIB');
-  expect(ros).toContain('1106 m');
+  // The runway's own figure now comes from its AIP chart (1 105 m), per runway; the LSA block's
+  // lighting and surface stay.
+  expect(ros.replace(/\u00a0/g, ' ')).toContain('(1,105 m)');
   expect(ros).toContain('minimal lighting');
   expect(await rows('LLMG')).toContain('Airstrip');
   expect(await rows('GVULT')).toContain('Agricultural strip');

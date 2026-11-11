@@ -10863,3 +10863,11 @@ body.deck-on .ac-settings-body select, body.deck-on .ac-settings-body input[type
 .ac-settings-body .ac-custom-grid input[type="number"] { width: 80px; font-size: 13px; padding: 4px 6px; }
 .ac-settings-body select { font-size: 13px; padding-block: 4px; }
 .ac-settings-body .ac-own-row select { min-width: 80px; }
+
+/* Airfield panel: a runway's length and width (interact.js runwayDimsText). Wrapped in a narrow
+   panel, the second line stays at the end like every other value, clear of the runway's name. */
+/* The value is an LTR run (dir=auto), so `end` would mean its own right in Hebrew too: align it
+   by the panel's side instead, and keep the gap on the label, whose direction is the panel's. */
+#insp-body .rwy-dims-row > label { margin-inline-end: 10px; }
+#insp-body .rwy-dims-row .val { text-align: right; }
+html[dir="rtl"] #insp-body .rwy-dims-row .val { text-align: left; }

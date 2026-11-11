@@ -1761,7 +1761,7 @@ window.S = Object.assign({
   commfailUrl: 'data/commfail.json?v=2',
   worldCountriesUrl: 'data/world-countries.json?v=2',  // country outlines + names, always offline  // published comm-failure entry points per field
   navWpSearchField: 'en',              // which locale label to show/search in results
-  airfieldsUrl: 'data/airfields.json?v=43',  // resolved relative to index.html (docs/)
+  airfieldsUrl: 'data/airfields.json?v=44',  // resolved relative to index.html (docs/)
   airfieldHoursUrl: 'data/airfield-hours.json?v=1',  // published hours (airfield-hours.js)
   airfieldLabelField: 'en',            // which locale label to show on the overlay
   routeTemplatesUrl: 'data/route-templates.json?v=3', // ready-made route templates
