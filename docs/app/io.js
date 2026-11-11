@@ -8378,7 +8378,10 @@ function renderFreqTable(freqSection) {
     .filter(o => {
       const key = typeof commCallSignIdKey === 'function'
         ? commCallSignIdKey(o.id) : String(o.id || '').trim().toUpperCase();
-      return key && usedIds.has(key);
+      // Keep a call sign that a route references (usedIds), and always an airfield's own primary
+      // (idToIcao maps it to an ICAO). Otherwise the table showed a field's secondary/clearance
+      // but not its tower -- Eilat 122.00 with no 119.00 -- for fields no route happens to cross.
+      return key && (usedIds.has(key) || !!idToIcao[key]);
     })
     .sort((a, b) => {
       // By ICAO, which is what the row shows and what a pilot looks up. A call sign with no
@@ -8420,6 +8423,33 @@ function renderFreqTable(freqSection) {
       if (notam && !parts.length) {
         afFreqRows.push({ af, flabel: fld[1], notam, readOnly: true,
           part: { label: '', freq: notam.freq, def: notam.freq, key: '', overridden: false } });
+      }
+    }
+    // The call-sign catalog carries more than the primary -- a secondary tower frequency, and
+    // ground / approach / TMA at Ben Gurion. The inspector shows them editable; mirror that here
+    // so every published frequency can be found and corrected in one table. Same override map and
+    // "<ICAO>|cat:<field>" key as the inspector, so an edit in one shows in the other.
+    const csId = (typeof AIRFIELD_CALL_SIGN_IDS === 'object' && AIRFIELD_CALL_SIGN_IDS
+      && Object.prototype.hasOwnProperty.call(AIRFIELD_CALL_SIGN_IDS, af.name))
+      ? AIRFIELD_CALL_SIGN_IDS[af.name] : null;
+    const crow = (csId && typeof commCatalogCallSignRow === 'function')
+      ? commCatalogCallSignRow(csId) : null;
+    if (crow) {
+      const extra = [
+        ['secondary', S.secondary || 'Secondary'], ['ground', S.ground || 'Ground'],
+        ['groundWest', S.groundWest || 'Ground W'], ['groundEast', S.groundEast || 'Ground E'],
+        ['appPrimary', S.approach || 'Approach'], ['appSecondary', S.approachSecondary || 'Approach 2'],
+        ['tmaPrimary', S.tma || 'TMA'], ['tmaSecondary', S.tmaSecondary || 'TMA 2'],
+      ];
+      const ovr = typeof airfieldFreqOverrides === 'function' ? airfieldFreqOverrides() : {};
+      for (const [field, flabel] of extra) {
+        const base = crow[field] && String(crow[field]).trim();
+        if (!base) continue;
+        const def = typeof commFormatFreq === 'function' ? commFormatFreq(base) : base;
+        const key = af.name + '|cat:' + field;
+        const o = ovr[key];
+        afFreqRows.push({ af, flabel, notam: null, publishedDef: def,
+          part: { label: '', freq: (o || def), def, key, overridden: !!o && o !== def } });
       }
     }
   }

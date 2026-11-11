@@ -753,7 +753,7 @@ jobs:
     # Pull requests never deploy. Test the Pages artifact produced by `build`
     # through a local HTTP server so deploy-time rewrites are still covered.
     needs: [build, scope]
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     permissions:
       contents: read
     strategy:
