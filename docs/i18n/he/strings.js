@@ -359,6 +359,7 @@ window.S = {
   searchKindNote: 'הערה',
   routeLibraryGdriveSyncSettings: 'השתמש בהגדרות מ‑Drive במכשיר הזה',
   routeLibraryGdriveSyncPii: 'הסנכרון מגבה את ההגדרות ל‑\u2066Google Drive\u2069 שלך, כולל פרטי הטייס (שם, רישיון, טלפון, דוא״ל) וכלי הטיס. כתובת ההגשה ל‑AIS ומפתחות ה‑AI לא יוצאים מהמכשיר הזה.',
+  routeLibraryGdriveSyncPiiNoAi: 'הסנכרון מגבה את ההגדרות ל‑\u2066Google Drive\u2069 שלך, כולל פרטי הטייס (שם, רישיון, טלפון, דוא״ל) וכלי הטיס. כתובת ההגשה ל‑AIS לא יוצאת מהמכשיר הזה.',
   routeLibraryGdriveSyncSettingsTitle: 'הגדרות תצוגה (שכבות, צבעים, גדלים וכדומה) מהמכשירים האחרים שלך. כלי הטיס, פרטי הטייס והתיקונים מסונכרנים בכל מקרה.',
   routeLibraryGdriveRestore: 'שחזר הגדרות מ‑Drive',
   routeLibraryGdriveRestoreConfirm: 'להחליף את ההגדרות במכשיר הזה בגיבוי שב‑Google Drive? האפליקציה תיטען מחדש.',
