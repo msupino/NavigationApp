@@ -977,6 +977,15 @@
             <option value="desktop" data-i18n="tbTabletLayoutDesktop"></option>
           </select>
         </label>
+        <!-- How every user-visible date is written. Israel's civil default is day-first. -->
+        <label id="date-format-row" class="navtoggle" data-i18n-title="tbDateFormatTitle">
+          <span data-i18n="tbDateFormat"></span>
+          <select id="date-format">
+            <option value="dmy" data-i18n="tbDateFormatDmy"></option>
+            <option value="mdy" data-i18n="tbDateFormatMdy"></option>
+            <option value="ymd" data-i18n="tbDateFormatYmd"></option>
+          </select>
+        </label>
         <script>
           (function () {
             var sel = document.getElementById('lang-select');

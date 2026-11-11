@@ -510,6 +510,7 @@ function dedupePointCandidates(candidates) {
     if (!c) continue;
     let key;
     if (c.type === 'notam') key = 'notam:' + (c.notam && c.notam.id);
+    else if (c.type === 'traffic') key = 'traffic:' + (c.hex || (c.aircraft && c.aircraft.hex) || '');
     else { if (!Number.isInteger(c.index)) continue; key = c.type + ':' + c.index; }
     if (seen.has(key)) continue;
     seen.add(key);
@@ -540,6 +541,14 @@ function pointChoiceText(c) {
     return {
       primary: n.id || 'NOTAM',
       meta: (S.choosePointNotam || 'NOTAM') + (n.end ? ' / ' + n.end : ''),
+    };
+  }
+  if (c.type === 'traffic') {
+    const a = c.aircraft || {};
+    const name = (a.flight && String(a.flight).trim()) || a.hex || (S.choosePointAircraft || 'Aircraft');
+    return {
+      primary: name,
+      meta: (S.choosePointAircraft || 'Aircraft') + (a.hex && a.hex !== name ? ' \u00b7 ' + a.hex : ''),
     };
   }
   if (c.type === 'commcallout') {
@@ -683,6 +692,12 @@ function selectPointCandidate(c) {
     if (typeof showNotamModal === 'function') showNotamModal([c.notam]);
     return;
   }
+  if (c.type === 'traffic') {
+    state.selected = { type: 'traffic', hex: c.hex || (c.aircraft && c.aircraft.hex) };
+    showInspector();
+    draw();
+    return;
+  }
   state.selected = c.type === 'commcallout'
     ? selectionForNoteHit(c.index)
     : { type: c.type, index: c.index };
@@ -699,9 +714,9 @@ function showPointChoice(candidates) {
   // over the chart, in flight. Reported: the map is locked for selecting a waypoint and the
   // multiple-waypoint chooser still opens.
   //
-  // Aircraft are not in this list -- a traffic tap is handled in traffic.js and names its
-  // aeroplane by transponder address, not by a place in one of these arrays -- so there is
-  // nothing here to keep selectable, and the whole question goes.
+  // A traffic tap over another item adds the aeroplane here as a {type:'traffic'} candidate
+  // (traffic.js), so the pilot who tapped a plane sitting on an airfield can still choose the
+  // field. A plane on empty map is selected straight from its marker and never reaches here.
   if (typeof inspectorAllowedNow === 'function' && !inspectorAllowedNow()) {
     if (typeof noteInspectorRefusedWhileTracking === 'function') noteInspectorRefusedWhileTracking();
     return false;

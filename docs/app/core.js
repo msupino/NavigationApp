@@ -1837,6 +1837,7 @@ window.S = Object.assign({
   choosePointVor: 'VOR station',
   choosePointCommChange: 'Freq-change arrow',
   choosePointNotam: 'NOTAM',
+  choosePointAircraft: 'Aircraft',
   tbSearchClear: 'Clear the box',
   // "?" beside the search box: what it understands, as examples to tap.
   searchHelpTitle: 'What can I search?',
@@ -3574,6 +3575,11 @@ window.S = Object.assign({
   tbDarkMode: 'Dark',
   tbLightModeTitle: 'Switch between light and dark theme',
   tbTheme: 'Theme',
+  tbDateFormat: 'Date format',
+  tbDateFormatTitle: 'How dates are written across the app',
+  tbDateFormatDmy: 'DD/MM/YYYY',
+  tbDateFormatMdy: 'MM/DD/YYYY',
+  tbDateFormatYmd: 'YYYY-MM-DD',
   tbTabletLayout: 'Tablet layout',
   tbTabletLayoutTitle: 'Choose the tablet menu layout. Automatic follows the app\'s configured default.',
   tbTabletLayoutAuto: 'Automatic',
@@ -6071,10 +6077,63 @@ function airfieldFreqOverrides() {
   try { return JSON.parse(localStorage.getItem('navaid.airfieldFreqOverrides') || '{}') || {}; }
   catch (e) { return {}; }
 }
+// A small, important setting must not be lost to a localStorage already full of reclaimable
+// cache. On a quota error, drop what can be re-fetched (the gist config cache -- a few KB,
+// re-read on the next load) and try once more; if it still will not fit, tell the pilot rather
+// than dropping the write in silence. Silence is what made an edited frequency "not stick".
+function navSetItemCritical(key, value) {
+  try { localStorage.setItem(key, value); return true; }
+  catch (e) {
+    try { if (typeof GIST_CACHE_KEY === 'string') localStorage.removeItem(GIST_CACHE_KEY); } catch (_) { /* ignore */ }
+    try { localStorage.setItem(key, value); return true; }
+    catch (_) {
+      if (typeof showToast === 'function') {
+        showToast((typeof S === 'object' && S && S.errStorageFull)
+          || 'Storage is full — delete some saved routes or export them.', { warn: true });
+      }
+      return false;
+    }
+  }
+}
 function setAirfieldFreqOverride(key, val) {
   const o = airfieldFreqOverrides();
   if (val) o[key] = val; else delete o[key];
-  try { localStorage.setItem('navaid.airfieldFreqOverrides', JSON.stringify(o)); } catch (e) { /* ignore */ }
+  return navSetItemCritical('navaid.airfieldFreqOverrides', JSON.stringify(o));
+}
+
+// --- user-visible date formatting -------------------------------------
+// One setting, navaid.dateFormat, decides how every date the pilot reads is written. Israel's
+// civil default is day-first, so 'dmy' (DD/MM/YYYY). Filenames and machine formats (the X-Plane
+// FDR header, an <input type=date>'s ISO value) keep their own fixed form and do not call these.
+function navDateFormat() {
+  try { const v = localStorage.getItem('navaid.dateFormat'); if (v === 'dmy' || v === 'mdy' || v === 'ymd') return v; } catch (e) { /* ignore */ }
+  return 'dmy';
+}
+function fmtDateParts(Y, M, D) {
+  const m = String(M).padStart(2, '0'), d = String(D).padStart(2, '0');
+  switch (navDateFormat()) {
+    case 'mdy': return m + '/' + d + '/' + Y;
+    case 'ymd': return Y + '-' + m + '-' + d;
+    default:    return d + '/' + m + '/' + Y;
+  }
+}
+function fmtDate(d) {
+  const t = (d instanceof Date) ? d : new Date(d);
+  if (isNaN(t)) return '';
+  return fmtDateParts(t.getFullYear(), t.getMonth() + 1, t.getDate());
+}
+function fmtDateUtc(d) {
+  const t = (d instanceof Date) ? d : new Date(d);
+  if (isNaN(t)) return '';
+  return fmtDateParts(t.getUTCFullYear(), t.getUTCMonth() + 1, t.getUTCDate());
+}
+// A feed's "updated" stamp: the date in the pilot's chosen format, the time in Zulu (aviation
+// reads UTC), e.g. 11/11/2026 13:45Z.
+function notamStampUtc(d) {
+  const t = (d instanceof Date) ? d : new Date(d);
+  if (isNaN(t)) return '';
+  const hh = String(t.getUTCHours()).padStart(2, '0'), mm = String(t.getUTCMinutes()).padStart(2, '0');
+  return fmtDateUtc(t) + ' ' + hh + ':' + mm + 'Z';
 }
 // Override-aware labelled parts for an airfield field ('clearance' | 'atis').
 function airfieldFieldParts(af, field) {
@@ -6114,7 +6173,7 @@ function vorFreqOverrides() {
 function setVorFreqOverride(ident, val) {
   const o = vorFreqOverrides();
   if (val) o[ident] = val; else delete o[ident];
-  try { localStorage.setItem('navaid.vorFreqOverrides', JSON.stringify(o)); } catch (e) { /* ignore */ }
+  return navSetItemCritical('navaid.vorFreqOverrides', JSON.stringify(o));
 }
 // Effective (override-aware) frequency for a VOR object.
 function vorEffectiveFreq(v) {

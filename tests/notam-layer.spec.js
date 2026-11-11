@@ -175,7 +175,7 @@ test('toggling the overlay loads NOTAMs and draws without error', async ({ page 
   expect(s.n).toBe(3);
   // Update-time + timeline slider show in the panel once the overlay is on.
   await expect(page.locator('#notam-controls')).toBeVisible();
-  await expect(page.locator('#notam-updated')).toContainText('2026-06-23 09:00Z');
+  await expect(page.locator('#notam-updated')).toContainText('23/06/2026 09:00Z');
   // Toggle persists across reload.
   await page.reload();
   await page.waitForFunction(() => document.getElementById('notam-cb'));
