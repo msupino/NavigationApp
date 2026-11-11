@@ -45,7 +45,7 @@ test('the list modal carries the same caution', async ({ page }) => {
 test('notamStaleHours 0 turns the warning off', async ({ page }) => {
   await boot(page, 240);                                  // ten days old
   await expect(panel(page)).toHaveClass(/notam-stale/);   // warns by default
-  await page.evaluate(() => { setTune('notamStaleHours', 0); window.showNotamOverlay ? null : null; });
+  await page.evaluate(() => setTune('notamStaleHours', 0));
   // Re-render the panel: toggle the overlay off and on.
   await page.locator('#notam-cb').uncheck();
   await page.locator('#notam-cb').check();
