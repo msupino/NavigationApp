@@ -1500,8 +1500,6 @@ window.S = {
   tbAltPairsTitle: 'הצג והעתק נתיבי CVFR שנלמדו',
   tbStorage: '💾 אחסון',
   tbStorageTitle: 'כמה מידע שמור יש במכשיר הזה, וניקוי מטמונים שאפשר לבנות מחדש',
-  storageModalTitle: '💾 אחסון',
-  storageUsed: (usedStr, totalStr) => usedStr + ' מתוך ' + totalStr,
   storageOf: 'מתוך',
   storageBudgetNote: 'דפדפנים מגבילים כל אתר לכ‑5 מ״ב; לא ניתן להגדיל זאת.',
   storageBreakdownTitle: 'מה שמור',

@@ -3284,8 +3284,6 @@ window.S = Object.assign({
   tbAltPairsTitle: 'View and copy learned CVFR altitude pairs',
   tbStorage: '💾 Storage',
   tbStorageTitle: 'See how much saved data this device holds and clear rebuildable caches',
-  storageModalTitle: '💾 Storage',
-  storageUsed: (usedStr, totalStr) => usedStr + ' of ' + totalStr,
   storageOf: 'of',
   storageBudgetNote: 'Browsers cap each site at about 5 MB; this cannot be raised.',
   storageBreakdownTitle: 'What it holds',

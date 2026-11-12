@@ -9042,7 +9042,7 @@ function showStorageModal() {
     s.textContent = txt;
     return s;
   };
-  const modal = createDraggableModal(S.storageModalTitle || 'Storage', 'modal');
+  const modal = createDraggableModal(S.tbStorage || 'Storage', 'modal');
   const body = document.createElement('div');
   body.className = 'storage-modal-body';
   modal.box.appendChild(body);
@@ -9121,7 +9121,7 @@ function showStorageModal() {
     clear.onclick = async () => {
       if (typeof appConfirm === 'function'
         && !(await appConfirm(S.storageClearConfirm || 'Clear the rebuildable cache?',
-          S.storageClearCache, S.storageModalTitle))) return;
+          S.storageClearCache, S.tbStorage))) return;
       const freed = (typeof navClearReclaimable === 'function') ? navClearReclaimable() : 0;
       if (typeof showToast === 'function') {
         showToast((typeof S.storageCleared === 'function')
