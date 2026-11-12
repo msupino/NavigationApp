@@ -70,6 +70,8 @@ test.describe('Fuel reserve & endurance check (#668)', () => {
     const warn = page.locator('#fp-fuel-summary .fp-fuel-warn');
     await expect(warn).toBeVisible();
     await expect(warn).toContainText(/Over tanks/);
+    // The over-tank warning is the red alarm, never the muted "set usable fuel" hint.
+    expect(await warn.evaluate(el => el.classList.contains('fp-fuel-note'))).toBe(false);
     expect(await page.locator('#fp-fuel-summary .fp-fuel-remaining.fp-fuel-short').count()).toBe(1);
   });
 

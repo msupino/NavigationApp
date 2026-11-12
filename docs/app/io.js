@@ -5138,6 +5138,7 @@ function showFlightPlan() {
     fsEndurance.v.textContent = usable != null ? fuelHM(usable / gph * 60) : '—';
     if (over) {
       fsWarn.hidden = false;
+      fsWarn.classList.remove('fp-fuel-note');   // red warning, not the muted hint
       fsWarn.textContent = typeof S.fpFuelOver === 'function' ? S.fpFuelOver((required - usable).toFixed(1)) : 'Over tanks';
     } else if (usable == null) {
       fsWarn.hidden = false;
