@@ -9147,7 +9147,11 @@ function showStorageModal() {
     const wipe = document.createElement('button');
     wipe.type = 'button';
     wipe.className = 'storage-wipe-btn danger';
-    wipe.textContent = S.tbClearStore || 'Clear local store';
+    // navPlainLabel drops the leading glyph: this is a plain in-window button, not a toolbar
+    // one the icon pass redraws, and it sits beside the icon-less safe clear above it.
+    wipe.textContent = (typeof navPlainLabel === 'function')
+      ? navPlainLabel(S.tbClearStore || 'Clear local store')
+      : (S.tbClearStore || 'Clear local store');
     wipe.onclick = () => {
       if (typeof navClearLocalStore === 'function') navClearLocalStore();   // asks, then wipes + reloads
     };
