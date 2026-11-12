@@ -3965,7 +3965,7 @@ function flightPlanCsv(table, scrollArea) {
   });
   // The go/no-go fuel block, when it is shown (an aircraft is set), as label,value pairs so the
   // export carries exactly what the pilot sees under the table.
-  const fs = scrollArea.parentElement && scrollArea.parentElement.querySelector('#fp-fuel-summary');
+  const fs = scrollArea.querySelector('#fp-fuel-summary');
   if (fs && !fs.hidden) {
     rows.push([]);
     rows.push([S.fpFuelCheck || 'Fuel check']);
@@ -5399,11 +5399,6 @@ function showFlightPlan() {
   scrollArea.appendChild(table);
   // Above the horizontally-scrolling table, inside the same parent.
   if (scrollArea.parentElement) scrollArea.parentElement.insertBefore(mobileSummary, scrollArea);
-  // The fuel check sits below the table it sums.
-  if (scrollArea.parentElement) {
-    if (scrollArea.nextSibling) scrollArea.parentElement.insertBefore(fuelSummary, scrollArea.nextSibling);
-    else scrollArea.parentElement.appendChild(fuelSummary);
-  }
 
   // --- return-route table (when showReturn is on) --------------------
   let retRefresh = null;
@@ -5603,6 +5598,11 @@ function showFlightPlan() {
     retRefresh();
     scrollArea.appendChild(rtable);
   }
+  // The fuel check lives INSIDE the scroll area, below the table(s) it sums -- not as a sibling of
+  // the flex:1 scroll area, where on a height-capped desktop modal it shrank the leg table to
+  // nothing (the same squeeze the deck fixed for the profile/Columns panels). Here it just scrolls
+  // with the legs and never steals their height.
+  scrollArea.appendChild(fuelSummary);
   syncFpColumnVisibility();
 
 
