@@ -1,0 +1,43 @@
+From fa257543c111f77b064093e35e340b132262c3e9 Mon Sep 17 00:00:00 2001
+From: Marco <marco@supino.org>
+Date: Thu, 12 Nov 2026 06:53:49 +0000
+Subject: [PATCH] Inspector: a plane tap is exempt from the in-flight chooser
+ gate
+
+---
+ Inspector-he.md | 3 ++-
+ Inspector.md    | 4 +++-
+ 2 files changed, 5 insertions(+), 2 deletions(-)
+
+diff --git a/Inspector-he.md b/Inspector-he.md
+index 9081813..51b0b5e 100644
+--- a/Inspector-he.md
++++ b/Inspector-he.md
+@@ -265,7 +265,8 @@ DA  = PA + 120 × (T − ISA)
+ **גם החלונית עצמה נשארת סגורה**, מאותה סיבה: בטיסה המפה היא מה שקוראים, והחלונית מכסה אותה.
+ הקשה שנועדה לבדוק איפה אתם — או הקשה מקרית בטלפון על הברך — לא צריכה לפתוח חלונית ציון דרך מעל
+ המפה. גם במקום שבו כמה דברים חופפים, או על חץ שינוי תדר, **בורר הנקודות** שהיה שואל במה לבחור
+-מסורב, במקום לפתוח חלון מעל המפה באוויר.
++מסורב, במקום לפתוח חלון מעל המפה באוויר. הקשה על **מטוס** היא היוצא מן הכלל — ביקשתם את המטוס
++הזה בשמו — ולכן מטוס היושב מעל נקודה עדיין פותח את הבורר, עם המטוס בין האפשרויות.
+ 
+ האפליקציה אומרת זאת פעם אחת בכל מפגש מעקב במקום פשוט לא לעשות דבר, וזה מתג ולא חוק:
+ **הגדרות ← "חלונית בזמן הצגת מיקום"** (כבוי). הבחירה נזכרת ונוסעת אתכם; מכשיר שמעולם לא
+diff --git a/Inspector.md b/Inspector.md
+index 24226ee..71a0c1f 100644
+--- a/Inspector.md
++++ b/Inspector.md
+@@ -233,7 +233,9 @@ accidental. The page frame (print layout) is not route data and stays free.
+ and the inspector covers it. A tap meant to check where you are — or a stray one on a
+ kneeboard-mounted phone — should not put a waypoint panel over the map. Where several things
+ overlap, or on a frequency-change arrow, the *chooser* that would ask which one is refused too,
+-rather than opening a modal over the chart in flight.
++rather than opening a modal over the chart in flight. A tap on an **aircraft** is the one
++exception — you asked for that plane by name — so a plane sitting over a point still opens the
++chooser, with the aeroplane among the choices.
+ 
+ It says so once per tracking session rather than doing nothing, and it is a switch, not a rule:
+ **Settings → "Panel while showing position"** (off). Your choice is remembered and travels with
+-- 
+2.43.0
+
