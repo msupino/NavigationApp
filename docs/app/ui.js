@@ -11537,8 +11537,8 @@ async function navClearLocalStore() {
   return true;
 }
 window.navClearLocalStore = navClearLocalStore;
-const CLEAR_STORE_EL = document.getElementById('clear-store');
-if (CLEAR_STORE_EL) CLEAR_STORE_EL.onclick = navClearLocalStore;
+// The wipe is reached only from the Settings > Storage window now (the former toolbar
+// button in Export/Import was removed), where it is the marked last resort.
 const ALPHA_KEY = 'navaid.yellowAlpha';
 try {
   const v = parseFloat(lsGet(ALPHA_KEY));
