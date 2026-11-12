@@ -1,0 +1,71 @@
+From aa2273565dca48c08c23ed40e77013822d513096 Mon Sep 17 00:00:00 2001
+From: Marco <marco@supino.org>
+Date: Thu, 12 Nov 2026 06:53:49 +0000
+Subject: [PATCH] Chooser: a plane tap is exempt from the in-flight gate and
+ offers route waypoints too
+
+---
+ Features-he.md  | 2 +-
+ Features.md     | 2 +-
+ Inspector-he.md | 3 ++-
+ Inspector.md    | 4 +++-
+ 4 files changed, 7 insertions(+), 4 deletions(-)
+
+diff --git a/Features-he.md b/Features-he.md
+index f208c72..0aae048 100644
+--- a/Features-he.md
++++ b/Features-he.md
+@@ -309,7 +309,7 @@ NavAid יכול להקליט את הנתיב שבאמת טסתם מ-GPS המכש
+ ## תעבורה חיה (אפליקציה)
+ 
+ **תצוגה/הגדרות ← תעבורה** מציירת את המטוסים האחרים הנקלטים ב-ADS-B: מטוס במבט־על, חרטומו
+-לכיוון התנועה, ולצידו האות הקריאה והגובה, וכל הפרטים בהקשה. מסוק מצויר כמסוק — רוטור, תא וזנב — לפי קטגוריית המשדר (מטוס כנף סובבת) או לפי קוד הדגם, והפרטים מציינים זאת (<span dir="ltr">R44</span> · מסוק). כלי טיס על הקרקע (או במסלול הסעה) מצוירים קטנים ודהויים, עם אות הקריאה בלבד ורק מזום של שדה תעופה; כשתוויות עלולות לעלות זו על זו מוצגת אחת, ושאר כלי הטיס מזוהים בהקשה. כשכלי טיס יושב מעל נקודה במפה — שדה תעופה, VOR, נקודת ניווט או חץ שינוי-תדר — ההקשה פותחת את בורר **בחר נקודה** עם המטוס בין האפשרויות, כך שאפשר לקרוא את המטוס או את הנקודה שמתחתיו. **פתיחה ב-<span dir="ltr">adsb.lol</span>** בפרטים מציג את אותו כלי טיס במפה הציבורית של האתר שממנו מגיעים הנתונים. קיימת באפליקציות האנדרואיד והאייפון/אייפד בלבד
++לכיוון התנועה, ולצידו האות הקריאה והגובה, וכל הפרטים בהקשה. מסוק מצויר כמסוק — רוטור, תא וזנב — לפי קטגוריית המשדר (מטוס כנף סובבת) או לפי קוד הדגם, והפרטים מציינים זאת (<span dir="ltr">R44</span> · מסוק). כלי טיס על הקרקע (או במסלול הסעה) מצוירים קטנים ודהויים, עם אות הקריאה בלבד ורק מזום של שדה תעופה; כשתוויות עלולות לעלות זו על זו מוצגת אחת, ושאר כלי הטיס מזוהים בהקשה. כשכלי טיס יושב מעל נקודה במפה — שדה תעופה, VOR, נקודת ניווט, חץ שינוי-תדר, או אחת מנקודות המסלול שלכם — ההקשה פותחת את בורר **בחר נקודה** עם המטוס בין האפשרויות, כך שאפשר לקרוא את המטוס או את הנקודה שמתחתיו. **פתיחה ב-<span dir="ltr">adsb.lol</span>** בפרטים מציג את אותו כלי טיס במפה הציבורית של האתר שממנו מגיעים הנתונים. קיימת באפליקציות האנדרואיד והאייפון/אייפד בלבד
+ — שרתי הנתונים דוחים בקשות מדפדפן — ולכן בדפדפן המתג מוצג מעומעם עם הסיבה. גם מקלט ADS-B בתא
+ (Stratux, SkyEcho, Sentry) יכול להזין אותה, ב-Wi-Fi (<span dir="ltr"><code>featureGdl90</code></span>, כבוי כברירת מחדל).
+ 
+diff --git a/Features.md b/Features.md
+index 542e4f8..93108a3 100644
+--- a/Features.md
++++ b/Features.md
+@@ -330,7 +330,7 @@ See [Inspector](Inspector#airfield-density-altitude).
+ ## Live traffic (app)
+ 
+ **Extra layers → Traffic** draws the other aeroplanes heard on ADS-B: a top-down aircraft, nose
+-along its track, with callsign and flight level beside it, and the full read-out on a tap. A helicopter is drawn as one — rotor, cabin and tail — by its emitter category (rotorcraft) or its type code, and the read-out names it (*R44 · Helicopter*). Aircraft on the ground (or taxiing) are drawn smaller and faded, with their callsign only from airport zoom in; where labels would overprint, one shows and a tap names the rest. When an aircraft sits over a map point — an airfield, VOR, nav waypoint or frequency-change arrow — the tap opens the **Choose point** picker with the aircraft among the choices, so you can read the aeroplane or the point beneath it. The read-out's **Open on adsb.lol** shows the same aircraft on the public map of the site the traffic comes from.
++along its track, with callsign and flight level beside it, and the full read-out on a tap. A helicopter is drawn as one — rotor, cabin and tail — by its emitter category (rotorcraft) or its type code, and the read-out names it (*R44 · Helicopter*). Aircraft on the ground (or taxiing) are drawn smaller and faded, with their callsign only from airport zoom in; where labels would overprint, one shows and a tap names the rest. When an aircraft sits over a map point — an airfield, VOR, nav waypoint, frequency-change arrow, or one of your own route waypoints — the tap opens the **Choose point** picker with the aircraft among the choices, so you can read the aeroplane or the point beneath it. The read-out's **Open on adsb.lol** shows the same aircraft on the public map of the site the traffic comes from.
+ It exists in the Android and iPhone/iPad apps only — the public feeds refuse browser requests — so in a
+ browser the switch is shown dimmed with the reason. See
+ [GPS Track Recording](GPS-Track-Recording#traffic-around-you-ads-b). A cockpit ADS-B receiver
+diff --git a/Inspector-he.md b/Inspector-he.md
+index 9081813..51b0b5e 100644
+--- a/Inspector-he.md
++++ b/Inspector-he.md
+@@ -265,7 +265,8 @@ DA  = PA + 120 × (T − ISA)
+ **גם החלונית עצמה נשארת סגורה**, מאותה סיבה: בטיסה המפה היא מה שקוראים, והחלונית מכסה אותה.
+ הקשה שנועדה לבדוק איפה אתם — או הקשה מקרית בטלפון על הברך — לא צריכה לפתוח חלונית ציון דרך מעל
+ המפה. גם במקום שבו כמה דברים חופפים, או על חץ שינוי תדר, **בורר הנקודות** שהיה שואל במה לבחור
+-מסורב, במקום לפתוח חלון מעל המפה באוויר.
++מסורב, במקום לפתוח חלון מעל המפה באוויר. הקשה על **מטוס** היא היוצא מן הכלל — ביקשתם את המטוס
++הזה בשמו — ולכן מטוס היושב מעל נקודה עדיין פותח את הבורר, עם המטוס בין האפשרויות.
+ 
+ האפליקציה אומרת זאת פעם אחת בכל מפגש מעקב במקום פשוט לא לעשות דבר, וזה מתג ולא חוק:
+ **הגדרות ← "חלונית בזמן הצגת מיקום"** (כבוי). הבחירה נזכרת ונוסעת אתכם; מכשיר שמעולם לא
+diff --git a/Inspector.md b/Inspector.md
+index 24226ee..71a0c1f 100644
+--- a/Inspector.md
++++ b/Inspector.md
+@@ -233,7 +233,9 @@ accidental. The page frame (print layout) is not route data and stays free.
+ and the inspector covers it. A tap meant to check where you are — or a stray one on a
+ kneeboard-mounted phone — should not put a waypoint panel over the map. Where several things
+ overlap, or on a frequency-change arrow, the *chooser* that would ask which one is refused too,
+-rather than opening a modal over the chart in flight.
++rather than opening a modal over the chart in flight. A tap on an **aircraft** is the one
++exception — you asked for that plane by name — so a plane sitting over a point still opens the
++chooser, with the aeroplane among the choices.
+ 
+ It says so once per tracking session rather than doing nothing, and it is a switch, not a rule:
+ **Settings → "Panel while showing position"** (off). Your choice is remembered and travels with
+-- 
+2.43.0
+
