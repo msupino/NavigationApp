@@ -8279,6 +8279,14 @@ function refreshSettingsAircraft() {
     const el = acEl(id);
     if (el && document.activeElement !== el) el.value = Number(a[f]) > 0 ? a[f] : '';
   }
+  // Reserve: a set value is shown; left unset, the global default shows as the placeholder so the
+  // figure the fuel check actually uses is never a mystery (0 is a real choice and is kept).
+  const reserveEl = acEl('ac-reserve');
+  if (reserveEl && document.activeElement !== reserveEl) {
+    reserveEl.value = Number.isFinite(Number(a.reserveMin)) && a.reserveMin !== '' && a.reserveMin != null ? a.reserveMin : '';
+    const def = typeof tune === 'function' ? tune('defaultReserveMin') : 45;
+    reserveEl.placeholder = String(def);
+  }
   // The climb rate: the one the profile is drawn with (window.profileVS), the aircraft's otherwise.
   const climb = acEl('ac-climb-fpm');
   if (climb && document.activeElement !== climb) {
@@ -8431,6 +8439,22 @@ window.refreshSettingsAircraft = refreshSettingsAircraft;
       draw();
     });
   }
+  // Reserve minutes: unlike the figures above, 0 is a valid choice and an empty box means
+  // "use the default", so it is stored or cleared explicitly rather than ignored when not > 0.
+  const reserveEl = acEl('ac-reserve');
+  if (reserveEl) reserveEl.addEventListener('input', () => {
+    const raw = reserveEl.value.trim();
+    const base = aircraft || { gph: tune('defaultGph'), taxiGal: tune('defaultTaxiGal') };
+    if (raw === '') { aircraft = Object.assign({}, base); delete aircraft.reserveMin; }
+    else {
+      const v = parseInt(raw, 10);
+      if (!(v >= 0)) return;
+      aircraft = Object.assign({}, base, { reserveMin: Math.min(120, v) });
+    }
+    if (typeof saveAircraft === 'function') saveAircraft();
+    refreshSettingsAircraft();
+    draw();
+  });
   // Climb rate: the aircraft's figure and the rate the profile and the map's TOC are drawn with.
   const climb = acEl('ac-climb-fpm');
   if (climb) climb.addEventListener('input', () => {
