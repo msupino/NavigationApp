@@ -153,12 +153,14 @@
     draw();
     if (typeof gpsResetLegAlerts === 'function') gpsResetLegAlerts();
   }
-  function divertTo(row, pos, fromGps) {
+  function divertTo(row, pos, startedLocation) {
     const before = active ? active.before
       : (typeof routeSnapshotForStorage === 'function' ? JSON.stringify(routeSnapshotForStorage()) : null);
-    const startedLocation = active ? active.startedLocation : false;
+    // Location switched on by origin() is the first divert's to give back on Cancel; a later
+    // "Other field" keeps whatever the first recorded.
+    const started = active ? active.startedLocation : !!startedLocation;
     buildRoute(pos, row.af);
-    active = { before, startedLocation };
+    active = { before, startedLocation: started };
     try {
       map.fitBounds(L.latLngBounds(state.waypoints.map(w => [w.lat, w.lng])).pad(0.2),
         typeof fitOpts === 'function' ? fitOpts('fitRoutePaddingPx', 'fitRouteMaxZoom') : {});
@@ -183,7 +185,7 @@
     return restored;
   }
 
-  function showList(rows, pos, fromGps) {
+  function showList(rows, pos, fromGps, startedLocation) {
     closeCards();
     const m = createDraggableModal(S_('divertHeading', 'Divert'), 'modal divert-card', null, { nonBlocking: true });
     m.box.setAttribute('data-divert-card', '1');
@@ -213,7 +215,7 @@
         r.textContent = rwy;
         btn.appendChild(r);
       }
-      btn.addEventListener('click', () => { divertTo(row, pos, fromGps); showActive(row); });
+      btn.addEventListener('click', () => { divertTo(row, pos, startedLocation); showActive(row); });
       list.appendChild(btn);
     }
     m.box.appendChild(list);
@@ -288,7 +290,7 @@
         if (typeof refuse === 'function') refuse(S_('divertNoFields', 'No airfields were found.'));
         return;
       }
-      showList(rows, where.pos, where.fromGps);
+      showList(rows, where.pos, where.fromGps, where.startedLocation);
     } finally {
       busy = false;
     }
