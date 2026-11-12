@@ -1,18 +1,18 @@
-From be23b01fd51955a8bcc1bc106f63bff0d8bc931d Mon Sep 17 00:00:00 2001
+From e288d27d82c7258e19e5c89ce83277931ec43a0a Mon Sep 17 00:00:00 2001
 From: Marco <marco@supino.org>
-Date: Thu, 12 Nov 2026 15:54:15 +0000
+Date: Thu, 12 Nov 2026 16:26:17 +0000
 Subject: [PATCH] Flight Plan: a go/no-go Fuel check (trip + reserve +
  alternate vs tanks, over-tank warning, endurance)
 
 ---
  Flight-Plan-he.md     | 21 ++++++++++++++++++++-
- Flight-Plan.md        | 24 ++++++++++++++++++++++--
+ Flight-Plan.md        | 25 +++++++++++++++++++++++--
  Fuel-Calculator-he.md |  6 +++---
  Fuel-Calculator.md    |  4 ++--
- 4 files changed, 47 insertions(+), 8 deletions(-)
+ 4 files changed, 48 insertions(+), 8 deletions(-)
 
 diff --git a/Flight-Plan-he.md b/Flight-Plan-he.md
-index 1523ae3..1b582e8 100644
+index 1523ae3..130dc1d 100644
 --- a/Flight-Plan-he.md
 +++ b/Flight-Plan-he.md
 @@ -35,6 +35,24 @@
@@ -21,7 +21,7 @@ index 1523ae3..1b582e8 100644
  
 +## בדיקת דלק
 +
-+מתחת לטבלה — כשמוגדר מטוס — בלוק **בדיקת דלק** שוקל את המסלול מול המיכלים:
++כפתור **בדיקת דלק** בשורת הכלים (ליד **עמודות**) — כשמוגדר מטוס — מציג את המסקנה על פניו: הדלק שנותר, או — כשהמסלול חורג מהמיכלים — כפתור אדום עם סימן אזהרה והחריגה. פתחו אותו לפירוט:
 +
 +- **טיסה** — סה"כ הדלק שמעל (שריפת הקטעים בתוספת קצבת ההסעה/המראה).
 +- **רזרבה** — רזרבת VFR הנשמרת, מוצגת בגלונים לפי צריכת השיוט. הדקות הן נתון
@@ -53,22 +53,23 @@ index 1523ae3..1b582e8 100644
  ## טיפים
  
  - השתמשו באינספקטור הקטע לעריכות נקודתיות ובחלון תכנית הטיסה לשינויי מהירות / גובה מרובים.
-+- **בדיקת הדלק** מתחת לטבלה שוקלת טיסה + רזרבה + חלופה מול הדלק השמיש של המטוס ומתריעה באדום כשהמסלול חורג ממה שהמיכלים מחזיקים. הגדירו **דלק שמיש** ו**רזרבה (דק׳)** על המטוס כדי שתבדוק. ראו [מחשבון דלק](Fuel-Calculator-he).
++- כפתור **בדיקת הדלק** בשורת הכלים של התכנית שוקל טיסה + רזרבה + חלופה מול הדלק השמיש של המטוס; הוא הופך אדום עם החריגה כשהמסלול חורג ממה שהמיכלים מחזיקים, ופותח פירוט. הגדירו **דלק שמיש** ו**רזרבה (דק׳)** על המטוס כדי שתבדוק. ראו [מחשבון דלק](Fuel-Calculator-he).
  - הפעילו **הדגש הפרש** בקטע "מפה" כדי לזהות במבט קטעי טיפוס / ירידה במהלך עריכה.
  
  
 diff --git a/Flight-Plan.md b/Flight-Plan.md
-index 0b453b2..d2d0ded 100644
+index 0b453b2..90c3c85 100644
 --- a/Flight-Plan.md
 +++ b/Flight-Plan.md
-@@ -34,6 +34,26 @@ Open it with the **📋 Flight Plan** button in the **Charts** menu.
+@@ -34,6 +34,27 @@ Open it with the **📋 Flight Plan** button in the **Charts** menu.
  
  A **Total** row sums distance, time and fuel; its ETA cell is the **arrival**.
  
 +## Fuel check
 +
-+Below the table — once an aircraft is set — a **Fuel check** block weighs the route against the
-+tanks:
++A **Fuel check** button in the tools row (beside **Columns**) — once an aircraft is set — carries the
++verdict on its face: the fuel remaining, or, when the route is over the tanks, a red button with a
++warning sign and the shortfall. Open it for the breakdown:
 +
 +- **Trip** — the Total fuel above (leg burn plus the taxi/take-off allowance).
 +- **Reserve** — a VFR reserve held back, shown as gallons at the cruise burn. Its minutes are the
@@ -88,7 +89,7 @@ index 0b453b2..d2d0ded 100644
  ## Departure time, ETA and last light
  
  Beside **Columns** is the departure button — **ETD 10:00 ▾** (or **ETD --:--** when none is
-@@ -80,7 +100,7 @@ plan. It is one aircraft, so a change in either place shows in the other.
+@@ -80,7 +101,7 @@ plan. It is one aircraft, so a change in either place shows in the other.
    - **call sign** and **type** — the type is selected for the aircraft: a listed type (C152, C172,
      PA28, DA40, SR22, AT3, C42, EV97, ULAC) fills its typical manual figures, **Other…** takes any
      ICAO code;
@@ -97,12 +98,12 @@ index 0b453b2..d2d0ded 100644
      are drawn with; it does not change leg times or fuel, and a line under it says so), **descent rate**;
    - **Restore C172 figures**, and **Delete** (asked in the app; the aircraft goes back to having no
      call sign, with its type).
-@@ -144,7 +164,7 @@ The return table also shows Radial/DME when a VOR is active, calculated to the s
+@@ -144,7 +165,7 @@ The return table also shows Radial/DME when a VOR is active, calculated to the s
  ## Tips
  
  - Use the leg inspector for one-off edits, the Plan modal for bulk speed / altitude changes.
 -- The Fuel column totals the burn; it does **not** check it against anything. NavAid has no tank-capacity or reserve field and will never warn you that a route exceeds your endurance — compare the total against your own aircraft's usable fuel and your reserve minimum yourself. See [Fuel Calculator](Fuel-Calculator).
-+- The **Fuel check** under the table weighs Trip + Reserve + any Alternate against your aircraft's usable fuel and warns in red when the route exceeds what the tanks hold. Set **usable fuel** and **Reserve (min)** on the aircraft for it to check. See [Fuel Calculator](Fuel-Calculator).
++- The **Fuel check** button in the plan's tools row weighs Trip + Reserve + any Alternate against your aircraft's usable fuel; it turns red with the shortfall when the route exceeds what the tanks hold, and opens a breakdown. Set **usable fuel** and **Reserve (min)** on the aircraft for it to check. See [Fuel Calculator](Fuel-Calculator).
  - For long routes that span altitude changes, use **Highlight diff** in the **Chart** menu so you can spot climb / descent legs at a glance on the map while you edit the plan.
  
  ## Filing it

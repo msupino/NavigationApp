@@ -6484,6 +6484,7 @@ body.theme-light .fp-aircraft select,
 body.theme-light .fp-aircraft input,
 body.theme-light .fp-columns summary,
 body.theme-light .fp-when summary,
+body.theme-light .fp-fuel summary,
 body.theme-light .fp-columns-all,
 body.theme-light .plan-name,
 body.theme-light .plan-num,
@@ -6724,12 +6725,15 @@ body.theme-light .flight-table tfoot td {
 }
 body.theme-light .fp-columns,
 body.theme-light .fp-when,
+body.theme-light .fp-fuel,
 body.theme-light .ac-custom { color: #647184; }
 body.theme-light .fp-columns summary::after,
 body.theme-light .fp-when summary::after,
+body.theme-light .fp-fuel summary::after,
 body.theme-light .ac-custom summary::after { color: #647184; }
 body.theme-light .fp-columns[open] summary,
 body.theme-light .fp-when[open] summary,
+body.theme-light .fp-fuel[open] summary,
 body.theme-light .ac-custom[open] summary {
   background: #eef3f9;
   border-color: #1d6fe0;
