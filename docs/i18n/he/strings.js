@@ -768,7 +768,7 @@ window.S = {
   tbTaxiGalTitle: 'דלק הפעלה / נסיעה / המראה (גאל)',
   fpTaxiTip: function(g) { return '+ ' + g.toFixed(1) + ' גאל הפעלה / המראה כלולים בסה״כ'; },
   tbReserveMin: 'רזרבה (דק׳)',
-  tbReserveMinTitle: 'רזרבת דלק VFR הנשמרת מהדלק השמיש, בדקות לפי צריכת השיוט',
+  tbReserveMinTitle: 'רזרבת דלק VFR הנשמרת מהדלק השמיש, בדקות לפי צריכת השיוט (יום 30, לילה 45)',
   fpFuelCheck: 'בדיקת דלק',
   fpFuelTrip: 'טיסה',
   fpFuelReserve: 'רזרבה',

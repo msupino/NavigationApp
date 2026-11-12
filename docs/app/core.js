@@ -154,7 +154,7 @@ NavAid.tuningDefaults = {
   profileClimbKt: { value: 75, min: 30, max: 200, step: 1, label: 'Default climb speed (kt)' },
   defaultGph: { value: 8, min: 1, max: 60, step: 0.5, label: 'Default fuel burn (GPH)' },
   defaultTaxiGal: { value: 1.1, min: 0, max: 10, step: 0.1, label: 'Default taxi/run-up fuel (gal)' },
-  defaultReserveMin: { value: 45, min: 0, max: 120, step: 5, label: 'Default VFR fuel reserve (min)' },
+  defaultReserveMin: { value: 30, min: 0, max: 120, step: 5, label: 'Default VFR fuel reserve (min) — day 30, night 45' },
 
   legAltInferMaxHops: { value: 6, min: 1, max: 20, step: 1, label: 'Alt inference max hops' },
   legAltInferMaxDistRatio: { value: 1.35, min: 1, max: 3, step: 0.05, label: 'Alt inference max distance ratio' },
@@ -2521,7 +2521,7 @@ window.S = Object.assign({
   tbTaxiGalTitle: 'Startup + taxi + takeoff fuel allowance in gallons',
   fpTaxiTip: function(g) { return '+ ' + g.toFixed(1) + ' gal taxi / takeoff included in total'; },
   tbReserveMin: 'Reserve (min)',
-  tbReserveMinTitle: 'VFR fuel reserve held back from the usable fuel, in minutes at the cruise burn',
+  tbReserveMinTitle: 'VFR fuel reserve held back from the usable fuel, in minutes at the cruise burn (day 30, night 45)',
   // The go/no-go fuel block under the nav log: trip burn, the reserve and any alternate, their
   // sum against the tanks, and how long the tanks last at the cruise burn.
   fpFuelCheck: 'Fuel check',

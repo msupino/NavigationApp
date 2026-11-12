@@ -7616,52 +7616,70 @@ html[data-theme="light"] #insp-body .insp-actions {
   color: inherit;
 }
 
-/* The go/no-go fuel check under the nav log (issue #668). Inherits the window's text colour the
-   same way the mobile summary does, so it reads in both themes. */
+/* The go/no-go fuel check under the nav log (issue #668). A compact, width-capped card so the
+   label -> value pairs read as a tight ledger, not a canyon across the whole panel. Inherits the
+   window's text colour the way the mobile summary does, so it reads in both themes. */
 .fp-fuel-summary {
-  margin-top: 8px;
-  padding-top: 6px;
-  border-top: 1px solid rgba(255, 255, 255, 0.18);
+  margin-top: 10px;
+  width: max-content;
+  max-width: 100%;
+  padding: 9px 12px 10px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.045);
   font-size: 13px;
   color: inherit;
 }
-body.theme-light .fp-fuel-summary { border-top-color: #d8dee6; }
+body.theme-light .fp-fuel-summary { border-color: #e2e7ee; background: #f6f8fb; }
 .fp-fuel-summary[hidden] { display: none; }
 .fp-fuel-title {
-  font-weight: 700;
-  letter-spacing: 0.02em;
-  margin-bottom: 4px;
-  opacity: 0.85;
+  font-weight: 600;
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  margin-bottom: 7px;
+  opacity: 0.6;
 }
-.fp-fuel-grid { display: flex; flex-direction: column; gap: 2px; max-width: 320px; }
-.fp-fuel-row { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+/* Two columns -- label, then value -- so every value lines up in one tabular column a short,
+   fixed gap from its label (no stretch). Rows are display:contents so their cells land directly
+   in these tracks. */
+.fp-fuel-grid {
+  display: grid;
+  grid-template-columns: auto auto;
+  justify-content: start;
+  column-gap: 28px;
+  row-gap: 3px;
+  align-items: baseline;
+}
+.fp-fuel-row { display: contents; }
 .fp-fuel-row[hidden] { display: none; }
-.fp-fuel-k { opacity: 0.9; }
-.fp-fuel-v { font-weight: 600; font-variant-numeric: tabular-nums; }
-/* The sum against the tanks: the row the pilot decides on, lifted from the parts above it. */
-.fp-fuel-required {
-  margin-top: 3px;
-  padding-top: 3px;
-  border-top: 1px solid rgba(255, 255, 255, 0.14);
-  font-weight: 700;
+.fp-fuel-k { opacity: 0.82; white-space: nowrap; }
+.fp-fuel-v { font-weight: 600; font-variant-numeric: tabular-nums; text-align: end; white-space: nowrap; }
+/* Full-width rule between the parts and their sum. */
+.fp-fuel-div {
+  grid-column: 1 / -1;
+  height: 1px;
+  margin: 3px 0 1px;
+  background: rgba(255, 255, 255, 0.14);
 }
-body.theme-light .fp-fuel-required { border-top-color: #e2e7ee; }
+body.theme-light .fp-fuel-div { background: #dbe1ea; }
+/* The sum against the tanks: the row the pilot decides on. */
+.fp-fuel-required .fp-fuel-k { opacity: 1; font-weight: 700; }
 .fp-fuel-required .fp-fuel-v { font-weight: 700; }
-/* Not enough fuel: the figure and the line below it go red (never colour alone -- the warning
-   text spells it out). */
+/* Not enough fuel: the figure goes red (never colour alone -- the warning text spells it out). */
 .fp-fuel-short .fp-fuel-v { color: #e5484d; }
 body.theme-light .fp-fuel-short .fp-fuel-v { color: #c0392b; }
 .fp-fuel-warn {
-  margin-top: 5px;
+  margin-top: 8px;
   font-weight: 700;
   color: #e5484d;
 }
 body.theme-light .fp-fuel-warn { color: #c0392b; }
 /* The "set usable fuel" hint is advice, not an alarm: muted, not red. */
-.fp-fuel-warn.fp-fuel-note { font-weight: 400; color: inherit; opacity: 0.7; }
+.fp-fuel-warn.fp-fuel-note { font-weight: 400; color: inherit; opacity: 0.65; max-width: 240px; }
 .fp-fuel-alt-input {
-  width: 72px;
-  padding: 2px 6px;
+  width: 64px;
+  padding: 1px 6px;
   font-size: 13px;
   font-variant-numeric: tabular-nums;
   text-align: end;

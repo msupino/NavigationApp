@@ -5094,6 +5094,11 @@ function showFlightPlan() {
   try { fsAltInput.value = (localStorage.getItem(FPL_PROFILE_PREFIX + 'altGal') || '').trim(); } catch (e) { /* storage off */ }
   fsAltRow.appendChild(fsAltLabel); fsAltRow.appendChild(fsAltInput);
   fsGrid.appendChild(fsAltRow);
+  // A full-width rule between the parts and their sum (the rows are grid `display:contents`, so the
+  // separator cannot live as a row border -- it spans both columns as its own grid child).
+  const fsDiv = document.createElement('div');
+  fsDiv.className = 'fp-fuel-div';
+  fsGrid.appendChild(fsDiv);
   const fsRequired = fuelRow('required', 'fp-fuel-required');
   const fsRemaining = fuelRow('remaining', 'fp-fuel-remaining');
   const fsEndurance = fuelRow('endurance');

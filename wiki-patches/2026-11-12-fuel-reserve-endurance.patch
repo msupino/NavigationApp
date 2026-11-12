@@ -1,6 +1,6 @@
-From 188dd34fa9acd120988838ec5477a37bc1d6c119 Mon Sep 17 00:00:00 2001
+From be23b01fd51955a8bcc1bc106f63bff0d8bc931d Mon Sep 17 00:00:00 2001
 From: Marco <marco@supino.org>
-Date: Thu, 12 Nov 2026 15:41:48 +0000
+Date: Thu, 12 Nov 2026 15:54:15 +0000
 Subject: [PATCH] Flight Plan: a go/no-go Fuel check (trip + reserve +
  alternate vs tanks, over-tank warning, endurance)
 
@@ -12,7 +12,7 @@ Subject: [PATCH] Flight Plan: a go/no-go Fuel check (trip + reserve +
  4 files changed, 47 insertions(+), 8 deletions(-)
 
 diff --git a/Flight-Plan-he.md b/Flight-Plan-he.md
-index 1523ae3..0e04938 100644
+index 1523ae3..1b582e8 100644
 --- a/Flight-Plan-he.md
 +++ b/Flight-Plan-he.md
 @@ -35,6 +35,24 @@
@@ -25,7 +25,7 @@ index 1523ae3..0e04938 100644
 +
 +- **טיסה** — סה"כ הדלק שמעל (שריפת הקטעים בתוספת קצבת ההסעה/המראה).
 +- **רזרבה** — רזרבת VFR הנשמרת, מוצגת בגלונים לפי צריכת השיוט. הדקות הן נתון
-+  **רזרבה (דק׳)** של המטוס (45 דק׳ כברירת מחדל); התווית אומרת כמה, למשל *רזרבה (45 דק׳)*.
++  **רזרבה (דק׳)** של המטוס (30 דק׳ כברירת מחדל — VFR יום; 45 ללילה); התווית אומרת כמה, למשל *רזרבה (45 דק׳)*.
 +- **חלופה (גאל)** — נתון אופציונלי שמקלידים לנחיתת חלופה. נשמר עם פרופיל ההגשה
 +  (<span dir="ltr"><code>navaid.fpl.altGal</code></span>, מסונכרן עם Drive).
 +- **סה"כ נדרש** — טיסה + רזרבה + חלופה.
@@ -58,7 +58,7 @@ index 1523ae3..0e04938 100644
  
  
 diff --git a/Flight-Plan.md b/Flight-Plan.md
-index 0b453b2..07ee4f4 100644
+index 0b453b2..d2d0ded 100644
 --- a/Flight-Plan.md
 +++ b/Flight-Plan.md
 @@ -34,6 +34,26 @@ Open it with the **📋 Flight Plan** button in the **Charts** menu.
@@ -72,7 +72,7 @@ index 0b453b2..07ee4f4 100644
 +
 +- **Trip** — the Total fuel above (leg burn plus the taxi/take-off allowance).
 +- **Reserve** — a VFR reserve held back, shown as gallons at the cruise burn. Its minutes are the
-+  aircraft's **Reserve (min)** figure (45 min by default); the label says which, e.g. *Reserve
++  aircraft's **Reserve (min)** figure (30 min by default — VFR day; set 45 for night); the label says which, e.g. *Reserve
 +  (45 min)*.
 +- **Alternate (gal)** — an optional figure you type for a diversion. It is kept with the filing
 +  profile (`navaid.fpl.altGal`, Drive-synced).
