@@ -60,6 +60,7 @@
   let stripSub = null;
   let deck = null;
   let commBtn = null;
+  let divertBtn = null;
   const buttons = {};
   let observers = [];
 
@@ -99,7 +100,20 @@
     langBtn.innerHTML = (typeof navIconSvg === 'function' ? navIconSvg('globe', 18) : '')
       + '<span class="lang-quick-label"></span>';
     if (typeof dressLangQuick === 'function') dressLangQuick(langBtn);
+    // Divert: the other in-flight decision, beside Comm fail. Not red -- it is not the emergency --
+    // and icon-only so the readout keeps its room; the words are in the accessible name.
+    divertBtn = document.createElement('button');
+    divertBtn.type = 'button';
+    divertBtn.className = 'deck-strip-divert';
+    divertBtn.innerHTML = typeof navIconSvg === 'function' ? navIconSvg('divert', 20) : '';
+    const divLabel = (typeof S === 'object' && S && S.divert) || 'Divert';
+    const divHelp = (typeof S === 'object' && S && S.divertTitle) || '';
+    divertBtn.setAttribute('aria-label', divHelp ? divLabel + ': ' + divHelp : divLabel);
+    divertBtn.title = divLabel;
+    divertBtn.setAttribute('aria-pressed', 'false');
+    divertBtn.addEventListener('click', () => { click('divert-btn'); sync(); });
     strip.appendChild(langBtn);
+    strip.appendChild(divertBtn);
     strip.appendChild(commBtn);
     document.body.appendChild(strip);
     // The menu opens under the strip, so it has to know how tall the strip is -- which
@@ -804,6 +818,10 @@
     if (commBtn) {
       const cf = document.getElementById('commfail-btn');
       commBtn.setAttribute('aria-pressed', String(!!(cf && cf.getAttribute('aria-pressed') === 'true')));
+    }
+    if (divertBtn) {
+      const dv = document.getElementById('divert-btn');
+      divertBtn.setAttribute('aria-pressed', String(!!(dv && dv.getAttribute('aria-pressed') === 'true')));
     }
     if (buttons.here) {
       buttons.here.setAttribute('aria-pressed', String(!!(typeof gpsLiveOn !== 'undefined' && gpsLiveOn)));

@@ -9038,11 +9038,27 @@ body.theme-light .route-library-gdrive-pii { color: #6b7787; border-inline-start
 .deck-btn i svg { display: block; }
 .deck-btn-label { font-size: 12px; font-weight: 600; letter-spacing: .02em; }
 /* The strip's grid: the readout lines on one side, Comm fail on the other, spanning both. */
-body.deck-on .deck-strip { grid-template-columns: minmax(0, 1fr) auto auto; column-gap: 8px; align-items: center; }
+body.deck-on .deck-strip { grid-template-columns: minmax(0, 1fr) auto auto auto; column-gap: 8px; align-items: center; }
 body.deck-on .deck-strip > .deck-strip-top,
 body.deck-on .deck-strip > .deck-strip-sub { grid-column: 1; }
-.deck-strip-commfail {
+/* Divert: beside Comm fail, icon-only, outlined like the language switch -- an in-flight decision,
+   not the emergency, so not red. Lit (inverted) while a divert route is up. */
+.deck-strip-divert {
   grid-column: 3; grid-row: 1 / span 2;
+  display: inline-flex; align-items: center; justify-content: center;
+  min-width: 44px; min-height: 44px; padding: 0 10px;
+  border: 1px solid rgba(255, 255, 255, .45); border-radius: 18px;
+  background: transparent; color: inherit;
+  cursor: pointer; touch-action: manipulation;
+}
+.deck-strip-divert svg { display: block; flex: none; }
+.deck-strip-divert[aria-pressed="true"] { background: #1d6fe0; border-color: #1d6fe0; color: #fff; }
+.deck-strip-divert:focus-visible { outline: 2px solid #4c9bff; outline-offset: 2px; }
+body.theme-light .deck-strip-divert { border-color: #858f9c; color: #1f252c; }
+body.theme-light .deck-strip-divert[aria-pressed="true"] { background: #1d6fe0; border-color: #1d6fe0; color: #fff; }
+body.theme-light .deck-strip-divert:focus-visible { outline-color: #1d6fe0; }
+.deck-strip-commfail {
+  grid-column: 4; grid-row: 1 / span 2;
   display: inline-flex; align-items: center; gap: 6px;
   min-height: 36px; padding: 0 12px;
   border: 0; border-radius: 18px;
@@ -10347,8 +10363,14 @@ html[dir="rtl"] .wp-search-item { text-align: right; }
    line is held to its own column, so nothing can paint under the buttons beside it. */
 /* (Batch 5: it steps aside to its globe alone instead of vanishing -- a control that disappears
    is not one a pilot can find again -- which frees the label's width for the route name.) */
-.deck-strip.deck-strip-live .deck-strip-lang .lang-quick-label { display: none; }
-.deck-strip.deck-strip-live .deck-strip-lang { padding: 0 11px; min-width: 44px; justify-content: center; }
+/* (#675: in flight Divert takes the language switch's slot -- three 44 px buttons left a 360 px
+   phone's readout 50 px short even at its smallest text. Language stays in Settings and the globe
+   comes back the moment Location is off. Asked for over keeping the globe.) The grid drops to
+   three columns too, so the empty track's gap is given back as well. */
+body.deck-on .deck-strip.deck-strip-live { grid-template-columns: minmax(0, 1fr) auto auto; }
+.deck-strip.deck-strip-live .deck-strip-lang { display: none; }
+.deck-strip.deck-strip-live .deck-strip-divert { grid-column: 2; }
+.deck-strip.deck-strip-live .deck-strip-commfail { grid-column: 3; }
 body.deck-on .deck-strip > .deck-strip-top { overflow: hidden; }
 
 /* NOTAMs in force, inside a bubble / leg panel. Amber like the NOTAM layer: this is the part

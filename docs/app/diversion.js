@@ -268,6 +268,10 @@
       if (t) t.textContent = label;
       btn.setAttribute('aria-label', label);
     }
+    // The phone strip's own Divert button (deck.js) mirrors this one; its sync runs after a draw,
+    // which here comes before the state changes, so set it directly.
+    const strip = document.querySelector('.deck-strip-divert');
+    if (strip) strip.setAttribute('aria-pressed', on ? 'true' : 'false');
   }
 
   // `reopen` is true when the pilot asks for the list again from the active card: keep the active

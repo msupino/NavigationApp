@@ -32,7 +32,7 @@ test('desktop: the menubar keeps a globe switch in sight, and stays one row', as
   await expect(page.locator('html')).toHaveAttribute('lang', 'en');
 });
 
-test('phone: in flight the switch shrinks to its globe, and the readout fits its own line', async ({ page }) => {
+test('phone: in flight Divert takes the switch\'s slot, and the readout fits its own line', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('?lang=he&nogist');
   await page.waitForSelector('#deck-strip .deck-strip-lang');
@@ -47,12 +47,17 @@ test('phone: in flight the switch shrinks to its globe, and the readout fits its
     const strip = document.getElementById('deck-strip');
     const line = strip.querySelector('.deck-strip-top');
     const vals = strip.querySelector('.deck-strip-vals').textContent;
+    const dv = strip.querySelector('.deck-strip-divert');
     return { live: strip.classList.contains('deck-strip-live'),
       lang: getComputedStyle(strip.querySelector('.deck-strip-lang')).display,
+      divertW: dv ? dv.getBoundingClientRect().width : 0,
       fits: line.scrollWidth <= line.clientWidth + 1, vals };
   });
   expect(got.live).toBe(true);
-  expect(got.lang).not.toBe('none');             // dimmed/shrunk, never hidden (batch 5); the label gives the room back
+  // #675 (asked): in flight Divert takes the language switch's slot -- Settings still has the
+  // language, and the globe returns when Location is off. Divert is a full 44 px target there.
+  expect(got.lang).toBe('none');
+  expect(got.divertW).toBeGreaterThanOrEqual(43.5);
   expect(got.fits).toBe(true);                   // nothing runs under Comm fail
   for (const kept of ['105 kt', '402 ft', '322\u00b0']) expect(got.vals).toContain(kept);   // never dropped
 });

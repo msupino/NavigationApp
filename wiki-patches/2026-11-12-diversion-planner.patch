@@ -1,20 +1,20 @@
-From 6659571c75d9118881fa954528ee87a1f33e9c68 Mon Sep 17 00:00:00 2001
+From 948981077a9fd9f2a9e75fdcc259b02436a0add1 Mon Sep 17 00:00:00 2001
 From: Marco <marco@supino.org>
-Date: Thu, 12 Nov 2026 17:56:21 +0000
+Date: Thu, 12 Nov 2026 20:15:13 +0000
 Subject: [PATCH] Divert: diversion planner (nearest airfields, direct
  re-route) in English and Hebrew
 
 ---
  Diversion-he.md | 31 +++++++++++++++++++++++++++++++
- Diversion.md    | 34 ++++++++++++++++++++++++++++++++++
+ Diversion.md    | 37 +++++++++++++++++++++++++++++++++++++
  _Sidebar.md     |  2 ++
- 3 files changed, 67 insertions(+)
+ 3 files changed, 70 insertions(+)
  create mode 100644 Diversion-he.md
  create mode 100644 Diversion.md
 
 diff --git a/Diversion-he.md b/Diversion-he.md
 new file mode 100644
-index 0000000..8369dbd
+index 0000000..6481dd4
 --- /dev/null
 +++ b/Diversion-he.md
 @@ -0,0 +1,31 @@
@@ -24,7 +24,7 @@ index 0000000..8369dbd
 +
 +# הסטה
 +
-+כפתור אחד להחלטה לאן לטוס **עכשיו**. **↱ הסטה** נמצא בשורת הכפתורים התחתונה ליד **תקלת קשר** ו**מיקום** — שלושתם החלטות שמתקבלות באוויר. לחיצה עליו:
++כפתור אחד להחלטה לאן לטוס **עכשיו**. **↱ הסטה** נמצא בשורת הכפתורים התחתונה ליד **תקלת קשר** ו**מיקום** — שלושתם החלטות שמתקבלות באוויר. בטלפון הוא כפתור **↱** מסומן ב[רצועה העליונה](Phone-Layout-he#הרצועה), ליד תקלת הקשר האדומה; בטיסה (מיקום דלוק) הוא תופס שם את מקום מתג השפה, כדי שהמהירות, הגובה והכיוון יישארו שלמים — השפה נשארת בהגדרות והגלובוס חוזר כשהמיקום כבה. לחיצה עליו:
 +
 +1. **מאתרת את המיקום.** אם מיקום, הקלטה או הסימולטור כבר נותנים מיקום, משתמשים בו. אחרת
 +   הכפתור מדליק את המיקום וממתין לקליטה הראשונה; בזמן ההמתנה כרטיס מציע
@@ -51,16 +51,19 @@ index 0000000..8369dbd
 +</div>
 diff --git a/Diversion.md b/Diversion.md
 new file mode 100644
-index 0000000..062faec
+index 0000000..8f1f098
 --- /dev/null
 +++ b/Diversion.md
-@@ -0,0 +1,34 @@
+@@ -0,0 +1,37 @@
 +🇮🇱 [עברית](Diversion-he)
 +
 +# Divert
 +
 +One button for deciding where to go **now**. **↱ Divert** sits in the footer beside **Comm
-+failure** and **Location** — all three are in-flight decisions. Press it and NavAid:
++failure** and **Location** — all three are in-flight decisions. On a phone it is the outlined
++**↱** button in the top [strip](Phone-Layout#the-strip), beside the red Comm fail; in flight (Location
++on) it takes the language switch's place there, so the speed, altitude and heading stay whole —
++the language stays in Settings and the globe returns when Location is off. Press it and NavAid:
 +
 +1. **Finds where you are.** If Location, a recording or the simulator is already giving a position,
 +   that is used. Otherwise the button switches Location on and waits for the first fix; while it

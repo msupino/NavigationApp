@@ -71,3 +71,21 @@ test.describe('Diversion planner (#675)', () => {
     await expect(page.locator('#divert-btn .footer-link-text')).toHaveText('Divert');
   });
 });
+
+test('on the phone deck the strip has its own Divert button beside Comm fail, and it drives the same planner', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await boot(page);
+  const strip = page.locator('.deck-strip-divert');
+  await expect(strip).toBeVisible();
+  // Its accessible name starts with the label (voice control: "tap Divert").
+  expect(await strip.getAttribute('aria-label')).toMatch(/^Divert/);
+  const box = await strip.boundingBox();
+  expect(box.width).toBeGreaterThanOrEqual(44);
+  expect(box.height).toBeGreaterThanOrEqual(44);
+  await strip.click();
+  await page.locator('.divert-list').waitFor({ state: 'visible', timeout: 5000 });
+  await page.locator('.divert-option').first().click();
+  await expect(strip).toHaveAttribute('aria-pressed', 'true');
+  await page.locator('.divert-cancel').click();
+  await expect(strip).toHaveAttribute('aria-pressed', 'false');
+});
