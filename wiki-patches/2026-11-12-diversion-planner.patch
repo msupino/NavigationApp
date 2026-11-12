@@ -1,0 +1,114 @@
+From 6659571c75d9118881fa954528ee87a1f33e9c68 Mon Sep 17 00:00:00 2001
+From: Marco <marco@supino.org>
+Date: Thu, 12 Nov 2026 17:56:21 +0000
+Subject: [PATCH] Divert: diversion planner (nearest airfields, direct
+ re-route) in English and Hebrew
+
+---
+ Diversion-he.md | 31 +++++++++++++++++++++++++++++++
+ Diversion.md    | 34 ++++++++++++++++++++++++++++++++++
+ _Sidebar.md     |  2 ++
+ 3 files changed, 67 insertions(+)
+ create mode 100644 Diversion-he.md
+ create mode 100644 Diversion.md
+
+diff --git a/Diversion-he.md b/Diversion-he.md
+new file mode 100644
+index 0000000..8369dbd
+--- /dev/null
++++ b/Diversion-he.md
+@@ -0,0 +1,31 @@
++<div dir="rtl">
++
++🇬🇧 [English](Diversion)
++
++# הסטה
++
++כפתור אחד להחלטה לאן לטוס **עכשיו**. **↱ הסטה** נמצא בשורת הכפתורים התחתונה ליד **תקלת קשר** ו**מיקום** — שלושתם החלטות שמתקבלות באוויר. לחיצה עליו:
++
++1. **מאתרת את המיקום.** אם מיקום, הקלטה או הסימולטור כבר נותנים מיקום, משתמשים בו. אחרת
++   הכפתור מדליק את המיקום וממתין לקליטה הראשונה; בזמן ההמתנה כרטיס מציע
++   **השתמש במרכז המפה** או **ביטול**. כשאין GPS להמתין לו, מרכז המפה משמש והכרטיס אומר זאת.
++2. **מציגה את שדות התעופה הקרובים** — ששת הקרובים ביותר לפי מרחק (נקבע ב-<span dir="ltr"><code>divertListCount</code></span>),
++   כל אחד עם **הכיוון המגנטי**, **המרחק**, **הזמן** ו**הדלק** להגעה בשיוט המתוכנן (מהירות
++   המסלול עצמו, או ברירת המחדל; הצריכה מ[כלי הטיס שלך](Flight-Plan-he)).
++3. **מנתבת ישיר** לשדה שתבחרו: המסלול הופך **NOW → שדה**, קו ישר, והמפה מתאימה אליו.
++
++## הכרטיס
++
++- בזמן שה-GPS מתחמם: **השתמש במרכז המפה** או **ביטול**.
++- הרשימה: כל שדה כ-**שם (<span dir="ltr">ICAO</span>)** עם שורה של **כיוון · מרחק · זמן · דלק**,
++  ואורך וסוג המסלול שלו. הקרוב ביותר תחילה.
++- אחרי הבחירה: **מסיט ל…** עם הנתונים, **שדה אחר** (הרשימה שוב), ו**חזרה למסלול שלי** (משחזר את התוכנית).
++
++## הערות
++
++- הנתונים הם אומדני תכנון בשיוט קבוע, לא תוכנית טיסה מתוקנת לרוח. ליומן הניווט המלא,
++  פתחו את [תכנית הטיסה](Flight-Plan-he).
++- הסטה מחליפה את המסלול, כמו תקלת קשר; **חזרה למסלול שלי** מחזירה את הישן כל עוד המסלול הוא זה שההסטה ציירה.
++- כל שדה במפה הוא מועמד, אזרחי וצבאי כאחד — בהסטה אמיתית המסלול הסלול הקרוב לא בהכרח שדה שתתכננו אליו אחרת.
++
++</div>
+diff --git a/Diversion.md b/Diversion.md
+new file mode 100644
+index 0000000..062faec
+--- /dev/null
++++ b/Diversion.md
+@@ -0,0 +1,34 @@
++🇮🇱 [עברית](Diversion-he)
++
++# Divert
++
++One button for deciding where to go **now**. **↱ Divert** sits in the footer beside **Comm
++failure** and **Location** — all three are in-flight decisions. Press it and NavAid:
++
++1. **Finds where you are.** If Location, a recording or the simulator is already giving a position,
++   that is used. Otherwise the button switches Location on and waits for the first fix; while it
++   waits a card offers **Use map centre** or **Cancel**. With no GPS to wait for, the map centre is
++   used and the card says so.
++2. **Lists the nearest airfields** — the closest six by distance (set by
++   `divertListCount`), each with its **magnetic bearing**, **distance**, **time** and **fuel** to
++   reach at the planned cruise (the route's own speed, else the default leg speed; the burn from
++   your [aircraft](Flight-Plan#aircraft-inputs)).
++3. **Re-routes direct** to the one you tap: the route becomes **NOW → field**, a straight
++   track, and the map fits it.
++
++## The card
++
++- While the GPS warms up: **Use map centre** or **Cancel**.
++- The list: each field as **Name (ICAO)** with a line of **bearing · distance · time
++  · fuel**, and its runway length and surface. Nearest first.
++- After you choose: **Diverting to …** with the figures, **Other field** (the list again), and
++  **Back to my route** (restores the plan you had).
++
++## Notes
++
++- The figures are planning estimates at a constant cruise, not a wind-corrected flight plan. For the
++  full nav log, open the [Flight Plan](Flight-Plan).
++- Divert replaces the route, like comm failure; **Back to my route** puts the old one back while the
++  route is still the one Divert drew.
++- Every airfield on the chart is a candidate, civil and military alike — in a real diversion the
++  nearest hard runway may not be a field you would otherwise plan to.
+diff --git a/_Sidebar.md b/_Sidebar.md
+index 4eabf9b..4568630 100644
+--- a/_Sidebar.md
++++ b/_Sidebar.md
+@@ -30,6 +30,7 @@
+ - [Google Earth](Google-Earth)
+ - [GPS Track Recording](GPS-Track-Recording)
+ - [Comm failure](Comm-Failure)
++- [Divert](Diversion)
+ - [Follow me](Follow-Me)
+ - [Bilingual UI](Bilingual-UI)
+ - [Offline and PWA](Offline-and-PWA)
+@@ -79,6 +80,7 @@
+ - [Google Earth](Google-Earth-he)
+ - [הקלטת מסלול GPS](GPS-Track-Recording-he)
+ - [תקלת קשר](Comm-Failure-he)
++- [הסטה](Diversion-he)
+ - [עקבו אחריי](Follow-Me-he)
+ - [ממשק דו-לשוני](Bilingual-UI-he)
+ - [לא מקוון ו-PWA](Offline-and-PWA-he)
+-- 
+2.43.0
+
