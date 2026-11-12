@@ -51,7 +51,7 @@ test.describe('Edit-header Save / Load route buttons', () => {
   test('both buttons are labeled, on their own row above the Edit section', async ({ page }) => {
     await boot(page);
     await expect(page.locator('#tool-save-route')).toContainText('Save route');
-    await expect(page.locator('#tool-load-route')).toContainText('My routes');
+    await expect(page.locator('#tool-load-route')).toContainText('Saved routes');
     const geo = await page.evaluate(() => {
       const head = document.querySelector('.tb-section[data-sec="build"] .tb-section-head');
       const sv = document.getElementById('tool-save-route').getBoundingClientRect();

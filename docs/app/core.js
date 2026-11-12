@@ -1942,7 +1942,7 @@ window.S = Object.assign({
   tourMenuTitle: 'Menu',
   tourMenuText: 'Charts, extra layers (NOTAM, weather, airspace), the flight plan, and settings.',
   tourMenuTextPhone: 'Menu: charts, layers (NOTAM, weather, airspace) and settings. Plan: the flight plan. The Legend button at the bottom left opens the key to the symbols, with the route totals beside it.',
-  tourMenuTextDesk: 'Save, My routes, the menus and the flight plan; then language, shortcuts (?), more links and the simulator. At the bottom: the Legend and the time slider.',
+  tourMenuTextDesk: 'Save, Saved routes, the menus and the flight plan; then language, shortcuts (?), more links and the simulator. At the bottom: the Legend and the time slider.',
   tourSearchTitle: 'Find',
   tourSearchText: 'Type a waypoint or airfield, or several codes (LLHZ BAZRA DEROR) to build a route.',
   tourHoldTitle: 'Press and hold the map',
@@ -1984,10 +1984,10 @@ window.S = Object.assign({
   appUpdateCellularText: function (size) { return 'The update uses about ' + size + ' of mobile data. It installs the next time NavAid starts, never during a flight.'; },
   routeDefaultName: function (when) { return 'Route ' + when; },
   routeFileSaveTo: function (name) { return 'Save to "' + name + '"'; },
-  routeFileMyRoutes: 'My routes',
+  routeFileMyRoutes: 'Saved routes',
   routeFileUnsaved: 'Unsaved changes',
   routeFileOverwriteTitle: function (name) { return 'Save "' + name + '"?'; },
-  routeFileOverwriteText: 'This route was opened from My routes and has changed since.',
+  routeFileOverwriteText: 'This route was opened from Saved routes and has changed since.',
   routeFileOverwrite: 'Save over it',
   routeFileSaveAsNew: 'Save as a new route…',
   routeLibraryTitle: 'Saved routes',
@@ -2110,13 +2110,13 @@ window.S = Object.assign({
   vorDmeOnlyReadout: function (dme) { return dme + ' NM (DME only)'; },
   searchKindRouteWp: 'on your route',
   searchKindNote: 'note',
-  routeLibraryGdriveSyncSettings: 'Use settings from Drive on this device',
+  routeLibraryGdriveSyncSettings: 'Match display settings across my devices',
   // Named in full because the pilot profile is personal data leaving the device, and
   // a checkbox reading "settings" does not suggest a licence number is among them.
   routeLibraryGdriveSyncPii: 'Sync backs up your settings to your Google Drive, with your pilot details (name, licence, phone, email) and aircraft. The AIS filing address never leaves this device.',
   routeLibraryGdriveSyncPiiAi: 'Nor do AI keys.',
   routeLibraryGdriveSyncSettingsTitle: 'Display settings (layers, colours, sizes and the like) from your other devices. Your aircraft, pilot details and corrections sync either way.',
-  routeLibraryGdriveRestore: 'Restore settings from Drive',
+  routeLibraryGdriveRestore: 'Restore this device from backup',
   routeLibraryGdriveRestoreConfirm: 'Replace this device\u2019s settings with the backup on Google Drive? The app reloads.',
   routeLibraryGdriveRestoreNone: 'No settings backup on Drive yet',
   routeLibraryGdriveFirstBackup: function (when) { return 'Google Drive has a settings backup from ' + when + '. Restore it on this device?'; },
@@ -3282,6 +3282,23 @@ window.S = Object.assign({
   tbFreqTableTitle: 'Edit local communication frequency defaults',
   tbAltPairs: '🧭 Alt pairs',
   tbAltPairsTitle: 'View and copy learned CVFR altitude pairs',
+  tbStorage: '💾 Storage',
+  tbStorageTitle: 'See how much saved data this device holds and clear rebuildable caches',
+  storageOf: 'of',
+  storageBudgetNote: 'Browsers cap each site at about 5 MB; this cannot be raised.',
+  storageBreakdownTitle: 'What it holds',
+  storageCatRoutes: 'Routes & recordings',
+  storageCatFreqs: 'Frequency overrides',
+  storageCatAircraft: 'Aircraft',
+  storageCatCache: 'Map & feed cache',
+  storageCatPreview: 'PR preview leftovers',
+  storageCatOther: 'Settings & other',
+  storageClearCache: 'Clear rebuildable cache',
+  storageClearConfirm: 'Clear the map and feed cache? It is refetched as needed. Your routes, recordings, frequencies and settings are not touched.',
+  storageNothingToClear: 'No rebuildable cache to clear.',
+  storageCleared: freedStr => 'Cleared ' + freedStr + ' of cache.',
+  storageTrimHint: 'To free more, delete old recordings in Saved routes.',
+  storageWipeNote: 'Last resort — erases every route, recording and setting saved on this device.',
   tbCharts: '🗺️ Airport charts',
   tbChartsTitle: 'Browse approach charts for all airfields',
   tbFly: '✈️ Open in Google Earth',
@@ -6095,6 +6112,93 @@ function navSetItemCritical(key, value) {
     }
   }
 }
+// --- Storage usage ---------------------------------------------------------
+// The browser gives each origin a fixed room for localStorage -- about 5 MB in
+// every current browser, and NOT raisable from script. A pilot with a season of
+// recordings, or a long-lived install, can fill it; then every auto-save fails
+// (navSetItemCritical warns, and evicts the one cache below to make room). The
+// Settings > Storage window measures what is used, says what each key holds, and
+// clears only the caches the app can rebuild -- never the pilot's own data.
+const NAV_STORAGE_BUDGET_BYTES = 5 * 1024 * 1024;    // the de-facto per-origin localStorage cap
+
+// A PR preview is served from the production origin (navaid.supino.org/pr/<n>/) and
+// isolates its storage by prefixing every key with "pr-<n>." (.github/preview/pr-store.js).
+// localStorage is per origin, so on the LIVE site those prefixed keys from every preview a
+// pilot has opened pile up in the same store and never belong to the live app -- this is how
+// "many PR previews filled it up" happens. A preview's own view is namespaced, so it does not
+// see them; the live site does, and may drop them safely.
+function navPreviewLeftoverKey(key) {
+  return /^pr-[0-9]+\./.test(key || '');
+}
+// Keys the app can drop and rebuild without losing anything the pilot owns: the gist
+// snapshot of settings/feeds (refetched on the next load), and any PR-preview leftovers.
+// Everything else under navaid.* is the pilot's own data (routes, recordings, frequency
+// overrides, aircraft, settings) and is never cleared automatically. navSetItemCritical
+// evicts the gist cache when a write will not fit.
+function navReclaimableKey(key) {
+  if (key === (typeof GIST_CACHE_KEY === 'string' ? GIST_CACHE_KEY : 'navaid.gistCache')) return true;
+  return navPreviewLeftoverKey(key);
+}
+// A single localStorage entry's footprint. Browsers store the key and the value as
+// UTF-16, so two bytes per code unit is the standard estimate.
+function navStorageEntryBytes(key, value) {
+  return ((key ? key.length : 0) + (value ? value.length : 0)) * 2;
+}
+// Which bucket a key falls in, for the window's breakdown. Data-first: anything we
+// do not recognise is the pilot's "settings & other", never mislabelled as cache.
+function navStorageCategory(key) {
+  if (navPreviewLeftoverKey(key)) return 'preview';
+  if (key === 'navaid.routes') return 'routes';
+  if (key === 'navaid.airfieldFreqOverrides' || key === 'navaid.vorFreqOverrides'
+    || key === 'navaid.commFreqOverrides') return 'freqs';
+  if (key === 'navaid.aircraft' || key === 'navaid.aircraftProfiles'
+    || key === 'navaid.profileVS') return 'aircraft';
+  if (key === (typeof GIST_CACHE_KEY === 'string' ? GIST_CACHE_KEY : 'navaid.gistCache')) return 'cache';
+  return 'other';
+}
+// Walk this origin's entries once: the app's own navaid.* keys plus any pr-<n>. preview
+// leftovers. Returns total bytes, per-category bytes, and how much is reclaimable. Guarded
+// so a browser with storage blocked returns zeroes.
+function navStorageUsage() {
+  const cats = { routes: 0, freqs: 0, aircraft: 0, cache: 0, preview: 0, other: 0 };
+  let total = 0, reclaimable = 0;
+  try {
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (!key || (key.indexOf('navaid.') !== 0 && !navPreviewLeftoverKey(key))) continue;
+      const bytes = navStorageEntryBytes(key, localStorage.getItem(key));
+      total += bytes;
+      cats[navStorageCategory(key)] += bytes;
+      if (navReclaimableKey(key)) reclaimable += bytes;
+    }
+  } catch (e) { /* storage unavailable -> zeroes */ }
+  return { total: total, cats: cats, reclaimable: reclaimable, budget: NAV_STORAGE_BUDGET_BYTES };
+}
+// Drop the rebuildable cache keys and report how many bytes were freed. Only keys
+// navReclaimableKey() approves are removed, so the pilot's data is never at risk.
+function navClearReclaimable() {
+  let freed = 0;
+  try {
+    const kill = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key && navReclaimableKey(key)) {
+        freed += navStorageEntryBytes(key, localStorage.getItem(key));
+        kill.push(key);
+      }
+    }
+    kill.forEach(k => { try { localStorage.removeItem(k); } catch (e) { /* ignore */ } });
+  } catch (e) { /* storage unavailable */ }
+  return freed;
+}
+// Human size for the window and toasts: "0 B", "812 KB", "1.2 MB".
+function navStorageFmtBytes(b) {
+  b = Math.max(0, Math.round(b || 0));
+  if (b < 1024) return b + ' B';
+  if (b < 1024 * 1024) return Math.round(b / 1024) + ' KB';
+  return (Math.round(b / (1024 * 1024) * 10) / 10) + ' MB';
+}
+
 function setAirfieldFreqOverride(key, val) {
   const o = airfieldFreqOverrides();
   if (val) o[key] = val; else delete o[key];
