@@ -5771,6 +5771,10 @@ document.getElementById('plan').onclick = openFlightPlan;
 document.getElementById('freq-table').onclick = showFreqTableModal;
 document.getElementById('alt-pairs').onclick = showAltitudePairsModal;
 (function () {
+  const btn = document.getElementById('storage-manage');
+  if (btn && typeof showStorageModal === 'function') btn.onclick = showStorageModal;
+}());
+(function () {
   // The nav log sits with the other tables, not beside Plan: it is a different document, and a
   // pilot reaching for the plan in the air must not land on a sheet of exercise arithmetic.
   const btn = document.getElementById('nav-log');

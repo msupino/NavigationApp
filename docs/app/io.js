@@ -9025,6 +9025,112 @@ function showFreqTableModal() {
   modal.show();
 }
 
+// Settings > Storage: how much of the browser's per-site room this device's saved data
+// uses, what it is, and a one-tap clear of the rebuildable cache. Opens as a plain modal
+// (a maintenance action, not a chart), and rebuilds its own body after a clear so the
+// figures update without reopening.
+function showStorageModal() {
+  const fmt = (b) => (typeof navStorageFmtBytes === 'function' ? navStorageFmtBytes(b) : (b + ' B'));
+  const modal = createDraggableModal(S.storageModalTitle || 'Storage', 'modal');
+  const body = document.createElement('div');
+  body.className = 'storage-modal-body';
+  modal.box.appendChild(body);
+
+  function render() {
+    body.textContent = '';
+    const u = (typeof navStorageUsage === 'function')
+      ? navStorageUsage()
+      : { total: 0, cats: {}, reclaimable: 0, budget: 5 * 1024 * 1024 };
+    const pct = u.budget > 0 ? Math.min(100, Math.round(u.total / u.budget * 100)) : 0;
+
+    // The headline: a bar that fills as the store fills, turning amber then red as it nears
+    // the cap, with the used-of-total figure beside it. Colour is never the only signal --
+    // the figure and the percent say the same.
+    const bar = document.createElement('div');
+    bar.className = 'storage-bar';
+    const fill = document.createElement('div');
+    fill.className = 'storage-bar-fill' + (pct >= 90 ? ' is-full' : pct >= 70 ? ' is-high' : '');
+    fill.style.width = pct + '%';
+    bar.appendChild(fill);
+    body.appendChild(bar);
+
+    const usedLine = document.createElement('div');
+    usedLine.className = 'storage-used';
+    const usedTxt = (typeof S.storageUsed === 'function')
+      ? S.storageUsed(fmt(u.total), fmt(u.budget)) : (fmt(u.total) + ' / ' + fmt(u.budget));
+    usedLine.textContent = usedTxt + ' · ' + pct + '%';
+    body.appendChild(usedLine);
+
+    const note = document.createElement('p');
+    note.className = 'storage-note';
+    note.textContent = S.storageBudgetNote || '';
+    body.appendChild(note);
+
+    // Breakdown: the pilot's own data first, the rebuildable cache last, each shown only
+    // when it holds something. Sizes are right-aligned (tabular) so they line up.
+    const rows = [
+      ['routes', S.storageCatRoutes], ['freqs', S.storageCatFreqs],
+      ['aircraft', S.storageCatAircraft], ['other', S.storageCatOther],
+      ['cache', S.storageCatCache],
+    ].filter(([k]) => (u.cats[k] || 0) > 0);
+    if (rows.length) {
+      const h = document.createElement('div');
+      h.className = 'storage-breakdown-title';
+      h.textContent = S.storageBreakdownTitle || '';
+      body.appendChild(h);
+      const list = document.createElement('div');
+      list.className = 'storage-breakdown';
+      rows.forEach(([k, label]) => {
+        const row = document.createElement('div');
+        row.className = 'storage-row';
+        const name = document.createElement('span');
+        name.className = 'storage-row-name';
+        name.textContent = label || k;
+        const size = document.createElement('span');
+        size.className = 'storage-row-size';
+        size.textContent = fmt(u.cats[k]);
+        row.appendChild(name);
+        row.appendChild(size);
+        list.appendChild(row);
+      });
+      body.appendChild(list);
+    }
+
+    const actions = document.createElement('div');
+    actions.className = 'storage-actions';
+    const clear = document.createElement('button');
+    clear.type = 'button';
+    clear.className = 'storage-clear-btn';
+    clear.textContent = S.storageClearCache || 'Clear cache';
+    if (u.reclaimable <= 0) {
+      clear.disabled = true;
+      clear.title = S.storageNothingToClear || '';
+    }
+    clear.onclick = async () => {
+      if (typeof appConfirm === 'function'
+        && !(await appConfirm(S.storageClearConfirm || 'Clear the rebuildable cache?',
+          S.storageClearCache, S.storageModalTitle))) return;
+      const freed = (typeof navClearReclaimable === 'function') ? navClearReclaimable() : 0;
+      if (typeof showToast === 'function') {
+        showToast((typeof S.storageCleared === 'function')
+          ? S.storageCleared(fmt(freed)) : ('Cleared ' + fmt(freed)));
+      }
+      render();
+    };
+    actions.appendChild(clear);
+    body.appendChild(actions);
+
+    const hint = document.createElement('p');
+    hint.className = 'storage-hint';
+    hint.textContent = S.storageTrimHint || '';
+    body.appendChild(hint);
+  }
+
+  render();
+  modal.show();
+}
+window.showStorageModal = showStorageModal;
+
 function altitudePairSegmentsForChart() {
   if (legAltitudeDataset && Array.isArray(legAltitudeDataset.segments)) {
     return legAltitudeDataset.segments.slice();

@@ -3282,6 +3282,22 @@ window.S = Object.assign({
   tbFreqTableTitle: 'Edit local communication frequency defaults',
   tbAltPairs: '🧭 Alt pairs',
   tbAltPairsTitle: 'View and copy learned CVFR altitude pairs',
+  tbStorage: '💾 Storage',
+  tbStorageTitle: 'See how much saved data this device holds and clear rebuildable caches',
+  storageModalTitle: '💾 Storage',
+  storageUsed: (usedStr, totalStr) => usedStr + ' of ' + totalStr,
+  storageBudgetNote: 'Browsers cap each site at about 5 MB; this cannot be raised.',
+  storageBreakdownTitle: 'What it holds',
+  storageCatRoutes: 'Routes & recordings',
+  storageCatFreqs: 'Frequency overrides',
+  storageCatAircraft: 'Aircraft',
+  storageCatCache: 'Map & feed cache',
+  storageCatOther: 'Settings & other',
+  storageClearCache: 'Clear rebuildable cache',
+  storageClearConfirm: 'Clear the map and feed cache? It is refetched as needed. Your routes, recordings, frequencies and settings are not touched.',
+  storageNothingToClear: 'No rebuildable cache to clear.',
+  storageCleared: freedStr => 'Cleared ' + freedStr + ' of cache.',
+  storageTrimHint: 'To free more, delete old recordings in Saved routes.',
   tbCharts: '🗺️ Airport charts',
   tbChartsTitle: 'Browse approach charts for all airfields',
   tbFly: '✈️ Open in Google Earth',
@@ -6095,6 +6111,99 @@ function navSetItemCritical(key, value) {
     }
   }
 }
+// --- Storage usage ---------------------------------------------------------
+// The browser gives each origin a fixed room for localStorage -- about 5 MB in
+// every current browser, and NOT raisable from script. A pilot with a season of
+// recordings, or a long-lived install, can fill it; then every auto-save fails
+// (navSetItemCritical warns, and evicts the one cache below to make room). The
+// Settings > Storage window measures what is used, says what each key holds, and
+// clears only the caches the app can rebuild -- never the pilot's own data.
+const NAV_STORAGE_BUDGET_BYTES = 5 * 1024 * 1024;    // the de-facto per-origin localStorage cap
+
+// The only localStorage key the app can drop and rebuild without losing anything:
+// the gist snapshot of settings/feeds, refetched on the next load. Everything else
+// under navaid.* is the pilot's own data (routes, recordings, frequency overrides,
+// aircraft, settings) and is never cleared automatically. navSetItemCritical evicts
+// exactly this key when a write will not fit.
+function navReclaimableKey(key) {
+  return key === (typeof GIST_CACHE_KEY === 'string' ? GIST_CACHE_KEY : 'navaid.gistCache');
+}
+// A single localStorage entry's footprint. Browsers store the key and the value as
+// UTF-16, so two bytes per code unit is the standard estimate.
+function navStorageEntryBytes(key, value) {
+  return ((key ? key.length : 0) + (value ? value.length : 0)) * 2;
+}
+// Which bucket a key falls in, for the window's breakdown. Data-first: anything we
+// do not recognise is the pilot's "settings & other", never mislabelled as cache.
+function navStorageCategory(key) {
+  if (key === 'navaid.routes') return 'routes';
+  if (key === 'navaid.airfieldFreqOverrides' || key === 'navaid.vorFreqOverrides'
+    || key === 'navaid.commFreqOverrides') return 'freqs';
+  if (key === 'navaid.aircraft' || key === 'navaid.aircraftProfiles'
+    || key === 'navaid.profileVS') return 'aircraft';
+  if (navReclaimableKey(key)) return 'cache';
+  return 'other';
+}
+// Walk this origin's navaid.* entries once: total bytes, per-category bytes, and how
+// much is reclaimable. Guarded so a browser with storage blocked returns zeroes.
+function navStorageUsage() {
+  const cats = { routes: 0, freqs: 0, aircraft: 0, cache: 0, other: 0 };
+  let total = 0, reclaimable = 0;
+  try {
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (!key || key.indexOf('navaid.') !== 0) continue;
+      const bytes = navStorageEntryBytes(key, localStorage.getItem(key));
+      total += bytes;
+      cats[navStorageCategory(key)] += bytes;
+      if (navReclaimableKey(key)) reclaimable += bytes;
+    }
+  } catch (e) { /* storage unavailable -> zeroes */ }
+  return { total: total, cats: cats, reclaimable: reclaimable, budget: NAV_STORAGE_BUDGET_BYTES };
+}
+// Drop the rebuildable cache keys and report how many bytes were freed. Only keys
+// navReclaimableKey() approves are removed, so the pilot's data is never at risk.
+function navClearReclaimable() {
+  let freed = 0;
+  try {
+    const kill = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key && navReclaimableKey(key)) {
+        freed += navStorageEntryBytes(key, localStorage.getItem(key));
+        kill.push(key);
+      }
+    }
+    kill.forEach(k => { try { localStorage.removeItem(k); } catch (e) { /* ignore */ } });
+  } catch (e) { /* storage unavailable */ }
+  return freed;
+}
+// Human size for the window and toasts: "0 B", "812 KB", "1.2 MB".
+function navStorageFmtBytes(b) {
+  b = Math.max(0, Math.round(b || 0));
+  if (b < 1024) return b + ' B';
+  if (b < 1024 * 1024) return Math.round(b / 1024) + ' KB';
+  return (Math.round(b / (1024 * 1024) * 10) / 10) + ' MB';
+}
+// A non-live build -- a /pr/<n>/ preview, /staging/, a developer's laptop or a fork --
+// shares the live site's origin, so its gist cache is written to the SAME key as
+// production's and lingers there after the preview tab closes. Reuse the live-site
+// test the chart tiles already make (the embedded app is excluded: it keeps the
+// site's data on purpose). A preview that cannot tell stays conservative and clears.
+function navIsPreviewBuild() {
+  if (window.__navaidEmbedded === true) return false;
+  return typeof liveChartTilesAllowed === 'function' ? !liveChartTilesAllowed() : false;
+}
+// A preview session should not leave its refetchable gist blob sitting on the
+// production-shared origin. On the way out, a preview drops the one reclaimable key;
+// the live site refetches it on its next load, which it would do anyway. The pilot's
+// data is untouched. pagehide fires on mobile tab-away where unload does not.
+if (typeof window !== 'undefined' && navIsPreviewBuild()) {
+  window.addEventListener('pagehide', function () {
+    try { if (typeof GIST_CACHE_KEY === 'string') localStorage.removeItem(GIST_CACHE_KEY); } catch (e) { /* ignore */ }
+  });
+}
+
 function setAirfieldFreqOverride(key, val) {
   const o = airfieldFreqOverrides();
   if (val) o[key] = val; else delete o[key];
