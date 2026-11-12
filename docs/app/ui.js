@@ -11519,8 +11519,8 @@ if (DATE_FORMAT_EL) {
 // Clear store: wipe every navaid.* key (routes, saved-route library, all
 // settings) from local + session storage, then reload to a clean slate.
 // The nuclear reset: wipe every navaid.* key (local + session) and reload to a clean
-// slate. Shared by the toolbar's danger button and the Storage window's last-resort row,
-// so both ask the same way and wipe the same set. Returns false if the pilot backs out.
+// slate. Called from the Storage window's last-resort row (showStorageModal). Returns
+// false if the pilot backs out of the confirm.
 async function navClearLocalStore() {
   if (!(await appConfirm(S.tbClearStoreConfirm ||
     'Delete ALL saved routes and settings stored on this device? This cannot be undone.'))) return false;
