@@ -9612,7 +9612,12 @@ body.theme-light .storage-bar { background: rgba(0, 0, 0, 0.12); }
 .storage-hint { margin: 0; font-size: 12px; opacity: 0.7; }
 .storage-danger-sep { border: none; border-top: 1px solid rgba(255, 255, 255, 0.14); margin: 8px 0 2px; }
 body.theme-light .storage-danger-sep { border-top-color: rgba(0, 0, 0, 0.14); }
-.storage-wipe-btn { min-height: 36px; width: 100%; cursor: pointer; }
+/* The last-resort wipe reads as destructive, like the toolbar danger button it replaced
+   (which was styled only under #toolbar, out of this window's reach). */
+.storage-wipe-btn { min-height: 36px; width: 100%; cursor: pointer; color: #e88; border-color: #5a3a3a; }
+.storage-wipe-btn:hover { background: #c0392b; border-color: #c0392b; color: #fff; }
+body.theme-light .storage-wipe-btn { color: #c0392b; border-color: #e8b4b4; }
+body.theme-light .storage-wipe-btn:hover { background: #c0392b; border-color: #c0392b; color: #fff; }
 
 /* Phone links (airfield panel, parking request): a link, so it has to read as one -- but in the app's blue,
    not the browser's visited purple, and big enough to hit with a thumb in a cockpit. */
