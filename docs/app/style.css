@@ -7616,6 +7616,63 @@ html[data-theme="light"] #insp-body .insp-actions {
   color: inherit;
 }
 
+/* The go/no-go fuel check under the nav log (issue #668). Inherits the window's text colour the
+   same way the mobile summary does, so it reads in both themes. */
+.fp-fuel-summary {
+  margin-top: 8px;
+  padding-top: 6px;
+  border-top: 1px solid rgba(255, 255, 255, 0.18);
+  font-size: 13px;
+  color: inherit;
+}
+body.theme-light .fp-fuel-summary { border-top-color: #d8dee6; }
+.fp-fuel-summary[hidden] { display: none; }
+.fp-fuel-title {
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  margin-bottom: 4px;
+  opacity: 0.85;
+}
+.fp-fuel-grid { display: flex; flex-direction: column; gap: 2px; max-width: 320px; }
+.fp-fuel-row { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+.fp-fuel-row[hidden] { display: none; }
+.fp-fuel-k { opacity: 0.9; }
+.fp-fuel-v { font-weight: 600; font-variant-numeric: tabular-nums; }
+/* The sum against the tanks: the row the pilot decides on, lifted from the parts above it. */
+.fp-fuel-required {
+  margin-top: 3px;
+  padding-top: 3px;
+  border-top: 1px solid rgba(255, 255, 255, 0.14);
+  font-weight: 700;
+}
+body.theme-light .fp-fuel-required { border-top-color: #e2e7ee; }
+.fp-fuel-required .fp-fuel-v { font-weight: 700; }
+/* Not enough fuel: the figure and the line below it go red (never colour alone -- the warning
+   text spells it out). */
+.fp-fuel-short .fp-fuel-v { color: #e5484d; }
+body.theme-light .fp-fuel-short .fp-fuel-v { color: #c0392b; }
+.fp-fuel-warn {
+  margin-top: 5px;
+  font-weight: 700;
+  color: #e5484d;
+}
+body.theme-light .fp-fuel-warn { color: #c0392b; }
+/* The "set usable fuel" hint is advice, not an alarm: muted, not red. */
+.fp-fuel-warn.fp-fuel-note { font-weight: 400; color: inherit; opacity: 0.7; }
+.fp-fuel-alt-input {
+  width: 72px;
+  padding: 2px 6px;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+  text-align: end;
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.06);
+  color: inherit;
+}
+body.theme-light .fp-fuel-alt-input { border-color: #c3cad4; background: #fff; color: #1f252c; }
+.fp-fuel-alt-input:focus-visible { outline: 2px solid #1d6fe0; outline-offset: 1px; }
+
 /* Separator above the destructive storage wipe, so it reads as set apart from the
    ordinary data-management actions it now sits with. */
 .tb-danger-sep {

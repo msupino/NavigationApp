@@ -422,7 +422,7 @@ const GDRIVE_SETTINGS_KEYS = [
   // decides where a plan is sent.
   ...['reg', 'type', 'wake', 'equip', 'surv', 'pic', 'license', 'cell',
     'endurance', 'persons', 'kind', 'replyTo',
-    'company', 'purpose', 'altField'].map(f => 'navaid.fpl.' + f),
+    'company', 'purpose', 'altField', 'altGal'].map(f => 'navaid.fpl.' + f),
   // AI assistant: active provider and per-provider model. API keys stay on the device.
   // navaid.ai.baseUrl.<provider> excluded — it decides where data is sent.
   // Per PROVIDER now, and still device-local: a synced proxy URL would carry a synced key to

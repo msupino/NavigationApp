@@ -3963,6 +3963,23 @@ function flightPlanCsv(table, scrollArea) {
     if (idx > 0) rows.push([]);
     addTable(rows, idx === 0 ? S.flightPlan : S.fpReturn, planTable);
   });
+  // The go/no-go fuel block, when it is shown (an aircraft is set), as label,value pairs so the
+  // export carries exactly what the pilot sees under the table.
+  const fs = scrollArea.parentElement && scrollArea.parentElement.querySelector('#fp-fuel-summary');
+  if (fs && !fs.hidden) {
+    rows.push([]);
+    rows.push([S.fpFuelCheck || 'Fuel check']);
+    fs.querySelectorAll('.fp-fuel-row').forEach(row => {
+      if (row.hidden) return;
+      const k = row.querySelector('.fp-fuel-k');
+      const vEl = row.querySelector('.fp-fuel-v');
+      const input = row.querySelector('input');
+      const v = input ? input.value : (vEl ? vEl.textContent : '');
+      rows.push([(k ? k.textContent : ''), v]);
+    });
+    const warn = fs.querySelector('.fp-fuel-warn');
+    if (warn && !warn.hidden && warn.textContent.trim()) rows.push([warn.textContent]);
+  }
   return rows.map(row => row.map(csvCell).join(',')).join('\r\n') + '\r\n';
 }
 
@@ -5031,6 +5048,111 @@ function showFlightPlan() {
   const mobileSummary = document.createElement('div');
   mobileSummary.id = 'fp-mobile-summary';
 
+  // The go/no-go fuel block (issue #668): trip burn + reserve + any alternate, their sum against
+  // the tanks, the fuel left and how long the tanks last. Built once; refresh() fills it, and it
+  // hides itself when there is no aircraft (then every figure would be a guess). Alternate fuel is
+  // the one editable figure here, kept with the filing profile (navaid.fpl.altGal, Drive-synced).
+  const fuelSummary = document.createElement('div');
+  fuelSummary.id = 'fp-fuel-summary';
+  fuelSummary.className = 'fp-fuel-summary';
+  const fsTitle = document.createElement('div');
+  fsTitle.className = 'fp-fuel-title';
+  fsTitle.textContent = S.fpFuelCheck || 'Fuel check';
+  const fsGrid = document.createElement('div');
+  fsGrid.className = 'fp-fuel-grid';
+  // One label/value row; `key` tags it so refresh() and the CSV can find it.
+  const fuelRow = (key, cls) => {
+    const row = document.createElement('div');
+    row.className = 'fp-fuel-row' + (cls ? ' ' + cls : '');
+    row.dataset.k = key;
+    const k = document.createElement('span');
+    k.className = 'fp-fuel-k';
+    const v = document.createElement('span');
+    v.className = 'fp-fuel-v';
+    v.dir = 'ltr';
+    row.appendChild(k); row.appendChild(v);
+    fsGrid.appendChild(row);
+    return { row, k, v };
+  };
+  const fsTrip = fuelRow('trip');
+  const fsReserve = fuelRow('reserve');
+  // Alternate: an optional gallons input, not a computed figure.
+  const fsAltRow = document.createElement('div');
+  fsAltRow.className = 'fp-fuel-row fp-fuel-alt-row';
+  fsAltRow.dataset.k = 'alt';
+  const fsAltLabel = document.createElement('span');
+  fsAltLabel.className = 'fp-fuel-k';
+  fsAltLabel.textContent = S.fpFuelAltLabel || 'Alternate (gal)';
+  const fsAltInput = document.createElement('input');
+  fsAltInput.type = 'number';
+  fsAltInput.id = 'fp-fuel-alt';
+  fsAltInput.min = '0'; fsAltInput.max = '200'; fsAltInput.step = '0.5';
+  fsAltInput.inputMode = 'decimal';
+  fsAltInput.className = 'fp-fuel-alt-input';
+  fsAltInput.dir = 'ltr';
+  fsAltInput.setAttribute('aria-label', S.fpFuelAltLabel || 'Alternate (gal)');
+  try { fsAltInput.value = (localStorage.getItem(FPL_PROFILE_PREFIX + 'altGal') || '').trim(); } catch (e) { /* storage off */ }
+  fsAltRow.appendChild(fsAltLabel); fsAltRow.appendChild(fsAltInput);
+  fsGrid.appendChild(fsAltRow);
+  const fsRequired = fuelRow('required', 'fp-fuel-required');
+  const fsRemaining = fuelRow('remaining', 'fp-fuel-remaining');
+  const fsEndurance = fuelRow('endurance');
+  const fsWarn = document.createElement('div');
+  fsWarn.className = 'fp-fuel-warn';
+  // Announce an over-tank finding (or the missing-usable hint) without stealing focus mid-edit.
+  fsWarn.setAttribute('aria-live', 'polite');
+  fsWarn.hidden = true;
+  fuelSummary.appendChild(fsTitle);
+  fuelSummary.appendChild(fsGrid);
+  fuelSummary.appendChild(fsWarn);
+  // A gallons figure for the block: one decimal, with the unit as its own isolated run so RTL
+  // keeps "12.3 gal" in order. Blank renders as an em dash.
+  const fuelGal = n => (n == null || !Number.isFinite(n)) ? '—' : n.toFixed(1) + ' gal';
+  const fuelHM = m => Math.floor(m / 60) + ':' + String(Math.round(m % 60)).padStart(2, '0');
+  // Fill the block from the trip burn (tf, taxi already in it) and the aircraft. Hidden with no
+  // aircraft; the over-tank warning and Remaining need usable fuel to be set too.
+  function fillFuelSummary(tripGal, ac) {
+    const gph = ac && Number(ac.gph) > 0 ? Number(ac.gph) : 0;
+    if (!ac || !(gph > 0) || !(tripGal > 0)) { fuelSummary.hidden = true; return; }
+    fuelSummary.hidden = false;
+    const reserveMin = Number.isFinite(Number(ac.reserveMin)) && ac.reserveMin !== '' && ac.reserveMin != null
+      ? Number(ac.reserveMin) : (typeof tune === 'function' ? tune('defaultReserveMin') : 45);
+    const reserveGal = gph * reserveMin / 60;
+    let altGal = parseFloat(fsAltInput.value);
+    if (!(altGal > 0)) altGal = 0;
+    const required = tripGal + reserveGal + altGal;
+    const usable = Number(ac.usableGal) > 0 ? Number(ac.usableGal) : null;
+    fsTrip.k.textContent = S.fpFuelTrip || 'Trip';
+    fsTrip.v.textContent = fuelGal(tripGal);
+    fsReserve.k.textContent = typeof S.fpFuelReserveMin === 'function'
+      ? S.fpFuelReserveMin(reserveMin) : (S.fpFuelReserve || 'Reserve');
+    fsReserve.v.textContent = fuelGal(reserveGal);
+    fsAltRow.hidden = false;
+    fsRequired.k.textContent = S.fpFuelRequired || 'Total required';
+    fsRequired.v.textContent = fuelGal(required);
+    fsRemaining.k.textContent = S.fpFuelRemaining || 'Remaining';
+    fsRemaining.v.textContent = usable != null ? fuelGal(usable - required) : '—';
+    const over = usable != null && required > usable + 1e-6;
+    fsRemaining.row.classList.toggle('fp-fuel-short', over);
+    fsEndurance.k.textContent = S.fpFuelEndurance || 'Endurance';
+    fsEndurance.v.textContent = usable != null ? fuelHM(usable / gph * 60) : '—';
+    if (over) {
+      fsWarn.hidden = false;
+      fsWarn.textContent = typeof S.fpFuelOver === 'function' ? S.fpFuelOver((required - usable).toFixed(1)) : 'Over tanks';
+    } else if (usable == null) {
+      fsWarn.hidden = false;
+      fsWarn.classList.add('fp-fuel-note');
+      fsWarn.textContent = S.fpFuelNoUsable || '';
+    } else {
+      fsWarn.hidden = true;
+      fsWarn.classList.remove('fp-fuel-note');
+    }
+  }
+  fsAltInput.addEventListener('input', () => {
+    try { localStorage.setItem(FPL_PROFILE_PREFIX + 'altGal', fsAltInput.value.trim()); } catch (e) { /* storage off */ }
+    fillFuelSummary(window.__fpTripGal || 0, aircraft);
+  });
+
   const tfoot = document.createElement('tfoot');
   const trF = document.createElement('tr');
   const tdLabel = document.createElement('td');
@@ -5247,6 +5369,9 @@ function showFlightPlan() {
     totFuelCell.textContent = ac ? tf.toFixed(1) : '--';
     totCumTimeCell.textContent = totTimeCell.textContent;
     totCumFuelCell.textContent = totFuelCell.textContent;
+    // The go/no-go fuel block, from the same trip total shown above (taxi already in `tf`).
+    window.__fpTripGal = ac ? tf : 0;
+    fillFuelSummary(ac ? tf : 0, ac);
     refreshWhen(etd, dep, zulu, lastVisible, arrival, firstVisible);
     // Keep the narrow-screen summary in step with the table it summarises.
     if (mobileSummary) {
@@ -5268,6 +5393,11 @@ function showFlightPlan() {
   scrollArea.appendChild(table);
   // Above the horizontally-scrolling table, inside the same parent.
   if (scrollArea.parentElement) scrollArea.parentElement.insertBefore(mobileSummary, scrollArea);
+  // The fuel check sits below the table it sums.
+  if (scrollArea.parentElement) {
+    if (scrollArea.nextSibling) scrollArea.parentElement.insertBefore(fuelSummary, scrollArea.nextSibling);
+    else scrollArea.parentElement.appendChild(fuelSummary);
+  }
 
   // --- return-route table (when showReturn is on) --------------------
   let retRefresh = null;
