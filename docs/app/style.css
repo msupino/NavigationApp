@@ -533,6 +533,11 @@ body:not(.deck-on) .tb-sec-row { gap: 4px; }
 .tb-sec-hint { display: none; }
 /* The phone's menu: each section a 52px row -- icon in a tile, title, a one-line hint, the
    chevron at the far edge. The 20px rows they replace were under half a fingertip. */
+/* The Flight plan has its own tab on the deck's bottom bar (deck.js), so the standalone Flight
+   plan button in the Menu sheet is a duplicate on the deck -- hide it there. The deck's Plan tab
+   still works: it presses this button by id, which fires even while it is display:none. The
+   desktop menubar (not .deck-on) has no bottom bar, so it keeps the button. */
+body.deck-on .tb-section.tb-standalone[data-sec="plan"] { display: none; }
 body.deck-on #deck-sheet .tb-section-head {
   min-height: 52px; padding: 6px 4px; gap: 12px; justify-content: flex-start;
   font-size: 16px; font-weight: 650; text-transform: none; letter-spacing: 0;
