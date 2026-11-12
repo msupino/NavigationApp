@@ -9588,6 +9588,37 @@ body.theme-light .route-check-asked { border-bottom-color: rgba(0, 0, 0, 0.14); 
 body.theme-light .route-check-asked-partial { color: #7a4a00; }
 body.theme-light .route-check-asked-missing { color: #8a1c00; }
 
+/* Settings > Storage window: a usage bar, a per-category breakdown and a clear button. */
+.storage-modal-body { min-width: 260px; max-width: 420px; display: flex; flex-direction: column; gap: 10px; }
+.storage-bar { height: 12px; border-radius: 6px; overflow: hidden;
+  background: rgba(255, 255, 255, 0.14); }
+body.theme-light .storage-bar { background: rgba(0, 0, 0, 0.12); }
+/* Normal fill is the app's one "on" blue; amber then red mark the store filling up -- the
+   figure and percent beside the bar say the same, so colour is never the only signal. */
+.storage-bar-fill { height: 100%; background: var(--navaid-mapbtn-on, #1d6fe0);
+  transition: width 0.2s ease; }
+.storage-bar-fill.is-high { background: #b07a12; }
+.storage-bar-fill.is-full { background: #c8402f; }
+.storage-used { font-weight: 700; font-variant-numeric: tabular-nums; }
+.storage-note { margin: 0; font-size: 12px; opacity: 0.7; }
+.storage-breakdown-title { font-size: 12px; font-weight: 700; opacity: 0.8; margin-top: 2px; }
+.storage-breakdown { display: flex; flex-direction: column; gap: 4px; }
+.storage-row { display: flex; justify-content: space-between; gap: 12px; font-size: 13px; }
+.storage-row-name { overflow-wrap: anywhere; }
+.storage-row-size { font-variant-numeric: tabular-nums; opacity: 0.85; white-space: nowrap; }
+.storage-actions { margin-top: 4px; }
+.storage-clear-btn { min-height: 36px; width: 100%; cursor: pointer; }
+.storage-clear-btn:disabled { opacity: 0.5; cursor: default; }
+.storage-hint { margin: 0; font-size: 12px; opacity: 0.7; }
+.storage-danger-sep { border: none; border-top: 1px solid rgba(255, 255, 255, 0.14); margin: 8px 0 2px; }
+body.theme-light .storage-danger-sep { border-top-color: rgba(0, 0, 0, 0.14); }
+/* The last-resort wipe reads as destructive, like the toolbar danger button it replaced
+   (which was styled only under #toolbar, out of this window's reach). */
+.storage-wipe-btn { min-height: 36px; width: 100%; cursor: pointer; color: #e88; border-color: #5a3a3a; }
+.storage-wipe-btn:hover { background: #c0392b; border-color: #c0392b; color: #fff; }
+body.theme-light .storage-wipe-btn { color: #c0392b; border-color: #e8b4b4; }
+body.theme-light .storage-wipe-btn:hover { background: #c0392b; border-color: #c0392b; color: #fff; }
+
 /* Phone links (airfield panel, parking request): a link, so it has to read as one -- but in the app's blue,
    not the browser's visited purple, and big enough to hit with a thumb in a cockpit. */
 .tel-link,

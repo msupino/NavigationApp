@@ -5771,6 +5771,10 @@ document.getElementById('plan').onclick = openFlightPlan;
 document.getElementById('freq-table').onclick = showFreqTableModal;
 document.getElementById('alt-pairs').onclick = showAltitudePairsModal;
 (function () {
+  const btn = document.getElementById('storage-manage');
+  if (btn && typeof showStorageModal === 'function') btn.onclick = showStorageModal;
+}());
+(function () {
   // The nav log sits with the other tables, not beside Plan: it is a different document, and a
   // pilot reaching for the plan in the air must not land on a sheet of exercise arithmetic.
   const btn = document.getElementById('nav-log');
@@ -11514,23 +11518,27 @@ if (DATE_FORMAT_EL) {
 }
 // Clear store: wipe every navaid.* key (routes, saved-route library, all
 // settings) from local + session storage, then reload to a clean slate.
-const CLEAR_STORE_EL = document.getElementById('clear-store');
-if (CLEAR_STORE_EL) {
-  CLEAR_STORE_EL.onclick = async () => {
-    if (!(await appConfirm(S.tbClearStoreConfirm ||
-      'Delete ALL saved routes and settings stored on this device? This cannot be undone.'))) return;
-    // Suppress the beforeunload/visibilitychange autosave so reload() can't
-    // re-persist the in-memory route right after we wipe storage.
-    window.__clearingStore = true;
-    try {
-      Object.keys(localStorage).filter(k => k.indexOf('navaid.') === 0)
-        .forEach(k => localStorage.removeItem(k));
-      Object.keys(sessionStorage).filter(k => k.indexOf('navaid.') === 0)
-        .forEach(k => sessionStorage.removeItem(k));
-    } catch (e) { /* storage unavailable */ }
-    location.reload();
-  };
+// The nuclear reset: wipe every navaid.* key (local + session) and reload to a clean
+// slate. Called from the Storage window's last-resort row (showStorageModal). Returns
+// false if the pilot backs out of the confirm.
+async function navClearLocalStore() {
+  if (!(await appConfirm(S.tbClearStoreConfirm ||
+    'Delete ALL saved routes and settings stored on this device? This cannot be undone.'))) return false;
+  // Suppress the beforeunload/visibilitychange autosave so reload() can't
+  // re-persist the in-memory route right after we wipe storage.
+  window.__clearingStore = true;
+  try {
+    Object.keys(localStorage).filter(k => k.indexOf('navaid.') === 0)
+      .forEach(k => localStorage.removeItem(k));
+    Object.keys(sessionStorage).filter(k => k.indexOf('navaid.') === 0)
+      .forEach(k => sessionStorage.removeItem(k));
+  } catch (e) { /* storage unavailable */ }
+  location.reload();
+  return true;
 }
+window.navClearLocalStore = navClearLocalStore;
+// The wipe is reached only from the Settings > Storage window now (the former toolbar
+// button in Export/Import was removed), where it is the marked last resort.
 const ALPHA_KEY = 'navaid.yellowAlpha';
 try {
   const v = parseFloat(lsGet(ALPHA_KEY));

@@ -911,12 +911,9 @@
         <button id="follow-me-new" type="button" hidden
                 data-i18n="tbFollowMeNewLink" data-i18n-title="tbFollowMeNewLinkTitle"></button>
         <input type="file" id="file" accept="application/json,.json,.gpx,application/gpx+xml,.pln,application/xml" hidden>
-        <!-- Moved here from the Edit menu: wiping every saved route + setting sat
-             directly beside everyday actions (Undo / Clear / Fit), one slip away.
-             It belongs with the other data-management controls. -->
-        <hr class="tb-danger-sep">
-        <button id="clear-store" type="button" class="danger"
-                data-i18n="tbClearStore" data-i18n-title="tbClearStoreTitle"></button>
+        <!-- Wiping every saved route + setting now lives in Settings > Storage, as the
+             marked last-resort below the safe cache clear (showStorageModal), so it is not
+             a stray danger button beside the everyday export/import actions. -->
       </div>
     </div>
 
@@ -1085,6 +1082,10 @@
         <button id="freq-table" data-i18n="tbFreqTable" data-i18n-title="tbFreqTableTitle"></button>
         <button id="alt-pairs" data-i18n="tbAltPairs" data-i18n-title="tbAltPairsTitle"></button>
         <button id="tour-replay" type="button" data-i18n="tbTourReplay"></button>
+        <!-- Storage: how much of the browser's per-site room this device's saved data uses, and a
+             one-tap clear of the caches it can rebuild -- never the pilot's routes, recordings,
+             frequencies or settings. -->
+        <button id="storage-manage" type="button" data-i18n="tbStorage" data-i18n-title="tbStorageTitle"></button>
         <!-- The phone's own hardware (device-extras.js, ble-gps.js): screen brightness for the
              cockpit, and an external Bluetooth GPS. Each is dimmed where it cannot work. -->
         <div class="tb-group-separator" aria-hidden="true"></div>
