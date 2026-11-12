@@ -57,3 +57,38 @@ test('a single aircraft candidate selects it directly (no modal)', async ({ page
   expect(r.sel).toBe('traffic');
   expect(r.modal).toBe(false);
 });
+
+// Regression: while a position drives the map (in flight) with "Panel while showing position"
+// off, tapping a plane sitting over a point used to do nothing — the chooser was refused by the
+// in-flight gate because it checked the OLD selection, not the plane just tapped. A traffic
+// candidate must now get it through, while a non-traffic overlap stays gated.
+test('while showing position, a plane over a point still opens the chooser', async ({ page }) => {
+  await boot(page);
+  const r = await page.evaluate(() => {
+    gpsLiveOn = true;                                             // a fix is driving the map
+    try { localStorage.setItem('navaid.inspectorWhileTracking', '0'); } catch (e) {}  // panel OFF
+    const i = airfields.findIndex(a => a.name === 'LLHZ');
+    const ok = showPointChoice([{ type: 'traffic', hex: 'ABC123', aircraft: { hex: 'ABC123', flight: 'TEST01' } },
+                                { type: 'airfield', index: i }]);
+    const modal = !!document.querySelector('.point-choice-modal');
+    gpsLiveOn = false;
+    return { ok, modal };
+  });
+  expect(r.ok).toBe(true);        // not refused by the in-flight gate anymore
+  expect(r.modal).toBe(true);     // the chooser is on screen
+});
+
+test('while showing position, an overlap with no aircraft is still refused', async ({ page }) => {
+  await boot(page);
+  const r = await page.evaluate(() => {
+    gpsLiveOn = true;
+    try { localStorage.setItem('navaid.inspectorWhileTracking', '0'); } catch (e) {}
+    const idx = airfields.map((a, i) => i).filter(i => airfields[i] && airfields[i].name).slice(0, 2);
+    const ok = showPointChoice([{ type: 'airfield', index: idx[0] }, { type: 'airfield', index: idx[1] }]);
+    const modal = !!document.querySelector('.point-choice-modal');
+    gpsLiveOn = false;
+    return { ok, modal };
+  });
+  expect(r.ok).toBe(false);       // the gate still keeps ordinary taps off the chart in flight
+  expect(r.modal).toBe(false);
+});
