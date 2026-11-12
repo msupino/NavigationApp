@@ -1236,6 +1236,13 @@
         <span class="footer-link-icon gps-footer-icon" aria-hidden="true" data-nav-icon="commfail"></span>
         <span class="footer-link-text" data-i18n="commFail"></span>
       </button>
+      <!-- Divert: nearest airfields from here (GPS or map centre), re-route direct to the chosen
+           one. Beside the GPS buttons because it is an in-flight decision, like comm failure. -->
+      <button id="divert-btn" type="button" class="footer-link footer-link-button gps-footer-btn" aria-pressed="false"
+              data-i18n-title="divertTitle" data-i18n-aria="divert">
+        <span class="footer-link-icon gps-footer-icon" aria-hidden="true" data-nav-icon="divert"></span>
+        <span class="footer-link-text" data-i18n="divert"></span>
+      </button>
       <!-- Grouped with the GPS buttons, not a sibling after them: that keeps it on
            the SAME wrap-eligible flex item as far as #footer-links is concerned, so
            the mobile collapsed menu's flex-wrap never has a reason to break a new
@@ -1451,6 +1458,7 @@
         'app/gps.js' + v,
         'app/gyro-turn.js' + v,
         'app/commfail.js' + v,
+        'app/diversion.js' + v,
         'app/ui.js' + v,
         'app/world-offline.js' + v,
         // The disclaimer is a gate before the app is used: it stays with the first chart.

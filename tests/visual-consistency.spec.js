@@ -136,7 +136,7 @@ test.describe('phone', () => {
     for (const [id, , h] of r.slice(0, 3)) expect(h, id).toBeGreaterThanOrEqual(43.5);
   });
 
-  for (const lang of ['en', 'he']) test(`strip while live keeps the language button and a readable route name (${lang})`, async ({ page }) => {
+  for (const lang of ['en', 'he']) test(`strip while live shows Divert in the language slot and a readable route name (${lang})`, async ({ page }) => {
     await boot(page, lang, 'light');
     await page.evaluate(() => {
       state.waypoints = [{ lat: 32.0, lng: 34.9, name: 'DEROR' }, { lat: 32.3, lng: 35.1, name: 'LLHA' }]; syncLegs(); draw();
@@ -147,12 +147,14 @@ test.describe('phone', () => {
     });
     const r = await page.evaluate(() => {
       const l = document.querySelector('.deck-strip-leg'), g = document.querySelector('.deck-strip-lang');
-      return { lang: getComputedStyle(g).display, langW: g.getBoundingClientRect().width, legW: l.getBoundingClientRect().width,
+      const d = document.querySelector('.deck-strip-divert');
+      return { lang: getComputedStyle(g).display, divW: d ? d.getBoundingClientRect().width : 0, legW: l.getBoundingClientRect().width,
         dir: getComputedStyle(l).direction, bidi: getComputedStyle(l).unicodeBidi,
         sub: parseFloat(getComputedStyle(document.querySelector('.deck-strip-sub')).fontSize) };
     });
-    expect(r.lang).not.toBe('none');
-    expect(r.langW).toBeGreaterThanOrEqual(43.5);
+    // #675 (asked): in flight Divert takes the language switch's slot; the globe returns on the ground.
+    expect(r.lang).toBe('none');
+    expect(r.divW).toBeGreaterThanOrEqual(43.5);
     expect(r.legW).toBeGreaterThanOrEqual(45);      // six characters, not "D.."
     expect(r.dir).toBe('ltr'); expect(r.bidi).toBe('isolate');
     expect(r.sub).toBeGreaterThanOrEqual(12);
