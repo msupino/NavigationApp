@@ -2796,6 +2796,10 @@ body.theme-dark #toolbar button.gps-footer-btn[aria-pressed="true"] .footer-link
   /* Keep the compact icon row clear while idle. During GPS/simulator operation,
      heading / altitude / speed are live cockpit data and remain visible on the
      desktop/full-screen map as soon as the readout has a value. */
+  /* Icon-only here, flush like every other footer icon: the 12 px gaps the wrapped footer gives
+     the GPS group cost 48 px across five icons, and with Divert (#675) that wrapped the menubar
+     to a second row at 1280 px. The live readout keeps its own padding. */
+  :where(html.menubar) #toolbar > #footer-links .footer-gps-group { gap: 0; }
   :where(html.menubar) #toolbar .footer-gps-readout { display: none; }
   :where(html.menubar) #toolbar .footer-gps-readout.live-active:not(:empty) {
     display: inline;
