@@ -1,0 +1,128 @@
+From 9368f41a9b3f9d743927de4618d286ed2623b86e Mon Sep 17 00:00:00 2001
+From: Marco <marco@supino.org>
+Date: Thu, 12 Nov 2026 05:34:51 +0000
+Subject: [PATCH] Settings: date format and Storage window; a plane over a
+ point joins the chooser
+
+---
+ FAQ-and-Troubleshooting-he.md | 2 +-
+ FAQ-and-Troubleshooting.md    | 2 +-
+ Features-he.md                | 2 +-
+ Features.md                   | 2 +-
+ Toolbar-he.md                 | 6 ++++--
+ Toolbar.md                    | 6 ++++--
+ 6 files changed, 12 insertions(+), 8 deletions(-)
+
+diff --git a/FAQ-and-Troubleshooting-he.md b/FAQ-and-Troubleshooting-he.md
+index a53a738..3fb096e 100644
+--- a/FAQ-and-Troubleshooting-he.md
++++ b/FAQ-and-Troubleshooting-he.md
+@@ -73,7 +73,7 @@ NavAid משתמש במוסכמה: `מגנטי = אמיתי + נטייה`. ישר
+ סיבות אפשריות:
+ 1. **מצב גלישה פרטית / אנונימי** — <span dir="ltr"><code>localStorage</code></span> נמחק בסגירת החלון.
+ 2. **חריגה ממכסת <span dir="ltr"><code>localStorage</code></span>** — NavAid מציג התראה כדי שתוכלו לייצא את
+-   המסלול לפני המשך העבודה. נסו לייצא ולמחוק מסלולים שמורים שאינם נחוצים.
++   המסלול לפני המשך העבודה. **הגדרות → 💾 אחסון** מראה כמה האחסון מלא ומנקה את מטמון המפה/הנתונים שניתן לבנות מחדש ואת שאריות תצוגות ה-PR; לפינוי נוסף, ייצאו או מחקו מסלולים והקלטות ישנים במסלולים שמורים.
+ 3. **דפדפן אחר** — <span dir="ltr"><code>localStorage</code></span> הוא לדפדפן, למכשיר.
+ 4. **מסלול שמור פגום** — הגרסה הנוכחית מתריעה ושומרת את הערך המקורי
+    <span dir="ltr"><code>localStorage["navaid.route"]</code></span> במקום לדרוס אותו במצב ריק.
+diff --git a/FAQ-and-Troubleshooting.md b/FAQ-and-Troubleshooting.md
+index 26fd315..502337a 100644
+--- a/FAQ-and-Troubleshooting.md
++++ b/FAQ-and-Troubleshooting.md
+@@ -57,7 +57,7 @@ Yes. Click a waypoint whose name matches an airfield ICAO (e.g. `LLBG`), and the
+ Possible causes, in order of likelihood:
+ 
+ 1. **Private / Incognito mode** - `localStorage` is cleared when the window closes.
+-2. **`localStorage` quota exceeded** — NavAid alerts you when the quota is hit so you can export the route before continuing. Try exporting a few routes and clearing them.
++2. **`localStorage` quota exceeded** — NavAid alerts you when the quota is hit so you can export the route before continuing. **Settings → 💾 Storage** shows how full the store is and clears the rebuildable map/feed cache and any PR-preview leftovers; to free more, export or delete old routes and recordings in Saved routes.
+ 3. **You're on a different browser** - `localStorage` is per-browser, per-device.
+ 4. **Corrupt saved route** - current versions warn and preserve the original `localStorage["navaid.route"]` value instead of overwriting it. Export or inspect that value if you need to recover it manually.
+ 
+diff --git a/Features-he.md b/Features-he.md
+index 3e02429..c175bb7 100644
+--- a/Features-he.md
++++ b/Features-he.md
+@@ -309,7 +309,7 @@ NavAid יכול להקליט את הנתיב שבאמת טסתם מ-GPS המכש
+ ## תעבורה חיה (אפליקציה)
+ 
+ **תצוגה/הגדרות ← תעבורה** מציירת את המטוסים האחרים הנקלטים ב-ADS-B: מטוס במבט־על, חרטומו
+-לכיוון התנועה, ולצידו האות הקריאה והגובה, וכל הפרטים בהקשה. מסוק מצויר כמסוק — רוטור, תא וזנב — לפי קטגוריית המשדר (מטוס כנף סובבת) או לפי קוד הדגם, והפרטים מציינים זאת (<span dir="ltr">R44</span> · מסוק). כלי טיס על הקרקע (או במסלול הסעה) מצוירים קטנים ודהויים, עם אות הקריאה בלבד ורק מזום של שדה תעופה; כשתוויות עלולות לעלות זו על זו מוצגת אחת, ושאר כלי הטיס מזוהים בהקשה. **פתיחה ב-<span dir="ltr">adsb.lol</span>** בפרטים מציג את אותו כלי טיס במפה הציבורית של האתר שממנו מגיעים הנתונים. קיימת באפליקציות האנדרואיד והאייפון/אייפד בלבד
++לכיוון התנועה, ולצידו האות הקריאה והגובה, וכל הפרטים בהקשה. מסוק מצויר כמסוק — רוטור, תא וזנב — לפי קטגוריית המשדר (מטוס כנף סובבת) או לפי קוד הדגם, והפרטים מציינים זאת (<span dir="ltr">R44</span> · מסוק). כלי טיס על הקרקע (או במסלול הסעה) מצוירים קטנים ודהויים, עם אות הקריאה בלבד ורק מזום של שדה תעופה; כשתוויות עלולות לעלות זו על זו מוצגת אחת, ושאר כלי הטיס מזוהים בהקשה. כשכלי טיס יושב מעל שדה תעופה, VOR או נקודת ניווט, ההקשה פותחת את בורר **בחר נקודה** עם המטוס בין האפשרויות, כך שאפשר לקרוא את המטוס או את המקום שמתחתיו. **פתיחה ב-<span dir="ltr">adsb.lol</span>** בפרטים מציג את אותו כלי טיס במפה הציבורית של האתר שממנו מגיעים הנתונים. קיימת באפליקציות האנדרואיד והאייפון/אייפד בלבד
+ — שרתי הנתונים דוחים בקשות מדפדפן — ולכן בדפדפן המתג מוצג מעומעם עם הסיבה. גם מקלט ADS-B בתא
+ (Stratux, SkyEcho, Sentry) יכול להזין אותה, ב-Wi-Fi (<span dir="ltr"><code>featureGdl90</code></span>, כבוי כברירת מחדל).
+ 
+diff --git a/Features.md b/Features.md
+index 87e50b3..63e03d2 100644
+--- a/Features.md
++++ b/Features.md
+@@ -330,7 +330,7 @@ See [Inspector](Inspector#airfield-density-altitude).
+ ## Live traffic (app)
+ 
+ **Extra layers → Traffic** draws the other aeroplanes heard on ADS-B: a top-down aircraft, nose
+-along its track, with callsign and flight level beside it, and the full read-out on a tap. A helicopter is drawn as one — rotor, cabin and tail — by its emitter category (rotorcraft) or its type code, and the read-out names it (*R44 · Helicopter*). Aircraft on the ground (or taxiing) are drawn smaller and faded, with their callsign only from airport zoom in; where labels would overprint, one shows and a tap names the rest. The read-out's **Open on adsb.lol** shows the same aircraft on the public map of the site the traffic comes from.
++along its track, with callsign and flight level beside it, and the full read-out on a tap. A helicopter is drawn as one — rotor, cabin and tail — by its emitter category (rotorcraft) or its type code, and the read-out names it (*R44 · Helicopter*). Aircraft on the ground (or taxiing) are drawn smaller and faded, with their callsign only from airport zoom in; where labels would overprint, one shows and a tap names the rest. When an aircraft sits over an airfield, VOR or nav waypoint, the tap opens the **Choose point** picker with the aircraft among the choices, so you can read the aeroplane or the place beneath it. The read-out's **Open on adsb.lol** shows the same aircraft on the public map of the site the traffic comes from.
+ It exists in the Android and iPhone/iPad apps only — the public feeds refuse browser requests — so in a
+ browser the switch is shown dimmed with the reason. See
+ [GPS Track Recording](GPS-Track-Recording#traffic-around-you-ads-b). A cockpit ADS-B receiver
+diff --git a/Toolbar-he.md b/Toolbar-he.md
+index 63b3a15..3ed983e 100644
+--- a/Toolbar-he.md
++++ b/Toolbar-he.md
+@@ -22,9 +22,9 @@
+ | 6 | **שכבות נוספות** | מזג אוויר, NOTAM, מרחב אוויר | הצג NOTAM / AIRMET / SIGMET (+ מחוון זמן), רוח, מפות מזג אוויר, תרשימי שדה, מפת IFR, תעבורה, טייסי NavAid, פני השטח, מרחבי אוויר, בועות LSA — ראו [שכבות נוספות](Extra-Layers-he) |
+ | 7 | **ייצוא/ייבוא** | קבצים, קישור שיתוף | ייצוא (JSON / GPX / PLN / FDR), ייבוא (JSON / GPX / PLN), מסלולים שמורים (+ סנכרון עם Google Drive), שתף קישור, פתח ב-Google Earth |
+ | 8 | **הדפסה** | עמוד, PNG, כרטיס תכנית | מסגרת A3 / A4 / A4×2, מתג לרוחב / לאורך, שמור PNG |
+-| 9 | **הגדרות** | מהירות, שינוי מגנטי, שפה, טבלאות | שפה, מצב תצוגה, מהירות ברירת מחדל, נטייה מגנטית, הקלטה אוטומטית עם מיקום, חלונית בזמן הצגת מיקום, ואחריהן טבלת התדרים וטבלת הנתיבים, וגרסת האפליקציה |
++| 9 | **הגדרות** | מהירות, שינוי מגנטי, שפה, טבלאות | שפה, מצב תצוגה, פורמט תאריך, מהירות ברירת מחדל, נטייה מגנטית, הקלטה אוטומטית עם מיקום, חלונית בזמן הצגת מיקום, ואחריהן טבלת התדרים, טבלת הנתיבים ואחסון, וגרסת האפליקציה |
+ 
+-**תרשים** (לשעבר מפה) ו**הגדרות** היו פעם קטע אחד, *תצוגה/הגדרה*. ב**הגדרות** נמצא עכשיו מה שקובעים פעם אחת: השפה, מהירות ברירת המחדל והנטייה המגנטית, ואחריהן שתי טבלאות העיון. הסימולטור הוא סמל ✈ קטן בתחתית סרגל הכלים.
++**תרשים** (לשעבר מפה) ו**הגדרות** היו פעם קטע אחד, *תצוגה/הגדרה*. ב**הגדרות** נמצא עכשיו מה שקובעים פעם אחת: השפה, פורמט התאריך, מהירות ברירת המחדל והנטייה המגנטית, ואחריהן טבלאות העיון ותצוגת אחסון. הסימולטור הוא סמל ✈ קטן בתחתית סרגל הכלים.
+ 
+ ### בטלפון ובטאבלט
+ 
+@@ -120,10 +120,12 @@
+ |---|---|
+ | **שפה** | English / עברית. מוצע גם בהפעלה הראשונה (מסך התנאים), כך שגם מי שלא קורא אף אחד מהתפריטים יכול להחליף. |
+ | **מצב תצוגה** | **בהיר** (ברירת המחדל) או **כהה** (נשמר ב-<span dir="ltr"><code>navaid.theme</code></span>). ממש מתחת לשפה, באותה צורה של שורה. |
++| **פורמט תאריך** | כיצד נכתב כל תאריך שהטייס רואה: **DD/MM/YYYY** (ברירת המחדל — הסדר האזרחי בישראל), **MM/DD/YYYY** או **YYYY-MM-DD**. חל בכל מקום שמוצג בו תאריך — שורות ה**עודכן** של NOTAM / SIGMET / AIRMET, תאריך תכנית הטיסה — בעוד השעה נשארת זולו. שמות קבצים ושדות התכנית המוגשת נשארים בתבנית ISO. נשמר ב-<span dir="ltr"><code>navaid.dateFormat</code></span>. |
+ | **מהירות ברירת מחדל (קשר)** | מהירות ההתחלה לקטע שאין לפניו קטע להעתיק ממנו — קובעים פעם אחת למטוס. <span dir="ltr"><code>navaid.defaultSpeed</code></span>; **↻** מחזיר לברירת המחדל. |
+ | **נטייה מגנטית** | **אוטומטית** (מודל השדה המגנטי העולמי, ללא רשת) או **ידנית** (מעלות שלמות, E או W). <span dir="ltr"><code>navaid.magVarAuto</code></span> / <span dir="ltr"><code>navaid.magVarManual</code></span>. |
+ | **📡 טבלת תדרים** | עורך הניתן לחיפוש לברירות תדר מקומיות — דריסת תדר של אות-קריאה, איפוס שורה, או שחזור מקור. ראו [שינויי תדר](Frequency-Changes-he). |
+ | **🧭 נתיבים** | טבלה הניתנת לחיפוש של זוגות הגובה הנלמדים של CVFR; העתק JSON ללוח. |
++| **💾 אחסון** | כמה מהמקום שהדפדפן נותן לאתר (כ-5 מ״ב, נקבע בדפדפן ולא ניתן להגדלה) תופס המידע השמור במכשיר, מפורק לפי סוג — כולל **שאריות תצוגות PR** שמצטברות מפתיחת תצוגות על המקור החי. **נקה מטמון** מוחק את מטמון המפה/הנתונים הניתן לשליפה מחדש ואת השאריות האלה, לעולם לא את המסלולים, ההקלטות, התדרים או ההגדרות שלכם. מתחתיו **נקה אחסון מקומי** כמוצא אחרון מוחק הכול במכשיר. לפינוי נוסף, מחקו הקלטות ישנות במסלולים שמורים. |
+ | **יחידת לחץ** | **inHg** או **hPa**. הרצועה בטיסה מציגה בה את ה-QNH (<span dir="ltr">`29.91″` / `1013 hPa`</span>); שורות METAR ושדות שומרות את שתי הסקאלות, הנבחרת ראשונה; לחץ התא בפרטי ה-GPS הולך אחריה. מסונכרנת עם שאר הגדרות הטייס (<span dir="ltr"><code>navaid.pressureUnit</code></span>; ברירת מחדל ב-gist: <span dir="ltr"><code>defaultPressureUnit</code></span>, inHg). |
+ | **גובה לפי** | **GPS** (מתוקן למחוון, כמו קודם) או **ברומטר + QNH** — חיישן הלחץ של הטלפון עם ה-QNH שהאפליקציה כבר מביאה, החישוב של מד הגובה עצמו <span dir="ltr">`145366 × (1 − (p / QNH)^0.19)`</span> רגל. הגובה בטיסה והתראות הגובה הולכים אחריו. בלי קריאה עדכנית (5 שנ׳) או QNH — חוזר ל-GPS. לא לתא מופעל לחץ. מקומי למכשיר (<span dir="ltr"><code>navaid.altSource</code></span>; ב-gist: <span dir="ltr"><code>defaultAltSource</code></span>, gps). |
+ | **הקלטה אוטומטית עם מיקום** | מסומן כברירת מחדל: הצגת המיקום מקליטה גם את הטיסה, והקלטה קצרה מכדי להיות טיסה אינה נשמרת — ראו [הקלטת מסלול GPS](GPS-Track-Recording-he#הקלטה-אוטומטית-עם-מיקום). |
+diff --git a/Toolbar.md b/Toolbar.md
+index 98e1ab6..718b8b3 100644
+--- a/Toolbar.md
++++ b/Toolbar.md
+@@ -20,9 +20,9 @@ Each header is a full-height row (52 px on a phone): a drawn icon, the title, a
+ | 6 | **Extra layers** | Weather, NOTAM, airspace | Show NOTAMs / AIRMETs / SIGMETs (+ time slider), wind, weather charts, airfield plates, IFR chart, traffic, NavAid pilots, terrain, airspace, LSA bubbles — see [Extra layers](Extra-Layers) |
+ | 7 | **Export/import** | Files, share link | Export (JSON / GPX / PLN / FDR), Import (JSON / GPX / PLN), Saved routes (+ Sync with Google Drive), Share link, Open in Google Earth |
+ | 8 | **Print** | Page, PNG, plan card | A3 / A4 page frame, Landscape / Portrait toggle, Save PNG |
+-| 9 | **Settings** | Speed, variation, language, tables | Language, Theme, Default speed, Magnetic variation, Record automatically with location, Panel while showing position, then Freq table and Alt pairs, and the app version |
++| 9 | **Settings** | Speed, variation, language, tables | Language, Theme, Date format, Default speed, Magnetic variation, Record automatically with location, Panel while showing position, then Freq table, Alt pairs and Storage, and the app version |
+ 
+-**Chart** (once named Map) and **Settings** used to be one section, *View/Set*. Settings now holds what you set once: the language, the default speed and the magnetic variation, followed by the two reference tables.
++**Chart** (once named Map) and **Settings** used to be one section, *View/Set*. Settings now holds what you set once: the language, the date format, the default speed and the magnetic variation, followed by the reference tables and a storage view.
+ 
+ The **Simulator** is a small ✈ icon in the toolbar footer (next to Terms /
+ Privacy) that opens the [Simulator](Simulator-Connect) panel.
+@@ -126,10 +126,12 @@ The NOTAM, SIGMET and AIRMET lists move by their title bar and open again where
+ |---|---|
+ | **Language** | English / עברית. Also offered at first start (the terms screen), so a pilot who reads neither menu can still switch. |
+ | **Theme** | **Light** (the default) or **Dark** (persisted to `navaid.theme`). Right under Language, the same kind of row. |
++| **Date format** | How every user-visible date is written: **DD/MM/YYYY** (the default — Israel's civil order), **MM/DD/YYYY** or **YYYY-MM-DD**. Applies everywhere a date shows — the NOTAM / SIGMET / AIRMET **Updated** lines, the flight-plan date — while the time stays Zulu. File names and the filed-plan fields keep the ISO form. Persists to `navaid.dateFormat`. |
+ | **Default speed (kt)** | Seed speed for a leg with no earlier leg to copy from — set it once for your aircraft. Drives the `defaultLegSpeedKt` tuning key and outranks the remote config, so it survives a reload. Accepts 20–400; anything else snaps back to the value in force. Persists to `navaid.defaultSpeed`. **↻** beside it returns to the default — the gist's speed if it sets one, else the built-in — and moves the legs that follow it; dimmed when the default is already in force. |
+ | **Magnetic variation** | **Automatic** (World Magnetic Model at the aircraft / route / map centre, offline) or **Manual** (whole degrees, E or W, read as a chart writes it: `5 E`). The fields always show the value in force — read-only in Automatic, with where it was taken in the tooltip. Persists to `navaid.magVarAuto` / `navaid.magVarManual`; outranks the gist. |
+ | **📡 Freq table** | Searchable editor for local frequency defaults — override any call sign's frequency, reset a row, or restore originals. See [Frequency Changes](Frequency-Changes). |
+ | **🧭 Alt pairs** | Searchable table of the learned CVFR altitude pairs; Copy JSON to clipboard. |
++| **💾 Storage** | How much of the browser's per-site room (about 5 MB, set by the browser and not raisable) this device's saved data uses, broken down by kind — including **PR preview leftovers** that pile up from opening previews on the live origin. **Clear rebuildable cache** drops the refetchable map/feed cache and those leftovers, never your routes, recordings, frequencies or settings. A last-resort **Clear local store** below it wipes everything on the device. To free more, delete old recordings in Saved routes. |
+ | **Pressure unit** | **inHg** or **hPa**. The in-flight strip shows the QNH in it (`29.91″` / `1013 hPa`); METAR and airfield lines keep both scales with the chosen one first; the cabin pressure in the GPS details follows it. Syncs with the other pilot settings (`navaid.pressureUnit`; gist default `defaultPressureUnit`, `inHg`). |
+ | **Altitude from** | **GPS** (corrected to indicated, as before) or **Barometer + QNH** — the phone's pressure sensor with the QNH the app already fetches, the altimeter's own sum `145366 × (1 − (p / QNH)^0.19)` ft. The in-flight altitude and the altitude alerts follow it. Without a fresh reading (5 s) or a QNH it falls back to GPS. Not for a pressurised cabin. Device-local (`navaid.altSource`; gist `defaultAltSource`, `gps`). |
+ | **Record automatically with location** | On by default: showing your location also records the flight, and a recording too short to be a flight is not kept — see [GPS Track Recording](GPS-Track-Recording#recording-automatically-with-location). |
+-- 
+2.43.0
+
