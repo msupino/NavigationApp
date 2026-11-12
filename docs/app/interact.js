@@ -717,7 +717,13 @@ function showPointChoice(candidates) {
   // A traffic tap over another item adds the aeroplane here as a {type:'traffic'} candidate
   // (traffic.js), so the pilot who tapped a plane sitting on an airfield can still choose the
   // field. A plane on empty map is selected straight from its marker and never reaches here.
-  if (typeof inspectorAllowedNow === 'function' && !inspectorAllowedNow()) {
+  //
+  // inspectorAllowedNow() already exempts traffic -- but only for the CURRENT selection, and the
+  // tap has not selected the plane yet, so calling it bare read the old selection and refused the
+  // chooser in flight (reported: tapping a plane over a point does nothing). Hand it the traffic
+  // candidate from this set so its own exception fires; without one it still gates on the setting.
+  const trafficCandidate = items.find(c => c && c.type === 'traffic');
+  if (typeof inspectorAllowedNow === 'function' && !inspectorAllowedNow(trafficCandidate)) {
     if (typeof noteInspectorRefusedWhileTracking === 'function') noteInspectorRefusedWhileTracking();
     return false;
   }
