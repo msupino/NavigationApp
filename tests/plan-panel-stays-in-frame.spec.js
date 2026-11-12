@@ -62,10 +62,7 @@ test('the plan opens inside the chart space, not under the deck', async ({ page 
 });
 
 test('a remembered position is honoured in the frame it was stored in', async ({ page }) => {
-  // A tall phone so the filled plan -- legs, totals AND the fuel check -- fits below the stored
-  // offset with room to spare; on a short frame a full plan fills it and pins to the top, which
-  // is correct but then cannot show whether the offset resolved against the backdrop or the window.
-  await boot(page, { width: 390, height: 1100 });
+  await boot(page);
   // Stored from a drag: 24 px down from the top of the chart space. (Small enough that the
   // filled plan still fits below it; the strip it must not be confused with is 56 px.)
   await page.evaluate(() => {

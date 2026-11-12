@@ -4401,7 +4401,8 @@ body.deck-on .qtime select { min-height: 30px; font-size: 16px; }
 .fp-profile-canvas { width: 100%; height: 104px; display: block; border-radius: 4px; }
 .fp-columns,
 .fp-when,
-.ac-custom {
+.ac-custom,
+.fp-fuel {
   position: relative;
   align-self: flex-start;
   margin: 0 0 8px;
@@ -4410,7 +4411,8 @@ body.deck-on .qtime select { min-height: 30px; font-size: 16px; }
 }
 .fp-columns summary,
 .fp-when summary,
-.ac-custom summary {
+.ac-custom summary,
+.fp-fuel summary {
   display: inline-flex;
   align-items: center;
   gap: 6px;
@@ -4425,17 +4427,20 @@ body.deck-on .qtime select { min-height: 30px; font-size: 16px; }
 }
 .fp-columns summary::-webkit-details-marker,
 .fp-when summary::-webkit-details-marker,
-.ac-custom summary::-webkit-details-marker { display: none; }
+.ac-custom summary::-webkit-details-marker,
+.fp-fuel summary::-webkit-details-marker { display: none; }
 .fp-columns summary::after,
 .fp-when summary::after,
-.ac-custom summary::after {
+.ac-custom summary::after,
+.fp-fuel summary::after {
   content: '▾';
   font-size: 10px;
   color: #b9b3b3;
 }
 .fp-columns[open] summary,
 .fp-when[open] summary,
-.ac-custom[open] summary {
+.ac-custom[open] summary,
+.fp-fuel[open] summary {
   border-color: #1d6fe0;
   background: #332f2f;
 }
@@ -7616,30 +7621,43 @@ html[data-theme="light"] #insp-body .insp-actions {
   color: inherit;
 }
 
-/* The go/no-go fuel check under the nav log (issue #668). A compact, width-capped card so the
-   label -> value pairs read as a tight ledger, not a canyon across the whole panel. Inherits the
-   window's text colour the way the mobile summary does, so it reads in both themes. */
-.fp-fuel-summary {
-  margin-top: 10px;
+/* The go/no-go fuel check (issue #668): a popover in the tools row, opened from a button that
+   carries the verdict. The button follows the Columns / departure pattern (shared rules above);
+   these add the verdict badge and the over-tank red state. */
+.fp-fuel[hidden] { display: none; }
+.fp-fuel summary { font-variant-numeric: tabular-nums; }
+.fp-fuel-badge {
+  font-weight: 700;
+  font-size: 12px;
+  opacity: 0.95;
+  white-space: nowrap;
+}
+/* Over the tanks: the button goes red (with the warning sign in the badge -- never colour alone)
+   so the pilot sees no-go without opening the popover. */
+.fp-fuel.fp-fuel-over summary {
+  border-color: #e5484d;
+  color: #ffd9da;
+}
+.fp-fuel.fp-fuel-over .fp-fuel-badge { color: #ff9ea1; }
+body.theme-light .fp-fuel.fp-fuel-over summary { border-color: #c0392b; color: #8a1f17; }
+body.theme-light .fp-fuel.fp-fuel-over .fp-fuel-badge { color: #c0392b; }
+/* The popover card: absolutely positioned under the button, like the Columns / aircraft menus. */
+.fp-fuel-menu {
+  position: absolute;
+  z-index: 1600;
+  inset-block-start: calc(100% + 4px);
+  inset-inline-start: 0;
   width: max-content;
-  max-width: 100%;
-  padding: 9px 12px 10px;
-  border: 1px solid rgba(255, 255, 255, 0.14);
+  max-width: min(360px, calc(92vw - 28px));
+  padding: 10px 12px 11px;
+  color: #e8e8e8;
+  background: #2b2727;
+  border: 1px solid #443f3f;
   border-radius: 8px;
-  background: rgba(255, 255, 255, 0.045);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.35);
   font-size: 13px;
-  color: inherit;
 }
-body.theme-light .fp-fuel-summary { border-color: #e2e7ee; background: #f6f8fb; }
-.fp-fuel-summary[hidden] { display: none; }
-.fp-fuel-title {
-  font-weight: 600;
-  font-size: 11px;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  margin-bottom: 7px;
-  opacity: 0.6;
-}
+body.theme-light .fp-fuel-menu { color: #1f252c; background: #fff; border-color: #c3cad4; }
 /* Two columns -- label, then value -- so every value lines up in one tabular column a short,
    fixed gap from its label (no stretch). Rows are display:contents so their cells land directly
    in these tracks. */

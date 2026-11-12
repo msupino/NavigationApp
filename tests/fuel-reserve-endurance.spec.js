@@ -39,11 +39,20 @@ function gal(page, key) {
   }, key);
 }
 
+// The fuel check is a popover: its button carries the verdict, the breakdown is inside. Open it.
+async function openFuel(page) {
+  await page.locator('#fp-fuel-summary').waitFor({ state: 'visible', timeout: 5000 });
+  if (!(await page.locator('#fp-fuel-summary[open]').count())) {
+    await page.locator('#fp-fuel-summary > summary').click();
+  }
+  await page.locator('#fp-fuel-summary .fp-fuel-menu').waitFor({ state: 'visible' });
+}
+
 test.describe('Fuel reserve & endurance check (#668)', () => {
   test('shows trip, reserve, required, remaining and endurance; required = trip + reserve', async ({ page }) => {
     await boot(page, { type: 'C172', gph: 8, taxiGal: 0, usableGal: 60, reserveMin: 45 });
     await openFlightPlan(page);
-    await page.locator('#fp-fuel-summary').waitFor({ state: 'visible', timeout: 5000 });
+    await openFuel(page);
 
     const trip = await gal(page, 'trip');
     const reserve = await gal(page, 'reserve');
@@ -66,7 +75,11 @@ test.describe('Fuel reserve & endurance check (#668)', () => {
   test('over-tank: required beyond usable turns the row red and shows the warning', async ({ page }) => {
     await boot(page, { type: 'C172', gph: 8, taxiGal: 0, usableGal: 3, reserveMin: 45 });
     await openFlightPlan(page);
+    // The closed button already shows the no-go: a red state + a warning sign in the badge.
     await page.locator('#fp-fuel-summary').waitFor({ state: 'visible' });
+    await expect(page.locator('#fp-fuel-summary')).toHaveClass(/fp-fuel-over/);
+    await expect(page.locator('#fp-fuel-summary .fp-fuel-badge')).toContainText('⚠');
+    await openFuel(page);
     const warn = page.locator('#fp-fuel-summary .fp-fuel-warn');
     await expect(warn).toBeVisible();
     await expect(warn).toContainText(/Over tanks/);
@@ -78,7 +91,7 @@ test.describe('Fuel reserve & endurance check (#668)', () => {
   test('alternate fuel adds to the required total and persists', async ({ page }) => {
     await boot(page, { type: 'C172', gph: 8, taxiGal: 0, usableGal: 60, reserveMin: 30 });
     await openFlightPlan(page);
-    await page.locator('#fp-fuel-summary').waitFor({ state: 'visible' });
+    await openFuel(page);
     const before = await gal(page, 'required');
     await page.locator('#fp-fuel-alt').fill('5');
     await page.locator('#fp-fuel-alt').dispatchEvent('input');
@@ -93,7 +106,7 @@ test.describe('Fuel reserve & endurance check (#668)', () => {
     // over-tank warning) explains why.
     await boot(page, { type: 'C172', gph: 8, taxiGal: 0, reserveMin: 45 });
     await openFlightPlan(page);
-    await page.locator('#fp-fuel-summary').waitFor({ state: 'visible' });
+    await openFuel(page);
     expect((await page.locator('#fp-fuel-summary .fp-fuel-row[data-k="remaining"] .fp-fuel-v').textContent()).trim()).toBe('—');
     expect((await page.locator('#fp-fuel-summary .fp-fuel-row[data-k="endurance"] .fp-fuel-v').textContent()).trim()).toBe('—');
     const warn = page.locator('#fp-fuel-summary .fp-fuel-warn');
@@ -121,7 +134,9 @@ test.describe('Fuel reserve & endurance check (#668)', () => {
     await boot(page, { type: 'C172', gph: 8, taxiGal: 0, usableGal: 60, reserveMin: 45 }, { lang: 'he' });
     await openFlightPlan(page);
     await page.locator('#fp-fuel-summary').waitFor({ state: 'visible' });
-    await expect(page.locator('#fp-fuel-summary .fp-fuel-title')).toContainText('בדיקת דלק');
+    // The popover button carries the Hebrew label; the breakdown parses correctly when opened.
+    await expect(page.locator('#fp-fuel-summary .fp-fuel-btn-label')).toContainText('בדיקת דלק');
+    await openFuel(page);
     // Required figure still parses as a number (isolation characters do not corrupt it).
     expect(await gal(page, 'required')).toBeGreaterThan(0);
   });

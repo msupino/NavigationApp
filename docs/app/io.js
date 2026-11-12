@@ -3965,7 +3965,7 @@ function flightPlanCsv(table, scrollArea) {
   });
   // The go/no-go fuel block, when it is shown (an aircraft is set), as label,value pairs so the
   // export carries exactly what the pilot sees under the table.
-  const fs = scrollArea.querySelector('#fp-fuel-summary');
+  const fs = (scrollArea.parentElement || document).querySelector('#fp-fuel-summary');
   if (fs && !fs.hidden) {
     rows.push([]);
     rows.push([S.fpFuelCheck || 'Fuel check']);
@@ -5049,15 +5049,26 @@ function showFlightPlan() {
   mobileSummary.id = 'fp-mobile-summary';
 
   // The go/no-go fuel block (issue #668): trip burn + reserve + any alternate, their sum against
-  // the tanks, the fuel left and how long the tanks last. Built once; refresh() fills it, and it
-  // hides itself when there is no aircraft (then every figure would be a guess). Alternate fuel is
-  // the one editable figure here, kept with the filing profile (navaid.fpl.altGal, Drive-synced).
-  const fuelSummary = document.createElement('div');
+  // the tanks, the fuel left and how long the tanks last. A popover in the tools row (like Columns
+  // and the departure time) so it never steals the leg table's height; its button carries the
+  // verdict (remaining, or a red over-tank warning) so the pilot sees go/no-go without opening it.
+  // Built once; refresh() fills it, and the whole control hides when there is no aircraft (then
+  // every figure would be a guess). Alternate fuel is the one editable figure here, kept with the
+  // filing profile (navaid.fpl.altGal, Drive-synced).
+  const fuelSummary = document.createElement('details');
   fuelSummary.id = 'fp-fuel-summary';
-  fuelSummary.className = 'fp-fuel-summary';
-  const fsTitle = document.createElement('div');
-  fsTitle.className = 'fp-fuel-title';
-  fsTitle.textContent = S.fpFuelCheck || 'Fuel check';
+  fuelSummary.className = 'fp-fuel';
+  const fsBtn = document.createElement('summary');
+  const fsBtnLabel = document.createElement('span');
+  fsBtnLabel.className = 'fp-fuel-btn-label';
+  fsBtnLabel.textContent = S.fpFuelCheck || 'Fuel check';
+  const fsBadge = document.createElement('span');
+  fsBadge.className = 'fp-fuel-badge';
+  fsBadge.dir = 'ltr';
+  fsBtn.append(fsBtnLabel, fsBadge);
+  fuelSummary.appendChild(fsBtn);
+  const fsMenu = document.createElement('div');
+  fsMenu.className = 'fp-fuel-menu';
   const fsGrid = document.createElement('div');
   fsGrid.className = 'fp-fuel-grid';
   // One label/value row; `key` tags it so refresh() and the CSV can find it.
@@ -5107,9 +5118,9 @@ function showFlightPlan() {
   // Announce an over-tank finding (or the missing-usable hint) without stealing focus mid-edit.
   fsWarn.setAttribute('aria-live', 'polite');
   fsWarn.hidden = true;
-  fuelSummary.appendChild(fsTitle);
-  fuelSummary.appendChild(fsGrid);
-  fuelSummary.appendChild(fsWarn);
+  fsMenu.appendChild(fsGrid);
+  fsMenu.appendChild(fsWarn);
+  fuelSummary.appendChild(fsMenu);
   // A gallons figure for the block: one decimal, with the unit as its own isolated run so RTL
   // keeps "12.3 gal" in order. Blank renders as an em dash.
   const fuelGal = n => (n == null || !Number.isFinite(n)) ? '—' : n.toFixed(1) + ' gal';
@@ -5153,6 +5164,10 @@ function showFlightPlan() {
       fsWarn.hidden = true;
       fsWarn.classList.remove('fp-fuel-note');
     }
+    // The verdict on the closed button: the fuel left, with a warning sign (not colour alone) and
+    // a red button when the route is over the tanks, so go/no-go reads without opening the popover.
+    fuelSummary.classList.toggle('fp-fuel-over', over);
+    fsBadge.textContent = usable == null ? '—' : (over ? '⚠ ' : '') + fuelGal(usable - required);
   }
   fsAltInput.addEventListener('input', () => {
     try { localStorage.setItem(FPL_PROFILE_PREFIX + 'altGal', fsAltInput.value.trim()); } catch (e) { /* storage off */ }
@@ -5598,11 +5613,11 @@ function showFlightPlan() {
     retRefresh();
     scrollArea.appendChild(rtable);
   }
-  // The fuel check lives INSIDE the scroll area, below the table(s) it sums -- not as a sibling of
-  // the flex:1 scroll area, where on a height-capped desktop modal it shrank the leg table to
-  // nothing (the same squeeze the deck fixed for the profile/Columns panels). Here it just scrolls
-  // with the legs and never steals their height.
-  scrollArea.appendChild(fuelSummary);
+  // The fuel check is a popover in the tools row, right after Columns -- not inline under the
+  // table, where it shrank the leg list on a height-capped modal, nor below it, where it scrolled
+  // out of sight. The button carries the verdict; the popover holds the breakdown.
+  if (colWrap && colWrap.parentElement) colWrap.insertAdjacentElement('afterend', fuelSummary);
+  else fpTools.appendChild(fuelSummary);
   syncFpColumnVisibility();
 
 
