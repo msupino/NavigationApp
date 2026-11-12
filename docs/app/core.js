@@ -154,6 +154,7 @@ NavAid.tuningDefaults = {
   profileClimbKt: { value: 75, min: 30, max: 200, step: 1, label: 'Default climb speed (kt)' },
   defaultGph: { value: 8, min: 1, max: 60, step: 0.5, label: 'Default fuel burn (GPH)' },
   defaultTaxiGal: { value: 1.1, min: 0, max: 10, step: 0.1, label: 'Default taxi/run-up fuel (gal)' },
+  defaultReserveMin: { value: 30, min: 0, max: 120, step: 5, label: 'Default VFR fuel reserve (min) — day 30, night 45' },
 
   legAltInferMaxHops: { value: 6, min: 1, max: 20, step: 1, label: 'Alt inference max hops' },
   legAltInferMaxDistRatio: { value: 1.35, min: 1, max: 3, step: 0.05, label: 'Alt inference max distance ratio' },
@@ -1335,7 +1336,7 @@ NavAid.tuningDefaults = {
 // global colour palette.
 NavAid.tuningGroups = [
   { name: 'Navigation', keys: ['magVarAuto', 'magneticVariationDeg', 'msaBufferFt', 'altimetryCorrection', 'geoidUndulationFt', 'followResumeMs', 'followZoomFloor', 'followZoomCeiling', 'followZoomCtrFloor', 'followZoomCtrCeiling', 'gpsReadoutFontPx', 'gpsReadoutRefitPx', 'routeSummaryFontPx', 'alertNotifyTtlSec', 'alertIconColor', 'altToleranceFt', 'altMaxAlertsPerLeg', 'legEtaLeadSec', 'legClockMapGround', 'topChecklist', 'atisLeadSec', 'lastLightMarginMin', 'atisMarkerColor', 'atisMarkerRadiusPx', 'atisMarkerFontPx', 'liveHeadingEndLabel', 'legCaptureNm', 'driftTrackErrorDeg', 'driftCheckSec', 'coneUnknownSec', 'gpsMaxAccuracyM', 'gpsMinMoveM', 'gpsGlide', 'gpsGlideMinKt', 'gpsGlideMaxHz', 'vorReadoutMaxNm', 'measureLineColor', 'measureDotFill', 'measureLabelBg', 'measureLabelText', 'gpsStaleSec', 'qnhMaxAgeMin', 'qnhMoveNm', 'compassMaxKt', 'compassFallback', 'headingUpMinDeltaDeg', 'crosshairSizePx', 'crosshairWidthPx', 'crosshairColor', 'crosshairHaloColor', 'crosshairAlpha', 'atisMarkerFillAlpha', 'atisMarkerWidthPx'] },
-  { name: 'Performance defaults', keys: ['profileClimbFpm', 'profileClimbKt', 'defaultGph', 'defaultTaxiGal'] },
+  { name: 'Performance defaults', keys: ['profileClimbFpm', 'profileClimbKt', 'defaultGph', 'defaultTaxiGal', 'defaultReserveMin'] },
   { name: 'Altitude inference', keys: ['legAltInferMaxHops', 'legAltInferMaxDistRatio', 'legAltInferMaxExtraNm'] },
   { name: 'Plan card', keys: ['planCardBaseRowPx', 'planCardGripPx', 'planCardBgColor', 'planCardHeaderBgColor', 'planCardTotalBgColor', 'planCardStripeBgColor', 'planCardGridColor', 'planCardTextColor', 'planCardGripColor', 'planCardGripLineColor', 'planCardGripLineWidthPx'] },
   { name: 'VOR range ring', keys: ['vorRangeRingColor', 'vorRangeRingAlpha', 'vorRangeRingWidthPx', 'vorRangeRingDashPx', 'vorRangeRingGapPx', 'vorRangeRingLabel', 'vorRangeRingSteps', 'vorRangeRingLabelGapPx'] },
@@ -2519,6 +2520,22 @@ window.S = Object.assign({
   tbTaxiGal: 'Taxi and takeoff (gal)',
   tbTaxiGalTitle: 'Startup + taxi + takeoff fuel allowance in gallons',
   fpTaxiTip: function(g) { return '+ ' + g.toFixed(1) + ' gal taxi / takeoff included in total'; },
+  tbReserveMin: 'Reserve (min)',
+  tbReserveMinTitle: 'VFR fuel reserve held back from the usable fuel, in minutes at the cruise burn (day 30, night 45)',
+  // The go/no-go fuel block under the nav log: trip burn, the reserve and any alternate, their
+  // sum against the tanks, and how long the tanks last at the cruise burn.
+  fpFuelCheck: 'Fuel check',
+  fpFuelTrip: 'Trip',
+  fpFuelReserve: 'Reserve',
+  fpFuelReserveMin: function (min) { return 'Reserve (' + min + ' min)'; },
+  fpFuelAlternate: 'Alternate',
+  fpFuelAltLabel: 'Alternate (gal)',
+  fpFuelRequired: 'Total required',
+  fpFuelRemaining: 'Remaining',
+  fpFuelEndurance: 'Endurance',
+  // Shown red when the total required is more than the tanks hold.
+  fpFuelOver: function (gal) { return 'Over tanks by ' + gal + ' gal'; },
+  fpFuelNoUsable: 'Set usable fuel on the aircraft to check against the tanks',
   pageOrientation: ' page — orientation',
   landscape: 'Landscape',
   portrait: 'Portrait',
@@ -4280,7 +4297,7 @@ let pageSize = null;        // null | 'A3' | 'A4'
 // CVFR routes are tall (north–south Israel airspace).
 var pageOrient = 'portrait';
 let pageOffset = { x: 0, y: 0 };   // page-frame drag offset from viewport centre
-var aircraft = null;               // null | {gph, taxiGal, type?, profile?, climbFpm?, climbKt?, descentFpm?, usableGal?}
+var aircraft = null;               // null | {gph, taxiGal, type?, profile?, climbFpm?, climbKt?, descentFpm?, usableGal?, reserveMin?}
 // Typical figures per type (Settings -> Aircraft type), from the manuals and common use: a
 // starting point the pilot overrides for their own aircraft, field by field, and can restore.
 // The codes are the ICAO types of the filing form, so choosing one also files as that type.

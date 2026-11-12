@@ -4401,7 +4401,8 @@ body.deck-on .qtime select { min-height: 30px; font-size: 16px; }
 .fp-profile-canvas { width: 100%; height: 104px; display: block; border-radius: 4px; }
 .fp-columns,
 .fp-when,
-.ac-custom {
+.ac-custom,
+.fp-fuel {
   position: relative;
   align-self: flex-start;
   margin: 0 0 8px;
@@ -4410,7 +4411,8 @@ body.deck-on .qtime select { min-height: 30px; font-size: 16px; }
 }
 .fp-columns summary,
 .fp-when summary,
-.ac-custom summary {
+.ac-custom summary,
+.fp-fuel summary {
   display: inline-flex;
   align-items: center;
   gap: 6px;
@@ -4425,17 +4427,20 @@ body.deck-on .qtime select { min-height: 30px; font-size: 16px; }
 }
 .fp-columns summary::-webkit-details-marker,
 .fp-when summary::-webkit-details-marker,
-.ac-custom summary::-webkit-details-marker { display: none; }
+.ac-custom summary::-webkit-details-marker,
+.fp-fuel summary::-webkit-details-marker { display: none; }
 .fp-columns summary::after,
 .fp-when summary::after,
-.ac-custom summary::after {
+.ac-custom summary::after,
+.fp-fuel summary::after {
   content: '▾';
   font-size: 10px;
   color: #b9b3b3;
 }
 .fp-columns[open] summary,
 .fp-when[open] summary,
-.ac-custom[open] summary {
+.ac-custom[open] summary,
+.fp-fuel[open] summary {
   border-color: #1d6fe0;
   background: #332f2f;
 }
@@ -6479,6 +6484,7 @@ body.theme-light .fp-aircraft select,
 body.theme-light .fp-aircraft input,
 body.theme-light .fp-columns summary,
 body.theme-light .fp-when summary,
+body.theme-light .fp-fuel summary,
 body.theme-light .fp-columns-all,
 body.theme-light .plan-name,
 body.theme-light .plan-num,
@@ -6719,12 +6725,15 @@ body.theme-light .flight-table tfoot td {
 }
 body.theme-light .fp-columns,
 body.theme-light .fp-when,
+body.theme-light .fp-fuel,
 body.theme-light .ac-custom { color: #647184; }
 body.theme-light .fp-columns summary::after,
 body.theme-light .fp-when summary::after,
+body.theme-light .fp-fuel summary::after,
 body.theme-light .ac-custom summary::after { color: #647184; }
 body.theme-light .fp-columns[open] summary,
 body.theme-light .fp-when[open] summary,
+body.theme-light .fp-fuel[open] summary,
 body.theme-light .ac-custom[open] summary {
   background: #eef3f9;
   border-color: #1d6fe0;
@@ -7615,6 +7624,94 @@ html[data-theme="light"] #insp-body .insp-actions {
      and the legs / NM / time / fuel line could hardly be seen. */
   color: inherit;
 }
+
+/* The go/no-go fuel check (issue #668): a popover in the tools row, opened from a button that
+   carries the verdict. The button follows the Columns / departure pattern (shared rules above);
+   these add the verdict badge and the over-tank red state. */
+.fp-fuel[hidden] { display: none; }
+.fp-fuel summary { font-variant-numeric: tabular-nums; }
+.fp-fuel-badge {
+  font-weight: 700;
+  font-size: 12px;
+  opacity: 0.95;
+  white-space: nowrap;
+}
+/* Over the tanks: the button goes red (with the warning sign in the badge -- never colour alone)
+   so the pilot sees no-go without opening the popover. */
+.fp-fuel.fp-fuel-over summary {
+  border-color: #e5484d;
+  color: #ffd9da;
+}
+.fp-fuel.fp-fuel-over .fp-fuel-badge { color: #ff9ea1; }
+body.theme-light .fp-fuel.fp-fuel-over summary { border-color: #c0392b; color: #8a1f17; }
+body.theme-light .fp-fuel.fp-fuel-over .fp-fuel-badge { color: #c0392b; }
+/* The popover card: absolutely positioned under the button, like the Columns / aircraft menus. */
+.fp-fuel-menu {
+  position: absolute;
+  z-index: 1600;
+  inset-block-start: calc(100% + 4px);
+  inset-inline-start: 0;
+  width: max-content;
+  max-width: min(360px, calc(92vw - 28px));
+  padding: 10px 12px 11px;
+  color: #e8e8e8;
+  background: #2b2727;
+  border: 1px solid #443f3f;
+  border-radius: 8px;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.35);
+  font-size: 13px;
+}
+body.theme-light .fp-fuel-menu { color: #1f252c; background: #fff; border-color: #c3cad4; }
+/* Two columns -- label, then value -- so every value lines up in one tabular column a short,
+   fixed gap from its label (no stretch). Rows are display:contents so their cells land directly
+   in these tracks. */
+.fp-fuel-grid {
+  display: grid;
+  grid-template-columns: auto auto;
+  justify-content: start;
+  column-gap: 28px;
+  row-gap: 3px;
+  align-items: baseline;
+}
+.fp-fuel-row { display: contents; }
+.fp-fuel-row[hidden] { display: none; }
+.fp-fuel-k { opacity: 0.82; white-space: nowrap; }
+.fp-fuel-v { font-weight: 600; font-variant-numeric: tabular-nums; text-align: end; white-space: nowrap; }
+/* Full-width rule between the parts and their sum. */
+.fp-fuel-div {
+  grid-column: 1 / -1;
+  height: 1px;
+  margin: 3px 0 1px;
+  background: rgba(255, 255, 255, 0.14);
+}
+body.theme-light .fp-fuel-div { background: #dbe1ea; }
+/* The sum against the tanks: the row the pilot decides on. */
+.fp-fuel-required .fp-fuel-k { opacity: 1; font-weight: 700; }
+.fp-fuel-required .fp-fuel-v { font-weight: 700; }
+/* Not enough fuel: the figure goes red (never colour alone -- the warning text spells it out). */
+.fp-fuel-short .fp-fuel-v { color: #e5484d; }
+body.theme-light .fp-fuel-short .fp-fuel-v { color: #c0392b; }
+.fp-fuel-warn {
+  margin-top: 8px;
+  font-weight: 700;
+  color: #e5484d;
+}
+body.theme-light .fp-fuel-warn { color: #c0392b; }
+/* The "set usable fuel" hint is advice, not an alarm: muted, not red. */
+.fp-fuel-warn.fp-fuel-note { font-weight: 400; color: inherit; opacity: 0.65; max-width: 240px; }
+.fp-fuel-alt-input {
+  width: 64px;
+  padding: 1px 6px;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+  text-align: end;
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.06);
+  color: inherit;
+}
+body.theme-light .fp-fuel-alt-input { border-color: #c3cad4; background: #fff; color: #1f252c; }
+.fp-fuel-alt-input:focus-visible { outline: 2px solid #1d6fe0; outline-offset: 1px; }
 
 /* Separator above the destructive storage wipe, so it reads as set apart from the
    ordinary data-management actions it now sits with. */
