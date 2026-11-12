@@ -9031,6 +9031,17 @@ function showFreqTableModal() {
 // figures update without reopening.
 function showStorageModal() {
   const fmt = (b) => (typeof navStorageFmtBytes === 'function' ? navStorageFmtBytes(b) : (b + ' B'));
+  // A number+unit ("28 KB", "5 MB", "1%") is a Latin run. Several of them in one line with a
+  // Hebrew word between (the "28 KB מתוך 5 MB · 1%" readout) reorder under bidi unless each run
+  // is isolated, which turned the Hebrew line into "MB · 1% 5 מתוך KB 28". Each measurement goes
+  // in its own isolated LTR span so the runs keep their order in both directions.
+  const ltr = (txt) => {
+    const s = document.createElement('span');
+    s.dir = 'ltr';
+    s.style.unicodeBidi = 'isolate';
+    s.textContent = txt;
+    return s;
+  };
   const modal = createDraggableModal(S.storageModalTitle || 'Storage', 'modal');
   const body = document.createElement('div');
   body.className = 'storage-modal-body';
@@ -9056,9 +9067,11 @@ function showStorageModal() {
 
     const usedLine = document.createElement('div');
     usedLine.className = 'storage-used';
-    const usedTxt = (typeof S.storageUsed === 'function')
-      ? S.storageUsed(fmt(u.total), fmt(u.budget)) : (fmt(u.total) + ' / ' + fmt(u.budget));
-    usedLine.textContent = usedTxt + ' · ' + pct + '%';
+    usedLine.appendChild(ltr(fmt(u.total)));
+    usedLine.appendChild(document.createTextNode(' ' + (S.storageOf || 'of') + ' '));
+    usedLine.appendChild(ltr(fmt(u.budget)));
+    usedLine.appendChild(document.createTextNode(' · '));
+    usedLine.appendChild(ltr(pct + '%'));
     body.appendChild(usedLine);
 
     const note = document.createElement('p');
@@ -9071,7 +9084,7 @@ function showStorageModal() {
     const rows = [
       ['routes', S.storageCatRoutes], ['freqs', S.storageCatFreqs],
       ['aircraft', S.storageCatAircraft], ['other', S.storageCatOther],
-      ['cache', S.storageCatCache],
+      ['cache', S.storageCatCache], ['preview', S.storageCatPreview],
     ].filter(([k]) => (u.cats[k] || 0) > 0);
     if (rows.length) {
       const h = document.createElement('div');
@@ -9086,9 +9099,8 @@ function showStorageModal() {
         const name = document.createElement('span');
         name.className = 'storage-row-name';
         name.textContent = label || k;
-        const size = document.createElement('span');
+        const size = ltr(fmt(u.cats[k]));
         size.className = 'storage-row-size';
-        size.textContent = fmt(u.cats[k]);
         row.appendChild(name);
         row.appendChild(size);
         list.appendChild(row);
@@ -9124,6 +9136,26 @@ function showStorageModal() {
     hint.className = 'storage-hint';
     hint.textContent = S.storageTrimHint || '';
     body.appendChild(hint);
+
+    // The nuclear reset, kept apart below a rule and in the danger style so it never reads as
+    // the safe clear above: wipe everything on this device (the same action, and the same
+    // confirm, as the toolbar's Clear local store). A last resort when the safe reclaim and
+    // deleting old recordings are not enough.
+    const sep = document.createElement('hr');
+    sep.className = 'storage-danger-sep';
+    body.appendChild(sep);
+    const wipe = document.createElement('button');
+    wipe.type = 'button';
+    wipe.className = 'storage-wipe-btn danger';
+    wipe.textContent = S.tbClearStore || 'Clear local store';
+    wipe.onclick = () => {
+      if (typeof navClearLocalStore === 'function') navClearLocalStore();   // asks, then wipes + reloads
+    };
+    body.appendChild(wipe);
+    const wipeNote = document.createElement('p');
+    wipeNote.className = 'storage-hint';
+    wipeNote.textContent = S.storageWipeNote || '';
+    body.appendChild(wipeNote);
   }
 
   render();

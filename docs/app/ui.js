@@ -11518,23 +11518,27 @@ if (DATE_FORMAT_EL) {
 }
 // Clear store: wipe every navaid.* key (routes, saved-route library, all
 // settings) from local + session storage, then reload to a clean slate.
-const CLEAR_STORE_EL = document.getElementById('clear-store');
-if (CLEAR_STORE_EL) {
-  CLEAR_STORE_EL.onclick = async () => {
-    if (!(await appConfirm(S.tbClearStoreConfirm ||
-      'Delete ALL saved routes and settings stored on this device? This cannot be undone.'))) return;
-    // Suppress the beforeunload/visibilitychange autosave so reload() can't
-    // re-persist the in-memory route right after we wipe storage.
-    window.__clearingStore = true;
-    try {
-      Object.keys(localStorage).filter(k => k.indexOf('navaid.') === 0)
-        .forEach(k => localStorage.removeItem(k));
-      Object.keys(sessionStorage).filter(k => k.indexOf('navaid.') === 0)
-        .forEach(k => sessionStorage.removeItem(k));
-    } catch (e) { /* storage unavailable */ }
-    location.reload();
-  };
+// The nuclear reset: wipe every navaid.* key (local + session) and reload to a clean
+// slate. Shared by the toolbar's danger button and the Storage window's last-resort row,
+// so both ask the same way and wipe the same set. Returns false if the pilot backs out.
+async function navClearLocalStore() {
+  if (!(await appConfirm(S.tbClearStoreConfirm ||
+    'Delete ALL saved routes and settings stored on this device? This cannot be undone.'))) return false;
+  // Suppress the beforeunload/visibilitychange autosave so reload() can't
+  // re-persist the in-memory route right after we wipe storage.
+  window.__clearingStore = true;
+  try {
+    Object.keys(localStorage).filter(k => k.indexOf('navaid.') === 0)
+      .forEach(k => localStorage.removeItem(k));
+    Object.keys(sessionStorage).filter(k => k.indexOf('navaid.') === 0)
+      .forEach(k => sessionStorage.removeItem(k));
+  } catch (e) { /* storage unavailable */ }
+  location.reload();
+  return true;
 }
+window.navClearLocalStore = navClearLocalStore;
+const CLEAR_STORE_EL = document.getElementById('clear-store');
+if (CLEAR_STORE_EL) CLEAR_STORE_EL.onclick = navClearLocalStore;
 const ALPHA_KEY = 'navaid.yellowAlpha';
 try {
   const v = parseFloat(lsGet(ALPHA_KEY));

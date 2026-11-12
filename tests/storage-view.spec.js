@@ -17,47 +17,58 @@ async function boot(page, seed) {
   await page.waitForFunction(() => typeof navStorageUsage === 'function');
 }
 
-test('the usage measurement buckets keys and counts only the cache as reclaimable', async ({ page }) => {
+test('the usage measurement buckets keys and counts cache + preview leftovers as reclaimable', async ({ page }) => {
   await boot(page, {
     'navaid.routes': JSON.stringify([{ id: 1, track: Array(500).fill({ lat: 32, lng: 34, t: 1 }) }]),
     'navaid.airfieldFreqOverrides': JSON.stringify({ 'LLHZ|cat:secondary': '122.100' }),
     'navaid.aircraft': JSON.stringify({ callSign: '4XABC' }),
     'navaid.gistCache': JSON.stringify({ some: 'refetchable blob' }),
+    // Leftovers from PR previews opened on this same origin (pr-<n>. namespaced).
+    'pr-1453.navaid.routes': JSON.stringify([{ id: 9, name: 'a preview route' }]),
+    'pr-1453.navaid.gistCache': JSON.stringify({ blob: 'preview junk' }),
   });
   const u = await page.evaluate(() => navStorageUsage());
   expect(u.cats.routes).toBeGreaterThan(0);
   expect(u.cats.freqs).toBeGreaterThan(0);
   expect(u.cats.aircraft).toBeGreaterThan(0);
   expect(u.cats.cache).toBeGreaterThan(0);
-  // Only the gist cache is reclaimable; the three data buckets are not.
-  expect(u.reclaimable).toBe(u.cats.cache);
+  expect(u.cats.preview).toBeGreaterThan(0);
+  // Reclaimable is the gist cache plus every preview leftover; the pilot's own data is not.
+  expect(u.reclaimable).toBe(u.cats.cache + u.cats.preview);
   expect(u.budget).toBe(5 * 1024 * 1024);
-  // The categoriser never labels pilot data as cache.
+  // The categoriser never labels the pilot's own data as cache or preview.
   const cat = await page.evaluate(() => ({
     routes: navStorageCategory('navaid.routes'),
     freq: navStorageCategory('navaid.vorFreqOverrides'),
     gist: navStorageCategory('navaid.gistCache'),
+    preview: navStorageCategory('pr-1453.navaid.routes'),
     unknown: navStorageCategory('navaid.somethingNew'),
   }));
-  expect(cat).toEqual({ routes: 'routes', freq: 'freqs', gist: 'cache', unknown: 'other' });
+  expect(cat).toEqual({ routes: 'routes', freq: 'freqs', gist: 'cache', preview: 'preview', unknown: 'other' });
 });
 
-test('clearing the cache removes the gist blob and keeps routes, freqs and aircraft', async ({ page }) => {
+test('clearing the cache removes the gist blob and preview leftovers, keeps the pilot data', async ({ page }) => {
   await boot(page, {
     'navaid.routes': JSON.stringify([{ id: 1, name: 'keep me' }]),
     'navaid.airfieldFreqOverrides': JSON.stringify({ 'LLHZ|cat:secondary': '122.100' }),
     'navaid.aircraft': JSON.stringify({ callSign: '4XABC' }),
     'navaid.gistCache': JSON.stringify({ blob: 'x'.repeat(2000) }),
+    'pr-1453.navaid.routes': JSON.stringify([{ id: 9, name: 'preview route' }]),
+    'pr-900.navaid.gistCache': JSON.stringify({ blob: 'y'.repeat(2000) }),
   });
   const freed = await page.evaluate(() => navClearReclaimable());
   expect(freed).toBeGreaterThan(0);
   const after = await page.evaluate(() => ({
     gist: localStorage.getItem('navaid.gistCache'),
+    prev1: localStorage.getItem('pr-1453.navaid.routes'),
+    prev2: localStorage.getItem('pr-900.navaid.gistCache'),
     routes: localStorage.getItem('navaid.routes'),
     freqs: localStorage.getItem('navaid.airfieldFreqOverrides'),
     aircraft: localStorage.getItem('navaid.aircraft'),
   }));
   expect(after.gist).toBeNull();
+  expect(after.prev1).toBeNull();
+  expect(after.prev2).toBeNull();
   expect(after.routes).toContain('keep me');
   expect(after.freqs).toContain('122.100');
   expect(after.aircraft).toContain('4XABC');

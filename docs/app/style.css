@@ -9610,6 +9610,9 @@ body.theme-light .storage-bar { background: rgba(0, 0, 0, 0.12); }
 .storage-clear-btn { min-height: 36px; width: 100%; cursor: pointer; }
 .storage-clear-btn:disabled { opacity: 0.5; cursor: default; }
 .storage-hint { margin: 0; font-size: 12px; opacity: 0.7; }
+.storage-danger-sep { border: none; border-top: 1px solid rgba(255, 255, 255, 0.14); margin: 8px 0 2px; }
+body.theme-light .storage-danger-sep { border-top-color: rgba(0, 0, 0, 0.14); }
+.storage-wipe-btn { min-height: 36px; width: 100%; cursor: pointer; }
 
 /* Phone links (airfield panel, parking request): a link, so it has to read as one -- but in the app's blue,
    not the browser's visited purple, and big enough to hit with a thumb in a cockpit. */
