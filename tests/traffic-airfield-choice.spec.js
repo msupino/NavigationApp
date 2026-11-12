@@ -92,3 +92,30 @@ test('while showing position, an overlap with no aircraft is still refused', asy
   expect(r.ok).toBe(false);       // the gate still keeps ordinary taps off the chart in flight
   expect(r.modal).toBe(false);
 });
+
+// A plane over one of the pilot's own route waypoints must offer it too. Reported: a plane
+// sitting on waypoint 3 did nothing (location was off, so the in-flight gate was not involved) --
+// the traffic tap gathered only chart overlays, which exclude route waypoints. It now adds them.
+test('the chooser offers a route waypoint under the plane, and it is selectable', async ({ page }) => {
+  await boot(page);
+  const r = await page.evaluate(() => {
+    state.waypoints = [{ lat: 32.10, lng: 34.85, name: 'ALPHA' }, { lat: 32.20, lng: 34.95, name: 'BRAVO' }];
+    if (typeof syncLegs === 'function') syncLegs();
+    draw();
+    const s = proj(state.waypoints[1]);
+    // The gather source the traffic handler now also uses finds the waypoint at its own pixel.
+    const wpHits = (typeof hitWaypointCandidates === 'function') ? hitWaypointCandidates(s.x, s.y) : [];
+    const ok = showPointChoice([{ type: 'traffic', hex: 'ABC123', aircraft: { hex: 'ABC123', flight: 'TEST01' } },
+                                { type: 'wp', index: 1 }]);
+    const opts = [...document.querySelectorAll('.point-choice-option .point-choice-primary')].map(e => e.textContent);
+    // choose the waypoint
+    [...document.querySelectorAll('.point-choice-option')].find(b => !/TEST01/.test(b.textContent)).click();
+    return { wpFound: wpHits.some(h => h.type === 'wp' && h.index === 1), ok, opts,
+      sel: state.selected && state.selected.type };
+  });
+  expect(r.wpFound).toBe(true);                               // the handler's new gather source sees it
+  expect(r.ok).toBe(true);
+  expect(r.opts).toContain('TEST01');                        // the aircraft
+  expect(r.opts.some(o => /BRAVO/.test(o || ''))).toBe(true); // the waypoint, by name
+  expect(r.sel).toBe('wp');                                   // choosing it selects the waypoint
+});
