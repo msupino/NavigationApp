@@ -2110,13 +2110,13 @@ window.S = Object.assign({
   vorDmeOnlyReadout: function (dme) { return dme + ' NM (DME only)'; },
   searchKindRouteWp: 'on your route',
   searchKindNote: 'note',
-  routeLibraryGdriveSyncSettings: 'Use settings from Drive on this device',
+  routeLibraryGdriveSyncSettings: 'Match display settings across my devices',
   // Named in full because the pilot profile is personal data leaving the device, and
   // a checkbox reading "settings" does not suggest a licence number is among them.
   routeLibraryGdriveSyncPii: 'Sync backs up your settings to your Google Drive, with your pilot details (name, licence, phone, email) and aircraft. The AIS filing address never leaves this device.',
   routeLibraryGdriveSyncPiiAi: 'Nor do AI keys.',
   routeLibraryGdriveSyncSettingsTitle: 'Display settings (layers, colours, sizes and the like) from your other devices. Your aircraft, pilot details and corrections sync either way.',
-  routeLibraryGdriveRestore: 'Restore settings from Drive',
+  routeLibraryGdriveRestore: 'Restore this device from backup',
   routeLibraryGdriveRestoreConfirm: 'Replace this device\u2019s settings with the backup on Google Drive? The app reloads.',
   routeLibraryGdriveRestoreNone: 'No settings backup on Drive yet',
   routeLibraryGdriveFirstBackup: function (when) { return 'Google Drive has a settings backup from ' + when + '. Restore it on this device?'; },

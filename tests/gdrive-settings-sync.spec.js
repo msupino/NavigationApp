@@ -4,7 +4,7 @@
 // and the opt-in flag. Verifies device-local + secret keys never sync.
 const { test, expect } = require('./_setup');
 
-// The engine is exercised with "Use settings from Drive" ticked: that is when every allowlisted
+// The engine is exercised with "Match display settings across my devices" ticked: that is when every allowlisted
 // key syncs. Unticked, only the pilot's data does (GDRIVE_ALWAYS_KEYS) -- see the tests at the end.
 const tick = (page) => page.addInitScript(() => { try { localStorage.setItem('navaid.syncSettings', '1'); } catch (e) {} });
 async function boot(page, opts) {
@@ -119,7 +119,7 @@ test('merge is last-write-wins by updatedAt, ties keep local', async ({ page }) 
   expect(r.noRemote).toBe('local');
 });
 
-test('the route library shows a "Use settings from Drive" checkbox that persists the opt-in', async ({ page }) => {
+test('the route library shows a "Match display settings across my devices" checkbox that persists the opt-in', async ({ page }) => {
   await boot(page, { unticked: true });
   await page.waitForFunction(() => typeof showRouteLibraryModal === 'function' && gdriveConfigured());
   await page.evaluate(() => showRouteLibraryModal());
@@ -823,7 +823,7 @@ test('the Restore button is in the Drive row, in both languages', async ({ page 
     await page.waitForFunction(() => typeof showRouteLibraryModal === 'function' && gdriveConfigured());
     await page.evaluate(() => showRouteLibraryModal());
     await expect(page.locator('.route-library-gdrive-restore')).toBeVisible();
-    await expect(page.locator('.route-library-gdrive-restore')).toHaveText(lang === 'he' ? 'שחזר הגדרות מ‑Drive' : 'Restore settings from Drive');
+    await expect(page.locator('.route-library-gdrive-restore')).toHaveText(lang === 'he' ? 'שחזר מכשיר זה מהגיבוי' : 'Restore this device from backup');
   }
 });
 
