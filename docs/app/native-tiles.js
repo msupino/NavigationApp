@@ -122,9 +122,10 @@
   }
 
   async function imageUrl(url) {
-    // Only hosts an offline pack can hold: every chart on our mirror, and open flightmaps. Any
-    // other host (Satellite, OpenStreetMap) goes straight to the network without a file read.
-    if (!enabled || !/^https:\/\/(navaid-tiles\.supino\.org\/|nwy-tiles-api\.prod\.newaydata\.com\/)/.test(url)) return url;
+    // Only hosts an offline pack can hold: every chart on our mirror, our own generated layers
+    // (#2032), and open flightmaps. Any other host (Satellite, OpenStreetMap) goes straight to
+    // the network without a file read.
+    if (!enabled || !/^https:\/\/(navaid-tiles\.supino\.org\/|msupino\.github\.io\/NavigationApp-owned-tiles\/|nwy-tiles-api\.prod\.newaydata\.com\/)/.test(url)) return url;
     try {
       const data = await readData(url);
       if (data) return 'data:image/png;base64,' + data;
