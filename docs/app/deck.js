@@ -80,17 +80,17 @@
     strip.append(top, stripSub);
     // Comm fail: the emergency action, in red at the top, always in reach and apart from the
     // five places on the bottom bar. It presses the toolbar's own button (one behaviour).
+    // Icon-only like Divert beside it, so the readout keeps its room; red marks it out.
     commBtn = document.createElement('button');
     commBtn.type = 'button';
     commBtn.className = 'deck-strip-commfail deck-btn-commfail';
     const commLabel = (typeof S === 'object' && S && S.deckCommFail) || 'Comm fail';
-    commBtn.innerHTML = (typeof navIconSvg === 'function' ? navIconSvg('commfail', 18) : '')
-      + '<span class="deck-strip-commfail-label"></span>';
-    commBtn.querySelector('.deck-strip-commfail-label').textContent = commLabel;
-    // Label in name: the accessible name must start with the words on the button, or voice
-    // control ("tap Comm fail") finds nothing. The longer explanation follows after a colon.
+    commBtn.innerHTML = typeof navIconSvg === 'function' ? navIconSvg('commfail', 20) : '';
+    // The accessible name starts with the short label (voice control: "tap Comm fail"); the
+    // longer explanation follows after a colon. The title shows the label on a mouse.
     const commHelp = (typeof S === 'object' && S && S.commFailTitle) || '';
     commBtn.setAttribute('aria-label', commHelp ? (commHelp.indexOf(commLabel) === 0 ? commHelp : commLabel + ': ' + commHelp) : commLabel);
+    commBtn.title = commLabel;
     commBtn.setAttribute('aria-pressed', 'false');
     commBtn.addEventListener('click', () => { click('commfail-btn'); sync(); });
     // Language, findable without reading the current one: a globe and the other language's name.

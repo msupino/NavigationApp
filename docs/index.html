@@ -98,8 +98,32 @@
       // Deliberately NOT remembered: a stored language made a plain address mean different
       // things on different devices, and made "open navaid.supino.org" an unanswerable
       // question about what a pilot would see.
+      //
+      // The installed app is the exception: it always starts on the plain address and has no
+      // address bar, so a language carried only by the address was lost on every restart. In
+      // the app alone the last choice is kept on this phone (navaid.appLang); a browser never
+      // reads or writes it.
       var p = new URLSearchParams(location.search).get('lang');
-      var lang = (p === 'en' || p === 'he') ? p : 'he';
+      var okLang = function (v) { return v === 'en' || v === 'he'; };
+      var inApp = function () {
+        var C = window.Capacitor;
+        return !!(C && typeof C.isNativePlatform === 'function' && C.isNativePlatform());
+      };
+      var appLang = null;
+      try { appLang = localStorage.getItem('navaid.appLang'); } catch (e) {}
+      var lang = okLang(p) ? p : (okLang(appLang) && inApp()) ? appLang : 'he';
+      // The native bridge may arrive after this script. Settle once the document is parsed:
+      // keep an explicit choice, or bring back the kept one if the first paint missed it.
+      document.addEventListener('DOMContentLoaded', function () {
+        if (!inApp()) return;
+        if (okLang(p)) {
+          try { localStorage.setItem('navaid.appLang', p); } catch (e) {}
+        } else if (okLang(appLang) && appLang !== lang) {
+          var q = new URLSearchParams(location.search);
+          q.set('lang', appLang);
+          location.replace('?' + q.toString() + location.hash);
+        }
+      });
       var h = document.documentElement;
       h.lang = lang; h.dir = lang === 'he' ? 'rtl' : 'ltr';
       if (lang === 'he') document.title = 'NavAid — מתכנן טיסה';
