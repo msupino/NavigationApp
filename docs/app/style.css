@@ -9063,19 +9063,15 @@ body.theme-light .deck-strip-divert[aria-pressed="true"] { background: #1d6fe0; 
 body.theme-light .deck-strip-divert:focus-visible { outline-color: #1d6fe0; }
 .deck-strip-commfail {
   grid-column: 4; grid-row: 1 / span 2;
-  display: inline-flex; align-items: center; gap: 6px;
-  min-height: 36px; padding: 0 12px;
+  display: inline-flex; align-items: center; justify-content: center;
+  min-width: 44px; min-height: 44px; padding: 0 10px;
   border: 0; border-radius: 18px;
   background: #c62f2f; color: #fff;
-  font: 700 12px/1 system-ui, sans-serif;
-  white-space: nowrap; cursor: pointer;
-  touch-action: manipulation;
+  cursor: pointer; touch-action: manipulation;
 }
 .deck-strip-commfail svg { display: block; flex: none; }
 .deck-strip-commfail[aria-pressed="true"] { background: #fff; color: #c62f2f; box-shadow: inset 0 0 0 2px #c62f2f; }
 .deck-strip-commfail:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
-/* A narrow phone with a full readout: the icon alone, the label in the accessible name. */
-@media (max-width: 360px) { .deck-strip-commfail-label { display: none; } .deck-strip-commfail { padding: 0 9px; min-width: 44px; justify-content: center; } }
 /* Engaged, not merely visited: Record and Here light while they are actually running. */
 /* Running, not merely chosen. A tinted label was all that said Location was on, and on a
    sunlit screen at arm's length that is not a state -- it is a shade. The whole cell lights:
