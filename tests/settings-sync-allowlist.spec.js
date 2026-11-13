@@ -92,6 +92,7 @@ const NOT_A_SYNCED_SETTING = [
   [/^navaid\.view$/,              'last map centre/zoom, per device'],
   [/^navaid\.theme$/,             'light/dark follows the screen you are on'],
   [/^navaid\.tabletLayout$/,     'tablet menu layout is chosen for this touch device'],
+  [/^navaid\.appLang$/,         'the installed app\'s last language, on this phone only -- a browser never reads it'],
   [/^navaid\.searchShown$/,       'docked-search dismissal, per screen size'],
   [/^navaid\.magnifier/,          'loupe state, per device'],
   [/^navaid\.notamViewTime$/,     'transient timeline scrub'],

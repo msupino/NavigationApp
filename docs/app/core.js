@@ -4072,7 +4072,8 @@ const NAV_ICONS = {
   location: '<path d="M12 21s-6.5-5.9-6.5-11a6.5 6.5 0 0 1 13 0c0 5.1-6.5 11-6.5 11z"/><circle cx="12" cy="10" r="2.3"/>',
   commfail: '<path d="M7 8.5a6.5 6.5 0 0 0 0 7M17 8.5a6.5 6.5 0 0 1 0 7"/><circle cx="12" cy="12" r="1.8" fill="currentColor"/><path d="M4 20 20 4"/>',
   // The track going straight, then branching off to a new field: the diversion decision.
-  divert: '<path d="M7 21V8"/><path d="M7 12c0-3 3-4 6-4h5"/><path d="M15 5l4 3-4 3"/>',
+  // Divert: steps going down to a runway line, with the arrow of the descent (asked).
+  divert: '<path d="M3 5h5v5h5v5h3"/><path d="M2 20h20"/><path d="M14 3l6 6"/><path d="M20 5v4h-4"/>',
   save: '<path d="M5 4h11l3 3v13H5z"/><path d="M8 4v5h7V4M8 20v-6h8v6"/>',
   folder: '<path d="M3.5 6.5h6l2 2h9v10.5h-17z"/>',
   settings: '<circle cx="12" cy="12" r="3"/><path d="M12 3v2.5M12 18.5V21M3 12h2.5M18.5 12H21M5.6 5.6l1.8 1.8M16.6 16.6l1.8 1.8M5.6 18.4l1.8-1.8M16.6 7.4l1.8-1.8"/>',

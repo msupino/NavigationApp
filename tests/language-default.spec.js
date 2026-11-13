@@ -73,3 +73,39 @@ test('the menu control switches by navigating, and the choice rides in the addre
   expect(new URL(page.url()).searchParams.get('lang')).toBe('en');
   expect((await shown(page)).menu).toBe('en');
 });
+
+// The installed app (Android / iOS) starts on the plain address and has no address bar, so the
+// rule above lost English on every restart. In the app alone the last choice is kept.
+const asApp = (page, early = true) => page.addInitScript((early) => {
+  const fake = { isNativePlatform: () => true, Plugins: {} };
+  // The native bridge can arrive before the page's scripts or just after them; cover both.
+  if (early) window.Capacitor = fake;
+  else document.addEventListener('readystatechange', () => { if (!window.Capacitor) window.Capacitor = fake; }, { once: true });
+}, early);
+
+for (const early of [true, false]) test(`the app keeps the language across a restart (bridge ${early ? 'early' : 'late'})`, async ({ page }) => {
+  await asApp(page, early);
+  await page.goto('?lang=en&nogist');
+  await page.waitForFunction(() => typeof draw === 'function');
+  expect(await page.evaluate(() => localStorage.getItem('navaid.appLang'))).toBe('en');
+  // Restart: the app opens the plain address again.
+  await page.goto('?nogist');
+  await page.waitForFunction(() => typeof draw === 'function' && document.documentElement.lang === 'en');
+  const got = await shown(page);
+  expect(got.lang).toBe('en');
+  expect(got.dir).toBe('ltr');
+  expect(got.menu).toBe('en');
+  // And back to Hebrew is kept the same way.
+  await page.goto('?lang=he&nogist');
+  await page.waitForFunction(() => typeof draw === 'function');
+  await page.goto('?nogist');
+  await page.waitForFunction(() => typeof draw === 'function');
+  expect((await shown(page)).lang).toBe('he');
+});
+
+test('a browser never reads the app\'s kept language', async ({ page }) => {
+  await page.addInitScript(() => { try { localStorage.setItem('navaid.appLang', 'en'); } catch (e) {} });
+  await page.goto('?nogist');
+  await page.waitForFunction(() => typeof draw === 'function');
+  expect((await shown(page)).lang).toBe('he');
+});
