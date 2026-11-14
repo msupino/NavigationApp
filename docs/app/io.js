@@ -7223,7 +7223,7 @@ function exportPNG(mode) {
   // memory of two of them), and when a page is larger than that the image is scaled down
   // smoothly from the sharp tiles instead of a level coarser.
   const plan = exportPixelPlan(base, framed, fr, bbNWll, bbSEll, printRes());
-  const { z, pps, k, ts, bbNWP, bbSEP, Wbb, Hbb, W, H, mapZoom } = plan;
+  const { z, pps, k, ts, bbNWP, bbSEP, Wbb, Hbb, W, H } = plan;
   const Wc = Math.ceil(Wbb * k), Hc = Math.ceil(Hbb * k);
 
   // Intermediate canvas: north-up tile composite covering the bounding box.
