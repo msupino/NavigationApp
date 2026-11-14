@@ -1,0 +1,40 @@
+From 10654aba92ac82d34b222177e2e7ba149093cf36 Mon Sep 17 00:00:00 2001
+From: Marco <marco@supino.org>
+Date: Sat, 14 Nov 2026 13:43:14 +0000
+Subject: [PATCH] VOR: the printed flight-plan card names the station and its
+ frequency above the table
+
+---
+ VOR-and-Radial-DME-he.md | 2 ++
+ VOR-and-Radial-DME.md    | 2 ++
+ 2 files changed, 4 insertions(+)
+
+diff --git a/VOR-and-Radial-DME-he.md b/VOR-and-Radial-DME-he.md
+index 3313428..afa0cfa 100644
+--- a/VOR-and-Radial-DME-he.md
++++ b/VOR-and-Radial-DME-he.md
+@@ -79,6 +79,8 @@ NAT R-263° / 12.4 NM
+ 
+ ייצוא CSV כולל את ערכי הרדיאל/DME שמוצגים. פריסת ההדפסה דחוסה כדי להתאים את העמודות הנוספות לדף A4 לרוחב.
+ 
++במפה המודפסת, כרטיס תכנית הטיסה (**הצב תכנית טיסה על המפה**) מציין בשורה מעל הטבלה את התחנה שיש לכוון אליה: **VOR**, הסימון והתדר שלה, למשל <span dir="ltr"><b>VOR NAT 112.40</b></span> (תדר שנערך גובר). כשקטעים משתמשים בתחנות VOR שונות, השורה מפרטת כל אחת (<span dir="ltr">VOR NAT 112.40 · BGN 113.50</span>) וכל רדיאל מציין את התחנה שלו (<span dir="ltr">BGN R-035</span>). כשלא נבחרה תחנה, השורה לא מודפסת.
++
+ ## שמירה
+ 
+ | אחסון | משמעות |
+diff --git a/VOR-and-Radial-DME.md b/VOR-and-Radial-DME.md
+index 8e1bf45..6f8265e 100644
+--- a/VOR-and-Radial-DME.md
++++ b/VOR-and-Radial-DME.md
+@@ -69,6 +69,8 @@ The Flight Plan modal has a VOR selector above the table. Once a VOR is selected
+ 
+ CSV export includes the displayed radial/DME values. The print layout is compressed to fit the extra columns on an A4 landscape page.
+ 
++On the printed chart, the flight-plan card (**Place flight plan on the map**) names the station to tune on a line above its table: **VOR**, its ident and its frequency, e.g. **VOR NAT 112.40** (an edited frequency wins). When legs use different VORs the line lists each one (**VOR NAT 112.40 · BGN 113.50**) and each radial names its station (**BGN R-035**). With no VOR selected the line is not printed.
++
+ ## Persistence
+ 
+ | Storage | Meaning |
+-- 
+2.43.0
+

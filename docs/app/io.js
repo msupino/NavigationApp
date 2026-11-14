@@ -4235,6 +4235,7 @@ function showFlightPlan() {
   if (state.legs.length === 0) { refuse(S.errNoLegs); return; }
   closeOpenChartModals();
   clearOpenChartModal();
+  closePrintPanel();
   // 'flight-plan' variant: backdrop is transparent + pointer-events: none so
   // the map underneath stays interactive (waypoint drag, pan, etc.) while
   // the plan is open. The modal box itself opts back into pointer events.
@@ -6135,6 +6136,14 @@ function exportPrintOnTopLine() {
   heads.forEach(h => { const t = h.getBoundingClientRect().top; if (t < minTop) minTop = t; });
   return printHead.getBoundingClientRect().top <= minTop + 6;
 }
+// Print and the flight plan are both wide panels over the map; open together they covered
+// each other (reported with a screenshot). Opening either closes the other. Closing Print
+// this way is a Cancel: its preview (overlays, layer, opacity, card) is put back.
+function closePrintPanel() {
+  const back = document.querySelector('.modal-back.export-options');
+  if (back && typeof back._navaidClose === 'function') back._navaidClose();
+}
+
 function showExportModal() {
   // This dialog owns fixed control IDs used by the live preview helpers below.
   // Repeated toolbar activation used to append another copy. getElementById()
@@ -6146,6 +6155,7 @@ function showExportModal() {
     if (focusTarget && typeof focusTarget.focus === 'function') focusTarget.focus();
     return;
   }
+  if (typeof fpOpen !== 'undefined' && fpOpen && typeof closeFlightPlan === 'function') closeFlightPlan();
   if (!aircraft && typeof loadAircraft === 'function') loadAircraft();   // for the plan card's Fuel column
   // On desktop the print/export menu floats opposite the inspector.
   // It starts on the left in LTR and the right in RTL.

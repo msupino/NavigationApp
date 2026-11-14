@@ -560,3 +560,66 @@ test('a closed panel leaves no Escape handler behind', async ({ page }) => {
   expect(await page.evaluate(() => planCard)).not.toBeNull();
   await page.evaluate(() => { window.planCard = null; });
 });
+
+// "for the printed chart of wp info, add the VOR freq, if selected": the printed plan card
+// names the station a pilot tunes -- ident and frequency (an edited frequency wins) -- in a
+// caption line above the table. Legs on different stations list both, and each radial names its own.
+test('the printed plan card carries the selected VOR frequency', async ({ page }) => {
+  await boot(page);
+  await route(page);
+  const got = await page.evaluate(async () => {
+    await loadVors();
+    const render = () => {
+      const ctx = document.createElement('canvas').getContext('2d');
+      const seen = [];
+      const fillText = ctx.fillText.bind(ctx);
+      ctx.fillText = (text, ...a) => { seen.push(String(text)); fillText(text, ...a); };
+      drawFlightPlanTable(ctx, 0, 0, 99999, 160, 'tl');
+      return seen;
+    };
+    const bgn = vorByIdent('BGN'), sde = vors.find(v => v.ident !== 'BGN' && v.freq);
+    state.legs.forEach(l => { l.vorRef = null; });
+    vorRef = null;
+    const none = render();
+    vorRef = 'BGN';
+    const one = render();
+    setVorFreqOverride('BGN', '113.55');
+    const edited = render();
+    setVorFreqOverride('BGN', '');
+    state.legs[1].vorRef = sde.ident;
+    const two = render();
+    const sdeRadial = 'R-' + vorRadialDme(sde, state.waypoints[2].lat, state.waypoints[2].lng).radial;
+    return { none, one, edited, two, bgnFreq: vorEffectiveFreq(bgn),
+      sde: sde.ident + ' ' + vorEffectiveFreq(sde), sdeCell: sde.ident + ' ' + sdeRadial };
+  });
+  expect(got.none.some(t => /^Radial/.test(t))).toBe(false);
+  expect(got.none.some(t => /^VOR /.test(t))).toBe(false);
+  expect(got.one).toContain('VOR BGN ' + got.bgnFreq);
+  expect(got.one).toContain('Radial');              // the column header stays short
+  expect(got.edited).toContain('VOR BGN 113.55');
+  expect(got.two).toContain('VOR BGN ' + got.bgnFreq + ' \u00b7 ' + got.sde);
+  expect(got.two).toContain(got.sdeCell);           // the radial names its station
+});
+
+// Reported with a screenshot: Print and the flight plan open together, one over the other.
+// Opening either closes the other; Print closed this way puts its preview back, like Cancel.
+test('Print and the flight plan never stay open together', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await boot(page);
+  await route(page);
+  const print = page.locator('.modal-back.export-options');
+  const plan = page.locator('.modal-back.flight-plan');
+  const op0 = await page.evaluate(() => mapOpacity);
+  await page.evaluate(() => showExportModal());
+  await expect(print).toHaveCount(1);
+  await page.evaluate(() => { const s = document.querySelector('.modal-back.export-options input[type="range"]');
+    s.value = '35'; s.oninput(); });
+  await page.evaluate(() => showFlightPlan());
+  await expect(plan).toHaveCount(1);
+  await expect(print).toHaveCount(0);
+  expect(await page.evaluate(() => mapOpacity)).toBe(op0);    // the Print preview was undone
+  await page.evaluate(() => showExportModal());
+  await expect(print).toHaveCount(1);
+  await expect(plan).toHaveCount(0);
+  expect(await page.evaluate(() => fpOpen)).toBe(false);
+});
