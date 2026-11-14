@@ -2461,6 +2461,10 @@ window.S = Object.assign({
   exportPlanPlace: 'Place flight plan on the map',
   exportPlanPlaceTitle: 'Overlay the flight-plan table on the export; drag it to position it inside the page frame',
   exportPlanNoFrame: 'Place flight plan — set an A3/A4 page first',
+  // Printed plan card: all or some of the waypoints lie beyond the VOR's published coverage.
+  planVorOutOfRange: function (nm, all) {
+    return '(! ' + (all ? 'all' : 'some') + ' waypoints beyond its ' + nm + ' NM range)';
+  },
   exportPlanNoLegs: 'Place flight plan — add a route leg first',
   fpVorLabel: 'VOR',
   fpVorRadialEmpty: '—',

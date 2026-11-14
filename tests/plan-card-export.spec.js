@@ -594,11 +594,13 @@ test('the printed plan card carries the selected VOR frequency', async ({ page }
   });
   expect(got.none.some(t => /^Radial/.test(t))).toBe(false);
   expect(got.none.some(t => /^VOR /.test(t))).toBe(false);
-  expect(got.one).toContain('VOR BGN ' + got.bgnFreq + ' MHz');
+  // (LLIB lies beyond BGN's published range, so the line goes on to say so: see the range test.)
+  const line = seen => seen.find(t => /^VOR /.test(t)) || '';
+  expect(line(got.one).startsWith('VOR BGN ' + got.bgnFreq + ' MHz')).toBe(true);
   expect(got.one).toContain('Radial BGN');          // the header keeps the station's ident
   expect(got.two).toContain('Radial');              // several stations: each cell names its own
-  expect(got.edited).toContain('VOR BGN 113.55 MHz');
-  expect(got.two).toContain('VOR BGN ' + got.bgnFreq + ' MHz \u00b7 ' + got.sde + ' MHz');
+  expect(line(got.edited).startsWith('VOR BGN 113.55 MHz')).toBe(true);
+  expect(line(got.two)).toMatch(new RegExp('^VOR BGN ' + got.bgnFreq + ' MHz.* \u00b7 ' + got.sde + ' MHz'));
   expect(got.two).toContain(got.sdeCell);           // the radial names its station
 });
 
@@ -684,4 +686,47 @@ test('Print previews black-and-white on the map and says the dpi of each quality
   await expect(html).not.toHaveClass(/print-bw-preview/);
   expect(await legColor()).toBe(colour);
   expect(await page.evaluate(() => NavAid.printOverride)).toBeFalsy();
+});
+
+// Asked: "warn in printed plan if VOR is outside range". A point beyond the station's published
+// coverage (coverageNm, the ring the map draws) gets "!" in its DME cell, and the VOR line says
+// all or some waypoints are beyond it. A station that publishes no coverage is not judged.
+test('the printed plan card warns where the VOR is beyond its published range', async ({ page }) => {
+  await boot(page);
+  await route(page);
+  const got = await page.evaluate(async () => {
+    await loadVors();
+    const render = () => {
+      const ctx = document.createElement('canvas').getContext('2d');
+      const seen = [];
+      const fillText = ctx.fillText.bind(ctx);
+      ctx.fillText = (text, ...a) => { seen.push(String(text)); fillText(text, ...a); };
+      drawFlightPlanTable(ctx, 0, 0, 99999, 160, 'tl');
+      return seen;
+    };
+    state.legs.forEach(l => { l.vorRef = null; });
+    const out = {};
+    for (const id of ['BSA', 'BGN', 'NAT', 'LOT']) {
+      vorRef = id;
+      const v = vorByIdent(id);
+      const dmes = state.waypoints.slice(1).map(w => vorRadialDme(v, w.lat, w.lng).dme);
+      out[id] = { seen: render(), dmes, cov: v.coverageNm, freq: vorEffectiveFreq(v) };
+    }
+    return out;
+  });
+  // The route's legs end at HADERA and LLIB; each station's verdict follows its own coverage.
+  for (const id of ['BSA', 'BGN', 'NAT']) {
+    const { seen, dmes, cov, freq } = got[id];
+    const outLegs = dmes.map((d, i) => (Number(d) > cov ? i + 1 : 0)).filter(Boolean);
+    dmes.forEach((d, i) => expect(seen).toContain(Number(d) > cov ? d + ' !' : d));
+    const line = 'VOR ' + id + ' ' + freq + ' MHz' + (outLegs.length
+      ? ' (! ' + (outLegs.length === dmes.length ? 'all' : 'some') + ' waypoints beyond its ' + cov + ' NM range)' : '');
+    expect(seen).toContain(line);
+  }
+  // Every case is exercised: BSA (15 NM) covers neither point, BGN one of the two, NAT both.
+  expect(got.BSA.seen.join('|')).toContain('! all waypoints');
+  expect(got.BGN.seen.join('|')).toContain('! some waypoints');
+  expect(got.NAT.seen.join('|')).not.toContain('!');
+  // LOT publishes no coverage: no verdict either way.
+  expect(got.LOT.seen.some(t => t.includes('!'))).toBe(false);
 });

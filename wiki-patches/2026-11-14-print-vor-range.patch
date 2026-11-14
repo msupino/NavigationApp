@@ -1,0 +1,40 @@
+From 50363fdb2a1fe26aa18ef7235342b436dd59f9cd Mon Sep 17 00:00:00 2001
+From: Marco <marco@supino.org>
+Date: Sat, 14 Nov 2026 14:20:55 +0000
+Subject: [PATCH] VOR: the printed plan card warns when all or some waypoints
+ are beyond the station's published range
+
+---
+ VOR-and-Radial-DME-he.md | 2 ++
+ VOR-and-Radial-DME.md    | 2 ++
+ 2 files changed, 4 insertions(+)
+
+diff --git a/VOR-and-Radial-DME-he.md b/VOR-and-Radial-DME-he.md
+index e724a65..46824a8 100644
+--- a/VOR-and-Radial-DME-he.md
++++ b/VOR-and-Radial-DME-he.md
+@@ -81,6 +81,8 @@ NAT R-263° / 12.4 NM
+ 
+ במפה המודפסת, כרטיס תכנית הטיסה (**הצב תכנית טיסה על המפה**) מציין בשורה מעל הטבלה את התחנה שיש לכוון אליה: **VOR**, הסימון והתדר שלה, למשל <span dir="ltr"><b>VOR NAT 112.40 MHz</b></span> (תדר שנערך גובר), וכותרת עמודת הרדיאל שומרת את הסימון (<span dir="ltr">רדיאל NAT</span>). כשקטעים משתמשים בתחנות VOR שונות, השורה מפרטת כל אחת (<span dir="ltr">VOR NAT 112.40 MHz · BGN 113.50 MHz</span>) וכל רדיאל מציין את התחנה שלו (<span dir="ltr">BGN R-035</span>). כשלא נבחרה תחנה, השורה לא מודפסת.
+ 
++הכרטיס גם מזהיר כשתחנה מחוץ לטווח: נקודה רחוקה מהכיסוי המפורסם של ה-VOR (<span dir="ltr">AIP ENR 4.1</span>, אותו נתון כמו טבעת הטווח במפה) מסומנת **!** בתא ה-DME שלה, ושורת ה-VOR אומרת אם **כל** ציוני הדרך או **חלק** מהם מחוץ לטווח, למשל <span dir="ltr">VOR BGN 113.50 MHz</span> (! חלק מציוני הדרך מחוץ לטווח <span dir="ltr">40 NM</span> שלה). תחנות שלא מפרסמות כיסוי (<span dir="ltr">LOT, RAM</span>) לא מקבלות אזהרה.
++
+ ## שמירה
+ 
+ | אחסון | משמעות |
+diff --git a/VOR-and-Radial-DME.md b/VOR-and-Radial-DME.md
+index 240e94c..394fb6e 100644
+--- a/VOR-and-Radial-DME.md
++++ b/VOR-and-Radial-DME.md
+@@ -71,6 +71,8 @@ CSV export includes the displayed radial/DME values. The print layout is compres
+ 
+ On the printed chart, the flight-plan card (**Place flight plan on the map**) names the station to tune on a line above its table: **VOR**, its ident and its frequency, e.g. **VOR NAT 112.40 MHz** (an edited frequency wins), and the Radial header keeps its ident (**Radial NAT**). When legs use different VORs the line lists each one (**VOR NAT 112.40 MHz · BGN 113.50 MHz**) and each radial names its station (**BGN R-035**). With no VOR selected the line is not printed.
+ 
++The card also warns where a station is out of range: a point farther than the VOR's published coverage (AIP ENR 4.1, the same figure as the range ring on the map) gets **!** in its DME cell, and the VOR line says whether **all** or **some** waypoints are beyond it, e.g. **VOR BGN 113.50 MHz (! some waypoints beyond its 40 NM range)**. Stations that publish no coverage (LOT, RAM) get no warning.
++
+ ## Persistence
+ 
+ | Storage | Meaning |
+-- 
+2.43.0
+
