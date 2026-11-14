@@ -641,8 +641,13 @@ class NavAidBridgeViewController: CAPBridgeViewController {
     }
 
     override func capacitorDidLoad() {
-        NavAidKeyboardBars.hide(in: webView)
-        keyboardBarsObserver = NavAidKeyboardBars.keepHidden(in: webView)
+        // Not on a Mac. There the iPad app's typing goes through the same WebKit content view,
+        // and with its class swapped and its shortcuts bar emptied, typed text no longer reached
+        // the field (reported on 1.29, the first build with this). The Mac keeps the bar.
+        if !ProcessInfo.processInfo.isiOSAppOnMac {
+            NavAidKeyboardBars.hide(in: webView)
+            keyboardBarsObserver = NavAidKeyboardBars.keepHidden(in: webView)
+        }
         bridge?.registerPluginInstance(XPlaneDiscoveryPlugin())
         bridge?.registerPluginInstance(BarometerPlugin())
         bridge?.registerPluginInstance(LocationQualityPlugin())
