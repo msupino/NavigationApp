@@ -1163,6 +1163,7 @@ window.S = {
   exportResLow: 'נמוכה',
   exportResMedium: 'בינונית',
   exportResHigh: 'גבוהה',
+  exportResDpi: function (dpi) { return 'על הנייר: \u2066\u2248' + dpi + ' dpi\u2069'; },
   exportBwTitle: 'המפה באפור בהיר והמסלול בשחור על לבן, כך שהוא קריא במדפסת ללא צבע',
   ctxMenuLabel: 'פעולות מהירות',
   ctxAddNoteHere: 'הוסף הערה כאן',

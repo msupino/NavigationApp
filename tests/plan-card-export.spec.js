@@ -639,3 +639,43 @@ test('the search panel is hidden while Print is open', async ({ page }) => {
   await expect(search).toBeVisible();
   await expect(page.locator('#wp-search')).toHaveValue('LLHZ');
 });
+
+// Asked: "can the print quality and black-and-white be wysiwyg?" Black-and-white previews live
+// on the map while Print is open; quality is finer than a screen, so its readout says the dpi
+// the file will get -- from the same sizing the export uses.
+test('Print previews black-and-white on the map and says the dpi of each quality', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await page.addInitScript(() => { try { localStorage.removeItem('navaid.printBw'); } catch (e) {} });
+  await boot(page);
+  await route(page);
+  const html = page.locator('html');
+  await page.evaluate(() => showExportModal());
+  await expect(html).not.toHaveClass(/print-bw-preview/);
+  const legColor = () => page.evaluate(() => tune('legKiteFillColor'));
+  const colour = await legColor();
+  await page.locator('#export-bw').check();
+  await expect(html).toHaveClass(/print-bw-preview/);
+  expect(await legColor()).toBe(await page.evaluate(() => PRINT_BW_TUNES.legKiteFillColor || tune('legKiteFillColor')));
+  expect(await page.evaluate(() => getComputedStyle(document.querySelector('.leaflet-tile-pane')).filter)).toContain('grayscale');
+  // No page: no dpi. A4: each step says its dpi, finer steps more.
+  const val = page.locator('#export-res-dpi');
+  await expect(val).toBeHidden();
+  await page.evaluate(() => setPage('A4'));
+  const dpis = [];
+  for (const v of ['0', '1', '2']) {
+    await page.evaluate(v => { const s = document.getElementById('export-res'); s.value = v;
+      s.dispatchEvent(new Event('input')); }, v);
+    const t = await val.textContent();
+    await expect(val).toBeVisible();
+    expect(t).toMatch(/≈\d+ dpi/);
+    dpis.push(Number(t.match(/≈(\d+)/)[1]));
+    expect(dpis[dpis.length - 1]).toBe(await page.evaluate(v => exportDpiFor(['low', 'medium', 'high'][v]), Number(v)));
+  }
+  expect(dpis[0]).toBeLessThan(dpis[1]);
+  expect(dpis[1]).toBeLessThan(dpis[2]);
+  // Cancel puts the screen back.
+  await page.locator('.modal-back.export-options .modal-cancel').click();
+  await expect(html).not.toHaveClass(/print-bw-preview/);
+  expect(await legColor()).toBe(colour);
+  expect(await page.evaluate(() => NavAid.printOverride)).toBeFalsy();
+});

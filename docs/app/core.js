@@ -2941,6 +2941,8 @@ window.S = Object.assign({
   exportResLow: 'Low',
   exportResMedium: 'Medium',
   exportResHigh: 'High',
+  // What a quality step means on paper -- a screen cannot show it. \u2066..\u2069 isolate the Latin run.
+  exportResDpi: function (dpi) { return 'On paper: \u2066\u2248' + dpi + ' dpi\u2069'; },
   exportBwTitle: 'The chart in light grey and the route black on white, so it reads on a printer without colour',
   ctxMenuLabel: 'Quick actions',
   ctxAddNoteHere: 'Add note here',

@@ -3631,6 +3631,7 @@ function refreshPageButtons() {
 // match the CURRENT page frame. Called on every page change so toggling A3/A4
 // while the (non-modal) print panel is open updates the warning live.
 function updateExportPageWarn() {
+  if (typeof window.__exportShowRes === 'function') window.__exportShowRes();
   const w = document.getElementById('export-page-warn');
   if (!w) return;
   if (!pageSize) {
@@ -6393,12 +6394,22 @@ function showExportModal() {
   resSlider.style.cssText = 'flex:1;height:16px;accent-color:#ffd966';
   resSlider.setAttribute('aria-label', resLbl.textContent);
   const resVal = document.createElement('span');
-  resVal.style.cssText = 'min-width:4.5em;text-align:end;font-size:12px';
+  resVal.style.cssText = 'min-width:4.5em;text-align:end;font-size:12px;white-space:nowrap';
+  const resDpi = document.createElement('div');
+  resDpi.id = 'export-res-dpi';
+  resDpi.className = 'export-res-dpi';
+  resDpi.hidden = true;
+  resSlider.setAttribute('aria-describedby', 'export-res-dpi');
   const resName = (v) => ({ low: S.exportResLow || 'Low', medium: S.exportResMedium || 'Medium',
     high: S.exportResHigh || 'High' })[v];
   const showRes = () => {
     const v = PRINT_RES_STEPS[Number(resSlider.value)] || 'high';
+    // The quality is finer than any screen, so the panel says what it means on paper instead.
+    // Its own line under the slider: beside the step name it was clipped in the panel.
+    const dpi = exportDpiFor(v);
     resVal.textContent = resName(v);
+    resDpi.textContent = dpi ? S.exportResDpi(dpi) : '';
+    resDpi.hidden = !dpi;
     resSlider.setAttribute('aria-valuetext', resVal.textContent);
     return v;
   };
@@ -6407,8 +6418,12 @@ function showExportModal() {
     const v = showRes();
     try { localStorage.setItem(PRINT_RES_KEY, v); } catch (e) { /* private */ }
   });
+  // A page chosen, changed or cleared, or the map zoomed, changes the dpi: keep it current.
+  window.__exportShowRes = showRes;
+  map.on('zoomend', showRes);
   resRow.append(resLbl, resSlider, resVal);
   body.appendChild(resRow);
+  body.appendChild(resDpi);
 
   // Black-and-white printer: the chart in light grey, the route black on white (exportPNG).
   // Remembered on this device -- it is about the printer here, not the pilot's other devices.
@@ -6421,7 +6436,9 @@ function showExportModal() {
   bwCb.checked = printBwOn();
   bwCb.addEventListener('change', () => {
     try { localStorage.setItem(PRINT_BW_KEY, bwCb.checked ? '1' : '0'); } catch (e) { /* private */ }
+    setPrintBwPreview(bwCb.checked);
   });
+  setPrintBwPreview(bwCb.checked);
   bwLabel.appendChild(bwCb);
   bwLabel.appendChild(document.createTextNode(S.exportBw || 'Optimized for a black-and-white printer'));
   body.appendChild(bwLabel);
@@ -6713,6 +6730,9 @@ function showExportModal() {
   // — with no panel on screen — still ran restoreOrig() and reverted the overlay
   // toggles, base layer, map opacity and the placed card.
   function close() {
+    setPrintBwPreview(false);
+    map.off('zoomend', showRes);
+    if (window.__exportShowRes === showRes) window.__exportShowRes = null;
     removeCardDrag();
     document.removeEventListener('keydown', onEsc);
     if (window.__exportSyncPlaceThrough === syncPlaceThrough) window.__exportSyncPlaceThrough = null;
@@ -7051,6 +7071,87 @@ function exportProgress(total) {
   };
 }
 
+// The dpi a framed export gets at quality step `res`, for the readout beside Quality (null with
+// no page: the image is then a multiple of the screen, not a paper size). A4 x2 cuts its two A4s
+// from an A3-sized frame at the same scale, so it reads as A3.
+function exportDpiFor(res) {
+  const fr = typeof pageFrameRect === 'function' ? pageFrameRect() : null;
+  if (!fr || fr.w < 4 || fr.h < 4 || !pageSize) return null;
+  let base = null;
+  for (const n in layers) if (map.hasLayer(layers[n])) base = layers[n];
+  if (!base || !base._url) return null;
+  const cs = [[fr.x, fr.y], [fr.x + fr.w, fr.y], [fr.x + fr.w, fr.y + fr.h], [fr.x, fr.y + fr.h]]
+    .map(p => map.containerPointToLatLng(p));
+  const nw = { lat: Math.max(...cs.map(c => c.lat)), lng: Math.min(...cs.map(c => c.lng)) };
+  const se = { lat: Math.min(...cs.map(c => c.lat)), lng: Math.max(...cs.map(c => c.lng)) };
+  const plan = exportPixelPlan(base, true, fr, nw, se, res);
+  const longMm = pageSize === 'A4' ? 297 : 420;
+  return Math.round(Math.max(plan.W, plan.H) / (longMm / 25.4));
+}
+window.exportDpiFor = exportDpiFor;
+
+// Black-and-white, what you see is what prints: while the Print panel is open with the box
+// ticked, the screen shows the chart and route the way the mono export draws them -- the same
+// chart filter (on the map's tiles) and the same route colours (PRINT_BW_TUNES).
+function setPrintBwPreview(on) {
+  const was = document.documentElement.classList.contains('print-bw-preview');
+  document.documentElement.classList.toggle('print-bw-preview', !!on);
+  document.documentElement.style.setProperty('--print-bw-filter', PRINT_BW_CHART_FILTER);
+  NavAid.printOverride = on ? PRINT_BW_TUNES : null;
+  if (was !== !!on && typeof draw === 'function') draw();
+}
+window.setPrintBwPreview = setPrintBwPreview;
+
+// The image an export will make, at quality step `res`: the tile zoom it draws from, the scale
+// of its tile canvas, and the output size in pixels. Shared by exportPNG and the Print panel's
+// dpi readout, so the number beside Quality is the number the file gets.
+function exportPixelPlan(base, framed, fr, bbNWll, bbSEll, res) {
+  const nativeMax = base.options.maxNativeZoom || base.options.maxZoom || 13;
+  const mapZoom = map.getZoom();
+  const ua = (typeof navigator !== 'undefined' && navigator.userAgent) || '';
+  const safari = /AppleWebKit/.test(ua) && !/Chrome|Chromium|Android/.test(ua);
+  const android = /Android/.test(ua);
+  // Pixels per canvas: Safari's own ceiling; a phone's memory in the APK / Android (two canvases
+  // of 32 M is ~250 MB); more on a computer.
+  const MAX_AREA = safari ? 16000000 : android ? 32000000 : 48000000;
+  const MAX_SIDE = 16384;
+  const MAX_TILES = 1200;
+  // Output pixels per screen pixel, and the tile zoom they are drawn from.
+  let z = framed ? nativeMax : Math.min(nativeMax, Math.max(7, Math.ceil(mapZoom + 1)));
+  const resScale = PRINT_RES_SCALE[res] || 1;
+  let pps = (framed ? Math.pow(2, z - mapZoom) : 2) * resScale;
+  let bbNWP, bbSEP, Wbb, Hbb, k = 1;
+  const measure = () => {
+    bbNWP = map.project([bbNWll.lat, bbNWll.lng], z);
+    bbSEP = map.project([bbSEll.lat, bbSEll.lng], z);
+    Wbb = Math.round(bbSEP.x - bbNWP.x);
+    Hbb = Math.round(bbSEP.y - bbNWP.y);
+    return Math.ceil(Wbb / 256 + 1) * Math.ceil(Hbb / 256 + 1);
+  };
+  while (z > 7 && measure() > MAX_TILES) { z--; if (framed) pps = Math.pow(2, z - mapZoom) * resScale; }
+  measure();
+  for (let guard = 0; guard < 8; guard++) {
+    k = pps / Math.pow(2, z - mapZoom);              // the tile canvas's scale against zoom z
+    const f = Math.min(1,
+      Math.sqrt(MAX_AREA / Math.max(1, Wbb * k * Hbb * k)),
+      Math.sqrt(MAX_AREA / Math.max(1, fr.w * pps * fr.h * pps)),
+      MAX_SIDE / Math.max(1, Wbb * k, Hbb * k, fr.w * pps, fr.h * pps));
+    pps *= f; k *= f;
+    // Under half the tiles' own detail, a level coarser carries the same picture in a quarter
+    // of the tiles.
+    if (k <= 0.5 + 1e-9 && z > 7) { z--; measure(); continue; }
+    break;
+  }
+  // Whole-pixel tiles, so they lie edge to edge with no hairline between them.
+  const ts = Math.max(1, Math.round(256 * k));
+  k = ts / 256;
+  pps = k * Math.pow(2, z - mapZoom);
+
+  const W = Math.round(fr.w * pps);
+  const H = Math.round(fr.h * pps);
+  return { z, pps, k, ts, bbNWP, bbSEP, Wbb, Hbb, W, H, mapZoom };
+}
+
 function exportPNG(mode) {
   // Export matches the screen view exactly, including map bearing.
   // Tiles are fetched north-up (axis-aligned) for a bounding box that covers
@@ -7119,50 +7220,8 @@ function exportPNG(mode) {
   // browser makes (Safari about 16.7 M pixels, others far more; kept to 48 M here for the
   // memory of two of them), and when a page is larger than that the image is scaled down
   // smoothly from the sharp tiles instead of a level coarser.
-  const nativeMax = base.options.maxNativeZoom || base.options.maxZoom || 13;
-  const mapZoom = map.getZoom();
-  const ua = (typeof navigator !== 'undefined' && navigator.userAgent) || '';
-  const safari = /AppleWebKit/.test(ua) && !/Chrome|Chromium|Android/.test(ua);
-  const android = /Android/.test(ua);
-  // Pixels per canvas: Safari's own ceiling; a phone's memory in the APK / Android (two canvases
-  // of 32 M is ~250 MB); more on a computer.
-  const MAX_AREA = safari ? 16000000 : android ? 32000000 : 48000000;
-  const MAX_SIDE = 16384;
-  const MAX_TILES = 1200;
-  // Output pixels per screen pixel, and the tile zoom they are drawn from.
-  let z = framed ? nativeMax : Math.min(nativeMax, Math.max(7, Math.ceil(mapZoom + 1)));
-  const resScale = PRINT_RES_SCALE[printRes()] || 1;
-  let pps = (framed ? Math.pow(2, z - mapZoom) : 2) * resScale;
-  let bbNWP, bbSEP, Wbb, Hbb, k = 1;
-  const measure = () => {
-    bbNWP = map.project([bbNWll.lat, bbNWll.lng], z);
-    bbSEP = map.project([bbSEll.lat, bbSEll.lng], z);
-    Wbb = Math.round(bbSEP.x - bbNWP.x);
-    Hbb = Math.round(bbSEP.y - bbNWP.y);
-    return Math.ceil(Wbb / 256 + 1) * Math.ceil(Hbb / 256 + 1);
-  };
-  while (z > 7 && measure() > MAX_TILES) { z--; if (framed) pps = Math.pow(2, z - mapZoom) * resScale; }
-  measure();
-  for (let guard = 0; guard < 8; guard++) {
-    k = pps / Math.pow(2, z - mapZoom);              // the tile canvas's scale against zoom z
-    const f = Math.min(1,
-      Math.sqrt(MAX_AREA / Math.max(1, Wbb * k * Hbb * k)),
-      Math.sqrt(MAX_AREA / Math.max(1, fr.w * pps * fr.h * pps)),
-      MAX_SIDE / Math.max(1, Wbb * k, Hbb * k, fr.w * pps, fr.h * pps));
-    pps *= f; k *= f;
-    // Under half the tiles' own detail, a level coarser carries the same picture in a quarter
-    // of the tiles.
-    if (k <= 0.5 + 1e-9 && z > 7) { z--; measure(); continue; }
-    break;
-  }
-  // Whole-pixel tiles, so they lie edge to edge with no hairline between them.
-  const ts = Math.max(1, Math.round(256 * k));
-  k = ts / 256;
-  pps = k * Math.pow(2, z - mapZoom);
-
-  // Output canvas: the frame at that resolution.
-  const W = Math.round(fr.w * pps);
-  const H = Math.round(fr.h * pps);
+  const plan = exportPixelPlan(base, framed, fr, bbNWll, bbSEll, printRes());
+  const { z, pps, k, ts, bbNWP, bbSEP, Wbb, Hbb, W, H, mapZoom } = plan;
   const Wc = Math.ceil(Wbb * k), Hc = Math.ceil(Hbb * k);
 
   // Intermediate canvas: north-up tile composite covering the bounding box.
