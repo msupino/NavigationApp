@@ -7308,7 +7308,10 @@ function drawFlightPlanTable(ctx, x, y, w, h, align) {
     S.planColLegTime || 'Time of leg',
     S.planColLegFuel || 'Fuel of leg',
   ];
-  if (vorActive) headers.push(S.planColRadial || 'Radial', S.planColDme || 'DME');
+  // One station: the Radial header keeps its ident ("Radial NAT"), as it always has. Several:
+  // each radial cell names its own, so the header stays "Radial".
+  if (vorActive) headers.push((S.planColRadial || 'Radial') + (usedVors.length === 1 ? ' ' + usedVors[0].ident : ''),
+    S.planColDme || 'DME');
   const caption = usedVors.length
     ? (S.fpVorLabel || 'VOR') + ' ' + usedVors.map(vorTune).join(' \u00b7 ') : '';
   const capRows = caption ? 1 : 0;

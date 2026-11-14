@@ -595,7 +595,8 @@ test('the printed plan card carries the selected VOR frequency', async ({ page }
   expect(got.none.some(t => /^Radial/.test(t))).toBe(false);
   expect(got.none.some(t => /^VOR /.test(t))).toBe(false);
   expect(got.one).toContain('VOR BGN ' + got.bgnFreq + ' MHz');
-  expect(got.one).toContain('Radial');              // the column header stays short
+  expect(got.one).toContain('Radial BGN');          // the header keeps the station's ident
+  expect(got.two).toContain('Radial');              // several stations: each cell names its own
   expect(got.edited).toContain('VOR BGN 113.55 MHz');
   expect(got.two).toContain('VOR BGN ' + got.bgnFreq + ' MHz \u00b7 ' + got.sde + ' MHz');
   expect(got.two).toContain(got.sdeCell);           // the radial names its station
