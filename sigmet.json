@@ -1,0 +1,54 @@
+{
+ "generatedAt": "2026-11-14T20:01:05.032Z",
+ "source": "NOAA AWC isigmet",
+ "sigmets": [
+  {
+   "id": "6",
+   "firId": "LTAA",
+   "firName": "LTAA ANKARA",
+   "hazard": "ICE",
+   "qualifier": "SEV",
+   "base": 16000,
+   "top": 22000,
+   "dir": "N",
+   "spd": "12",
+   "validFrom": 1794676680,
+   "validTo": 1794691800,
+   "coords": [
+    [
+     41.514,
+     41.562
+    ],
+    [
+     41.9,
+     40.34
+    ],
+    [
+     42.69,
+     37.72
+    ],
+    [
+     42.74,
+     36.26
+    ],
+    [
+     42.754,
+     35.069
+    ],
+    [
+     40.683,
+     35.5
+    ],
+    [
+     40.517,
+     39.55
+    ],
+    [
+     41.514,
+     41.562
+    ]
+   ],
+   "raw": "WSTU31 LTAC 141652\nLTAA SIGMET 6 VALID 141718/142130 LTAC-\nLTAA ANKARA FIR SEV ICE FCST N OF LINE N4131 E04134 - N4031 E03933 -\nN4041 E03530 - N4246 E03504 FL160/220 MOV N 12KT NC="
+  }
+ ]
+}
