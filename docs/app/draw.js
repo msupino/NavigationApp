@@ -7242,7 +7242,7 @@ function drawFlightPlanTable(ctx, x, y, w, h, align) {
   // frequency, the same pair the chart prints beside the VOR.
   const vorTune = v => {
     const f = typeof vorEffectiveFreq === 'function' ? vorEffectiveFreq(v) : (v.freq || '');
-    return v.ident + (f ? ' ' + f : '');
+    return v.ident + (f ? ' ' + f + ' MHz' : '');
   };
   const rows = [];
   let totTime = 0, totFuel = 0;
@@ -7291,7 +7291,7 @@ function drawFlightPlanTable(ctx, x, y, w, h, align) {
   // Time,Fuel,CumTime,CumFuel,Radial,DME — trimmed to what a pilot reads.)
   // Radial / DME columns appear only when a reference VOR is selected (global
   // or any per-leg). A caption line above the table names the station a pilot tunes: its
-  // ident and frequency ("VOR BGN 113.50"), outside the table so the Radial column stays as
+  // ident and frequency ("VOR BGN 113.50 MHz"), outside the table so the Radial column stays as
   // narrow as its values. Legs on different stations (the flight plan's per-leg picker) list
   // each station there, and each radial cell names the station it is from.
   const vorActive = flightPlanCardHasVorInfo();
