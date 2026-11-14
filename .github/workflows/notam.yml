@@ -35,73 +35,28 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
+      # Only the shared parser is needed from the repo.
+      - uses: actions/checkout@v6
+        with:
+          sparse-checkout: docs/app/notam-iaa.js
+          sparse-checkout-cone-mode: false
       - name: Fetch + normalise NOTAMs
         run: |
           mkdir -p out
           node --input-type=module <<'NODE'
           import { writeFileSync } from 'node:fs';
+          import { createRequire } from 'node:module';
           // The NOTAM relay URL comes from the app's tuning gist (notamWorkerUrl); a default is used
           // until that key is set. The relay returns the full raw ICAO text per NOTAM, so every
           // parser below (geometry, B/C/E, Q-line) is unchanged -- only the acquisition differs.
           const CONFIG_URL = 'https://gist.githubusercontent.com/msupino/12c6e9d9dfcd783ffbeaa06246783840/raw/navaid-config.json';
           const DEFAULT_WORKER = 'https://notams-fetch.marco-956.workers.dev/';
-          // Israel's FIR always has many active NOTAMs; a response with far fewer is a degraded
-          // relay/upstream, not a quiet day. Refuse to publish it so generatedAt does NOT refresh
-          // and charts-monitor sees the feed go stale, instead of a thin list passed off as complete.
-          const MIN_NOTAMS = 10;
           const out = { generatedAt: new Date().toISOString(), source: 'IAA (via relay)', fir: 'LLLL', notams: [] };
           let fetched = false;
 
-          // --- geometry from the raw ICAO NOTAM ---
-          // Q-line trailing field: DDMM[NS]DDDMM[EW]RRR (RRR = radius NM; 000/999 = FIR-wide → skip).
-          // Otherwise item-E lists DDMMSS coordinates → polygon (>=3) or a single point + "x NM RADIUS".
-          const geomFromRaw = (raw, icao) => {
-            const T = String(raw || '').toUpperCase();
-            // Border-buffer NOTAMs ("FM LEBANON BOUNDARY TO 8KM") carry no usable
-            // coordinates — leave them geomless so the app traces the national
-            // border arc itself (buildNotamBorderAreas). A Q-line circle here
-            // would suppress that and draw a wrong little circle.
-            if (/\b(LEBANON|SYRIA|EGYPT|JORDAN)\b/.test(T) && /\bBORD\w*|\bBOUND\w*/.test(T)) return null;
-            // Explicit item-E coordinate polygon (precise) — for any NOTAM.
-            const toks = T.match(/\d{6}[NS]\d{7}[EW]/g) || [];
-            const pts = toks.map(tok => {
-              const m = tok.match(/^(\d{2})(\d{2})(\d{2})([NS])(\d{3})(\d{2})(\d{2})([EW])$/);
-              if (!m) return null;
-              const lat = +m[1] + +m[2] / 60 + +m[3] / 3600;
-              const lng = +m[5] + +m[6] / 60 + +m[7] / 3600;
-              return [m[4] === 'S' ? -lat : lat, m[8] === 'W' ? -lng : lng];
-            }).filter(Boolean);
-            if (pts.length >= 3) return { type: 'polygon', coords: pts };
-            // Circles are only meaningful for FIR-wide (LLLL) area NOTAMs.
-            // Airfield-specific NOTAMs (LLBG/LLHZ/…) are surfaced via their
-            // airfield marker + inspector, so don't scatter circles over the
-            // aerodrome — leave them geomless (list / airfield only).
-            if (icao !== 'LLLL') return null;
-            // Radius in NM or KM (Israeli NOTAMs use both) → NM.
-            const radNm = T.match(/(\d+(?:\.\d+)?)\s*NM\s*RADIUS|RADIUS\s*(?:OF\s+)?(\d+(?:\.\d+)?)\s*NM/);
-            const radKm = T.match(/(\d+(?:\.\d+)?)\s*KM\s*RADIUS|RADIUS\s*(?:OF\s+)?(\d+(?:\.\d+)?)\s*KM/);
-            const rad = radNm ? +(radNm[1] || radNm[2]) : (radKm ? +(radKm[1] || radKm[2]) * 0.539957 : null);
-            if (pts.length >= 1 && rad) return { type: 'circle', lat: pts[0][0], lng: pts[0][1], radiusNm: rad };
-            // Fallback: Q-line centre+radius (coarse). The Q-line radius is the
-            // NOTAM's *coverage/influence* extent, which for FIR-wide or admin
-            // NOTAMs (GNSS-in-FIR, flight-plan/phone changes, VOR withdrawn) is
-            // huge (25–121 NM) and blankets the chart. Only draw a small local
-            // circle (<=12 NM); larger ones are list-only (real hazard areas
-            // carry explicit item-E coordinates handled above). Match ONLY within
-            // the Q-line (up to " A)") so a coordless Q-line can't leak into item-E.
-            const qline = (T.match(/\bQ\)([\s\S]*?)\bA\)/) || [])[1] || '';
-            const q = qline.match(/(\d{2})(\d{2})([NS])(\d{3})(\d{2})([EW])(\d{3})(?:\s|$)/);
-            if (q) {
-              const r = +q[7];
-              if (r > 0 && r <= 12) {
-                const lat = +q[1] + +q[2] / 60, lng = +q[4] + +q[5] / 60;
-                return { type: 'circle', lat: q[3] === 'S' ? -lat : lat, lng: q[6] === 'W' ? -lng : lng, radiusNm: r };
-              }
-            }
-            return null;
-          };
-          // B)/C) time YYMMDDHHmm → ISO (all NOTAM times are UTC).
-          const iso = (s) => { const m = String(s).match(/^(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})$/); return m ? `20${m[1]}-${m[2]}-${m[3]}T${m[4]}:${m[5]}:00Z` : ''; };
+          // The parser lives in the app (docs/app/notam-iaa.js): the apps read IAA directly with it,
+          // so this feed and theirs are parsed by one piece of code.
+          const IAA = createRequire(process.cwd() + '/')('./docs/app/notam-iaa.js');
 
           async function run() {
             let WORKER = DEFAULT_WORKER;
@@ -116,55 +71,20 @@ jobs:
               arr = await res.json();
             } catch (e) { console.error('relay fetch failed:', e.message); return; }
             // The relay returns 502 (not a challenge page) when the source is unavailable, caught above.
-            if (!Array.isArray(arr)) { console.error('relay did not return an array -- keep last-good'); return; }
-            // Dedup by NOTAM id so the publish threshold compares like-for-like.
-            const uniq = [...new Map(arr.filter(x => x && x.notamID && x.messageText).map(x => [x.notamID, x])).values()];
-            console.error('relay NOTAMs:', arr.length, '| unique:', uniq.length);
-            if (uniq.length < MIN_NOTAMS) {
-              console.error('::error::only ' + uniq.length + ' NOTAMs (< ' + MIN_NOTAMS +
-                ') -- degraded worker/upstream. Keeping last-good so the monitor flags staleness.');
-              return;
-            }
-
-            let ok = 0, skipped = 0;
-            for (const it of uniq) {
-              // The worker carries the full raw ICAO text (Q/A/B/C/E). Flatten to one line so the
-              // field regexes behave exactly as they did on the scraped single-line text.
-              const raw = String(it.messageText).replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
-              if (!raw) continue;
-              ok++;
-              const icao = String(it.locationIndicator || '').toUpperCase();
-              const b = raw.match(/\bB\)\s*(\d{10})/), c = raw.match(/\bC\)\s*(\d{10}|PERM)/i);
-              // The worker also carries validFromDate/validToDate (DD/MM/YYYY HH:MM) as a fallback.
-              const vf = String(it.validFromDate || '').match(/(\d{2})\/(\d{2})\/(\d{4})\s+(\d{2}):(\d{2})/);
-              const vt = String(it.validToDate || '').match(/(\d{2})\/(\d{2})\/(\d{4})\s+(\d{2}):(\d{2})/);
-              const start = b ? iso(b[1]) : (vf ? `${vf[3]}-${vf[2]}-${vf[1]}T${vf[4]}:${vf[5]}:00Z` : '');
-              const end = c ? (/PERM/i.test(c[1]) ? 'PERM' : iso(c[1]))
-                            : (vt ? `${vt[3]}-${vt[2]}-${vt[1]}T${vt[4]}:${vt[5]}:00Z` : '');
-              const e = raw.match(/\bE\)\s*([\s\S]*?)\s*(?:\bF\)\s*(?:GND|SFC|FL|UNL|AMSL|AGL|\d)|\bG\)\s*(?:GND|SFC|FL|UNL|AMSL|\d)|$)/);
-              let text = e ? e[1].trim() : '';
-              if (text && (text.match(/\)/g) || []).length > (text.match(/\(/g) || []).length) text = text.replace(/\)\s*$/, '').trim();
-              const tm = raw.match(/\bQ\)\s*[A-Z]{4}\/Q[A-Z]{4}\/([IVK]+)\b/);
-              const traffic = tm ? tm[1].toUpperCase() : '';
-              const qc = raw.match(/\bQ\)\s*[A-Z]{4}\/Q([A-Z]{4})\b/);
-              const type = qc ? qc[1] : '';
-              // Skip IFR-only and checklist NOTAMs (not relevant to VFR/LSA). Unknown traffic kept.
-              if (traffic === 'I' || traffic === 'K') { skipped++; continue; }
-              out.notams.push({ id: it.notamID, icao, type, text: text || it.notamID, start, end, geom: geomFromRaw(raw, icao) });
-            }
-            out.detailOk = ok;
-            out.detailTotal = uniq.length;
-            console.error('NOTAMs:', out.notams.length, '| parsed:', ok, '| skipped IFR/checklist:', skipped,
+            // parseIaaNotams refuses a degraded list (too few NOTAMs, or too few parsed): keep
+            // last-good so generatedAt does NOT refresh and charts-monitor sees the feed go stale.
+            let parsed;
+            try { parsed = IAA.parseIaaNotams(arr); }
+            catch (e) { console.error('::error::' + e.message + ' -- keeping last-good.'); return; }
+            out.notams = parsed.notams;
+            out.detailOk = parsed.detailOk;
+            out.detailTotal = parsed.detailTotal;
+            console.error('NOTAMs:', out.notams.length, '| parsed:', parsed.detailOk, '/', parsed.detailTotal,
+              '| skipped IFR/checklist:', parsed.skipped,
               '| with geom:', out.notams.filter(n => n.geom).length,
               '| with dates:', out.notams.filter(n => n.start || n.end).length);
-            // Publish only when nearly every NOTAM parsed -- a half list presented as complete is
-            // the false-safe this repo refuses (see terrain.js on MSA).
-            if (ok >= Math.max(MIN_NOTAMS, Math.ceil(uniq.length * 0.9))) {
-              fetched = true;
-              if (ok < uniq.length) console.error('::warning::parsed ' + ok + '/' + uniq.length + '; publishing.');
-            } else {
-              console.error('::error::too few parsed: ' + ok + '/' + uniq.length + '. Keeping last-good.');
-            }
+            if (parsed.detailOk < parsed.detailTotal) console.error('::warning::parsed ' + parsed.detailOk + '/' + parsed.detailTotal + '; publishing.');
+            fetched = true;
           }
           await run().catch(e => console.error('fetch failed:', e.message));
           if (fetched) writeFileSync('out/notam.json', JSON.stringify(out, null, 1));
