@@ -1457,8 +1457,14 @@ production host and `localhost`. Simulator discovery trusts only the production 
 
 A `capacitor:` page cannot rely on the production service worker. In embedded mode,
 `offline-tiles.js` uses `NavAidNativeTiles.storage`, backed by the existing Filesystem
-plugin's `LIBRARY_NO_CLOUD/navaid-tiles-v1` directory. Each PNG filename is its encoded
-request URL. Pack audits enumerate actual files; failed writes do not count as downloaded.
+plugin's `LIBRARY_NO_CLOUD/navaid-tiles-v2/<shard>/` directories: 256 sub-folders picked by an
+FNV-1a hash of the URL (`shardOf`). Each PNG filename is its encoded request URL. Pack audits
+enumerate actual files one sub-folder at a time; failed writes do not count as downloaded. Never
+list the whole store in one `readdir`: the plugin returns it as one JSON string built in the
+256 MB Java heap, and the old single folder (`navaid-tiles-v1`) crashed Android with
+OutOfMemoryError at ~37 MB. The old folder is moved once by name (`migrate`, flag
+`navaid.tilesV2Migrated`), never listed; reads fall back to it until then, and a tile that will
+not move keeps it for the next launch.
 The CVFR Leaflet layer and magnifier read those PNGs directly and use the network on a
 cache miss. Other layers remain online-only. `plateBase()` uses the absolute production
 BYOP URL in embedded mode, covering the manifest, rendered pages, and PDF downloads.
