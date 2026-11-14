@@ -623,3 +623,18 @@ test('Print and the flight plan never stay open together', async ({ page }) => {
   await expect(plan).toHaveCount(0);
   expect(await page.evaluate(() => fpOpen)).toBe(false);
 });
+
+// Asked: the search panel is hidden while Print is open, and back as it was when Print closes.
+test('the search panel is hidden while Print is open', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await boot(page);
+  const search = page.locator('#search-overlay');
+  await page.evaluate(() => revealSearchOverlay());
+  await page.locator('#wp-search').fill('LLHZ');
+  await expect(search).toBeVisible();
+  await page.evaluate(() => showExportModal());
+  await expect(search).toBeHidden();
+  await page.locator('.modal-back.export-options .modal-cancel').click();
+  await expect(search).toBeVisible();
+  await expect(page.locator('#wp-search')).toHaveValue('LLHZ');
+});

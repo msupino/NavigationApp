@@ -6212,6 +6212,9 @@ html[dir="rtl"] .charts-airport-header.open::before { transform: rotate(-90deg);
   width: min(420px, 90vw);
 }
 #search-overlay.hidden { display: none; }
+/* Print open: the search panel steps aside (asked) -- it sat over the page frame being placed.
+   Only hidden, not closed: its query and its docked/shown preference come back with it. */
+body:has(> .modal-back.export-options) #search-overlay { display: none !important; }
 /* On a phone the deck's strip owns the top edge (and is taller with the Comm fail button):
    the search card opens below it, not under it. */
 body.deck-on #search-overlay { top: calc(var(--navaid-deck-strip-h, 46px) + 8px); }
