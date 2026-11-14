@@ -1695,18 +1695,29 @@ let airmetMeta = null;
 // Declared here, beside the loader that writes it; read elsewhere as window.sigmetMeta.
 let sigmetMeta = null;
 window.airmets = airmets;
-// NOTAMs: a scheduled Action queries the FAA NOTAM API for the Israel FIR
-// (LLLL), normalises geometry, and publishes notam.json to the `notam-data`
-// branch (filename unchanged there). data/notam.json is the offline /
-// first-run fallback.
+// NOTAMs: the hourly "Update NOTAMs" Action fetches the Israel Airports Authority's NOTAMs for
+// the Israel FIR (LLLL) through a relay, normalises geometry (app/notam-iaa.js), and publishes
+// notam.json to the `notam-data` branch. That is what a browser reads. The apps ask IAA
+// directly first (NavAidNotamIaa.fetchIaaDirect, native HTTP from the pilot's connection) and
+// read notam.json only when IAA does not answer. data/notam.json is the offline / first-run
+// fallback for both.
 const NOTAM_URL =
   'https://raw.githubusercontent.com/msupino/NavigationApp/notam-data/notam.json';
 async function loadNotam(force) {
   if (notams !== null && !force) return notams;
   const parse = d => {
-    notamMeta = { generatedAt: (d && d.generatedAt) || null };
+    notamMeta = { generatedAt: (d && d.generatedAt) || null, source: (d && d.source) || null };
     return Array.isArray(d && d.notams) ? d.notams.filter(n => n && n.id) : [];
   };
+  const iaa = typeof window !== 'undefined' && window.NavAidNotamIaa;
+  if (iaa && iaa.usable()) {
+    try {
+      notams = parse(await iaa.fetchIaaDirect());
+      return notams;
+    } catch (e) {
+      console.warn('IAA NOTAMs directly failed; reading notam.json:', e && e.message);
+    }
+  }
   try {
     const res = await fetch(NOTAM_URL, { cache: 'no-store' });
     if (!res.ok) throw new Error('HTTP ' + res.status);

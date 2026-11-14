@@ -1,0 +1,47 @@
+From 0820f4496657a32d19382cb15afdc0fa229073f7 Mon Sep 17 00:00:00 2001
+From: Marco <marco@supino.org>
+Date: Sat, 14 Nov 2026 16:57:10 +0000
+Subject: [PATCH] NOTAMs: the apps ask IAA directly; a browser reads the hourly
+ copy
+
+---
+ Extra-Layers-he.md | 4 ++--
+ Extra-Layers.md    | 7 +++++--
+ 2 files changed, 7 insertions(+), 4 deletions(-)
+
+diff --git a/Extra-Layers-he.md b/Extra-Layers-he.md
+index 10c3f49..cac2236 100644
+--- a/Extra-Layers-he.md
++++ b/Extra-Layers-he.md
+@@ -123,8 +123,8 @@ SIGMET בינלאומיים (מערבולות, קרח, גל הרים, אפר ג
+   (<span dir="ltr"><code>DIVERTED VIA …</code></span>) בצבע נפרד.
+ - **NOTAM של רצועות גבול** (למשל *"FM LEBANON BOUNDARY TO 8KM"*) חסרי קואורדינטות,
+   ולכן מומרים לפוליגון חיץ ממאגר גבולות ישראל (<span dir="ltr"><code>data/notam-borders.json</code></span>).
+-- **מקור:** אתר **IAA Mobile AeroInfo** (<span dir="ltr"><code>brin.iaa.gov.il/MobileAeroinfo</code></span>), המקור הלאומי הרשמי — מרוענן ע״י <span dir="ltr"><code>notam.yml</code></span> לענף
+-  <span dir="ltr"><code>notam-data</code></span>. אמצעי תכנון בלבד — אמת מול תדריך רשמי.
++- **מקור:** **רשות שדות התעופה** (IAA AeroInfo), המקור הלאומי הרשמי. אפליקציות האנדרואיד והאייפון פונות ישירות לרשות בכל טעינת NOTAM, מהחיבור שלכם, ולכן הן עדכניות כמו הרשות עצמה; אם הרשות לא עונה, הן קוראות את העותק השעתי. דפדפן אינו יכול לפנות לרשות בעצמו, ולכן הוא קורא תמיד את העותק השעתי, ש-<span dir="ltr"><code>notam.yml</code></span> מפרסם לענף
++  <span dir="ltr"><code>notam-data</code></span>. שניהם מפוענחים באותו קוד (<span dir="ltr"><code>app/notam-iaa.js</code></span>). אמצעי תכנון בלבד — אמת מול תדריך רשמי.
+ 
+ ### אילו NOTAM מוצגים בכל מפה
+ 
+diff --git a/Extra-Layers.md b/Extra-Layers.md
+index 445a66b..c3de0a0 100644
+--- a/Extra-Layers.md
++++ b/Extra-Layers.md
+@@ -135,8 +135,11 @@ Toggle **Show NOTAMs** to overlay active NOTAMs for the Israel FIR (LLLL).
+ - **Border-buffer NOTAMs** (e.g. *"FM LEBANON BOUNDARY TO 8KM"*) carry no
+   coordinates, so they're geocoded from an Israel border dataset
+   (`data/notam-borders.json`) into a buffer polygon.
+-- **Source:** the **IAA Mobile AeroInfo** site (`brin.iaa.gov.il/MobileAeroinfo`), the
+-  authoritative national source — refreshed by `notam.yml` to the `notam-data` branch. It
++- **Source:** the **Israel Airports Authority** (IAA AeroInfo), the authoritative national
++  source. The Android and iPhone apps ask IAA directly each time they load NOTAMs, from your own
++  connection, so they are as fresh as IAA's. If IAA does not answer, they read the hourly copy.
++  A browser cannot ask IAA itself, so it always reads that hourly copy, which `notam.yml`
++  publishes to the `notam-data` branch. Both are parsed by the same code (`app/notam-iaa.js`). It
+   carries the domestic C-series (airfield / CVFR / UAS / airspace closures) that international
+   feeds like autorouter and FAA SWIM do not. Planning aid only — confirm against an official
+   briefing.
+-- 
+2.43.0
+
