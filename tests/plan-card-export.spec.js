@@ -560,3 +560,128 @@ test('a closed panel leaves no Escape handler behind', async ({ page }) => {
   expect(await page.evaluate(() => planCard)).not.toBeNull();
   await page.evaluate(() => { window.planCard = null; });
 });
+
+// "for the printed chart of wp info, add the VOR freq, if selected": the printed plan card
+// names the station a pilot tunes -- ident and frequency (an edited frequency wins) -- in a
+// caption line above the table. Legs on different stations list both, and each radial names its own.
+test('the printed plan card carries the selected VOR frequency', async ({ page }) => {
+  await boot(page);
+  await route(page);
+  const got = await page.evaluate(async () => {
+    await loadVors();
+    const render = () => {
+      const ctx = document.createElement('canvas').getContext('2d');
+      const seen = [];
+      const fillText = ctx.fillText.bind(ctx);
+      ctx.fillText = (text, ...a) => { seen.push(String(text)); fillText(text, ...a); };
+      drawFlightPlanTable(ctx, 0, 0, 99999, 160, 'tl');
+      return seen;
+    };
+    const bgn = vorByIdent('BGN'), sde = vors.find(v => v.ident !== 'BGN' && v.freq);
+    state.legs.forEach(l => { l.vorRef = null; });
+    vorRef = null;
+    const none = render();
+    vorRef = 'BGN';
+    const one = render();
+    setVorFreqOverride('BGN', '113.55');
+    const edited = render();
+    setVorFreqOverride('BGN', '');
+    state.legs[1].vorRef = sde.ident;
+    const two = render();
+    const sdeRadial = 'R-' + vorRadialDme(sde, state.waypoints[2].lat, state.waypoints[2].lng).radial;
+    return { none, one, edited, two, bgnFreq: vorEffectiveFreq(bgn),
+      sde: sde.ident + ' ' + vorEffectiveFreq(sde), sdeCell: sde.ident + ' ' + sdeRadial };
+  });
+  expect(got.none.some(t => /^Radial/.test(t))).toBe(false);
+  expect(got.none.some(t => /^VOR /.test(t))).toBe(false);
+  expect(got.one).toContain('VOR BGN ' + got.bgnFreq + ' MHz');
+  expect(got.one).toContain('Radial BGN');          // the header keeps the station's ident
+  expect(got.two).toContain('Radial');              // several stations: each cell names its own
+  expect(got.edited).toContain('VOR BGN 113.55 MHz');
+  expect(got.two).toContain('VOR BGN ' + got.bgnFreq + ' MHz \u00b7 ' + got.sde + ' MHz');
+  expect(got.two).toContain(got.sdeCell);           // the radial names its station
+});
+
+// Reported with a screenshot: Print and the flight plan open together, one over the other.
+// Opening either closes the other; Print closed this way puts its preview back, like Cancel.
+test('Print and the flight plan never stay open together', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await boot(page);
+  await route(page);
+  const print = page.locator('.modal-back.export-options');
+  const plan = page.locator('.modal-back.flight-plan');
+  const op0 = await page.evaluate(() => mapOpacity);
+  await page.evaluate(() => showExportModal());
+  await expect(print).toHaveCount(1);
+  await page.evaluate(() => { const s = document.querySelector('.modal-back.export-options input[type="range"]');
+    s.value = '35'; s.oninput(); });
+  await page.evaluate(() => showFlightPlan());
+  await expect(plan).toHaveCount(1);
+  await expect(print).toHaveCount(0);
+  expect(await page.evaluate(() => mapOpacity)).toBe(op0);    // the Print preview was undone
+  await page.evaluate(() => showExportModal());
+  await expect(print).toHaveCount(1);
+  await expect(plan).toHaveCount(0);
+  expect(await page.evaluate(() => fpOpen)).toBe(false);
+});
+
+// Asked: the search panel is hidden while Print is open, and back as it was when Print closes.
+test('the search panel is hidden while Print is open', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await boot(page);
+  const search = page.locator('#search-overlay');
+  await page.evaluate(() => revealSearchOverlay());
+  await page.locator('#wp-search').fill('LLHZ');
+  await expect(search).toBeVisible();
+  await page.evaluate(() => showExportModal());
+  await expect(search).toBeHidden();
+  await page.locator('.modal-back.export-options .modal-cancel').click();
+  await expect(search).toBeVisible();
+  await expect(page.locator('#wp-search')).toHaveValue('LLHZ');
+});
+
+// Asked: "can the print quality and black-and-white be wysiwyg?" Black-and-white previews live
+// on the map while Print is open; quality is finer than a screen, so its readout says the dpi
+// the file will get -- from the same sizing the export uses.
+test('Print previews black-and-white on the map and says the dpi of each quality', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await page.addInitScript(() => { try { localStorage.removeItem('navaid.printBw'); } catch (e) {} });
+  await boot(page);
+  await route(page);
+  const html = page.locator('html');
+  await page.evaluate(() => showExportModal());
+  await expect(html).not.toHaveClass(/print-bw-preview/);
+  const legColor = () => page.evaluate(() => tune('legKiteFillColor'));
+  const colour = await legColor();
+  await page.locator('#export-bw').check();
+  await expect(html).toHaveClass(/print-bw-preview/);
+  expect(await legColor()).toBe(await page.evaluate(() => PRINT_BW_TUNES.legKiteFillColor || tune('legKiteFillColor')));
+  expect(await page.evaluate(() => getComputedStyle(document.querySelector('.leaflet-tile-pane')).filter)).toContain('grayscale');
+  // No page: no dpi. A4: each step says its dpi, finer steps more.
+  const val = page.locator('#export-res-dpi');
+  await expect(val).toBeHidden();
+  await page.evaluate(() => setPage('A4'));
+  const dpis = [];
+  for (const v of ['0', '1', '2']) {
+    await page.evaluate(v => { const s = document.getElementById('export-res'); s.value = v;
+      s.dispatchEvent(new Event('input')); }, v);
+    const t = await val.textContent();
+    await expect(val).toBeVisible();
+    expect(t).toMatch(/≈\d+ dpi/);
+    dpis.push(Number(t.match(/≈(\d+)/)[1]));
+    expect(dpis[dpis.length - 1]).toBe(await page.evaluate(v => exportDpiFor(['low', 'medium', 'high'][v]), Number(v)));
+  }
+  // The panel's Layer picks the chart, and the chart's sharpest tiles set the dpi.
+  const layerSel = page.locator('#export-layer-select');
+  for (const opt of await layerSel.locator('option').evaluateAll(os => os.map(o => o.value))) {
+    await layerSel.selectOption(opt);
+    expect(await val.textContent()).toContain('\u2248' + await page.evaluate(() => exportDpiFor('high')) + ' dpi');
+  }
+  expect(dpis[0]).toBeLessThan(dpis[1]);
+  expect(dpis[1]).toBeLessThan(dpis[2]);
+  // Cancel puts the screen back.
+  await page.locator('.modal-back.export-options .modal-cancel').click();
+  await expect(html).not.toHaveClass(/print-bw-preview/);
+  expect(await legColor()).toBe(colour);
+  expect(await page.evaluate(() => NavAid.printOverride)).toBeFalsy();
+});

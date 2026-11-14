@@ -7234,9 +7234,15 @@ function drawFlightPlanTable(ctx, x, y, w, h, align) {
   const vorCells = (wp, lg) => {
     const v = (lg && lg.vorRef && typeof vorByIdent === 'function' ? vorByIdent(lg.vorRef) : null) ||
               (typeof activeVor === 'function' ? activeVor() : null);
-    if (!v || !wp || typeof vorRadialDme !== 'function') return [empty, empty];
+    if (!v || !wp || typeof vorRadialDme !== 'function') return [empty, empty, null];
     const rd = vorRadialDme(v, wp.lat, wp.lng);
-    return rd ? ['R-' + rd.radial, String(rd.dme)] : [empty, empty];
+    return rd ? ['R-' + rd.radial, String(rd.dme), v] : [empty, empty, null];
+  };
+  // The station a pilot tunes to fly the radial: its ident and its (override-aware)
+  // frequency, the same pair the chart prints beside the VOR.
+  const vorTune = v => {
+    const f = typeof vorEffectiveFreq === 'function' ? vorEffectiveFreq(v) : (v.freq || '');
+    return v.ident + (f ? ' ' + f + ' MHz' : '');
   };
   const rows = [];
   let totTime = 0, totFuel = 0;
@@ -7269,7 +7275,7 @@ function drawFlightPlanTable(ctx, x, y, w, h, align) {
       time: cardPre ? '---' : (dur > 0 ? toHMS(dur) : '--'), fuel: fLabel,
       cumTime: cardPre ? '---' : (totTime > 0 ? toHMS(totTime) : '--'),
       cumFuel: ac ? totFuel.toFixed(1) : '--',
-      radial: rd[0], dme: rd[1] });
+      radial: rd[0], dme: rd[1], vor: rd[2] });
   }
   if (!rows.length) return null;
   // Active comm frequency per leg — departure/arrival airfield freqs +
@@ -7284,9 +7290,15 @@ function drawFlightPlanTable(ctx, x, y, w, h, align) {
   // Time of leg, Fuel of leg, [Comm freq]. (Was #,From,To,Hdg,Dist,Spd,Alt,
   // Time,Fuel,CumTime,CumFuel,Radial,DME — trimmed to what a pilot reads.)
   // Radial / DME columns appear only when a reference VOR is selected (global
-  // or any per-leg). The Radial header carries the reference VOR ident.
-  const refVor = typeof activeVor === 'function' ? activeVor() : null;
+  // or any per-leg). A caption line above the table names the station a pilot tunes: its
+  // ident and frequency ("VOR BGN 113.50 MHz"), outside the table so the Radial column stays as
+  // narrow as its values. Legs on different stations (the flight plan's per-leg picker) list
+  // each station there, and each radial cell names the station it is from.
   const vorActive = flightPlanCardHasVorInfo();
+  const usedVors = [];
+  for (const r of rows) if (r.vor && !usedVors.includes(r.vor)) usedVors.push(r.vor);
+  const mixedVors = usedVors.length > 1;
+  if (mixedVors) for (const r of rows) if (r.vor) r.radial = r.vor.ident + ' ' + r.radial;
   const headers = [
     '#',
     S.planColDestination || 'Destination',
@@ -7296,14 +7308,19 @@ function drawFlightPlanTable(ctx, x, y, w, h, align) {
     S.planColLegTime || 'Time of leg',
     S.planColLegFuel || 'Fuel of leg',
   ];
-  if (vorActive) headers.push((S.planColRadial || 'Radial') + (refVor ? ' ' + refVor.ident : ''),
+  // One station: the Radial header keeps its ident ("Radial NAT"), as it always has. Several:
+  // each radial cell names its own, so the header stays "Radial".
+  if (vorActive) headers.push((S.planColRadial || 'Radial') + (usedVors.length === 1 ? ' ' + usedVors[0].ident : ''),
     S.planColDme || 'DME');
+  const caption = usedVors.length
+    ? (S.fpVorLabel || 'VOR') + ' ' + usedVors.map(vorTune).join(' \u00b7 ') : '';
+  const capRows = caption ? 1 : 0;
   if (freqActive) headers.push(S.planColComm || 'Comm freq');
   const numCols = headers.length;
   const numRows = rows.length + 2;            // header + data + total
   // Derive the font FROM the row height (not an independent floor) so text
   // can never grow taller than its row → no vertical overlap at any size.
-  const rowH = h / numRows;
+  const rowH = h / (numRows + capRows);
   const fontSize = Math.max(1, Math.min(rowH * 0.62, 22));
   const padX = Math.max(2, Math.round(fontSize * 0.5));
   const aligns = ['center', 'left', 'center', 'right', 'right', 'center', 'right'];
@@ -7331,6 +7348,11 @@ function drawFlightPlanTable(ctx, x, y, w, h, align) {
     for (let mc = 0; mc < numCols; mc++) colW[mc] = Math.max(colW[mc], ctx.measureText(String(mvals[mc])).width);
   }
   for (let mc = 0; mc < numCols; mc++) colW[mc] = Math.ceil(colW[mc] + 2 * padX);
+  // A caption wider than the table widens the Destination column, so the card is one box.
+  ctx.font = 'bold ' + fontSize + 'px sans-serif';
+  const capW = caption ? Math.ceil(ctx.measureText(caption).width + 2 * padX) : 0;
+  const sumW = colW.reduce((a, b) => a + b, 0);
+  if (capW > sumW) colW[1] += capW - sumW;
   const colX = new Array(numCols + 1).fill(0);
   for (let mc = 0; mc < numCols; mc++) colX[mc + 1] = colX[mc] + colW[mc];
   const totalW = colX[numCols];
@@ -7345,11 +7367,24 @@ function drawFlightPlanTable(ctx, x, y, w, h, align) {
   const STRIPE_BG = tune('planCardStripeBgColor');
   const GRID = tune('planCardGridColor');
   const TEXT = tune('planCardTextColor');
-  const tableH = Math.round(rowH * numRows);
+  const capH = Math.round(rowH * capRows);
+  const tableH = Math.round(rowH * numRows) + capH;
   const al = align || 'tl';
   if (al === 'tr' || al === 'br') x = x + Math.max(0, w - totalW);
   if (al === 'bl' || al === 'br') y = y + Math.max(0, h - tableH);
   if (al === 'center') { x = x + Math.max(0, (w - totalW) / 2); y = y + Math.max(0, (h - tableH) / 2); }
+  const top = y;
+  if (caption) {
+    // Plain text on the card's own paper: no header shading, no grid -- a title, not a row.
+    ctx.fillStyle = tune('planCardBgColor');
+    ctx.fillRect(x, y, totalW, capH);
+    ctx.fillStyle = TEXT;
+    ctx.font = 'bold ' + fontSize + 'px sans-serif';
+    ctx.textBaseline = 'middle';
+    ctx.textAlign = rtl ? 'right' : 'left';
+    ctx.fillText(caption, rtl ? x + totalW - padX : x + padX, y + capH / 2 + fontSize * 0.08);
+    y += capH;
+  }
   // Integer-snapped row boundaries so cell text and grid lines line up exactly
   // (fractional row heights otherwise drift the text off its row at small
   // sizes). Every row uses rowY[row]..rowY[row+1].
@@ -7392,7 +7427,9 @@ function drawFlightPlanTable(ctx, x, y, w, h, align) {
   for (let c4 = 0; c4 < numCols; c4++) if (totVals[c4] !== undefined) cell(tr, c4, String(totVals[c4]), true, null);
   ctx.strokeStyle = GRID;
   ctx.lineWidth = tune('fpTableBorderWidthPx');
-  ctx.strokeRect(x + 0.5, y + 0.5, totalW - 1, tableHActual - 1);
+  // One outline round the caption and the table: a single card on the paper.
+  ctx.strokeRect(x + 0.5, top + 0.5, totalW - 1, tableHActual + capH - 1);
+  if (capH) { ctx.beginPath(); ctx.moveTo(x, y + 0.5); ctx.lineTo(x + totalW, y + 0.5); ctx.stroke(); }
   ctx.lineWidth = tune('fpTableGridWidthPx');
   for (let gc = 1; gc < numCols; gc++) {
     const gx = Math.round(x + (rtl ? totalW - colX[gc] : colX[gc])) + 0.5;
@@ -7403,7 +7440,7 @@ function drawFlightPlanTable(ctx, x, y, w, h, align) {
     ctx.beginPath(); ctx.moveTo(x, gy); ctx.lineTo(x + totalW, gy); ctx.stroke();
   }
   ctx.restore();
-  return { x, y, w: totalW, h: tableHActual };
+  return { x, y: top, w: totalW, h: tableHActual + capH };
 }
 
 // Draw the placed flight-plan card on the overlay (live preview + export).
@@ -7412,7 +7449,8 @@ function drawFlightPlanTable(ctx, x, y, w, h, align) {
 function drawPlanCard() {
   if (!planCard) { window.planCardRect = null; return; }
   const scale = planCard.scale > 0 ? planCard.scale : 1;
-  const numRows = flightPlanCardLegIndexes().length + 2;
+  // + the VOR caption line, so it adds a row instead of shrinking every row.
+  const numRows = flightPlanCardLegIndexes().length + 2 + (flightPlanCardHasVorInfo() ? 1 : 0);
   const h = numRows * tune('planCardBaseRowPx') * scale;
   window.planCardRect = drawFlightPlanTable(octx, planCard.x, planCard.y, 1e6, h, 'tl');
   // The resize grip is a UI handle — never bake it into the exported PNG.
