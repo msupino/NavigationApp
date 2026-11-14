@@ -100,10 +100,18 @@ export function remoteConfig() {
     // The plugin skips the report when the URL is empty, which is the only way to say no.
     plugins: {
       CapacitorUpdater: { autoUpdate: false, resetWhenUpdate: true, statsUrl: '' },
+      SocialLogin: SOCIAL_LOGIN,
     },
     server: { url: REMOTE_URL, androidScheme: 'https' },
   };
 }
+
+// Sign-in is Google only (docs/app/gdrive.js). The social-login plugin bundles Facebook's SDK
+// unless told otherwise, and that SDK declares the advertising ID -- Play then asks why the app
+// uses it. The plugin's sync hook reads these providers and writes its own gradle.properties
+// (a property in the app's gradle.properties is overridden by it), so this is the switch.
+// Apple and X stay as they were: they bring no SDK of their own.
+const SOCIAL_LOGIN = { providers: { google: true, facebook: false, apple: true, twitter: true } };
 
 export function embeddedConfig() {
   const config = remoteConfig();
@@ -115,6 +123,7 @@ export function embeddedConfig() {
   // notifyAppReady() before anything else, so a bundle that cannot boot cannot strand a
   // pilot -- the previous one, or the one Apple reviewed, comes back on the next launch.
   config.plugins = {
+    SocialLogin: SOCIAL_LOGIN,
     CapacitorUpdater: {
       autoUpdate: false,
       // The rollback window docs/app/ota.js is written against: it waits for the app to
