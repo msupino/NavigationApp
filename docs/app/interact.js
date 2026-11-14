@@ -2433,7 +2433,7 @@ function buildSatelliteSnippet(point, opts = {}) {
   return snippet;
 }
 
-const SATELLITE_MODAL_CHART_LAYERS = ['CVFR', 'Navigation', 'Low Alt', 'Helicopters'];
+const SATELLITE_MODAL_CHART_LAYERS = ['CVFR', 'CVFR AIP', 'Navigation', 'Low Alt', 'Helicopters'];
 
 function satelliteModalIsChartLayer(name) {
   return SATELLITE_MODAL_CHART_LAYERS.indexOf(name) !== -1;

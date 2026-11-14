@@ -208,6 +208,7 @@ NavAid.tuningDefaults = {
   //   "layerEnabledHelicopters": true
   featureNotamFreqRows: { value: true, type: 'bool',
     label: 'Show frequencies a NOTAM states, as their own inspector row' },
+  layerEnabledCVFRAIP: { value: true, type: 'bool', label: 'Offer the CVFR (AIP) layer: our own tiles, cut from the CAA sheets' },
   layerEnabledLowAlt: { value: true, type: 'bool', label: 'Offer the Low Alt layer' },
   layerEnabledHelicopters: { value: false, type: 'bool', label: 'Offer the Helicopters layer' },
   layerEnabledATS: { value: true, type: 'bool', label: 'Offer the ATS routes chart layer' },
@@ -219,7 +220,7 @@ NavAid.tuningDefaults = {
   // OpenFlightMaps under the chart: it covers Europe and other regions, not Israel, where the
   // CVFR chart and the offline world map (relief) fill in.
   defaultBaseLayer: { value: 'OpenFlightMaps', type: 'select',
-    options: ['none', 'OpenStreetMap', 'OpenFlightMaps', 'Satellite', 'World', 'CVFR', 'Navigation', 'Low Alt', 'Helicopters', 'ATS'],
+    options: ['none', 'OpenStreetMap', 'OpenFlightMaps', 'Satellite', 'World', 'CVFR', 'CVFR AIP', 'Navigation', 'Low Alt', 'Helicopters', 'ATS'],
     label: 'Which map sits under the chart by default' },
   baseLayerOpacity: { value: 0.7, min: 0.1, max: 1, step: 0.05,
     label: 'How strongly the map under the chart shows through (0-1)' },
@@ -1348,7 +1349,7 @@ NavAid.tuningGroups = [
     'graphLegArrowPx', 'graphLegLabelMinZoom', 'graphLegLabelFontPx', 'graphLegClosedDashOnPx', 'graphLegClosedDashOffPx'] },
   { name: 'LSA colors', keys: ['lsaHighlightColor', 'lsaWeekendColor', 'lsaAlwaysColor', 'lsaLabelColor'] },
   { name: 'GPS track', keys: ['gpsTrackColors', 'gpsTrackOutlineColor', 'gpsTrackStartColor', 'gpsTrackEndColor', 'gpsTrackGlowColor', 'gpsTrackGlowOuterAlpha', 'gpsTrackGlowOuterAddPx', 'gpsTrackGlowInnerAlpha', 'gpsTrackGlowInnerAddPx', 'gpsTrackDotRadiusPx', 'gpsTrackDotRingWidthPx'] },
-  { name: 'Base layers', keys: ['layerEnabledLowAlt', 'layerEnabledHelicopters', 'layerEnabledATS', 'worldRelief',
+  { name: 'Base layers', keys: ['layerEnabledCVFRAIP', 'layerEnabledLowAlt', 'layerEnabledHelicopters', 'layerEnabledATS', 'worldRelief',
     'layerEnabledNavigation', 'layerEnabledSatellite', 'layerEnabledOpenStreetMap', 'layerEnabledOpenFlightMaps', 'layerEnabledWorld', 'mapMinZoom',
     'defaultBaseLayer', 'baseLayerOpacity', 'worldSeaColor', 'worldLandColor', 'worldBorderColor', 'worldBorderWidthPx'] },
   { name: 'Density altitude', keys: ['featureDensityAltitude', 'daWarnAboveElevFt', 'daForecastHours',
@@ -3159,7 +3160,7 @@ window.S = Object.assign({
   layerNoDataHere: function (layer, where) { return layer + ' has no data here' + (where ? ': ' + where : '') + '.'; },
   layerCoverage: { OpenFlightMaps: 'it covers about twenty regions, mostly in Europe', israel: 'it covers Israel' },
   layerNoDataOverIsrael: 'No data over Israel: OpenFlightMaps covers about twenty regions, mostly in Europe. Move the map there to use it.',
-  layerLabels: { 'CVFR': 'CVFR', 'Navigation': 'Navigation', 'Low Alt': 'Low Alt',
+  layerLabels: { 'CVFR': 'CVFR', 'CVFR AIP': 'CVFR (AIP)', 'Navigation': 'Navigation', 'Low Alt': 'Low Alt',
                  'Helicopters': 'Helicopters', 'Satellite': 'Satellite', 'OpenStreetMap': 'OpenStreetMap',
                  'OpenFlightMaps': 'OpenFlightMaps', 'World': 'World (offline)',
                  // A dataset, not a base chart: the ENR 6.1 sheet is an Extra-layers overlay,
@@ -6946,6 +6947,13 @@ const TILE = {
 const FM_ATTR =
   'Charts © <a href="https://flight-maps.com">flight-maps.com</a> · CAAI';
 const NAVAID_TILE_BASE = 'https://navaid-tiles.supino.org';
+// Layers NavAid generates itself live apart from the third-party mirror above (#2032): their
+// own repository (msupino/NavigationApp-owned-tiles), served by GitHub Pages with CORS `*`.
+const NAVAID_OWNED_TILE_BASE = 'https://msupino.github.io/NavigationApp-owned-tiles';
+// Our own CVFR tiles cover exactly the two sheets they were cut from and not a metre more,
+// so they get their own box: the frame corners scripts/build-cvfr-tiles.py reports.
+const CVFR_AIP_BOUNDS = { south: 29.4313, west: 34.1003, north: 33.3635, east: 35.9145 };
+const CVFR_AIP_ATTR = 'Charts \u00a9 CAAI \u00b7 AIP part II CVFR sheets';
 
 function tileLayerUrl(layer, coords) {
   const subs = layer.options && layer.options.subdomains ?
@@ -7041,11 +7049,24 @@ const withPane = (opts, pane) => (pane ? { ...opts, pane } : opts);
 // One definition per chart, used twice: once for the picker's layer and once for whatever
 // the pilot puts UNDER it (underlayLayer below). `pane` is the only difference -- Leaflet
 // will not hold one layer object in two places, and the pane is what decides which is on top.
+// The same chart as CVFR, cut from the CAA's own two sheets rather than extracted from Flight
+// Maps. Those sheets are vector PDFs, so what survives the render is what the paper prints:
+// leg distances, magnetic tracks and the altitude flags. Ours alone, from our own repository:
+// no flight-maps split, because flight-maps has no part in it. Built z8-13: minNativeZoom 8
+// so Leaflet enlarges z8 further out instead of asking for tiles that were never made, and
+// past 13 it enlarges z13 up to the map's own limit, like every other chart.
+const cvfrAipLayer = (pane) => (window.NavAidNativeTiles ? NavAidNativeTiles.tileLayer : L.tileLayer)(
+  NAVAID_OWNED_TILE_BASE + '/CVFR-AIP/{z}/{x}/{y}.png',
+  withPane({ ...TILE, minNativeZoom: 8, chartBounds: CVFR_AIP_BOUNDS,
+    bounds: [[CVFR_AIP_BOUNDS.south, CVFR_AIP_BOUNDS.west], [CVFR_AIP_BOUNDS.north, CVFR_AIP_BOUNDS.east]],
+    corsOk: true, attribution: CVFR_AIP_ATTR,
+    exportUrl: NAVAID_OWNED_TILE_BASE + '/CVFR-AIP/{z}/{x}/{y}.png' }, pane));
 const CHART_SPECS = {
   'CVFR': (pane) => (window.NavAidNativeTiles ? NavAidNativeTiles.tileLayer : L.tileLayer)(chartTileUrl('cvfr', 'https://flight-maps.com/tiles/cvfr/{z}/{x}/{y}.png',
     NAVAID_TILE_BASE + '/CVFR/{z}/{x}/{y}.png'),
     chartTileOptions(withPane({ ...TILE, attribution: FM_ATTR,
       exportUrl: NAVAID_TILE_BASE + '/CVFR/{z}/{x}/{y}.png' }, pane))),
+  'CVFR AIP': cvfrAipLayer,
   'Navigation': (pane) => (window.NavAidNativeTiles ? NavAidNativeTiles.tileLayer : L.tileLayer)(chartTileUrl('nav', 'https://flight-maps.com/tiles/nav/{z}/{x}/{y}.png',
     NAVAID_TILE_BASE + '/Israel-Navigation/{z}/{x}/{y}.png'),
     chartTileOptions(withPane({ ...TILE, attribution: FM_ATTR,

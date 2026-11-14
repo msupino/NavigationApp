@@ -1,0 +1,148 @@
+From ad69095178b0f2269cb105879e81d5d43ce0fadc Mon Sep 17 00:00:00 2001
+From: Marco <marco@supino.org>
+Date: Fri, 13 Nov 2026 17:33:00 +0000
+Subject: [PATCH] CVFR (AIP) released: its own tile repository, beside CVFR in
+ the picker, offline packs
+
+---
+ Map-Layers-he.md      | 13 +++++++------
+ Map-Layers.md         | 15 +++++++++------
+ Offline-and-PWA-he.md |  2 +-
+ Offline-and-PWA.md    |  2 +-
+ 4 files changed, 18 insertions(+), 14 deletions(-)
+
+diff --git a/Map-Layers-he.md b/Map-Layers-he.md
+index 8b110f0..4ec8b18 100644
+--- a/Map-Layers-he.md
++++ b/Map-Layers-he.md
+@@ -11,7 +11,7 @@
+ | שכבה | מקור | הערות |
+ | --- | --- | --- |
+ | **CVFR** | flight-maps.com | ברירת מחדל. מפת ה-VFR המשולבת לישראל עם מרחב אווירי, אמצעי ניווט ותבליט. |
+-| **CVFR (AIP)** *(טרם שוחרר)* | ה-AIP של רת״א — **לא** flight-maps.com | אותה מפה, חתוכה משני הגיליונות של רת״א עצמה. נושאת את מרחקי הרגליים, הכיוונים המגנטיים ודגלוני הגובה שהסדרה המחולצת מפילה. **בפיתוח — עדיין לא בבורר השכבות.** |
++| **CVFR (AIP)** | ה-AIP של רת״א — **לא** flight-maps.com; אריחים של NavAid עצמה | אותה מפה, חתוכה משני הגיליונות של רת״א עצמה. נושאת את מרחקי הרגליים, הכיוונים המגנטיים ודגלוני הגובה שהסדרה המחולצת מפילה. מיד אחרי CVFR בבורר. גיסט: <span dir="ltr"><code>layerEnabledCVFRAIP</code></span>. |
+ | **ניווט** | flight-maps.com | סדרת מפות בדגש ניווט. |
+ | **גובה נמוך** | flight-maps.com | מפת גובה נמוך לכלי טיס קלים. |
+ | **מסוקים** | flight-maps.com | מפה רלוונטית למסוקים. **אינה מוצעת באתר החי** — ראו למטה. |
+@@ -39,7 +39,7 @@
+ הישראליות מפורסמות מזום 6, כך שמעבר לזה הן נעלמות ורואים את המדינות; OpenStreetMap ו-OpenFlightMaps
+ ממלאות עד זום 4. ה-gist יכול להעלות את הגבול (<span dir="ltr"><code>mapMinZoom</code></span>, ברירת מחדל 2; 8 היה הגבול הישן).
+ 
+-**התקרבות עד זום 18 (פי 64), בכל מפה.** כל המפות מגיעות לאותו זום 18 (<span dir="ltr"><code>MAP_MAX_ZOOM</code></span>); קודם המפה עצרה בזום 15 (פי 8 בתצוגת הזום). בלוויין וב-OpenStreetMap יש פרטים אמיתיים עד הסוף. מעבר לאריחים החדים ביותר של מפה היא מוגדלת מהם: CVFR, ניווט וגובה נמוך מזום 13, מסוקים ו-OpenFlightMaps מזום 12.
++**התקרבות עד זום 18 (פי 64), בכל מפה.** כל המפות מגיעות לאותו זום 18 (<span dir="ltr"><code>MAP_MAX_ZOOM</code></span>); קודם המפה עצרה בזום 15 (פי 8 בתצוגת הזום). בלוויין וב-OpenStreetMap יש פרטים אמיתיים עד הסוף. מעבר לאריחים החדים ביותר של מפה היא מוגדלת מהם: CVFR, ‏CVFR (AIP), ניווט וגובה נמוך מזום 13, מסוקים ו-OpenFlightMaps מזום 12.
+ 
+ **אין נתונים כאן.** מפה שאין לה מה לצייר במקום שבו המפה נמצאת אומרת זאת, פעם אחת בכל הגעה לאזור ריק: *"ל-CVFR אין נתונים כאן: המפה מכסה את ישראל."*, *"ל-OpenFlightMaps אין נתונים כאן: המפה מכסה כעשרים אזורים, רובם באירופה."* זה נקרא מהמפה עצמה ולא מרשימת אזורים: המפות הישראליות לפי המסגרת שלהן (גם בלי רשת) או אריח חסר בשרת שלנו; OpenFlightMaps לפי האריחים הריקים (שקופים לגמרי) שלה; ATS לפי מסגרת הגיליון. OpenStreetMap, לוויין ועולם מכסות את כל העולם ולא אומרות זאת. אריח שלא נטען בגלל חוסר קליטה אינו "אין נתונים", ואז לא נאמר דבר.
+ 
+@@ -47,9 +47,8 @@
+ 
+ ## CVFR (AIP)
+ 
+-> **עדיין לא באפליקציה המשוחררת.** השכבה וסקריפט הבנייה שלה (<span dir="ltr"><code>scripts/build-cvfr-tiles.py</code></span>)
+-> נמצאים בענף פיתוח, לא ב-<span dir="ltr"><code>main</code></span>; האריחים עדיין אינם מוגשים והשכבה אינה מופיעה בבורר. השיטה
+-> להלן מתועדת לקראת השחרור.
++> **בית משלה.** האריחים האלה הם עבודה של NavAid עצמה, ולכן הם שמורים בנפרד מהעותק של Flight Maps:
++> במאגר <span dir="ltr"><code>msupino/NavigationApp-owned-tiles</code></span>, שמחזיק רק שכבות ש-NavAid מייצרת בעצמה.
+ 
+ מפת ה-CVFR, שנבנית כאן ולא מורדת. רת״א מפרסמת אותה כשני קבצי PDF — AIP חלק ב׳, גיליון צפוני
+ וגיליון דרומי — והם **וקטוריים**, ולכן מה ששורד רינדור הוא מה שמודפס על הנייר. זה לצד זה עם
+@@ -61,7 +60,7 @@
+ | כיסוי | 29.43–33.36 צפון, 34.10–35.91 מזרח |
+ | רמות זום | z8–13 (16.3 מ׳ לפיקסל ב-z13); Leaflet מגדיל ל-6 ו-7 |
+ | גודל | 3,768 אריחים, 155MB |
+-| מוגשת מ | <span dir="ltr"><code>navaid-tiles.supino.org/CVFR-AIP/{z}/{x}/{y}.png</code></span> — שלנו, לעולם לא flight-maps.com |
++| מוגשת מ | <span dir="ltr"><code>msupino.github.io/NavigationApp-owned-tiles/CVFR-AIP/{z}/{x}/{y}.png</code></span> — שלנו, לעולם לא flight-maps.com |
+ | נבנית על ידי | <span dir="ltr"><code>scripts/build-cvfr-tiles.py</code></span> |
+ 
+ **איך היא ממוקמת.** הגיליונות משורטטים בהיטל חרוטי: קווי האורך שלהם מתכנסים, אלה של
+@@ -133,6 +132,8 @@ VOR, תוויות) על רקע שקוף בלי פני שטח, כך שלבדו ה
+ מסלול שצויר על אחת מהן הוא רשימת שמות שאין לשתי האחרות, ולכן כשיש מסלול על המסך NavAid מסרבת
+ להחליף ביניהן ואומרת על איזו מפה תוכנן המסלול. הבורר חוזר למקום שבו המפה באמת נמצאת.
+ 
++**CVFR (AIP)** היא מפת ה-CVFR עצמה, ולכן מסלול שצויר על אחת מהן שייך ל-CVFR ועובר ביניהן בחופשיות.
++
+ כל השאר בבורר הוא נוף מעל אותו שטח — **ניווט**, **לוויין**, **OpenStreetMap**, מפת המסוקים —
+ ומשנה את מה שמתחת ולא את משמעות המסלול. אלה לעולם אינן נחסמות.
+ 
+diff --git a/Map-Layers.md b/Map-Layers.md
+index a075a23..19937cb 100644
+--- a/Map-Layers.md
++++ b/Map-Layers.md
+@@ -9,7 +9,7 @@ picked, and **Base map** (Display) chooses what shows through underneath.
+ | Layer | Source | Notes |
+ | --- | --- | --- |
+ | **CVFR** | flight-maps.com | Default. Israeli combined VFR chart with airspace, NAVAIDs, terrain. |
+-| **CVFR (AIP)** *(not yet released)* | CAA AIP — **not** flight-maps.com | The same chart, cut from the CAA's own two CVFR sheets. Carries the leg distances, magnetic tracks and altitude flags the extracted set drops. **In development — not in the layer picker yet.** |
++| **CVFR (AIP)** | CAA AIP — **not** flight-maps.com; NavAid's own tiles | The same chart, cut from the CAA's own two CVFR sheets. Carries the leg distances, magnetic tracks and altitude flags the extracted set drops. Right after CVFR in the picker. Gist: `layerEnabledCVFRAIP`. |
+ | **Navigation** | flight-maps.com | Nav-focused chart series. |
+ | **Low Alt** | flight-maps.com | Low-altitude chart for ultralights. |
+ | **Helicopters** | flight-maps.com | Helicopter-relevant chart. **Not offered on the live site** — see below. |
+@@ -41,7 +41,7 @@ screen — whichever chart is chosen. The Israeli charts are published from zoom
+ they drop away and the countries show; OpenStreetMap and OpenFlightMaps fill in down to zoom 4.
+ The gist can raise the limit (`mapMinZoom`, default 2; 8 was the old floor).
+ 
+-**Zoom in to z18 (64×), on any chart.** Every chart goes to the same zoom 18 (`MAP_MAX_ZOOM`); it stopped at z15 (8× on the zoom readout) before. Satellite and OpenStreetMap have real detail all the way in. Past a chart's sharpest tiles it is drawn from them, enlarged: CVFR, Navigation and Low Alt from z13, Helicopters and OpenFlightMaps from z12.
++**Zoom in to z18 (64×), on any chart.** Every chart goes to the same zoom 18 (`MAP_MAX_ZOOM`); it stopped at z15 (8× on the zoom readout) before. Satellite and OpenStreetMap have real detail all the way in. Past a chart's sharpest tiles it is drawn from them, enlarged: CVFR, CVFR (AIP), Navigation and Low Alt from z13, Helicopters and OpenFlightMaps from z12.
+ 
+ **No data here.** A chart with nothing to draw where the map is says so, once per arrival in an empty area: *"CVFR has no data here: it covers Israel."*, *"OpenFlightMaps has no data here: it covers about twenty regions, mostly in Europe."* It is read from the chart itself, not a list of regions: the Israeli charts by their own frame (offline too) or a missing tile on our mirror; OpenFlightMaps by its empty (fully transparent) tiles; ATS by the sheet's frame. OpenStreetMap, Satellite and World cover the world and never say it. A tile that failed for want of a signal is not "no data", so nothing is said then.
+ 
+@@ -49,9 +49,9 @@ The gist can raise the limit (`mapMinZoom`, default 2; 8 was the old floor).
+ 
+ ## CVFR (AIP)
+ 
+-> **Not yet in the released app.** This layer and its build script (`scripts/build-cvfr-tiles.py`)
+-> live on a development branch, not on `main`; the tiles are not yet served and the layer does
+-> not appear in the picker. The method below is documented ahead of release.
++> **Its own home.** These tiles are NavAid's own work, so they live apart from the Flight Maps
++> mirror: in the `msupino/NavigationApp-owned-tiles` repository, which holds only layers NavAid
++> generates itself.
+ 
+ The CVFR chart, built here rather than downloaded. The CAA publishes it as two PDFs — AIP
+ part II, northern and southern sheets — and those are **vector**, so what survives a render
+@@ -64,7 +64,7 @@ and the altitude flag on each leg.
+ | Coverage | 29.43–33.36 N, 34.10–35.91 E |
+ | Zooms | z8–13 (16.3 m/px at z13); Leaflet upscales 6 and 7 |
+ | Size | 3,768 tiles, 155 MB |
+-| Served from | `navaid-tiles.supino.org/CVFR-AIP/{z}/{x}/{y}.png` — ours, never flight-maps.com |
++| Served from | `msupino.github.io/NavigationApp-owned-tiles/CVFR-AIP/{z}/{x}/{y}.png` — ours, never flight-maps.com |
+ | Built by | `scripts/build-cvfr-tiles.py` |
+ 
+ **How it is placed.** The sheets are drawn on a conic projection: their meridians converge,
+@@ -139,6 +139,9 @@ reporting points and names. A route drawn on one is a list of names the other tw
+ have, so with a route on screen NavAid refuses to switch between them and says which chart
+ the route was planned on. The picker snaps back to where the map actually is.
+ 
++**CVFR (AIP)** is the CVFR chart itself, so a route drawn on either belongs to CVFR and moves
++between the two freely.
++
+ Everything else in the picker is scenery over the same ground — **Navigation**, **Satellite**,
+ **OpenStreetMap**, the helicopter chart — and changes what is underneath rather than what the
+ route means. Those are never blocked.
+diff --git a/Offline-and-PWA-he.md b/Offline-and-PWA-he.md
+index b0f33c1..37ec0c1 100644
+--- a/Offline-and-PWA-he.md
++++ b/Offline-and-PWA-he.md
+@@ -61,7 +61,7 @@
+ 
+ | מפה | מה נשמר |
+ | --- | --- |
+-| **ניווט · גובה נמוך · מסוקים** | המפה כולה, באותם זומים כמו CVFR. **⬇ הורדה**, ואז פס התקדמות, **הורדת האריחים החסרים** ו**מחיקה** |
++| **‏CVFR (AIP) · ניווט · גובה נמוך · מסוקים** | המפה כולה, באותם זומים כמו CVFR (‏CVFR (AIP): שני הגיליונות שלה, מזום 8). **⬇ הורדה**, ואז פס התקדמות, **הורדת האריחים החסרים** ו**מחיקה** |
+ | **נתיבי ATS** | תמונה אחת, נשמרת במטמון של האפליקציה (בתוך האפליקציה בגרסאות App Store / APK) |
+ | **OpenFlightMaps** | **האזור שעל המסך.** בוחרים **רמת פירוט** — עד זום 8, 9, 10, 11 או 12 — כל אחת עם מספר האריחים והגודל המשוער; רמות מעל 80,000 אריחים מעומעמות. רוב אירופה נכנסת עד זום 10 בכ-1GB. שומרים כמה אזורים שרוצים, לכל אחד התקדמות ו**מחיקה** משלו. מעומעם, עם הסיבה, מעל ישראל (אין נתונים) או לאזור שכבר נשמר ברמה הזו |
+ 
+diff --git a/Offline-and-PWA.md b/Offline-and-PWA.md
+index 357004e..90506aa 100644
+--- a/Offline-and-PWA.md
++++ b/Offline-and-PWA.md
+@@ -66,7 +66,7 @@ can be kept at once:
+ 
+ | Chart | What is kept |
+ | --- | --- |
+-| **Navigation · Low Alt · Helicopters** | The whole chart, same zooms as CVFR. **⬇ Download**, then a progress bar, **Download missing tiles** and **Delete** |
++| **CVFR (AIP) · Navigation · Low Alt · Helicopters** | The whole chart, same zooms as CVFR (CVFR (AIP): its two sheets, from z8). **⬇ Download**, then a progress bar, **Download missing tiles** and **Delete** |
+ | **ATS routes** | One image, fetched into the app's own cache (inside the app in the App Store / APK builds) |
+ | **OpenFlightMaps** | **The area on screen.** Choose a **Detail** level — up to zoom 8, 9, 10, 11 or 12 — each shown with its tile count and approximate size; levels over 80,000 tiles are dimmed. Most of Europe fits to zoom 10 in about 1 GB. Save as many areas as you like, each with its own progress and **Delete**. Dimmed, with the reason, over Israel (no data) or for an area already kept at that detail |
+ 
+-- 
+2.43.0
+
