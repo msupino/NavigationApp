@@ -706,6 +706,11 @@ window.S = {
   exportPlanPlace: 'הצב תכנית טיסה על המפה',
   exportPlanPlaceTitle: 'הטבע את טבלת תכנית הטיסה בייצוא; גרור אותה למיקום בתוך מסגרת הדף',
   exportPlanNoFrame: 'הצב תכנית טיסה — בחר תחילה דף A3/A4',
+  planVorOutOfRange: function (nm, all) {
+    // An RTL isolate: the line around it starts in Latin (VOR BGN ...), and without one the
+    // parentheses and the "!" were laid out the Latin way.
+    return '\u2067(! ' + (all ? 'כל ציוני הדרך' : 'חלק מציוני הדרך') + ' מחוץ לטווח \u2066' + nm + ' NM\u2069 שלה)\u2069';
+  },
   exportPlanNoLegs: 'הצב תכנית טיסה — הוסף תחילה מקטע מסלול',
   fpVorLabel: 'VOR',
   fpVorRadialEmpty: '—',

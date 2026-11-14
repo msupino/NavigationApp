@@ -7298,6 +7298,21 @@ function drawFlightPlanTable(ctx, x, y, w, h, align) {
   const usedVors = [];
   for (const r of rows) if (r.vor && !usedVors.includes(r.vor)) usedVors.push(r.vor);
   const mixedVors = usedVors.length > 1;
+  // Beyond the station's published coverage (AIP ENR 4.1, the ring the map draws): the radial and
+  // DME printed for that point may not be receivable there. The DME cell is marked "!" and the
+  // VOR line says all or some waypoints are beyond it, so the paper warns as the map's ring does. A station that publishes
+  // no coverage is not judged.
+  for (const r of rows) {
+    const cov = r.vor && Number(r.vor.coverageNm);
+    r.outOfRange = !!(cov > 0 && Number(r.dme) > cov);
+    if (r.outOfRange) r.dme += ' !';
+  }
+  // "All" or "some" of the waypoints read from that station: the "!" cells say which.
+  const vorLine = v => {
+    const on = rows.filter(r => r.vor === v), out = on.filter(r => r.outOfRange);
+    return vorTune(v) + (out.length
+      ? ' ' + S.planVorOutOfRange(v.coverageNm, out.length === on.length) : '');
+  };
   if (mixedVors) for (const r of rows) if (r.vor) r.radial = r.vor.ident + ' ' + r.radial;
   const headers = [
     '#',
@@ -7313,7 +7328,7 @@ function drawFlightPlanTable(ctx, x, y, w, h, align) {
   if (vorActive) headers.push((S.planColRadial || 'Radial') + (usedVors.length === 1 ? ' ' + usedVors[0].ident : ''),
     S.planColDme || 'DME');
   const caption = usedVors.length
-    ? (S.fpVorLabel || 'VOR') + ' ' + usedVors.map(vorTune).join(' \u00b7 ') : '';
+    ? (S.fpVorLabel || 'VOR') + ' ' + usedVors.map(vorLine).join(' \u00b7 ') : '';
   const capRows = caption ? 1 : 0;
   if (freqActive) headers.push(S.planColComm || 'Comm freq');
   const numCols = headers.length;
