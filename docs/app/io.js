@@ -6476,6 +6476,7 @@ function showExportModal() {
     map.addLayer(layers[chosen]);
   }
   draw();
+  showRes();                   // now on the layer the export will draw
 
   // Buttons.
   const btns = document.createElement('div');
@@ -6712,6 +6713,7 @@ function showExportModal() {
     for (const n in layers) if (map.hasLayer(layers[n])) map.removeLayer(layers[n]);
     map.addLayer(layers[chosen]);
     applyMapOpacity();
+    showRes();                 // a chart's own sharpest tiles set the dpi
   };
 
   opSlider.oninput = function () {

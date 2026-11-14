@@ -671,6 +671,12 @@ test('Print previews black-and-white on the map and says the dpi of each quality
     dpis.push(Number(t.match(/≈(\d+)/)[1]));
     expect(dpis[dpis.length - 1]).toBe(await page.evaluate(v => exportDpiFor(['low', 'medium', 'high'][v]), Number(v)));
   }
+  // The panel's Layer picks the chart, and the chart's sharpest tiles set the dpi.
+  const layerSel = page.locator('#export-layer-select');
+  for (const opt of await layerSel.locator('option').evaluateAll(os => os.map(o => o.value))) {
+    await layerSel.selectOption(opt);
+    expect(await val.textContent()).toContain('\u2248' + await page.evaluate(() => exportDpiFor('high')) + ' dpi');
+  }
   expect(dpis[0]).toBeLessThan(dpis[1]);
   expect(dpis[1]).toBeLessThan(dpis[2]);
   // Cancel puts the screen back.
