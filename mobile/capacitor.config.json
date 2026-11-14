@@ -26,6 +26,14 @@
       "autoUpdate": false,
       "resetWhenUpdate": true,
       "statsUrl": ""
+    },
+    "SocialLogin": {
+      "providers": {
+        "google": true,
+        "facebook": false,
+        "apple": true,
+        "twitter": true
+      }
     }
   },
   "server": {
