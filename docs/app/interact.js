@@ -510,6 +510,7 @@ function dedupePointCandidates(candidates) {
     if (!c) continue;
     let key;
     if (c.type === 'notam') key = 'notam:' + (c.notam && c.notam.id);
+    else if (c.type === 'traffic') key = 'traffic:' + (c.hex || (c.aircraft && c.aircraft.hex) || '');
     else { if (!Number.isInteger(c.index)) continue; key = c.type + ':' + c.index; }
     if (seen.has(key)) continue;
     seen.add(key);
@@ -540,6 +541,14 @@ function pointChoiceText(c) {
     return {
       primary: n.id || 'NOTAM',
       meta: (S.choosePointNotam || 'NOTAM') + (n.end ? ' / ' + n.end : ''),
+    };
+  }
+  if (c.type === 'traffic') {
+    const a = c.aircraft || {};
+    const name = (a.flight && String(a.flight).trim()) || a.hex || (S.choosePointAircraft || 'Aircraft');
+    return {
+      primary: name,
+      meta: (S.choosePointAircraft || 'Aircraft') + (a.hex && a.hex !== name ? ' \u00b7 ' + a.hex : ''),
     };
   }
   if (c.type === 'commcallout') {
@@ -683,6 +692,12 @@ function selectPointCandidate(c) {
     if (typeof showNotamModal === 'function') showNotamModal([c.notam]);
     return;
   }
+  if (c.type === 'traffic') {
+    state.selected = { type: 'traffic', hex: c.hex || (c.aircraft && c.aircraft.hex) };
+    showInspector();
+    draw();
+    return;
+  }
   state.selected = c.type === 'commcallout'
     ? selectionForNoteHit(c.index)
     : { type: c.type, index: c.index };
@@ -699,10 +714,16 @@ function showPointChoice(candidates) {
   // over the chart, in flight. Reported: the map is locked for selecting a waypoint and the
   // multiple-waypoint chooser still opens.
   //
-  // Aircraft are not in this list -- a traffic tap is handled in traffic.js and names its
-  // aeroplane by transponder address, not by a place in one of these arrays -- so there is
-  // nothing here to keep selectable, and the whole question goes.
-  if (typeof inspectorAllowedNow === 'function' && !inspectorAllowedNow()) {
+  // A traffic tap over another item adds the aeroplane here as a {type:'traffic'} candidate
+  // (traffic.js), so the pilot who tapped a plane sitting on an airfield can still choose the
+  // field. A plane on empty map is selected straight from its marker and never reaches here.
+  //
+  // inspectorAllowedNow() already exempts traffic -- but only for the CURRENT selection, and the
+  // tap has not selected the plane yet, so calling it bare read the old selection and refused the
+  // chooser in flight (reported: tapping a plane over a point does nothing). Hand it the traffic
+  // candidate from this set so its own exception fires; without one it still gates on the setting.
+  const trafficCandidate = items.find(c => c && c.type === 'traffic');
+  if (typeof inspectorAllowedNow === 'function' && !inspectorAllowedNow(trafficCandidate)) {
     if (typeof noteInspectorRefusedWhileTracking === 'function') noteInspectorRefusedWhileTracking();
     return false;
   }
@@ -2175,6 +2196,36 @@ function appendAirfieldFrequencyRows(body, af) {
       refreshAirfieldInspectorAfterCommCatalog(af);
     }
   }
+  // The catalog carries a fuller set than airfields.json -- a secondary tower frequency (most
+  // controlled fields), and ground / approach / TMA at Ben Gurion. Show every one a field
+  // publishes, right after the primary (asked: "add all known freqs, LLHA/LLHZ have secondary").
+  // Each is editable like the primary (its own override key, below), so any freq can be corrected.
+  if (id) {
+    const crow = typeof commCatalogCallSignRow === 'function' ? commCatalogCallSignRow(id) : null;
+    if (crow) {
+      const extra = [
+        ['secondary', S.secondary || 'Secondary'], ['ground', S.ground || 'Ground'],
+        ['groundWest', S.groundWest || 'Ground W'], ['groundEast', S.groundEast || 'Ground E'],
+        ['appPrimary', S.approach || 'Approach'], ['appSecondary', S.approachSecondary || 'Approach 2'],
+        ['tmaPrimary', S.tma || 'TMA'], ['tmaSecondary', S.tmaSecondary || 'TMA 2'],
+      ];
+      for (const [field, label] of extra) {
+        const base = crow[field] && String(crow[field]).trim();
+        if (!base) continue;
+        // Editable like the primary -- its own key in the same airfieldFreqOverrides map (Drive
+        // synced). "cat:" namespaces it off the clearance/ATIS field-part keys (name|field|i).
+        const def = typeof commFormatFreq === 'function' ? commFormatFreq(base) : base;
+        const key = af.name + '|cat:' + field;
+        const r = freqEditRow(label, {
+          value: airfieldFreqOverrides()[key] || def, def, rowClass: 'secondary-freq-row',
+          isOverride: () => { const o = airfieldFreqOverrides()[key]; return !!o && o !== def; },
+          commit: n => { setAirfieldFreqOverride(key, n === def ? '' : n); return n; },
+          onReset: () => { setAirfieldFreqOverride(key, ''); return def; },
+        });
+        body.appendChild(r);
+      }
+    }
+  }
   // Clearance / ATIS — one editable numeric field per labelled part (#freq).
   const appendFieldParts = (field, label, rowClass) => {
     const parts = typeof airfieldFieldParts === 'function' ? airfieldFieldParts(af, field) : [];
@@ -3312,6 +3363,15 @@ function airfieldInspectorTitle(af) {
   return referenceInspectorTitle(af, 'airfield');
 }
 
+// "4,324 ft (1,318 m) × 98 ft (30 m)": feet from the published metres.
+const FT_PER_M = 1 / 0.3048;
+function runwayDimsText(d) {
+  const n = (v) => Math.round(v).toLocaleString('en-US');
+  // Non-breaking inside each figure, so a narrow panel wraps only at the \u00d7, never mid-figure.
+  const both = (m) => n(m * FT_PER_M) + '\u00a0ft\u00a0(' + n(m) + '\u00a0m)';
+  return both(d.lengthM) + ' \u00d7 ' + both(d.widthM);
+}
+window.runwayDimsText = runwayDimsText;
 function appendAirfieldDetailRows(body, af, label) {
   // What kind of field the chart says it is (its legend's rectangle colour), and the chart's
   // field block: longest runway, lighting, hard surface.
@@ -3321,11 +3381,23 @@ function appendAirfieldDetailRows(body, af, label) {
   if (Number.isFinite(af.elev_ft)) {
     body.appendChild(textRow(S.elevation || 'Elevation', af.elev_ft + ' ft'));
   }
-  if (Number.isFinite(af.runwayLengthM)) {
-    const bits = [af.runwayLengthM + ' m'];
-    if (af.hardRunway) bits.push(S.airfieldHardRunway || 'hard, all weather');
-    if (af.lighting === 'minimal') bits.push(S.airfieldMinimalLighting || 'minimal lighting');
-    body.appendChild(textRow(S.airfieldLongestRunway || 'Runway', bits.join(' · ')));
+  // Each runway's length and width as its AIP chart publishes them: feet first, metres in
+  // brackets (asked: "its length in ft and (m) and width"). The LSA chart's field block -- hard
+  // surface, lighting -- follows on its own row. A field without them shows the field block's
+  // longest-runway figure as before.
+  const extras = [];
+  if (af.hardRunway) extras.push(S.airfieldHardRunway || 'hard, all weather');
+  if (af.lighting === 'minimal') extras.push(S.airfieldMinimalLighting || 'minimal lighting');
+  const dims = Array.isArray(af.runwayDims) ? af.runwayDims : [];
+  if (dims.length) {
+    for (const d of dims) {
+      const row = textRow((S.airfieldLongestRunway || 'Runway') + '\u00a0' + d.rwy, runwayDimsText(d));
+      row.classList.add('rwy-dims-row');
+      body.appendChild(row);
+    }
+    if (extras.length) body.appendChild(textRow(S.airfieldLongestRunway || 'Runway', extras.join(' · ')));
+  } else if (Number.isFinite(af.runwayLengthM)) {
+    body.appendChild(textRow(S.airfieldLongestRunway || 'Runway', [af.runwayLengthM + ' m'].concat(extras).join(' · ')));
   }
   // Published hours before the radios: whether the field is there to be used at all comes
   // before how to talk to it.
@@ -4484,8 +4556,14 @@ function showInspector() {
       Number.isFinite(ac.alt) ? Math.round(ac.alt) + ' ' + (S.unitFeet || 'ft') : '—'));
     body.appendChild(textRow(S.trafficGroundSpeed || 'Ground speed',
       Number.isFinite(ac.gs) ? Math.round(ac.gs) + ' ' + (S.unitKt || 'kt') : '—'));
+    // The feed's track is TRUE (ADS-B reports it so); every other direction NavAid shows is
+    // magnetic and says so -- a bare "144°" beside a 139°M leg read as 5° off (asked "is the
+    // direction real or magnetic?"). Both are shown, each marked: magnetic first, as the
+    // pilot's own legs read, then true, as the feed gave it (asked). The arrow on the map
+    // keeps the true track: that is the way it moves across the chart.
+    const deg3 = d => String(Math.round(d) % 360).padStart(3, '0');
     body.appendChild(textRow(S.trafficTrack || 'Track',
-      Number.isFinite(ac.track) ? String(Math.round(ac.track)).padStart(3, '0') + '°' : '—'));
+      Number.isFinite(ac.track) ? deg3(toMagnetic(ac.track)) + '°M \u00b7 ' + deg3(ac.track) + '°T' : '—'));
     // The aircraft type, and the word when it is a helicopter (by its category or its type code).
     const heli = typeof window.trafficIsRotorcraft === 'function' && window.trafficIsRotorcraft(ac);
     const typeText = [ac.type, heli ? (S.trafficHelicopter || 'Helicopter') : ''].filter(Boolean).join(' · ');

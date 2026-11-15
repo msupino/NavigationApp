@@ -127,3 +127,27 @@ for (const lang of ['en', 'he']) {
     await page.evaluate(() => applyInspZoom(tune('inspZoomSmallest')));
   });
 }
+
+// Reported, with a Hebrew phone screenshot of LLHZ: "fix alignment of freq inputs". The value box
+// is dir="ltr", and its logical auto margin followed its own direction -- in a Hebrew row it pushed
+// the box against its label, so every row's box began where its label ended. All of an airfield's
+// frequency boxes now line up, at the row's end, in both languages.
+for (const lang of ['he', 'en']) {
+  test(`an airfield's frequency rows line up (${lang})`, async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.addInitScript(() => { HTMLMediaElement.prototype.play = () => Promise.resolve(); });
+    await page.goto(`?lang=${lang}&nogist`);
+    await page.waitForFunction(() => Array.isArray(window.airfields) && airfields.length && typeof showInspector === 'function' && !!window.atcRadio);
+    const r = await page.evaluate(() => {
+      const i = airfields.findIndex(a => /LLHZ/.test(a.id || a.code || a.icao || a.name));
+      state.selected = { type: 'airfield', index: i }; showInspector();
+      return [...document.querySelectorAll('#inspector .row')].filter(row => row.querySelector('.charts-freq-input')).map(row => {
+        const v = row.querySelector('.val').getBoundingClientRect(), b = row.getBoundingClientRect();
+        const inp = row.querySelector('.charts-freq-input').getBoundingClientRect();
+        return { input: [Math.round(inp.left), Math.round(inp.right)], end: Math.round(document.documentElement.dir === 'rtl' ? v.left - b.left : b.right - v.right) };
+      });
+    });
+    expect(r.length).toBeGreaterThan(1);
+    for (const x of r) { expect(x.input).toEqual(r[0].input); expect(Math.abs(x.end)).toBeLessThanOrEqual(1); }
+  });
+}

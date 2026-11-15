@@ -98,8 +98,32 @@
       // Deliberately NOT remembered: a stored language made a plain address mean different
       // things on different devices, and made "open navaid.supino.org" an unanswerable
       // question about what a pilot would see.
+      //
+      // The installed app is the exception: it always starts on the plain address and has no
+      // address bar, so a language carried only by the address was lost on every restart. In
+      // the app alone the last choice is kept on this phone (navaid.appLang); a browser never
+      // reads or writes it.
       var p = new URLSearchParams(location.search).get('lang');
-      var lang = (p === 'en' || p === 'he') ? p : 'he';
+      var okLang = function (v) { return v === 'en' || v === 'he'; };
+      var inApp = function () {
+        var C = window.Capacitor;
+        return !!(C && typeof C.isNativePlatform === 'function' && C.isNativePlatform());
+      };
+      var appLang = null;
+      try { appLang = localStorage.getItem('navaid.appLang'); } catch (e) {}
+      var lang = okLang(p) ? p : (okLang(appLang) && inApp()) ? appLang : 'he';
+      // The native bridge may arrive after this script. Settle once the document is parsed:
+      // keep an explicit choice, or bring back the kept one if the first paint missed it.
+      document.addEventListener('DOMContentLoaded', function () {
+        if (!inApp()) return;
+        if (okLang(p)) {
+          try { localStorage.setItem('navaid.appLang', p); } catch (e) {}
+        } else if (okLang(appLang) && appLang !== lang) {
+          var q = new URLSearchParams(location.search);
+          q.set('lang', appLang);
+          location.replace('?' + q.toString() + location.hash);
+        }
+      });
       var h = document.documentElement;
       h.lang = lang; h.dir = lang === 'he' ? 'rtl' : 'ltr';
       if (lang === 'he') document.title = 'NavAid — מתכנן טיסה';
@@ -458,6 +482,9 @@
         <label class="navtoggle" data-i18n-title="tbShowWpNamesTitle">
           <input type="checkbox" id="wpname-cb" checked> <span data-i18n="tbShowWpNames"></span>
         </label>
+        <label class="navtoggle" data-i18n-title="tbAutoWpNameAngleTitle">
+          <input type="checkbox" id="wpname-angle-cb" checked> <span data-i18n="tbAutoWpNameAngle"></span>
+        </label>
         <label class="navtoggle" data-i18n-title="tbShowCumTimeTitle">
           <input type="checkbox" id="cumtime-cb" checked> <span data-i18n="tbShowCumTime"></span>
         </label>
@@ -602,7 +629,7 @@
         <button id="charts" data-i18n="tbCharts" data-i18n-title="tbChartsTitle"></button>
         <!-- LSA airspace bubble list (modal). Hidden until areas load on the Low
              Alt layer; the on-map bubbles + toggle live in the Extra layers section. -->
-        <button id="lsa-list-btn" type="button" hidden data-i18n="tbLsaList" data-i18n-title="tbLsaListTitle"></button>
+        <button id="lsa-list-btn" type="button" data-i18n="tbLsaList" data-i18n-title="tbLsaListTitle"></button>
         <!-- Satellite mosaic of the route's waypoints (modal grid of previews). -->
         <button id="mosaic-btn" type="button" data-i18n="tbMosaic" data-i18n-title="tbMosaicTitle"></button>
         <!-- Compact automatic CVFR-offline status; details live in its modal. -->
@@ -864,7 +891,7 @@
             <input type="checkbox" id="airspace-cb"> <span data-i18n="tbShowAirspace"></span>
           </label>
         </div>
-        <div id="lsa-group" class="tb-group-box" hidden>
+        <div id="lsa-group" class="tb-group-box">
           <label class="navtoggle" data-i18n-title="tbShowLsaTitle">
             <input type="checkbox" id="lsa-cb"> <span data-i18n="tbShowLsa"></span>
           </label>
@@ -908,12 +935,9 @@
         <button id="follow-me-new" type="button" hidden
                 data-i18n="tbFollowMeNewLink" data-i18n-title="tbFollowMeNewLinkTitle"></button>
         <input type="file" id="file" accept="application/json,.json,.gpx,application/gpx+xml,.pln,application/xml" hidden>
-        <!-- Moved here from the Edit menu: wiping every saved route + setting sat
-             directly beside everyday actions (Undo / Clear / Fit), one slip away.
-             It belongs with the other data-management controls. -->
-        <hr class="tb-danger-sep">
-        <button id="clear-store" type="button" class="danger"
-                data-i18n="tbClearStore" data-i18n-title="tbClearStoreTitle"></button>
+        <!-- Wiping every saved route + setting now lives in Settings > Storage, as the
+             marked last-resort below the safe cache clear (showStorageModal), so it is not
+             a stray danger button beside the everyday export/import actions. -->
       </div>
     </div>
 
@@ -972,6 +996,15 @@
             <option value="auto" data-i18n="tbTabletLayoutAuto"></option>
             <option value="mobile" data-i18n="tbTabletLayoutMobile"></option>
             <option value="desktop" data-i18n="tbTabletLayoutDesktop"></option>
+          </select>
+        </label>
+        <!-- How every user-visible date is written. Israel's civil default is day-first. -->
+        <label id="date-format-row" class="navtoggle" data-i18n-title="tbDateFormatTitle">
+          <span data-i18n="tbDateFormat"></span>
+          <select id="date-format">
+            <option value="dmy" data-i18n="tbDateFormatDmy"></option>
+            <option value="mdy" data-i18n="tbDateFormatMdy"></option>
+            <option value="ymd" data-i18n="tbDateFormatYmd"></option>
           </select>
         </label>
         <script>
@@ -1062,12 +1095,21 @@
         <label class="navtoggle" data-i18n-title="tbInspectorTrackingTitle">
           <input type="checkbox" id="insp-tracking-cb"> <span data-i18n="tbInspectorTracking"></span>
         </label>
+        <!-- The route's own settings, set without a route: the pilot's aircraft (call sign, type,
+             fuel and climb figures), which otherwise shows only in an open flight plan (asked).
+             The button opens the flight plan's aircraft panel in a window of its own (ui.js). -->
+        <div class="tb-group" data-i18n="tbSecRoute"></div>
+        <button id="aircraft-settings" type="button" data-i18n="tbAircraftSettings" data-i18n-title="tbAircraftSettingsTitle"></button>
         <!-- Reference tables a pilot sets up once and consults: the frequency table and the
              altitude pairs, moved here from Charts. -->
         <div class="tb-group-separator" aria-hidden="true"></div>
         <button id="freq-table" data-i18n="tbFreqTable" data-i18n-title="tbFreqTableTitle"></button>
         <button id="alt-pairs" data-i18n="tbAltPairs" data-i18n-title="tbAltPairsTitle"></button>
         <button id="tour-replay" type="button" data-i18n="tbTourReplay"></button>
+        <!-- Storage: how much of the browser's per-site room this device's saved data uses, and a
+             one-tap clear of the caches it can rebuild -- never the pilot's routes, recordings,
+             frequencies or settings. -->
+        <button id="storage-manage" type="button" data-i18n="tbStorage" data-i18n-title="tbStorageTitle"></button>
         <!-- The phone's own hardware (device-extras.js, ble-gps.js): screen brightness for the
              cockpit, and an external Bluetooth GPS. Each is dimmed where it cannot work. -->
         <div class="tb-group-separator" aria-hidden="true"></div>
@@ -1217,6 +1259,13 @@
               data-i18n-title="commFailTitle" data-i18n-aria="commFail">
         <span class="footer-link-icon gps-footer-icon" aria-hidden="true" data-nav-icon="commfail"></span>
         <span class="footer-link-text" data-i18n="commFail"></span>
+      </button>
+      <!-- Divert: nearest airfields from here (GPS or map centre), re-route direct to the chosen
+           one. Beside the GPS buttons because it is an in-flight decision, like comm failure. -->
+      <button id="divert-btn" type="button" class="footer-link footer-link-button gps-footer-btn" aria-pressed="false"
+              data-i18n-title="divertTitle" data-i18n-aria="divert">
+        <span class="footer-link-icon gps-footer-icon" aria-hidden="true" data-nav-icon="divert"></span>
+        <span class="footer-link-text" data-i18n="divert"></span>
       </button>
       <!-- Grouped with the GPS buttons, not a sibling after them: that keeps it on
            the SAME wrap-eligible flex item as far as #footer-links is concerned, so
@@ -1433,6 +1482,7 @@
         'app/gps.js' + v,
         'app/gyro-turn.js' + v,
         'app/commfail.js' + v,
+        'app/diversion.js' + v,
         'app/ui.js' + v,
         'app/world-offline.js' + v,
         // The disclaimer is a gate before the app is used: it stays with the first chart.
@@ -1454,6 +1504,8 @@
         'app/density-altitude.js' + v,
         'app/airfield-wind.js' + v,
         'app/surface-wx.js' + v,
+        // IAA NOTAMs directly, in the apps; the shared parser of the Update NOTAMs Action.
+        'app/notam-iaa.js' + v,
         'app/airfield-hours.js' + v,
         'app/editor.js' + v,
         'app/assistant.js' + v,
@@ -1617,6 +1669,10 @@
           <label class="ac-field" data-field="usableGal" data-i18n-title="tbUsableFuelTitle">
             <span data-i18n="tbUsableFuel"></span>
             <input type="number" id="ac-usable" min="1" max="300" step="0.5" inputmode="decimal">
+          </label>
+          <label class="ac-field" data-field="reserveMin" data-i18n-title="tbReserveMinTitle">
+            <span data-i18n="tbReserveMin"></span>
+            <input type="number" id="ac-reserve" min="0" max="120" step="5" inputmode="numeric">
           </label>
           <label class="ac-field" data-field="climbKt" data-i18n-title="tbClimbKtTitle">
             <span data-i18n="tbClimbKt"></span>

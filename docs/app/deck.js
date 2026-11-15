@@ -60,6 +60,7 @@
   let stripSub = null;
   let deck = null;
   let commBtn = null;
+  let divertBtn = null;
   const buttons = {};
   let observers = [];
 
@@ -79,17 +80,17 @@
     strip.append(top, stripSub);
     // Comm fail: the emergency action, in red at the top, always in reach and apart from the
     // five places on the bottom bar. It presses the toolbar's own button (one behaviour).
+    // Icon-only like Divert beside it, so the readout keeps its room; red marks it out.
     commBtn = document.createElement('button');
     commBtn.type = 'button';
     commBtn.className = 'deck-strip-commfail deck-btn-commfail';
     const commLabel = (typeof S === 'object' && S && S.deckCommFail) || 'Comm fail';
-    commBtn.innerHTML = (typeof navIconSvg === 'function' ? navIconSvg('commfail', 18) : '')
-      + '<span class="deck-strip-commfail-label"></span>';
-    commBtn.querySelector('.deck-strip-commfail-label').textContent = commLabel;
-    // Label in name: the accessible name must start with the words on the button, or voice
-    // control ("tap Comm fail") finds nothing. The longer explanation follows after a colon.
+    commBtn.innerHTML = typeof navIconSvg === 'function' ? navIconSvg('commfail', 20) : '';
+    // The accessible name starts with the short label (voice control: "tap Comm fail"); the
+    // longer explanation follows after a colon. The title shows the label on a mouse.
     const commHelp = (typeof S === 'object' && S && S.commFailTitle) || '';
     commBtn.setAttribute('aria-label', commHelp ? (commHelp.indexOf(commLabel) === 0 ? commHelp : commLabel + ': ' + commHelp) : commLabel);
+    commBtn.title = commLabel;
     commBtn.setAttribute('aria-pressed', 'false');
     commBtn.addEventListener('click', () => { click('commfail-btn'); sync(); });
     // Language, findable without reading the current one: a globe and the other language's name.
@@ -99,7 +100,20 @@
     langBtn.innerHTML = (typeof navIconSvg === 'function' ? navIconSvg('globe', 18) : '')
       + '<span class="lang-quick-label"></span>';
     if (typeof dressLangQuick === 'function') dressLangQuick(langBtn);
+    // Divert: the other in-flight decision, beside Comm fail. Not red -- it is not the emergency --
+    // and icon-only so the readout keeps its room; the words are in the accessible name.
+    divertBtn = document.createElement('button');
+    divertBtn.type = 'button';
+    divertBtn.className = 'deck-strip-divert';
+    divertBtn.innerHTML = typeof navIconSvg === 'function' ? navIconSvg('divert', 20) : '';
+    const divLabel = (typeof S === 'object' && S && S.divert) || 'Divert';
+    const divHelp = (typeof S === 'object' && S && S.divertTitle) || '';
+    divertBtn.setAttribute('aria-label', divHelp ? divLabel + ': ' + divHelp : divLabel);
+    divertBtn.title = divLabel;
+    divertBtn.setAttribute('aria-pressed', 'false');
+    divertBtn.addEventListener('click', () => { click('divert-btn'); sync(); });
     strip.appendChild(langBtn);
+    strip.appendChild(divertBtn);
     strip.appendChild(commBtn);
     document.body.appendChild(strip);
     // The menu opens under the strip, so it has to know how tall the strip is -- which
@@ -297,6 +311,18 @@
     sync();
   }
   NavAid.closeDeckSheet = () => closeSheet();
+  // A map button pressed while the Menu is open is a move back to the chart: the Menu goes, and
+  // the button does its own job (asked, with a screenshot: the chart picker opened ON the open
+  // Menu, the two panels stacked). Every map button is a Leaflet control -- the edit column, the
+  // right-hand column, the zoom keys, the legend. Capture phase, before the button's own handler,
+  // so what the button opens is not closed with the Menu. Only the Menu: a point's details or the
+  // plan in the sheet stay while the map is used.
+  document.addEventListener('click', (ev) => {
+    if (!sheet || sheet.hidden || sheetKey !== 'menu') return;
+    const t = ev.target;
+    if (!t || !t.closest || !t.closest('.leaflet-control') || t.closest('.deck-sheet')) return;
+    closeSheet();
+  }, true);
   // Android Back asks this first (ui.js backButtonStep): an open sheet is a step to go back.
   NavAid.deckSheetOpen = () => !!(sheet && !sheet.hidden && sheetKey);
 
@@ -804,6 +830,10 @@
     if (commBtn) {
       const cf = document.getElementById('commfail-btn');
       commBtn.setAttribute('aria-pressed', String(!!(cf && cf.getAttribute('aria-pressed') === 'true')));
+    }
+    if (divertBtn) {
+      const dv = document.getElementById('divert-btn');
+      divertBtn.setAttribute('aria-pressed', String(!!(dv && dv.getAttribute('aria-pressed') === 'true')));
     }
     if (buttons.here) {
       buttons.here.setAttribute('aria-pressed', String(!!(typeof gpsLiveOn !== 'undefined' && gpsLiveOn)));

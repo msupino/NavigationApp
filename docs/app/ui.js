@@ -201,7 +201,7 @@ const MENU_ICONS = {
   undo: 'undo', clear: 'trash', fit: 'fit', 'tool-reset-all-markers': 'reset',
   'tool-reset-all-wp-names': 'reset', 'tool-magnifier': 'magnifier',
   'autoroute-btn': 'map', 'force-snap-btn': 'addWp', 'ret-btn': 'direct',
-  'route-templates': 'templates', 'freq-table': 'antenna', 'alt-pairs': 'altPairs',
+  'route-templates': 'templates', 'freq-table': 'antenna', 'aircraft-settings': 'plane', 'alt-pairs': 'altPairs',
   'nav-log': 'form', charts: 'charts', 'sigwx-btn': 'globe', 'pwx-btn': 'wind',
   'sigmet-btn': 'warn', 'airmet-btn': 'warn', 'route-check-btn': 'check', 'notam-list-btn': 'list',
   'lsa-list-btn': 'list', 'mosaic-btn': 'mosaic', 'offline-tiles-btn': 'download',
@@ -434,7 +434,9 @@ const appUpdate = (function () {
     // on that menu says there is an update to take (download or restart).
     const settingsSec = document.querySelector('#toolbar .tb-section[data-sec="settings"]');
     if (settingsSec) settingsSec.classList.toggle('has-app-update', action === 'download' || action === 'restart');
-    btn.hidden = !action || !!busy;
+    // Never hidden (never hide a button): while it checks or downloads it is dimmed, and says so.
+    btn.hidden = false;
+    setButtonWhy(btn, busy ? line : (action ? null : line));
     btn.textContent = action === 'download' ? (S.appUpdateDownload || 'Download now')
       : action === 'restart' ? (S.appUpdateRestart || 'Restart now') : (S.appUpdateCheck || 'Check again');
     btn.dataset.action = action || '';
@@ -961,24 +963,38 @@ function syncMapControlClearance() {
   const corner = document.querySelector('.leaflet-bottom.leaflet-right');
   if (!corner || !document.body.classList.contains('deck-on')) {
     root.style.removeProperty('--navaid-map-ctrl-clear');
+    root.style.removeProperty('--navaid-map-ctrl-clear-low');
     root.style.removeProperty('--navaid-map-ctrl-wrapped');
     return;
   }
   const box = corner.getBoundingClientRect();
-  let left = Infinity, right = -Infinity;
+  // The bottom row -- the legend, its route totals, the coordinates -- only has to clear the
+  // controls that come down to it. A wrapped second column starts at the top (#2932), so counting
+  // it there squeezed the totals to two lines on a 360x640 phone once the in-flight buttons were
+  // always shown (dim, never hide).
+  const dock = document.querySelector('.legend-ctrl.legend-docked');
+  const coords = document.getElementById('coord-readout');
+  const tops = [box.bottom - 120];
+  for (const el of [dock, coords]) if (el && el.getClientRects().length) tops.push(el.getBoundingClientRect().top);
+  const bandTop = Math.min(...tops);
+  let left = Infinity, right = -Infinity, leftLow = Infinity;
   for (const el of corner.children) {
     if (el.offsetParent === null || getComputedStyle(el).position === 'absolute') continue;   // readouts sit beside, not in, the column
     const r = el.getBoundingClientRect();
     if (!r.width) continue;
     left = Math.min(left, r.left); right = Math.max(right, r.right);
+    if (r.bottom > bandTop) leftLow = Math.min(leftLow, r.left);
   }
   // Wrapped when the column is more than one control wide.
   const wrapped = Number.isFinite(left) && right - left > 70;
   if (wrapped) {
     root.style.setProperty('--navaid-map-ctrl-clear', Math.ceil(box.right - left + 8) + 'px');
     root.style.setProperty('--navaid-map-ctrl-wrapped', '1');
+    if (Number.isFinite(leftLow)) root.style.setProperty('--navaid-map-ctrl-clear-low', Math.ceil(box.right - leftLow + 8) + 'px');
+    else root.style.removeProperty('--navaid-map-ctrl-clear-low');
   } else {
     root.style.removeProperty('--navaid-map-ctrl-clear');
+    root.style.removeProperty('--navaid-map-ctrl-clear-low');
     root.style.removeProperty('--navaid-map-ctrl-wrapped');
   }
 }
@@ -1085,11 +1101,24 @@ voiceCtrl.onAdd = function () {
 };
 voiceCtrl.addTo(map);
 const voiceBtn = document.getElementById('voice-toggle');
+// Why the voice button is dimmed, or '' when it is live. Every spoken alert follows the route --
+// the leg and next-leg calls, altitude, TOP, drift and off-route, the destination's ATIS, hours
+// and last light -- and is set off by the position, so both are needed (reported: "the voice
+// button is enabled on my app even when no location"). No route first: it is the bigger gap.
+function voiceDimWhy() {
+  if (!(state.waypoints && state.waypoints.length >= 2)) return S.whyVoiceNoRoute || 'Spoken alerts follow your route: draw a route first.';
+  const live = typeof gpsPositionLive === 'function' && gpsPositionLive();
+  if (!live) return S.whyVoiceNoPosition || 'Spoken alerts follow your position along the route: turn on Location';
+  return '';
+}
+window.voiceDimWhy = voiceDimWhy;
 function refreshVoiceControl() {
   const wrap = voiceBtn && voiceBtn.parentNode;
   if (!wrap) return;
-  const tracking = typeof gpsPositionLive === 'function' ? gpsPositionLive() : false;
-  wrap.style.display = tracking ? '' : 'none';
+  // Always there (dim, never hide); dimmed, with the reason, until there is something to speak
+  // about (voiceDimWhy): a route AND a position.
+  wrap.style.display = '';
+  if (typeof setButtonWhy === 'function') setButtonWhy(voiceBtn, voiceDimWhy() || null);
   orderMapControls(wrap.parentNode);
   const on = window.voiceAlerts === true;
   setMapIcon(voiceBtn, on ? 'voiceOn' : 'voiceOff');
@@ -1101,12 +1130,11 @@ function refreshVoiceControl() {
   voiceBtn.setAttribute('aria-pressed', on ? 'true' : 'false');
   const label = on ? (S.voiceOnTitle || 'Alerts are spoken — tap to silence them')
                    : (S.voiceOffTitle || 'Alerts are silent — tap to have them spoken');
-  voiceBtn.title = label;
   voiceBtn.setAttribute('aria-label', label);
+  // While dimmed the title is the reason (setButtonWhy); the label waits to be put back.
+  if (voiceBtn.dataset.why) voiceBtn.dataset.whyTitle = label; else voiceBtn.title = label;
 }
 window.refreshVoiceControl = refreshVoiceControl;
-// Hidden until a fix is driving the map -- without this first call the button is visible from
-// boot, since nothing has set its display yet.
 refreshVoiceControl();
 voiceBtn.onclick = () => {
   window.voiceAlerts = !(window.voiceAlerts === true);
@@ -1200,7 +1228,7 @@ function refreshOrientControl() {
   const following = !!(window.NavAid && NavAid.followMe &&
     typeof NavAid.followMe.viewing === 'function' && NavAid.followMe.viewing());
   const tracking = ownShip || following;
-  wrap.style.display = tracking ? '' : 'none';
+  wrap.style.display = '';
   orderMapControls(wrap.parentNode);
   // Three states, not two: the dial can leave the chart pointing anywhere, and a button
   // that still claimed "north up" over a map turned 40 degrees would be describing
@@ -1223,6 +1251,12 @@ function refreshOrientControl() {
                                        : (S.orientNorthUp || 'North up — tap to hold your heading up'));
   orientBtn.title = label;
   orientBtn.setAttribute('aria-label', label);
+  // Always shown (dim, never hide). With no aircraft there is no heading to hold up: dimmed, and a
+  // tap says why -- unless the chart has been turned by hand, when a tap still straightens it.
+  if (typeof setButtonWhy === 'function') {
+    setButtonWhy(orientBtn, (tracking || rotated) ? null
+      : (S.whyOrientNoPosition || 'Heading up turns the chart with your track: turn on Location'));
+  }
 }
 window.refreshOrientControl = refreshOrientControl;
 
@@ -1287,7 +1321,8 @@ function refreshGpsFollowControl() {
   const wrap = followBtn && followBtn.parentNode;
   if (!wrap) return;
   const tracking = typeof gpsPositionLive === 'function' ? gpsPositionLive() : false;
-  wrap.style.display = tracking ? '' : 'none';
+  // Always shown (dim, never hide): with no position there is no aircraft to hold the map on.
+  wrap.style.display = '';
   orderMapControls(wrap.parentNode);
   const on = typeof gpsFollow === 'undefined' ? true : gpsFollow;
   // The VOR symbol, not a padlock: this one holds the MAP ONTO the aircraft, and the padlock
@@ -1300,6 +1335,10 @@ function refreshGpsFollowControl() {
                    : (S.followLockOff || 'Not following — tap to follow the aircraft');
   followBtn.title = label;
   followBtn.setAttribute('aria-label', label);
+  if (typeof setButtonWhy === 'function') {
+    setButtonWhy(followBtn, tracking ? null
+      : (S.whyFollowNoPosition || 'Follow keeps your aircraft in view: turn on Location'));
+  }
 }
 // --- Follow me — beside the follow lock, and only while there is a position to share -----
 // It lived in the Export menu, which is where you go to save a file, not where you are
@@ -1322,8 +1361,9 @@ function refreshFollowMeMapControl() {
   const live = (typeof gpsPositionLive === 'function' && gpsPositionLive())
     || (typeof gpsRecording !== 'undefined' && gpsRecording);
   const offered = typeof tune === 'function' && tune('featureFollowMe') === true;
-  // Same rule as the follow lock: no position, no control -- there would be nothing to share.
-  wrap.style.display = (offered && live) ? '' : 'none';
+  // Only the gist removes it (featureFollowMe). Without a position there is nothing to share:
+  // dimmed, and a tap says so -- unless a share is already running, which a tap must still stop.
+  wrap.style.display = offered ? '' : 'none';
   orderMapControls(wrap.parentNode);
   const status = F && typeof F.status === 'function' ? F.status() : 'idle';
   const active = status !== 'idle';
@@ -1342,6 +1382,10 @@ function refreshFollowMeMapControl() {
           : (S.tbFollowMeTitle || 'Share a best-effort live position link');
   followMeBtn.title = label;
   followMeBtn.setAttribute('aria-label', label);
+  if (typeof setButtonWhy === 'function') {
+    setButtonWhy(followMeBtn, (live || active) ? null
+      : (S.followMeNoFix || 'Follow me needs a position: turn on Location or Record first.'));
+  }
 }
 window.refreshFollowMeMapControl = refreshFollowMeMapControl;
 followMeBtn.onclick = () => {
@@ -1802,7 +1846,9 @@ function refreshEditColumn() {
   const lockWhy = locked ? (S.editLockBlockedToast || 'Route is locked — unlock it to edit') : null;
   const empty = !(state.waypoints && state.waypoints.length) && !(state.notes && state.notes.length)
     && !(typeof measureOn === 'function' && measureOn())
-    && !document.querySelector('.tb-section[data-sec="weather"] input[type="checkbox"]:checked')
+    // LSA bubbles ticked on a chart other than Low Alt draw nothing (the box stays there, dimmed --
+    // never hidden): not something on the map to clear.
+    && !document.querySelector('.tb-section[data-sec="weather"] input[type="checkbox"]:checked:not(#lsa-cb[aria-disabled="true"])')
     // A recorded flight shown from Saved routes is cleared too (see the #clear handler).
     && !(typeof shownTracks !== 'undefined' && Array.isArray(shownTracks) && shownTracks.length)
     // So is the A3/A4 page frame: on an otherwise empty map it was the one thing left, and
@@ -1858,6 +1904,8 @@ function refreshRouteButtons() {
   why('share', needTwo);
   why('fly', needTwo);
   why('mosaic-btn', wps ? '' : (S.mosaicEmpty || 'Add route waypoints first.'));
+  // Every spoken alert follows the route: with none, nothing would ever be said.
+  why('voice-toggle', voiceDimWhy());
   // Route check: the gist withdrawing it keeps its own disabled state (refreshRouteCheckBtn).
   const rc = document.getElementById('route-check-btn');
   if (rc && !(typeof tune === 'function' && tune('featureRouteCheck') === false)) {
@@ -2375,13 +2423,27 @@ legendCtrl.addTo(map);
 })();
 // The map clock runs along the same bottom row: it starts right of the dock (style.css .map-time),
 // whose width changes with the route totals.
+// On a phone the clock is a card at the left edge, on the dock's own row; there it sits ABOVE the
+// dock instead (style.css body.deck-on .map-time), at the height published here. It was at a fixed
+// 124 px: the dock -- the Legend button with the route totals over it -- reached up into it, drew
+// on top of the card's left end, and its empty area caught the touches meant for the slider
+// (reported: "can't move time slider").
 function publishLegendDockWidth() {
   const root = document.documentElement;
   const row = legendDock.row;
-  if (!row || !row.getClientRects().length) { root.style.removeProperty('--navaid-legend-dock-clear'); return; }
-  root.style.setProperty('--navaid-legend-dock-clear', Math.ceil(row.getBoundingClientRect().right + 12) + 'px');
+  if (!row || !row.getClientRects().length) {
+    root.style.removeProperty('--navaid-legend-dock-clear');
+    root.style.removeProperty('--navaid-legend-dock-above');
+    return;
+  }
+  const r = row.getBoundingClientRect();
+  root.style.setProperty('--navaid-legend-dock-clear', Math.ceil(r.right + 12) + 'px');
+  const clock = document.getElementById('map-time');
+  const host = (clock && clock.offsetParent) || document.body;
+  root.style.setProperty('--navaid-legend-dock-above', Math.ceil(host.getBoundingClientRect().bottom - r.top + 8) + 'px');
 }
 if (legendDock.row && typeof ResizeObserver === 'function') new ResizeObserver(publishLegendDockWidth).observe(legendDock.row);
+window.addEventListener('resize', publishLegendDockWidth);
 
 // The route totals on one line (asked: "default should not wrap"). The gist's routeSummaryFontPx
 // is the size they start at; where the room beside the zoom column is too small for that -- the
@@ -2931,6 +2993,41 @@ function syncSearchResultsStacking() {
   const res = document.getElementById('wp-search-results');
   if (ov && res) ov.classList.toggle('has-results', !res.classList.contains('hidden'));
 }
+// Nothing found in the set in use, but another chart has the code: one row says which, and
+// tapping it switches "Nav waypoints from" to that chart (through the selector's own handler,
+// so every dataset follows) and searches again.
+async function showOtherChartHint(token) {
+  if (!token || token.length < 2 || typeof navWaypointOtherCharts !== 'function') return;
+  const others = await navWaypointOtherCharts(token);
+  // Typed on meanwhile, or found after all: this answer is stale.
+  if (!others.length || wpSearch.value.trim() !== token) return;
+  const target = others[0];
+  const where = others.map(layerLabelForPrefix).join(' / ');
+  wpResults.innerHTML = '';
+  const item = document.createElement('div');
+  item.className = 'wp-search-item wp-search-other-chart';
+  item.setAttribute('role', 'option');
+  item.textContent = S.searchOtherChartRow(token.toUpperCase(), where, layerLabelForPrefix(target));
+  item.onclick = async (e) => {
+    // The switch rebuilds the list under this click; left to bubble, the document's
+    // click-outside handler no longer found the row inside the search and closed it.
+    e.stopPropagation();
+    const sel = document.getElementById('navwp-source');
+    if (sel && Array.from(sel.options).some(o => o.value === target)) {
+      sel.value = target;
+      if (typeof sel.onchange === 'function') sel.onchange();
+    } else {
+      window.navDataPrefix = target;
+      if (typeof reloadLayerDatasets === 'function') reloadLayerDatasets();
+    }
+    if (typeof loadNavWaypoints === 'function') await loadNavWaypoints();
+    runSearch();
+  };
+  wpResults.appendChild(item);
+  wpResults.classList.remove('hidden');
+  syncSearchResultsStacking();
+}
+
 function closeSearch() {
   wpResults.classList.add('hidden');
   syncSearchResultsStacking();
@@ -2994,7 +3091,14 @@ async function buildRouteFromQuery(raw) {
   const resolved = [];
   for (const t of tokens) {
     const w = findNavWpToken(t);
-    if (!w) { refuse(S.errSearchUnknown(t)); return false; }
+    if (!w) {
+      // Another chart's waypoint? Say so, and where to switch -- not just "unknown".
+      const others = await navWaypointOtherCharts(t);
+      refuse(others.length
+        ? S.errSearchOtherChart(t, others.map(layerLabelForPrefix).join(' / '), layerLabelForPrefix(layerDataPrefix()))
+        : S.errSearchUnknown(t));
+      return false;
+    }
     resolved.push(w);
   }
   // A typed route is vetted before it replaces what is on the map: "LLHZ BAZRA LLHZ BAZRA"
@@ -4252,14 +4356,38 @@ function showRouteLibraryModal(focusSave) {
       if (typeof setSettingsSyncEnabled === 'function') setSettingsSyncEnabled(setChk.checked);
       syncSetHint();
     };
-    setLabel.append(setChk, document.createTextNode(' ' + (S.routeLibraryGdriveSyncSettings || 'Sync settings too')));
-    // Shown only while the box is ticked — it describes what the tick is currently doing,
-    // not a standing warning about the sync button beside it, which uploads none of this.
+    setLabel.title = S.routeLibraryGdriveSyncSettingsTitle || '';
+    setLabel.append(setChk, document.createTextNode(' ' + (S.routeLibraryGdriveSyncSettings || 'Use settings from Drive on this device')));
+    // Always shown: every Sync backs up the settings, the pilot's details among them, ticked
+    // or not -- the box only decides whether this device takes the display settings back.
     const setHint = document.createElement('div');
     setHint.className = 'route-library-gdrive-pii';
-    setHint.textContent = S.routeLibraryGdriveSyncPii || '';
-    const syncSetHint = () => { setHint.hidden = !setChk.checked; };
-    syncSetHint();
+    // AI keys are named only while the gist offers the assistant: with it withdrawn there are
+    // no keys to speak of (asked: "AI keys sync is not relevant when AI assistance is disabled").
+    const aiOn = typeof tune !== 'function' || tune('featureAssistant') !== false;
+    setHint.textContent = (S.routeLibraryGdriveSyncPii || '') + (aiOn && S.routeLibraryGdriveSyncPiiAi ? ' ' + S.routeLibraryGdriveSyncPiiAi : '');
+    const syncSetHint = () => {};
+    // Restore: the backup's settings on this device, once, ticked or not.
+    const restoreBtn = document.createElement('button');
+    restoreBtn.type = 'button';
+    restoreBtn.className = 'route-library-gdrive-restore';
+    restoreBtn.textContent = S.routeLibraryGdriveRestore || 'Restore settings from Drive';
+    restoreBtn.onclick = async () => {
+      if (typeof gdriveRestoreSettings !== 'function') return;
+      const ok = await appConfirm(S.routeLibraryGdriveRestoreConfirm ||
+        'Replace this device\u2019s settings with the backup on Google Drive? The app reloads.',
+        S.routeLibraryGdriveRestore || 'Restore');
+      if (!ok) return;
+      restoreBtn.disabled = true;
+      setStatus(S.routeLibraryGdriveSyncing || 'Syncing…');
+      gdriveRestoreSettings().then(res => {
+        if (res && res.none) { setStatus(S.routeLibraryGdriveRestoreNone || 'No settings backup on Drive yet'); return; }
+        setStatus(S.routeLibraryGdriveSettingsApplied || 'Settings updated — reloading…');
+        setTimeout(() => location.reload(), 700);
+      }).catch(err => {
+        setStatus((S.routeLibraryGdriveError || 'Sync failed') + (err && err.message ? ': ' + err.message : ''));
+      }).then(() => { restoreBtn.disabled = false; });
+    };
     syncBtn.onclick = () => {
       syncBtn.disabled = true;
       setStatus(S.routeLibraryGdriveSyncing || 'Syncing…');
@@ -4288,6 +4416,19 @@ function showRouteLibraryModal(focusSave) {
             },
           });
         })
+        // Then the backup: every setting, ticked or not. A device that never backed up meets an
+        // existing backup with a question, so a new phone does not replace the real one.
+        .then(res => (typeof gdriveBackupSettings !== 'function' || (res && res.needsChoice)) ? res
+          : gdriveBackupSettings({
+            resolveFirstBackup: async at => {
+              const when = at ? new Date(at).toLocaleString(window.__navLang === 'he' ? 'he-IL' : 'en-GB') : '';
+              const ask = typeof S.routeLibraryGdriveFirstBackup === 'function' ? S.routeLibraryGdriveFirstBackup(when)
+                : 'Google Drive has a settings backup from ' + when + '. Restore it on this device?';
+              if (await appConfirm(ask, S.routeLibraryGdriveRestore || 'Restore')) return 'restore';
+              return (await appConfirm(S.routeLibraryGdriveReplaceBackup ||
+                'Replace the backup on Google Drive with this device\u2019s settings?')) ? 'replace' : 'abort';
+            },
+          }).then(b => (b && b.restored) ? Object.assign({}, res, { applied: true }) : res))
         .then(res => {
           if (res && res.needsChoice) {
             setStatus(S.routeLibraryGdriveSettingsSkipped ||
@@ -4309,7 +4450,7 @@ function showRouteLibraryModal(focusSave) {
         })
         .then(() => { syncBtn.disabled = false; });
     };
-    gd.append(syncBtn, setLabel, setHint, status);
+    gd.append(syncBtn, restoreBtn, setLabel, setHint, status);
     body.append(gd);
   }
 
@@ -4515,7 +4656,11 @@ function runSearch() {
     hits.push(...perSource[i].slice(0, take));
     budget -= take;
   }
-  if (!hits.length) { closeSearch(); return; }
+  if (!hits.length) {
+    closeSearch();
+    if (!multi) showOtherChartHint(lastToken);
+    return;
+  }
   wpResults.innerHTML = '';
   const wpField = S.navWpSearchField;
   const afField = S.airfieldLabelField;
@@ -5686,6 +5831,10 @@ document.getElementById('plan').onclick = openFlightPlan;
 document.getElementById('freq-table').onclick = showFreqTableModal;
 document.getElementById('alt-pairs').onclick = showAltitudePairsModal;
 (function () {
+  const btn = document.getElementById('storage-manage');
+  if (btn && typeof showStorageModal === 'function') btn.onclick = showStorageModal;
+}());
+(function () {
   // The nav log sits with the other tables, not beside Plan: it is a different document, and a
   // pilot reaching for the plan in the air must not land on a sheet of exercise arithmetic.
   const btn = document.getElementById('nav-log');
@@ -5873,7 +6022,11 @@ window.followMeNewLinkOffered = followMeNewLinkOffered;
     // sharing yesterday and have since thought better of who has it.
     if (newBtn) {
       const held = !!(f && typeof f._stored === 'function' && f._stored());
-      newBtn.hidden = !followMeOffered() || !followMeNewLinkOffered() || !held;
+      // Only the gist removes it. With no link on this device there is nothing to retire: dimmed,
+      // and a tap says so (never hide a button).
+      newBtn.hidden = !followMeOffered() || !followMeNewLinkOffered();
+      if (!held) setButtonWhy(newBtn, S.whyFollowMeNoLink || 'No follow-me link on this device yet: the next share makes one');
+      else if (newBtn.dataset.why) setButtonWhy(newBtn, null);
       newBtn.disabled = status === 'stopping';
     }
     const active = status !== 'idle';
@@ -6750,6 +6903,24 @@ document.getElementById('wpname-cb').onchange = e => {
   catch (err) { /* storage unavailable */ }
   draw();
 };
+// Names turned with their leg's kite (draw.js wpNameAngle). On by default.
+const WPNAME_ANGLE_KEY = 'navaid.autoWpNameAngle';
+try {
+  const sa = lsGet(WPNAME_ANGLE_KEY);
+  if (sa !== null) window.autoWpNameAngle = sa === '1';
+} catch (e) { /* storage unavailable */ }
+{
+  const cb = document.getElementById('wpname-angle-cb');
+  if (cb) {
+    cb.checked = autoWpNameAngle;
+    cb.onchange = (e) => {
+      window.autoWpNameAngle = e.target.checked;
+      try { localStorage.setItem(WPNAME_ANGLE_KEY, autoWpNameAngle ? '1' : '0'); }
+      catch (err) { /* storage unavailable */ }
+      draw();
+    };
+  }
+}
 // The panel while a position is showing. Off by default: in flight the map is what is being
 // read, and a tap meant to check where you are -- or a stray one on a kneeboard -- should not
 // put a waypoint panel over the chart. But that rule had no control on screen and no voice,
@@ -8168,6 +8339,14 @@ function refreshSettingsAircraft() {
     const el = acEl(id);
     if (el && document.activeElement !== el) el.value = Number(a[f]) > 0 ? a[f] : '';
   }
+  // Reserve: a set value is shown; left unset, the global default shows as the placeholder so the
+  // figure the fuel check actually uses is never a mystery (0 is a real choice and is kept).
+  const reserveEl = acEl('ac-reserve');
+  if (reserveEl && document.activeElement !== reserveEl) {
+    reserveEl.value = Number.isFinite(Number(a.reserveMin)) && a.reserveMin !== '' && a.reserveMin != null ? a.reserveMin : '';
+    const def = typeof tune === 'function' ? tune('defaultReserveMin') : 45;
+    reserveEl.placeholder = String(def);
+  }
   // The climb rate: the one the profile is drawn with (window.profileVS), the aircraft's otherwise.
   const climb = acEl('ac-climb-fpm');
   if (climb && document.activeElement !== climb) {
@@ -8188,11 +8367,17 @@ function refreshSettingsAircraft() {
       ? lab.dataset.baseTitle + ' — ' + S.aircraftChangedFrom(d) : lab.dataset.baseTitle;
     if (changed) any = true;
   }
+  // The Settings window's fuel boxes (wireAircraftSettings), while it is open.
+  for (const [id, f] of [['acs-gph', 'gph'], ['acs-taxi', 'taxiGal']]) {
+    const el = document.getElementById(id);
+    if (el && document.activeElement !== el) el.value = Number(a[f]) >= 0 ? a[f] : '';
+  }
   const restore = acEl('ac-restore');
   if (restore) {
-    restore.hidden = !listed;
-    restore.textContent = listed ? (typeof S.tbAircraftRestore === 'function' ? S.tbAircraftRestore(a.type) : 'Restore ' + a.type + ' figures') : '';
-    if (typeof setButtonWhy === 'function') setButtonWhy(restore, any ? null : (S.whyAircraftAsType || 'Every figure is the type’s already'));
+    // Dimmed, never hidden: a type typed under Other has no figures of its own to restore.
+    restore.textContent = typeof S.tbAircraftRestore === 'function' ? S.tbAircraftRestore(listed ? a.type : (a.type || '\u2014')) : 'Restore figures';
+    if (typeof setButtonWhy === 'function') setButtonWhy(restore, !listed ? (S.whyAircraftNoTypeFigures || 'This type has no listed figures to restore')
+      : any ? null : (S.whyAircraftAsType || 'Every figure is the type’s already'));
   }
   const del = acEl('ac-profile-delete');
   if (del && typeof setButtonWhy === 'function') setButtonWhy(del, prof ? null : (S.whyAcNoProfile || 'Choose one of your own aircraft first'));
@@ -8314,6 +8499,22 @@ window.refreshSettingsAircraft = refreshSettingsAircraft;
       draw();
     });
   }
+  // Reserve minutes: unlike the figures above, 0 is a valid choice and an empty box means
+  // "use the default", so it is stored or cleared explicitly rather than ignored when not > 0.
+  const reserveEl = acEl('ac-reserve');
+  if (reserveEl) reserveEl.addEventListener('input', () => {
+    const raw = reserveEl.value.trim();
+    const base = aircraft || { gph: tune('defaultGph'), taxiGal: tune('defaultTaxiGal') };
+    if (raw === '') { aircraft = Object.assign({}, base); delete aircraft.reserveMin; }
+    else {
+      const v = parseInt(raw, 10);
+      if (!(v >= 0)) return;
+      aircraft = Object.assign({}, base, { reserveMin: Math.min(120, v) });
+    }
+    if (typeof saveAircraft === 'function') saveAircraft();
+    refreshSettingsAircraft();
+    draw();
+  });
   // Climb rate: the aircraft's figure and the rate the profile and the map's TOC are drawn with.
   const climb = acEl('ac-climb-fpm');
   if (climb) climb.addEventListener('input', () => {
@@ -8349,6 +8550,78 @@ window.refreshSettingsAircraft = refreshSettingsAircraft;
   refreshSettingsAircraft();
 })();
 
+// Settings -> Route -> Aircraft: the aircraft panel in a window of its own, so the pilot's aircraft
+// can be set up and seen without a route (asked: "the planes can only be defined or seen if there
+// is a route"). The panel is the flight plan's own, moved in while the window is open and put back
+// where it was; its figures popover is the window's body. The two fuel figures the plan shows as
+// its Gal/hour and Taxi boxes are here too, so the whole aircraft is set in one place.
+(function wireAircraftSettings() {
+  const btn = document.getElementById('aircraft-settings');
+  if (!btn || !AC_PANEL) return;
+  const fuelRow = (id, label, title, min, max, step) => {
+    const lab = document.createElement('label');
+    lab.className = 'ac-field';
+    lab.title = title || '';
+    const sp = document.createElement('span');
+    sp.textContent = label;
+    const inp = document.createElement('input');
+    inp.type = 'number'; inp.id = id; inp.min = min; inp.max = max; inp.step = step;
+    inp.inputMode = 'decimal';
+    lab.append(sp, inp);
+    return lab;
+  };
+  btn.addEventListener('click', () => {
+    if (typeof createDraggableModal !== 'function' || document.querySelector('.ac-settings-modal')) return;
+    // With no flight plan open nothing has loaded the aircraft in use yet: the stored one.
+    const planOpen = typeof fpOpen !== 'undefined' && fpOpen;
+    if (!aircraft && !planOpen && typeof loadAircraft === 'function') loadAircraft();
+    const from = AC_PANEL.parentNode;
+    const next = AC_PANEL.nextSibling;
+    const fig = acEl('ac-custom');
+    const wasOpen = !!(fig && fig.open);
+    const m = createDraggableModal(S.tbAircraft || 'Aircraft', 'modal ac-settings-modal', () => {
+      for (const id of ['acs-gph', 'acs-taxi']) { const el = document.getElementById(id); if (el) el.closest('label').remove(); }
+      if (fig) fig.open = wasOpen;
+      // Back where it was -- or home, if that was a flight plan that has closed meanwhile.
+      const home = document.getElementById('ac-panel-home');
+      if (from && from.isConnected) from.insertBefore(AC_PANEL, next && next.parentNode === from ? next : null);
+      else if (home) home.appendChild(AC_PANEL);
+      if (typeof refreshSettingsAircraft === 'function') refreshSettingsAircraft();
+    });
+    const body = document.createElement('div');
+    body.className = 'ac-settings-body';
+    body.appendChild(AC_PANEL);
+    m.box.appendChild(body);
+    // Fuel burn and the taxi allowance: the aircraft's, as the plan's boxes set them. In the
+    // figures' own grid, after the fuel it carries, and taken out again when the window closes.
+    const gphRow = fuelRow('acs-gph', S.tbGph, S.tbGphTitle, 1, 50, 0.5);
+    const taxiRow = fuelRow('acs-taxi', S.tbTaxiGal, S.tbTaxiGalTitle, 0, 20, 0.1);
+    gphRow.dataset.field = 'gph';
+    taxiRow.dataset.field = 'taxiGal';
+    const grid = AC_PANEL.querySelector('.ac-custom-grid');
+    const usable = AC_PANEL.querySelector('.ac-field[data-field="usableGal"]');
+    if (grid) grid.insertBefore(taxiRow, usable ? usable.nextSibling : null);
+    if (grid) grid.insertBefore(gphRow, taxiRow);
+    if (fig) fig.open = true;
+    for (const [id, f] of [['acs-gph', 'gph'], ['acs-taxi', 'taxiGal']]) {
+      const el = body.querySelector('#' + id);
+      el.addEventListener('input', () => {
+        const v = parseFloat(el.value);
+        if (!(f === 'taxiGal' ? v >= 0 : v > 0)) return;
+        aircraft = Object.assign({}, aircraft || { gph: tune('defaultGph'), taxiGal: tune('defaultTaxiGal') }, { [f]: v });
+        if (typeof saveAircraft === 'function') saveAircraft();
+        // The open plan's own box follows, and its fuel figures with it.
+        const fpBox = document.getElementById(f === 'gph' ? 'aircraft-gph' : 'aircraft-taxi');
+        if (fpBox) { fpBox.value = v; fpBox.dispatchEvent(new Event('input')); }
+        refreshSettingsAircraft();
+        draw();
+      });
+    }
+    m.show();
+    refreshSettingsAircraft();                                // on the page now: its boxes filled
+  });
+})();
+
 const routeCheckBtn = document.getElementById('route-check-btn');
 // Dim, never hide: with the feature withdrawn by the gist the button stayed fully enabled
 // and show() returned silently, so the control looked live and did nothing at all when
@@ -8370,6 +8643,22 @@ const notamListBtn = document.getElementById('notam-list-btn');
 const notamControls = document.getElementById('notam-controls');
 const notamTimeEl = document.getElementById('notam-time');
 const notamTimeVal = document.getElementById('notam-time-val');
+// NOTAM feed age. The file carries generatedAt; past notamStaleHours since then the pilot is
+// warned the list may be out of date -- the feed can wedge (the IAA site's bot wall), and a
+// day-old list that looks current is the false-safe this app refuses elsewhere. 0 h = never warn.
+function notamAgeHours() {
+  if (!notamMeta || !notamMeta.generatedAt) return null;
+  const t = new Date(notamMeta.generatedAt);
+  if (isNaN(t)) return null;
+  return (Date.now() - t.getTime()) / 3600000;
+}
+function notamStale() {
+  const h = typeof tune === 'function' ? tune('notamStaleHours') : 6;
+  if (!(h > 0)) return false;
+  const age = notamAgeHours();
+  return age != null && age > h;
+}
+window.notamStale = notamStale;
 const notamUpdatedEl = document.getElementById('notam-updated');
 function refreshNotamListBtn() {
   const have = Array.isArray(notams) && notams.length;
@@ -8419,11 +8708,16 @@ function refreshNotamListBtn() {
   // Feed freshness, shown in the panel (not just the list modal).
   if (notamUpdatedEl) {
     let txt = '';
+    const stale = notamStale();
     if (notamMeta && notamMeta.generatedAt) {
       const t = new Date(notamMeta.generatedAt);
-      if (!isNaN(t) && S.notamUpdated) txt = S.notamUpdated(t.toISOString().slice(0, 16).replace('T', ' ') + 'Z');
+      if (!isNaN(t) && S.notamUpdated) {
+        txt = S.notamUpdated((typeof notamStampUtc === 'function' ? notamStampUtc(t) : t.toISOString().slice(0, 16).replace('T', ' ') + 'Z'));
+        if (stale && S.notamStaleNote) txt += ' \u2014 ' + S.notamStaleNote;
+      }
     }
     notamUpdatedEl.textContent = txt;
+    notamUpdatedEl.classList.toggle('notam-stale', stale && !!txt);
   }
 }
 // Shared time-slider clock: "HH:MMZ", prefixed with "MM-DD " when the instant
@@ -8746,9 +9040,15 @@ function showNotamModal(only, opts) {
     const ic = Array.from(new Set(subset.map(n => String(n.icao || '').toUpperCase()).filter(Boolean)));
     const scope = ic.length === 1 ? notamAirfieldLabel(ic[0]) : 'LLLL';
     const fresh = subset.filter(n => notamIsNew(n, seenBefore, firstRun)).length;
-    h.textContent = (S.notamModalTitle || 'Active NOTAMs') + ' (' + scope + ') — ' + subset.length
-      + (fresh ? ' · ' + (typeof S.notamNewCount === 'function'
-        ? S.notamNewCount(fresh) : fresh + ' new') : '');
+    // Bidi: in Hebrew the title is an RTL line, and the "<total> · <new> new" tail reorders --
+    // the two numbers swap, or the whole count flips, however it is wrapped. First-strong-isolate
+    // each piece -- the scope, the total, the new count -- so every number keeps LTR while the
+    // dash, the middot and the Hebrew "new" flow with the line. (U+2068 FSI, U+2069 PDI.)
+    const fsi = (x) => '\u2068' + x + '\u2069';
+    const word = S.notamNewWord || 'new';
+    const count = fsi(subset.length) + (fresh ? ' \u00b7 ' + fsi(fresh) + ' ' + word : '');
+    h.textContent = (S.notamModalTitle || 'Active NOTAMs')
+      + ' (' + fsi(scope) + ') \u2014 ' + count;
   };
   updateTitle(shown);
   box.appendChild(h);
@@ -8763,7 +9063,11 @@ function showNotamModal(only, opts) {
     const u = document.createElement('div');
     u.className = 'notam-updated';
     const t = new Date(notamMeta.generatedAt);
-    if (!isNaN(t)) u.textContent = (S.notamUpdated ? S.notamUpdated(t.toISOString().slice(0, 16).replace('T', ' ') + 'Z') : '');
+    if (!isNaN(t)) {
+      let txt = (S.notamUpdated ? S.notamUpdated((typeof notamStampUtc === 'function' ? notamStampUtc(t) : t.toISOString().slice(0, 16).replace('T', ' ') + 'Z')) : '');
+      if (notamStale() && S.notamStaleNote) { txt += ' \u2014 ' + S.notamStaleNote; u.classList.add('notam-stale'); }
+      u.textContent = txt;
+    }
     box.appendChild(u);
   }
   // Airfield/global filter. Every NOTAM carries an ICAO: LLLL = FIR-wide
@@ -10132,7 +10436,7 @@ function refreshMetUpdated(kind) {
   const meta = kind === 'sigmet' ? window.sigmetMeta : window.airmetMeta;
   const t = meta && meta.generatedAt ? new Date(meta.generatedAt) : null;
   const txt = (t && !isNaN(t) && typeof S.notamUpdated === 'function')
-    ? S.notamUpdated(t.toISOString().slice(0, 16).replace('T', ' ') + 'Z') : '';
+    ? S.notamUpdated((typeof notamStampUtc === 'function' ? notamStampUtc(t) : t.toISOString().slice(0, 16).replace('T', ' ') + 'Z')) : '';
   el.textContent = txt;
   el.hidden = !(on && txt);
 }
@@ -10246,15 +10550,21 @@ if (lsaCb) {
 // once areas load). Clicking a row zooms to it and highlights it.
 function refreshLsaListBtn() {
   const onLsa = typeof layerDataPrefix === 'function' && layerDataPrefix() === 'lsa';
-  // The whole LSA control group belongs to the Low Alt layer only — bubbles
-  // exist nowhere else, so hide the toggle + list button on other layers.
+  // The bubbles exist on the Low Alt layer only. The toggle and the list button used to be hidden
+  // everywhere else; never hide a button -- dimmed, and a tap says where they are (asked: "never
+  // hide buttons").
   const grp = document.getElementById('lsa-group');
-  if (grp) grp.hidden = !onLsa;
-  // The list button follows the overlay toggle too: with bubbles hidden, the
-  // list's "locate" would zoom to an unpainted bubble (drawAreas early-returns),
-  // so the button is only shown when the overlay is actually on.
+  if (grp) grp.hidden = false;
+  const offLayer = onLsa ? '' : (S.whyLsaOtherChart || 'LSA bubbles are on the Low Alt chart: switch Chart to it');
+  if (typeof setLayerIdle === 'function') setLayerIdle('lsa-cb', !onLsa, offLayer);
+  // The list follows the overlay too: with the bubbles off, its "locate" would zoom to a bubble
+  // that is not drawn (drawAreas early-returns) -- so it is dimmed then, with the reason.
   const btn = document.getElementById('lsa-list-btn');
-  if (btn) btn.hidden = !(onLsa && showLsaBubbles && Array.isArray(areas) && areas.length > 0);
+  if (btn) {
+    btn.hidden = false;
+    setButtonWhy(btn, offLayer || (!showLsaBubbles ? (S.whyLsaBubblesOff || 'Turn on Show LSA bubbles first')
+      : (!(Array.isArray(areas) && areas.length > 0) ? (S.whyLsaNoAreas || 'The LSA bubbles have not loaded yet') : null)));
+  }
 }
 function showLsaChart() {
   if (typeof closeOpenChartModals === 'function') closeOpenChartModals();
@@ -11277,25 +11587,42 @@ if (THEME_SELECT_EL) {
     catch (err) { /* storage unavailable */ }
   };
 }
-// Clear store: wipe every navaid.* key (routes, saved-route library, all
-// settings) from local + session storage, then reload to a clean slate.
-const CLEAR_STORE_EL = document.getElementById('clear-store');
-if (CLEAR_STORE_EL) {
-  CLEAR_STORE_EL.onclick = async () => {
-    if (!(await appConfirm(S.tbClearStoreConfirm ||
-      'Delete ALL saved routes and settings stored on this device? This cannot be undone.'))) return;
-    // Suppress the beforeunload/visibilitychange autosave so reload() can't
-    // re-persist the in-memory route right after we wipe storage.
-    window.__clearingStore = true;
-    try {
-      Object.keys(localStorage).filter(k => k.indexOf('navaid.') === 0)
-        .forEach(k => localStorage.removeItem(k));
-      Object.keys(sessionStorage).filter(k => k.indexOf('navaid.') === 0)
-        .forEach(k => sessionStorage.removeItem(k));
-    } catch (e) { /* storage unavailable */ }
-    location.reload();
+// Date format: how every user-visible date is written (navDateFormat / fmtDate in core.js).
+// Changing it redraws so a shown stamp -- the NOTAM "updated" line -- re-renders at once.
+const DATE_FORMAT_EL = document.getElementById('date-format');
+if (DATE_FORMAT_EL) {
+  DATE_FORMAT_EL.value = (typeof navDateFormat === 'function') ? navDateFormat() : 'dmy';
+  DATE_FORMAT_EL.onchange = () => {
+    const v = DATE_FORMAT_EL.value;
+    try { localStorage.setItem('navaid.dateFormat', (v === 'mdy' || v === 'ymd') ? v : 'dmy'); }
+    catch (err) { /* storage unavailable */ }
+    if (typeof draw === 'function') draw();
+    if (typeof refreshNotamListBtn === 'function') refreshNotamListBtn();
   };
 }
+// Clear store: wipe every navaid.* key (routes, saved-route library, all
+// settings) from local + session storage, then reload to a clean slate.
+// The nuclear reset: wipe every navaid.* key (local + session) and reload to a clean
+// slate. Called from the Storage window's last-resort row (showStorageModal). Returns
+// false if the pilot backs out of the confirm.
+async function navClearLocalStore() {
+  if (!(await appConfirm(S.tbClearStoreConfirm ||
+    'Delete ALL saved routes and settings stored on this device? This cannot be undone.'))) return false;
+  // Suppress the beforeunload/visibilitychange autosave so reload() can't
+  // re-persist the in-memory route right after we wipe storage.
+  window.__clearingStore = true;
+  try {
+    Object.keys(localStorage).filter(k => k.indexOf('navaid.') === 0)
+      .forEach(k => localStorage.removeItem(k));
+    Object.keys(sessionStorage).filter(k => k.indexOf('navaid.') === 0)
+      .forEach(k => sessionStorage.removeItem(k));
+  } catch (e) { /* storage unavailable */ }
+  location.reload();
+  return true;
+}
+window.navClearLocalStore = navClearLocalStore;
+// The wipe is reached only from the Settings > Storage window now (the former toolbar
+// button in Export/Import was removed), where it is the marked last resort.
 const ALPHA_KEY = 'navaid.yellowAlpha';
 try {
   const v = parseFloat(lsGet(ALPHA_KEY));
@@ -14230,6 +14557,7 @@ const NavWxTime = (function () {
   // -- the gist withdrawing it, or a live position hiding it, frees the row again.
   const reseatLegend = () => {
     if (typeof window.reconcileLegendPosition === 'function') window.reconcileLegendPosition();
+    if (typeof publishLegendDockWidth === 'function') publishLegendDockWidth();
   };
   // The inspector is rebuilt from scratch on every selection, so what it contains cannot be
   // asked once. Watching it is cheaper than making every caller that opens or closes a panel
@@ -15441,6 +15769,7 @@ NavAid.defaultVisibilityMap = [
   ['vor-cb', 'navaid.showVorStations', 'defaultShowVor'],
   ['hotspot-cb', 'navaid.showHotspots2', 'defaultShowHotspots'],
   ['wpname-cb', 'navaid.showWpNames', 'defaultShowWpNames'],
+  ['wpname-angle-cb', 'navaid.autoWpNameAngle', 'defaultAutoWpNameAngle'],
   ['cumtime-cb', 'navaid.showCumTime', 'defaultShowCumTime'],
   ['drift-cb', 'navaid.showDrift', 'defaultShowDrift'],
   // Not a layer, but the same contract: a gist default until the pilot says otherwise, and

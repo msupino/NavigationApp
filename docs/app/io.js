@@ -1023,6 +1023,13 @@ function validateAirfields(d) {
     if (Object.prototype.hasOwnProperty.call(a, 'runwayLengthM')) {
       _v(a, 'runwayLengthM', 'number', p, errs);
     }
+    if (Object.prototype.hasOwnProperty.call(a, 'runwayDims') && _v(a, 'runwayDims', 'array', p, errs)) {
+      a.runwayDims.forEach((r, j) => {
+        if (!r || typeof r.rwy !== 'string' || !Number.isFinite(r.lengthM) || !Number.isFinite(r.widthM)) {
+          errs.push(p + '.runwayDims[' + j + ']: expected { rwy: string, lengthM: number, widthM: number }');
+        }
+      });
+    }
     if (Object.prototype.hasOwnProperty.call(a, 'atis')) {
       _v(a, 'atis', 'string', p, errs);
     }
@@ -1539,7 +1546,8 @@ function fplParkingUntilLabel() {
 // reads: "260902" sat next to a formatted "02/09/2026" in the same message.
 function fplDofToDisplay(dof) {
   const m = /^(\d{2})(\d{2})(\d{2})$/.exec(String(dof || ''));
-  return m ? `${m[3]}/${m[2]}/20${m[1]}` : '';
+  if (!m) return '';
+  return (typeof fmtDate === 'function') ? fmtDate(new Date(Date.UTC(2000 + +m[1], +m[2] - 1, +m[3]))) : `${m[3]}/${m[2]}/20${m[1]}`;
 }
 
 function fplDofToIsoDate(dof) {
@@ -3623,6 +3631,7 @@ function refreshPageButtons() {
 // match the CURRENT page frame. Called on every page change so toggling A3/A4
 // while the (non-modal) print panel is open updates the warning live.
 function updateExportPageWarn() {
+  if (typeof window.__exportShowRes === 'function') window.__exportShowRes();
   const w = document.getElementById('export-page-warn');
   if (!w) return;
   if (!pageSize) {
@@ -3955,6 +3964,23 @@ function flightPlanCsv(table, scrollArea) {
     if (idx > 0) rows.push([]);
     addTable(rows, idx === 0 ? S.flightPlan : S.fpReturn, planTable);
   });
+  // The go/no-go fuel block, when it is shown (an aircraft is set), as label,value pairs so the
+  // export carries exactly what the pilot sees under the table.
+  const fs = (scrollArea.parentElement || document).querySelector('#fp-fuel-summary');
+  if (fs && !fs.hidden) {
+    rows.push([]);
+    rows.push([S.fpFuelCheck || 'Fuel check']);
+    fs.querySelectorAll('.fp-fuel-row').forEach(row => {
+      if (row.hidden) return;
+      const k = row.querySelector('.fp-fuel-k');
+      const vEl = row.querySelector('.fp-fuel-v');
+      const input = row.querySelector('input');
+      const v = input ? input.value : (vEl ? vEl.textContent : '');
+      rows.push([(k ? k.textContent : ''), v]);
+    });
+    const warn = fs.querySelector('.fp-fuel-warn');
+    if (warn && !warn.hidden && warn.textContent.trim()) rows.push([warn.textContent]);
+  }
   return rows.map(row => row.map(csvCell).join(',')).join('\r\n') + '\r\n';
 }
 
@@ -4210,6 +4236,7 @@ function showFlightPlan() {
   if (state.legs.length === 0) { refuse(S.errNoLegs); return; }
   closeOpenChartModals();
   clearOpenChartModal();
+  closePrintPanel();
   // 'flight-plan' variant: backdrop is transparent + pointer-events: none so
   // the map underneath stays interactive (waypoint drag, pan, etc.) while
   // the plan is open. The modal box itself opts back into pointer events.
@@ -4259,7 +4286,8 @@ function showFlightPlan() {
     // The aircraft panel goes back to its home, ready for the next plan.
     const panel = document.getElementById('ac-panel');
     const home = document.getElementById('ac-panel-home');
-    if (panel && home && panel.parentNode !== home) home.appendChild(panel);
+    // Not while the Settings aircraft window holds it: that window puts it home as it closes.
+    if (panel && home && panel.parentNode !== home && !panel.closest('.ac-settings-body')) home.appendChild(panel);
   };
 
   loadAircraft();
@@ -5022,6 +5050,132 @@ function showFlightPlan() {
   const mobileSummary = document.createElement('div');
   mobileSummary.id = 'fp-mobile-summary';
 
+  // The go/no-go fuel block (issue #668): trip burn + reserve + any alternate, their sum against
+  // the tanks, the fuel left and how long the tanks last. A popover in the tools row (like Columns
+  // and the departure time) so it never steals the leg table's height; its button carries the
+  // verdict (remaining, or a red over-tank warning) so the pilot sees go/no-go without opening it.
+  // Built once; refresh() fills it, and the whole control hides when there is no aircraft (then
+  // every figure would be a guess). Alternate fuel is the one editable figure here, kept with the
+  // filing profile (navaid.fpl.altGal, Drive-synced).
+  const fuelSummary = document.createElement('details');
+  fuelSummary.id = 'fp-fuel-summary';
+  fuelSummary.className = 'fp-fuel';
+  const fsBtn = document.createElement('summary');
+  const fsBtnLabel = document.createElement('span');
+  fsBtnLabel.className = 'fp-fuel-btn-label';
+  fsBtnLabel.textContent = S.fpFuelCheck || 'Fuel check';
+  const fsBadge = document.createElement('span');
+  fsBadge.className = 'fp-fuel-badge';
+  fsBadge.dir = 'ltr';
+  fsBtn.append(fsBtnLabel, fsBadge);
+  fuelSummary.appendChild(fsBtn);
+  const fsMenu = document.createElement('div');
+  fsMenu.className = 'fp-fuel-menu';
+  const fsGrid = document.createElement('div');
+  fsGrid.className = 'fp-fuel-grid';
+  // One label/value row; `key` tags it so refresh() and the CSV can find it.
+  const fuelRow = (key, cls) => {
+    const row = document.createElement('div');
+    row.className = 'fp-fuel-row' + (cls ? ' ' + cls : '');
+    row.dataset.k = key;
+    const k = document.createElement('span');
+    k.className = 'fp-fuel-k';
+    const v = document.createElement('span');
+    v.className = 'fp-fuel-v';
+    v.dir = 'ltr';
+    row.appendChild(k); row.appendChild(v);
+    fsGrid.appendChild(row);
+    return { row, k, v };
+  };
+  const fsTrip = fuelRow('trip');
+  const fsReserve = fuelRow('reserve');
+  // Alternate: an optional gallons input, not a computed figure.
+  const fsAltRow = document.createElement('div');
+  fsAltRow.className = 'fp-fuel-row fp-fuel-alt-row';
+  fsAltRow.dataset.k = 'alt';
+  const fsAltLabel = document.createElement('span');
+  fsAltLabel.className = 'fp-fuel-k';
+  fsAltLabel.textContent = S.fpFuelAltLabel || 'Alternate (gal)';
+  const fsAltInput = document.createElement('input');
+  fsAltInput.type = 'number';
+  fsAltInput.id = 'fp-fuel-alt';
+  fsAltInput.min = '0'; fsAltInput.max = '200'; fsAltInput.step = '0.5';
+  fsAltInput.inputMode = 'decimal';
+  fsAltInput.className = 'fp-fuel-alt-input';
+  fsAltInput.dir = 'ltr';
+  fsAltInput.setAttribute('aria-label', S.fpFuelAltLabel || 'Alternate (gal)');
+  try { fsAltInput.value = (localStorage.getItem(FPL_PROFILE_PREFIX + 'altGal') || '').trim(); } catch (e) { /* storage off */ }
+  fsAltRow.appendChild(fsAltLabel); fsAltRow.appendChild(fsAltInput);
+  fsGrid.appendChild(fsAltRow);
+  // A full-width rule between the parts and their sum (the rows are grid `display:contents`, so the
+  // separator cannot live as a row border -- it spans both columns as its own grid child).
+  const fsDiv = document.createElement('div');
+  fsDiv.className = 'fp-fuel-div';
+  fsGrid.appendChild(fsDiv);
+  const fsRequired = fuelRow('required', 'fp-fuel-required');
+  const fsRemaining = fuelRow('remaining', 'fp-fuel-remaining');
+  const fsEndurance = fuelRow('endurance');
+  const fsWarn = document.createElement('div');
+  fsWarn.className = 'fp-fuel-warn';
+  // Announce an over-tank finding (or the missing-usable hint) without stealing focus mid-edit.
+  fsWarn.setAttribute('aria-live', 'polite');
+  fsWarn.hidden = true;
+  fsMenu.appendChild(fsGrid);
+  fsMenu.appendChild(fsWarn);
+  fuelSummary.appendChild(fsMenu);
+  // A gallons figure for the block: one decimal, with the unit as its own isolated run so RTL
+  // keeps "12.3 gal" in order. Blank renders as an em dash.
+  const fuelGal = n => (n == null || !Number.isFinite(n)) ? '—' : n.toFixed(1) + ' gal';
+  const fuelHM = m => Math.floor(m / 60) + ':' + String(Math.round(m % 60)).padStart(2, '0');
+  // Fill the block from the trip burn (tf, taxi already in it) and the aircraft. Hidden with no
+  // aircraft; the over-tank warning and Remaining need usable fuel to be set too.
+  function fillFuelSummary(tripGal, ac) {
+    const gph = ac && Number(ac.gph) > 0 ? Number(ac.gph) : 0;
+    if (!ac || !(gph > 0) || !(tripGal > 0)) { fuelSummary.hidden = true; return; }
+    fuelSummary.hidden = false;
+    const reserveMin = Number.isFinite(Number(ac.reserveMin)) && ac.reserveMin !== '' && ac.reserveMin != null
+      ? Number(ac.reserveMin) : (typeof tune === 'function' ? tune('defaultReserveMin') : 45);
+    const reserveGal = gph * reserveMin / 60;
+    let altGal = parseFloat(fsAltInput.value);
+    if (!(altGal > 0)) altGal = 0;
+    const required = tripGal + reserveGal + altGal;
+    const usable = Number(ac.usableGal) > 0 ? Number(ac.usableGal) : null;
+    fsTrip.k.textContent = S.fpFuelTrip || 'Trip';
+    fsTrip.v.textContent = fuelGal(tripGal);
+    fsReserve.k.textContent = typeof S.fpFuelReserveMin === 'function'
+      ? S.fpFuelReserveMin(reserveMin) : (S.fpFuelReserve || 'Reserve');
+    fsReserve.v.textContent = fuelGal(reserveGal);
+    fsAltRow.hidden = false;
+    fsRequired.k.textContent = S.fpFuelRequired || 'Total required';
+    fsRequired.v.textContent = fuelGal(required);
+    fsRemaining.k.textContent = S.fpFuelRemaining || 'Remaining';
+    fsRemaining.v.textContent = usable != null ? fuelGal(usable - required) : '—';
+    const over = usable != null && required > usable + 1e-6;
+    fsRemaining.row.classList.toggle('fp-fuel-short', over);
+    fsEndurance.k.textContent = S.fpFuelEndurance || 'Endurance';
+    fsEndurance.v.textContent = usable != null ? fuelHM(usable / gph * 60) : '—';
+    if (over) {
+      fsWarn.hidden = false;
+      fsWarn.classList.remove('fp-fuel-note');   // red warning, not the muted hint
+      fsWarn.textContent = typeof S.fpFuelOver === 'function' ? S.fpFuelOver((required - usable).toFixed(1)) : 'Over tanks';
+    } else if (usable == null) {
+      fsWarn.hidden = false;
+      fsWarn.classList.add('fp-fuel-note');
+      fsWarn.textContent = S.fpFuelNoUsable || '';
+    } else {
+      fsWarn.hidden = true;
+      fsWarn.classList.remove('fp-fuel-note');
+    }
+    // The verdict on the closed button: the fuel left, with a warning sign (not colour alone) and
+    // a red button when the route is over the tanks, so go/no-go reads without opening the popover.
+    fuelSummary.classList.toggle('fp-fuel-over', over);
+    fsBadge.textContent = usable == null ? '—' : (over ? '⚠ ' : '') + fuelGal(usable - required);
+  }
+  fsAltInput.addEventListener('input', () => {
+    try { localStorage.setItem(FPL_PROFILE_PREFIX + 'altGal', fsAltInput.value.trim()); } catch (e) { /* storage off */ }
+    fillFuelSummary(window.__fpTripGal || 0, aircraft);
+  });
+
   const tfoot = document.createElement('tfoot');
   const trF = document.createElement('tr');
   const tdLabel = document.createElement('td');
@@ -5238,6 +5392,9 @@ function showFlightPlan() {
     totFuelCell.textContent = ac ? tf.toFixed(1) : '--';
     totCumTimeCell.textContent = totTimeCell.textContent;
     totCumFuelCell.textContent = totFuelCell.textContent;
+    // The go/no-go fuel block, from the same trip total shown above (taxi already in `tf`).
+    window.__fpTripGal = ac ? tf : 0;
+    fillFuelSummary(ac ? tf : 0, ac);
     refreshWhen(etd, dep, zulu, lastVisible, arrival, firstVisible);
     // Keep the narrow-screen summary in step with the table it summarises.
     if (mobileSummary) {
@@ -5458,6 +5615,11 @@ function showFlightPlan() {
     retRefresh();
     scrollArea.appendChild(rtable);
   }
+  // The fuel check is a popover in the tools row, right after Columns -- not inline under the
+  // table, where it shrank the leg list on a height-capped modal, nor below it, where it scrolled
+  // out of sight. The button carries the verdict; the popover holds the breakdown.
+  if (colWrap && colWrap.parentElement) colWrap.insertAdjacentElement('afterend', fuelSummary);
+  else fpTools.appendChild(fuelSummary);
   syncFpColumnVisibility();
 
 
@@ -5847,7 +6009,7 @@ function showMetList(kind, list) {
   if (gen && !isNaN(gen) && typeof S.notamUpdated === 'function') {
     const u = document.createElement('div');
     u.className = 'notam-updated';
-    u.textContent = S.notamUpdated(gen.toISOString().slice(0, 16).replace('T', ' ') + 'Z');
+    u.textContent = S.notamUpdated((typeof notamStampUtc === 'function' ? notamStampUtc(gen) : gen.toISOString().slice(0, 16).replace('T', ' ') + 'Z'));
     box.appendChild(u);
   }
   const listEl = document.createElement('div');
@@ -5975,6 +6137,14 @@ function exportPrintOnTopLine() {
   heads.forEach(h => { const t = h.getBoundingClientRect().top; if (t < minTop) minTop = t; });
   return printHead.getBoundingClientRect().top <= minTop + 6;
 }
+// Print and the flight plan are both wide panels over the map; open together they covered
+// each other (reported with a screenshot). Opening either closes the other. Closing Print
+// this way is a Cancel: its preview (overlays, layer, opacity, card) is put back.
+function closePrintPanel() {
+  const back = document.querySelector('.modal-back.export-options');
+  if (back && typeof back._navaidClose === 'function') back._navaidClose();
+}
+
 function showExportModal() {
   // This dialog owns fixed control IDs used by the live preview helpers below.
   // Repeated toolbar activation used to append another copy. getElementById()
@@ -5986,6 +6156,7 @@ function showExportModal() {
     if (focusTarget && typeof focusTarget.focus === 'function') focusTarget.focus();
     return;
   }
+  if (typeof fpOpen !== 'undefined' && fpOpen && typeof closeFlightPlan === 'function') closeFlightPlan();
   if (!aircraft && typeof loadAircraft === 'function') loadAircraft();   // for the plan card's Fuel column
   // On desktop the print/export menu floats opposite the inspector.
   // It starts on the left in LTR and the right in RTL.
@@ -6223,12 +6394,22 @@ function showExportModal() {
   resSlider.style.cssText = 'flex:1;height:16px;accent-color:#ffd966';
   resSlider.setAttribute('aria-label', resLbl.textContent);
   const resVal = document.createElement('span');
-  resVal.style.cssText = 'min-width:4.5em;text-align:end;font-size:12px';
+  resVal.style.cssText = 'min-width:4.5em;text-align:end;font-size:12px;white-space:nowrap';
+  const resDpi = document.createElement('div');
+  resDpi.id = 'export-res-dpi';
+  resDpi.className = 'export-res-dpi';
+  resDpi.hidden = true;
+  resSlider.setAttribute('aria-describedby', 'export-res-dpi');
   const resName = (v) => ({ low: S.exportResLow || 'Low', medium: S.exportResMedium || 'Medium',
     high: S.exportResHigh || 'High' })[v];
   const showRes = () => {
     const v = PRINT_RES_STEPS[Number(resSlider.value)] || 'high';
+    // The quality is finer than any screen, so the panel says what it means on paper instead.
+    // Its own line under the slider: beside the step name it was clipped in the panel.
+    const dpi = exportDpiFor(v);
     resVal.textContent = resName(v);
+    resDpi.textContent = dpi ? S.exportResDpi(dpi) : '';
+    resDpi.hidden = !dpi;
     resSlider.setAttribute('aria-valuetext', resVal.textContent);
     return v;
   };
@@ -6237,8 +6418,12 @@ function showExportModal() {
     const v = showRes();
     try { localStorage.setItem(PRINT_RES_KEY, v); } catch (e) { /* private */ }
   });
+  // A page chosen, changed or cleared, or the map zoomed, changes the dpi: keep it current.
+  window.__exportShowRes = showRes;
+  map.on('zoomend', showRes);
   resRow.append(resLbl, resSlider, resVal);
   body.appendChild(resRow);
+  body.appendChild(resDpi);
 
   // Black-and-white printer: the chart in light grey, the route black on white (exportPNG).
   // Remembered on this device -- it is about the printer here, not the pilot's other devices.
@@ -6251,7 +6436,9 @@ function showExportModal() {
   bwCb.checked = printBwOn();
   bwCb.addEventListener('change', () => {
     try { localStorage.setItem(PRINT_BW_KEY, bwCb.checked ? '1' : '0'); } catch (e) { /* private */ }
+    setPrintBwPreview(bwCb.checked);
   });
+  setPrintBwPreview(bwCb.checked);
   bwLabel.appendChild(bwCb);
   bwLabel.appendChild(document.createTextNode(S.exportBw || 'Optimized for a black-and-white printer'));
   body.appendChild(bwLabel);
@@ -6289,6 +6476,7 @@ function showExportModal() {
     map.addLayer(layers[chosen]);
   }
   draw();
+  showRes();                   // now on the layer the export will draw
 
   // Buttons.
   const btns = document.createElement('div');
@@ -6525,6 +6713,7 @@ function showExportModal() {
     for (const n in layers) if (map.hasLayer(layers[n])) map.removeLayer(layers[n]);
     map.addLayer(layers[chosen]);
     applyMapOpacity();
+    showRes();                 // a chart's own sharpest tiles set the dpi
   };
 
   opSlider.oninput = function () {
@@ -6543,6 +6732,9 @@ function showExportModal() {
   // — with no panel on screen — still ran restoreOrig() and reverted the overlay
   // toggles, base layer, map opacity and the placed card.
   function close() {
+    setPrintBwPreview(false);
+    map.off('zoomend', showRes);
+    if (window.__exportShowRes === showRes) window.__exportShowRes = null;
     removeCardDrag();
     document.removeEventListener('keydown', onEsc);
     if (window.__exportSyncPlaceThrough === syncPlaceThrough) window.__exportSyncPlaceThrough = null;
@@ -6881,6 +7073,87 @@ function exportProgress(total) {
   };
 }
 
+// The dpi a framed export gets at quality step `res`, for the readout beside Quality (null with
+// no page: the image is then a multiple of the screen, not a paper size). A4 x2 cuts its two A4s
+// from an A3-sized frame at the same scale, so it reads as A3.
+function exportDpiFor(res) {
+  const fr = typeof pageFrameRect === 'function' ? pageFrameRect() : null;
+  if (!fr || fr.w < 4 || fr.h < 4 || !pageSize) return null;
+  let base = null;
+  for (const n in layers) if (map.hasLayer(layers[n])) base = layers[n];
+  if (!base || !base._url) return null;
+  const cs = [[fr.x, fr.y], [fr.x + fr.w, fr.y], [fr.x + fr.w, fr.y + fr.h], [fr.x, fr.y + fr.h]]
+    .map(p => map.containerPointToLatLng(p));
+  const nw = { lat: Math.max(...cs.map(c => c.lat)), lng: Math.min(...cs.map(c => c.lng)) };
+  const se = { lat: Math.min(...cs.map(c => c.lat)), lng: Math.max(...cs.map(c => c.lng)) };
+  const plan = exportPixelPlan(base, true, fr, nw, se, res);
+  const longMm = pageSize === 'A4' ? 297 : 420;
+  return Math.round(Math.max(plan.W, plan.H) / (longMm / 25.4));
+}
+window.exportDpiFor = exportDpiFor;
+
+// Black-and-white, what you see is what prints: while the Print panel is open with the box
+// ticked, the screen shows the chart and route the way the mono export draws them -- the same
+// chart filter (on the map's tiles) and the same route colours (PRINT_BW_TUNES).
+function setPrintBwPreview(on) {
+  const was = document.documentElement.classList.contains('print-bw-preview');
+  document.documentElement.classList.toggle('print-bw-preview', !!on);
+  document.documentElement.style.setProperty('--print-bw-filter', PRINT_BW_CHART_FILTER);
+  NavAid.printOverride = on ? PRINT_BW_TUNES : null;
+  if (was !== !!on && typeof draw === 'function') draw();
+}
+window.setPrintBwPreview = setPrintBwPreview;
+
+// The image an export will make, at quality step `res`: the tile zoom it draws from, the scale
+// of its tile canvas, and the output size in pixels. Shared by exportPNG and the Print panel's
+// dpi readout, so the number beside Quality is the number the file gets.
+function exportPixelPlan(base, framed, fr, bbNWll, bbSEll, res) {
+  const nativeMax = base.options.maxNativeZoom || base.options.maxZoom || 13;
+  const mapZoom = map.getZoom();
+  const ua = (typeof navigator !== 'undefined' && navigator.userAgent) || '';
+  const safari = /AppleWebKit/.test(ua) && !/Chrome|Chromium|Android/.test(ua);
+  const android = /Android/.test(ua);
+  // Pixels per canvas: Safari's own ceiling; a phone's memory in the APK / Android (two canvases
+  // of 32 M is ~250 MB); more on a computer.
+  const MAX_AREA = safari ? 16000000 : android ? 32000000 : 48000000;
+  const MAX_SIDE = 16384;
+  const MAX_TILES = 1200;
+  // Output pixels per screen pixel, and the tile zoom they are drawn from.
+  let z = framed ? nativeMax : Math.min(nativeMax, Math.max(7, Math.ceil(mapZoom + 1)));
+  const resScale = PRINT_RES_SCALE[res] || 1;
+  let pps = (framed ? Math.pow(2, z - mapZoom) : 2) * resScale;
+  let bbNWP, bbSEP, Wbb, Hbb, k = 1;
+  const measure = () => {
+    bbNWP = map.project([bbNWll.lat, bbNWll.lng], z);
+    bbSEP = map.project([bbSEll.lat, bbSEll.lng], z);
+    Wbb = Math.round(bbSEP.x - bbNWP.x);
+    Hbb = Math.round(bbSEP.y - bbNWP.y);
+    return Math.ceil(Wbb / 256 + 1) * Math.ceil(Hbb / 256 + 1);
+  };
+  while (z > 7 && measure() > MAX_TILES) { z--; if (framed) pps = Math.pow(2, z - mapZoom) * resScale; }
+  measure();
+  for (let guard = 0; guard < 8; guard++) {
+    k = pps / Math.pow(2, z - mapZoom);              // the tile canvas's scale against zoom z
+    const f = Math.min(1,
+      Math.sqrt(MAX_AREA / Math.max(1, Wbb * k * Hbb * k)),
+      Math.sqrt(MAX_AREA / Math.max(1, fr.w * pps * fr.h * pps)),
+      MAX_SIDE / Math.max(1, Wbb * k, Hbb * k, fr.w * pps, fr.h * pps));
+    pps *= f; k *= f;
+    // Under half the tiles' own detail, a level coarser carries the same picture in a quarter
+    // of the tiles.
+    if (k <= 0.5 + 1e-9 && z > 7) { z--; measure(); continue; }
+    break;
+  }
+  // Whole-pixel tiles, so they lie edge to edge with no hairline between them.
+  const ts = Math.max(1, Math.round(256 * k));
+  k = ts / 256;
+  pps = k * Math.pow(2, z - mapZoom);
+
+  const W = Math.round(fr.w * pps);
+  const H = Math.round(fr.h * pps);
+  return { z, pps, k, ts, bbNWP, bbSEP, Wbb, Hbb, W, H, mapZoom };
+}
+
 function exportPNG(mode) {
   // Export matches the screen view exactly, including map bearing.
   // Tiles are fetched north-up (axis-aligned) for a bounding box that covers
@@ -6949,50 +7222,8 @@ function exportPNG(mode) {
   // browser makes (Safari about 16.7 M pixels, others far more; kept to 48 M here for the
   // memory of two of them), and when a page is larger than that the image is scaled down
   // smoothly from the sharp tiles instead of a level coarser.
-  const nativeMax = base.options.maxNativeZoom || base.options.maxZoom || 13;
-  const mapZoom = map.getZoom();
-  const ua = (typeof navigator !== 'undefined' && navigator.userAgent) || '';
-  const safari = /AppleWebKit/.test(ua) && !/Chrome|Chromium|Android/.test(ua);
-  const android = /Android/.test(ua);
-  // Pixels per canvas: Safari's own ceiling; a phone's memory in the APK / Android (two canvases
-  // of 32 M is ~250 MB); more on a computer.
-  const MAX_AREA = safari ? 16000000 : android ? 32000000 : 48000000;
-  const MAX_SIDE = 16384;
-  const MAX_TILES = 1200;
-  // Output pixels per screen pixel, and the tile zoom they are drawn from.
-  let z = framed ? nativeMax : Math.min(nativeMax, Math.max(7, Math.ceil(mapZoom + 1)));
-  const resScale = PRINT_RES_SCALE[printRes()] || 1;
-  let pps = (framed ? Math.pow(2, z - mapZoom) : 2) * resScale;
-  let bbNWP, bbSEP, Wbb, Hbb, k = 1;
-  const measure = () => {
-    bbNWP = map.project([bbNWll.lat, bbNWll.lng], z);
-    bbSEP = map.project([bbSEll.lat, bbSEll.lng], z);
-    Wbb = Math.round(bbSEP.x - bbNWP.x);
-    Hbb = Math.round(bbSEP.y - bbNWP.y);
-    return Math.ceil(Wbb / 256 + 1) * Math.ceil(Hbb / 256 + 1);
-  };
-  while (z > 7 && measure() > MAX_TILES) { z--; if (framed) pps = Math.pow(2, z - mapZoom) * resScale; }
-  measure();
-  for (let guard = 0; guard < 8; guard++) {
-    k = pps / Math.pow(2, z - mapZoom);              // the tile canvas's scale against zoom z
-    const f = Math.min(1,
-      Math.sqrt(MAX_AREA / Math.max(1, Wbb * k * Hbb * k)),
-      Math.sqrt(MAX_AREA / Math.max(1, fr.w * pps * fr.h * pps)),
-      MAX_SIDE / Math.max(1, Wbb * k, Hbb * k, fr.w * pps, fr.h * pps));
-    pps *= f; k *= f;
-    // Under half the tiles' own detail, a level coarser carries the same picture in a quarter
-    // of the tiles.
-    if (k <= 0.5 + 1e-9 && z > 7) { z--; measure(); continue; }
-    break;
-  }
-  // Whole-pixel tiles, so they lie edge to edge with no hairline between them.
-  const ts = Math.max(1, Math.round(256 * k));
-  k = ts / 256;
-  pps = k * Math.pow(2, z - mapZoom);
-
-  // Output canvas: the frame at that resolution.
-  const W = Math.round(fr.w * pps);
-  const H = Math.round(fr.h * pps);
+  const plan = exportPixelPlan(base, framed, fr, bbNWll, bbSEll, printRes());
+  const { z, pps, k, ts, bbNWP, bbSEP, Wbb, Hbb, W, H } = plan;
   const Wc = Math.ceil(Wbb * k), Hc = Math.ceil(Hbb * k);
 
   // Intermediate canvas: north-up tile composite covering the bounding box.
@@ -8370,7 +8601,10 @@ function renderFreqTable(freqSection) {
     .filter(o => {
       const key = typeof commCallSignIdKey === 'function'
         ? commCallSignIdKey(o.id) : String(o.id || '').trim().toUpperCase();
-      return key && usedIds.has(key);
+      // Keep a call sign that a route references (usedIds), and always an airfield's own primary
+      // (idToIcao maps it to an ICAO). Otherwise the table showed a field's secondary/clearance
+      // but not its tower -- Eilat 122.00 with no 119.00 -- for fields no route happens to cross.
+      return key && (usedIds.has(key) || !!idToIcao[key]);
     })
     .sort((a, b) => {
       // By ICAO, which is what the row shows and what a pilot looks up. A call sign with no
@@ -8412,6 +8646,33 @@ function renderFreqTable(freqSection) {
       if (notam && !parts.length) {
         afFreqRows.push({ af, flabel: fld[1], notam, readOnly: true,
           part: { label: '', freq: notam.freq, def: notam.freq, key: '', overridden: false } });
+      }
+    }
+    // The call-sign catalog carries more than the primary -- a secondary tower frequency, and
+    // ground / approach / TMA at Ben Gurion. The inspector shows them editable; mirror that here
+    // so every published frequency can be found and corrected in one table. Same override map and
+    // "<ICAO>|cat:<field>" key as the inspector, so an edit in one shows in the other.
+    const csId = (typeof AIRFIELD_CALL_SIGN_IDS === 'object' && AIRFIELD_CALL_SIGN_IDS
+      && Object.prototype.hasOwnProperty.call(AIRFIELD_CALL_SIGN_IDS, af.name))
+      ? AIRFIELD_CALL_SIGN_IDS[af.name] : null;
+    const crow = (csId && typeof commCatalogCallSignRow === 'function')
+      ? commCatalogCallSignRow(csId) : null;
+    if (crow) {
+      const extra = [
+        ['secondary', S.secondary || 'Secondary'], ['ground', S.ground || 'Ground'],
+        ['groundWest', S.groundWest || 'Ground W'], ['groundEast', S.groundEast || 'Ground E'],
+        ['appPrimary', S.approach || 'Approach'], ['appSecondary', S.approachSecondary || 'Approach 2'],
+        ['tmaPrimary', S.tma || 'TMA'], ['tmaSecondary', S.tmaSecondary || 'TMA 2'],
+      ];
+      const ovr = typeof airfieldFreqOverrides === 'function' ? airfieldFreqOverrides() : {};
+      for (const [field, flabel] of extra) {
+        const base = crow[field] && String(crow[field]).trim();
+        if (!base) continue;
+        const def = typeof commFormatFreq === 'function' ? commFormatFreq(base) : base;
+        const key = af.name + '|cat:' + field;
+        const o = ovr[key];
+        afFreqRows.push({ af, flabel, notam: null, publishedDef: def,
+          part: { label: '', freq: (o || def), def, key, overridden: !!o && o !== def } });
       }
     }
   }
@@ -8985,6 +9246,148 @@ function showFreqTableModal() {
   modal.box.appendChild(scrollArea);
   modal.show();
 }
+
+// Settings > Storage: how much of the browser's per-site room this device's saved data
+// uses, what it is, and a one-tap clear of the rebuildable cache. Opens as a plain modal
+// (a maintenance action, not a chart), and rebuilds its own body after a clear so the
+// figures update without reopening.
+function showStorageModal() {
+  const fmt = (b) => (typeof navStorageFmtBytes === 'function' ? navStorageFmtBytes(b) : (b + ' B'));
+  // A number+unit ("28 KB", "5 MB", "1%") is a Latin run. Several of them in one line with a
+  // Hebrew word between (the "28 KB מתוך 5 MB · 1%" readout) reorder under bidi unless each run
+  // is isolated, which turned the Hebrew line into "MB · 1% 5 מתוך KB 28". Each measurement goes
+  // in its own isolated LTR span so the runs keep their order in both directions.
+  const ltr = (txt) => {
+    const s = document.createElement('span');
+    s.dir = 'ltr';
+    s.style.unicodeBidi = 'isolate';
+    s.textContent = txt;
+    return s;
+  };
+  const modal = createDraggableModal(S.tbStorage || 'Storage', 'modal');
+  const body = document.createElement('div');
+  body.className = 'storage-modal-body';
+  modal.box.appendChild(body);
+
+  function render() {
+    body.textContent = '';
+    const u = (typeof navStorageUsage === 'function')
+      ? navStorageUsage()
+      : { total: 0, cats: {}, reclaimable: 0, budget: 5 * 1024 * 1024 };
+    const pct = u.budget > 0 ? Math.min(100, Math.round(u.total / u.budget * 100)) : 0;
+
+    // The headline: a bar that fills as the store fills, turning amber then red as it nears
+    // the cap, with the used-of-total figure beside it. Colour is never the only signal --
+    // the figure and the percent say the same.
+    const bar = document.createElement('div');
+    bar.className = 'storage-bar';
+    const fill = document.createElement('div');
+    fill.className = 'storage-bar-fill' + (pct >= 90 ? ' is-full' : pct >= 70 ? ' is-high' : '');
+    fill.style.width = pct + '%';
+    bar.appendChild(fill);
+    body.appendChild(bar);
+
+    const usedLine = document.createElement('div');
+    usedLine.className = 'storage-used';
+    usedLine.appendChild(ltr(fmt(u.total)));
+    usedLine.appendChild(document.createTextNode(' ' + (S.storageOf || 'of') + ' '));
+    usedLine.appendChild(ltr(fmt(u.budget)));
+    usedLine.appendChild(document.createTextNode(' · '));
+    usedLine.appendChild(ltr(pct + '%'));
+    body.appendChild(usedLine);
+
+    const note = document.createElement('p');
+    note.className = 'storage-note';
+    note.textContent = S.storageBudgetNote || '';
+    body.appendChild(note);
+
+    // Breakdown: the pilot's own data first, the rebuildable cache last, each shown only
+    // when it holds something. Sizes are right-aligned (tabular) so they line up.
+    const rows = [
+      ['routes', S.storageCatRoutes], ['freqs', S.storageCatFreqs],
+      ['aircraft', S.storageCatAircraft], ['other', S.storageCatOther],
+      ['cache', S.storageCatCache], ['preview', S.storageCatPreview],
+    ].filter(([k]) => (u.cats[k] || 0) > 0);
+    if (rows.length) {
+      const h = document.createElement('div');
+      h.className = 'storage-breakdown-title';
+      h.textContent = S.storageBreakdownTitle || '';
+      body.appendChild(h);
+      const list = document.createElement('div');
+      list.className = 'storage-breakdown';
+      rows.forEach(([k, label]) => {
+        const row = document.createElement('div');
+        row.className = 'storage-row';
+        const name = document.createElement('span');
+        name.className = 'storage-row-name';
+        name.textContent = label || k;
+        const size = ltr(fmt(u.cats[k]));
+        size.className = 'storage-row-size';
+        row.appendChild(name);
+        row.appendChild(size);
+        list.appendChild(row);
+      });
+      body.appendChild(list);
+    }
+
+    const actions = document.createElement('div');
+    actions.className = 'storage-actions';
+    const clear = document.createElement('button');
+    clear.type = 'button';
+    clear.className = 'storage-clear-btn';
+    clear.textContent = S.storageClearCache || 'Clear cache';
+    if (u.reclaimable <= 0) {
+      clear.disabled = true;
+      clear.title = S.storageNothingToClear || '';
+    }
+    clear.onclick = async () => {
+      if (typeof appConfirm === 'function'
+        && !(await appConfirm(S.storageClearConfirm || 'Clear the rebuildable cache?',
+          S.storageClearCache, S.tbStorage))) return;
+      const freed = (typeof navClearReclaimable === 'function') ? navClearReclaimable() : 0;
+      if (typeof showToast === 'function') {
+        showToast((typeof S.storageCleared === 'function')
+          ? S.storageCleared(fmt(freed)) : ('Cleared ' + fmt(freed)));
+      }
+      render();
+    };
+    actions.appendChild(clear);
+    body.appendChild(actions);
+
+    const hint = document.createElement('p');
+    hint.className = 'storage-hint';
+    hint.textContent = S.storageTrimHint || '';
+    body.appendChild(hint);
+
+    // The nuclear reset, kept apart below a rule and in the danger style so it never reads as
+    // the safe clear above: wipe everything on this device (the same action, and the same
+    // confirm, as the toolbar's Clear local store). A last resort when the safe reclaim and
+    // deleting old recordings are not enough.
+    const sep = document.createElement('hr');
+    sep.className = 'storage-danger-sep';
+    body.appendChild(sep);
+    const wipe = document.createElement('button');
+    wipe.type = 'button';
+    wipe.className = 'storage-wipe-btn danger';
+    // navPlainLabel drops the leading glyph: this is a plain in-window button, not a toolbar
+    // one the icon pass redraws, and it sits beside the icon-less safe clear above it.
+    wipe.textContent = (typeof navPlainLabel === 'function')
+      ? navPlainLabel(S.tbClearStore || 'Clear local store')
+      : (S.tbClearStore || 'Clear local store');
+    wipe.onclick = () => {
+      if (typeof navClearLocalStore === 'function') navClearLocalStore();   // asks, then wipes + reloads
+    };
+    body.appendChild(wipe);
+    const wipeNote = document.createElement('p');
+    wipeNote.className = 'storage-hint';
+    wipeNote.textContent = S.storageWipeNote || '';
+    body.appendChild(wipeNote);
+  }
+
+  render();
+  modal.show();
+}
+window.showStorageModal = showStorageModal;
 
 function altitudePairSegmentsForChart() {
   if (legAltitudeDataset && Array.isArray(legAltitudeDataset.segments)) {

@@ -6,6 +6,7 @@
   ],
   "words": [
     "baro",
+    "freqs",
     "hectopascals",
     "pressurised",
     "Behaviour",
@@ -69,6 +70,8 @@
     "wspd",
     "דיווח",
     "חובה",
-    "סוג"
+    "סוג",
+    "rebuildable",
+    "refetched"
   ]
 }

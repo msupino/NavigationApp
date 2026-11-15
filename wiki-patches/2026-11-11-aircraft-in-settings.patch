@@ -1,0 +1,44 @@
+From 2bb8e19f6a5f8908309c2f3240453b9e832265b9 Mon Sep 17 00:00:00 2001
+From: Marco <marco@supino.org>
+Date: Wed, 11 Nov 2026 05:54:08 +0000
+Subject: [PATCH] Flight Plan: the aircraft is also set in Settings, Route,
+ Aircraft, with no route
+
+---
+ Flight-Plan-he.md | 4 ++++
+ Flight-Plan.md    | 4 ++++
+ 2 files changed, 8 insertions(+)
+
+diff --git a/Flight-Plan-he.md b/Flight-Plan-he.md
+index bf292c7..1523ae3 100644
+--- a/Flight-Plan-he.md
++++ b/Flight-Plan-he.md
+@@ -64,6 +64,10 @@
+ 
+ מעל הטבלה, שורת **כלי טיס**:
+ 
++אותו כלי טיס נמצא גם ב**הגדרות ← מסלול ← כלי טיס**, ושם לא צריך מסלול: אפשר להוסיף, לבחור ולשנות
++את כלי הטיס שלך (אות קריאה, סוג מטוס, כל הנתונים, גלון/שעה והסעה והמראה) עוד לפני שיש תוכנית.
++זה אותו כלי טיס, ולכן שינוי במקום אחד מופיע גם בשני.
++
+ - **המטוס** — מזוהה לפי **אות הקריאה** שלו: הקוד ש[טופס תוכנית הטיסה](Submit-Flight-Plan-he) מגיש
+   אחרי <span dir="ltr"><code>4X-</code></span> (למשל <span dir="ltr"><code>CRW</code></span>), ומופיע ברשימה כ-<span dir="ltr"><code>4X-CRW (C172)</code></span>. אותה אות קריאה פעמיים
+   היא אותו מטוס. עד שנותנים לו אות קריאה הוא **ללא אות קריאה (C172)** — C172 כברירת מחדל.
+diff --git a/Flight-Plan.md b/Flight-Plan.md
+index 210d16e..0b453b2 100644
+--- a/Flight-Plan.md
++++ b/Flight-Plan.md
+@@ -65,6 +65,10 @@ above the table. The return-route table has no ETAs: it is a separate flight.
+ 
+ Above the table, the **Aircraft** row:
+ 
++The same aircraft is also in **Settings → Route → Aircraft**, which needs no route: there you can
++add, pick and change your aircraft (call sign, type, every figure, Gal/h and Taxi) before there is a
++plan. It is one aircraft, so a change in either place shows in the other.
++
+ - **The aircraft** — keyed by its **call sign**: the code the [flight plan form](Submit-Flight-Plan)
+   files after `4X-` (e.g. `CRW`), listed as `4X-CRW (C172)`. The same call sign twice is the same
+   aircraft. Until you give it one it is **No call sign (C172)** — C172 by default.
+-- 
+2.43.0
+

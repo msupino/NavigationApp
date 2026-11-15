@@ -220,7 +220,11 @@ test('the open inspector follows new reports for its selected aircraft', async (
 
   await expect(page.locator('#insp-body')).toContainText('17200 ft');
   await expect(page.locator('#insp-body')).toContainText('401 kt');
-  await expect(page.locator('#insp-body')).toContainText('301°');
+  // The feed's track is true; the read-out gives magnetic (as every direction in NavAid) and
+  // true (as the feed reported it), each marked.
+  const mag = await page.evaluate(() => String(toMagnetic(301.2)).padStart(3, '0') + '°M');
+  expect(mag).not.toBe('301°M');                  // Israel's variation moves it
+  await expect(page.locator('#insp-body')).toContainText(mag + ' \u00b7 301°T');
   await expect(page.locator('#insp-body')).toContainText(/32°07\.2/);
 });
 
@@ -515,7 +519,7 @@ test('the endpoint is settable, and the panel gives it a text field', async ({ p
   expect(control.exists).toBe(true);
   expect(control.type).toBe('text');
   expect(control.range).toBe(false);       // not a slider for a URL
-  expect(control.value).toContain('adsb.lol');
+  expect(control.value).toContain('opendata.adsb.fi');
 });
 
 // Asked: "can ADS-B show a helicopter? it shows planes only, even if it is a heli". A helicopter
@@ -706,4 +710,67 @@ test('the traffic inspector links to the aircraft on the feed’s own map', asyn
     state.selected = { type: 'traffic', hex: 'abcdef' }; showInspector();
   });
   await expect(page.locator('#insp-traffic-view')).toHaveCount(0);
+});
+
+// Reported: "followed plane is in corner", then "check mobile follow as well". A zoom scales the
+// map about the middle of the whole map, but the followed aircraft is held in the middle of the
+// part you can see, so each zoom carried it further off, into a corner. It is put back the
+// moment a zoom ends; and after a pan it comes back when the pan's grace ends, not at the next
+// report. On a desktop with the panel at the side, and a phone with the panel as a bottom sheet.
+for (const [dev, vp] of [['desktop', { width: 1000, height: 506 }], ['phone', { width: 390, height: 844 }]]) {
+  test(`a followed aircraft stays where it is held when the map zooms or after a pan, ${dev}`, async ({ page }) => {
+    await page.setViewportSize(vp);
+    await boot(page);
+    await page.evaluate(() => map.setView([32.10, 34.90], 10));
+    await page.locator('.traffic-mark').first().click({ force: true });
+    await page.locator('#insp-traffic-follow').click();
+    const at = () => page.evaluate(() => {
+      const p = map.latLngToContainerPoint([32.10, 34.90]);
+      return { x: Math.round(p.x), y: Math.round(p.y) };
+    });
+    const held = await at();
+    expect(await seen(page, 32.10, 34.90)).toEqual({ onMap: true, underPanel: false });
+    // Zoom in twice and out once, as the buttons do (no gesture on the map, so no grace).
+    for (const dz of [1, 1, -1]) {
+      await page.evaluate((dz) => map.setZoom(map.getZoom() + dz, { animate: false }), dz);
+      const now = await at();
+      expect(Math.abs(now.x - held.x)).toBeLessThanOrEqual(2);
+      expect(Math.abs(now.y - held.y)).toBeLessThanOrEqual(2);
+    }
+    // A pan holds the view for its grace period, then the aircraft comes back -- with no report.
+    await page.evaluate(() => { setTune('followResumeMs', 800); setTune('trafficRefreshSec', 60); refreshTrafficFeature(); });
+    // Too small a move to ask the feed again: only the end of the grace can bring it back.
+    await page.evaluate(() => { gpsNoteUserMapMove(); map.panBy([28, 22], { animate: false }); });
+    const panned = await at();
+    expect(Math.abs(panned.x - held.x) + Math.abs(panned.y - held.y)).toBeGreaterThan(30);
+    await expect.poll(async () => {
+      const now = await at();
+      return Math.abs(now.x - held.x) <= 2 && Math.abs(now.y - held.y) <= 2;
+    }, { timeout: 3000 }).toBe(true);
+  });
+}
+
+// Reported with a screenshot (a desktop in a narrow window): with the bottom sheet taller than
+// half the map, the followed aircraft was centred on the whole map -- under the sheet.
+test('a followed aircraft stays above a bottom sheet taller than half the map', async ({ page }) => {
+  await page.setViewportSize({ width: 500, height: 700 });
+  await boot(page);
+  await page.evaluate(() => map.setView([32.10, 34.90], 10));
+  await page.locator('.traffic-mark').first().click({ force: true });
+  // The sheet as the screenshot had it: from just above the middle down to the bottom.
+  await page.evaluate(() => {
+    const el = document.getElementById('inspector');
+    el.style.top = Math.round(window.innerHeight * 0.48) + 'px';
+    el.style.bottom = '0px';
+    el.style.height = 'auto';
+  });
+  const sheet = await page.evaluate(() => {
+    const r = document.getElementById('inspector').getBoundingClientRect();
+    const m = map.getContainer().getBoundingClientRect();
+    return { top: r.top, mid: (m.top + m.bottom) / 2, wide: r.width >= m.width * 0.6 };
+  });
+  expect(sheet.wide).toBe(true);
+  expect(sheet.top).toBeLessThan(sheet.mid);              // the case that went wrong
+  await page.locator('#insp-traffic-follow').click();
+  expect(await seen(page, 32.10, 34.90)).toEqual({ onMap: true, underPanel: false });
 });

@@ -533,6 +533,11 @@ body:not(.deck-on) .tb-sec-row { gap: 4px; }
 .tb-sec-hint { display: none; }
 /* The phone's menu: each section a 52px row -- icon in a tile, title, a one-line hint, the
    chevron at the far edge. The 20px rows they replace were under half a fingertip. */
+/* The Flight plan has its own tab on the deck's bottom bar (deck.js), so the standalone Flight
+   plan button in the Menu sheet is a duplicate on the deck -- hide it there. The deck's Plan tab
+   still works: it presses this button by id, which fires even while it is display:none. The
+   desktop menubar (not .deck-on) has no bottom bar, so it keeps the button. */
+body.deck-on .tb-section.tb-standalone[data-sec="plan"] { display: none; }
 body.deck-on #deck-sheet .tb-section-head {
   min-height: 52px; padding: 6px 4px; gap: 12px; justify-content: flex-start;
   font-size: 16px; font-weight: 650; text-transform: none; letter-spacing: 0;
@@ -801,7 +806,8 @@ html[dir="rtl"] #toolbar {
 }
 #toolbar .slider-reset:hover { color: #fff; }
 #toolbar .navtoggle .hint { color: #8a8484; font-size: 12px; }
-#toolbar .navtoggle input[type="number"] {
+#toolbar .navtoggle input[type="number"],
+.ac-settings-body input[type="number"], .ac-settings-body input[type="text"] {
   width: 56px;
   font: inherit;
   font-size: 13px;
@@ -1481,6 +1487,11 @@ body.deck-on .leaflet-control.edit-col-ctrl {
 }
 /* The ruler without a position: dimmed the same way, still tappable to say why. */
 .leaflet-control.measure-ctrl button.is-dim { opacity: 0.45; }
+/* The in-flight buttons are always there (dim, never hide): without a position, dimmed the same way. */
+.leaflet-control.voice-ctrl button.is-dim,
+.leaflet-control.orient-ctrl button.is-dim,
+.leaflet-control.follow-ctrl button.is-dim,
+.leaflet-control.follow-me-ctrl button.is-dim { opacity: 0.45; }
 .leaflet-control.edit-col-ctrl button:focus-visible {
   outline: 2px solid #ffffff;
   outline-offset: 2px;
@@ -1557,7 +1568,7 @@ body.deck-on .leaflet-control.edit-col-ctrl {
    SIGMET lines step up past it, so nothing lands on it. Nothing to drag. */
 .leaflet-bottom.leaflet-right .leaflet-control.zulu-clock.zulu-fixed {
   position: absolute;
-  right: var(--navaid-map-ctrl-clear);
+  right: var(--navaid-map-ctrl-clear-low, var(--navaid-map-ctrl-clear));
   bottom: var(--navaid-zulu-fixed-bottom, 70px);
   top: auto;              /* the Hebrew top-left default sets these */
   left: auto;
@@ -1608,9 +1619,13 @@ body:not(.deck-on) .leaflet-bottom.leaflet-right:has(.zulu-clock.zulu-fixed) .si
 }
 @keyframes gps-rec-pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.35; } }
 @media (prefers-reduced-motion: reduce) { #gps-rec-indicator .gps-rec-dot { animation: none; } }
-/* Phone: under the GPS chip, which shares the row under the strip -- the wider pill would sit
-   on its end. */
-body.deck-on #gps-rec-indicator { top: calc(var(--navaid-deck-strip-h, 46px) + 48px); }
+/* Phone: no pill. It sat top-right under the strip and pushed the right-hand control column down
+   below it, so that on an iPhone the column no longer fitted and its top controls (voice, north
+   up) wrapped away from the right edge (reported: "find another place for the record, they should
+   not move from the right of the screen"). The deck's Record button is the sign there instead:
+   solid red with its icon pulsing while a flight records (.deck-btn-record below). */
+body.deck-on #gps-rec-indicator,
+body.deck-on.tour-live-preview #gps-rec-indicator { display: none !important; }
 /* Desktop: under the Zulu clock, on its side. At 58px it sat over the clock's last digits in
    English, and in Hebrew -- clock top-LEFT, the docked search card top-right -- under the card:
    recording showed nothing. */
@@ -1701,7 +1716,8 @@ html[dir="rtl"] .leaflet-control.zulu-clock {
 :root { --navaid-map-ctrl-clear: 52px; }
 .leaflet-bottom.leaflet-right .coord-readout {
   position: absolute;
-  right: var(--navaid-map-ctrl-clear);
+  /* The bottom row: clear of the controls that come down to it, not of a column wrapped above. */
+  right: var(--navaid-map-ctrl-clear-low, var(--navaid-map-ctrl-clear));
   bottom: 26px;            /* clears the Leaflet attribution row */
   margin: 0;
 }
@@ -1930,7 +1946,10 @@ body.theme-dark .leaflet-control-zoom a:hover {
 }
 .wp-search-item:hover,
 .wp-search-item.active { background: #1d6fe0; color: #fff; }
-#toolbar .navtoggle select {
+/* "Not in the waypoints shown, but in another chart's": a sentence, so it wraps. */
+.wp-search-item.wp-search-other-chart { white-space: normal; line-height: 1.35; }
+#toolbar .navtoggle select,
+.ac-settings-body select {
   font: inherit;
   font-size: 11px;
   color: #e8e8e8;
@@ -1958,7 +1977,8 @@ body.theme-dark .leaflet-control-zoom a:hover {
   cursor: pointer;
 }
 /* RTL: the chevron and the text padding swap sides with the layout. */
-html[dir="rtl"] #toolbar .navtoggle select {
+html[dir="rtl"] #toolbar .navtoggle select,
+html[dir="rtl"] .ac-settings-body select {
   padding: 2px 6px 2px 20px;
   background-position: left 6px center;
 }
@@ -2778,6 +2798,10 @@ body.theme-dark #toolbar button.gps-footer-btn[aria-pressed="true"] .footer-link
   /* Keep the compact icon row clear while idle. During GPS/simulator operation,
      heading / altitude / speed are live cockpit data and remain visible on the
      desktop/full-screen map as soon as the readout has a value. */
+  /* Icon-only here, flush like every other footer icon: the 12 px gaps the wrapped footer gives
+     the GPS group cost 48 px across five icons, and with Divert (#675) that wrapped the menubar
+     to a second row at 1280 px. The live readout keeps its own padding. */
+  :where(html.menubar) #toolbar > #footer-links .footer-gps-group { gap: 0; }
   :where(html.menubar) #toolbar .footer-gps-readout { display: none; }
   :where(html.menubar) #toolbar .footer-gps-readout.live-active:not(:empty) {
     display: inline;
@@ -2803,6 +2827,10 @@ body.theme-dark #toolbar button.gps-footer-btn[aria-pressed="true"] .footer-link
   font-size: 13px;
 }
 .notam-updated { font-size: 11px; opacity: 0.7; margin: 0 0 8px; }
+/* Stale feed: the freshness line becomes a caution (ui.js notamStale) -- the list may be missing
+   NOTAMs published since the last good scrape. Amber, full strength, in both themes. */
+.notam-updated.notam-stale { opacity: 1; font-weight: 600; color: #ffb74d; }
+body.theme-light .notam-updated.notam-stale { color: #9a5a00; }
 /* NOTAM time frame: "Active" is the default and "All" adds the ones not in force yet. The
    rows it adds carry when they start, so the extra items are distinguishable from the ones
    that matter now. */
@@ -3527,6 +3555,11 @@ body.theme-light .atc-inline.is-offline .atc-play { color: #c62828; border-color
 .row:has(> .val > .charts-freq-input) { flex-wrap: wrap; row-gap: 4px; }
 .row:has(> .val > .charts-freq-input) > label { margin-inline-end: 6px; }
 .row:has(> .val > .charts-freq-input) > .val { margin-inline-start: auto; }
+/* ...but the value box is dir="ltr" (a frequency reads left to right), and a logical margin follows
+   the box's OWN direction: in a Hebrew row "inline-start: auto" became margin-LEFT, which pushed the
+   value against its label -- so each row's box started wherever its label ended, and "ראשי" and
+   "קלירנס" stood at different places (reported). In Hebrew the free space is on the box's right. */
+html[dir="rtl"] .row:has(> .val > .charts-freq-input) > .val { margin-left: 0; margin-right: auto; }
 .row > .val > .charts-freq-input { flex: 0 1 96px; min-width: 76px; }
 .row > .val > .commchange-freq-reset,
 .row > .val > .atc-inline { flex: 0 0 auto; }
@@ -3560,6 +3593,22 @@ html:not([dir="rtl"]) .comm-section.has-atc .row:not(:has(.atc-inline)) > .val:h
   pointer-events: none;
 }
 .atc-fab-now[hidden] { display: none; }
+/* After atcNowLabelSec: only the airfield, on the button's lower edge, at the screen edge -- the
+   full label had sat across the chart's middle (reported). Still absolute: the column never moves. */
+.atc-fab-now.atc-fab-now-badge {
+  right: auto;
+  left: 50%;
+  top: auto;
+  bottom: -7px;
+  transform: translateX(-50%);
+  max-width: 64px;
+  padding: 1px 5px;
+  font: 700 10px/1.25 system-ui, sans-serif;
+  border-radius: 8px;
+  border-color: #fff;
+  background: var(--navaid-mapbtn-live, #1f8a4c);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.45);
+}
 .atc-fab {
   display: flex;
   align-items: center;
@@ -3774,6 +3823,80 @@ body.theme-light .modal-btns button.btn-secondary:hover { background: rgba(29, 1
 .point-choice-option:focus .point-choice-meta {
   color: #e9f1ff;
 }
+
+/* Diversion planner (#675): a card listing the nearest airfields; each row re-routes direct. */
+.divert-card { min-width: 240px; max-width: min(360px, 92vw); }
+.divert-source {
+  font-size: 12px;
+  color: #b9b3b3;
+  margin-bottom: 8px;
+}
+.divert-list {
+  display: grid;
+  gap: 8px;
+  max-height: 60vh;
+  overflow-y: auto;
+}
+.divert-option {
+  display: grid;
+  gap: 3px;
+  width: 100%;
+  padding: 9px 11px;
+  font: inherit;
+  color: #e8e8e8;
+  text-align: start;
+  background: #332f2f;
+  border: 1px solid #443f3f;
+  border-radius: 6px;
+  cursor: pointer;
+}
+.divert-option:hover,
+.divert-option:focus {
+  color: #fff;
+  background: #1d6fe0;
+  border-color: #2f7fee;
+  outline: none;
+}
+.divert-primary { font-size: 14px; font-weight: 700; }
+.divert-meta { font-size: 12px; color: #c7c1c1; font-variant-numeric: tabular-nums; }
+.divert-rwy { font-size: 11px; color: #9a9393; }
+.divert-option:hover .divert-meta,
+.divert-option:focus .divert-meta,
+.divert-option:hover .divert-rwy,
+.divert-option:focus .divert-rwy { color: #e9f1ff; }
+.divert-waiting { font-size: 13px; margin-bottom: 10px; }
+.divert-active-to { font-size: 14px; font-weight: 700; margin-bottom: 3px; }
+.divert-active-meta { font-size: 12px; color: #c7c1c1; font-variant-numeric: tabular-nums; margin-bottom: 10px; }
+.divert-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.divert-actions button {
+  font: inherit; font-size: 13px; font-weight: 600; cursor: pointer;
+  color: #e8e8e8; background: #342f2f; border: 1px solid #4a4444; border-radius: 6px;
+  padding: 6px 12px; min-height: 34px;
+}
+.divert-actions button:hover { background: #3d3838; }
+.divert-actions .divert-other { color: #9fd0ff; border-color: #335; }
+body.deck-on .divert-actions button { min-height: 44px; }
+/* Light theme */
+body.theme-light .divert-source,
+body.theme-light .divert-active-meta,
+body.theme-light .divert-meta { color: #566070; }
+body.theme-light .divert-rwy { color: #7a8494; }
+body.theme-light .divert-option {
+  color: #1f252c; background: #f6f8fb; border-color: #d4dae3;
+}
+body.theme-light .divert-option:hover,
+body.theme-light .divert-option:focus {
+  color: #fff; background: #1d6fe0; border-color: #2f7fee;
+}
+body.theme-light .divert-option:hover .divert-meta,
+body.theme-light .divert-option:focus .divert-meta,
+body.theme-light .divert-option:hover .divert-rwy,
+body.theme-light .divert-option:focus .divert-rwy { color: #e9f1ff; }
+body.theme-light .divert-actions button {
+  color: #1f252c; background: #fff; border-color: #c3cad4;
+}
+body.theme-light .divert-actions button:hover { background: #eef3f9; }
+body.theme-light .divert-actions .divert-other { color: #1d6fe0; border-color: #a9c7f0; }
 
 .route-template-modal {
   min-width: 320px;
@@ -4358,7 +4481,8 @@ body.deck-on .qtime select { min-height: 30px; font-size: 16px; }
 .fp-profile-canvas { width: 100%; height: 104px; display: block; border-radius: 4px; }
 .fp-columns,
 .fp-when,
-.ac-custom {
+.ac-custom,
+.fp-fuel {
   position: relative;
   align-self: flex-start;
   margin: 0 0 8px;
@@ -4367,7 +4491,8 @@ body.deck-on .qtime select { min-height: 30px; font-size: 16px; }
 }
 .fp-columns summary,
 .fp-when summary,
-.ac-custom summary {
+.ac-custom summary,
+.fp-fuel summary {
   display: inline-flex;
   align-items: center;
   gap: 6px;
@@ -4382,17 +4507,20 @@ body.deck-on .qtime select { min-height: 30px; font-size: 16px; }
 }
 .fp-columns summary::-webkit-details-marker,
 .fp-when summary::-webkit-details-marker,
-.ac-custom summary::-webkit-details-marker { display: none; }
+.ac-custom summary::-webkit-details-marker,
+.fp-fuel summary::-webkit-details-marker { display: none; }
 .fp-columns summary::after,
 .fp-when summary::after,
-.ac-custom summary::after {
+.ac-custom summary::after,
+.fp-fuel summary::after {
   content: '▾';
   font-size: 10px;
   color: #b9b3b3;
 }
 .fp-columns[open] summary,
 .fp-when[open] summary,
-.ac-custom[open] summary {
+.ac-custom[open] summary,
+.fp-fuel[open] summary {
   border-color: #1d6fe0;
   background: #332f2f;
 }
@@ -5331,6 +5459,16 @@ body.theme-dark .map-time input[type="range"] { background: rgba(20, 18, 18, 0.9
   body.theme-dark .map-time-now { background: rgba(20, 18, 18, 0.6); }
   body.theme-dark .map-time input[type="range"] { background: none; }
 }
+/* The phone's clock is one card, and in the dark theme the card stayed light: the readout's
+   light text sat on white and the hour in effect could not be read at all (reported: "the
+   slider on mobile doesn't show the in-effect time"). The card is dark like the coordinate
+   readout and the zoom keys beside it. */
+@media (max-width: 680px) {
+  body.theme-dark .map-time { background: rgba(20, 18, 18, 0.92); border-color: #3a3636; }
+  /* The hour the layers are showing is what the card is FOR: bold and readable at arm's
+     length, not the 11 px afterthought beside a 44 px Now button. */
+  .map-time-read { font-size: 13px; font-weight: 700; }
+}
 
 /* Legend for the airfield-wind barb styles, under its toolbar switch. */
 .af-wind-legend { font-size: 10px; opacity: 0.75; margin-block-start: 2px; }
@@ -6086,6 +6224,17 @@ html[dir="rtl"] .charts-airport-header.open::before { transform: rotate(-90deg);
   width: min(420px, 90vw);
 }
 #search-overlay.hidden { display: none; }
+/* Print open: the search panel steps aside (asked) -- it sat over the page frame being placed.
+   Only hidden, not closed: its query and its docked/shown preference come back with it. */
+body:has(> .modal-back.export-options) #search-overlay { display: none !important; }
+/* ...and so do the live aircraft (asked): traffic and NavAid pilots are never printed, so while
+   the page is being set up they are not in the way of seeing what will be. They return on close. */
+body:has(> .modal-back.export-options) :is(.leaflet-traffic-pane, .leaflet-followme-pane,
+  .leaflet-publicPilots-pane) { display: none !important; }
+/* Print's black-and-white preview: the chart as the mono export draws it (setPrintBwPreview). */
+html.print-bw-preview .leaflet-tile-pane { filter: var(--print-bw-filter); }
+.export-res-dpi { font-size: 12px; opacity: 0.8; margin-top: -4px; text-align: end; }
+.export-res-dpi[hidden] { display: none; }
 /* On a phone the deck's strip owns the top edge (and is taller with the Comm fail button):
    the search card opens below it, not under it. */
 body.deck-on #search-overlay { top: calc(var(--navaid-deck-strip-h, 46px) + 8px); }
@@ -6414,6 +6563,9 @@ body.theme-light #toolbar .slider-reset,
 body.theme-light #toolbar #export-select,
 body.theme-light #toolbar .navtoggle select,
 body.theme-light #toolbar .navtoggle input[type="number"],
+body.theme-light .ac-settings-body select,
+body.theme-light .ac-settings-body input[type="number"],
+body.theme-light .ac-settings-body input[type="text"],
 body.theme-light #wp-search,
 body.theme-light #search-overlay #wp-search,
 body.theme-light .row input[type="number"],
@@ -6433,6 +6585,7 @@ body.theme-light .fp-aircraft select,
 body.theme-light .fp-aircraft input,
 body.theme-light .fp-columns summary,
 body.theme-light .fp-when summary,
+body.theme-light .fp-fuel summary,
 body.theme-light .fp-columns-all,
 body.theme-light .plan-name,
 body.theme-light .plan-num,
@@ -6673,12 +6826,15 @@ body.theme-light .flight-table tfoot td {
 }
 body.theme-light .fp-columns,
 body.theme-light .fp-when,
+body.theme-light .fp-fuel,
 body.theme-light .ac-custom { color: #647184; }
 body.theme-light .fp-columns summary::after,
 body.theme-light .fp-when summary::after,
+body.theme-light .fp-fuel summary::after,
 body.theme-light .ac-custom summary::after { color: #647184; }
 body.theme-light .fp-columns[open] summary,
 body.theme-light .fp-when[open] summary,
+body.theme-light .fp-fuel[open] summary,
 body.theme-light .ac-custom[open] summary {
   background: #eef3f9;
   border-color: #1d6fe0;
@@ -7570,6 +7726,94 @@ html[data-theme="light"] #insp-body .insp-actions {
   color: inherit;
 }
 
+/* The go/no-go fuel check (issue #668): a popover in the tools row, opened from a button that
+   carries the verdict. The button follows the Columns / departure pattern (shared rules above);
+   these add the verdict badge and the over-tank red state. */
+.fp-fuel[hidden] { display: none; }
+.fp-fuel summary { font-variant-numeric: tabular-nums; }
+.fp-fuel-badge {
+  font-weight: 700;
+  font-size: 12px;
+  opacity: 0.95;
+  white-space: nowrap;
+}
+/* Over the tanks: the button goes red (with the warning sign in the badge -- never colour alone)
+   so the pilot sees no-go without opening the popover. */
+.fp-fuel.fp-fuel-over summary {
+  border-color: #e5484d;
+  color: #ffd9da;
+}
+.fp-fuel.fp-fuel-over .fp-fuel-badge { color: #ff9ea1; }
+body.theme-light .fp-fuel.fp-fuel-over summary { border-color: #c0392b; color: #8a1f17; }
+body.theme-light .fp-fuel.fp-fuel-over .fp-fuel-badge { color: #c0392b; }
+/* The popover card: absolutely positioned under the button, like the Columns / aircraft menus. */
+.fp-fuel-menu {
+  position: absolute;
+  z-index: 1600;
+  inset-block-start: calc(100% + 4px);
+  inset-inline-start: 0;
+  width: max-content;
+  max-width: min(360px, calc(92vw - 28px));
+  padding: 10px 12px 11px;
+  color: #e8e8e8;
+  background: #2b2727;
+  border: 1px solid #443f3f;
+  border-radius: 8px;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.35);
+  font-size: 13px;
+}
+body.theme-light .fp-fuel-menu { color: #1f252c; background: #fff; border-color: #c3cad4; }
+/* Two columns -- label, then value -- so every value lines up in one tabular column a short,
+   fixed gap from its label (no stretch). Rows are display:contents so their cells land directly
+   in these tracks. */
+.fp-fuel-grid {
+  display: grid;
+  grid-template-columns: auto auto;
+  justify-content: start;
+  column-gap: 28px;
+  row-gap: 3px;
+  align-items: baseline;
+}
+.fp-fuel-row { display: contents; }
+.fp-fuel-row[hidden] { display: none; }
+.fp-fuel-k { opacity: 0.82; white-space: nowrap; }
+.fp-fuel-v { font-weight: 600; font-variant-numeric: tabular-nums; text-align: end; white-space: nowrap; }
+/* Full-width rule between the parts and their sum. */
+.fp-fuel-div {
+  grid-column: 1 / -1;
+  height: 1px;
+  margin: 3px 0 1px;
+  background: rgba(255, 255, 255, 0.14);
+}
+body.theme-light .fp-fuel-div { background: #dbe1ea; }
+/* The sum against the tanks: the row the pilot decides on. */
+.fp-fuel-required .fp-fuel-k { opacity: 1; font-weight: 700; }
+.fp-fuel-required .fp-fuel-v { font-weight: 700; }
+/* Not enough fuel: the figure goes red (never colour alone -- the warning text spells it out). */
+.fp-fuel-short .fp-fuel-v { color: #e5484d; }
+body.theme-light .fp-fuel-short .fp-fuel-v { color: #c0392b; }
+.fp-fuel-warn {
+  margin-top: 8px;
+  font-weight: 700;
+  color: #e5484d;
+}
+body.theme-light .fp-fuel-warn { color: #c0392b; }
+/* The "set usable fuel" hint is advice, not an alarm: muted, not red. */
+.fp-fuel-warn.fp-fuel-note { font-weight: 400; color: inherit; opacity: 0.65; max-width: 240px; }
+.fp-fuel-alt-input {
+  width: 64px;
+  padding: 1px 6px;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+  text-align: end;
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.06);
+  color: inherit;
+}
+body.theme-light .fp-fuel-alt-input { border-color: #c3cad4; background: #fff; color: #1f252c; }
+.fp-fuel-alt-input:focus-visible { outline: 2px solid #1d6fe0; outline-offset: 1px; }
+
 /* Separator above the destructive storage wipe, so it reads as set apart from the
    ordinary data-management actions it now sits with. */
 .tb-danger-sep {
@@ -8266,12 +8510,14 @@ body.theme-light .xc-navaid-foot { color: #5f6670; }
    input rule above: that one sets the `background` SHORTHAND, which resets
    background-image, so declaring the chevron earlier lost it and the select rendered with
    no arrow at all. */
-body.theme-light #toolbar .navtoggle select {
+body.theme-light #toolbar .navtoggle select,
+body.theme-light .ac-settings-body select {
   background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%231f252c' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
   background-repeat: no-repeat;
   background-position: right 6px center;
 }
-html[dir="rtl"] body.theme-light #toolbar .navtoggle select {
+html[dir="rtl"] body.theme-light #toolbar .navtoggle select,
+html[dir="rtl"] body.theme-light .ac-settings-body select {
   background-position: left 6px center;
 }
 
@@ -8819,24 +9065,36 @@ body.theme-light .route-library-gdrive-pii { color: #6b7787; border-inline-start
 .deck-btn i svg { display: block; }
 .deck-btn-label { font-size: 12px; font-weight: 600; letter-spacing: .02em; }
 /* The strip's grid: the readout lines on one side, Comm fail on the other, spanning both. */
-body.deck-on .deck-strip { grid-template-columns: minmax(0, 1fr) auto auto; column-gap: 8px; align-items: center; }
+body.deck-on .deck-strip { grid-template-columns: minmax(0, 1fr) auto auto auto; column-gap: 8px; align-items: center; }
 body.deck-on .deck-strip > .deck-strip-top,
 body.deck-on .deck-strip > .deck-strip-sub { grid-column: 1; }
-.deck-strip-commfail {
+/* Divert: beside Comm fail, icon-only, outlined like the language switch -- an in-flight decision,
+   not the emergency, so not red. Lit (inverted) while a divert route is up. */
+.deck-strip-divert {
   grid-column: 3; grid-row: 1 / span 2;
-  display: inline-flex; align-items: center; gap: 6px;
-  min-height: 36px; padding: 0 12px;
+  display: inline-flex; align-items: center; justify-content: center;
+  min-width: 44px; min-height: 44px; padding: 0 10px;
+  border: 1px solid rgba(255, 255, 255, .45); border-radius: 18px;
+  background: transparent; color: inherit;
+  cursor: pointer; touch-action: manipulation;
+}
+.deck-strip-divert svg { display: block; flex: none; }
+.deck-strip-divert[aria-pressed="true"] { background: #1d6fe0; border-color: #1d6fe0; color: #fff; }
+.deck-strip-divert:focus-visible { outline: 2px solid #4c9bff; outline-offset: 2px; }
+body.theme-light .deck-strip-divert { border-color: #858f9c; color: #1f252c; }
+body.theme-light .deck-strip-divert[aria-pressed="true"] { background: #1d6fe0; border-color: #1d6fe0; color: #fff; }
+body.theme-light .deck-strip-divert:focus-visible { outline-color: #1d6fe0; }
+.deck-strip-commfail {
+  grid-column: 4; grid-row: 1 / span 2;
+  display: inline-flex; align-items: center; justify-content: center;
+  min-width: 44px; min-height: 44px; padding: 0 10px;
   border: 0; border-radius: 18px;
   background: #c62f2f; color: #fff;
-  font: 700 12px/1 system-ui, sans-serif;
-  white-space: nowrap; cursor: pointer;
-  touch-action: manipulation;
+  cursor: pointer; touch-action: manipulation;
 }
 .deck-strip-commfail svg { display: block; flex: none; }
 .deck-strip-commfail[aria-pressed="true"] { background: #fff; color: #c62f2f; box-shadow: inset 0 0 0 2px #c62f2f; }
 .deck-strip-commfail:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
-/* A narrow phone with a full readout: the icon alone, the label in the accessible name. */
-@media (max-width: 360px) { .deck-strip-commfail-label { display: none; } .deck-strip-commfail { padding: 0 9px; min-width: 44px; justify-content: center; } }
 /* Engaged, not merely visited: Record and Here light while they are actually running. */
 /* Running, not merely chosen. A tinted label was all that said Location was on, and on a
    sunlit screen at arm's length that is not a state -- it is a shade. The whole cell lights:
@@ -8850,10 +9108,20 @@ body.deck-on .deck-strip > .deck-strip-sub { grid-column: 1; }
   background: rgba(29, 111, 224, 0.12);
   box-shadow: inset 0 3px 0 0 #1d6fe0;
 }
-.deck-btn-record[aria-pressed="true"] {
-  color: #96271a;
-  background: rgba(192, 57, 43, 0.14);
-  box-shadow: inset 0 3px 0 0 #c0392b;
+.deck-btn-record[aria-pressed="true"],
+body.tour-live-preview .deck-btn-record {
+  /* The phone's recording sign (the floating REC pill is off on a phone): the REC pill's own red,
+     white, and the icon pulsing -- unmistakable at a glance, in both themes. */
+  color: #fff;
+  font-weight: 800;
+  background: #d7263d;
+  box-shadow: inset 0 3px 0 0 #fff;
+}
+.deck-btn-record[aria-pressed="true"] i,
+body.tour-live-preview .deck-btn-record i { animation: gps-rec-pulse 1.3s ease-in-out infinite; }
+@media (prefers-reduced-motion: reduce) {
+  .deck-btn-record[aria-pressed="true"] i,
+  body.tour-live-preview .deck-btn-record i { animation: none; }
 }
 .deck-btn-here[aria-pressed="true"] {
   color: #14602f;
@@ -8877,7 +9145,8 @@ body.deck-on .deck-strip > .deck-strip-sub { grid-column: 1; }
 body.theme-dark .deck-bar { background: #161e26; color: #e8eef3; }
 body.theme-dark .deck-btn { color: #a9b6c1; }
 body.theme-dark .deck-btn[aria-pressed="true"] { color: #8ab8ff; background: rgba(29, 111, 224, .24); }
-body.theme-dark .deck-btn-record[aria-pressed="true"] { color: #ff9c8d; background: rgba(192, 57, 43, .22); }
+body.theme-dark .deck-btn-record[aria-pressed="true"],
+body.theme-dark.tour-live-preview .deck-btn-record { color: #fff; background: #d7263d; }
 body.theme-dark .deck-btn-here[aria-pressed="true"] { color: #6fdc9a; background: rgba(26, 122, 58, .24); }
 
 /* The chart's own furniture moves up out of the deck's way, and the closed menu card gives
@@ -8899,12 +9168,14 @@ body.deck-on .leaflet-bottom.leaflet-right {
      44 px buttons stood 22 px off the screen edge against the left column's 10 (reported). */
   align-items: flex-start;
   align-content: flex-start;
+  /* flex-END: in a column-reverse column that is the TOP. A column that fits is exactly as tall as
+     its controls, so this moves nothing; once it wraps (a short phone, or an iPhone while
+     recording: the REC pill and the safe areas take the room), the second column starts level with
+     the first, beside where its controls were, instead of falling to the bottom by the coordinates
+     (reported: "why voice and north up icons moved down?"). */
+  justify-content: flex-end;
   direction: ltr;
   max-height: calc(100dvh - var(--navaid-col-top) - var(--navaid-deck-bar-h, 52px) - env(safe-area-inset-bottom, 0px));
-}
-/* The red REC pill sits under the strip on the right while recording: keep the column below it. */
-body.deck-on:has(#gps-rec-indicator:not([hidden])) .leaflet-bottom.leaflet-right {
-  --navaid-col-top: calc(var(--navaid-deck-strip-h, 46px) + 48px + 28px + 8px);
 }
 /* With the deck on, the old floating menu is off entirely: the menu lives in the deck's
    Menu sheet (deck.js hostToolbar) and nowhere else. It was hidden only while collapsed,
@@ -8940,7 +9211,8 @@ html[style*="--navaid-map-ctrl-wrapped"] body.deck-on #empty-route-hint {
   max-width: calc(100vw - var(--navaid-map-ctrl-clear) - 16px);
 }
 body.deck-on .map-time {
-  bottom: calc(124px + env(safe-area-inset-bottom, 0px));
+  /* Above the legend dock (ui.js publishLegendDockWidth), never under it. */
+  bottom: max(calc(124px + env(safe-area-inset-bottom, 0px)), var(--navaid-legend-dock-above, 0px));
   /* Clear of the zoom column and its z-level readout, which the deck did not move. */
   right: 112px;
 }
@@ -9532,6 +9804,37 @@ body.theme-light .route-check-asked { border-bottom-color: rgba(0, 0, 0, 0.14); 
 body.theme-light .route-check-asked-partial { color: #7a4a00; }
 body.theme-light .route-check-asked-missing { color: #8a1c00; }
 
+/* Settings > Storage window: a usage bar, a per-category breakdown and a clear button. */
+.storage-modal-body { min-width: 260px; max-width: 420px; display: flex; flex-direction: column; gap: 10px; }
+.storage-bar { height: 12px; border-radius: 6px; overflow: hidden;
+  background: rgba(255, 255, 255, 0.14); }
+body.theme-light .storage-bar { background: rgba(0, 0, 0, 0.12); }
+/* Normal fill is the app's one "on" blue; amber then red mark the store filling up -- the
+   figure and percent beside the bar say the same, so colour is never the only signal. */
+.storage-bar-fill { height: 100%; background: var(--navaid-mapbtn-on, #1d6fe0);
+  transition: width 0.2s ease; }
+.storage-bar-fill.is-high { background: #b07a12; }
+.storage-bar-fill.is-full { background: #c8402f; }
+.storage-used { font-weight: 700; font-variant-numeric: tabular-nums; }
+.storage-note { margin: 0; font-size: 12px; opacity: 0.7; }
+.storage-breakdown-title { font-size: 12px; font-weight: 700; opacity: 0.8; margin-top: 2px; }
+.storage-breakdown { display: flex; flex-direction: column; gap: 4px; }
+.storage-row { display: flex; justify-content: space-between; gap: 12px; font-size: 13px; }
+.storage-row-name { overflow-wrap: anywhere; }
+.storage-row-size { font-variant-numeric: tabular-nums; opacity: 0.85; white-space: nowrap; }
+.storage-actions { margin-top: 4px; }
+.storage-clear-btn { min-height: 36px; width: 100%; cursor: pointer; }
+.storage-clear-btn:disabled { opacity: 0.5; cursor: default; }
+.storage-hint { margin: 0; font-size: 12px; opacity: 0.7; }
+.storage-danger-sep { border: none; border-top: 1px solid rgba(255, 255, 255, 0.14); margin: 8px 0 2px; }
+body.theme-light .storage-danger-sep { border-top-color: rgba(0, 0, 0, 0.14); }
+/* The last-resort wipe reads as destructive, like the toolbar danger button it replaced
+   (which was styled only under #toolbar, out of this window's reach). */
+.storage-wipe-btn { min-height: 36px; width: 100%; cursor: pointer; color: #e88; border-color: #5a3a3a; }
+.storage-wipe-btn:hover { background: #c0392b; border-color: #c0392b; color: #fff; }
+body.theme-light .storage-wipe-btn { color: #c0392b; border-color: #e8b4b4; }
+body.theme-light .storage-wipe-btn:hover { background: #c0392b; border-color: #c0392b; color: #fff; }
+
 /* Phone links (airfield panel, parking request): a link, so it has to read as one -- but in the app's blue,
    not the browser's visited purple, and big enough to hit with a thumb in a cockpit. */
 .tel-link,
@@ -10084,8 +10387,14 @@ html[dir="rtl"] .wp-search-item { text-align: right; }
    line is held to its own column, so nothing can paint under the buttons beside it. */
 /* (Batch 5: it steps aside to its globe alone instead of vanishing -- a control that disappears
    is not one a pilot can find again -- which frees the label's width for the route name.) */
-.deck-strip.deck-strip-live .deck-strip-lang .lang-quick-label { display: none; }
-.deck-strip.deck-strip-live .deck-strip-lang { padding: 0 11px; min-width: 44px; justify-content: center; }
+/* (#675: in flight Divert takes the language switch's slot -- three 44 px buttons left a 360 px
+   phone's readout 50 px short even at its smallest text. Language stays in Settings and the globe
+   comes back the moment Location is off. Asked for over keeping the globe.) The grid drops to
+   three columns too, so the empty track's gap is given back as well. */
+body.deck-on .deck-strip.deck-strip-live { grid-template-columns: minmax(0, 1fr) auto auto; }
+.deck-strip.deck-strip-live .deck-strip-lang { display: none; }
+.deck-strip.deck-strip-live .deck-strip-divert { grid-column: 2; }
+.deck-strip.deck-strip-live .deck-strip-commfail { grid-column: 3; }
 body.deck-on .deck-strip > .deck-strip-top { overflow: hidden; }
 
 /* NOTAMs in force, inside a bubble / leg panel. Amber like the NOTAM layer: this is the part
@@ -10494,6 +10803,12 @@ body.tour-live-preview .leaflet-control.voice-ctrl,
 body.tour-live-preview .leaflet-control.orient-ctrl,
 body.tour-live-preview .leaflet-control.follow-ctrl { display: block !important; }
 body.tour-live-preview #gps-rec-indicator { display: flex !important; }
+/* The in-flight buttons are always there now, dimmed without a position (dim, never hide); the
+   tour's preview shows them as they look in flight. */
+body.tour-live-preview .leaflet-control.voice-ctrl button,
+body.tour-live-preview .leaflet-control.orient-ctrl button,
+body.tour-live-preview .leaflet-control.follow-ctrl button,
+body.tour-live-preview .leaflet-control.follow-me-ctrl button { opacity: 1 !important; }
 
 /* A pressed menu-bar button keeps its blue under the mouse. The footer buttons' hover wash
    (.footer-link:hover, more specific than the pressed rule) replaced it, so Location or Record
@@ -10641,6 +10956,13 @@ body.deck-on :is(.search-hint, #app-version, #toolbar .slider-val) { font-size: 
    on the phone it sits one row up (below). */
 .legend-ctrl:not(.legend-docked) .legend-dock { display: none; }
 .legend-ctrl.legend-docked { position: relative; }
+/* The dock's box spans the button and the totals pill; the space between them is not a control,
+   and it caught the touches meant for whatever lay under it (the map clock's slider, reported). */
+.leaflet-control.legend-ctrl.legend-docked,
+.legend-ctrl.legend-docked .legend-dock { pointer-events: none; }
+.legend-ctrl.legend-docked .legend-toggle,
+.legend-ctrl.legend-docked #route-summary,
+.legend-ctrl.legend-docked .map-legend { pointer-events: auto; }
 .legend-ctrl.legend-docked .legend-dock {
   display: flex;
   align-items: center;
@@ -10751,7 +11073,8 @@ body.deck-on .legend-ctrl.legend-docked .legend-dock {
 body.deck-on .legend-ctrl.legend-docked { margin-bottom: 10px; }
 body.deck-on .legend-ctrl.legend-docked #route-summary {
   box-sizing: border-box;
-  max-width: calc(100vw - 20px - var(--navaid-map-ctrl-clear, 52px) - 8px);
+  /* The bottom row's clearance: only the controls that come down to this row (ui.js). */
+  max-width: calc(100vw - 20px - var(--navaid-map-ctrl-clear-low, var(--navaid-map-ctrl-clear, 52px)) - 8px);
   height: auto;
   min-height: 32px;
   padding: 6px 12px;
@@ -10769,7 +11092,7 @@ body.deck-on .legend-ctrl.legend-docked #route-summary {
    down to the dock's row, and an open key covered Clear (edit-column.spec). */
 body.deck-on .legend-ctrl.legend-docked .map-legend {
   left: 52px;
-  width: min(248px, calc(100vw - 62px - var(--navaid-map-ctrl-clear, 52px) - 8px));
+  width: min(248px, calc(100vw - 62px - var(--navaid-map-ctrl-clear-low, var(--navaid-map-ctrl-clear, 52px)) - 8px));
 }
 body.deck-on .legend-ctrl.legend-docked .map-legend::after { content: none; }
 /* A short phone (the edit column reaches down to that row): the totals stay beside the button,
@@ -10778,5 +11101,37 @@ body.deck-on .legend-ctrl.legend-docked .map-legend::after { content: none; }
   /* ...where it is beside the button, it is on the readout's row, so the dock stays one row up. */
   body.deck-on .legend-ctrl.legend-docked { margin-bottom: 58px; }
   body.deck-on .legend-ctrl.legend-docked .legend-dock { flex-direction: row; align-items: center; }
-  body.deck-on .legend-ctrl.legend-docked #route-summary { max-width: calc(100vw - 72px - var(--navaid-map-ctrl-clear, 52px) - 8px); }
+  body.deck-on .legend-ctrl.legend-docked #route-summary { max-width: calc(100vw - 72px - var(--navaid-map-ctrl-clear-low, var(--navaid-map-ctrl-clear, 52px)) - 8px); }
 }
+
+/* Settings -> Route -> Aircraft (ui.js wireAircraftSettings): the flight plan's aircraft panel in a
+   window of its own. The figures popover is the window's body here, open and in the flow: its
+   own button and heading (title, X) would only repeat the window's. */
+.ac-settings-modal { max-width: min(480px, calc(100vw - 24px)); }
+.ac-settings-body { display: flex; flex-direction: column; align-items: flex-start; gap: 10px; }
+.ac-settings-body .ac-panel { display: flex; flex-direction: column; align-items: flex-start; gap: 10px; width: 100%; }
+.ac-settings-body .ac-custom { position: static; margin: 0; width: 100%; }
+.ac-settings-body .ac-custom > summary,
+.ac-settings-body .ac-head { display: none; }
+.ac-settings-body .ac-menu {
+  position: static; width: auto; max-width: none; padding: 0;
+  background: transparent; border: 0; box-shadow: none; color: inherit;
+}
+body.theme-light .ac-settings-body .ac-menu { background: transparent; border: 0; box-shadow: none; }
+body.deck-on .ac-settings-body select, body.deck-on .ac-settings-body input[type="number"] { min-height: 40px; }
+/* One figure a row, its name at the start and its box at the end, as the Settings menu's rows. */
+.ac-settings-body .ac-type-row { width: 100%; }
+.ac-settings-body .ac-type-row select { width: 100%; }
+.ac-settings-body .ac-custom-grid { flex-direction: column; flex-wrap: nowrap; gap: 8px; width: 100%; }
+.ac-settings-body .ac-custom-grid > label { display: flex; justify-content: space-between; gap: 12px; width: 100%; }
+.ac-settings-body .ac-custom-grid input[type="number"] { width: 80px; font-size: 13px; padding: 4px 6px; }
+.ac-settings-body select { font-size: 13px; padding-block: 4px; }
+.ac-settings-body .ac-own-row select { min-width: 80px; }
+
+/* Airfield panel: a runway's length and width (interact.js runwayDimsText). Wrapped in a narrow
+   panel, the second line stays at the end like every other value, clear of the runway's name. */
+/* The value is an LTR run (dir=auto), so `end` would mean its own right in Hebrew too: align it
+   by the panel's side instead, and keep the gap on the label, whose direction is the panel's. */
+#insp-body .rwy-dims-row > label { margin-inline-end: 10px; }
+#insp-body .rwy-dims-row .val { text-align: right; }
+html[dir="rtl"] #insp-body .rwy-dims-row .val { text-align: left; }

@@ -13,8 +13,8 @@ const { test, expect } = require('./_setup');
 
 const PHONE = { width: 390, height: 844 };
 
-async function boot(page) {
-  await page.setViewportSize(PHONE);
+async function boot(page, vp = PHONE) {
+  await page.setViewportSize(vp);
   await page.goto('?lang=en&nogist');
   await page.waitForFunction(() => typeof draw === 'function' && window.NavAid
     && typeof NavAid.refreshMobileDeck === 'function' && typeof showFlightPlan === 'function');

@@ -189,16 +189,22 @@ test('the flight plan is not covered by the inspector, and shows a mobile summar
   expect(r.summary).toMatch(/NM/);
 });
 
-test('the storage wipe is not beside the everyday edit actions', async ({ page }) => {
+test('the storage wipe lives only in the Storage window, not beside the toolbar actions', async ({ page }) => {
   await boot(page);
-  const r = await page.evaluate(() => ({
+  // No stray danger button anywhere in the toolbar — the wipe used to sit in Export/Import.
+  const before = await page.evaluate(() => ({
+    anyButton: !!document.getElementById('clear-store'),
     inEdit: !!document.querySelector('[data-sec="build"] #clear-store'),
     inDataMenu: !!document.querySelector('[data-sec="export"] #clear-store'),
-    stillExists: !!document.getElementById('clear-store'),
+    storageEntry: !!document.querySelector('[data-sec="settings"] #storage-manage'),
   }));
-  expect(r.stillExists).toBe(true);
-  expect(r.inEdit).toBe(false);       // it used to sit next to Undo / Clear / Fit
-  expect(r.inDataMenu).toBe(true);
+  expect(before.anyButton).toBe(false);
+  expect(before.inEdit).toBe(false);
+  expect(before.inDataMenu).toBe(false);
+  expect(before.storageEntry).toBe(true);       // reached from Settings > Storage
+  // It is the marked last-resort row inside the Storage window.
+  await page.evaluate(() => showStorageModal());
+  await expect(page.locator('.storage-wipe-btn')).toHaveCount(1);
 });
 
 test('the Edit menu head has an accessible name', async ({ page }) => {

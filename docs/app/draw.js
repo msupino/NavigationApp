@@ -1695,18 +1695,29 @@ let airmetMeta = null;
 // Declared here, beside the loader that writes it; read elsewhere as window.sigmetMeta.
 let sigmetMeta = null;
 window.airmets = airmets;
-// NOTAMs: a scheduled Action queries the FAA NOTAM API for the Israel FIR
-// (LLLL), normalises geometry, and publishes notam.json to the `notam-data`
-// branch (filename unchanged there). data/notam.json is the offline /
-// first-run fallback.
+// NOTAMs: the hourly "Update NOTAMs" Action fetches the Israel Airports Authority's NOTAMs for
+// the Israel FIR (LLLL) through a relay, normalises geometry (app/notam-iaa.js), and publishes
+// notam.json to the `notam-data` branch. That is what a browser reads. The apps ask IAA
+// directly first (NavAidNotamIaa.fetchIaaDirect, native HTTP from the pilot's connection) and
+// read notam.json only when IAA does not answer. data/notam.json is the offline / first-run
+// fallback for both.
 const NOTAM_URL =
   'https://raw.githubusercontent.com/msupino/NavigationApp/notam-data/notam.json';
 async function loadNotam(force) {
   if (notams !== null && !force) return notams;
   const parse = d => {
-    notamMeta = { generatedAt: (d && d.generatedAt) || null };
+    notamMeta = { generatedAt: (d && d.generatedAt) || null, source: (d && d.source) || null };
     return Array.isArray(d && d.notams) ? d.notams.filter(n => n && n.id) : [];
   };
+  const iaa = typeof window !== 'undefined' && window.NavAidNotamIaa;
+  if (iaa && iaa.usable()) {
+    try {
+      notams = parse(await iaa.fetchIaaDirect());
+      return notams;
+    } catch (e) {
+      console.warn('IAA NOTAMs directly failed; reading notam.json:', e && e.message);
+    }
+  }
   try {
     const res = await fetch(NOTAM_URL, { cache: 'no-store' });
     if (!res.ok) throw new Error('HTTP ' + res.status);
@@ -1779,6 +1790,44 @@ function notamSimplify(pts, tolKm) {
   }
   return [pts[0], pts[pts.length - 1]];
 }
+// Remove self-intersection loops from a ring. A one-sided inland buffer self-folds where the
+// border salient is narrower than the offset (the Hermon spike, the Eilat convergence): the
+// offset edge crosses itself and draws an arrow/triangle. At each crossing, splice in the
+// crossing point and keep the larger-area sub-ring (the main strip), dropping the small spike
+// loop. Planar km space (x = lng·cos(refLat), y = lat) is accurate enough at these extents.
+function notamRingCross(p1, p2, p3, p4) {
+  const d1x = p2[0] - p1[0], d1y = p2[1] - p1[1], d2x = p4[0] - p3[0], d2y = p4[1] - p3[1];
+  const den = d1x * d2y - d1y * d2x;
+  if (Math.abs(den) < 1e-12) return null;
+  const t = ((p3[0] - p1[0]) * d2y - (p3[1] - p1[1]) * d2x) / den;
+  const u = ((p3[0] - p1[0]) * d1y - (p3[1] - p1[1]) * d1x) / den;
+  if (t > 1e-9 && t < 1 - 1e-9 && u > 1e-9 && u < 1 - 1e-9) return [p1[0] + t * d1x, p1[1] + t * d1y];
+  return null;
+}
+function notamDeloop(ring) {
+  if (!Array.isArray(ring) || ring.length < 4) return ring;
+  const refLat = ring.reduce((a, p) => a + p[0], 0) / ring.length;
+  const kx = 111.32 * Math.cos(refLat * Math.PI / 180) || 1e-6;
+  let xy = ring.map(p => [p[1] * kx, p[0] * 110.57]);          // [x, y] km
+  const area = r => { let a = 0; for (let k = 0; k < r.length - 1; k++) a += r[k][0] * r[k + 1][1] - r[k + 1][0] * r[k][1]; return Math.abs(a) / 2; };
+  let guard = 0;
+  while (guard++ < 4000) {
+    const n = xy.length - 1; let hit = null;
+    for (let i = 0; i < n && !hit; i++) {
+      for (let j = i + 2; j < n; j++) {
+        if (i === 0 && j === n - 1) continue;                   // shared closing vertex, not a crossing
+        const ip = notamRingCross(xy[i], xy[i + 1], xy[j], xy[j + 1]);
+        if (ip) { hit = [i, j, ip]; break; }
+      }
+    }
+    if (!hit) break;
+    const [i, j, ip] = hit;
+    const inner = [ip].concat(xy.slice(i + 1, j + 1)); inner.push(ip);
+    const outer = xy.slice(0, i + 1).concat([ip], xy.slice(j + 1));
+    xy = area(outer) >= area(inner) ? outer : inner;
+  }
+  return xy.map(q => [q[1] / 110.57, q[0] / kx]);
+}
 function notamBorderBuffer(arc, km) {
   if (!Array.isArray(arc) || arc.length < 2 || !(km > 0)) return null;
   // Drop near-duplicate vertices (zero-length tangents), then simplify.
@@ -1811,7 +1860,7 @@ function notamBorderBuffer(arc, km) {
   }
   const ring = arc.concat(off.reverse());
   ring.push(arc[0]);
-  return ring;
+  return notamDeloop(ring);
 }
 // Parse a prose border NOTAM → buffer polygon. Matches e.g.
 // "FM LEBANON BOUNDRAY TO 8KM SB" (BOUNDRAY is the source's spelling).
@@ -2631,16 +2680,22 @@ function airfieldFreqChanges(icao) {
   return out;
 }
 
+// An airfield's active NOTAMs, by ICAO, for its count badge -- ALL of them, including those
+// also drawn as an area or a route line. The badge used to skip those, so LLBG showed "2"
+// while its NOTAM list held 3, the third being a drilling-tower area near the field (reported).
+// The badge says how many the field has; the area is still drawn where it applies.
+function notamsByAirfield(act) {
+  const byIcao = {};
+  for (const n of act || []) {
+    const c = n && n.icao;
+    if (c) (byIcao[c] = byIcao[c] || []).push(n);
+  }
+  return byIcao;
+}
+
 function drawNotamAirportMarkers() {
   if (!Array.isArray(airfields) || !airfields.length) return;
-  const byIcao = {};
-  for (const n of activeNotams()) {
-    if (n && n.geom) continue;                 // already drawn as an area
-    if (n && Array.isArray(n._routeLines) && n._routeLines.length) continue;  // drawn as a route line
-    const c = n && n.icao;
-    if (!c) continue;
-    (byIcao[c] = byIcao[c] || []).push(n);
-  }
+  const byIcao = notamsByAirfield(activeNotams());
   const col = tune('notamColor');
   const flashId = notamFlashId;
   const flashPulse = notamFlashPulse();
@@ -2745,18 +2800,13 @@ function notamsAtLatLng(latlng) {
   // Airport count badges (no-geom NOTAMs grouped by ICAO) — see
   // drawNotamAirportMarkers(): a notamBadgeRadiusPx disc notamBadgeOffsetPx below the field.
   if (Array.isArray(airfields) && airfields.length) {
-    const byIcao = {};
-    for (const n of act) {
-      if (n && n.geom) continue;
-      if (n && Array.isArray(n._routeLines) && n._routeLines.length) continue;
-      const c = n && n.icao;
-      if (c) (byIcao[c] = byIcao[c] || []).push(n);
-    }
+    const byIcao = notamsByAirfield(act);
     for (const code in byIcao) {
       const af = airfieldByIcao(code);
       if (!af || !Number.isFinite(af.lat) || !Number.isFinite(af.lng)) continue;
       const p = proj({ lat: af.lat, lng: af.lng });
-      if (notamBadgeHit(pt, p)) out.push(...byIcao[code]);
+      // An area NOTAM under the same tap is already in the list once.
+      if (notamBadgeHit(pt, p)) for (const n of byIcao[code]) if (!out.includes(n)) out.push(n);
     }
   }
   return out;
@@ -2777,12 +2827,7 @@ function notamBadgeNotamsAt(latlng) {
   if (!window.showNotam || !latlng || !Array.isArray(airfields) || !airfields.length) return [];
   const act = (typeof activeNotams === 'function') ? activeNotams() : [];
   if (!act.length) return [];
-  const byIcao = {};
-  for (const n of act) {
-    if (n && n.geom) continue;
-    if (n && Array.isArray(n._routeLines) && n._routeLines.length) continue;
-    if (n && n.icao) (byIcao[n.icao] = byIcao[n.icao] || []).push(n);
-  }
+  const byIcao = notamsByAirfield(act);
   const pt = proj(latlng);
   for (const code in byIcao) {
     const af = airfieldByIcao(code);
@@ -2940,6 +2985,30 @@ async function _fetchLayerDataRaw(kind) {
   if (!r.ok) throw new Error('HTTP ' + r.status);
   return { data: await r.json(), prefix: 'cvfr' };
 }
+
+// Which OTHER charts' nav-waypoint sets know `token` (a code, an English name, a Hebrew name),
+// as data prefixes. The search reads only the set in use -- the base chart's, or the one
+// "Nav waypoints from" names -- so a code from another chart (an ATS point while the CVFR
+// set is in use) used to be just "unknown" (reported). Only charts the app offers.
+async function navWaypointOtherCharts(token) {
+  const t = String(token || '').trim();
+  if (!t) return [];
+  const key = s => String(s || '').toUpperCase().replace(/[\s_-]+/g, '');
+  const want = key(t);
+  const current = layerDataPrefix();
+  const out = [];
+  for (const prefix of Object.keys(_PREFIX_LAYER_NAME)) {
+    if (prefix === current) continue;
+    if (typeof layerOffered === 'function' && !layerOffered(_PREFIX_LAYER_NAME[prefix])) continue;
+    try {
+      const d = routeShapeFromGraph('nav-waypoints', await routeGraphData(prefix), prefix);
+      const arr = Array.isArray(d) ? d : (d.waypoints || d.points || []);
+      if (arr.some(w => w && (key(w.name) === want || key(w.en) === want || (w.he && w.he === t)))) out.push(prefix);
+    } catch (e) { /* that chart's data did not load: say nothing about it */ }
+  }
+  return out;
+}
+window.navWaypointOtherCharts = navWaypointOtherCharts;
 
 async function loadNavWaypoints() {
   if (navWP !== null) return navWP;
@@ -3771,6 +3840,9 @@ async function loadAirfields() {
       // The LSA chart legend's strip class and field block (see airfields.json _chartClass).
       chartClass: a.chartClass || null,
       runwayLengthM: Number.isFinite(a.runwayLengthM) ? a.runwayLengthM : null,
+      // Each runway's published length and width in metres, from its AIP chart (section 9 / AD 2.12).
+      runwayDims: Array.isArray(a.runwayDims) ? a.runwayDims.filter(r => r && typeof r.rwy === 'string'
+        && Number.isFinite(r.lengthM) && Number.isFinite(r.widthM)).map(r => ({ rwy: r.rwy, lengthM: r.lengthM, widthM: r.widthM })) : null,
       lighting: a.lighting || null,
       hardRunway: a.hardRunway === true,
       // Prior-parking coordination the AIP requires at this field (address/phone + rule),
@@ -5792,7 +5864,8 @@ function drawLegs() {
       const cumY = sb.y + dy * cumAlong + ny * cumPerp;
       queueCumTimeArrow(cumX, cumY,
         Math.atan2(sb.y - cumY, sb.x - cumX),
-        cumInStr, tune('inkColor'), tintFill(tune('cumKiteFillColor'), tune('kiteNoteAlpha')), zoomScale);
+        cumInStr, tune('inkColor'), tintFill(tune('cumKiteFillColor'), tune('kiteNoteAlpha')), zoomScale,
+        false, ang + Math.PI / 2);   // its leg's kite figures (drawLegArrow) -- the angle to read alike
     }
 
     // Belt and braces: the feature flag is checked at the draw site too, so a stored or
@@ -5820,10 +5893,11 @@ function drawLegs() {
         const cumRetY = sa.y + dy * cumRetAlong + ny * cumRetPerp;
         queueCumTimeArrow(cumRetX, cumRetY,
           Math.atan2(sa.y - cumRetY, sa.x - cumRetX),
-          cumOutArr[i], tune('inkColor'), tintFill(tune('returnCumKiteFillColor'), tune('kiteNoteAlpha')), zoomScale, true);
+          cumOutArr[i], tune('inkColor'), tintFill(tune('returnCumKiteFillColor'), tune('kiteNoteAlpha')), zoomScale, true,
+          ang + Math.PI + Math.PI / 2);   // the way back's kite figures
       }
     }
-    if (showMidLeg) drawDistanceBadge(mid.x, mid.y, dist);
+    if (showMidLeg) drawDistanceBadge(mid.x, mid.y, dist, legMarksWithKites() ? ang + Math.PI / 2 : 0);
 
     // Wind arrow: show the wind that applies to each leg — the
     // route-wide wind, or a per-leg override where one is set. A leg that
@@ -5928,6 +6002,9 @@ function drawDriftLines(sa, sb) {
 function drawMinuteMarkers(sa, sb, durH, color, flip) {
   const totalMin = durH * 60;
   if (totalMin < 1) return;
+  // With "Turn names with the kites": every number at its leg's kite-figure angle (sa -> sb is the
+  // direction flown, the way back included), not level / turned round.
+  const kiteAng = legMarksWithKites() ? Math.atan2(sb.y - sa.y, sb.x - sa.x) + Math.PI / 2 : null;
   let dx = sb.x - sa.x, dy = sb.y - sa.y;
   const len = Math.hypot(dx, dy) || 1;
   dx /= len; dy /= len;
@@ -5960,10 +6037,10 @@ function drawMinuteMarkers(sa, sb, durH, color, flip) {
       const ty = py + ny * (tick + tune('minuteLabelOffsetPx') * k);
       octx.fillStyle = ink;
       octx.font = `bold ${fontPx}px sans-serif`;
-      if (flip) {
+      if (kiteAng !== null || flip) {
         octx.save();
         octx.translate(tx, ty);
-        octx.rotate(Math.PI);
+        octx.rotate(kiteAng !== null ? kiteAng : Math.PI);
         octx.fillText(String(m), 0, 0);
         octx.restore();
       } else {
@@ -6034,7 +6111,10 @@ function traceArrowBox(ctx, width, height, headLength) {
   ctx.closePath();
 }
 // `ret`: a way-back kite, its time upright for the chart turned round to fly home.
-function drawCumTimeArrow(cx, cy, flightAng, cumTime, accent, fill, sc, ret) {
+// `kiteTextAng`: the angle its leg's nav kite draws its figures at. With "Turn names with the
+// kites" on, the time reads the same way as them -- asked: "cumulative times should also look the
+// same, same orientation, unless the checkbox is off" -- instead of turning upright on the screen.
+function drawCumTimeArrow(cx, cy, flightAng, cumTime, accent, fill, sc, ret, kiteTextAng) {
   sc = sc ?? 1;
   // Fixed GROUND size — cumKitePrintHeightMm tall at the 1:250,000 scale (× the
   // legArrowSize selector) — so it scales with the map like its position and
@@ -6070,7 +6150,11 @@ function drawCumTimeArrow(cx, cy, flightAng, cumTime, accent, fill, sc, ret) {
   octx.translate(p.x, p.y);
   // Text orientation matches the navigation kite (flightAng+π = ang+π/2 when kite is at ang-π/2).
   let textAng = flightAng + Math.PI;
-  if (ret ? Math.cos(textAng) > 0 : Math.cos(textAng) < 0) textAng += Math.PI;
+  if (legMarksWithKites() && Number.isFinite(kiteTextAng)) {
+    // Along the arrow, whichever way round is nearer the kite's own figures (the arrow can be
+    // dragged off square to its leg, so its text cannot always be exactly theirs).
+    textAng = nearerWayRound(textAng, kiteTextAng);
+  } else if (ret ? Math.cos(textAng) > 0 : Math.cos(textAng) < 0) textAng += Math.PI;
   octx.rotate(textAng);
   octx.font = `bold ${fontPx}px sans-serif`;
   octx.textAlign = 'center';
@@ -6185,7 +6269,8 @@ function drawRotText(x, y, ang, text, font, color) {
   octx.restore();
 }
 
-function drawDistanceBadge(cx, cy, dist) {
+// `ang`: the leg's kite-figure angle with "Turn names with the kites" on; 0 draws it level.
+function drawDistanceBadge(cx, cy, dist, ang) {
   octx.beginPath();
   octx.arc(cx, cy, tune('distanceBadgeRadiusPx'), 0, Math.PI * 2);
   octx.fillStyle = tintFill(tune('distanceBadgeFillColor'));
@@ -6197,7 +6282,13 @@ function drawDistanceBadge(cx, cy, dist) {
   octx.font = `bold ${tune('distanceBadgeFontPx')}px sans-serif`;
   octx.textAlign = 'center';
   octx.textBaseline = 'middle';
-  octx.fillText(dist.toFixed(1), cx, cy);
+  if (ang) {
+    octx.save(); octx.translate(cx, cy); octx.rotate(ang);
+    octx.fillText(dist.toFixed(1), 0, 0);
+    octx.restore();
+  } else {
+    octx.fillText(dist.toFixed(1), cx, cy);
+  }
   octx.textAlign = 'left';
 }
 
@@ -6233,6 +6324,34 @@ function waypointGeom(i) {
 // selected waypoint/leg/note prints identically to the rest.
 function selectionVisible() {
   return !(window.NavAid && NavAid.exporting);
+}
+// The angle a waypoint's name is drawn at (radians, screen), or 0 when it is drawn level. Asked:
+// "make each wp label match the base of the nav arrow -- if it points 270, the label 360-180,
+// regardless of the map orientation", so that "when I rotate a printed map, the text is always
+// aligned with the nav kite arrow", along the kite's bottom line. The kite draws its figures at
+// flightAng + 90° (along its base, drawLegArrowBody); the name takes the angle of the kite of the
+// leg ARRIVING at the waypoint -- the name is read while flying in, with the chart turned for that
+// leg; once over the point it is no longer needed (asked). The departure point has no leg in, so it
+// takes its first leg out. Screen angles, so a turned map turns them with the kites. With the
+// checkbox off: level, as before.
+function wpNameAngle(i) {
+  if (typeof autoWpNameAngle === 'undefined' || !autoWpNameAngle) return 0;
+  const wps = state.waypoints;
+  const a = i > 0 ? wps[i - 1] : wps[i], b = i > 0 ? wps[i] : wps[i + 1];
+  if (!a || !b) return 0;
+  const pa = proj(a), pb = proj(b);
+  if (Math.hypot(pb.x - pa.x, pb.y - pa.y) < 1) return 0;
+  return Math.atan2(pb.y - pa.y, pb.x - pa.x) + Math.PI / 2;
+}
+window.wpNameAngle = wpNameAngle;
+// "Turn names with the kites" covers every mark that sits on a leg (asked: "cumulative times
+// should also look the same ... and identification point ... and other leg marks"): with it on,
+// each reads at its leg's kite-figure angle instead of turning upright on the screen.
+function legMarksWithKites() { return typeof autoWpNameAngle !== 'undefined' && !!autoWpNameAngle; }
+// Of a text's two ways round along its own line, the one nearer `want`.
+function nearerWayRound(ang, want) {
+  const off = (a) => Math.abs(Math.atan2(Math.sin(a - want), Math.cos(a - want)));
+  return off(ang + Math.PI) < off(ang) ? ang + Math.PI : ang;
 }
 function drawWaypoints() {
   window.__hotspotWaypointIndexes = [];
@@ -6270,7 +6389,17 @@ function drawWaypoints() {
     octx.fillStyle = tune('inkColor');
     octx.textAlign = 'center';
     octx.textBaseline = 'middle';
-    octx.fillText(label, s.x, s.y);
+    // Along its leg's kite (wpNameAngle); the disc is round, so the name fits it at any angle.
+    const ang = label ? wpNameAngle(i) : 0;
+    if (ang) {
+      octx.save();
+      octx.translate(s.x, s.y);
+      octx.rotate(ang);
+      octx.fillText(label, 0, 0);
+      octx.restore();
+    } else {
+      octx.fillText(label, s.x, s.y);
+    }
     octx.textAlign = 'left';
   }
 }
@@ -6317,7 +6446,9 @@ function noteDrawAngle(n) {
   if (!A || !B) return 0;
   const pa = proj(A), pb = proj(B);
   let ang = Math.atan2(pb.y - pa.y, pb.x - pa.x) + Math.PI / 2;
-  if (ang > Math.PI / 2 || ang < -Math.PI / 2) ang += Math.PI;
+  // Upright on the screen -- unless "Turn names with the kites" is on: then exactly its leg's
+  // kite figures (leg angle + 90°), so a chart turned to fly the leg reads it with them.
+  if (!legMarksWithKites() && (ang > Math.PI / 2 || ang < -Math.PI / 2)) ang += Math.PI;
   // An identification-point oval is aligned ACROSS its leg by rule, so its own angle is
   // added to that rather than replacing it. hitNote shares this function, so the clickable
   // region turns with whatever is painted.
@@ -6459,8 +6590,17 @@ function commCalloutGeom(n) {
   const ty = textSeg ? textSeg.a.y + (textSeg.b.y - textSeg.a.y) * textT : fp.y;
   let textAngle = textSeg ? Math.atan2(textSeg.b.y - textSeg.a.y, textSeg.b.x - textSeg.a.x)
                           : Math.atan2(uy, ux);
-  // Upright to read -- for a way-back callout, upright on the chart turned round to fly home.
-  if (n && n.ret ? Math.cos(textAngle) > 0 : Math.cos(textAngle) < 0) textAngle += Math.PI;
+  // With "Turn names with the kites", the way round nearer the kite of the leg flown INTO its
+  // waypoint (the way back: its leg back into it); otherwise upright to read -- for a way-back
+  // callout, upright on the chart turned round to fly home.
+  const wps = state.waypoints;
+  const legIn = routeIdx < 0 ? null : (n && n.ret
+    ? (wps[routeIdx + 1] ? [wps[routeIdx + 1], wps[routeIdx]] : (wps[routeIdx - 1] ? [wps[routeIdx], wps[routeIdx - 1]] : null))
+    : (wps[routeIdx - 1] ? [wps[routeIdx - 1], wps[routeIdx]] : (wps[routeIdx + 1] ? [wps[routeIdx], wps[routeIdx + 1]] : null)));
+  if (legMarksWithKites() && legIn) {
+    const pa = proj(legIn[0]), pb = proj(legIn[1]);
+    textAngle = nearerWayRound(textAngle, Math.atan2(pb.y - pa.y, pb.x - pa.x) + Math.PI / 2);
+  } else if (n && n.ret ? Math.cos(textAngle) > 0 : Math.cos(textAngle) < 0) textAngle += Math.PI;
   const textGap = tune('commChangeTextGapPx');
   return {
     target: tp, targetCenter, targetRadius, startGap, tail: fp, bends, bend1, bend2,
@@ -7125,9 +7265,15 @@ function drawFlightPlanTable(ctx, x, y, w, h, align) {
   const vorCells = (wp, lg) => {
     const v = (lg && lg.vorRef && typeof vorByIdent === 'function' ? vorByIdent(lg.vorRef) : null) ||
               (typeof activeVor === 'function' ? activeVor() : null);
-    if (!v || !wp || typeof vorRadialDme !== 'function') return [empty, empty];
+    if (!v || !wp || typeof vorRadialDme !== 'function') return [empty, empty, null];
     const rd = vorRadialDme(v, wp.lat, wp.lng);
-    return rd ? ['R-' + rd.radial, String(rd.dme)] : [empty, empty];
+    return rd ? ['R-' + rd.radial, String(rd.dme), v] : [empty, empty, null];
+  };
+  // The station a pilot tunes to fly the radial: its ident and its (override-aware)
+  // frequency, the same pair the chart prints beside the VOR.
+  const vorTune = v => {
+    const f = typeof vorEffectiveFreq === 'function' ? vorEffectiveFreq(v) : (v.freq || '');
+    return v.ident + (f ? ' ' + f + ' MHz' : '');
   };
   const rows = [];
   let totTime = 0, totFuel = 0;
@@ -7160,7 +7306,7 @@ function drawFlightPlanTable(ctx, x, y, w, h, align) {
       time: cardPre ? '---' : (dur > 0 ? toHMS(dur) : '--'), fuel: fLabel,
       cumTime: cardPre ? '---' : (totTime > 0 ? toHMS(totTime) : '--'),
       cumFuel: ac ? totFuel.toFixed(1) : '--',
-      radial: rd[0], dme: rd[1] });
+      radial: rd[0], dme: rd[1], vor: rd[2] });
   }
   if (!rows.length) return null;
   // Active comm frequency per leg — departure/arrival airfield freqs +
@@ -7175,9 +7321,30 @@ function drawFlightPlanTable(ctx, x, y, w, h, align) {
   // Time of leg, Fuel of leg, [Comm freq]. (Was #,From,To,Hdg,Dist,Spd,Alt,
   // Time,Fuel,CumTime,CumFuel,Radial,DME — trimmed to what a pilot reads.)
   // Radial / DME columns appear only when a reference VOR is selected (global
-  // or any per-leg). The Radial header carries the reference VOR ident.
-  const refVor = typeof activeVor === 'function' ? activeVor() : null;
+  // or any per-leg). A caption line above the table names the station a pilot tunes: its
+  // ident and frequency ("VOR BGN 113.50 MHz"), outside the table so the Radial column stays as
+  // narrow as its values. Legs on different stations (the flight plan's per-leg picker) list
+  // each station there, and each radial cell names the station it is from.
   const vorActive = flightPlanCardHasVorInfo();
+  const usedVors = [];
+  for (const r of rows) if (r.vor && !usedVors.includes(r.vor)) usedVors.push(r.vor);
+  const mixedVors = usedVors.length > 1;
+  // Beyond the station's published coverage (AIP ENR 4.1, the ring the map draws): the radial and
+  // DME printed for that point may not be receivable there. The DME cell is marked "!" and the
+  // VOR line says all or some waypoints are beyond it, so the paper warns as the map's ring does. A station that publishes
+  // no coverage is not judged.
+  for (const r of rows) {
+    const cov = r.vor && Number(r.vor.coverageNm);
+    r.outOfRange = !!(cov > 0 && Number(r.dme) > cov);
+    if (r.outOfRange) r.dme += ' !';
+  }
+  // "All" or "some" of the waypoints read from that station: the "!" cells say which.
+  const vorLine = v => {
+    const on = rows.filter(r => r.vor === v), out = on.filter(r => r.outOfRange);
+    return vorTune(v) + (out.length
+      ? ' ' + S.planVorOutOfRange(v.coverageNm, out.length === on.length) : '');
+  };
+  if (mixedVors) for (const r of rows) if (r.vor) r.radial = r.vor.ident + ' ' + r.radial;
   const headers = [
     '#',
     S.planColDestination || 'Destination',
@@ -7187,14 +7354,19 @@ function drawFlightPlanTable(ctx, x, y, w, h, align) {
     S.planColLegTime || 'Time of leg',
     S.planColLegFuel || 'Fuel of leg',
   ];
-  if (vorActive) headers.push((S.planColRadial || 'Radial') + (refVor ? ' ' + refVor.ident : ''),
+  // One station: the Radial header keeps its ident ("Radial NAT"), as it always has. Several:
+  // each radial cell names its own, so the header stays "Radial".
+  if (vorActive) headers.push((S.planColRadial || 'Radial') + (usedVors.length === 1 ? ' ' + usedVors[0].ident : ''),
     S.planColDme || 'DME');
+  const caption = usedVors.length
+    ? (S.fpVorLabel || 'VOR') + ' ' + usedVors.map(vorLine).join(' \u00b7 ') : '';
+  const capRows = caption ? 1 : 0;
   if (freqActive) headers.push(S.planColComm || 'Comm freq');
   const numCols = headers.length;
   const numRows = rows.length + 2;            // header + data + total
   // Derive the font FROM the row height (not an independent floor) so text
   // can never grow taller than its row → no vertical overlap at any size.
-  const rowH = h / numRows;
+  const rowH = h / (numRows + capRows);
   const fontSize = Math.max(1, Math.min(rowH * 0.62, 22));
   const padX = Math.max(2, Math.round(fontSize * 0.5));
   const aligns = ['center', 'left', 'center', 'right', 'right', 'center', 'right'];
@@ -7222,6 +7394,11 @@ function drawFlightPlanTable(ctx, x, y, w, h, align) {
     for (let mc = 0; mc < numCols; mc++) colW[mc] = Math.max(colW[mc], ctx.measureText(String(mvals[mc])).width);
   }
   for (let mc = 0; mc < numCols; mc++) colW[mc] = Math.ceil(colW[mc] + 2 * padX);
+  // A caption wider than the table widens the Destination column, so the card is one box.
+  ctx.font = 'bold ' + fontSize + 'px sans-serif';
+  const capW = caption ? Math.ceil(ctx.measureText(caption).width + 2 * padX) : 0;
+  const sumW = colW.reduce((a, b) => a + b, 0);
+  if (capW > sumW) colW[1] += capW - sumW;
   const colX = new Array(numCols + 1).fill(0);
   for (let mc = 0; mc < numCols; mc++) colX[mc + 1] = colX[mc] + colW[mc];
   const totalW = colX[numCols];
@@ -7236,11 +7413,24 @@ function drawFlightPlanTable(ctx, x, y, w, h, align) {
   const STRIPE_BG = tune('planCardStripeBgColor');
   const GRID = tune('planCardGridColor');
   const TEXT = tune('planCardTextColor');
-  const tableH = Math.round(rowH * numRows);
+  const capH = Math.round(rowH * capRows);
+  const tableH = Math.round(rowH * numRows) + capH;
   const al = align || 'tl';
   if (al === 'tr' || al === 'br') x = x + Math.max(0, w - totalW);
   if (al === 'bl' || al === 'br') y = y + Math.max(0, h - tableH);
   if (al === 'center') { x = x + Math.max(0, (w - totalW) / 2); y = y + Math.max(0, (h - tableH) / 2); }
+  const top = y;
+  if (caption) {
+    // Plain text on the card's own paper: no header shading, no grid -- a title, not a row.
+    ctx.fillStyle = tune('planCardBgColor');
+    ctx.fillRect(x, y, totalW, capH);
+    ctx.fillStyle = TEXT;
+    ctx.font = 'bold ' + fontSize + 'px sans-serif';
+    ctx.textBaseline = 'middle';
+    ctx.textAlign = rtl ? 'right' : 'left';
+    ctx.fillText(caption, rtl ? x + totalW - padX : x + padX, y + capH / 2 + fontSize * 0.08);
+    y += capH;
+  }
   // Integer-snapped row boundaries so cell text and grid lines line up exactly
   // (fractional row heights otherwise drift the text off its row at small
   // sizes). Every row uses rowY[row]..rowY[row+1].
@@ -7283,7 +7473,9 @@ function drawFlightPlanTable(ctx, x, y, w, h, align) {
   for (let c4 = 0; c4 < numCols; c4++) if (totVals[c4] !== undefined) cell(tr, c4, String(totVals[c4]), true, null);
   ctx.strokeStyle = GRID;
   ctx.lineWidth = tune('fpTableBorderWidthPx');
-  ctx.strokeRect(x + 0.5, y + 0.5, totalW - 1, tableHActual - 1);
+  // One outline round the caption and the table: a single card on the paper.
+  ctx.strokeRect(x + 0.5, top + 0.5, totalW - 1, tableHActual + capH - 1);
+  if (capH) { ctx.beginPath(); ctx.moveTo(x, y + 0.5); ctx.lineTo(x + totalW, y + 0.5); ctx.stroke(); }
   ctx.lineWidth = tune('fpTableGridWidthPx');
   for (let gc = 1; gc < numCols; gc++) {
     const gx = Math.round(x + (rtl ? totalW - colX[gc] : colX[gc])) + 0.5;
@@ -7294,7 +7486,7 @@ function drawFlightPlanTable(ctx, x, y, w, h, align) {
     ctx.beginPath(); ctx.moveTo(x, gy); ctx.lineTo(x + totalW, gy); ctx.stroke();
   }
   ctx.restore();
-  return { x, y, w: totalW, h: tableHActual };
+  return { x, y: top, w: totalW, h: tableHActual + capH };
 }
 
 // Draw the placed flight-plan card on the overlay (live preview + export).
@@ -7303,7 +7495,8 @@ function drawFlightPlanTable(ctx, x, y, w, h, align) {
 function drawPlanCard() {
   if (!planCard) { window.planCardRect = null; return; }
   const scale = planCard.scale > 0 ? planCard.scale : 1;
-  const numRows = flightPlanCardLegIndexes().length + 2;
+  // + the VOR caption line, so it adds a row instead of shrinking every row.
+  const numRows = flightPlanCardLegIndexes().length + 2 + (flightPlanCardHasVorInfo() ? 1 : 0);
   const h = numRows * tune('planCardBaseRowPx') * scale;
   window.planCardRect = drawFlightPlanTable(octx, planCard.x, planCard.y, 1e6, h, 'tl');
   // The resize grip is a UI handle — never bake it into the exported PNG.

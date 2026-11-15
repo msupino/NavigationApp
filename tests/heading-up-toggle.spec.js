@@ -30,13 +30,18 @@ const state_ = (page) => page.evaluate(() => {
   };
 });
 
-test('it only appears while a fix is driving the map', async ({ page }) => {
+// Always there now (asked: "never hide buttons"): dimmed with the reason until a fix drives the map.
+test('it is always there, dimmed until a fix drives the map', async ({ page }) => {
   await boot(page);
-  expect((await state_(page)).shown).toBe(false);
+  const dim = () => page.evaluate(() => document.getElementById('orient-toggle').getAttribute('aria-disabled') === 'true');
+  expect((await state_(page)).shown).toBe(true);
+  expect(await dim()).toBe(true);
   await page.evaluate(() => startLiveLocation());
   expect((await state_(page)).shown).toBe(true);
+  expect(await dim()).toBe(false);
   await page.evaluate(() => stopLiveLocation());
-  expect((await state_(page)).shown).toBe(false);
+  expect((await state_(page)).shown).toBe(true);
+  expect(await dim()).toBe(true);
 });
 
 test('north up by default; switching holds the heading up', async ({ page }) => {

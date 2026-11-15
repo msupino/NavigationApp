@@ -146,7 +146,9 @@ test('the automatic Wi-Fi download shows its progress, and Download does not sta
   // What ota.js does by itself on Wi-Fi.
   await page.evaluate(() => { window.__auto = NavAid.ota.checkForUpdate(); });
   await expect(row).toContainText('Downloading… 45%');
-  await expect(row.locator('.app-update-btn')).toBeHidden();          // nothing to press meanwhile
+  // Nothing to press meanwhile: still there (never hide a button), dimmed with what it is doing.
+  await expect(row.locator('.app-update-btn')).toBeVisible();
+  await expect(row.locator('.app-update-btn')).toHaveAttribute('aria-disabled', 'true');
   expect(await row.locator('.app-update-progress').evaluate(b => b.value)).toBe(45);
   expect(await page.evaluate(() => NavAid.ota.status().then(s => s.state))).toBe('downloading');
   // Asked for again while it runs (a button press, another automatic look): it joins.

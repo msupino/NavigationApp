@@ -97,7 +97,11 @@
     if (insp) {
       // Across most of the map it is a sheet (above or below); narrower, it is a side panel.
       if (insp.width >= (right - left) * 0.6) {
-        if (insp.top > (top + bottom) / 2) bottom = Math.min(bottom, insp.top);
+        // Above or below by the edge it sits on, not by where its top edge falls: a bottom sheet
+        // dragged up past the middle was taken for a TOP sheet, the space left "above" it came
+        // out empty, and the aircraft went to the plain centre -- under the sheet (reported,
+        // a desktop in a narrow window).
+        if (bottom - insp.bottom <= insp.top - top) bottom = Math.min(bottom, insp.top);
         else top = Math.max(top, insp.bottom);
       } else if (insp.left > (left + right) / 2) right = Math.min(right, insp.left);
       else left = Math.max(left, insp.right);
@@ -125,6 +129,28 @@
     map.setView(visibleCentreFor(target.lat, target.lon), map.getZoom());
     return true;
   };
+  // A zoom scales the map about the middle of the WHOLE map, but a followed aircraft is held in
+  // the middle of the part you can see -- so every zoom carried it further from there, and a
+  // few zooms in put it in a corner (reported: "followed plane is in corner"). Put it back the
+  // moment the zoom ends, whatever made it: the buttons, a wheel, a pinch. Zooming is not
+  // asking to look somewhere else; a pan is, and still holds the view for its grace period.
+  function recentreFollowed() {
+    if (!followedHex) return;
+    const target = (window.trafficAircraft || []).find(a => a && a.hex === followedHex);
+    if (!target) return;
+    map.setView(visibleCentreFor(target.lat, target.lon), map.getZoom(), { animate: false });
+  }
+  map.on('zoomend', recentreFollowed);
+  // A pan holds the view for its grace period; when that ends, the aircraft comes back then,
+  // not at the next report (up to trafficRefreshSec later), as the pilot's own aircraft does.
+  let resumeTimer = 0;
+  map.on('moveend', () => {
+    if (!followedHex || typeof gpsFollowSuspended !== 'function' || !gpsFollowSuspended()) return;
+    clearTimeout(resumeTimer);
+    const left = (typeof _gpsUserMovedAt === 'number' ? _gpsUserMovedAt : 0)
+      + (typeof gpsFollowGraceMs === 'function' ? gpsFollowGraceMs() : 5000) - Date.now();
+    resumeTimer = setTimeout(() => { if (!gpsFollowSuspended()) recentreFollowed(); }, Math.max(0, left) + 50);
+  });
   window.trafficClearFollow = function (hex) {
     if (!hex || followedHex === String(hex)) followedHex = '';
   };
@@ -331,6 +357,28 @@
         // to DomEvent throws before the selection is ever made.
         const dom = e && e.originalEvent;
         if (dom && L.DomEvent) L.DomEvent.stopPropagation(dom);
+        // A plane sitting over a point (an airfield, a VOR, a reporting point, a frequency-change
+        // arrow, or one of the pilot's own route waypoints) should not silently grab the tap --
+        // the pilot may have meant the thing under it. Gather what else is at this point; if
+        // anything, offer the multi-item chooser with the aeroplane among the choices.
+        // hitOverlayMarkerCandidates is the chart overlays only (it excludes route waypoints,
+        // which an ordinary tap edits directly); add the route waypoints explicitly so a plane
+        // over one offers it too -- the chooser already knows how to label and select a 'wp'.
+        let others = [];
+        try {
+          const cp = e && e.containerPoint;
+          if (cp) {
+            if (typeof hitOverlayMarkerCandidates === 'function') others = hitOverlayMarkerCandidates(cp.x, cp.y) || [];
+            if (typeof hitWaypointCandidates === 'function') others = others.concat(hitWaypointCandidates(cp.x, cp.y) || []);
+          }
+        } catch (_) { others = []; }
+        if (others.length && typeof showPointChoice === 'function') {
+          if (followedHex && followedHex !== a.hex) followedHex = '';
+          if (showPointChoice([{ type: 'traffic', hex: a.hex, aircraft: a }].concat(others))) {
+            declutterSoon();
+            return;
+          }
+        }
         if (followedHex && followedHex !== a.hex) followedHex = '';
         state.selected = { type: 'traffic', hex: a.hex };
         if (typeof showInspector === 'function') showInspector();

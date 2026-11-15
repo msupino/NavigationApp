@@ -187,13 +187,28 @@
       : str('atcRadioTitle', 'ATC radio');
     opener.title = label;
     opener.setAttribute('aria-label', label);
-    // The channel's name beside the green button, so the map says what is playing (asked).
+    // The channel's name beside the green button, so the map says what is playing (asked) -- for
+    // atcNowLabelSec after it starts. Then it shrinks to a small badge on the button's lower edge
+    // (the airfield, LLHZ): the full label sat across the middle of the chart, on the crosshair
+    // (reported, with a screenshot). Tapping a channel again in the list shows it in full again.
     const now = opener.parentNode && opener.parentNode.querySelector('.atc-fab-now');
     if (now) {
-      now.textContent = c ? (c.icao ? c.icao + ' \u00b7 ' : '') + str(c.type, c.type) : '';
-      now.hidden = !c;
+      if (!c) { clearTimeout(nowTimer); now.hidden = true; nowFor = null; return; }
+      // The same channel refreshed (connecting -> playing): leave the label and its timer alone.
+      if (nowFor === c.id && !now.hidden) return;
+      clearTimeout(nowTimer);
+      const full = (c.icao ? c.icao + ' \u00b7 ' : '') + str(c.type, c.type);
+      const badge = c.icao || String(str(c.type, c.type)).split(/\s+/)[0].slice(0, 6);
+      const collapse = () => { now.textContent = badge; now.classList.add('atc-fab-now-badge'); };
+      now.hidden = false;
+      nowFor = c.id;
+      now.textContent = full;
+      now.classList.remove('atc-fab-now-badge');
+      const sec = Number((typeof tune === 'function' && tune('atcNowLabelSec')) || 0);
+      if (sec > 0) nowTimer = setTimeout(collapse, sec * 1000);
     }
   }
+  let nowTimer = 0, nowFor = null;
 
   function open() { build(); modal.classList.remove('hidden'); const b = list.querySelector('button'); if (b) b.focus(); }
   function close() { modal.classList.add('hidden'); opener.focus(); }

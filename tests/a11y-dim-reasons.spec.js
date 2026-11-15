@@ -78,13 +78,19 @@ test('deck sheet is named and Escape closes it from inside', async ({ page }) =>
   await expect(sheet).toBeHidden();
 });
 
-for (const lang of ['en', 'he']) test('comm fail strip label starts with its visible text (' + lang + ')', async ({ page }) => {
+// Icon-only (asked, like Divert): no words on the button, so its accessible name starts with the
+// short label (voice control: "tap Comm fail") and the title shows that label on a mouse.
+for (const lang of ['en', 'he']) test('comm fail strip is icon-only and its name starts with the label (' + lang + ')', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 800 });
   await open(page, lang);
   const r = await page.evaluate(() => {
     const b = document.querySelector('.deck-strip-commfail');
-    return b && { label: b.getAttribute('aria-label'), text: b.querySelector('.deck-strip-commfail-label').textContent };
+    return b && { label: b.getAttribute('aria-label'), title: b.title, text: b.textContent.trim(),
+      svg: b.querySelectorAll('svg').length, want: S.deckCommFail };
   });
   expect(r).not.toBeNull();
-  expect(r.label.startsWith(r.text)).toBe(true);
+  expect(r.text).toBe('');
+  expect(r.svg).toBe(1);
+  expect(r.title).toBe(r.want);
+  expect(r.label.startsWith(r.want)).toBe(true);
 });

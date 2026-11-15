@@ -80,7 +80,8 @@ test('the NOTAM list filters by freetext, over raw and decoded text alike', asyn
   // Case-insensitive, and the count in the title follows the filter.
   await find.fill('megido');
   await expect(items).toHaveCount(1);
-  await expect(page.locator('.notam-modal h3')).toContainText('— 1');
+  // The count number is first-strong isolated (U+2068..U+2069); strip the invisibles.
+  expect((await page.locator('.notam-modal h3').textContent()).replace(/[\u2066-\u2069]/g, '')).toContain('— 1');
   await find.fill('');
   await expect(items).toHaveCount(3);
 });

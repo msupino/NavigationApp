@@ -140,7 +140,9 @@ test.describe('Sliders persist to localStorage', () => {
       localStorage.setItem('keepme', '1');           // non-navaid key survives
     });
     await answerAppDialogs(page, true);
-    await page.locator('#clear-store').click();
+    // The wipe lives in the Settings > Storage window now (last-resort row), not a toolbar button.
+    await page.evaluate(() => showStorageModal());
+    await page.locator('.storage-wipe-btn').click();
     await page.waitForFunction(() => typeof state !== 'undefined');  // reloaded
     // Note: the test harness re-seeds navaid.sec.* on every load, so assert the
     // keys we set are gone rather than the whole namespace being empty.
