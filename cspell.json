@@ -6,12 +6,16 @@
   ],
   "words": [
     "baro",
+    "freqs",
     "hectopascals",
     "pressurised",
     "Behaviour",
     "Gurion",
     "Herzliya",
     "liveatc",
+    "gesturestart",
+    "gesturechange",
+    "gestureend",
     "aeroplane",
     "neighbours",
     "Prepar",
@@ -67,6 +71,8 @@
     "wspd",
     "דיווח",
     "חובה",
-    "סוג"
+    "סוג",
+    "rebuildable",
+    "refetched"
   ]
 }

@@ -361,10 +361,10 @@ function onLivePosition(pos) {
     // gpsSetFollow, so the flying band was only ever applied by toggling the switch off and
     // on. A pilot who opened the app zoomed out over the whole route got their aeroplane
     // centred in that same country-wide view, which is the case the band exists for.
-    if (isFirst && gpsFollow) {
+    if (isFirst && gpsOwnshipFollowActive()) {
       map.setView([p.lat, p.lng], gpsFollowZoom(map.getZoom(), p.lat, p.lng));
     }
-    else if (gpsFollow) gpsFollowRecenter(p.lat, p.lng);
+    else if (gpsOwnshipFollowActive()) gpsFollowRecenter(p.lat, p.lng);
     gpsApplyHeadingUp();
   }
 }
@@ -516,12 +516,17 @@ try {
   const stored = localStorage.getItem(GPS_FOLLOW_KEY);
   if (stored !== null) gpsFollow = stored === '1';
 } catch (e) { /* storage unavailable: the default stands */ }
+// ADS-B follow temporarily owns the map center without changing the pilot's saved
+// own-aircraft follow preference.
+function gpsOwnshipFollowActive() {
+  return gpsFollow && !(typeof window.trafficFollowTarget === 'function' && window.trafficFollowTarget());
+}
 function gpsSetFollow(on) {
   gpsFollow = !!on;
   try { localStorage.setItem(GPS_FOLLOW_KEY, gpsFollow ? '1' : '0'); } catch (e) { /* */ }
   // Turning it back on should act now rather than at the next fix -- and the pan that
   // preceded the tap must not hold the map hostage for its grace period either.
-  if (gpsFollow && gpsOwn) {
+  if (gpsOwnshipFollowActive() && gpsOwn) {
     _gpsUserMovedAt = 0;
     gpsFollowRecenter(gpsOwn.lat, gpsOwn.lng,
       gpsFollowZoom(map && map.getZoom(), gpsOwn.lat, gpsOwn.lng));
@@ -1155,10 +1160,10 @@ function onGpsPosition(pos) {
   gpsCheckLegAlerts();
   scheduleDraw();
   // As onLivePosition: the first fix centres and frames (the flying band); later ones follow.
-  if (isFirst && gpsFollow && typeof map !== 'undefined') {
+  if (isFirst && gpsOwnshipFollowActive() && typeof map !== 'undefined') {
     map.setView([pt.lat, pt.lng], gpsFollowZoom(map.getZoom(), pt.lat, pt.lng));
   }
-  else if (gpsFollow) gpsFollowRecenter(pt.lat, pt.lng);
+  else if (gpsOwnshipFollowActive()) gpsFollowRecenter(pt.lat, pt.lng);
   gpsApplyHeadingUp();
 }
 
@@ -1690,7 +1695,7 @@ function gpsGlideTick() {
   if (wait >= 1000) return;                                   // nothing visible to gain: once per fix
   if (Date.now() - _gpsGlideFixAt <= GPS_GLIDE_HOLD_MS) {
     const p = gpsShownOwn();
-    if (gpsFollow && typeof gpsFollowRecenter === 'function') gpsFollowRecenter(p.lat, p.lng);
+    if (gpsOwnshipFollowActive() && typeof gpsFollowRecenter === 'function') gpsFollowRecenter(p.lat, p.lng);
     scheduleDraw();
   }
   _gpsGlideTimer = setTimeout(gpsGlideTick, wait);
@@ -2072,6 +2077,59 @@ function gpsDistanceToDestinationNm(from, fromLegIdx) {
   for (let k = i + 1; k < wps.length - 1; k++) total += geo(wps[k], wps[k + 1]).dist;
   return total;
 }
+// What to fly on leg i (the one starting at wps[i]): planned altitude, magnetic wind-corrected
+// heading and planned time -- the same figures the leg's kite shows. Shared by the next-leg call
+// (two minutes out, as prep) and the after-TOP checklist (the moment to fly them).
+function gpsLegFigures(legs, wps, i) {
+  const nextLeg = legs[i];
+  const nextLegKiteVisible = (typeof legKiteVisible !== 'function') ||
+    legKiteVisible(i, nextLeg);
+  let nextLegAlt = null;
+  let nextLegHdg = null;
+  let nextLegTime = null;
+  let nextLegHms = null;    // {h,m,s} of the SAME figure the kite shows, for speech
+  if (nextLegKiteVisible) {
+    nextLegAlt = (nextLeg && Number.isFinite(nextLeg.inboundAltitude))
+      ? Math.round(nextLeg.inboundAltitude) : null;
+    const afterNext = wps[i + 1];
+    const nextLegGeo = afterNext ? geo(wps[i], afterNext) : null;
+    // Magnetic AND wind-corrected -- the leg inspector's own "With wind" readout
+    // (interact.js) shows toMagnetic(windTriangle(brg, leg.flightSpeed, wind).hdgTrue),
+    // not the plain course; this reported the uncorrected course, which read off by
+    // however many degrees of WCA the leg's wind produced (reported live: leg inspector
+    // said 6°, this said 5°). windTriangle() itself returns null for calm/no-wind/an
+    // unflyable crosswind, in which case the plain course is the right answer anyway.
+    if (nextLegGeo && Number.isFinite(nextLegGeo.brg) && typeof toMagnetic === 'function') {
+      const nextWind = (nextLeg && typeof legWindFor === 'function') ? legWindFor(nextLeg) : null;
+      const fx = (nextWind && typeof windTriangle === 'function' && nextLeg)
+        ? windTriangle(nextLegGeo.brg, nextLeg.flightSpeed, nextWind) : null;
+      // Three digits, same as every other heading the app displays (pad3 -- the leg
+      // kite, the wind-effect readout, VOR radials): "004", not "4".
+      nextLegHdg = (typeof pad3 === 'function')
+        ? pad3(toMagnetic(fx ? fx.hdgTrue : nextLegGeo.brg)) : toMagnetic(fx ? fx.hdgTrue : nextLegGeo.brg);
+    }
+    // Planned time for the next leg -- its own distance at its own PLANNED speed, same
+    // "route plan is the only source of truth ... ignore any drift" rule as the ETA
+    // trigger and the wind-corrected heading above: not an estimate of how long it will
+    // actually take given how the flight is actually going, just what the plan says.
+    if (nextLegGeo && Number.isFinite(nextLegGeo.dist) && nextLeg && nextLeg.flightSpeed > 0 &&
+        typeof toHMS === 'function') {
+      nextLegTime = toHMS(nextLegGeo.dist / nextLeg.flightSpeed);
+      // Whole minutes for the SPOKEN form -- seconds are false precision on a planned
+      // time, and they lengthen the phrase at the moment the pilot is busiest.
+      // Speak the figure the kite ALREADY shows rather than deriving a second one.
+      // toHMS floors the minutes and quantises the seconds to 5s, so rounding its
+      // result again to whole minutes both loses information and disagrees with the
+      // map: a 12:30 leg was being spoken as "13 minutes".
+      const _hms = nextLegTime.split(':').map(Number);
+      nextLegHms = _hms.length === 3
+        ? { h: _hms[0], m: _hms[1], s: _hms[2] }
+        : { h: 0, m: _hms[0], s: _hms[1] };
+    }
+  }
+  return { alt: nextLegAlt, hdg: nextLegHdg, time: nextLegTime, hms: nextLegHms };
+}
+
 function gpsCheckLegAlerts() {
   if (!gpsOwn || typeof state === 'undefined' || typeof geo !== 'function') return;
   const wps = state.waypoints || [];
@@ -2154,52 +2212,9 @@ function gpsCheckLegAlerts() {
       // same effective-visibility rule the kite itself uses, so a leg deliberately
       // decluttered on the map doesn't get its numbers read out here either) and is simply
       // omitted, never guessed.
-      const nextLeg = legs[gpsAlertLegIndex + 1];
-      const nextLegKiteVisible = (typeof legKiteVisible !== 'function') ||
-        legKiteVisible(gpsAlertLegIndex + 1, nextLeg);
-      let nextLegAlt = null;
-      let nextLegHdg = null;
-      let nextLegTime = null;
-      let nextLegHms = null;    // {h,m,s} of the SAME figure the kite shows, for speech
-      if (nextLegKiteVisible) {
-        nextLegAlt = (nextLeg && Number.isFinite(nextLeg.inboundAltitude))
-          ? Math.round(nextLeg.inboundAltitude) : null;
-        const afterNext = wps[gpsAlertLegIndex + 2];
-        const nextLegGeo = afterNext ? geo(next, afterNext) : null;
-        // Magnetic AND wind-corrected -- the leg inspector's own "With wind" readout
-        // (interact.js) shows toMagnetic(windTriangle(brg, leg.flightSpeed, wind).hdgTrue),
-        // not the plain course; this reported the uncorrected course, which read off by
-        // however many degrees of WCA the leg's wind produced (reported live: leg inspector
-        // said 6°, this said 5°). windTriangle() itself returns null for calm/no-wind/an
-        // unflyable crosswind, in which case the plain course is the right answer anyway.
-        if (nextLegGeo && Number.isFinite(nextLegGeo.brg) && typeof toMagnetic === 'function') {
-          const nextWind = (nextLeg && typeof legWindFor === 'function') ? legWindFor(nextLeg) : null;
-          const fx = (nextWind && typeof windTriangle === 'function' && nextLeg)
-            ? windTriangle(nextLegGeo.brg, nextLeg.flightSpeed, nextWind) : null;
-          // Three digits, same as every other heading the app displays (pad3 -- the leg
-          // kite, the wind-effect readout, VOR radials): "004", not "4".
-          nextLegHdg = (typeof pad3 === 'function')
-            ? pad3(toMagnetic(fx ? fx.hdgTrue : nextLegGeo.brg)) : toMagnetic(fx ? fx.hdgTrue : nextLegGeo.brg);
-        }
-        // Planned time for the next leg -- its own distance at its own PLANNED speed, same
-        // "route plan is the only source of truth ... ignore any drift" rule as the ETA
-        // trigger and the wind-corrected heading above: not an estimate of how long it will
-        // actually take given how the flight is actually going, just what the plan says.
-        if (nextLegGeo && Number.isFinite(nextLegGeo.dist) && nextLeg && nextLeg.flightSpeed > 0 &&
-            typeof toHMS === 'function') {
-          nextLegTime = toHMS(nextLegGeo.dist / nextLeg.flightSpeed);
-          // Whole minutes for the SPOKEN form -- seconds are false precision on a planned
-          // time, and they lengthen the phrase at the moment the pilot is busiest.
-          // Speak the figure the kite ALREADY shows rather than deriving a second one.
-          // toHMS floors the minutes and quantises the seconds to 5s, so rounding its
-          // result again to whole minutes both loses information and disagrees with the
-          // map: a 12:30 leg was being spoken as "13 minutes".
-          const _hms = nextLegTime.split(':').map(Number);
-          nextLegHms = _hms.length === 3
-            ? { h: _hms[0], m: _hms[1], s: _hms[2] }
-            : { h: 0, m: _hms[0], s: _hms[1] };
-        }
-      }
+      // What to fly on the leg AFTER this waypoint (gpsLegFigures: the kite's own figures).
+      const fig = gpsLegFigures(legs, wps, gpsAlertLegIndex + 1);
+      const nextLegAlt = fig.alt, nextLegHdg = fig.hdg, nextLegTime = fig.time, nextLegHms = fig.hms;
       const lang = (typeof window !== 'undefined' && window.__navLang) || 'en';
       // A frequency change always happens AT a waypoint, so it belongs in the call that names
       // that waypoint rather than in a second alert of its own: two notifications a minute
@@ -2207,15 +2222,21 @@ function gpsCheckLegAlerts() {
       // point identifies the moment; which unit answers there is on the map callout already.
       const ccAt = gpsCommChangeAt(next);
       const ccFreq = ccAt ? ccAt.freq : '';
-      gpsSendWatchAlert((S && S.watchAlertLegTitle) || 'Next leg',
+      // Clock to map to ground (ש.מ.ש): the two-minute call is also the cue to find the waypoint --
+      // clock, map, then outside. It heads the call: the title of the notification, the first
+      // words spoken. One call, not a second alert a few seconds apart about the same point.
+      const cmg = (typeof tune !== 'function' || tune('legClockMapGround') !== false);
+      const legSpeech = (S && S.speakAlertLeg)
+        ? S.speakAlertLeg(gpsSpokenWaypoint(next, label, lang), nextLegAlt,
+            nextLegHdg == null ? null : gpsSpokenDigits(nextLegHdg, lang),
+            nextLegHms, ccFreq ? gpsSpokenFreq(ccFreq, lang) : null)
+        : null;
+      gpsSendWatchAlert(
+        (cmg && S && S.watchAlertLegTitleCmg) || (S && S.watchAlertLegTitle) || 'Next leg',
         (S && S.watchAlertLegBody)
           ? S.watchAlertLegBody(label, nextLegAlt, nextLegHdg, nextLegTime, ccFreq)
           : ('Approaching ' + label),
-        (S && S.speakAlertLeg)
-          ? S.speakAlertLeg(gpsSpokenWaypoint(next, label, lang), nextLegAlt,
-              nextLegHdg == null ? null : gpsSpokenDigits(nextLegHdg, lang),
-              nextLegHms, ccFreq ? gpsSpokenFreq(ccFreq, lang) : null)
-          : null);
+        legSpeech && cmg && S.speakAlertClockMapGround ? S.speakAlertClockMapGround + ' ' + legSpeech : legSpeech);
     }
   }
 
@@ -2355,9 +2376,28 @@ function gpsCheckLegAlerts() {
       // Passing a waypoint is also the moment the drift check must go quiet for a while:
       // see _gpsLastTopAt in gpsCheckDrift.
       _gpsLastTopAt = Date.now();
-      gpsSendWatchAlert((S && S.watchAlertTopTitle) || 'TOP',
-        (S && S.watchAlertTopBody) || 'TOP',
-        (S && S.speakAlertTop) ? S.speakAlertTop() : null);
+      // Then the essential checks for the new leg (asked; Hebrew בד"ח צא כיוון -- כז״גמ״ד):
+      // heading, time, altitude, instruments, report (English: FREDA) -- with the new leg's figures, the same ones the two-minute call gave as prep.
+      // Not at the last waypoint: there is no leg to set up, so it stays a plain TOP.
+      const checklist = (typeof tune !== 'function' || tune('topChecklist') !== false) &&
+        !!wps[gpsAlertLegIndex + 2] && S && S.watchAlertTopChecklistBody;
+      if (checklist) {
+        const fig = gpsLegFigures(legs, wps, gpsAlertLegIndex + 1);
+        const lang = (typeof window !== 'undefined' && window.__navLang) || 'en';
+        // A frequency change happens at this waypoint: the radio/report item names it.
+        const cc = gpsCommChangeAt(next);
+        const freq = cc ? cc.freq : '';
+        gpsSendWatchAlert(S.watchAlertTopTitle || 'TOP',
+          S.watchAlertTopChecklistBody(fig.hdg, fig.time, fig.alt, freq),
+          S.speakAlertTopChecklist
+            ? S.speakAlertTopChecklist(fig.hdg == null ? null : gpsSpokenDigits(fig.hdg, lang), fig.hms, fig.alt,
+                freq ? gpsSpokenFreq(freq, lang) : null)
+            : null);
+      } else {
+        gpsSendWatchAlert((S && S.watchAlertTopTitle) || 'TOP',
+          (S && S.watchAlertTopBody) || 'TOP',
+          (S && S.speakAlertTop) ? S.speakAlertTop() : null);
+      }
     }
     gpsAlertLegIndex++;
     _gpsAlertMinDistNm = Infinity;

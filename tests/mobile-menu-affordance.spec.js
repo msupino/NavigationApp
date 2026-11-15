@@ -4,19 +4,19 @@
 // looked like it had no opener at all.
 const { test, expect } = require('./_setup');
 
-test('an untouched desktop legend keeps its Leaflet bottom anchor after resize', async ({ page }) => {
+test('the desktop legend button keeps its Leaflet bottom anchor after resize', async ({ page }) => {
   await page.setViewportSize({ width: 1200, height: 800 });
   await page.goto('?lang=en&nogist');
   await page.waitForFunction(() =>
     !document.documentElement.classList.contains('app-booting') &&
-    document.getElementById('map-legend').getBoundingClientRect().height > 0);
-  const before = await page.locator('#map-legend').boundingBox();
-  expect(before).not.toBeNull();
+    !!document.getElementById('legend-toggle') &&
+    document.getElementById('legend-toggle').getBoundingClientRect().height > 0);
+  const btn = page.locator('#legend-toggle');
+  const before = await btn.boundingBox();
   const beforeGap = 800 - (before.y + before.height);
-  expect(await page.locator('#map-legend').evaluate(el => el.style.position)).toBe('');
   await page.setViewportSize({ width: 1200, height: 1000 });
   await expect.poll(async () => {
-    const box = await page.locator('#map-legend').boundingBox();
+    const box = await btn.boundingBox();
     return Math.abs((1000 - (box.y + box.height)) - beforeGap);
   }).toBeLessThan(3);
   expect(await page.locator('#map-legend').evaluate(el => el.style.position)).toBe('');
@@ -88,15 +88,19 @@ test('the phone bottom band does not pile up legend, coords and attribution', as
     state.legs = []; syncLegs(); draw();
     const get = sel => { const e = document.querySelector(sel); if (!e) return null;
       const r = e.getBoundingClientRect(); return r.height ? { top: r.top, bottom: r.bottom, left: r.left, right: r.right } : null; };
-    return { legend: get('#map-legend'),
+    // What the dock draws -- the button and the totals pill -- not its box, which is an L.
+    return { legend: get('#legend-toggle'), totals: get('#route-summary'),
+
              coord: get('#coord-readout'), attrib: get('.leaflet-control-attribution') };
   });
   const hits = (a, b) => a && b && a.left < b.right && a.right > b.left && a.top < b.bottom && a.bottom > b.top;
   expect(boxes.legend).not.toBeNull();
   expect(boxes.attrib).not.toBeNull();
-  // The legend must sit clear of the attribution, which wraps to two lines here.
-  expect(boxes.legend.bottom).toBeLessThanOrEqual(boxes.attrib.top + 1);
-  expect(hits(boxes.legend, boxes.coord)).toBe(false);
+  // Clear of the attribution (two lines here) and of the coordinates.
+  for (const b of [boxes.legend, boxes.totals]) {
+    expect(hits(b, boxes.attrib)).toBe(false);
+    expect(hits(b, boxes.coord)).toBe(false);
+  }
 });
 
 test('the search tip retires after the first search and stays gone', async ({ page }) => {

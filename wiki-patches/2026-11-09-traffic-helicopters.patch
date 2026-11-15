@@ -1,0 +1,39 @@
+From e77b48e3372dd8a28cda740edd63b3b4b5d08717 Mon Sep 17 00:00:00 2001
+From: Marco <marco@supino.org>
+Date: Mon, 9 Nov 2026 07:14:27 +0000
+Subject: [PATCH] Live traffic: helicopters drawn as helicopters
+
+---
+ Features-he.md | 2 +-
+ Features.md    | 2 +-
+ 2 files changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/Features-he.md b/Features-he.md
+index e64592c..8f8a834 100644
+--- a/Features-he.md
++++ b/Features-he.md
+@@ -309,7 +309,7 @@ NavAid יכול להקליט את הנתיב שבאמת טסתם מ-GPS המכש
+ ## תעבורה חיה (אפליקציה)
+ 
+ **תצוגה/הגדרות ← תעבורה** מציירת את המטוסים האחרים הנקלטים ב-ADS-B: מטוס במבט־על, חרטומו
+-לכיוון התנועה, ולצידו האות הקריאה והגובה, וכל הפרטים בהקשה. קיימת באפליקציות האנדרואיד והאייפון/אייפד בלבד
++לכיוון התנועה, ולצידו האות הקריאה והגובה, וכל הפרטים בהקשה. מסוק מצויר כמסוק — רוטור, תא וזנב — לפי קטגוריית המשדר (מטוס כנף סובבת) או לפי קוד הדגם, והפרטים מציינים זאת (<span dir="ltr">R44</span> · מסוק). קיימת באפליקציות האנדרואיד והאייפון/אייפד בלבד
+ — שרתי הנתונים דוחים בקשות מדפדפן — ולכן בדפדפן המתג מוצג מעומעם עם הסיבה. גם מקלט ADS-B בתא
+ (Stratux, SkyEcho, Sentry) יכול להזין אותה, ב-Wi-Fi (<span dir="ltr"><code>featureGdl90</code></span>, כבוי כברירת מחדל).
+ 
+diff --git a/Features.md b/Features.md
+index 8bc842c..758372d 100644
+--- a/Features.md
++++ b/Features.md
+@@ -330,7 +330,7 @@ See [Inspector](Inspector#airfield-density-altitude).
+ ## Live traffic (app)
+ 
+ **Extra layers → Traffic** draws the other aeroplanes heard on ADS-B: a top-down aircraft, nose
+-along its track, with callsign and flight level beside it, and the full read-out on a tap.
++along its track, with callsign and flight level beside it, and the full read-out on a tap. A helicopter is drawn as one — rotor, cabin and tail — by its emitter category (rotorcraft) or its type code, and the read-out names it (*R44 · Helicopter*).
+ It exists in the Android and iPhone/iPad apps only — the public feeds refuse browser requests — so in a
+ browser the switch is shown dimmed with the reason. See
+ [GPS Track Recording](GPS-Track-Recording#traffic-around-you-ads-b). A cockpit ADS-B receiver
+-- 
+2.43.0
+

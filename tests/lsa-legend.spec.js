@@ -15,6 +15,8 @@ async function lowAlt(page) {
   });
   await page.waitForFunction(() => layerDataPrefix() === 'lsa');
   await page.evaluate(async () => { await loadCommChange(); await loadNavWaypoints(); draw(); });
+  // The legend starts closed; its rows are read with the key open (the desktop Legend button).
+  await page.evaluate(() => window.setLegendCollapsed(false, false));
 }
 
 test('Low Alt carries the chart\'s frequency-change points, with call signs that resolve', async ({ page }) => {
@@ -93,7 +95,9 @@ test('the airfield panel says what kind of field the chart shows, and its runway
     return document.getElementById('insp-body').textContent;
   }, icao);
   const ros = await rows('LLIB');
-  expect(ros).toContain('1106 m');
+  // The runway's own figure now comes from its AIP chart (1 105 m), per runway; the LSA block's
+  // lighting and surface stay.
+  expect(ros.replace(/\u00a0/g, ' ')).toContain('(1,105 m)');
   expect(ros).toContain('minimal lighting');
   expect(await rows('LLMG')).toContain('Airstrip');
   expect(await rows('GVULT')).toContain('Agricultural strip');

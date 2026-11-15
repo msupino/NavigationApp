@@ -35,7 +35,9 @@
   // rather than עברית and English, because the whole point of this control is to be usable
   // by someone who cannot read the page it is sitting on -- and a code that is the same in
   // both alphabets is legible from either side. The language's own name rides on the option
-  // as its title, for whoever wants it spelt out.
+  // as its title, for whoever wants it spelt out. On a phone the room is there and the codes
+  // read as jargon next to the menu's "English" / "עברית", so the names are spelt out there
+  // (the same narrow-or-touch query the stylesheet uses for this notice).
   // Switching is a navigation, as it is in the menu, and the notice opens again on the other
   // side, which is the point.
   const LANGUAGES = [['he', 'HE', 'עברית'], ['en', 'EN', 'English']];
@@ -44,14 +46,17 @@
     const wrap = document.createElement('div');
     wrap.className = 'disclaimer-langs';
     const current = lang();
+    let named = false;
+    try { named = window.matchMedia('(max-width: 680px), (pointer: coarse)').matches; } catch (e) { /* codes */ }
     const select = document.createElement('select');
     select.className = 'disclaimer-lang-select';
     select.setAttribute('aria-label', 'Language / שפה');
     for (const [code, label, name] of LANGUAGES) {
       const option = document.createElement('option');
       option.value = code;
-      option.lang = 'en';                 // HE and EN are Latin, whichever language they name
-      option.textContent = label;
+      // HE and EN are Latin, whichever language they name; a name is in its own language.
+      option.lang = named ? code : 'en';
+      option.textContent = named ? name : label;
       option.title = name;
       option.setAttribute('aria-label', name);
       if (code === current) option.selected = true;

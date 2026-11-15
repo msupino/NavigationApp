@@ -1,13 +1,15 @@
 // @ts-check
 // The Zulu clock defaults to the top-LEFT corner in Hebrew (RTL), where the
 // menu bar occupies the top-right. On small screens (menu bar moves top-left)
-// it drops below the bar. English keeps the Leaflet top-right placement.
+// it drops below the bar. English keeps the Leaflet top-right placement. These are the DRAGGABLE
+// clock's starting corners (gist zuluClockMovable); the default is fixed above the coordinates.
 const { test, expect } = require('./_setup');
 
 async function clockBox(page, lang, w, h) {
   await page.setViewportSize({ width: w, height: h });
   await page.goto('?lang=' + lang + '');
   await page.waitForFunction(() => document.getElementById('zulu-clock'));
+  await page.evaluate(() => { NavAid.tuning.zuluClockMovable = true; window.refreshZuluClockPlacement(); });
   await page.waitForTimeout(200);
   return page.evaluate(() => {
     const c = document.getElementById('zulu-clock').getBoundingClientRect();

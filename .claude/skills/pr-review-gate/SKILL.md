@@ -13,6 +13,13 @@ New PRs open as drafts, and `.github/workflows/draft-auto-merge.yml` arms auto-m
 one is marked ready. So **"ready" is the gate**: never run `gh pr ready` (or the merge script,
 which readies PRs itself) until the review below is clean for the current head.
 
+## When
+
+Right after the PR is opened, and again after every push to it -- **not** when the user asks for
+"to main". By then the markers should already name the current head, so "to main" is only the
+`gh pr ready` and the watch. (The user, Nov 8: "run UI review and code review after opening pr, not
+when asked to go to main".) Findings are fixed in the same PR before reporting it to the user.
+
 ## 1. Review the whole PR, at its head
 
 ```bash

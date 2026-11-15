@@ -58,6 +58,12 @@ NavAid.tuningDefaults = {
   // while being the one thing read at arm's length in a bumpy cockpit, in sunlight, on a
   // kneeboard. Bigger by default, and tunable from there.
   gpsReadoutFontPx: { value: 16, min: 9, max: 32, step: 1, label: 'GPS readout text (px)' },
+  // Asked (an iPhone wrapped the Hebrew totals onto two lines at the default size).
+  // How far the map's button columns stand in from the screen edges (Leaflet's own 10 px). Asked
+  // with a phone screenshot: the right-hand icons to the edge, the middle of the chart clear.
+  mapCtrlLeftEdgePx: { value: 10, min: 0, max: 40, step: 1, label: 'Map buttons: left column, gap to the screen edge (px)' },
+  mapCtrlRightEdgePx: { value: 10, min: 0, max: 40, step: 1, label: 'Map buttons: right column, gap to the screen edge (px)' },
+  routeSummaryFontPx: { value: 13, min: 9, max: 22, step: 1, label: 'Route totals beside the Legend button, text (px)' },
   gpsReadoutRefitPx: { value: 16, min: 0, max: 80, step: 1, label: 'GPS readout re-fit slack (px)' },
   // The touch crosshair that marks what the coordinate readout is reading.
   // Use the phone's compass for the own-ship heading where the GPS gives no course
@@ -102,6 +108,8 @@ NavAid.tuningDefaults = {
   livePredictorTurnGentleDegSec: { value: 0.25, min: 0, max: 3, step: 0.05, label: 'Curve predictor for a clear gentle turn down to (°/s)' },
   livePredictorTurnSignificance: { value: 3, min: 1, max: 10, step: 0.5, label: 'Gentle turn must stand out from GPS scatter by (standard errors)' },
   legEtaLeadSec: { value: 120, min: 15, max: 600, step: 15, label: 'Next-leg call, this far ahead (s)' },
+  legClockMapGround: { value: true, type: 'bool', label: 'Next-leg call opens with "clock to map to ground" (find the waypoint)' },
+  topChecklist: { value: true, type: 'bool', label: 'TOP call reads the leg-entry checks (FREDA / כז״גמ״ד) with the new leg\'s figures' },
   legCaptureNm: { value: 0.3, min: 0.05, max: 3, step: 0.05, label: 'TOP capture radius (NM)' },
   driftTrackErrorDeg: { value: 10, min: 2, max: 45, step: 1, label: 'Off-course alert at (°)' },
   driftCheckSec: { value: 120, min: 15, max: 900, step: 15, label: 'Off-course check every (s)' },
@@ -146,6 +154,8 @@ NavAid.tuningDefaults = {
   profileClimbKt: { value: 75, min: 30, max: 200, step: 1, label: 'Default climb speed (kt)' },
   defaultGph: { value: 8, min: 1, max: 60, step: 0.5, label: 'Default fuel burn (GPH)' },
   defaultTaxiGal: { value: 1.1, min: 0, max: 10, step: 0.1, label: 'Default taxi/run-up fuel (gal)' },
+  defaultReserveMin: { value: 30, min: 0, max: 120, step: 5, label: 'Default VFR fuel reserve (min) — day 30, night 45' },
+  divertListCount: { value: 6, min: 3, max: 12, step: 1, label: 'Nearest airfields listed by Divert' },
 
   legAltInferMaxHops: { value: 6, min: 1, max: 20, step: 1, label: 'Alt inference max hops' },
   legAltInferMaxDistRatio: { value: 1.35, min: 1, max: 3, step: 0.05, label: 'Alt inference max distance ratio' },
@@ -965,6 +975,10 @@ NavAid.tuningDefaults = {
   inspectorDefaultTopPx: { value: 96, min: 40, max: 240, step: 1, label: 'Inspector default top (px)' },
   inspectorBottomGapPx: { value: 12, min: 0, max: 120, step: 1, label: 'Inspector bottom gap (px)' },
   floatingPanelGapPx: { value: 12, min: 0, max: 80, step: 1, label: 'Floating panel separation (px)' },
+  // Off: the clock sits fixed above the coordinate readout, left of the zoom buttons, and moves
+  // up past the VOR / wind / SIGMET lines when they show. On: it is draggable anywhere (the
+  // spot persists under navaid.clockPos), starting in the top corner.
+  zuluClockMovable: { value: false, type: 'bool', label: 'Zulu clock: draggable (off: fixed above the coordinates, left of the zoom buttons)' },
   zuluClockMinWidthPx: { value: 82, min: 40, max: 180, step: 1, label: 'Zulu clock min width (px)' },
   zuluClockPadYPx: { value: 5, min: 0, max: 24, step: 1, label: 'Zulu clock vertical padding (px)' },
   zuluClockPadXPx: { value: 8, min: 0, max: 36, step: 1, label: 'Zulu clock horizontal padding (px)' },
@@ -1163,6 +1177,9 @@ NavAid.tuningDefaults = {
   // How long a NOTAM id is remembered as "already read". Longer than any NOTAM lives, so a
   // familiar one never reappears as new; short enough that the store cannot grow for ever.
   notamSeenDays: { value: 90, min: 1, max: 730, step: 1, label: 'Remember read NOTAMs (days)' },
+  // The NOTAM feed is scraped hourly; when its last publish is older than this the app warns
+  // the pilot the list may be out of date (the staleness budget the charts monitor uses). 0 = never.
+  notamStaleHours: { value: 6, min: 0, max: 168, step: 1, label: 'Warn NOTAMs stale after (hours); 0 = never' },
   reverseWarnMs: { value: 10000, min: 1000, max: 30000, step: 500, label: 'Reverse warning (ms)' },
   // How long a toast stays up, from how long it takes to READ. One fixed duration cannot be
   // right for both "Copied" and a three-line explanation of why a control just refused --
@@ -1197,6 +1214,7 @@ NavAid.tuningDefaults = {
   defaultShowVor: { value: true, type: 'bool', label: 'Default: show VOR stations' },
   defaultShowHotspots: { value: true, type: 'bool', label: 'Default: show route hotspots' },
   defaultShowWpNames: { value: true, type: 'bool', label: 'Default: show waypoint names' },
+  defaultAutoWpNameAngle: { value: true, type: 'bool', label: 'Default: waypoint names turned to their leg\u2019s kite' },
   defaultShowCumTime: { value: true, type: 'bool', label: 'Default: show cumulative time' },
   defaultShowDrift: { value: true, type: 'bool', label: 'Default: show drift lines' },
   defaultShowCommChange: { value: true, type: 'bool', label: 'Default: show comm-change rings' },
@@ -1237,7 +1255,10 @@ NavAid.tuningDefaults = {
   // it on for everyone flying with the app, without an app release.
   featureLiveTraffic: { value: false, type: 'bool', label: 'Feature: live ADS-B traffic' },
   // Live ATC audio
-  featureAtcRadio: { value: false, type: 'bool', label: 'Feature: live ATC radio (Herzliya, Haifa)' },
+  featureAtcRadio: { value: true, type: 'bool', label: 'Feature: live ATC radio (Herzliya, Haifa)' },
+  // The channel's full name beside the green map button, for this long after it starts; then a
+  // small airfield badge on the button's edge, clear of the chart's middle. 0: always in full.
+  atcNowLabelSec: { value: 4, min: 0, max: 30, step: 1, label: 'ATC radio: show the playing channel in full for (s)' },
   atcRadioBase: { value: 'https://navaid-atc.marco-956.workers.dev/', type: 'text',
     label: 'Where the live ATC channels are played from (<base><channel id>)' },
   featureDensityAltitude: { value: true, type: 'bool', label: 'Feature: density altitude in the airfield panel' },
@@ -1268,10 +1289,19 @@ NavAid.tuningDefaults = {
   // switch (featureAtcRadio), with its gist group.
   liveAtcFeeds: { value: 'LLBG', type: 'text',
     label: 'Live ATC feeds: ICAO:mount pairs, comma-separated (a bare ICAO links to its LiveATC page)' },
-  trafficApiUrl: { value: 'https://api.adsb.lol/v2/lat/{lat}/lon/{lon}/dist/{dist}', type: 'text',
+  // adsb.fi: sampled over Israel (Nov 2026) it carried every aircraft adsb.lol had, plus the
+  // low-level light aircraft (4X- registrations at a few hundred feet) and ground traffic
+  // adsb.lol did not -- the ones a VFR pilot is looking for. Same v2 API (its list is
+  // `aircraft`, adsb.lol's `ac`; both are read). Open data, non-commercial, ~1 request/s per IP.
+  trafficApiUrl: { value: 'https://opendata.adsb.fi/api/v2/lat/{lat}/lon/{lon}/dist/{dist}', type: 'text',
     label: 'Where live traffic is fetched from (empty turns it off)' },
   // The feeds send no CORS header, so a browser needs a relay that adds one (relay/traffic, a
   // Cloudflare Worker). Empty: no live traffic in a browser, the switch dimmed with the reason.
+  // The traffic inspector's "Open on <site>" link. Empty: the public map of the site trafficApiUrl
+  // fetches from (adsb.lol, adsb.fi, airplanes.live, adsb.one), so the pilot sees the same data
+  // there; a feed it does not know gets no link. {hex} is the aircraft's ICAO address.
+  trafficViewUrl: { value: '', type: 'text',
+    label: 'Live traffic: link to see an aircraft on the web, {hex} filled in (empty: the feed\u2019s own map)' },
   trafficWebApiUrl: { value: '', type: 'text',
     label: 'Live traffic in a browser: the CORS relay, same {lat}/{lon}/{dist} template (empty: apps only)' },
   trafficRadiusNm: { value: 40, min: 5, max: 150, step: 5,
@@ -1280,10 +1310,31 @@ NavAid.tuningDefaults = {
     label: 'How often live traffic is refreshed (s)' },
   trafficFailsBeforeWarn: { value: 3, min: 1, max: 10, step: 1,
     label: 'Failed traffic requests in a row before saying so' },
+  // A request that hangs used to hold every later refresh off (one in flight at a time) until the
+  // browser gave up; timed out, it fails and the next refresh tries again.
+  trafficTimeoutSec: { value: 10, min: 3, max: 30, step: 1,
+    label: 'Give up on a live traffic request after (s)' },
+  // No good answer for this long: the feed's aircraft fade (their positions are getting old), and
+  // after the second, longer wait they go, with a message -- a frozen aeroplane reads as current.
+  trafficStaleSec: { value: 30, min: 10, max: 120, step: 5,
+    label: 'Fade live traffic when no update for (s)' },
+  trafficDropSec: { value: 60, min: 20, max: 300, step: 10,
+    label: 'Remove live traffic when no update for (s)' },
   // Not red. Red on an aviation display means resolve it now, and this is information --
   // magenta is what a traffic symbol wears on a moving map, and nothing else on the chart
   // uses it.
   trafficIconPx: { value: 22, min: 12, max: 40, step: 1, label: 'Live traffic aircraft size (px)' },
+  // On the ground: reported so ("ground", a receiver's on-ground flag), or an aeroplane slower than
+  // trafficGroundKt below trafficGroundBelowFt (never a helicopter -- slow and low is how they fly).
+  // Drawn smaller and faded, without a label: a busy airport covered the map in aircraft that are no
+  // factor in the air (asked, with a Ben Gurion screenshot).
+  trafficGroundKt: { value: 40, min: 0, max: 80, step: 5, label: 'Live traffic: on the ground below this speed (kt)' },
+  trafficGroundBelowFt: { value: 1000, min: 0, max: 3000, step: 100, label: 'Live traffic: ...and below this altitude (ft)' },
+  trafficGroundScale: { value: 0.7, min: 0.4, max: 1, step: 0.05, label: 'Live traffic on the ground: size (x)' },
+  trafficGroundAlpha: { value: 0.55, min: 0.2, max: 1, step: 0.05, label: 'Live traffic on the ground: opacity' },
+  // Zoomed in to airport scale the ground traffic's callsigns come back (asked: "zooming in restore
+  // the plane info?"); further out they stay off.
+  trafficGroundLabelZoom: { value: 13, min: 8, max: 18, step: 1, label: 'Live traffic on the ground: call signs from this zoom' },
   trafficArrowColor: { value: '#b5179e', type: 'color', label: 'Live traffic aircraft color' },
   trafficLabelColor: { value: '#7b1a6b', type: 'color', label: 'Live traffic label color' },
   plateFieldZoom: { value: 11, min: 8, max: 14, step: 1,
@@ -1295,8 +1346,8 @@ NavAid.tuningDefaults = {
 // interaction (hit testing), tools (alt pairs, export), and finally the
 // global colour palette.
 NavAid.tuningGroups = [
-  { name: 'Navigation', keys: ['magVarAuto', 'magneticVariationDeg', 'msaBufferFt', 'altimetryCorrection', 'geoidUndulationFt', 'followResumeMs', 'followZoomFloor', 'followZoomCeiling', 'followZoomCtrFloor', 'followZoomCtrCeiling', 'gpsReadoutFontPx', 'gpsReadoutRefitPx', 'alertNotifyTtlSec', 'alertIconColor', 'altToleranceFt', 'altMaxAlertsPerLeg', 'legEtaLeadSec', 'atisLeadSec', 'lastLightMarginMin', 'atisMarkerColor', 'atisMarkerRadiusPx', 'atisMarkerFontPx', 'liveHeadingEndLabel', 'legCaptureNm', 'driftTrackErrorDeg', 'driftCheckSec', 'coneUnknownSec', 'gpsMaxAccuracyM', 'gpsMinMoveM', 'gpsGlide', 'gpsGlideMinKt', 'gpsGlideMaxHz', 'vorReadoutMaxNm', 'measureLineColor', 'measureDotFill', 'measureLabelBg', 'measureLabelText', 'gpsStaleSec', 'qnhMaxAgeMin', 'qnhMoveNm', 'compassMaxKt', 'compassFallback', 'headingUpMinDeltaDeg', 'crosshairSizePx', 'crosshairWidthPx', 'crosshairColor', 'crosshairHaloColor', 'crosshairAlpha', 'atisMarkerFillAlpha', 'atisMarkerWidthPx'] },
-  { name: 'Performance defaults', keys: ['profileClimbFpm', 'profileClimbKt', 'defaultGph', 'defaultTaxiGal'] },
+  { name: 'Navigation', keys: ['magVarAuto', 'magneticVariationDeg', 'msaBufferFt', 'altimetryCorrection', 'geoidUndulationFt', 'followResumeMs', 'followZoomFloor', 'followZoomCeiling', 'followZoomCtrFloor', 'followZoomCtrCeiling', 'gpsReadoutFontPx', 'gpsReadoutRefitPx', 'routeSummaryFontPx', 'alertNotifyTtlSec', 'alertIconColor', 'altToleranceFt', 'altMaxAlertsPerLeg', 'legEtaLeadSec', 'legClockMapGround', 'topChecklist', 'atisLeadSec', 'lastLightMarginMin', 'atisMarkerColor', 'atisMarkerRadiusPx', 'atisMarkerFontPx', 'liveHeadingEndLabel', 'legCaptureNm', 'driftTrackErrorDeg', 'driftCheckSec', 'coneUnknownSec', 'gpsMaxAccuracyM', 'gpsMinMoveM', 'gpsGlide', 'gpsGlideMinKt', 'gpsGlideMaxHz', 'vorReadoutMaxNm', 'measureLineColor', 'measureDotFill', 'measureLabelBg', 'measureLabelText', 'gpsStaleSec', 'qnhMaxAgeMin', 'qnhMoveNm', 'compassMaxKt', 'compassFallback', 'headingUpMinDeltaDeg', 'crosshairSizePx', 'crosshairWidthPx', 'crosshairColor', 'crosshairHaloColor', 'crosshairAlpha', 'atisMarkerFillAlpha', 'atisMarkerWidthPx'] },
+  { name: 'Performance defaults', keys: ['profileClimbFpm', 'profileClimbKt', 'defaultGph', 'defaultTaxiGal', 'defaultReserveMin', 'divertListCount'] },
   { name: 'Altitude inference', keys: ['legAltInferMaxHops', 'legAltInferMaxDistRatio', 'legAltInferMaxExtraNm'] },
   { name: 'Plan card', keys: ['planCardBaseRowPx', 'planCardGripPx', 'planCardBgColor', 'planCardHeaderBgColor', 'planCardTotalBgColor', 'planCardStripeBgColor', 'planCardGridColor', 'planCardTextColor', 'planCardGripColor', 'planCardGripLineColor', 'planCardGripLineWidthPx'] },
   { name: 'VOR range ring', keys: ['vorRangeRingColor', 'vorRangeRingAlpha', 'vorRangeRingWidthPx', 'vorRangeRingDashPx', 'vorRangeRingGapPx', 'vorRangeRingLabel', 'vorRangeRingSteps', 'vorRangeRingLabelGapPx'] },
@@ -1315,9 +1366,9 @@ NavAid.tuningGroups = [
   { name: 'Airspace', keys: ['defaultShowAirspace', 'airspaceProhibitedColor', 'airspaceRestrictedColor',
     'airspaceTmaColor', 'airspaceCtrColor', 'airspaceFillAlpha', 'airspaceLineWidthPx', 'airspaceLabelMinZoom',
     'airspaceLabelFontPx'] },
-  { name: 'ATC radio', keys: ['featureAtcRadio', 'atcRadioBase', 'liveAtcFeeds'] },
-  { name: 'Live traffic', keys: ['featureLiveTraffic', 'defaultShowTraffic', 'trafficApiUrl', 'trafficWebApiUrl', 'trafficRadiusNm',
-    'trafficRefreshSec', 'trafficFailsBeforeWarn', 'trafficIconPx', 'trafficArrowColor',
+  { name: 'ATC radio', keys: ['featureAtcRadio', 'atcNowLabelSec', 'atcRadioBase', 'liveAtcFeeds'] },
+  { name: 'Live traffic', keys: ['featureLiveTraffic', 'defaultShowTraffic', 'trafficApiUrl', 'trafficViewUrl', 'trafficWebApiUrl', 'trafficRadiusNm',
+    'trafficRefreshSec', 'trafficFailsBeforeWarn', 'trafficTimeoutSec', 'trafficStaleSec', 'trafficDropSec', 'trafficIconPx', 'trafficGroundKt', 'trafficGroundBelowFt', 'trafficGroundScale', 'trafficGroundAlpha', 'trafficGroundLabelZoom', 'trafficArrowColor',
     'trafficLabelColor'] },
   { name: 'Follow me', keys: ['featureFollowMe', 'featureFollowMePublic', 'publicPilotsViewHash', 'followMePublicZoomGrow', 'followMePublicDimSec', 'followMePublicDropSec', 'followMeBroker', 'followMeRateSec',
     'followMeStaleSec', 'featureFollowMeHeartbeat', 'followMeHeartbeatSec', 'followMePlanePx', 'followMePlaneColor', 'featureFollowMeShareWhileViewing', 'featureFollowMeRoute', 'followMeRequireSignedLinks', 'followMeRouteCompress', 'followMeRouteMaxKb', 'followMeRouteDebounceMs', 'followMeStopMaxSec', 'followMeResumeHr',
@@ -1327,6 +1378,7 @@ NavAid.tuningGroups = [
   { name: 'Zoom', keys: ['inspZoomSmallest', 'inspZoomLargest', 'inspZoomStep', 'plateZoomMax', 'plateZoomStep', 'plateZoomDoubleTap', 'wxStaleAfterMin'] },
   { name: 'Satellite', keys: ['satellitePreviewZoom', 'satelliteExpandedZoom', 'satelliteMinZoom', 'satelliteMaxZoom', 'satelliteChartOverscale', 'satellitePreviewWidthPx', 'satellitePreviewHeightPx', 'satelliteMarkerRadiusPx', 'satelliteMarkerColor', 'satelliteMarkerWeightPx', 'satelliteMarkerAlpha'] },
   { name: 'Go-to marker', keys: ['gotoMarkerColor', 'gotoMarkerFillColor', 'gotoMarkerRadiusPx', 'gotoMarkerWeightPx', 'gotoMarkerFillAlpha'] },
+  { name: 'Map buttons', keys: ['mapCtrlLeftEdgePx', 'mapCtrlRightEdgePx'] },
   { name: 'Map label zoom', keys: ['airfieldLabelMinZoom', 'navWpLabelMinZoom', 'vorLabelMinZoom'] },
   { name: 'Wind', keys: ['windDir', 'windSpeed'] },
   { name: 'Magnifier', keys: ['magBaselineZoom', 'magMaxExp'] },
@@ -1365,7 +1417,7 @@ NavAid.tuningGroups = [
   { name: 'Vertical profile', keys: ['profileTerrainColor', 'profileMsaColor', 'profileTerrainSamples', 'profileHeadroomFt', 'profileBgColor', 'profileGridColor', 'profileAxisColor', 'profileGroundColor', 'profileTextColor', 'profileNmTextColor', 'profileTimeTextColor', 'profileAreaColor', 'profileLineColor', 'profileSpeedColor', 'profilePlanColor', 'routeProfileHeightPx', 'trackProfileSmoothFixes', 'profileLegend', 'profileExportWidthPx', 'profileExportHeightPx', 'profileTocColor', 'profileMarkerHaloColor', 'profileAxisHeightPx', 'profileYPadPx', 'profileFontPx', 'profileSmallFontPx', 'profileBadgeFontPx', 'profileMessageFontPx', 'profileGridAlpha', 'profileGridXAlpha', 'profileGridWidthPx', 'profileTerrainAlpha', 'profileAreaAlpha', 'profileMsaAlpha', 'profileMsaWidthPx', 'profileMsaDashOnPx', 'profileMsaDashOffPx', 'profileLineWidthPx', 'profileAssumedDashOnPx', 'profileAssumedDashOffPx', 'profilePlanWidthPx', 'profilePlanDashOnPx', 'profilePlanDashOffPx', 'profileSpeedWidthPx', 'profileSpeedDashOnPx', 'profileSpeedDashOffPx', 'profileNoteBgAlpha', 'profileNoteBgHeightPx', 'profileTocDotRadiusPx', 'profileTocLabelGapPx', 'profileTocTickLenPx', 'profileTickLenPx', 'profileAxisRow1Px', 'profileAxisRow2Px', 'profileAxisRow3Px', 'profileWpIdMinGapPx', 'profileLabelGapPx', 'profileCaptionInsetPx', 'profileSpeedLabelInsetPx', 'profileLegendRightInsetPx', 'profileLegendSwatchPx', 'profileLegendGapPx', 'profileLegendPadPx', 'profileMarkerRadiusPx', 'profileMarkerRingWidthPx', 'profileMarkerFontPx', 'profileMarkerTextHaloPx', 'profileMarkerHaloAlpha', 'profileMarkerLabelGapPx', 'profileExportHeaderPx', 'profileExportInsetPx', 'profileExportTitleFontPx', 'profileExportTitleTopPx', 'profileExportSubtitleFontPx', 'profileExportSubtitleTopPx'] },
   { name: 'SIGMETs', keys: ['sigmetTurbColor', 'sigmetIceColor', 'sigmetMtwColor', 'sigmetVaColor', 'sigmetDustColor', 'sigmetTcColor', 'sigmetDefaultColor', 'sigmetFillAlpha', 'sigmetLineWidthPx', 'sigmetDashOnPx', 'sigmetDashOffPx', 'sigmetLabelFontPx', 'airmetColor', 'airmetDotPx'] },
   { name: 'LSA bubbles', keys: ['lsaLineWidthPx', 'lsaHighlightWidthPx', 'lsaLabelFontPx', 'lsaMetaFontPx', 'lsaLabelMinZoom', 'lsaAreaFillColor', 'lsaAreaFillAlpha', 'lsaWeekendFillColor', 'lsaWeekendFillAlpha', 'lsaHighlightFillAlpha', 'lsaLegendFillAlpha', 'lsaLegendWeekendFillAlpha', 'lsaLegendLineWidthPx'] },
-  { name: 'NOTAMs', keys: ['notamColor', 'notamFillAlpha', 'notamLineWidthPx', 'notamRouteWidthPx', 'notamDivertColor', 'featureNotamFreqRows', 'notamDashOnPx', 'notamDashOffPx', 'notamDivertDashOnPx', 'notamDivertDashOffPx', 'notamClosureDashOnPx', 'notamClosureDashOffPx', 'notamClosureExtraWidthPx', 'notamBadgeOffsetPx', 'notamBadgeRadiusPx', 'notamBadgeFillAlpha', 'notamBadgeRingWidthPx', 'notamBadgeFlashRadiusPx', 'notamBadgeFlashWidthPx'] },
+  { name: 'NOTAMs', keys: ['notamColor', 'notamFillAlpha', 'notamLineWidthPx', 'notamRouteWidthPx', 'notamDivertColor', 'featureNotamFreqRows', 'notamDashOnPx', 'notamDashOffPx', 'notamDivertDashOnPx', 'notamDivertDashOffPx', 'notamClosureDashOnPx', 'notamClosureDashOffPx', 'notamClosureExtraWidthPx', 'notamBadgeOffsetPx', 'notamBadgeRadiusPx', 'notamBadgeFillAlpha', 'notamBadgeRingWidthPx', 'notamBadgeFlashRadiusPx', 'notamBadgeFlashWidthPx', 'notamStaleHours'] },
   { name: 'Overlay opacity', keys: ['overlayOpacity'] },
   { name: 'Weather (IMS)', keys: ['imsPwxOpacity', 'imsPwxLatOffset', 'imsPwxLngOffset', 'imsPwxLatScale', 'imsPwxLngScale', 'imsPwxRotationDeg', 'imsPwxDarkBackdropAlpha', 'imsPwxBackdropBandPct'] },
   { name: 'SIGWX overlay', keys: ['sigwxOpacity', 'sigwxLatOffset', 'sigwxLngOffset', 'sigwxLatScale', 'sigwxLngScale', 'sigwxRotationDeg', 'sigwxWhiteKnockout', 'sigwxKnockoutSat', 'sigwxCoastWidthPx', 'sigwxCoastColor', 'sigwxCoastAlpha', 'sigwxTblOpacity', 'sigwxTblLatOffset', 'sigwxTblLngOffset', 'sigwxTblScale', 'sigwxLegendTopLat', 'sigwxLegendWestLng', 'sigwxLegendWidthDeg', 'sigwxLegendStepDeg', 'sigwxLegendGapPct', 'sigwxLegendSquare', 'sigwxPaperColor'] },
@@ -1378,7 +1430,7 @@ NavAid.tuningGroups = [
   { name: 'Airfield wind', keys: ['afWindBarbLenPx', 'afWindBarbTickPx', 'afWindBarbTickGapPx', 'afWindBarbWidthPx', 'afWindCalmRadiusPx', 'afWindBarbColor', 'afWindOffsetPx', 'afWindLabelFontPx', 'afWindLabelHaloPx', 'afWindMinZoom', 'afWindLabelMinZoom', 'afWindGustDeltaKt', 'afWindRunwayMinKt', 'afWindCalmMaxKt', 'afWindCrossDeadbandKt', 'afWindCacheMin', 'afWindForecastDays', 'afWindSampleToleranceMin', 'afWindPennantWidthFactor', 'afWindPennantGapFactor', 'afWindFullTickSlantFactor', 'afWindHalfTickSlantFactor', 'afWindHalfTickLenFactor', 'afWindStartGapPx', 'afWindBarbHaloPx', 'afWindObsColor', 'afWindModelDashPx', 'afWindModelGapPx', 'afWindModelLabelAlpha', 'afWindObsMaxAgeMin', 'featureAirfieldWind'] },
   { name: 'Surface weather', keys: ['featureSurfaceWx', 'swxDotRingWidthPx', 'swxMinZoom', 'swxDotRadiusPx', 'swxLabelFontPx', 'swxLabelHaloPx', 'swxStationGapPx', 'swxMinSpacingPx', 'swxStationSpacingFactor', 'swxTempColor', 'swxWarnColor', 'swxCautionColor', 'swxQuietColor', 'swxSpreadWarnC', 'swxSpreadCautionC', 'swxBaseFtPerC', 'swxBaseWarnFt', 'swxBaseCautionFt', 'swxIsobarColor', 'swxIsobarWidthPx', 'swxIsobarMinLines', 'swxCentreFontPx', 'swxHighColor', 'swxLowColor', 'swxCentreRadiusSteps', 'swxCentreMinHpa', 'swxGridSouth', 'swxGridNorth', 'swxGridWest', 'swxGridEast', 'swxGridStepDeg', 'swxCacheMin', 'swxForecastDays', 'swxSampleToleranceMin', 'swxRetryMin'] },
   { name: 'Wind field', keys: ['windFieldDefaultAltFt', 'windFieldDefaultOpacity', 'windFieldGridDeg', 'windFieldFollowMap', 'windFieldMaxPoints', 'windFieldWest', 'windFieldEast', 'windFieldSouth', 'windFieldNorth', 'windFieldVelocityScale', 'windFieldParticleAge', 'windFieldParticleMultiplier', 'windFieldLineWidth', 'windFieldMaxVelocity', 'windFieldMinVelocity', 'windFieldFrameRate', 'windFieldHoursAhead', 'windFieldForecastDays'] },
-  { name: 'Chrome layout', keys: ['inspectorDefaultTopPx', 'inspectorBottomGapPx', 'floatingPanelGapPx', 'zuluClockMinWidthPx', 'zuluClockPadYPx', 'zuluClockPadXPx', 'zuluClockMarginTopPx', 'zuluClockMarginRightPx', 'zuluClockFontPx', 'zuluClockFontWeight', 'zuluClockLineHeight', 'zuluClockTextColor', 'zuluClockBgColor', 'zuluClockBgAlpha', 'zuluClockBorderColor', 'zuluClockBorderWidthPx', 'zuluClockBorderRadiusPx', 'zuluClockShadowYPx', 'zuluClockShadowBlurPx', 'zuluClockShadowAlpha', 'compassNeedleColor'] },
+  { name: 'Chrome layout', keys: ['inspectorDefaultTopPx', 'inspectorBottomGapPx', 'floatingPanelGapPx', 'zuluClockMovable', 'zuluClockMinWidthPx', 'zuluClockPadYPx', 'zuluClockPadXPx', 'zuluClockMarginTopPx', 'zuluClockMarginRightPx', 'zuluClockFontPx', 'zuluClockFontWeight', 'zuluClockLineHeight', 'zuluClockTextColor', 'zuluClockBgColor', 'zuluClockBgAlpha', 'zuluClockBorderColor', 'zuluClockBorderWidthPx', 'zuluClockBorderRadiusPx', 'zuluClockShadowYPx', 'zuluClockShadowBlurPx', 'zuluClockShadowAlpha', 'compassNeedleColor'] },
   // Includes the former 'First-run view' group: the first-run centre/zoom and the
   // fit-with-no-route view answer the same question, and a pilot tuning one wants the other
   // in front of them.
@@ -1392,7 +1444,7 @@ NavAid.tuningGroups = [
     'defaultViewZoom', 'defaultViewLat', 'defaultViewLng'] },
   { name: 'Export', keys: ['exportBgColor', 'fpTableBorderWidthPx', 'fpTableGridWidthPx'] },
   { name: 'Global palette', keys: ['inkColor', 'selectedColor', 'labelFillColor', 'kiteTextColor', 'legKiteHaloColor', 'kiteNoteAlpha'] },
-  { name: 'Default layer visibility', keys: ['defaultShowNavWP', 'defaultShowAirfields', 'defaultShowVor', 'defaultShowHotspots', 'defaultShowWpNames', 'defaultShowCumTime', 'defaultShowDrift', 'defaultShowCommChange', 'defaultVoiceAlerts', 'defaultShowMidLeg', 'defaultHighlightDiff', 'defaultLimitLegKites', 'defaultShowMsa', 'defaultShowReporting', 'defaultForceSnap', 'defaultShowReturn', 'featureShowReturn', 'featureFplReturnJoin', 'offlineAutoCvfr', 'offlineCvfrUnmeteredOnly', 'offlineCvfrMinZoom', 'offlineCvfrMaxZoom', 'offlineCvfrStartSec', 'featureRouteIntro', 'featureTour', 'defaultPressureUnit', 'defaultAltSource', 'featureGpsStatus', 'featureKeepAwake', 'featureHaptics', 'featureBrightness', 'featureBarometer', 'featureBatteryWarn', 'featureFullscreenFlight', 'featureGdl90', 'featureBleGps', 'featureSatZoomButtons', 'featureInspectorResize', 'featureInspectorWhileTracking', 'featureAssistant', 'featureAutoRecord', 'defaultAutoRecord', 'autoRecordMinSec', 'autoRecordMinNm', 'recordResumeMin', 'featureSearchClose', 'featureTabletDesktop', 'featureMenubarDrag', 'featureSearchDrag', 'featureDisclaimer', 'featureOtaUpdates', 'featureNavLog', 'reverseWarnMs', 'notamSeenDays', 'toastReadWpm', 'toastNoticeMs', 'toastMinMs', 'toastWarnMinMs', 'toastMaxMs', 'reverseWarnBlink', 'reverseRotatesMap', 'addToRouteOpensInspector', 'defaultShowNotam', 'defaultShowAirmet', 'defaultShowSigmet', 'defaultShowWind', 'defaultWindField', 'defaultAirfieldWind', 'defaultSurfaceWx', 'defaultImsPwx', 'defaultSigwxOv', 'defaultShowLsaBubbles', 'defaultAutoRoute', 'defaultShowCircuit', 'defaultShowTraining', 'defaultShowCvfr', 'defaultShowHeli', 'defaultShowCommfail', 'defaultShowAdc', 'defaultShowIfr', 'plateFieldZoom'] },
+  { name: 'Default layer visibility', keys: ['defaultShowNavWP', 'defaultShowAirfields', 'defaultShowVor', 'defaultShowHotspots', 'defaultShowWpNames', 'defaultAutoWpNameAngle', 'defaultShowCumTime', 'defaultShowDrift', 'defaultShowCommChange', 'defaultVoiceAlerts', 'defaultShowMidLeg', 'defaultHighlightDiff', 'defaultLimitLegKites', 'defaultShowMsa', 'defaultShowReporting', 'defaultForceSnap', 'defaultShowReturn', 'featureShowReturn', 'featureFplReturnJoin', 'offlineAutoCvfr', 'offlineCvfrUnmeteredOnly', 'offlineCvfrMinZoom', 'offlineCvfrMaxZoom', 'offlineCvfrStartSec', 'featureRouteIntro', 'featureTour', 'defaultPressureUnit', 'defaultAltSource', 'featureGpsStatus', 'featureKeepAwake', 'featureHaptics', 'featureBrightness', 'featureBarometer', 'featureBatteryWarn', 'featureFullscreenFlight', 'featureGdl90', 'featureBleGps', 'featureSatZoomButtons', 'featureInspectorResize', 'featureInspectorWhileTracking', 'featureAssistant', 'featureAutoRecord', 'defaultAutoRecord', 'autoRecordMinSec', 'autoRecordMinNm', 'recordResumeMin', 'featureSearchClose', 'featureTabletDesktop', 'featureMenubarDrag', 'featureSearchDrag', 'featureDisclaimer', 'featureOtaUpdates', 'featureNavLog', 'reverseWarnMs', 'notamSeenDays', 'toastReadWpm', 'toastNoticeMs', 'toastMinMs', 'toastWarnMinMs', 'toastMaxMs', 'reverseWarnBlink', 'reverseRotatesMap', 'addToRouteOpensInspector', 'defaultShowNotam', 'defaultShowAirmet', 'defaultShowSigmet', 'defaultShowWind', 'defaultWindField', 'defaultAirfieldWind', 'defaultSurfaceWx', 'defaultImsPwx', 'defaultSigwxOv', 'defaultShowLsaBubbles', 'defaultAutoRoute', 'defaultShowCircuit', 'defaultShowTraining', 'defaultShowCvfr', 'defaultShowHeli', 'defaultShowCommfail', 'defaultShowAdc', 'defaultShowIfr', 'plateFieldZoom'] },
 ];
 // Padding pair + maxZoom for a fitBounds call, from the tuning registry. Every "frame the
 // map on X" call goes through this instead of carrying its own literals.
@@ -1724,7 +1776,7 @@ window.S = Object.assign({
   commfailUrl: 'data/commfail.json?v=2',
   worldCountriesUrl: 'data/world-countries.json?v=2',  // country outlines + names, always offline  // published comm-failure entry points per field
   navWpSearchField: 'en',              // which locale label to show/search in results
-  airfieldsUrl: 'data/airfields.json?v=43',  // resolved relative to index.html (docs/)
+  airfieldsUrl: 'data/airfields.json?v=44',  // resolved relative to index.html (docs/)
   airfieldHoursUrl: 'data/airfield-hours.json?v=1',  // published hours (airfield-hours.js)
   airfieldLabelField: 'en',            // which locale label to show on the overlay
   routeTemplatesUrl: 'data/route-templates.json?v=3', // ready-made route templates
@@ -1742,6 +1794,8 @@ window.S = Object.assign({
   tbShowHotspots: 'Show hotspots',                  // Route hotspot visibility toggle
   tbShowHotspotsTitle: 'Show hotspot highlighting without changing waypoint hotspot settings',
   tbShowWpNames: 'Show waypoint names',             // Display toggle
+  tbAutoWpNameAngle: 'Turn labels with the kites',
+  tbAutoWpNameAngleTitle: 'Waypoint names, cumulative times, minute marks, leg distances, identification points and frequency callouts read the way their leg\u2019s kite figures read: turn the printed chart to fly a leg and they all read with its kite. Off: upright on the screen',
   tbShowWpNamesTitle: 'Show waypoint names (off = empty circle)',
   sliderStandardSuffix: '(standard)',
   tbWpSize: 'Waypoint size',                        // Display slider label
@@ -1784,9 +1838,18 @@ window.S = Object.assign({
   report: 'Reporting',
   reportingMandatory: '📍 Mandatory report',
   reportingOnRequest: '📍 Report on request',
-  tbSearchPlaceholder: '🔍 Find navigation waypoint',
+  tbSearchPlaceholder: 'Find navigation waypoint',
   tbSearchHint: 'Tip: type space-separated waypoint codes (e.g. LLHZ BAZRA DEROR SHARO HADRA) and press Enter to build a route.',
   errSearchUnknown: function(t) { return 'Unknown waypoint: ' + t; },
+  // A code the waypoints in use do not have, but another chart's do (ATS while CVFR is in use).
+  errSearchOtherChart: function (t, where, current) {
+    return t + ' is a waypoint of the ' + where + ' chart; the waypoints in use are ' + current +
+      '\u2019s. Change \u201cNav waypoints from\u201d to use it.';
+  },
+  searchOtherChartRow: function (t, where, target) {
+    return t + ' is a waypoint of the ' + where + ' chart, not of those shown \u2014 tap to use the ' +
+      target + ' waypoints';
+  },
   searchReplaceConfirm: 'Replace the current route with these waypoints?',
   choosePointTitle: 'Choose point',
   choosePointRoute: 'Route waypoint',
@@ -1795,6 +1858,7 @@ window.S = Object.assign({
   choosePointVor: 'VOR station',
   choosePointCommChange: 'Freq-change arrow',
   choosePointNotam: 'NOTAM',
+  choosePointAircraft: 'Aircraft',
   tbSearchClear: 'Clear the box',
   // "?" beside the search box: what it understands, as examples to tap.
   searchHelpTitle: 'What can I search?',
@@ -1879,11 +1943,13 @@ window.S = Object.assign({
   tourCheckTitle: 'Check the route',
   tourCheckText: 'Airspace, NOTAMs, SIGMET/AIRMET and ceiling against the route, at the time you plan to fly it. Dimmed until there is a route. Above it, Layers switches the chart and its overlays.',
   tourEditTitle: 'Edit the route',
-  tourEditText: 'Add a waypoint or a note, undo, clear the map; [ ] fits the page or the route to the screen. Tap a lit button again to stop.',
+  tourEditText: 'Add a waypoint or a note, undo, clear the map; Fit sizes the page or the route to the screen. Tap a lit button again to stop.',
   tourMeasureTitle: 'Measure',
   tourMeasureText: 'With your position showing, tap the ruler, then a point: distance, bearing and time from the aircraft. Nothing is added to the route.',
   tourLockTitle: 'Edit lock',
   tourLockText: 'Shut, nothing on the route can move. It locks by itself while your position is showing.',
+  tourLegendTitle: 'Legend and route totals',
+  tourLegendText: 'The button opens the key to the chart symbols above it; press it again to close. Beside it, the route\u2019s legs, distance, time and fuel, once there is a route.',
   tourDialTitle: 'Turn and zoom the chart',
   tourDialText: 'Drag the dial to turn the chart, tap it to turn by 90°; the red needle points north; hold it for the compass. + and − zoom.',
   tourDialTextPhone: 'Drag the dial to turn the chart, tap it to turn by 90°; the red needle points north; hold it for the compass. + and − zoom; ⓘ shows the chart credits.',
@@ -1896,8 +1962,8 @@ window.S = Object.assign({
   tourCommfailTextPhone: 'Lost the radio? A route to the nearest field with a published procedure, with the squawk and the tower\u2019s phone. Beside it: the language.',
   tourMenuTitle: 'Menu',
   tourMenuText: 'Charts, extra layers (NOTAM, weather, airspace), the flight plan, and settings.',
-  tourMenuTextPhone: 'Menu: charts, layers (NOTAM, weather, airspace) and settings. Plan: the flight plan. The Legend in the corner explains the symbols.',
-  tourMenuTextDesk: 'Save, My routes, the menus and the flight plan; then language, shortcuts (?), more links and the simulator. At the bottom: the Legend and the time slider.',
+  tourMenuTextPhone: 'Menu: charts, layers (NOTAM, weather, airspace) and settings. Plan: the flight plan. The Legend button at the bottom left opens the key to the symbols, with the route totals beside it.',
+  tourMenuTextDesk: 'Save, Saved routes, the menus and the flight plan; then language, shortcuts (?), more links and the simulator. At the bottom: the Legend and the time slider.',
   tourSearchTitle: 'Find',
   tourSearchText: 'Type a waypoint or airfield, or several codes (LLHZ BAZRA DEROR) to build a route.',
   tourHoldTitle: 'Press and hold the map',
@@ -1905,7 +1971,7 @@ window.S = Object.assign({
   recIndicatorLabel: 'REC',
   recIndicatorTitle: 'Recording the flight',
   tourLiveRecTitle: 'Recording',
-  tourLiveRecText: 'The red REC sign: this flight is being recorded. It stops with Record, or when you turn Location off, and is kept in Saved routes.',
+  tourLiveRecText: 'Red while this flight is being recorded (on a phone, the Record button itself). It stops with Record, or when you turn Location off, and is kept in Saved routes.',
   tourLiveReadTitle: 'Speed, altitude, track',
   tourLiveReadText: 'Your ground speed, altitude and magnetic track, from the GPS.',
   tourLiveStatusTitle: 'GPS quality',
@@ -1939,10 +2005,10 @@ window.S = Object.assign({
   appUpdateCellularText: function (size) { return 'The update uses about ' + size + ' of mobile data. It installs the next time NavAid starts, never during a flight.'; },
   routeDefaultName: function (when) { return 'Route ' + when; },
   routeFileSaveTo: function (name) { return 'Save to "' + name + '"'; },
-  routeFileMyRoutes: 'My routes',
+  routeFileMyRoutes: 'Saved routes',
   routeFileUnsaved: 'Unsaved changes',
   routeFileOverwriteTitle: function (name) { return 'Save "' + name + '"?'; },
-  routeFileOverwriteText: 'This route was opened from My routes and has changed since.',
+  routeFileOverwriteText: 'This route was opened from Saved routes and has changed since.',
   routeFileOverwrite: 'Save over it',
   routeFileSaveAsNew: 'Save as a new route…',
   routeLibraryTitle: 'Saved routes',
@@ -2045,6 +2111,7 @@ window.S = Object.assign({
   alreadyOnRoute: '✓ Already on the route',
   trackFlownTwiceToast: 'This leg is already flown out and back — a track can be flown twice, once each way',
   emptyRouteHint: 'Click a point on the map to start a route',
+  emptyRouteHintTouch: 'Tap a point on the map to start a route',   // coarse pointer: there is no click
   // Phone-width display labels. Full titles ("Time (mm:ss)", "Fuel (gal)") pushed the
   // table 111px past a 375px screen on their own. CSV/export headers are unaffected --
   // those come from fpHeaders, which is the export contract.
@@ -2064,10 +2131,17 @@ window.S = Object.assign({
   vorDmeOnlyReadout: function (dme) { return dme + ' NM (DME only)'; },
   searchKindRouteWp: 'on your route',
   searchKindNote: 'note',
-  routeLibraryGdriveSyncSettings: 'Sync settings too',
+  routeLibraryGdriveSyncSettings: 'Match display settings across my devices',
   // Named in full because the pilot profile is personal data leaving the device, and
   // a checkbox reading "settings" does not suggest a licence number is among them.
-  routeLibraryGdriveSyncPii: 'Also uploads your pilot details (name, licence, phone, email) and aircraft profile to Drive. The AIS filing address and AI keys never leave this device.',
+  routeLibraryGdriveSyncPii: 'Sync backs up your settings to your Google Drive, with your pilot details (name, licence, phone, email) and aircraft. The AIS filing address never leaves this device.',
+  routeLibraryGdriveSyncPiiAi: 'Nor do AI keys.',
+  routeLibraryGdriveSyncSettingsTitle: 'Display settings (layers, colours, sizes and the like) from your other devices. Your aircraft, pilot details and corrections sync either way.',
+  routeLibraryGdriveRestore: 'Restore this device from backup',
+  routeLibraryGdriveRestoreConfirm: 'Replace this device\u2019s settings with the backup on Google Drive? The app reloads.',
+  routeLibraryGdriveRestoreNone: 'No settings backup on Drive yet',
+  routeLibraryGdriveFirstBackup: function (when) { return 'Google Drive has a settings backup from ' + when + '. Restore it on this device?'; },
+  routeLibraryGdriveReplaceBackup: 'Replace the backup on Google Drive with this device\u2019s settings?',
   routeLibraryGdriveSettingsApplied: 'Settings updated — reloading…',
   routeLibraryGdriveFirstSyncConflict: 'This device and Google Drive both have settings for: {keys}.\n\nOK = REPLACE this device\'s values with the ones from Drive.\nCancel = do nothing (sync again to choose).',
   routeLibraryGdriveKeepThisDevice: 'Keep THIS device\'s settings and update Google Drive?',
@@ -2175,9 +2249,11 @@ window.S = Object.assign({
   notamModalTitle: 'Active NOTAMs',
   notamNew: 'NEW',
   notamNewCount: function (n) { return n + ' new'; },
+  notamNewWord: 'new',
   notamNone: 'No active NOTAMs.',
   notamUnavailable: 'NOTAMs unavailable.',
   notamUpdated: function(t) { return 'Updated ' + t; },
+  notamStaleNote: 'may be out of date',
   notamShowAll: 'Include not yet active',
   notamShowAllTitle: 'Also list NOTAMs that have not started yet, or have already ended',
   notamStartsAt: (t) => 'from ' + t,
@@ -2223,9 +2299,34 @@ window.S = Object.assign({
     return 'R-' + rad + '° / ' + dme + ' NM';
   },
   primary: 'Primary',
+  secondary: 'Secondary',
+  ground: 'Ground',
+  groundWest: 'Ground W',
+  groundEast: 'Ground E',
+  approach: 'Approach',
+  approachSecondary: 'Approach 2',
+  tma: 'TMA',
+  tmaSecondary: 'TMA 2',
   commFail: 'Comm failure',
   commFailTitle: 'Lost radio: route to the nearest field with a published comm-failure procedure',
   commFailHeading: 'Comm failure',
+  // Diversion planner (#675): nearest airfields from here, re-route direct to the chosen one.
+  divert: 'Divert',
+  divertEnd: 'End divert',
+  divertTitle: 'Nearest airfields from here, and a direct route to the one you choose',
+  divertHeading: 'Divert',
+  divertWaiting: 'Waiting for your GPS position…',
+  divertUseMapCentre: 'Use map centre',
+  divertCancel: 'Cancel',
+  divertFromGps: 'Nearest airfields from your GPS position',
+  divertFromCentre: 'Nearest airfields from the map centre',
+  divertRunway: 'Runway',
+  divertRwyHard: 'paved',
+  divertRwySoft: 'unpaved',
+  divertingTo: 'Diverting to {field}',
+  divertOther: 'Other field',
+  divertUndo: 'Back to my route',
+  divertNoFields: 'Airfields could not be loaded.',
   commFailSquawk: 'Squawk',
   commFailVia: 'via',
   commFailAt: 'at',
@@ -2381,6 +2482,10 @@ window.S = Object.assign({
   exportPlanPlace: 'Place flight plan on the map',
   exportPlanPlaceTitle: 'Overlay the flight-plan table on the export; drag it to position it inside the page frame',
   exportPlanNoFrame: 'Place flight plan — set an A3/A4 page first',
+  // Printed plan card: all or some of the waypoints lie beyond the VOR's published coverage.
+  planVorOutOfRange: function (nm, all) {
+    return '(! ' + (all ? 'all' : 'some') + ' waypoints beyond its ' + nm + ' NM range)';
+  },
   exportPlanNoLegs: 'Place flight plan — add a route leg first',
   fpVorLabel: 'VOR',
   fpVorRadialEmpty: '—',
@@ -2416,6 +2521,8 @@ window.S = Object.assign({
   todTitle: 'Top of descent',
   tbAircraft: 'Aircraft',
   tbAircraftCustom: 'Custom figures',
+  tbAircraftSettings: 'Aircraft',
+  tbAircraftSettingsTitle: 'Your aircraft: call sign, type, fuel and climb figures. No route needed',
   tbAircraftType: 'Aircraft type',
   tbAircraftTypeTitle: 'Fills the figures below with the type\u2019s typical values, and is the type the flight plan files',
   tbUsableFuel: 'Usable fuel (gal)',
@@ -2424,6 +2531,7 @@ window.S = Object.assign({
   tbClimbKtTitle: 'For the climb on the vertical profile',
   tbAircraftRestore: function (type) { return 'Restore ' + type + ' figures'; },
   whyAircraftAsType: 'Every figure is the type\u2019s already',
+  whyAircraftNoTypeFigures: 'This type has no listed figures to restore',
   aircraftChangedFrom: function (v) { return 'Changed from the type\u2019s ' + v; },
   acCallSign: 'Call sign',
   acCallSignTitle: 'The aircraft\u2019s call sign, after 4X-: its name here, and what the flight plan form files',
@@ -2455,6 +2563,22 @@ window.S = Object.assign({
   tbTaxiGal: 'Taxi and takeoff (gal)',
   tbTaxiGalTitle: 'Startup + taxi + takeoff fuel allowance in gallons',
   fpTaxiTip: function(g) { return '+ ' + g.toFixed(1) + ' gal taxi / takeoff included in total'; },
+  tbReserveMin: 'Reserve (min)',
+  tbReserveMinTitle: 'VFR fuel reserve held back from the usable fuel, in minutes at the cruise burn (day 30, night 45)',
+  // The go/no-go fuel block under the nav log: trip burn, the reserve and any alternate, their
+  // sum against the tanks, and how long the tanks last at the cruise burn.
+  fpFuelCheck: 'Fuel check',
+  fpFuelTrip: 'Trip',
+  fpFuelReserve: 'Reserve',
+  fpFuelReserveMin: function (min) { return 'Reserve (' + min + ' min)'; },
+  fpFuelAlternate: 'Alternate',
+  fpFuelAltLabel: 'Alternate (gal)',
+  fpFuelRequired: 'Total required',
+  fpFuelRemaining: 'Remaining',
+  fpFuelEndurance: 'Endurance',
+  // Shown red when the total required is more than the tanks hold.
+  fpFuelOver: function (gal) { return 'Over tanks by ' + gal + ' gal'; },
+  fpFuelNoUsable: 'Set usable fuel on the aircraft to check against the tanks',
   pageOrientation: ' page — orientation',
   landscape: 'Landscape',
   portrait: 'Portrait',
@@ -2842,6 +2966,8 @@ window.S = Object.assign({
   exportResLow: 'Low',
   exportResMedium: 'Medium',
   exportResHigh: 'High',
+  // What a quality step means on paper -- a screen cannot show it. \u2066..\u2069 isolate the Latin run.
+  exportResDpi: function (dpi) { return 'On paper: \u2066\u2248' + dpi + ' dpi\u2069'; },
   exportBwTitle: 'The chart in light grey and the route black on white, so it reads on a printer without colour',
   ctxMenuLabel: 'Quick actions',
   ctxAddNoteHere: 'Add note here',
@@ -3030,6 +3156,14 @@ window.S = Object.assign({
   measureTitle: 'Measure from the aircraft: tap a point for its distance, bearing and time',
   measureHintLive: 'Tap a point: distance and time from the aircraft',
   whyMeasureNoPosition: 'Measure works from your position: turn on Location',
+  whyFollowNoPosition: 'Follow keeps your aircraft in view: turn on Location',
+  whyVoiceNoRoute: 'Spoken alerts follow your route: draw a route first.',
+  whyVoiceNoPosition: 'Spoken alerts follow your position along the route: turn on Location',
+  whyLsaOtherChart: 'LSA bubbles are on the Low Alt chart: switch Chart to it',
+  whyLsaBubblesOff: 'Turn on Show LSA bubbles first',
+  whyLsaNoAreas: 'The LSA bubbles have not loaded yet',
+  whyFollowMeNoLink: 'No follow-me link on this device yet: the next share makes one',
+  whyOrientNoPosition: 'Heading up turns the chart with your track: turn on Location',
   measureEte: function (min, kt) {
     const t = min < 60 ? min + ' min' : Math.floor(min / 60) + ' h ' + String(min % 60).padStart(2, '0');
     return t + ' at ' + kt + ' kt';
@@ -3102,7 +3236,7 @@ window.S = Object.assign({
   ppTipShare: 'Show yourself to other NavAid pilots and see them',
   tbShowPublicPilotsTitle: 'Everyone sharing their position publicly (Share → Public), from the NavAid relay. Not ADS-B.',
   tbShowTrafficApkOnly: 'In the app only: the ADS-B feeds refuse browser requests, so nothing could be drawn here. Install the NavAid app (Android, iPhone or iPad) and it works there.',
-  tbShowTrafficTitle: 'Aircraft heard on ADS-B. It asks around your position when you have one, and otherwise around the middle of the map, so it works while planning too. The arrow points where each one is going; its callsign and altitude in hundreds of feet are beside it.',
+  tbShowTrafficTitle: 'Aircraft heard on ADS-B. It asks around your position when you have one, and otherwise around the middle of the map, so it works while planning too. The arrow points where each one is going; its callsign and flight level (FL) are beside it.',
   tbPlateOpacity: 'Chart opacity',
   tbPlateOpacityTitle: 'Adjust the airfield-plate overlay opacity (shared by all plate layers)',
   tbPlateOpacityReset: 'Reset opacity',
@@ -3174,7 +3308,7 @@ window.S = Object.assign({
   followMePublicNextToast: 'Public: from your next share',
   followMePublicOffToast: 'Not public: your link only',
   followMePublicHint: 'Identifier, position, altitude and speed, not encrypted, on Extra layers → Show public NavAid pilots. Your link stays private.',
-  followMeAskCode: 'Identifier, for example an aircraft code (4X-CDE)\n\nUses a public best-effort relay. Anyone with the link can view or submit positions.',
+  followMeAskCode: 'Identifier, for example an aircraft code (4X-CDE).\n\nUses a public best-effort relay. Anyone with the link can view or submit positions.',
   followMeNeedCode: 'Follow me needs an identifier — whoever opens the link has to know what it is following.',
   followMeStartFailed: 'Follow me could not start because this device cannot store the private session.',
   followMeWaiting: 'Follow me: waiting for a position…',
@@ -3210,6 +3344,23 @@ window.S = Object.assign({
   tbFreqTableTitle: 'Edit local communication frequency defaults',
   tbAltPairs: '🧭 Alt pairs',
   tbAltPairsTitle: 'View and copy learned CVFR altitude pairs',
+  tbStorage: '💾 Storage',
+  tbStorageTitle: 'See how much saved data this device holds and clear rebuildable caches',
+  storageOf: 'of',
+  storageBudgetNote: 'Browsers cap each site at about 5 MB; this cannot be raised.',
+  storageBreakdownTitle: 'What it holds',
+  storageCatRoutes: 'Routes & recordings',
+  storageCatFreqs: 'Frequency overrides',
+  storageCatAircraft: 'Aircraft',
+  storageCatCache: 'Map & feed cache',
+  storageCatPreview: 'PR preview leftovers',
+  storageCatOther: 'Settings & other',
+  storageClearCache: 'Clear rebuildable cache',
+  storageClearConfirm: 'Clear the map and feed cache? It is refetched as needed. Your routes, recordings, frequencies and settings are not touched.',
+  storageNothingToClear: 'No rebuildable cache to clear.',
+  storageCleared: freedStr => 'Cleared ' + freedStr + ' of cache.',
+  storageTrimHint: 'To free more, delete old recordings in Saved routes.',
+  storageWipeNote: 'Last resort — erases every route, recording and setting saved on this device.',
   tbCharts: '🗺️ Airport charts',
   tbChartsTitle: 'Browse approach charts for all airfields',
   tbFly: '✈️ Open in Google Earth',
@@ -3318,7 +3469,7 @@ window.S = Object.assign({
   legendLsaWeekend: 'LSA bubble, weekends only',
   legendParachute: 'Parachute drop zone',
   legendParaglider: 'Hang-glider / paraglider launch',
-  commChangeBadge: '📡 Freq change point',
+  commChangeBadge: 'Freq change point',
   commChangeNoteText: 'Freq change',
   commChangeCallSign: 'Waypoint',
   commChangeCallSigns: 'Call signs',
@@ -3425,6 +3576,12 @@ window.S = Object.assign({
   airspaceActivityNames: { TRG: 'Training', MIL: 'Military', MILOPS: 'Military operations',
     PARACHUTE: 'Parachuting', FIRE: 'Live fire', BALLOON: 'Balloon', CIVIL: 'Civil', OTHER: 'Other' },
   airspaceHours: 'Hours',
+  airspaceDays: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'],   // the schedule's weekday words
+  airspaceUtcw: 'UTCW',
+  airspaceSunrise: 'SR',
+  airspaceSunset: 'SS',
+  unitKt: 'kt',
+  zuluClockTitle: 'Zulu time (UTC)',
   airspaceActiveNow: 'active now',
   airspaceNotActiveNow: 'not active now',
   airspaceActivation: 'Activation',
@@ -3451,12 +3608,17 @@ window.S = Object.assign({
   wxTitleNoMetar: 'Density altitude',
   daElevFromModel: 'terrain elevation',
   trafficUnavailable: 'Live traffic unavailable',
+  trafficLost: (s) => 'Live traffic lost — no update for ' + s + ' s',
   airspaceUnavailable: 'Airspace unavailable',
   trafficTitle: 'Traffic',
+  trafficFollow: 'Follow aircraft',
+  trafficStopFollow: 'Stop following',
   trafficAltitude: 'Altitude',
   trafficGroundSpeed: 'Ground speed',
   trafficSquawk: 'Squawk',
   trafficType: 'Type',
+  trafficHelicopter: 'Helicopter',
+  trafficViewOn: 'Open on {site}',
   trafficTrack: 'Track',
   plateDownload: 'Download',
   // A file leaves the app either through the browser's download or, on the phone, through
@@ -3488,9 +3650,20 @@ window.S = Object.assign({
   updateAvailable: 'New NavAid build available. Hard refresh or reload to update.',
   updateReload: 'Reload',
   updateDismiss: 'Dismiss',
-  tbLightMode: 'Light mode',
-  tbDarkMode: 'Dark mode',
+  tbLightMode: 'Light',
+  tbDarkMode: 'Dark',
   tbLightModeTitle: 'Switch between light and dark theme',
+  tbTheme: 'Theme',
+  tbDateFormat: 'Date format',
+  tbDateFormatTitle: 'How dates are written across the app',
+  tbDateFormatDmy: 'DD/MM/YYYY',
+  tbDateFormatMdy: 'MM/DD/YYYY',
+  tbDateFormatYmd: 'YYYY-MM-DD',
+  tbTabletLayout: 'Tablet layout',
+  tbTabletLayoutTitle: 'Choose the tablet menu layout. Automatic follows the app\'s configured default.',
+  tbTabletLayoutAuto: 'Automatic',
+  tbTabletLayoutMobile: 'Mobile',
+  tbTabletLayoutDesktop: 'Desktop',
   tbClearStore: '🗑 Clear local store',
   tbClearStoreTitle: 'Delete all saved routes and settings stored on this device',
   tbClearStoreConfirm: 'Delete ALL saved routes and settings stored on this device? This cannot be undone.',
@@ -3624,6 +3797,11 @@ window.S = Object.assign({
   alertChannelName: 'Flight alerts',
   alertChannelDescription: 'In-flight alerts: next leg, altitude, TOP, off route',
   watchAlertLegTitle: 'Next leg',
+  // The same call, two minutes out, as the cue to find the waypoint -- the clock-to-map-to-ground
+  // technique: check the clock, find the point on the map, then look for it outside (asked;
+  // Hebrew ש.מ.ש -- שעון, מפה, שטח). It is the
+  // title, so the body a watch tile shows is not one character shorter.
+  watchAlertLegTitleCmg: 'Clock to map to ground',
   // alt/hdg/time describe the NEXT leg -- the one starting at `wp`, not the one ending
   // there -- so the alert doubles as prep for the turn, explicitly labelled as such (not
   // just implied by context). All three come from the PLAN (planned altitude, planned
@@ -3644,6 +3822,16 @@ window.S = Object.assign({
   // The overhead-the-waypoint moment -- CVFR radio phraseology's own "TOP <point>" call.
   watchAlertTopTitle: 'TOP',
   watchAlertTopBody: 'TOP',
+  // After the waypoint, the leg-entry checks with the new leg's own figures where the plan has
+  // them (asked). In English that is FREDA -- fuel, radio, engine, direction, altimeter; the
+  // Hebrew strings carry the Israeli כז״גמ״ד (בד"ח צא כיוון: heading, time, altitude, instruments,
+  // report). Every word is always there: it is a
+  // checklist, and a missing number is still a thing to check. `freq` is set when this waypoint
+  // changes frequency. `time` (the new leg's planned time) is the Hebrew list's זמן.
+  watchAlertTopChecklistBody: function (hdg, time, alt, freq) {
+    return ['Fuel', 'Radio' + (freq ? ' ' + freq : ''), 'Engine',
+      'Direction' + (hdg != null ? ' ' + hdg : ''), 'Altimeter' + (alt != null ? ' ' + alt + ' ft' : '')].join(' · ');
+  },
   watchAlertAltTitle: 'Altitude',
   watchAlertAltBody: function(actual, planned) {
     return actual + ' ft — planned ' + planned + ' ft';
@@ -3677,6 +3865,7 @@ window.S = Object.assign({
   // the heading already split into digits (see gpsSpokenDigits), and give a time in whole
   // minutes. A missing field is left out here exactly as it is left out of the
   // notification: never guessed.
+  speakAlertClockMapGround: 'Clock to map to ground.',
   speakAlertLeg: function(wp, alt, hdgDigits, hms, freqDigits) {
     let s = 'Approaching ' + wp + '.';
     // First, before the next leg's numbers: it is the one thing here that has to be acted
@@ -3700,6 +3889,10 @@ window.S = Object.assign({
     return s;
   },
   speakAlertTop: function() { return 'Top.'; },
+  speakAlertTopChecklist: function (hdgDigits, hms, alt, freqDigits) {
+    return 'Top. Fuel. Radio' + (freqDigits ? ', ' + freqDigits : '') + '. Engine. Direction' +
+      (hdgDigits != null ? ' ' + hdgDigits : '') + '. Altimeter' + (alt != null ? ' ' + alt + ' feet' : '') + '.';
+  },
   // Shortly before a waypoint that changes frequency. Either half may be missing -- a
   // callout can name a station with no frequency, or a frequency with no station -- and
   // whichever is present is still worth hearing.
@@ -3729,12 +3922,14 @@ window.S = Object.assign({
   tbSecDisplay: 'Display',
   tbSecPrint: 'Print',
   tbSecBuild: 'Edit',
-  tbSecView: 'Map',
+  // "Chart", not "Map": the phone's bottom bar already has a Map button that SHOWS the chart;
+  // this menu SETS it up (UI review: two things named Map).
+  tbSecView: 'Chart',
   tbSecCharts: 'Charts',
   tbSecExport: 'Export/import',
   tbSecWeather: 'Extra layers',
   tbSecBuildHint: 'Add · undo · clear',
-  tbSecViewHint: 'Chart, overlays, route info',
+  tbSecViewHint: 'Base chart, overlays, route info',
   tbSecSettings: 'Settings',
   tbSecSettingsHint: 'Speed, variation, language, tables',
   tbLanguage: 'Language',
@@ -3903,6 +4098,9 @@ const NAV_ICONS = {
   record: '<circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="3.5" fill="currentColor" stroke="none"/>',
   location: '<path d="M12 21s-6.5-5.9-6.5-11a6.5 6.5 0 0 1 13 0c0 5.1-6.5 11-6.5 11z"/><circle cx="12" cy="10" r="2.3"/>',
   commfail: '<path d="M7 8.5a6.5 6.5 0 0 0 0 7M17 8.5a6.5 6.5 0 0 1 0 7"/><circle cx="12" cy="12" r="1.8" fill="currentColor"/><path d="M4 20 20 4"/>',
+  // The track going straight, then branching off to a new field: the diversion decision.
+  // Divert: steps going down to a runway line, with the arrow of the descent (asked).
+  divert: '<path d="M3 5h5v5h5v5h3"/><path d="M2 20h20"/><path d="M14 3l6 6"/><path d="M20 5v4h-4"/>',
   save: '<path d="M5 4h11l3 3v13H5z"/><path d="M8 4v5h7V4M8 20v-6h8v6"/>',
   folder: '<path d="M3.5 6.5h6l2 2h9v10.5h-17z"/>',
   settings: '<circle cx="12" cy="12" r="3"/><path d="M12 3v2.5M12 18.5V21M3 12h2.5M18.5 12H21M5.6 5.6l1.8 1.8M16.6 16.6l1.8 1.8M5.6 18.4l1.8-1.8M16.6 7.4l1.8-1.8"/>',
@@ -3973,6 +4171,14 @@ if (typeof window !== 'undefined') {
   window.navIconSvg = navIconSvg; window.NAV_ICONS = NAV_ICONS; window.setNavIcon = setNavIcon;
 }
 
+// A label shown without the glyph its string carries (the strings keep it: other surfaces read
+// them). The same leading-glyph set the menus strip (LEADING_GLYPHS, ui.js); inline here because
+// applyI18n runs before ui.js has defined it.
+function navPlainLabel(s) {
+  return String(s == null ? '' : s).replace(/^[\s+\uFF0B\u2190-\u2BFF\u2600-\u27BF\uFE0F\u200D\p{Extended_Pictographic}]+/u, '');
+}
+window.navPlainLabel = navPlainLabel;
+
 function applyI18n() {
   document.querySelectorAll('[data-i18n]').forEach(el => {
     el.textContent = S[el.dataset.i18n] || '';
@@ -3981,10 +4187,10 @@ function applyI18n() {
     el.title = S[el.dataset.i18nTitle] || '';
   });
   document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
-    el.placeholder = S[el.dataset.i18nPlaceholder] || '';
+    el.placeholder = navPlainLabel(S[el.dataset.i18nPlaceholder]);
   });
   document.querySelectorAll('[data-i18n-aria]').forEach(el => {
-    el.setAttribute('aria-label', S[el.dataset.i18nAria] || '');
+    el.setAttribute('aria-label', navPlainLabel(S[el.dataset.i18nAria]));   // a screen reader says the word, not the glyph
   });
 }
 applyI18n();
@@ -4086,6 +4292,10 @@ var notams = null;          // null = not loaded; [] or populated once fetched
 var notamMeta = null;       // { generatedAt } of the loaded NOTAM file
 var notamBorders = null;    // null = not loaded; { LEBANON:[[ [lat,lng]... ]], ... } border arcs
 var showWpNames = true;     // draw waypoint names (off = empty circle)
+// Turn each waypoint's name to its leg's kite (draw.js wpNameAngle): the name lies along the kite's
+// base, read the way the kite's own figures read, so a chart turned to fly a leg reads the names
+// beside its kites. On by default; the Display checkbox and the gist (defaultAutoWpNameAngle).
+var autoWpNameAngle = true;
 var showHotspots = true;    // show hotspot styling without changing per-waypoint choices
 var yellowAlpha = 0.5;    // opacity of waypoint label backgrounds (Label-opacity slider, default 50%)
 // Kite + note fill opacity is not a Display slider — it's the gist-overridable
@@ -4135,7 +4345,7 @@ let pageSize = null;        // null | 'A3' | 'A4'
 // CVFR routes are tall (north–south Israel airspace).
 var pageOrient = 'portrait';
 let pageOffset = { x: 0, y: 0 };   // page-frame drag offset from viewport centre
-var aircraft = null;               // null | {gph, taxiGal, type?, profile?, climbFpm?, climbKt?, descentFpm?, usableGal?}
+var aircraft = null;               // null | {gph, taxiGal, type?, profile?, climbFpm?, climbKt?, descentFpm?, usableGal?, reserveMin?}
 // Typical figures per type (Settings -> Aircraft type), from the manuals and common use: a
 // starting point the pilot overrides for their own aircraft, field by field, and can restore.
 // The codes are the ICAO types of the filing form, so choosing one also files as that type.
@@ -5949,10 +6159,150 @@ function airfieldFreqOverrides() {
   try { return JSON.parse(localStorage.getItem('navaid.airfieldFreqOverrides') || '{}') || {}; }
   catch (e) { return {}; }
 }
+// A small, important setting must not be lost to a localStorage already full of reclaimable
+// cache. On a quota error, drop what can be re-fetched (the gist config cache -- a few KB,
+// re-read on the next load) and try once more; if it still will not fit, tell the pilot rather
+// than dropping the write in silence. Silence is what made an edited frequency "not stick".
+function navSetItemCritical(key, value) {
+  try { localStorage.setItem(key, value); return true; }
+  catch (e) {
+    try { if (typeof GIST_CACHE_KEY === 'string') localStorage.removeItem(GIST_CACHE_KEY); } catch (_) { /* ignore */ }
+    try { localStorage.setItem(key, value); return true; }
+    catch (_) {
+      if (typeof showToast === 'function') {
+        showToast((typeof S === 'object' && S && S.errStorageFull)
+          || 'Storage is full — delete some saved routes or export them.', { warn: true });
+      }
+      return false;
+    }
+  }
+}
+// --- Storage usage ---------------------------------------------------------
+// The browser gives each origin a fixed room for localStorage -- about 5 MB in
+// every current browser, and NOT raisable from script. A pilot with a season of
+// recordings, or a long-lived install, can fill it; then every auto-save fails
+// (navSetItemCritical warns, and evicts the one cache below to make room). The
+// Settings > Storage window measures what is used, says what each key holds, and
+// clears only the caches the app can rebuild -- never the pilot's own data.
+const NAV_STORAGE_BUDGET_BYTES = 5 * 1024 * 1024;    // the de-facto per-origin localStorage cap
+
+// A PR preview is served from the production origin (navaid.supino.org/pr/<n>/) and
+// isolates its storage by prefixing every key with "pr-<n>." (.github/preview/pr-store.js).
+// localStorage is per origin, so on the LIVE site those prefixed keys from every preview a
+// pilot has opened pile up in the same store and never belong to the live app -- this is how
+// "many PR previews filled it up" happens. A preview's own view is namespaced, so it does not
+// see them; the live site does, and may drop them safely.
+function navPreviewLeftoverKey(key) {
+  return /^pr-[0-9]+\./.test(key || '');
+}
+// Keys the app can drop and rebuild without losing anything the pilot owns: the gist
+// snapshot of settings/feeds (refetched on the next load), and any PR-preview leftovers.
+// Everything else under navaid.* is the pilot's own data (routes, recordings, frequency
+// overrides, aircraft, settings) and is never cleared automatically. navSetItemCritical
+// evicts the gist cache when a write will not fit.
+function navReclaimableKey(key) {
+  if (key === (typeof GIST_CACHE_KEY === 'string' ? GIST_CACHE_KEY : 'navaid.gistCache')) return true;
+  return navPreviewLeftoverKey(key);
+}
+// A single localStorage entry's footprint. Browsers store the key and the value as
+// UTF-16, so two bytes per code unit is the standard estimate.
+function navStorageEntryBytes(key, value) {
+  return ((key ? key.length : 0) + (value ? value.length : 0)) * 2;
+}
+// Which bucket a key falls in, for the window's breakdown. Data-first: anything we
+// do not recognise is the pilot's "settings & other", never mislabelled as cache.
+function navStorageCategory(key) {
+  if (navPreviewLeftoverKey(key)) return 'preview';
+  if (key === 'navaid.routes') return 'routes';
+  if (key === 'navaid.airfieldFreqOverrides' || key === 'navaid.vorFreqOverrides'
+    || key === 'navaid.commFreqOverrides') return 'freqs';
+  if (key === 'navaid.aircraft' || key === 'navaid.aircraftProfiles'
+    || key === 'navaid.profileVS') return 'aircraft';
+  if (key === (typeof GIST_CACHE_KEY === 'string' ? GIST_CACHE_KEY : 'navaid.gistCache')) return 'cache';
+  return 'other';
+}
+// Walk this origin's entries once: the app's own navaid.* keys plus any pr-<n>. preview
+// leftovers. Returns total bytes, per-category bytes, and how much is reclaimable. Guarded
+// so a browser with storage blocked returns zeroes.
+function navStorageUsage() {
+  const cats = { routes: 0, freqs: 0, aircraft: 0, cache: 0, preview: 0, other: 0 };
+  let total = 0, reclaimable = 0;
+  try {
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (!key || (key.indexOf('navaid.') !== 0 && !navPreviewLeftoverKey(key))) continue;
+      const bytes = navStorageEntryBytes(key, localStorage.getItem(key));
+      total += bytes;
+      cats[navStorageCategory(key)] += bytes;
+      if (navReclaimableKey(key)) reclaimable += bytes;
+    }
+  } catch (e) { /* storage unavailable -> zeroes */ }
+  return { total: total, cats: cats, reclaimable: reclaimable, budget: NAV_STORAGE_BUDGET_BYTES };
+}
+// Drop the rebuildable cache keys and report how many bytes were freed. Only keys
+// navReclaimableKey() approves are removed, so the pilot's data is never at risk.
+function navClearReclaimable() {
+  let freed = 0;
+  try {
+    const kill = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key && navReclaimableKey(key)) {
+        freed += navStorageEntryBytes(key, localStorage.getItem(key));
+        kill.push(key);
+      }
+    }
+    kill.forEach(k => { try { localStorage.removeItem(k); } catch (e) { /* ignore */ } });
+  } catch (e) { /* storage unavailable */ }
+  return freed;
+}
+// Human size for the window and toasts: "0 B", "812 KB", "1.2 MB".
+function navStorageFmtBytes(b) {
+  b = Math.max(0, Math.round(b || 0));
+  if (b < 1024) return b + ' B';
+  if (b < 1024 * 1024) return Math.round(b / 1024) + ' KB';
+  return (Math.round(b / (1024 * 1024) * 10) / 10) + ' MB';
+}
+
 function setAirfieldFreqOverride(key, val) {
   const o = airfieldFreqOverrides();
   if (val) o[key] = val; else delete o[key];
-  try { localStorage.setItem('navaid.airfieldFreqOverrides', JSON.stringify(o)); } catch (e) { /* ignore */ }
+  return navSetItemCritical('navaid.airfieldFreqOverrides', JSON.stringify(o));
+}
+
+// --- user-visible date formatting -------------------------------------
+// One setting, navaid.dateFormat, decides how every date the pilot reads is written. Israel's
+// civil default is day-first, so 'dmy' (DD/MM/YYYY). Filenames and machine formats (the X-Plane
+// FDR header, an <input type=date>'s ISO value) keep their own fixed form and do not call these.
+function navDateFormat() {
+  try { const v = localStorage.getItem('navaid.dateFormat'); if (v === 'dmy' || v === 'mdy' || v === 'ymd') return v; } catch (e) { /* ignore */ }
+  return 'dmy';
+}
+function fmtDateParts(Y, M, D) {
+  const m = String(M).padStart(2, '0'), d = String(D).padStart(2, '0');
+  switch (navDateFormat()) {
+    case 'mdy': return m + '/' + d + '/' + Y;
+    case 'ymd': return Y + '-' + m + '-' + d;
+    default:    return d + '/' + m + '/' + Y;
+  }
+}
+function fmtDate(d) {
+  const t = (d instanceof Date) ? d : new Date(d);
+  if (isNaN(t)) return '';
+  return fmtDateParts(t.getFullYear(), t.getMonth() + 1, t.getDate());
+}
+function fmtDateUtc(d) {
+  const t = (d instanceof Date) ? d : new Date(d);
+  if (isNaN(t)) return '';
+  return fmtDateParts(t.getUTCFullYear(), t.getUTCMonth() + 1, t.getUTCDate());
+}
+// A feed's "updated" stamp: the date in the pilot's chosen format, the time in Zulu (aviation
+// reads UTC), e.g. 11/11/2026 13:45Z.
+function notamStampUtc(d) {
+  const t = (d instanceof Date) ? d : new Date(d);
+  if (isNaN(t)) return '';
+  const hh = String(t.getUTCHours()).padStart(2, '0'), mm = String(t.getUTCMinutes()).padStart(2, '0');
+  return fmtDateUtc(t) + ' ' + hh + ':' + mm + 'Z';
 }
 // Override-aware labelled parts for an airfield field ('clearance' | 'atis').
 function airfieldFieldParts(af, field) {
@@ -5992,7 +6342,7 @@ function vorFreqOverrides() {
 function setVorFreqOverride(ident, val) {
   const o = vorFreqOverrides();
   if (val) o[ident] = val; else delete o[ident];
-  try { localStorage.setItem('navaid.vorFreqOverrides', JSON.stringify(o)); } catch (e) { /* ignore */ }
+  return navSetItemCritical('navaid.vorFreqOverrides', JSON.stringify(o));
 }
 // Effective (override-aware) frequency for a VOR object.
 function vorEffectiveFreq(v) {
@@ -6922,7 +7272,38 @@ const map = L.map('map', {
   // back without a build for anyone who wants it.
   touchRotate: _touchRotateGesture(),
 });
-L.control.zoom({ position: 'bottomright' }).addTo(map);
+// Leaflet's own button titles / aria-labels are English; the app's strings carry both languages.
+L.control.zoom({ position: 'bottomright', zoomInTitle: S.zoomIn || 'Zoom in', zoomOutTitle: S.zoomOut || 'Zoom out' }).addTo(map);
+
+// Trackpad pinch on a Mac. The app there is the iOS build in WebKit, which delivers a trackpad pinch
+// as gesturestart/gesturechange (a scale), not as two touches -- and the app's user-scalable=no
+// stops the page zoom it would otherwise do. Leaflet handles neither, so the pinch did nothing
+// (reported). Turn the scale into a map zoom around the cursor. A touchscreen pinch (an iPhone,
+// an iPad) sends touches with these events and stays Leaflet's: skipped while a finger is down.
+// Safari can send ctrl+wheel for the same pinch; that is dropped while a gesture is driving.
+(function trackpadPinchZoom() {
+  const el = map.getContainer();
+  let fingers = 0;
+  let start = null;
+  const count = e => { fingers = e.touches ? e.touches.length : 0; };
+  for (const t of ['touchstart', 'touchend', 'touchcancel']) el.addEventListener(t, count, { passive: true });
+  el.addEventListener('gesturestart', (e) => {
+    if (fingers > 0) return;
+    e.preventDefault();
+    start = { zoom: map.getZoom(), at: map.mouseEventToContainerPoint(e) };
+  });
+  el.addEventListener('gesturechange', (e) => {
+    if (!start) return;
+    e.preventDefault();
+    if (!(e.scale > 0)) return;
+    const z = Math.max(map.getMinZoom(), Math.min(map.getMaxZoom(), start.zoom + Math.log2(e.scale)));
+    map.setZoomAround(start.at, z, { animate: false });
+  });
+  el.addEventListener('gestureend', (e) => { if (start) { e.preventDefault(); start = null; } });
+  el.addEventListener('wheel', (e) => {
+    if (start && e.ctrlKey) { e.preventDefault(); e.stopImmediatePropagation(); }
+  }, { capture: true, passive: false });
+})();
 // Base layer is chosen from the toolbar (#layer-select, wired in ui.js).
 
 // --- OpenStreetMap underlay -----------------------------------------

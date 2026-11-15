@@ -76,6 +76,8 @@ test('every toggle in the Extra layers menu is cleared, not a hand-listed few', 
       // is about what Clear map switches off, not about loading them.
       if (cb) cb.checked = true;
     }
+    // What a real tick does next: the Clear buttons see a map with something on it.
+    if (typeof refreshEditColumn === 'function') refreshEditColumn();
   }, all);
   await answerAppDialogs(page, true);
   await page.evaluate(() => document.getElementById('clear').click());

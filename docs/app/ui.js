@@ -38,8 +38,21 @@ function setButtonWhy(btn, why) {
   if (!btn) return;
   btn.disabled = false;
   btn.classList.toggle('is-dim', !!why);
-  if (why) { btn.setAttribute('aria-disabled', 'true'); btn.dataset.why = why; }
-  else { btn.removeAttribute('aria-disabled'); delete btn.dataset.why; }
+  // The reason is also the hover tooltip and the accessible description, so a mouse or a screen
+  // reader gets it without having to tap. The normal title is kept aside and put back when the
+  // button is live again.
+  if (why) {
+    if (btn.dataset.whyTitle === undefined) btn.dataset.whyTitle = btn.getAttribute('title') || '';
+    btn.setAttribute('aria-disabled', 'true'); btn.dataset.why = why;
+    btn.setAttribute('title', why); btn.setAttribute('aria-description', why);
+  } else {
+    btn.removeAttribute('aria-disabled'); delete btn.dataset.why;
+    btn.removeAttribute('aria-description');
+    if (btn.dataset.whyTitle !== undefined) {
+      if (btn.dataset.whyTitle) btn.setAttribute('title', btn.dataset.whyTitle); else btn.removeAttribute('title');
+      delete btn.dataset.whyTitle;
+    }
+  }
 }
 window.setButtonWhy = setButtonWhy;
 // One listener for all of them, in the capture phase so it runs before the button's own handler.
@@ -86,7 +99,9 @@ function refreshEmptyRouteHint() {
     document.body.appendChild(el);
     try { localStorage.setItem(EMPTY_HINT_KEY, '1'); } catch (e) { /* storage unavailable */ }
   }
-  el.textContent = S.emptyRouteHint || 'Click the map to add your first waypoint';
+  // A touch screen has no click: "Tap" where the primary pointer is coarse.
+  const coarse = !!(window.matchMedia && window.matchMedia('(pointer: coarse)').matches);
+  el.textContent = (coarse && S.emptyRouteHintTouch) || S.emptyRouteHint || 'Click the map to add your first waypoint';
   refreshPrimingCursor();
 }
 // While the map is primed to start a route (see routePrimingArmed in interact.js) a plain
@@ -186,8 +201,7 @@ const MENU_ICONS = {
   undo: 'undo', clear: 'trash', fit: 'fit', 'tool-reset-all-markers': 'reset',
   'tool-reset-all-wp-names': 'reset', 'tool-magnifier': 'magnifier',
   'autoroute-btn': 'map', 'force-snap-btn': 'addWp', 'ret-btn': 'direct',
-  'theme-toggle': (b) => (/☀|light|בהיר/i.test(b.textContent) ? 'sun' : 'moon'),
-  'route-templates': 'templates', 'freq-table': 'antenna', 'alt-pairs': 'altPairs',
+  'route-templates': 'templates', 'freq-table': 'antenna', 'aircraft-settings': 'plane', 'alt-pairs': 'altPairs',
   'nav-log': 'form', charts: 'charts', 'sigwx-btn': 'globe', 'pwx-btn': 'wind',
   'sigmet-btn': 'warn', 'airmet-btn': 'warn', 'route-check-btn': 'check', 'notam-list-btn': 'list',
   'lsa-list-btn': 'list', 'mosaic-btn': 'mosaic', 'offline-tiles-btn': 'download',
@@ -233,7 +247,7 @@ dressMenus();
 const GLYPH_ICONS = { '🗑': 'trash', '↻': 'reset', '🔥': 'hotspot', '⏱': 'timer', '📡': 'antenna',
   '✈': 'plane', '+': 'plus', '➕': 'plus', '＋': 'plus', '📍': 'location', '⇄': 'reverse', '🧭': 'compass',
   '🔑': 'key', '📋': 'list', '🔗': 'link', '💾': 'save', '📂': 'folder', '⬇': 'download', '⬆': 'upload',
-  '🖨': 'print', '⊘': 'hide', '✓': 'check', '✔': 'check' };
+  '🖨': 'print', '⊘': 'hide', '✓': 'check', '✔': 'check', '⚠': 'warn', '✅': 'check' };
 // Every button carries an icon ("every button should have an icon, new or existing"). The ones
 // whose label has no glyph to key on are named by their id or class instead.
 const BUTTON_ICONS = { 'insp-direct-to': 'direct', 'insp-add-to-route': 'plus', 'insp-add-rp': 'plus', 'insp-vor-use-ref': 'compass',
@@ -249,6 +263,10 @@ function buttonIconName(btn) {
   return '';
 }
 window.navButtonIconName = buttonIconName;
+// A label that keeps its glyph in the string (other surfaces read it) but is SHOWN without it
+// where an icon stands beside it or none is needed: window titles, toasts, status lines.
+// navPlainLabel (core.js) strips the glyph set the menus strip; this maps it to the same icon the buttons get.
+window.navLabelIcon = (s) => buttonIconName({ textContent: String(s == null ? '' : s) });
 function dressByGlyph(btn) {
   if (!btn || btn.querySelector(':scope > .mi-icon') || typeof navIconSvg !== 'function') return;
   const name = buttonIconName(btn);
@@ -412,10 +430,25 @@ const appUpdate = (function () {
       if (pct != null) bar.value = pct; else bar.removeAttribute('value');   // indeterminate until the first report
     }
     row.classList.toggle('has-update', action === 'download');
-    btn.hidden = !action || !!busy;
+    // On the desktop layout the row sits inside the Settings menu, closed most of the time: a dot
+    // on that menu says there is an update to take (download or restart).
+    const settingsSec = document.querySelector('#toolbar .tb-section[data-sec="settings"]');
+    if (settingsSec) settingsSec.classList.toggle('has-app-update', action === 'download' || action === 'restart');
+    // Never hidden (never hide a button): while it checks or downloads it is dimmed, and says so.
+    btn.hidden = false;
+    setButtonWhy(btn, busy ? line : (action ? null : line));
     btn.textContent = action === 'download' ? (S.appUpdateDownload || 'Download now')
       : action === 'restart' ? (S.appUpdateRestart || 'Restart now') : (S.appUpdateCheck || 'Check again');
     btn.dataset.action = action || '';
+  }
+  // On screen and not covered: the menu still open where the pilot pressed Download.
+  function rowInView() {
+    if (row.hidden) return false;
+    const r = row.getBoundingClientRect();
+    if (!r.width || !r.height || r.bottom <= 0 || r.top >= innerHeight) return false;
+    const y = Math.min(Math.max(r.top + r.height / 2, 0), innerHeight - 1);
+    const hit = document.elementFromPoint(r.left + r.width / 2, y);
+    return !!hit && row.contains(hit);
   }
   let refreshing = null;
   let refreshedAt = 0;
@@ -469,8 +502,11 @@ const appUpdate = (function () {
     finally { pct = null; }
     if (r && (r.updated || r.pending)) {
       last = { state: 'pending', version: r.version || '' }; paint(last);
-      // Downloaded on request: offer the restart straight away rather than at the next start.
-      if (typeof o.offerRestart === 'function') o.offerRestart(r.version || '', { always: true });
+      // Downloaded on request: the restart is offered now rather than at the next start -- by
+      // this row's own Restart now while the menu is still open, by a question only when it was
+      // closed meanwhile. Reported: on mobile data, after "Download on mobile data?", a second
+      // question popped up outside the menu over the button that already said Restart now.
+      if (!rowInView() && typeof o.offerRestart === 'function') o.offerRestart(r.version || '', { always: true });
       return;
     }
     last = await o.status();
@@ -918,6 +954,65 @@ try { headingUpOn = lsGet(HEADING_UP_KEY) === '1'; } catch (e) { /* storage unav
 // was built for, next to the follow lock.
 const MAP_CONTROL_ORDER = ['voice-ctrl', 'orient-ctrl', 'follow-ctrl', 'follow-me-ctrl',
   'editlock-ctrl', 'measure-ctrl', 'atc-fab-control', 'assistant-fab-control', 'rotate-ctrl'];
+// How far the bottom-right control column reaches in from the right edge, for what sits beside it
+// (coordinates, the Zulu clock, the empty-route hint) -- measured on the phone deck, where a short
+// screen wraps the column into a second one (style.css) and the fixed 52/66 px clearance let the
+// second column land on the coordinates and the hint. One column: the CSS default, untouched.
+function syncMapControlClearance() {
+  const root = document.documentElement;
+  const corner = document.querySelector('.leaflet-bottom.leaflet-right');
+  if (!corner || !document.body.classList.contains('deck-on')) {
+    root.style.removeProperty('--navaid-map-ctrl-clear');
+    root.style.removeProperty('--navaid-map-ctrl-clear-low');
+    root.style.removeProperty('--navaid-map-ctrl-wrapped');
+    return;
+  }
+  const box = corner.getBoundingClientRect();
+  // The bottom row -- the legend, its route totals, the coordinates -- only has to clear the
+  // controls that come down to it. A wrapped second column starts at the top (#2932), so counting
+  // it there squeezed the totals to two lines on a 360x640 phone once the in-flight buttons were
+  // always shown (dim, never hide).
+  const dock = document.querySelector('.legend-ctrl.legend-docked');
+  const coords = document.getElementById('coord-readout');
+  const tops = [box.bottom - 120];
+  for (const el of [dock, coords]) if (el && el.getClientRects().length) tops.push(el.getBoundingClientRect().top);
+  const bandTop = Math.min(...tops);
+  let left = Infinity, right = -Infinity, leftLow = Infinity;
+  for (const el of corner.children) {
+    if (el.offsetParent === null || getComputedStyle(el).position === 'absolute') continue;   // readouts sit beside, not in, the column
+    const r = el.getBoundingClientRect();
+    if (!r.width) continue;
+    left = Math.min(left, r.left); right = Math.max(right, r.right);
+    if (r.bottom > bandTop) leftLow = Math.min(leftLow, r.left);
+  }
+  // Wrapped when the column is more than one control wide.
+  const wrapped = Number.isFinite(left) && right - left > 70;
+  if (wrapped) {
+    root.style.setProperty('--navaid-map-ctrl-clear', Math.ceil(box.right - left + 8) + 'px');
+    root.style.setProperty('--navaid-map-ctrl-wrapped', '1');
+    if (Number.isFinite(leftLow)) root.style.setProperty('--navaid-map-ctrl-clear-low', Math.ceil(box.right - leftLow + 8) + 'px');
+    else root.style.removeProperty('--navaid-map-ctrl-clear-low');
+  } else {
+    root.style.removeProperty('--navaid-map-ctrl-clear');
+    root.style.removeProperty('--navaid-map-ctrl-clear-low');
+    root.style.removeProperty('--navaid-map-ctrl-wrapped');
+  }
+}
+(function watchMapControlClearance() {
+  let queued = false;
+  const later = () => { if (!queued) { queued = true; requestAnimationFrame(() => { queued = false; syncMapControlClearance(); }); } };
+  addEventListener('resize', later);
+  const start = () => {
+    const corner = document.querySelector('.leaflet-bottom.leaflet-right');
+    if (!corner) { setTimeout(start, 500); return; }
+    if (typeof ResizeObserver === 'function') new ResizeObserver(later).observe(corner);
+    new MutationObserver(later).observe(corner, { childList: true, subtree: true, attributes: true, attributeFilter: ['class', 'hidden', 'style'] });
+    new MutationObserver(later).observe(document.body, { attributes: true, attributeFilter: ['class'] });
+    later();
+  };
+  start();
+})();
+
 function orderMapControls(corner) {
   if (!corner) return;
   const rank = (el) => {
@@ -928,6 +1023,10 @@ function orderMapControls(corner) {
   };
   const rows = Array.prototype.slice.call(corner.children);
   const sorted = rows.slice().sort((a, b) => rank(a) - rank(b));
+  // The phone's column is a reversed flex column (it wraps into a second column on a short
+  // screen, see style.css), where the DOM order reads bottom-up: `order` puts it back.
+  // Zoom, which ranks last, therefore stays at the bottom.
+  sorted.forEach((el, i) => { el.style.order = String(sorted.length - i); });
   // Only touch the DOM when the order actually differs: this runs on every fix.
   for (let i = 0; i < sorted.length; i++) {
     if (rows[i] !== sorted[i]) { sorted.forEach(el => corner.appendChild(el)); return; }
@@ -1002,11 +1101,24 @@ voiceCtrl.onAdd = function () {
 };
 voiceCtrl.addTo(map);
 const voiceBtn = document.getElementById('voice-toggle');
+// Why the voice button is dimmed, or '' when it is live. Every spoken alert follows the route --
+// the leg and next-leg calls, altitude, TOP, drift and off-route, the destination's ATIS, hours
+// and last light -- and is set off by the position, so both are needed (reported: "the voice
+// button is enabled on my app even when no location"). No route first: it is the bigger gap.
+function voiceDimWhy() {
+  if (!(state.waypoints && state.waypoints.length >= 2)) return S.whyVoiceNoRoute || 'Spoken alerts follow your route: draw a route first.';
+  const live = typeof gpsPositionLive === 'function' && gpsPositionLive();
+  if (!live) return S.whyVoiceNoPosition || 'Spoken alerts follow your position along the route: turn on Location';
+  return '';
+}
+window.voiceDimWhy = voiceDimWhy;
 function refreshVoiceControl() {
   const wrap = voiceBtn && voiceBtn.parentNode;
   if (!wrap) return;
-  const tracking = typeof gpsPositionLive === 'function' ? gpsPositionLive() : false;
-  wrap.style.display = tracking ? '' : 'none';
+  // Always there (dim, never hide); dimmed, with the reason, until there is something to speak
+  // about (voiceDimWhy): a route AND a position.
+  wrap.style.display = '';
+  if (typeof setButtonWhy === 'function') setButtonWhy(voiceBtn, voiceDimWhy() || null);
   orderMapControls(wrap.parentNode);
   const on = window.voiceAlerts === true;
   setMapIcon(voiceBtn, on ? 'voiceOn' : 'voiceOff');
@@ -1018,12 +1130,11 @@ function refreshVoiceControl() {
   voiceBtn.setAttribute('aria-pressed', on ? 'true' : 'false');
   const label = on ? (S.voiceOnTitle || 'Alerts are spoken — tap to silence them')
                    : (S.voiceOffTitle || 'Alerts are silent — tap to have them spoken');
-  voiceBtn.title = label;
   voiceBtn.setAttribute('aria-label', label);
+  // While dimmed the title is the reason (setButtonWhy); the label waits to be put back.
+  if (voiceBtn.dataset.why) voiceBtn.dataset.whyTitle = label; else voiceBtn.title = label;
 }
 window.refreshVoiceControl = refreshVoiceControl;
-// Hidden until a fix is driving the map -- without this first call the button is visible from
-// boot, since nothing has set its display yet.
 refreshVoiceControl();
 voiceBtn.onclick = () => {
   window.voiceAlerts = !(window.voiceAlerts === true);
@@ -1117,7 +1228,7 @@ function refreshOrientControl() {
   const following = !!(window.NavAid && NavAid.followMe &&
     typeof NavAid.followMe.viewing === 'function' && NavAid.followMe.viewing());
   const tracking = ownShip || following;
-  wrap.style.display = tracking ? '' : 'none';
+  wrap.style.display = '';
   orderMapControls(wrap.parentNode);
   // Three states, not two: the dial can leave the chart pointing anywhere, and a button
   // that still claimed "north up" over a map turned 40 degrees would be describing
@@ -1140,6 +1251,12 @@ function refreshOrientControl() {
                                        : (S.orientNorthUp || 'North up — tap to hold your heading up'));
   orientBtn.title = label;
   orientBtn.setAttribute('aria-label', label);
+  // Always shown (dim, never hide). With no aircraft there is no heading to hold up: dimmed, and a
+  // tap says why -- unless the chart has been turned by hand, when a tap still straightens it.
+  if (typeof setButtonWhy === 'function') {
+    setButtonWhy(orientBtn, (tracking || rotated) ? null
+      : (S.whyOrientNoPosition || 'Heading up turns the chart with your track: turn on Location'));
+  }
 }
 window.refreshOrientControl = refreshOrientControl;
 
@@ -1204,7 +1321,8 @@ function refreshGpsFollowControl() {
   const wrap = followBtn && followBtn.parentNode;
   if (!wrap) return;
   const tracking = typeof gpsPositionLive === 'function' ? gpsPositionLive() : false;
-  wrap.style.display = tracking ? '' : 'none';
+  // Always shown (dim, never hide): with no position there is no aircraft to hold the map on.
+  wrap.style.display = '';
   orderMapControls(wrap.parentNode);
   const on = typeof gpsFollow === 'undefined' ? true : gpsFollow;
   // The VOR symbol, not a padlock: this one holds the MAP ONTO the aircraft, and the padlock
@@ -1217,6 +1335,10 @@ function refreshGpsFollowControl() {
                    : (S.followLockOff || 'Not following — tap to follow the aircraft');
   followBtn.title = label;
   followBtn.setAttribute('aria-label', label);
+  if (typeof setButtonWhy === 'function') {
+    setButtonWhy(followBtn, tracking ? null
+      : (S.whyFollowNoPosition || 'Follow keeps your aircraft in view: turn on Location'));
+  }
 }
 // --- Follow me — beside the follow lock, and only while there is a position to share -----
 // It lived in the Export menu, which is where you go to save a file, not where you are
@@ -1239,8 +1361,9 @@ function refreshFollowMeMapControl() {
   const live = (typeof gpsPositionLive === 'function' && gpsPositionLive())
     || (typeof gpsRecording !== 'undefined' && gpsRecording);
   const offered = typeof tune === 'function' && tune('featureFollowMe') === true;
-  // Same rule as the follow lock: no position, no control -- there would be nothing to share.
-  wrap.style.display = (offered && live) ? '' : 'none';
+  // Only the gist removes it (featureFollowMe). Without a position there is nothing to share:
+  // dimmed, and a tap says so -- unless a share is already running, which a tap must still stop.
+  wrap.style.display = offered ? '' : 'none';
   orderMapControls(wrap.parentNode);
   const status = F && typeof F.status === 'function' ? F.status() : 'idle';
   const active = status !== 'idle';
@@ -1259,6 +1382,10 @@ function refreshFollowMeMapControl() {
           : (S.tbFollowMeTitle || 'Share a best-effort live position link');
   followMeBtn.title = label;
   followMeBtn.setAttribute('aria-label', label);
+  if (typeof setButtonWhy === 'function') {
+    setButtonWhy(followMeBtn, (live || active) ? null
+      : (S.followMeNoFix || 'Follow me needs a position: turn on Location or Record first.'));
+  }
 }
 window.refreshFollowMeMapControl = refreshFollowMeMapControl;
 followMeBtn.onclick = () => {
@@ -1348,8 +1475,22 @@ atcRadioCtrl.onAdd = function () {
   setMapIcon(b, 'headset');
   b.title = (typeof S !== 'undefined' && S.atcRadioTitle) || 'ATC radio';
   b.setAttribute('aria-label', b.title);
-  b.addEventListener('click', () => { if (window.atcRadio && typeof window.atcRadio.open === 'function') window.atcRadio.open(); });
+  // Green (a channel playing): a tap stops it (asked). Otherwise it opens the channel list.
+  b.addEventListener('click', () => {
+    const r = window.atcRadio;
+    if (!r) return;
+    if (r.current && typeof r.stop === 'function') r.stop();
+    else if (typeof r.open === 'function') r.open();
+  });
   wrap.appendChild(b);
+  // What is playing, beside the green button (asked). Absolutely placed, so showing it never moves
+  // the column; the button's own label already says it to a screen reader.
+  const now = document.createElement('span');
+  now.className = 'atc-fab-now';
+  now.hidden = true;
+  now.setAttribute('aria-hidden', 'true');
+  now.dir = 'auto';
+  wrap.appendChild(now);
   // Ships off (gist turns it on). The wrapper reserves its slot from first paint (CSS min-size);
   // only the button is hidden when off. So the gist flipping it on -- after paint, on a cold load
   // lighthouse measures -- fills the reserved slot without moving any control (no layout shift).
@@ -1705,7 +1846,9 @@ function refreshEditColumn() {
   const lockWhy = locked ? (S.editLockBlockedToast || 'Route is locked — unlock it to edit') : null;
   const empty = !(state.waypoints && state.waypoints.length) && !(state.notes && state.notes.length)
     && !(typeof measureOn === 'function' && measureOn())
-    && !document.querySelector('.tb-section[data-sec="weather"] input[type="checkbox"]:checked')
+    // LSA bubbles ticked on a chart other than Low Alt draw nothing (the box stays there, dimmed --
+    // never hidden): not something on the map to clear.
+    && !document.querySelector('.tb-section[data-sec="weather"] input[type="checkbox"]:checked:not(#lsa-cb[aria-disabled="true"])')
     // A recorded flight shown from Saved routes is cleared too (see the #clear handler).
     && !(typeof shownTracks !== 'undefined' && Array.isArray(shownTracks) && shownTracks.length)
     // So is the A3/A4 page frame: on an otherwise empty map it was the one thing left, and
@@ -1761,6 +1904,8 @@ function refreshRouteButtons() {
   why('share', needTwo);
   why('fly', needTwo);
   why('mosaic-btn', wps ? '' : (S.mosaicEmpty || 'Add route waypoints first.'));
+  // Every spoken alert follows the route: with none, nothing would ever be said.
+  why('voice-toggle', voiceDimWhy());
   // Route check: the gist withdrawing it keeps its own disabled state (refreshRouteCheckBtn).
   const rc = document.getElementById('route-check-btn');
   if (rc && !(typeof tune === 'function' && tune('featureRouteCheck') === false)) {
@@ -2007,6 +2152,13 @@ function applyTuningCssVars() {
   px('--navaid-inspector-default-top', 'inspectorDefaultTopPx');
   // Speed / altitude / heading: cockpit data, read at arm's length.
   px('--navaid-gps-readout-font', 'gpsReadoutFontPx');
+  root.setProperty('--navaid-traffic-ground-alpha', String(tune('trafficGroundAlpha')));
+  // The route totals in the legend dock (style.css .legend-docked #route-summary).
+  px('--navaid-route-summary-font', 'routeSummaryFontPx');
+  // The map's button columns: their gap to the screen edges (style.css, the map controls).
+  px('--navaid-map-ctrl-left-edge', 'mapCtrlLeftEdgePx');
+  px('--navaid-map-ctrl-right-edge', 'mapCtrlRightEdgePx');
+  if (typeof window.fitRouteSummary === 'function') window.fitRouteSummary(true);
   // Centre crosshair (touch): size, line thickness and both colours, so it can be dialled
   // in against whichever chart it has to stay visible over.
   px('--navaid-crosshair-size', 'crosshairSizePx');
@@ -2074,15 +2226,19 @@ function applyTuningCssVars() {
 }
 window.applyTuningCssVars = applyTuningCssVars;
 applyTuningCssVars();
-const zuluClockCtrl = L.control({ position: 'topright' });
+const zuluClockMovable = () => typeof tune === 'function' && tune('zuluClockMovable') === true;
+const zuluClockCtrl = L.control({ position: zuluClockMovable() ? 'topright' : 'bottomright' });
+// One element for the life of the page: the gist can move the control between corners
+// (setPosition re-runs onAdd), and the tick and the drag handlers hold on to this element.
+const zuluClockEl = L.DomUtil.create('div', 'leaflet-control zulu-clock');
+zuluClockEl.id = 'zulu-clock';
+zuluClockEl.dir = 'ltr';
+zuluClockEl.title = S.zuluClockTitle || 'Zulu time (UTC)';
+zuluClockEl.setAttribute('aria-label', S.zuluClockTitle || 'Zulu time (UTC)');
+zuluClockEl.setAttribute('aria-live', 'off');
 zuluClockCtrl.onAdd = function () {
-  const box = L.DomUtil.create('div', 'leaflet-control zulu-clock');
-  box.id = 'zulu-clock';
-  box.dir = 'ltr';
-  box.title = 'Zulu time (UTC)';
-  box.setAttribute('aria-label', 'Zulu time (UTC)');
-  box.setAttribute('aria-live', 'off');
-  return box;
+  zuluClockEl.classList.toggle('zulu-fixed', !zuluClockMovable());
+  return zuluClockEl;
 };
 zuluClockCtrl.addTo(map);
 const zuluClockBox = document.getElementById('zulu-clock');
@@ -2100,11 +2256,21 @@ setInterval(refreshZuluClock, 1000);
   const box = document.getElementById('zulu-clock');
   if (!box) return;
   const KEY = 'navaid.clockPos';
+  // One-time reset (asked): every device drops the spot its clock was dragged to, once. The clock
+  // is fixed by default now; if the gist makes it draggable again it starts from its corner, and a
+  // spot dragged after that is kept as before.
+  try {
+    if (localStorage.getItem('navaid.clockPosReset') !== '1') {
+      for (const k of [KEY, KEY + '.en', KEY + '.he']) localStorage.removeItem(k);
+      localStorage.setItem('navaid.clockPosReset', '1');
+    }
+  } catch (e) { /* storage unavailable */ }
   if (window.L && L.DomEvent) {
     L.DomEvent.disableClickPropagation(box);
     L.DomEvent.disableScrollPropagation(box);
   }
   function applyPos(x, y) {
+    if (!zuluClockMovable()) return;
     const maxX = Math.max(0, window.innerWidth - box.offsetWidth);
     const maxY = Math.max(0, window.innerHeight - box.offsetHeight);
     box.style.position = 'fixed';
@@ -2120,6 +2286,7 @@ setInterval(refreshZuluClock, 1000);
   } catch (e) { /* storage unavailable */ }
 
   function start(cx, cy) {
+    if (!zuluClockMovable()) return;
     const r = box.getBoundingClientRect();
     const off = { x: cx - r.left, y: cy - r.top };
     box.classList.add('dragging');
@@ -2141,10 +2308,26 @@ setInterval(refreshZuluClock, 1000);
     window.addEventListener('touchmove', tm, { passive: false });
     window.addEventListener('touchend', end);
   }
-  box.addEventListener('mousedown', e => { e.preventDefault(); start(e.clientX, e.clientY); });
+  box.addEventListener('mousedown', e => { if (!zuluClockMovable()) return; e.preventDefault(); start(e.clientX, e.clientY); });
   box.addEventListener('touchstart', e => {
+    if (!zuluClockMovable()) return;
     if (e.touches.length === 1) { e.preventDefault(); start(e.touches[0].clientX, e.touches[0].clientY); }
   }, { passive: false });
+  // The gist can switch it: fixed goes to the bottom-right slot (a dragged spot stays in storage
+  // for when it is draggable again); draggable goes back to the top corner, or that spot.
+  window.refreshZuluClockPlacement = function () {
+    const movable = zuluClockMovable();
+    const want = movable ? 'topright' : 'bottomright';
+    if (zuluClockCtrl.getPosition() !== want) zuluClockCtrl.setPosition(want);
+    box.classList.toggle('zulu-fixed', !movable);
+    for (const k of ['position', 'left', 'top', 'right', 'margin', 'transform']) box.style[k] = '';
+    if (movable) {
+      try {
+        const p = JSON.parse(navLangPosRead(KEY) || 'null');
+        if (p && Number.isFinite(p.x) && Number.isFinite(p.y)) applyPos(p.x, p.y);
+      } catch (e) { /* storage unavailable */ }
+    }
+  };
 })();
 // --- chart attribution, folded away on a phone -----------------------
 // The notice is required and must stay one tap away, but on a 390px screen it was a
@@ -2157,6 +2340,7 @@ setInterval(refreshZuluClock, 1000);
   if (!el) return;
   const body = document.createElement('span');
   body.className = 'attrib-body';
+  body.dir = 'ltr';   // proper names and URLs: in Hebrew they flowed RTL and wrapped in a scrambled order
   while (el.firstChild) body.appendChild(el.firstChild);
   const btn = document.createElement('button');
   btn.type = 'button';
@@ -2166,10 +2350,19 @@ setInterval(refreshZuluClock, 1000);
   const label = (typeof S === 'object' && S && S.attribToggle) || 'Chart and map credits';
   btn.title = label;
   btn.setAttribute('aria-label', label);
-  btn.addEventListener('click', () => {
-    const open = el.classList.toggle('attrib-open');
+  const setOpen = (open) => {
+    el.classList.toggle('attrib-open', open);
     btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+  };
+  btn.addEventListener('click', () => setOpen(!el.classList.contains('attrib-open')));
+  // Opened over the coordinate readout, so it has to be easy to put away again: Escape, or a
+  // tap anywhere outside the notice (the toggle's own tap is handled above).
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && el.classList.contains('attrib-open')) setOpen(false);
   });
+  document.addEventListener('pointerdown', (e) => {
+    if (el.classList.contains('attrib-open') && !el.contains(e.target)) setOpen(false);
+  }, true);
   // Leaflet re-writes the notice as layers come and go (each tile layer contributes its
   // own credit), which would drop it straight back into the control beside our span. The
   // attribution control appends to the element it was given, so hand it the span.
@@ -2186,282 +2379,134 @@ setInterval(refreshZuluClock, 1000);
 // the map (a chart legend) instead of sitting inside the View menu.
 // Bottom-left (above the coord readout) keeps it clear of the inspector
 // (top-right), the toolbar (top-left) and the rotate dial (bottom-right).
+//
+// A dock instead of a card -- reported as looking unrelated to the map
+// controls, taking room, and closing in the wrong place (the title it closed from sat under the
+// route totals, and the closed chip landed 170px lower). A round Legend button in the map-button
+// family, the route totals as their own pill beside it -- shown whether the key is open or not --
+// and the key opening ABOVE the button, so the button never moves and closes it where it opened.
+// The phone has it too, one row up, clear of the coordinate readout (style.css).
 const legendCtrl = L.control({ position: 'bottomleft' });
+const legendDock = { wrap: null, row: null, btn: null };
 legendCtrl.onAdd = function () {
-  const wrap = L.DomUtil.create('div', 'leaflet-control');
+  const wrap = L.DomUtil.create('div', 'leaflet-control legend-ctrl');
   const el = document.getElementById('map-legend');
   if (el) { el.style.display = ''; wrap.appendChild(el); }
+  const row = document.createElement('div');
+  row.className = 'legend-dock';
+  const btn = document.createElement('button');
+  btn.type = 'button';
+  btn.id = 'legend-toggle';
+  btn.className = 'legend-toggle';
+  btn.setAttribute('aria-controls', 'map-legend');
+  btn.setAttribute('aria-label', S.legendTitle || 'Legend');
+  btn.title = S.legendTitle || 'Legend';
+  if (typeof navIconSvg === 'function') btn.innerHTML = navIconSvg('list', 20);
+  row.appendChild(btn);
+  wrap.appendChild(row);
+  Object.assign(legendDock, { wrap, row, btn });
   L.DomEvent.disableClickPropagation(wrap);
   L.DomEvent.disableScrollPropagation(wrap);
   return wrap;
 };
 legendCtrl.addTo(map);
+// Every layout (asked: the phone was "still using the old button and location"): the route
+// totals live in the dock beside the button; the key, opened by the button, sits above it.
+(function setUpLegendDock() {
+  const el = document.getElementById('map-legend');
+  const sum = document.getElementById('route-summary');
+  if (!el || !legendDock.row) return;
+  legendDock.wrap.classList.add('legend-docked');
+  if (sum) legendDock.row.appendChild(sum);
+  // A spot saved by the old draggable card no longer applies; the key's place is above its button.
+  for (const k of ['position', 'left', 'top', 'right', 'bottom', 'margin', 'maxWidth']) el.style[k] = '';
+})();
+// The map clock runs along the same bottom row: it starts right of the dock (style.css .map-time),
+// whose width changes with the route totals.
+// On a phone the clock is a card at the left edge, on the dock's own row; there it sits ABOVE the
+// dock instead (style.css body.deck-on .map-time), at the height published here. It was at a fixed
+// 124 px: the dock -- the Legend button with the route totals over it -- reached up into it, drew
+// on top of the card's left end, and its empty area caught the touches meant for the slider
+// (reported: "can't move time slider").
+function publishLegendDockWidth() {
+  const root = document.documentElement;
+  const row = legendDock.row;
+  if (!row || !row.getClientRects().length) {
+    root.style.removeProperty('--navaid-legend-dock-clear');
+    root.style.removeProperty('--navaid-legend-dock-above');
+    return;
+  }
+  const r = row.getBoundingClientRect();
+  root.style.setProperty('--navaid-legend-dock-clear', Math.ceil(r.right + 12) + 'px');
+  const clock = document.getElementById('map-time');
+  const host = (clock && clock.offsetParent) || document.body;
+  root.style.setProperty('--navaid-legend-dock-above', Math.ceil(host.getBoundingClientRect().bottom - r.top + 8) + 'px');
+}
+if (legendDock.row && typeof ResizeObserver === 'function') new ResizeObserver(publishLegendDockWidth).observe(legendDock.row);
+window.addEventListener('resize', publishLegendDockWidth);
 
-// Draggable legend — drag it anywhere; the spot persists under
-// navaid.legendPos. Same pattern as the Zulu clock above.
-(function makeLegendDraggable() {
+// The route totals on one line (asked: "default should not wrap"). The gist's routeSummaryFontPx
+// is the size they start at; where the room beside the zoom column is too small for that -- the
+// Hebrew totals on an iPhone wrapped at 13 px -- the text steps down until it fits, to 10 px at
+// the least. Refitted when the totals change and when the window or the setting does.
+// var, not const/let: applyTuningCssVars (earlier in this file) calls fitRouteSummary at load.
+var ROUTE_SUMMARY_MIN_PX = 10;
+var routeSummaryFitKey = '';
+function fitRouteSummary(force) {
+  const el = document.getElementById('route-summary');
+  if (!el) return;
+  // Its own font-size change is a style mutation too: refit only when what it depends on changed.
+  const key = el.textContent + '|' + el.style.display + '|' + innerWidth + '|' +
+    getComputedStyle(document.documentElement).getPropertyValue('--navaid-route-summary-font');
+  if (!force && key === routeSummaryFitKey) return;
+  routeSummaryFitKey = key;
+  el.style.fontSize = '';
+  if (!el.getClientRects().length || el.scrollWidth <= el.clientWidth + 1) return;
+  let size = parseFloat(getComputedStyle(el).fontSize) || 13;
+  while (size > ROUTE_SUMMARY_MIN_PX && el.scrollWidth > el.clientWidth + 1) {
+    size = Math.max(ROUTE_SUMMARY_MIN_PX, size - 0.5);
+    el.style.fontSize = size + 'px';
+  }
+}
+window.fitRouteSummary = fitRouteSummary;
+(function watchRouteSummary() {
+  const el = document.getElementById('route-summary');
+  if (!el) return;
+  let queued = false;
+  const later = () => { if (!queued) { queued = true; requestAnimationFrame(() => { queued = false; fitRouteSummary(); }); } };
+  new MutationObserver(later).observe(el, { childList: true, characterData: true, subtree: true, attributes: true, attributeFilter: ['style'] });
+  addEventListener('resize', later);
+})();
+addEventListener('resize', publishLegendDockWidth);
+
+// The key opens and closes from the button (or Escape, or Android Back -- backButtonStep). Closed
+// until asked for: it is the same six symbols every flight, and the totals stay out beside the
+// button either way. The choice is kept on this device.
+(function wireLegendKey() {
   const box = document.getElementById('map-legend');
   if (!box) return;
-  // On a phone the card is most of the bottom-left quarter of the screen, over the chart a
-  // pilot is trying to read, and it says the same six things on every flight. It starts
-  // collapsed to its title there -- tap to open, tap to close -- and the choice is kept per
-  // device. Desktop is unchanged: there is room, and it stays open.
   const COLLAPSE_KEY = 'navaid.legendCollapsed';
-  const legendIsPhone = () => window.innerWidth <= 680;
+  const title = box.querySelector('.map-legend-title');
+  if (title) { title.setAttribute('role', 'heading'); title.setAttribute('aria-level', '2'); }
   function setLegendCollapsed(on, persist) {
     box.classList.toggle('map-legend-collapsed', !!on);
-    const title = box.querySelector('.map-legend-title');
-    if (title) {
-      title.setAttribute('role', 'button');
-      title.setAttribute('tabindex', '0');
-      title.setAttribute('aria-expanded', on ? 'false' : 'true');
-    }
+    if (legendDock.btn) legendDock.btn.setAttribute('aria-expanded', on ? 'false' : 'true');
     if (persist) {
       try { localStorage.setItem(COLLAPSE_KEY, on ? '1' : '0'); } catch (e) { /* storage unavailable */ }
     }
-    // Its size just changed, so make sure it is still on screen and clear of the chrome.
-    if (typeof window.reconcileLegendPosition === 'function') window.reconcileLegendPosition();
   }
-  (function initLegendCollapsed() {
-    let stored = null;
-    try { stored = localStorage.getItem(COLLAPSE_KEY); } catch (e) { /* storage unavailable */ }
-    setLegendCollapsed(stored === null ? legendIsPhone() : stored === '1', false);
-  })();
+  let stored = null;
+  try { stored = localStorage.getItem(COLLAPSE_KEY); } catch (e) { /* storage unavailable */ }
+  setLegendCollapsed(stored === null ? true : stored === '1', false);
   window.setLegendCollapsed = setLegendCollapsed;
-
-  const KEY = 'navaid.legendPos';
-  const GAP = 6;
-  let positioned = false;
-
-  function viewportRect() {
-    const vv = window.visualViewport;
-    const r = {
-      left: vv ? vv.offsetLeft : 0,
-      top: vv ? vv.offsetTop : 0,
-      right: vv ? vv.offsetLeft + vv.width : window.innerWidth,
-      bottom: vv ? vv.offsetTop + vv.height : window.innerHeight,
-    };
-    // On the phone deck the chart is the space between the strip and the bottom bar: a card
-    // clamped to the window ran under the bar, and on the Low Alt chart -- whose legend has
-    // five more rows -- its lower half was hidden there.
-    if (document.body.classList.contains('deck-on')) {
-      const strip = document.getElementById('deck-strip');
-      const bar = document.getElementById('deck-bar');
-      if (strip && strip.getClientRects().length) r.top = Math.max(r.top, strip.getBoundingClientRect().bottom);
-      if (bar && bar.getClientRects().length) r.bottom = Math.min(r.bottom, bar.getBoundingClientRect().top);
-    }
-    return r;
-  }
-
-  // What the legend keeps clear of. The toolbar is NOT on this list: it opens over the map
-  // for as long as a menu is being used and then goes, and moving the card out of its way
-  // meant the card moved every time a layer was picked -- reported as the legend jumping
-  // around a phone screen. Being covered by the menu you are reading is not a problem; being
-  // somewhere new each time you close it is. The docked search panel stays, because it is
-  // not transient: it sits there until it is dismissed.
-  //
-  // The map clock is on the list for the same reason. It has a fixed place along the bottom
-  // of the chart and it DIMS rather than vanishes when nothing answers to it, so it is not
-  // something that comes and goes -- and below about 1150px the card reached across the
-  // clock's row and sat on top of the control at its left end: the Now button in English,
-  // the hour readout in Hebrew, each covered to the point of being unusable. The card moves
-  // instead, because the clock cannot: it is a fixed strip and the card is the thing with
-  // somewhere else to be.
-  function chromeRects() {
-    const search = document.getElementById('search-overlay');
-    const rects = [];
-    if (search && !search.classList.contains('hidden')) rects.push(search.getBoundingClientRect());
-    // The edit column is fixed chrome as well (top left, every layout). On a short phone the
-    // expanded card reached up over its Clear button.
-    const editCol = document.querySelector('.edit-col-ctrl');
-    if (editCol && editCol.getClientRects().length) rects.push(editCol.getBoundingClientRect());
-    const clock = document.getElementById('map-time');
-    // `hidden` is an attribute here, not a class, and the strip is also withdrawn by the
-    // gist and while a live position is showing.
-    if (clock && !clock.hidden && getComputedStyle(clock).display !== 'none') {
-      // The CONTROLS, not the strip. The strip spans the full width and is transparent and
-      // pointer-transparent; treating it as an obstacle would push the card off the bottom
-      // row at every width, including the wide screens where the two never met -- and an
-      // untouched legend would lose its Leaflet anchor for nothing.
-      let box = null;
-      for (const kid of clock.children) {
-        if (kid.hidden || getComputedStyle(kid).display === 'none') continue;
-        const k = kid.getBoundingClientRect();
-        if (!k.width || !k.height) continue;
-        box = box ? {
-          left: Math.min(box.left, k.left), top: Math.min(box.top, k.top),
-          right: Math.max(box.right, k.right), bottom: Math.max(box.bottom, k.bottom),
-        } : { left: k.left, top: k.top, right: k.right, bottom: k.bottom };
-      }
-      if (box) rects.push({ ...box, width: box.right - box.left, height: box.bottom - box.top });
-    }
-    return rects.filter(r => r.width && r.height);
-  }
-
-  function overlaps(x, y, w, h, obstacle) {
-    return x < obstacle.right && x + w > obstacle.left &&
-      y < obstacle.bottom && y + h > obstacle.top;
-  }
-
-  function choosePosition(wantX, wantY, obstacles) {
-    const vp = viewportRect();
-    const w = box.offsetWidth, h = box.offsetHeight;
-    const clampX = x => Math.max(vp.left, Math.min(vp.right - w, x));
-    const clampY = y => Math.max(vp.top, Math.min(vp.bottom - h, y));
-    const xs = [wantX, vp.left, vp.right - w];
-    const ys = [wantY, vp.top, vp.bottom - h];
-    obstacles.forEach(r => {
-      xs.push(r.left - w - GAP, r.right + GAP);
-      ys.push(r.top - h - GAP, r.bottom + GAP);
-    });
-    const candidates = [];
-    xs.forEach(x => ys.forEach(y => {
-      const cx = clampX(x), cy = clampY(y);
-      if (!obstacles.some(r => overlaps(cx, cy, w, h, r))) {
-        candidates.push({ x: cx, y: cy,
-          score: Math.pow(cx - wantX, 2) + Math.pow(cy - wantY, 2) });
-      }
-    }));
-    candidates.sort((a, b) => a.score - b.score);
-    return candidates[0] || { x: clampX(wantX), y: clampY(wantY) };
-  }
-
-  // Where the PILOT put it. Chrome that comes and goes -- an opened toolbar, the search
-  // overlay -- may shove the card aside, but that shove is not a decision: it is undone
-  // when the obstruction goes, and it is never written to storage. Saving it was why the
-  // legend walked down the screen on a phone, a step per time the toolbar was opened.
-  let home = null;
-  function persistPosition() {
-    const r = box.getBoundingClientRect();
-    home = { x: r.left, y: r.top };
-    try { localStorage.setItem(navLangPosKey(KEY), JSON.stringify(home)); }
-    catch (e) { /* storage unavailable */ }
-  }
-
-  function applyPos(x, y, persist) {
-    box.style.maxWidth = '';
-    box.classList.remove('map-legend-constrained');
-    const obstacles = chromeRects();
-    let pos = choosePosition(x, y, obstacles);
-    const naturalWidth = box.offsetWidth;
-    if (obstacles.some(r => overlaps(pos.x, pos.y, naturalWidth, box.offsetHeight, r)) &&
-        window.innerWidth <= 680) {
-      const vp = viewportRect();
-      const sideWidth = obstacles.reduce((best, r) => Math.max(best,
-        r.left - vp.left - GAP, vp.right - r.right - GAP), 0);
-      if (sideWidth > 0 && sideWidth < naturalWidth) {
-        box.style.maxWidth = sideWidth + 'px';
-        box.classList.add('map-legend-constrained');
-      }
-      pos = choosePosition(x, y, obstacles);
-    }
-    positioned = true;
-    box.style.position = 'fixed';
-    box.style.left = pos.x + 'px';
-    box.style.top = pos.y + 'px';
-    box.style.right = 'auto';
-    box.style.bottom = 'auto';
-    box.style.margin = '0';
-    if (persist) persistPosition();
-  }
-  try {
-    const p = JSON.parse(navLangPosRead(KEY) || 'null');
-    if (p && Number.isFinite(p.x) && Number.isFinite(p.y)) {
-      home = { x: p.x, y: p.y };
-      applyPos(p.x, p.y, false);
-    }
-  } catch (e) { /* storage unavailable */ }
-  window.reconcileLegendPosition = function (opts = {}) {
-    if (document.documentElement.classList.contains('app-booting')) return;
-    const r = box.getBoundingClientRect();
-    const vp = viewportRect();
-    const outside = r.left < vp.left || r.top < vp.top ||
-      r.right > vp.right || r.bottom > vp.bottom;
-    const obstacles = chromeRects();
-    const obstructed = obstacles.some(obstacle =>
-      overlaps(r.left, r.top, r.width, r.height, obstacle));
-    // A legend the pilot has never dragged still has a place it belongs: where the stylesheet
-    // put it. Record that the first time we see it on screen, whether or not something is
-    // currently sitting over it -- being obstructed does not move where the card BELONGS,
-    // and a card first seen obstructed used to end up adopting the shove as its home, so
-    // the spot it was pushed to never gave way again once the obstruction went.
-    if (!home && !outside) home = { x: r.left, y: r.top };
-    // Where it is is fine: leave it exactly where it is. Re-applying a position it already
-    // holds is how a card starts drifting a pixel at a time.
-    if (!positioned && !outside && !obstructed) return;
-    // Aim at HOME, not at where the card happens to be. Expanding a legend near the bottom
-    // of a phone screen makes it too tall to fit, so it is clamped upwards; collapsing it
-    // again used to re-apply that clamped position and leave the card somewhere new --
-    // reported as the legend moving when it is expanded and closed. Home is what the card
-    // returns to the moment there is room for it again.
-    const want = home || { x: r.left, y: r.top };
-    // Only a drag decides where the legend lives, so only a drag writes to storage: a
-    // reflow that pushes the card clear of something must not be adopted as a new home.
-    applyPos(want.x, want.y, false);
-    void opts;
-  };
-  const bootObserver = new MutationObserver(() => {
-    if (!document.documentElement.classList.contains('app-booting')) {
-      window.reconcileLegendPosition();
-      bootObserver.disconnect();
-    }
+  if (!legendDock.btn) return;
+  legendDock.btn.addEventListener('click', () => setLegendCollapsed(!box.classList.contains('map-legend-collapsed'), true));
+  document.addEventListener('keydown', (e) => {
+    if (e.key !== 'Escape' || box.classList.contains('map-legend-collapsed')) return;
+    if (e.target && e.target.closest && e.target.closest('input, select, textarea, .modal-back')) return;
+    setLegendCollapsed(true, true);
+    if (box.contains(document.activeElement)) legendDock.btn.focus();
   });
-  if (document.documentElement.classList.contains('app-booting')) {
-    bootObserver.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
-  }
-  let resizeFrame = 0;
-  const onViewportResize = () => {
-    cancelAnimationFrame(resizeFrame);
-    resizeFrame = requestAnimationFrame(() => window.reconcileLegendPosition());
-  };
-  window.addEventListener('resize', onViewportResize);
-  if (window.visualViewport) window.visualViewport.addEventListener('resize', onViewportResize);
-  const toolbar = document.getElementById('toolbar');
-  if (toolbar && typeof ResizeObserver !== 'undefined') {
-    new ResizeObserver(onViewportResize).observe(toolbar);
-  }
-  function start(cx, cy) {
-    const r = box.getBoundingClientRect();
-    const off = { x: cx - r.left, y: cy - r.top };
-    box.classList.add('dragging');
-    let travelled = 0;
-    const move = (mx, my) => {
-      travelled = Math.max(travelled, Math.hypot(mx - cx, my - cy));
-      applyPos(mx - off.x, my - off.y, false);
-    };
-    const mm = ev => move(ev.clientX, ev.clientY);
-    const tm = ev => { if (ev.touches.length === 1) { ev.preventDefault(); move(ev.touches[0].clientX, ev.touches[0].clientY); } };
-    const end = (ev) => {
-      box.classList.remove('dragging');
-      // A press that never moved is a tap on the title, not a drag: open or close the card
-      // instead of writing a position it never left.
-      if (travelled < 4) {
-        const t = (ev && (ev.target || (ev.changedTouches && ev.changedTouches[0] &&
-          document.elementFromPoint(ev.changedTouches[0].clientX, ev.changedTouches[0].clientY))));
-        if (t && t.closest && t.closest('.map-legend-title')) {
-          setLegendCollapsed(!box.classList.contains('map-legend-collapsed'), true);
-          document.removeEventListener('mousemove', mm);
-          document.removeEventListener('mouseup', end);
-          window.removeEventListener('touchmove', tm);
-          window.removeEventListener('touchend', end);
-          return;
-        }
-      }
-      persistPosition();
-      document.removeEventListener('mousemove', mm);
-      document.removeEventListener('mouseup', end);
-      window.removeEventListener('touchmove', tm);
-      window.removeEventListener('touchend', end);
-    };
-    document.addEventListener('mousemove', mm);
-    document.addEventListener('mouseup', end);
-    window.addEventListener('touchmove', tm, { passive: false });
-    window.addEventListener('touchend', end);
-  }
-  box.addEventListener('mousedown', e => { e.preventDefault(); start(e.clientX, e.clientY); });
-  box.addEventListener('touchstart', e => {
-    if (e.touches.length === 1) { e.preventDefault(); start(e.touches[0].clientX, e.touches[0].clientY); }
-  }, { passive: false });
 })();
 
 // --- live mouse coordinate readout ---------------------------------
@@ -2528,6 +2573,10 @@ function refreshWindReadout() {
 // leaking through to the map underneath.
 coordBox.removeAttribute('aria-hidden');
 coordBox.title = S.gotoTitle;
+// Clickable, so reachable: a bare div was a mouse-only control. Enter/Space open the editor like a click.
+coordBox.setAttribute('role', 'button');
+coordBox.tabIndex = 0;
+coordBox.setAttribute('aria-label', S.gotoTitle);
 coordBox.classList.add('show', 'interactive');
 L.DomEvent.disableClickPropagation(coordBox);
 L.DomEvent.disableScrollPropagation(coordBox);
@@ -2577,6 +2626,10 @@ function showZoom() {
   const a = document.createElement('span'), b = document.createElement('span');
   a.textContent = zPart || ''; b.textContent = scalePart || '';
   zoomBox.replaceChildren(a, b);
+  // Read as one phrase ("Zoom 12 · 1:250 000"), not two stray spans.
+  zoomBox.setAttribute('role', 'img');
+  zoomBox.setAttribute('aria-label', zoomReadoutText(map.getZoom()));
+  zoomBox.title = zoomReadoutText(map.getZoom());
 }
 function showCoord(latlng) {
   if (gotoEditing) return;
@@ -2656,7 +2709,10 @@ function exitGotoEdit() {
   gotoEditing = false;
   coordBox.classList.remove('editing', 'error');
   coordBox.title = S.gotoTitle;
+  coordBox.setAttribute('role', 'button');
+  coordBox.setAttribute('aria-label', S.gotoTitle);
   showCenterCoord();
+  try { coordBox.focus({ preventScroll: true }); } catch (e) { /* */ }
 }
 // Break a signed decimal degree into integer degrees/minutes/seconds, with
 // the same 60->0 rollover carry as fmtLatLngDMS so the slots never read 60.
@@ -2731,7 +2787,9 @@ function enterGotoEdit() {
   const lat = dmsParts(c.lat);
   const lng = dmsParts(c.lng);
   coordBox.textContent = '';
-  coordBox.setAttribute('aria-label', S.gotoTitle);
+  // The inputs carry their own names; a button role around them would hide them.
+  coordBox.removeAttribute('role');
+  coordBox.removeAttribute('aria-label');
   coordBox.title = S.gotoError;
   const slots = [
     gotoSlot('goto-lat-d', lat.d, 2, S.latitude + ' deg'), gotoSep('°'),
@@ -2774,6 +2832,13 @@ function enterGotoEdit() {
   inputs[0].select();
 }
 coordBox.addEventListener('click', () => { if (!gotoEditing) enterGotoEdit(); });
+coordBox.addEventListener('keydown', (e) => {
+  if (gotoEditing || e.target !== coordBox || (e.key !== 'Enter' && e.key !== ' ')) return;
+  e.preventDefault();
+  enterGotoEdit();
+  const first = coordBox.querySelector('input');
+  if (first) first.focus();
+});
 // Leave edit mode only when focus exits the readout entirely. Registered once
 // (not per edit) so repeated open/close never stacks duplicate listeners.
 coordBox.addEventListener('focusout', e => {
@@ -2928,6 +2993,41 @@ function syncSearchResultsStacking() {
   const res = document.getElementById('wp-search-results');
   if (ov && res) ov.classList.toggle('has-results', !res.classList.contains('hidden'));
 }
+// Nothing found in the set in use, but another chart has the code: one row says which, and
+// tapping it switches "Nav waypoints from" to that chart (through the selector's own handler,
+// so every dataset follows) and searches again.
+async function showOtherChartHint(token) {
+  if (!token || token.length < 2 || typeof navWaypointOtherCharts !== 'function') return;
+  const others = await navWaypointOtherCharts(token);
+  // Typed on meanwhile, or found after all: this answer is stale.
+  if (!others.length || wpSearch.value.trim() !== token) return;
+  const target = others[0];
+  const where = others.map(layerLabelForPrefix).join(' / ');
+  wpResults.innerHTML = '';
+  const item = document.createElement('div');
+  item.className = 'wp-search-item wp-search-other-chart';
+  item.setAttribute('role', 'option');
+  item.textContent = S.searchOtherChartRow(token.toUpperCase(), where, layerLabelForPrefix(target));
+  item.onclick = async (e) => {
+    // The switch rebuilds the list under this click; left to bubble, the document's
+    // click-outside handler no longer found the row inside the search and closed it.
+    e.stopPropagation();
+    const sel = document.getElementById('navwp-source');
+    if (sel && Array.from(sel.options).some(o => o.value === target)) {
+      sel.value = target;
+      if (typeof sel.onchange === 'function') sel.onchange();
+    } else {
+      window.navDataPrefix = target;
+      if (typeof reloadLayerDatasets === 'function') reloadLayerDatasets();
+    }
+    if (typeof loadNavWaypoints === 'function') await loadNavWaypoints();
+    runSearch();
+  };
+  wpResults.appendChild(item);
+  wpResults.classList.remove('hidden');
+  syncSearchResultsStacking();
+}
+
 function closeSearch() {
   wpResults.classList.add('hidden');
   syncSearchResultsStacking();
@@ -2991,7 +3091,14 @@ async function buildRouteFromQuery(raw) {
   const resolved = [];
   for (const t of tokens) {
     const w = findNavWpToken(t);
-    if (!w) { refuse(S.errSearchUnknown(t)); return false; }
+    if (!w) {
+      // Another chart's waypoint? Say so, and where to switch -- not just "unknown".
+      const others = await navWaypointOtherCharts(t);
+      refuse(others.length
+        ? S.errSearchOtherChart(t, others.map(layerLabelForPrefix).join(' / '), layerLabelForPrefix(layerDataPrefix()))
+        : S.errSearchUnknown(t));
+      return false;
+    }
     resolved.push(w);
   }
   // A typed route is vetted before it replaces what is on the map: "LLHZ BAZRA LLHZ BAZRA"
@@ -4249,14 +4356,38 @@ function showRouteLibraryModal(focusSave) {
       if (typeof setSettingsSyncEnabled === 'function') setSettingsSyncEnabled(setChk.checked);
       syncSetHint();
     };
-    setLabel.append(setChk, document.createTextNode(' ' + (S.routeLibraryGdriveSyncSettings || 'Sync settings too')));
-    // Shown only while the box is ticked — it describes what the tick is currently doing,
-    // not a standing warning about the sync button beside it, which uploads none of this.
+    setLabel.title = S.routeLibraryGdriveSyncSettingsTitle || '';
+    setLabel.append(setChk, document.createTextNode(' ' + (S.routeLibraryGdriveSyncSettings || 'Use settings from Drive on this device')));
+    // Always shown: every Sync backs up the settings, the pilot's details among them, ticked
+    // or not -- the box only decides whether this device takes the display settings back.
     const setHint = document.createElement('div');
     setHint.className = 'route-library-gdrive-pii';
-    setHint.textContent = S.routeLibraryGdriveSyncPii || '';
-    const syncSetHint = () => { setHint.hidden = !setChk.checked; };
-    syncSetHint();
+    // AI keys are named only while the gist offers the assistant: with it withdrawn there are
+    // no keys to speak of (asked: "AI keys sync is not relevant when AI assistance is disabled").
+    const aiOn = typeof tune !== 'function' || tune('featureAssistant') !== false;
+    setHint.textContent = (S.routeLibraryGdriveSyncPii || '') + (aiOn && S.routeLibraryGdriveSyncPiiAi ? ' ' + S.routeLibraryGdriveSyncPiiAi : '');
+    const syncSetHint = () => {};
+    // Restore: the backup's settings on this device, once, ticked or not.
+    const restoreBtn = document.createElement('button');
+    restoreBtn.type = 'button';
+    restoreBtn.className = 'route-library-gdrive-restore';
+    restoreBtn.textContent = S.routeLibraryGdriveRestore || 'Restore settings from Drive';
+    restoreBtn.onclick = async () => {
+      if (typeof gdriveRestoreSettings !== 'function') return;
+      const ok = await appConfirm(S.routeLibraryGdriveRestoreConfirm ||
+        'Replace this device\u2019s settings with the backup on Google Drive? The app reloads.',
+        S.routeLibraryGdriveRestore || 'Restore');
+      if (!ok) return;
+      restoreBtn.disabled = true;
+      setStatus(S.routeLibraryGdriveSyncing || 'Syncing…');
+      gdriveRestoreSettings().then(res => {
+        if (res && res.none) { setStatus(S.routeLibraryGdriveRestoreNone || 'No settings backup on Drive yet'); return; }
+        setStatus(S.routeLibraryGdriveSettingsApplied || 'Settings updated — reloading…');
+        setTimeout(() => location.reload(), 700);
+      }).catch(err => {
+        setStatus((S.routeLibraryGdriveError || 'Sync failed') + (err && err.message ? ': ' + err.message : ''));
+      }).then(() => { restoreBtn.disabled = false; });
+    };
     syncBtn.onclick = () => {
       syncBtn.disabled = true;
       setStatus(S.routeLibraryGdriveSyncing || 'Syncing…');
@@ -4285,6 +4416,19 @@ function showRouteLibraryModal(focusSave) {
             },
           });
         })
+        // Then the backup: every setting, ticked or not. A device that never backed up meets an
+        // existing backup with a question, so a new phone does not replace the real one.
+        .then(res => (typeof gdriveBackupSettings !== 'function' || (res && res.needsChoice)) ? res
+          : gdriveBackupSettings({
+            resolveFirstBackup: async at => {
+              const when = at ? new Date(at).toLocaleString(window.__navLang === 'he' ? 'he-IL' : 'en-GB') : '';
+              const ask = typeof S.routeLibraryGdriveFirstBackup === 'function' ? S.routeLibraryGdriveFirstBackup(when)
+                : 'Google Drive has a settings backup from ' + when + '. Restore it on this device?';
+              if (await appConfirm(ask, S.routeLibraryGdriveRestore || 'Restore')) return 'restore';
+              return (await appConfirm(S.routeLibraryGdriveReplaceBackup ||
+                'Replace the backup on Google Drive with this device\u2019s settings?')) ? 'replace' : 'abort';
+            },
+          }).then(b => (b && b.restored) ? Object.assign({}, res, { applied: true }) : res))
         .then(res => {
           if (res && res.needsChoice) {
             setStatus(S.routeLibraryGdriveSettingsSkipped ||
@@ -4306,7 +4450,7 @@ function showRouteLibraryModal(focusSave) {
         })
         .then(() => { syncBtn.disabled = false; });
     };
-    gd.append(syncBtn, setLabel, setHint, status);
+    gd.append(syncBtn, restoreBtn, setLabel, setHint, status);
     body.append(gd);
   }
 
@@ -4512,7 +4656,11 @@ function runSearch() {
     hits.push(...perSource[i].slice(0, take));
     budget -= take;
   }
-  if (!hits.length) { closeSearch(); return; }
+  if (!hits.length) {
+    closeSearch();
+    if (!multi) showOtherChartHint(lastToken);
+    return;
+  }
   wpResults.innerHTML = '';
   const wpField = S.navWpSearchField;
   const afField = S.airfieldLabelField;
@@ -5543,8 +5691,12 @@ function paintRouteFileRows() {
       const sub = save.querySelector('.rf-sub');
       if (sub) { sub.textContent = entry ? entry.name : ''; sub.hidden = !entry; }
       // Dimmed, never hidden or disabled: pressing it still says why there is nothing to save.
-      // (Not aria-disabled: that tells a screen reader it cannot be pressed, and pressing it is
-      // how the pilot hears why.)
+      // The reason is also the tooltip and accessible description, so hover and screen readers
+      // get it without a tap. Not setButtonWhy: that sets aria-disabled, which this row avoids.
+      // The reason on hover and for a screen reader -- but not aria-disabled: that tells a screen
+      // reader it cannot be pressed, and pressing it is how the pilot hears why.
+      const noSaveWhy = tooShort ? (S.errNothingToSave || S.errNeedWps || 'Nothing to save.') : '';
+      if (noSaveWhy) save.setAttribute('aria-description', noSaveWhy); else save.removeAttribute('aria-description');
       save.classList.toggle('is-dim', tooShort);
       const dot = save.querySelector('.rf-dot');
       if (dot) {
@@ -5552,7 +5704,7 @@ function paintRouteFileRows() {
         dot.title = dirty ? (S.routeFileUnsaved || 'Unsaved changes') : '';
       }
       save.setAttribute('aria-label', saveText + (dirty ? ' — ' + (S.routeFileUnsaved || 'Unsaved changes') : ''));
-      save.title = saveText + (dirty ? ' — ' + (S.routeFileUnsaved || 'Unsaved changes') : '');
+      save.title = noSaveWhy || (saveText + (dirty ? ' — ' + (S.routeFileUnsaved || 'Unsaved changes') : ''));
     }
     if (load) {
       load.querySelector('.rf-label').textContent = loadText;
@@ -5678,6 +5830,10 @@ const openFlightPlan = () => {
 document.getElementById('plan').onclick = openFlightPlan;
 document.getElementById('freq-table').onclick = showFreqTableModal;
 document.getElementById('alt-pairs').onclick = showAltitudePairsModal;
+(function () {
+  const btn = document.getElementById('storage-manage');
+  if (btn && typeof showStorageModal === 'function') btn.onclick = showStorageModal;
+}());
 (function () {
   // The nav log sits with the other tables, not beside Plan: it is a different document, and a
   // pilot reaching for the plan in the air must not land on a sheet of exercise arithmetic.
@@ -5866,7 +6022,11 @@ window.followMeNewLinkOffered = followMeNewLinkOffered;
     // sharing yesterday and have since thought better of who has it.
     if (newBtn) {
       const held = !!(f && typeof f._stored === 'function' && f._stored());
-      newBtn.hidden = !followMeOffered() || !followMeNewLinkOffered() || !held;
+      // Only the gist removes it. With no link on this device there is nothing to retire: dimmed,
+      // and a tap says so (never hide a button).
+      newBtn.hidden = !followMeOffered() || !followMeNewLinkOffered();
+      if (!held) setButtonWhy(newBtn, S.whyFollowMeNoLink || 'No follow-me link on this device yet: the next share makes one');
+      else if (newBtn.dataset.why) setButtonWhy(newBtn, null);
       newBtn.disabled = status === 'stopping';
     }
     const active = status !== 'idle';
@@ -5899,7 +6059,7 @@ window.followMeNewLinkOffered = followMeNewLinkOffered;
     // ignores the theme.
     const ask = S.followMeNewLinkConfirm || 'Start a new follow-me link?';
     const yes = typeof window.askYesNo === 'function'
-      ? await window.askYesNo(S.tbFollowMeNewLink || 'New link', ask, S.tbFollowMeNewLink || 'New link')
+      ? await window.askYesNo(S.tbFollowMeNewLink || 'New link', ask, window.navPlainLabel(S.tbFollowMeNewLink || 'New link'))
       : true;
     if (!yes) return;
     const link = await f.newLink();
@@ -6521,7 +6681,7 @@ document.getElementById('limit-kites-cb').onchange = e => {
 
   let urlProblemShown = false;
   function showUrlProblem(problem) {
-    statusEl.textContent = problem;
+    statusEl.textContent = window.navPlainLabel(problem);   // the status colour carries the warning
     statusEl.style.color = typeof tune === 'function'
       ? tune('simStatusErrColor') : '#e67e22';
     urlProblemShown = true;
@@ -6743,6 +6903,24 @@ document.getElementById('wpname-cb').onchange = e => {
   catch (err) { /* storage unavailable */ }
   draw();
 };
+// Names turned with their leg's kite (draw.js wpNameAngle). On by default.
+const WPNAME_ANGLE_KEY = 'navaid.autoWpNameAngle';
+try {
+  const sa = lsGet(WPNAME_ANGLE_KEY);
+  if (sa !== null) window.autoWpNameAngle = sa === '1';
+} catch (e) { /* storage unavailable */ }
+{
+  const cb = document.getElementById('wpname-angle-cb');
+  if (cb) {
+    cb.checked = autoWpNameAngle;
+    cb.onchange = (e) => {
+      window.autoWpNameAngle = e.target.checked;
+      try { localStorage.setItem(WPNAME_ANGLE_KEY, autoWpNameAngle ? '1' : '0'); }
+      catch (err) { /* storage unavailable */ }
+      draw();
+    };
+  }
+}
 // The panel while a position is showing. Off by default: in flight the map is what is being
 // read, and a tap meant to check where you are -- or a stray one on a kneeboard -- should not
 // put a waypoint panel over the chart. But that rule had no control on screen and no voice,
@@ -8161,6 +8339,14 @@ function refreshSettingsAircraft() {
     const el = acEl(id);
     if (el && document.activeElement !== el) el.value = Number(a[f]) > 0 ? a[f] : '';
   }
+  // Reserve: a set value is shown; left unset, the global default shows as the placeholder so the
+  // figure the fuel check actually uses is never a mystery (0 is a real choice and is kept).
+  const reserveEl = acEl('ac-reserve');
+  if (reserveEl && document.activeElement !== reserveEl) {
+    reserveEl.value = Number.isFinite(Number(a.reserveMin)) && a.reserveMin !== '' && a.reserveMin != null ? a.reserveMin : '';
+    const def = typeof tune === 'function' ? tune('defaultReserveMin') : 45;
+    reserveEl.placeholder = String(def);
+  }
   // The climb rate: the one the profile is drawn with (window.profileVS), the aircraft's otherwise.
   const climb = acEl('ac-climb-fpm');
   if (climb && document.activeElement !== climb) {
@@ -8181,11 +8367,17 @@ function refreshSettingsAircraft() {
       ? lab.dataset.baseTitle + ' — ' + S.aircraftChangedFrom(d) : lab.dataset.baseTitle;
     if (changed) any = true;
   }
+  // The Settings window's fuel boxes (wireAircraftSettings), while it is open.
+  for (const [id, f] of [['acs-gph', 'gph'], ['acs-taxi', 'taxiGal']]) {
+    const el = document.getElementById(id);
+    if (el && document.activeElement !== el) el.value = Number(a[f]) >= 0 ? a[f] : '';
+  }
   const restore = acEl('ac-restore');
   if (restore) {
-    restore.hidden = !listed;
-    restore.textContent = listed ? (typeof S.tbAircraftRestore === 'function' ? S.tbAircraftRestore(a.type) : 'Restore ' + a.type + ' figures') : '';
-    if (typeof setButtonWhy === 'function') setButtonWhy(restore, any ? null : (S.whyAircraftAsType || 'Every figure is the type’s already'));
+    // Dimmed, never hidden: a type typed under Other has no figures of its own to restore.
+    restore.textContent = typeof S.tbAircraftRestore === 'function' ? S.tbAircraftRestore(listed ? a.type : (a.type || '\u2014')) : 'Restore figures';
+    if (typeof setButtonWhy === 'function') setButtonWhy(restore, !listed ? (S.whyAircraftNoTypeFigures || 'This type has no listed figures to restore')
+      : any ? null : (S.whyAircraftAsType || 'Every figure is the type’s already'));
   }
   const del = acEl('ac-profile-delete');
   if (del && typeof setButtonWhy === 'function') setButtonWhy(del, prof ? null : (S.whyAcNoProfile || 'Choose one of your own aircraft first'));
@@ -8307,6 +8499,22 @@ window.refreshSettingsAircraft = refreshSettingsAircraft;
       draw();
     });
   }
+  // Reserve minutes: unlike the figures above, 0 is a valid choice and an empty box means
+  // "use the default", so it is stored or cleared explicitly rather than ignored when not > 0.
+  const reserveEl = acEl('ac-reserve');
+  if (reserveEl) reserveEl.addEventListener('input', () => {
+    const raw = reserveEl.value.trim();
+    const base = aircraft || { gph: tune('defaultGph'), taxiGal: tune('defaultTaxiGal') };
+    if (raw === '') { aircraft = Object.assign({}, base); delete aircraft.reserveMin; }
+    else {
+      const v = parseInt(raw, 10);
+      if (!(v >= 0)) return;
+      aircraft = Object.assign({}, base, { reserveMin: Math.min(120, v) });
+    }
+    if (typeof saveAircraft === 'function') saveAircraft();
+    refreshSettingsAircraft();
+    draw();
+  });
   // Climb rate: the aircraft's figure and the rate the profile and the map's TOC are drawn with.
   const climb = acEl('ac-climb-fpm');
   if (climb) climb.addEventListener('input', () => {
@@ -8342,6 +8550,78 @@ window.refreshSettingsAircraft = refreshSettingsAircraft;
   refreshSettingsAircraft();
 })();
 
+// Settings -> Route -> Aircraft: the aircraft panel in a window of its own, so the pilot's aircraft
+// can be set up and seen without a route (asked: "the planes can only be defined or seen if there
+// is a route"). The panel is the flight plan's own, moved in while the window is open and put back
+// where it was; its figures popover is the window's body. The two fuel figures the plan shows as
+// its Gal/hour and Taxi boxes are here too, so the whole aircraft is set in one place.
+(function wireAircraftSettings() {
+  const btn = document.getElementById('aircraft-settings');
+  if (!btn || !AC_PANEL) return;
+  const fuelRow = (id, label, title, min, max, step) => {
+    const lab = document.createElement('label');
+    lab.className = 'ac-field';
+    lab.title = title || '';
+    const sp = document.createElement('span');
+    sp.textContent = label;
+    const inp = document.createElement('input');
+    inp.type = 'number'; inp.id = id; inp.min = min; inp.max = max; inp.step = step;
+    inp.inputMode = 'decimal';
+    lab.append(sp, inp);
+    return lab;
+  };
+  btn.addEventListener('click', () => {
+    if (typeof createDraggableModal !== 'function' || document.querySelector('.ac-settings-modal')) return;
+    // With no flight plan open nothing has loaded the aircraft in use yet: the stored one.
+    const planOpen = typeof fpOpen !== 'undefined' && fpOpen;
+    if (!aircraft && !planOpen && typeof loadAircraft === 'function') loadAircraft();
+    const from = AC_PANEL.parentNode;
+    const next = AC_PANEL.nextSibling;
+    const fig = acEl('ac-custom');
+    const wasOpen = !!(fig && fig.open);
+    const m = createDraggableModal(S.tbAircraft || 'Aircraft', 'modal ac-settings-modal', () => {
+      for (const id of ['acs-gph', 'acs-taxi']) { const el = document.getElementById(id); if (el) el.closest('label').remove(); }
+      if (fig) fig.open = wasOpen;
+      // Back where it was -- or home, if that was a flight plan that has closed meanwhile.
+      const home = document.getElementById('ac-panel-home');
+      if (from && from.isConnected) from.insertBefore(AC_PANEL, next && next.parentNode === from ? next : null);
+      else if (home) home.appendChild(AC_PANEL);
+      if (typeof refreshSettingsAircraft === 'function') refreshSettingsAircraft();
+    });
+    const body = document.createElement('div');
+    body.className = 'ac-settings-body';
+    body.appendChild(AC_PANEL);
+    m.box.appendChild(body);
+    // Fuel burn and the taxi allowance: the aircraft's, as the plan's boxes set them. In the
+    // figures' own grid, after the fuel it carries, and taken out again when the window closes.
+    const gphRow = fuelRow('acs-gph', S.tbGph, S.tbGphTitle, 1, 50, 0.5);
+    const taxiRow = fuelRow('acs-taxi', S.tbTaxiGal, S.tbTaxiGalTitle, 0, 20, 0.1);
+    gphRow.dataset.field = 'gph';
+    taxiRow.dataset.field = 'taxiGal';
+    const grid = AC_PANEL.querySelector('.ac-custom-grid');
+    const usable = AC_PANEL.querySelector('.ac-field[data-field="usableGal"]');
+    if (grid) grid.insertBefore(taxiRow, usable ? usable.nextSibling : null);
+    if (grid) grid.insertBefore(gphRow, taxiRow);
+    if (fig) fig.open = true;
+    for (const [id, f] of [['acs-gph', 'gph'], ['acs-taxi', 'taxiGal']]) {
+      const el = body.querySelector('#' + id);
+      el.addEventListener('input', () => {
+        const v = parseFloat(el.value);
+        if (!(f === 'taxiGal' ? v >= 0 : v > 0)) return;
+        aircraft = Object.assign({}, aircraft || { gph: tune('defaultGph'), taxiGal: tune('defaultTaxiGal') }, { [f]: v });
+        if (typeof saveAircraft === 'function') saveAircraft();
+        // The open plan's own box follows, and its fuel figures with it.
+        const fpBox = document.getElementById(f === 'gph' ? 'aircraft-gph' : 'aircraft-taxi');
+        if (fpBox) { fpBox.value = v; fpBox.dispatchEvent(new Event('input')); }
+        refreshSettingsAircraft();
+        draw();
+      });
+    }
+    m.show();
+    refreshSettingsAircraft();                                // on the page now: its boxes filled
+  });
+})();
+
 const routeCheckBtn = document.getElementById('route-check-btn');
 // Dim, never hide: with the feature withdrawn by the gist the button stayed fully enabled
 // and show() returned silently, so the control looked live and did nothing at all when
@@ -8363,6 +8643,22 @@ const notamListBtn = document.getElementById('notam-list-btn');
 const notamControls = document.getElementById('notam-controls');
 const notamTimeEl = document.getElementById('notam-time');
 const notamTimeVal = document.getElementById('notam-time-val');
+// NOTAM feed age. The file carries generatedAt; past notamStaleHours since then the pilot is
+// warned the list may be out of date -- the feed can wedge (the IAA site's bot wall), and a
+// day-old list that looks current is the false-safe this app refuses elsewhere. 0 h = never warn.
+function notamAgeHours() {
+  if (!notamMeta || !notamMeta.generatedAt) return null;
+  const t = new Date(notamMeta.generatedAt);
+  if (isNaN(t)) return null;
+  return (Date.now() - t.getTime()) / 3600000;
+}
+function notamStale() {
+  const h = typeof tune === 'function' ? tune('notamStaleHours') : 6;
+  if (!(h > 0)) return false;
+  const age = notamAgeHours();
+  return age != null && age > h;
+}
+window.notamStale = notamStale;
 const notamUpdatedEl = document.getElementById('notam-updated');
 function refreshNotamListBtn() {
   const have = Array.isArray(notams) && notams.length;
@@ -8412,11 +8708,16 @@ function refreshNotamListBtn() {
   // Feed freshness, shown in the panel (not just the list modal).
   if (notamUpdatedEl) {
     let txt = '';
+    const stale = notamStale();
     if (notamMeta && notamMeta.generatedAt) {
       const t = new Date(notamMeta.generatedAt);
-      if (!isNaN(t) && S.notamUpdated) txt = S.notamUpdated(t.toISOString().slice(0, 16).replace('T', ' ') + 'Z');
+      if (!isNaN(t) && S.notamUpdated) {
+        txt = S.notamUpdated((typeof notamStampUtc === 'function' ? notamStampUtc(t) : t.toISOString().slice(0, 16).replace('T', ' ') + 'Z'));
+        if (stale && S.notamStaleNote) txt += ' \u2014 ' + S.notamStaleNote;
+      }
     }
     notamUpdatedEl.textContent = txt;
+    notamUpdatedEl.classList.toggle('notam-stale', stale && !!txt);
   }
 }
 // Shared time-slider clock: "HH:MMZ", prefixed with "MM-DD " when the instant
@@ -8705,7 +9006,7 @@ function showNotamModal(only, opts) {
   const box = document.createElement('div');
   box.className = 'modal wide notam-modal';
   const close = document.createElement('button');
-  close.className = 'modal-close-x'; close.type = 'button'; close.textContent = '×';
+  close.className = 'modal-close-x'; close.type = 'button'; close.textContent = '\u2715';
   close.setAttribute('aria-label', 'Close');
   box.appendChild(close);
   // `only` = subset clicked on the map. Empty/absent → full active list.
@@ -8739,9 +9040,15 @@ function showNotamModal(only, opts) {
     const ic = Array.from(new Set(subset.map(n => String(n.icao || '').toUpperCase()).filter(Boolean)));
     const scope = ic.length === 1 ? notamAirfieldLabel(ic[0]) : 'LLLL';
     const fresh = subset.filter(n => notamIsNew(n, seenBefore, firstRun)).length;
-    h.textContent = (S.notamModalTitle || 'Active NOTAMs') + ' (' + scope + ') — ' + subset.length
-      + (fresh ? ' · ' + (typeof S.notamNewCount === 'function'
-        ? S.notamNewCount(fresh) : fresh + ' new') : '');
+    // Bidi: in Hebrew the title is an RTL line, and the "<total> · <new> new" tail reorders --
+    // the two numbers swap, or the whole count flips, however it is wrapped. First-strong-isolate
+    // each piece -- the scope, the total, the new count -- so every number keeps LTR while the
+    // dash, the middot and the Hebrew "new" flow with the line. (U+2068 FSI, U+2069 PDI.)
+    const fsi = (x) => '\u2068' + x + '\u2069';
+    const word = S.notamNewWord || 'new';
+    const count = fsi(subset.length) + (fresh ? ' \u00b7 ' + fsi(fresh) + ' ' + word : '');
+    h.textContent = (S.notamModalTitle || 'Active NOTAMs')
+      + ' (' + fsi(scope) + ') \u2014 ' + count;
   };
   updateTitle(shown);
   box.appendChild(h);
@@ -8756,7 +9063,11 @@ function showNotamModal(only, opts) {
     const u = document.createElement('div');
     u.className = 'notam-updated';
     const t = new Date(notamMeta.generatedAt);
-    if (!isNaN(t)) u.textContent = (S.notamUpdated ? S.notamUpdated(t.toISOString().slice(0, 16).replace('T', ' ') + 'Z') : '');
+    if (!isNaN(t)) {
+      let txt = (S.notamUpdated ? S.notamUpdated((typeof notamStampUtc === 'function' ? notamStampUtc(t) : t.toISOString().slice(0, 16).replace('T', ' ') + 'Z')) : '');
+      if (notamStale() && S.notamStaleNote) { txt += ' \u2014 ' + S.notamStaleNote; u.classList.add('notam-stale'); }
+      u.textContent = txt;
+    }
     box.appendChild(u);
   }
   // Airfield/global filter. Every NOTAM carries an ICAO: LLLL = FIR-wide
@@ -8980,6 +9291,7 @@ function showNotamModal(only, opts) {
   box.appendChild(list);
   back.appendChild(box);
   document.body.appendChild(back);
+  makeWindowAccessible(back, box, h);
   // Give the sheet an explicit width AND height. Content changes (future
   // checkbox, search, ICAO filter) then affect only the scrollable list, not
   // the window around it. Native CSS resize lets the pilot choose a size; the
@@ -10124,7 +10436,7 @@ function refreshMetUpdated(kind) {
   const meta = kind === 'sigmet' ? window.sigmetMeta : window.airmetMeta;
   const t = meta && meta.generatedAt ? new Date(meta.generatedAt) : null;
   const txt = (t && !isNaN(t) && typeof S.notamUpdated === 'function')
-    ? S.notamUpdated(t.toISOString().slice(0, 16).replace('T', ' ') + 'Z') : '';
+    ? S.notamUpdated((typeof notamStampUtc === 'function' ? notamStampUtc(t) : t.toISOString().slice(0, 16).replace('T', ' ') + 'Z')) : '';
   el.textContent = txt;
   el.hidden = !(on && txt);
 }
@@ -10238,15 +10550,21 @@ if (lsaCb) {
 // once areas load). Clicking a row zooms to it and highlights it.
 function refreshLsaListBtn() {
   const onLsa = typeof layerDataPrefix === 'function' && layerDataPrefix() === 'lsa';
-  // The whole LSA control group belongs to the Low Alt layer only — bubbles
-  // exist nowhere else, so hide the toggle + list button on other layers.
+  // The bubbles exist on the Low Alt layer only. The toggle and the list button used to be hidden
+  // everywhere else; never hide a button -- dimmed, and a tap says where they are (asked: "never
+  // hide buttons").
   const grp = document.getElementById('lsa-group');
-  if (grp) grp.hidden = !onLsa;
-  // The list button follows the overlay toggle too: with bubbles hidden, the
-  // list's "locate" would zoom to an unpainted bubble (drawAreas early-returns),
-  // so the button is only shown when the overlay is actually on.
+  if (grp) grp.hidden = false;
+  const offLayer = onLsa ? '' : (S.whyLsaOtherChart || 'LSA bubbles are on the Low Alt chart: switch Chart to it');
+  if (typeof setLayerIdle === 'function') setLayerIdle('lsa-cb', !onLsa, offLayer);
+  // The list follows the overlay too: with the bubbles off, its "locate" would zoom to a bubble
+  // that is not drawn (drawAreas early-returns) -- so it is dimmed then, with the reason.
   const btn = document.getElementById('lsa-list-btn');
-  if (btn) btn.hidden = !(onLsa && showLsaBubbles && Array.isArray(areas) && areas.length > 0);
+  if (btn) {
+    btn.hidden = false;
+    setButtonWhy(btn, offLayer || (!showLsaBubbles ? (S.whyLsaBubblesOff || 'Turn on Show LSA bubbles first')
+      : (!(Array.isArray(areas) && areas.length > 0) ? (S.whyLsaNoAreas || 'The LSA bubbles have not loaded yet') : null)));
+  }
 }
 function showLsaChart() {
   if (typeof closeOpenChartModals === 'function') closeOpenChartModals();
@@ -11257,46 +11575,54 @@ function applyDisplayTheme() {
   // reads the body theme class, so refresh it now that the class is set.
   if (typeof applyTuningCssVars === 'function') applyTuningCssVars();
 }
-const THEME_TOGGLE_EL = document.getElementById('theme-toggle');
-// The button shows the mode it switches TO: in dark it offers "Light mode",
-// in light it offers "Dark mode".
-function updateThemeToggleLabel() {
-  if (!THEME_TOGGLE_EL) return;
-  const toLight = displayTheme !== 'light';
-  THEME_TOGGLE_EL.textContent = toLight
-    ? '☀️ ' + (S.tbLightMode || 'Light mode')
-    : '🌙 ' + (S.tbDarkMode || 'Dark mode');
-}
+// Settings -> Theme: a Light / Dark choice, the same kind of row as the language beside it.
+const THEME_SELECT_EL = document.getElementById('theme-select');
 applyDisplayTheme();
-updateThemeToggleLabel();
-if (THEME_TOGGLE_EL) {
-  THEME_TOGGLE_EL.onclick = () => {
-    displayTheme = displayTheme === 'light' ? 'dark' : 'light';
+if (THEME_SELECT_EL) {
+  THEME_SELECT_EL.value = displayTheme === 'light' ? 'light' : 'dark';
+  THEME_SELECT_EL.onchange = () => {
+    displayTheme = THEME_SELECT_EL.value === 'light' ? 'light' : 'dark';
     applyDisplayTheme();
-    updateThemeToggleLabel();
     try { localStorage.setItem(THEME_KEY, displayTheme); }
     catch (err) { /* storage unavailable */ }
   };
 }
-// Clear store: wipe every navaid.* key (routes, saved-route library, all
-// settings) from local + session storage, then reload to a clean slate.
-const CLEAR_STORE_EL = document.getElementById('clear-store');
-if (CLEAR_STORE_EL) {
-  CLEAR_STORE_EL.onclick = async () => {
-    if (!(await appConfirm(S.tbClearStoreConfirm ||
-      'Delete ALL saved routes and settings stored on this device? This cannot be undone.'))) return;
-    // Suppress the beforeunload/visibilitychange autosave so reload() can't
-    // re-persist the in-memory route right after we wipe storage.
-    window.__clearingStore = true;
-    try {
-      Object.keys(localStorage).filter(k => k.indexOf('navaid.') === 0)
-        .forEach(k => localStorage.removeItem(k));
-      Object.keys(sessionStorage).filter(k => k.indexOf('navaid.') === 0)
-        .forEach(k => sessionStorage.removeItem(k));
-    } catch (e) { /* storage unavailable */ }
-    location.reload();
+// Date format: how every user-visible date is written (navDateFormat / fmtDate in core.js).
+// Changing it redraws so a shown stamp -- the NOTAM "updated" line -- re-renders at once.
+const DATE_FORMAT_EL = document.getElementById('date-format');
+if (DATE_FORMAT_EL) {
+  DATE_FORMAT_EL.value = (typeof navDateFormat === 'function') ? navDateFormat() : 'dmy';
+  DATE_FORMAT_EL.onchange = () => {
+    const v = DATE_FORMAT_EL.value;
+    try { localStorage.setItem('navaid.dateFormat', (v === 'mdy' || v === 'ymd') ? v : 'dmy'); }
+    catch (err) { /* storage unavailable */ }
+    if (typeof draw === 'function') draw();
+    if (typeof refreshNotamListBtn === 'function') refreshNotamListBtn();
   };
 }
+// Clear store: wipe every navaid.* key (routes, saved-route library, all
+// settings) from local + session storage, then reload to a clean slate.
+// The nuclear reset: wipe every navaid.* key (local + session) and reload to a clean
+// slate. Called from the Storage window's last-resort row (showStorageModal). Returns
+// false if the pilot backs out of the confirm.
+async function navClearLocalStore() {
+  if (!(await appConfirm(S.tbClearStoreConfirm ||
+    'Delete ALL saved routes and settings stored on this device? This cannot be undone.'))) return false;
+  // Suppress the beforeunload/visibilitychange autosave so reload() can't
+  // re-persist the in-memory route right after we wipe storage.
+  window.__clearingStore = true;
+  try {
+    Object.keys(localStorage).filter(k => k.indexOf('navaid.') === 0)
+      .forEach(k => localStorage.removeItem(k));
+    Object.keys(sessionStorage).filter(k => k.indexOf('navaid.') === 0)
+      .forEach(k => sessionStorage.removeItem(k));
+  } catch (e) { /* storage unavailable */ }
+  location.reload();
+  return true;
+}
+window.navClearLocalStore = navClearLocalStore;
+// The wipe is reached only from the Settings > Storage window now (the former toolbar
+// button in Export/Import was removed), where it is the marked last resort.
 const ALPHA_KEY = 'navaid.yellowAlpha';
 try {
   const v = parseFloat(lsGet(ALPHA_KEY));
@@ -11891,6 +12217,9 @@ function applyInspZoom(next) {
   const z = Math.min(inspZoomMax(), Math.max(inspZoomMin(), Math.round(next * 20) / 20));
   const body = document.getElementById('insp-body');
   if (body) body.style.zoom = String(z);
+  // The panel's minimum width follows (style.css #inspector): larger text needs a wider row.
+  const panel = document.getElementById('inspector');
+  if (panel) panel.style.setProperty('--insp-zoom', String(z));
   try { localStorage.setItem(INSP_ZOOM_KEY, String(z)); } catch (e) { /* private mode */ }
   // Dimmed at the ends of the range, never removed.
   const out = document.getElementById('insp-zoom-out');
@@ -12108,6 +12437,7 @@ function clampInspToViewport() {
 })();
 
 document.getElementById('insp-close').onclick = () => {
+  if (typeof window.trafficClearFollow === 'function') window.trafficClearFollow();
   state.selected = null;
   showInspector(); draw();
 };
@@ -12124,21 +12454,42 @@ document.getElementById('insp-close').onclick = () => {
 const toolbarDesktopMenuQuery = window.matchMedia
   ? window.matchMedia('(min-width: 681px) and (hover: hover) and (pointer: fine)')
   : null;
-// The gist's `featureTabletDesktop` hands a tablet (the iPad) the menubar anyway, to try it there.
-// style.css keys the menubar off html.menubar, which index.html sets on the query at first paint
-// and refreshToolbarDesktopMenu() keeps true to this.
+// The gist's `featureTabletDesktop` supplies the default tablet layout. A local Settings choice
+// can override it on this device, so an iPad user can choose the desktop menubar or phone deck.
 const toolbarTabletQuery = window.matchMedia
   ? window.matchMedia('(min-width: 681px) and (pointer: coarse)')
   : null;
+const TABLET_LAYOUT_KEY = 'navaid.tabletLayout';
 const toolbarDesktopMenuListeners = [];
+let tabletLayoutTransientChoice = null;
+
+function tabletLayoutPreference() {
+  if (tabletLayoutTransientChoice) return tabletLayoutTransientChoice;
+  try {
+    const value = localStorage.getItem(TABLET_LAYOUT_KEY);
+    return value === 'desktop' || value === 'mobile' ? value : 'auto';
+  } catch (e) { return 'auto'; }
+}
+
+function refreshTabletLayoutControl() {
+  const row = document.getElementById('tablet-layout-row');
+  const select = document.getElementById('tablet-layout');
+  if (!row || !select) return;
+  row.hidden = !(toolbarTabletQuery && toolbarTabletQuery.matches);
+  select.value = tabletLayoutPreference();
+}
 
 function toolbarUsesDesktopMenu() {
   if (toolbarDesktopMenuQuery && toolbarDesktopMenuQuery.matches) return true;
-  return !!(toolbarTabletQuery && toolbarTabletQuery.matches
-    && typeof tune === 'function' && tune('featureTabletDesktop') === true);
+  if (!(toolbarTabletQuery && toolbarTabletQuery.matches)) return false;
+  const preference = tabletLayoutPreference();
+  if (preference === 'desktop') return true;
+  if (preference === 'mobile') return false;
+  return typeof tune === 'function' && tune('featureTabletDesktop') === true;
 }
 
 function refreshToolbarDesktopMenu() {
+  refreshTabletLayoutControl();
   const on = toolbarUsesDesktopMenu();
   const root = document.documentElement;
   if (root.classList.contains('menubar') === on) return;
@@ -12148,6 +12499,39 @@ function refreshToolbarDesktopMenu() {
 window.NavAid = window.NavAid || {};
 NavAid.usesDesktopMenu = toolbarUsesDesktopMenu;
 NavAid.refreshDesktopMenu = refreshToolbarDesktopMenu;
+const tabletLayoutSelect = document.getElementById('tablet-layout');
+if (tabletLayoutSelect) {
+  tabletLayoutSelect.addEventListener('change', () => {
+    const value = tabletLayoutSelect.value;
+    tabletLayoutTransientChoice = value === 'desktop' || value === 'mobile' ? value : 'auto';
+    try {
+      if (value === 'desktop' || value === 'mobile') localStorage.setItem(TABLET_LAYOUT_KEY, value);
+      else localStorage.removeItem(TABLET_LAYOUT_KEY); // return to the gist-configured default
+    } catch (e) { /* honor the choice for this page even when storage is unavailable */ }
+    refreshToolbarDesktopMenu();
+    if (NavAid.refreshMobileDeck) NavAid.refreshMobileDeck();
+  });
+}
+refreshTabletLayoutControl();
+
+// The app's update row (installed app only). On the phone layout it is the toolbar's footer line;
+// the desktop menu bar has no footer, and hid it -- so the app on a Mac (a window wider than a
+// phone, with a mouse) had no way to take an update until the window was narrowed (reported).
+// There it goes to the bottom of the Settings menu instead, and back when the layout changes.
+function placeAppUpdateRow() {
+  const row = document.getElementById('app-update');
+  const tb = document.getElementById('toolbar');
+  if (!row || !tb) return;
+  const settingsBody = tb.querySelector('.tb-section[data-sec="settings"] > .tb-section-body');
+  if (toolbarUsesDesktopMenu() && settingsBody) {
+    if (row.parentNode !== settingsBody) settingsBody.appendChild(row);
+  } else {
+    const links = document.getElementById('footer-links');
+    if (links && links.parentNode === tb && row.nextElementSibling !== links) tb.insertBefore(row, links);
+  }
+}
+toolbarDesktopMenuListeners.push(placeAppUpdateRow);
+placeAppUpdateRow();
 for (const mq of [toolbarDesktopMenuQuery, toolbarTabletQuery]) {
   if (!mq) continue;
   if (mq.addEventListener) mq.addEventListener('change', refreshToolbarDesktopMenu);
@@ -13383,6 +13767,13 @@ function backButtonStep() {
     closeFlightPlan();
     return true;
   }
+  // The legend key, open over the chart: Back closes it, as its own button does -- after any window
+  // or the flight plan, which cover the dock (it steps aside under them) and are what the pilot sees.
+  const legendKey = document.getElementById('map-legend');
+  if (legendKey && !legendKey.classList.contains('map-legend-collapsed') && typeof window.setLegendCollapsed === 'function') {
+    window.setLegendCollapsed(true, true);
+    return true;
+  }
   // Windows that are not .modal-back backdrops: the simulator, the assistant, the More menu.
   const sim = document.getElementById('sim-modal');
   if (shown(sim)) { const x = document.getElementById('sim-modal-close'); if (x) x.click(); else sim.classList.add('hidden'); return true; }
@@ -13461,6 +13852,35 @@ function armAndroidBackButton(attempt) {
   });
 }
 window.backButtonStep = backButtonStep;
+
+// About, Privacy and Terms in the installed app. Their links open a new tab on the web; in the
+// app's web view a same-site page replaced NavAid itself -- no close button, and Back, finding
+// nothing of NavAid's open, offered to leave and restarted it (reported). There they open in a
+// window over the map with a close X, which Back closes like any other (backButtonStep above).
+// Caught for every link to them -- the menu's rows and the first-run notice's alike.
+const IN_APP_DOCS = { 'about.html': 'tbAbout', 'privacy.html': 'tbPrivacy', 'terms.html': 'tbTerms' };
+function openDocInApp(page, titleKey) {
+  if (typeof createDraggableModal !== 'function') return false;
+  const fallback = { tbAbout: 'About', tbPrivacy: 'Privacy', tbTerms: 'Terms' }[titleKey];
+  const modal = createDraggableModal((S && S[titleKey]) || fallback, 'modal wide doc-modal', null);
+  const frame = document.createElement('iframe');
+  frame.className = 'doc-modal-frame';
+  frame.title = (S && S[titleKey]) || fallback;
+  frame.src = page + '?lang=' + encodeURIComponent((window.__navLang === 'en') ? 'en' : 'he');
+  modal.box.appendChild(frame);
+  if (typeof modal.show === 'function') modal.show();
+  return true;
+}
+window.openDocInApp = openDocInApp;
+document.addEventListener('click', (e) => {
+  const cap = window.Capacitor;
+  if (!cap || typeof cap.isNativePlatform !== 'function' || !cap.isNativePlatform()) return;
+  const a = e.target && e.target.closest ? e.target.closest('a[href]') : null;
+  if (!a) return;
+  const page = (a.getAttribute('href') || '').split(/[?#]/)[0].replace(/^\.\//, '');
+  if (!Object.prototype.hasOwnProperty.call(IN_APP_DOCS, page)) return;
+  if (openDocInApp(page, IN_APP_DOCS[page])) e.preventDefault();
+}, true);
 window.armAndroidBackButton = armAndroidBackButton;
 
 function isNativeCapacitorShell() {
@@ -13577,6 +13997,7 @@ if (typeof loadRemoteConfig === "function") {
     if (typeof refreshEmptyRouteHint === "function") refreshEmptyRouteHint();
     if (typeof refreshTrafficFeature === "function") refreshTrafficFeature();
     if (typeof window.refreshAtcRadioFeature === "function") window.refreshAtcRadioFeature();
+    if (typeof window.refreshZuluClockPlacement === "function") window.refreshZuluClockPlacement();
     // The gist may have turned base layers on or off -- rebuild the picker to match, and
     // the nav-data source list with it: its entries are those same charts.
     if (typeof rebuildLayerPicker === "function") rebuildLayerPicker();
@@ -14136,6 +14557,7 @@ const NavWxTime = (function () {
   // -- the gist withdrawing it, or a live position hiding it, frees the row again.
   const reseatLegend = () => {
     if (typeof window.reconcileLegendPosition === 'function') window.reconcileLegendPosition();
+    if (typeof publishLegendDockWidth === 'function') publishLegendDockWidth();
   };
   // The inspector is rebuilt from scratch on every selection, so what it contains cannot be
   // asked once. Watching it is cheaper than making every caller that opens or closes a panel
@@ -15347,6 +15769,7 @@ NavAid.defaultVisibilityMap = [
   ['vor-cb', 'navaid.showVorStations', 'defaultShowVor'],
   ['hotspot-cb', 'navaid.showHotspots2', 'defaultShowHotspots'],
   ['wpname-cb', 'navaid.showWpNames', 'defaultShowWpNames'],
+  ['wpname-angle-cb', 'navaid.autoWpNameAngle', 'defaultAutoWpNameAngle'],
   ['cumtime-cb', 'navaid.showCumTime', 'defaultShowCumTime'],
   ['drift-cb', 'navaid.showDrift', 'defaultShowDrift'],
   // Not a layer, but the same contract: a gist default until the pilot says otherwise, and

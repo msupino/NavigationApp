@@ -1,0 +1,156 @@
+[
+ {
+  "messageType": "NOTAMN",
+  "notamID": "C2387/26",
+  "locationIndicator": "LLLL",
+  "locationDesc": "Tel-Aviv FIR",
+  "messageText": "(C2387/26 NOTAMN\nQ) LLLL/QARLC/IV/NBO/E /015/020/3257N03506E002\nA) LLLL B) 2611151000 C) 2611161800\nD) 15 1000-1400 1600-1800 2000-2200, 16 0700-1000 1200-1500 1600-1800\nE) CVFR RTE CLSD: SZION-SMRAT-AAKKO.)\n",
+  "messageHeader": "\nE) CVFR RTE CLSD: SZION-SMRAT-AAKKO.)",
+  "validFromDate": "15/11/2026 10:00",
+  "validToDate": "16/11/2026 18:00",
+  "createdDate": "12/11/2026 14:32"
+ },
+ {
+  "messageType": "NOTAMN",
+  "notamID": "C2386/26",
+  "locationIndicator": "LLLL",
+  "locationDesc": "Tel-Aviv FIR",
+  "messageText": "(C2386/26 NOTAMN\nQ) LLLL/QAELC/IV/NBO/E /017/070/3257N03506E002\nA) LLLL B) 2611151000 C) 2611161800\nD) 15 1000-1400 1600-1800 2000-2200, 16 0700-1000 1200-1500 1600-1800\nE) AN AREA WI 1.4NM RADIUS CENTERED ON PSN 325648N0350613E\n   CLSD FM 1700 UP TO 7000FT AMSL TO ALL FLT.\n   CTN ADZ.)\n",
+  "messageHeader": "\nE) AN AREA WI 1.4NM RADIUS CENTERED ON PSN 325648N0350613E\n   CLSD FM 1700 UP TO 7000FT AMSL TO ALL FLT.\n   CTN ADZ.)",
+  "validFromDate": "15/11/2026 10:00",
+  "validToDate": "16/11/2026 18:00",
+  "createdDate": "12/11/2026 14:25"
+ },
+ {
+  "messageType": "NOTAMN",
+  "notamID": "C2385/26",
+  "locationIndicator": "LLLL",
+  "locationDesc": "Tel-Aviv FIR",
+  "messageText": "(C2385/26 NOTAMN\nQ) LLLL/QARLC/IV/NBO/E /035/040/3112N03518E006\nA) LLLL B) 2611190700 C) 2611191500\nD) 0700-0900 1300-1500\nE) CVFR RTE CLSD: ARRAD-HATRU-ZOHAR.)\n",
+  "messageHeader": "\nE) CVFR RTE CLSD: ARRAD-HATRU-ZOHAR.)",
+  "validFromDate": "19/11/2026 07:00",
+  "validToDate": "19/11/2026 15:00",
+  "createdDate": "12/11/2026 13:33"
+ },
+ {
+  "messageType": "NOTAMR",
+  "notamID": "A0897/26",
+  "locationIndicator": "LLHA",
+  "locationDesc": "Haifa",
+  "messageText": "(A0897/26 NOTAMR A0691/26\nQ) LLLL/QCACS/IV/BO /AE/000/999/3249N03503E005\nA) LLHA B) 2611121309 C) PERM\nE) NEW FREQ INSTL FOR CLEARANCE BFR TAXI (CPT) 121.800MHZ.\n   DEP FLT SHALL CTC TWR ON CPT FREQ BFR STARTING UP ENGINE.\n   ISRAEL AIP, PART AD, PAGE AD-2-LLHA 8, PARA 2.18 REF.))\n",
+  "messageHeader": "\nE) NEW FREQ INSTL FOR CLEARANCE BFR TAXI (CPT) 121.800MHZ.\n   DEP FLT SHALL CTC TWR ON CPT FREQ BFR STARTING UP ENGINE.\n   ISRAEL AIP, PART AD, PAGE AD-2-LLHA 8, PARA 2.18 REF.))",
+  "validFromDate": "12/11/2026 13:09",
+  "validToDate": "12/11/2029 13:10",
+  "createdDate": "12/11/2026 13:10"
+ },
+ {
+  "messageType": "NOTAMN",
+  "notamID": "C2384/26",
+  "locationIndicator": "LLLL",
+  "locationDesc": "Tel-Aviv FIR",
+  "messageText": "(C2384/26 NOTAMN\nQ) LLLL/QARLC/IV/NBO/E /017/020/3239N03522E005\nA) LLLL B) 2611151500 C) 2611152300\nE) ULTRALIGHT RTE CLSD: TAVOR-MRHVA DUE TO GAS EMISSION.)\n",
+  "messageHeader": "\nE) ULTRALIGHT RTE CLSD: TAVOR-MRHVA DUE TO GAS EMISSION.)",
+  "validFromDate": "15/11/2026 15:00",
+  "validToDate": "15/11/2026 23:00",
+  "createdDate": "12/11/2026 12:43"
+ },
+ {
+  "messageType": "NOTAMN",
+  "notamID": "C2383/26",
+  "locationIndicator": "LLLL",
+  "locationDesc": "Tel-Aviv FIR",
+  "messageText": "(C2383/26 NOTAMN\nQ) LLLL/QARLC/IV/NBO/E /025/030/3239N03521E005\nA) LLLL B) 2611151500 C) 2611152300\nE) CVFR RTE CLSD: TAVOR-AFULA DUE TO GAS EMISSION.)\n",
+  "messageHeader": "\nE) CVFR RTE CLSD: TAVOR-AFULA DUE TO GAS EMISSION.)",
+  "validFromDate": "15/11/2026 15:00",
+  "validToDate": "15/11/2026 23:00",
+  "createdDate": "12/11/2026 12:37"
+ },
+ {
+  "messageType": "NOTAMN",
+  "notamID": "C2382/26",
+  "locationIndicator": "LLLL",
+  "locationDesc": "Tel-Aviv FIR",
+  "messageText": "(C2382/26 NOTAMN\nQ) LLLL/QAELC/IV/NBO/E /000/020/3237N03523E005\nA) LLLL B) 2611151500 C) 2611152300\nE) LLMG TRG AREA AND ULTRALIGHT BUBBLE B-WEST(BMGWB)\n   CLSD TO ALL FLT, DUE GAS EMISSION.))\n",
+  "messageHeader": "\nE) LLMG TRG AREA AND ULTRALIGHT BUBBLE B-WEST(BMGWB)\n   CLSD TO ALL FLT, DUE GAS EMISSION.))",
+  "validFromDate": "15/11/2026 15:00",
+  "validToDate": "15/11/2026 23:00",
+  "createdDate": "12/11/2026 12:33"
+ },
+ {
+  "messageType": "NOTAMN",
+  "notamID": "C2381/26",
+  "locationIndicator": "LLLL",
+  "locationDesc": "Tel-Aviv FIR",
+  "messageText": "(C2381/26 NOTAMN\nQ) LLLL/QWSLW/IV/M  /W /000/015/3238N03521E001\nA) LLLL B) 2611151500 C) 2611152300\nE) AN AREA WI 0.54NM RADIUS CENTERED ON PSN 323816N0352153E\n   AT ALON-TAVOR POWER PLANT CLSD FM GND UP TO 1,500FT AMSL,\n   DUE TO GAS EMISSION.\n   CTN ADZ.\nF) GND G) 1500FT AMSL)\n",
+  "messageHeader": "\nE) AN AREA WI 0.54NM RADIUS CENTERED ON PSN 323816N0352153E\n   AT ALON-TAVOR POWER PLANT CLSD FM GND UP TO 1,500FT AMSL,\n   DUE TO GAS EMISSION.",
+  "validFromDate": "15/11/2026 15:00",
+  "validToDate": "15/11/2026 23:00",
+  "createdDate": "12/11/2026 12:24"
+ },
+ {
+  "messageType": "NOTAMN",
+  "notamID": "A0895/26",
+  "locationIndicator": "LLBG",
+  "locationDesc": "Ben-Gurion",
+  "messageText": "(A0895/26 NOTAMN\nQ) LLLL/QMRLC/IV/NBO/A /000/999/3201N03453E005\nA) LLBG B) 2611180400 C) 2611181200\nE) RWY 08/26 CLSD EXC RWY INT, DUE WIP.)\n",
+  "messageHeader": "\nE) RWY 08/26 CLSD EXC RWY INT, DUE WIP.)",
+  "validFromDate": "18/11/2026 04:00",
+  "validToDate": "18/11/2026 12:00",
+  "createdDate": "12/11/2026 11:44"
+ },
+ {
+  "messageType": "NOTAMN",
+  "notamID": "A0894/26",
+  "locationIndicator": "LLBG",
+  "locationDesc": "Ben-Gurion",
+  "messageText": "(A0894/26 NOTAMN\nQ) LLLL/QMRLC/IV/NBO/A /000/999/3201N03453E005\nA) LLBG B) 2611170400 C) 2611171200\nE) RWY 03/21 CLSD DUE WIP.)\n",
+  "messageHeader": "\nE) RWY 03/21 CLSD DUE WIP.)",
+  "validFromDate": "17/11/2026 04:00",
+  "validToDate": "17/11/2026 12:00",
+  "createdDate": "12/11/2026 11:42"
+ },
+ {
+  "messageType": "NOTAMN",
+  "notamID": "A0893/26",
+  "locationIndicator": "LLBG",
+  "locationDesc": "Ben-Gurion",
+  "messageText": "(A0893/26 NOTAMN\nQ) LLLL/QMRLC/IV/NBO/A /000/999/3201N03453E005\nA) LLBG B) 2611160600 C) 2611161200\nE) RWY 12/30 CLSD EXC RWY INT DUE WIP.)\n",
+  "messageHeader": "\nE) RWY 12/30 CLSD EXC RWY INT DUE WIP.)",
+  "validFromDate": "16/11/2026 06:00",
+  "validToDate": "16/11/2026 12:00",
+  "createdDate": "12/11/2026 10:53"
+ },
+ {
+  "messageType": "NOTAMN",
+  "notamID": "A0892/26",
+  "locationIndicator": "LLBG",
+  "locationDesc": "Ben-Gurion",
+  "messageText": "(A0892/26 NOTAMN\nQ) LLLL/QISAS/I /NBO/A /000/999/3200N03454E005\nA) LLBG B) 2611160700 C) 2611161100\nE) ILS RWY 12 C/S BG FREQ 110.300MHZ WITHDRAWN FOR MAINT.)\n",
+  "messageHeader": "\nE) ILS RWY 12 C/S BG FREQ 110.300MHZ WITHDRAWN FOR MAINT.)",
+  "validFromDate": "16/11/2026 07:00",
+  "validToDate": "16/11/2026 11:00",
+  "createdDate": "12/11/2026 10:49"
+ },
+ {
+  "messageType": "NOTAMN",
+  "notamID": "A0891/26",
+  "locationIndicator": "LLBG",
+  "locationDesc": "Ben-Gurion",
+  "messageText": "(A0891/26 NOTAMN\nQ) LLLL/QISAS/I /NBO/A /000/999/3201N03453E005\nA) LLBG B) 2611150600 C) 2611151400\nE) ILS RWY 08 C/S BC FREQ 110.900MHZ WITHDRAWN FOR MAINT.)\n",
+  "messageHeader": "\nE) ILS RWY 08 C/S BC FREQ 110.900MHZ WITHDRAWN FOR MAINT.)",
+  "validFromDate": "15/11/2026 06:00",
+  "validToDate": "15/11/2026 14:00",
+  "createdDate": "12/11/2026 10:46"
+ },
+ {
+  "messageType": "NOTAMN",
+  "notamID": "C2380/26",
+  "locationIndicator": "LLLL",
+  "locationDesc": "Tel-Aviv FIR",
+  "messageText": "(C2380/26 NOTAMN\nQ) LLLL/QARLC/IV/NBO/E /025/030/3306N03538E004\nA) LLLL B) 2611161040 C) 2611162140\nD) 1040-1210 1310-1430 1520-1710 1750-1910 2050-2140\nE) CVFR RTE CLSD: BASAN-HULAT.)\n",
+  "messageHeader": "\nE) CVFR RTE CLSD: BASAN-HULAT.)",
+  "validFromDate": "16/11/2026 10:40",
+  "validToDate": "16/11/2026 21:40",
+  "createdDate": "12/11/2026 07:17"
+ }
+]

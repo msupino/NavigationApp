@@ -18,8 +18,8 @@ async function boot(page, opts = {}) {
   }, !!opts.fail);
   await page.goto('?lang=' + (opts.lang || 'en') + '&nogist');
   await page.waitForFunction(() => !!(window.atcRadio && document.getElementById('tool-atc-radio')));
-  // Ships off (featureAtcRadio defaults false); turn it on for the tests that exercise it. The
-  // withdrawal tests set it back to false themselves.
+  // Ships on (featureAtcRadio, as the gist has it); set explicitly so these tests do not hang on
+  // the default. The withdrawal tests set it back to false themselves.
   await page.evaluate(() => {
     if (window.NavAid && NavAid.tuning) NavAid.tuning.featureAtcRadio = true;
     if (typeof window.refreshAtcRadioFeature === 'function') window.refreshAtcRadioFeature();
@@ -34,7 +34,10 @@ test('the five channels, each played through its own link with a fresh timestamp
   await expect(page.locator('#atc-modal')).not.toHaveClass(/hidden/);
   await expect(page.locator('.atc-row')).toHaveCount(5);
   await expect(row(page, 'herzliya-twr').locator('.atc-name')).toHaveText('LLHZ · Tower');
-  await expect(row(page, 'haifa-atis').locator('.atc-freq')).toHaveText('135.40');
+  // No frequencies in the list: the airfield window shows each field's own, and a copy here would
+  // go stale when one changes -- the provider updates the channel (asked).
+  await expect(page.locator('#atc-list .atc-freq')).toHaveCount(0);
+  await expect(page.locator('#atc-list')).not.toContainText(/\d{3}\.\d{2}/);
   await expect(row(page, 'pluto-west').locator('.atc-name')).toHaveText('Pluto West');   // no airfield
 
   await row(page, 'herzliya-twr').locator('button').click();
@@ -71,6 +74,73 @@ test('closing the window keeps the audio, and the opener stays lit until Stop', 
   expect(await page.evaluate(() => document.getElementById('tool-atc-radio').getAttribute('aria-pressed'))).toBe('false');
 });
 
+// Asked: "when playing atc, pressing the green button on map should stop playing".
+test('the green map button stops the channel playing; idle, it opens the list', async ({ page }) => {
+  await boot(page);
+  const fab = page.locator('#tool-atc-radio');
+  const idle = await page.evaluate(() => S.atcRadioTitle);
+  await expect(fab).toHaveAttribute('aria-label', idle);
+  await page.evaluate(() => window.atcRadio.play('pluto-west'));
+  await expect(fab).toHaveClass(/active/);
+  await expect(fab).toHaveAttribute('aria-label', 'Stop Pluto West');
+  await fab.click();
+  expect(await page.evaluate(() => window.atcRadio.current)).toBe(null);
+  await expect(fab).toHaveAttribute('aria-pressed', 'false');
+  await expect(page.locator('#atc-modal')).toHaveClass(/hidden/);     // stopped, not opened
+  await expect(fab).toHaveAttribute('aria-label', idle);             // and says what it does again
+  await fab.click();
+  await expect(page.locator('#atc-modal')).not.toHaveClass(/hidden/); // idle: opens the list
+});
+
+// Asked: "can the green player show some indication to whats currently played?"
+test('the green map button names the channel playing, without moving the column', async ({ page }) => {
+  await boot(page);
+  const now = page.locator('.atc-fab-control .atc-fab-now');
+  await expect(now).toBeHidden();
+  const column = () => page.evaluate(() => [...document.querySelector('.leaflet-bottom.leaflet-right').children]
+    .map(c => { const r = c.getBoundingClientRect(); return [Math.round(r.top), Math.round(r.left)]; }));
+  const before = await column();
+  await page.evaluate(() => window.atcRadio.play('haifa-atis'));
+  await expect(now).toBeVisible();
+  await expect(now).toHaveText('LLHA \u00b7 ATIS');
+  expect(await column()).toEqual(before);
+  // Beside the button, to its left.
+  const [n, f] = await page.evaluate(() => [document.querySelector('.atc-fab-now').getBoundingClientRect().right,
+    document.getElementById('tool-atc-radio').getBoundingClientRect().left]);
+  expect(n).toBeLessThanOrEqual(f);
+  await page.evaluate(() => window.atcRadio.play('pluto-west'));
+  await expect(now).toHaveText('Pluto West');
+  await page.evaluate(() => window.atcRadio.stop());
+  await expect(now).toBeHidden();
+});
+
+// Reported, with a screenshot: the playing channel's label sat across the middle of the chart, on
+// the crosshair. Full for atcNowLabelSec after it starts, then a small airfield badge on the
+// button's lower edge -- inside the column, at the screen edge.
+test('the playing label shrinks to an airfield badge on the button after a few seconds', async ({ page }) => {
+  await boot(page);
+  await page.evaluate(() => setTune('atcNowLabelSec', 1));
+  const now = page.locator('.atc-fab-control .atc-fab-now');
+  await page.evaluate(() => window.atcRadio.play('haifa-atis'));
+  await expect(now).toHaveText('LLHA \u00b7 ATIS');
+  await expect(now).toHaveText('LLHA', { timeout: 3000 });
+  await expect(now).toHaveClass(/atc-fab-now-badge/);
+  const r = await page.evaluate(() => {
+    const n = document.querySelector('.atc-fab-now').getBoundingClientRect();
+    const b = document.getElementById('tool-atc-radio').getBoundingClientRect();
+    return { inside: n.left >= b.left - 12 && n.right <= b.right + 12, below: n.top > b.top + b.height / 2 };
+  });
+  expect(r).toEqual({ inside: true, below: true });
+  // Another channel: named in full again, then its own badge.
+  await page.evaluate(() => window.atcRadio.play('pluto-west'));
+  await expect(now).toHaveText('Pluto West');
+  await expect(now).toHaveText('Pluto', { timeout: 3000 });
+  // 0 keeps the full label.
+  await page.evaluate(() => { window.atcRadio.stop(); setTune('atcNowLabelSec', 0); window.atcRadio.play('haifa-atis'); });
+  await page.waitForTimeout(1500);
+  await expect(now).toHaveText('LLHA \u00b7 ATIS');
+});
+
 test('a stream that does not start says so and releases the button', async ({ page }) => {
   await boot(page, { fail: true });
   await page.evaluate(() => window.atcRadio.open());
@@ -93,6 +163,8 @@ test('the gist can withdraw it: the button goes and the audio stops', async ({ p
   await page.evaluate(() => { NavAid.tuning.featureAtcRadio = false; window.refreshAtcRadioFeature(); });
   expect(await page.evaluate(() => [document.getElementById('tool-atc-radio').hidden, window.atcRadio.current]))
     .toEqual([true, null]);
+  // Hidden as drawn, not only as a property (display:flex once beat [hidden]).
+  await expect(page.locator('#tool-atc-radio')).toBeHidden();
 });
 
 // Asked: "each play to each airfield which has it", then "a small play button near the freq of
@@ -116,7 +188,7 @@ test('each airfield window has a small play button in each live frequency row, a
   await expect(comm(page).locator('[data-atc]')).toHaveCount(2);
   await expect(page.locator('#inspector .atc-row')).toHaveCount(0);       // no big Listen block
   const btn = comm(page).locator('[data-atc="herzliya-twr"] button');
-  await expect(btn).toHaveAttribute('aria-label', 'Listen LLHZ Tower 125.60');
+  await expect(btn).toHaveAttribute('aria-label', 'Listen LLHZ Tower');
   const box = await btn.boundingBox();
   expect(box.width).toBeLessThanOrEqual(36);                              // small, round
 
@@ -139,7 +211,7 @@ test('the airfield play button plays it, and the ATC list shows the same state',
   await inl.locator('button').click();
   await expect(inl).toHaveClass(/is-live/);
   await expect(inl.locator('.atc-state')).toHaveText('Live');
-  await expect(inl.locator('button')).toHaveAttribute('aria-label', 'Stop LLHA ATIS 135.40');
+  await expect(inl.locator('button')).toHaveAttribute('aria-label', 'Stop LLHA ATIS');
   expect(await page.evaluate(() => window.__atcPlays.pop())).toMatch(/workers\.dev\/haifa-atis\?ts=\d+$/);
   await page.evaluate(() => window.atcRadio.open());
   await expect(page.locator('#atc-list [data-atc="haifa-atis"] button')).toHaveAttribute('aria-pressed', 'true');
@@ -178,4 +250,14 @@ test('withdrawn by the gist, the airfield window carries no channels', async ({ 
   await openField(page, 'LLHZ');
   await expect(page.locator('#inspector .comm-section')).toBeVisible();
   await expect(page.locator('#inspector [data-atc]')).toHaveCount(0);
+});
+
+// Asked: "why screenshots don't show the ATC listen button? gist enables it and code disables it --
+// make default enabled". With no gist at all the feature is on, and the listen button is on the map.
+test('the ATC radio is on by default, without a gist', async ({ page }) => {
+  await page.goto('?lang=en&nogist');
+  await page.waitForFunction(() => !!(window.atcRadio && document.getElementById('tool-atc-radio')));
+  await page.waitForTimeout(500);
+  expect(await page.evaluate(() => tune('featureAtcRadio'))).toBe(true);
+  await expect(page.locator('.atc-fab-control')).toBeVisible();
 });

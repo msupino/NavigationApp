@@ -44,7 +44,7 @@ test('what arrived since the last look is badged, and counted in the title', asy
       .map(e => e.textContent).join(' ');
     return h;
   });
-  expect(title).toMatch(/1 new/);
+  expect(title.replace(/[\u2066-\u2069]/g, '')).toMatch(/1 new/);
 });
 
 test('reading the list is what marks it read — and only on close', async ({ page }) => {

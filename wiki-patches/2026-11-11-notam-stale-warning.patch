@@ -1,0 +1,42 @@
+From 09523bedcbdf34f6a64bbb77dc1fcc9c6a35fe8c Mon Sep 17 00:00:00 2001
+From: Marco <marco@supino.org>
+Date: Wed, 11 Nov 2026 08:30:26 +0000
+Subject: [PATCH] Extra layers: NOTAM freshness line warns when the feed is
+ stale
+
+---
+ Extra-Layers-he.md | 2 +-
+ Extra-Layers.md    | 4 +++-
+ 2 files changed, 4 insertions(+), 2 deletions(-)
+
+diff --git a/Extra-Layers-he.md b/Extra-Layers-he.md
+index 8425532..10c3f49 100644
+--- a/Extra-Layers-he.md
++++ b/Extra-Layers-he.md
+@@ -99,7 +99,7 @@ SIGMET בינלאומיים (מערבולות, קרח, גל הרים, אפר ג
+ - **מחוון מבט קדימה** (0–72 שעות) מתחת למתג סורק אילו NOTAM פעילים בזמן עתידי — מחוון
+   אחיד זה מפעיל גם את מבט הרוח והשפעת הרוח. כאשר מוזז קדימה הוא מצביע על רגע זולו קבוע
+   **וסופר לאחור לעבר "עכשיו" ככל שהזמן חולף** (‎+3 ש׳, ‎+2 ש׳, וכן הלאה עד "עכשיו"), ונצמד
+-  ל"עכשיו" כשהזמן משיג אותו. הפאנל גם מציג את זמן העדכון האחרון של המקור.
++  ל"עכשיו" כשהזמן משיג אותו. הפאנל גם מציג את זמן העדכון האחרון של המקור — וכשההזנה ישנה ביותר מ‑<span dir="ltr"><code>notamStaleHours</code></span> (6 שעות), שורת **עודכן** הופכת לאזהרה כתומה, *עודכן … — ייתכן שאינו עדכני*, בפאנל וברשימה, כך שהזנה שנתקעה לא נקראת כעדכנית.
+ - **רענון חי** — הזנת ה-NOTAM נמשכת מחדש באפליקציה כל ~10 דקות, כך ש-NOTAM שהתפרסם או בוטל
+   באמצע ההפעלה מופיע (או נעלם) על המפה, ברשימה ובמונה — ללא רענון דף.
+ - **רשימת NOTAM** — כפתור רשימת הטקסט המלא נמצא בקטע **דפיות**. היא נפתחת ממוינת לפי
+diff --git a/Extra-Layers.md b/Extra-Layers.md
+index 48a489a..445a66b 100644
+--- a/Extra-Layers.md
++++ b/Extra-Layers.md
+@@ -104,7 +104,9 @@ Toggle **Show NOTAMs** to overlay active NOTAMs for the Israel FIR (LLLL).
+   at a future time — one unified slider also drives the wind-effect and wind-field
+   look-ahead. Set forward, it points at a fixed Zulu instant and **counts itself
+   back toward live as time passes** (+3 h → +2 h → … → now), snapping to live once
+-  now catches up. The panel also shows the feed's last-update time.
++  now catches up. The panel also shows the feed's last-update time — and when that feed is more
++  than `notamStaleHours` (6 h) old, the **Updated** line turns to an amber caution, *Updated … — may
++  be out of date*, in the panel and the list, so a feed that has wedged is not read as current.
+ - **Live refresh** — the NOTAM feed is re-fetched in-app every ~10 min, so a NOTAM
+   issued or cancelled mid-session appears (or drops) on the map, in the list and in
+   the count without a page reload.
+-- 
+2.43.0
+

@@ -1,0 +1,162 @@
+From 214e967bca02b5d85786e46b5ee6b4450648d062 Mon Sep 17 00:00:00 2001
+From: Marco <marco@supino.org>
+Date: Wed, 4 Nov 2026 09:32:45 +0000
+Subject: [PATCH] Settings holds the Theme (light / dark); the Zulu clock is
+ fixed bottom right
+
+---
+ Features-he.md | 5 ++---
+ Features.md    | 5 ++---
+ The-Map.md     | 4 ++--
+ Toolbar-he.md  | 6 +++---
+ Toolbar.md     | 6 +++---
+ 5 files changed, 12 insertions(+), 14 deletions(-)
+
+diff --git a/Features-he.md b/Features-he.md
+index eae7d22..933e649 100644
+--- a/Features-he.md
++++ b/Features-he.md
+@@ -16,13 +16,13 @@
+ | --- | --- |
+ | **עריכה** | הוספת נקודה, הוספת הערה, חיפוש, היפוך, **ביטול**, ניקוי, התאמה, **איפוס כל מיקומי הסמנים**, **איפוס כל שמות הנקודות**, **ניתוב אוטומטי דרך נקודות דיווח**, **הצמדה לנקודה הקרובה** |
+ | **מפה** | שכבת בסיס, הצגת נקודות ניווט / שדות תעופה / תחנות VOR + ייחוס VOR / הצגת-הוספת שינויי תדר, **הצג זמן מצטבר**, **הצג קווי סחיפה**, **הצג דיווחי חובה**, נקודות חמות, **זכוכית מגדלת**, הצג מרחק קטע, הדגש הפרש |
+-| **מראה** | **מצב בהיר**, שקיפות תווית, אטימות מפה, גודל נקודה, גודל חץ קטע, **עובי קו קטע**, **עובי קו סחיפה** |
++| **מראה** | שקיפות תווית, אטימות מפה, גודל נקודה, גודל חץ קטע, **עובי קו קטע**, **עובי קו סחיפה** |
+ | **תכנית טיסה** | פותח את טבלת תכנית הטיסה (+ייצוא CSV) — ראו [תוכנית טיסה](Flight-Plan-he) |
+ | **דפיות** | **תבניות מסלול**, טופס תכנון טיסה, מציג מפות גישה לשדות, **מפות SIGWX**, **מפות רוח/טמפ׳**, רשימות **SIGMET** ו-**AIRMET**, בדיקת מסלול, **רשימת NOTAM**, **בועות LSA** (גובה נמוך), **CVFR לא מקוון** |
+ | **שכבות נוספות** | **הצג NOTAM** (+ ציר זמן), **הצג AIRMET**, **הצג SIGMET**, רוח, **הצג רוח/טמפ׳** (PWX), **הצג SIGWX**, **תרשימי שדה** (כולל **תרשים שדה** מנספח א׳), מפת IFR, תעבורה, טייסי NavAid, פני השטח, מרחבי אוויר, **הצג בועות LSA** (גובה נמוך) — ראו [שכבות נוספות](Extra-Layers-he) |
+ | **ייצוא/ייבוא** | ייצוא/ייבוא JSON / GPX / PLN, ✈️ Google Earth, 🔗 שיתוף קישור, **מסלולים שמורים** (+ **סנכרון Google Drive**) |
+ | **הדפסה** | מסגרת עמוד A3 / A4 + מתג כיוון ▭/▯ + שמירת PNG |
+-| **הגדרות** | שפה, מהירות ברירת מחדל, נטייה מגנטית, יחידת לחץ, גובה לפי (GPS / ברומטר + QNH), הקלטה אוטומטית עם מיקום, חלונית בזמן הצגת מיקום, טבלת ברירות תדר, טבלת זוגות גובה, הסיור, בהירות מסך ו-GPS בבלוטות׳ (אפליקציה), גרסת האפליקציה |
++| **הגדרות** | שפה, **מצב תצוגה (בהיר כברירת מחדל, או כהה)**, מהירות ברירת מחדל, נטייה מגנטית, יחידת לחץ, גובה לפי (GPS / ברומטר + QNH), הקלטה אוטומטית עם מיקום, חלונית בזמן הצגת מיקום, טבלת ברירות תדר, טבלת זוגות גובה, הסיור, בהירות מסך ו-GPS בבלוטות׳ (אפליקציה), גרסת האפליקציה |
+ | **GPS** | ⏺ **הקלטה** / ⏹ עצור, 📍 **מיקום** (בטלפון — לשוניות בסרגל התחתון) — ראו [הקלטת מסלול GPS](GPS-Track-Recording-he) |
+ 
+ בורר השפה (🌐) יושב מעל הקטעים; הוא מתג מהיר, לא חלק מקטע כלשהו.
+@@ -153,7 +153,6 @@
+ 
+ ## תצוגה (Display)
+ 
+-- **מצב בהיר** — מעבר של סרגל הכלים והפאנלים לערכת נושא בהירה (נשמר).
+ - **הצג שמות ציוני דרך** — כשכבוי, נקודות מצוירות כעיגולים ממוספרים. כשפעיל, השם (או מספר הרצף אם אין שם) מצויר בתוך העיגול.
+ - **⟳** — סיבוב כל תוויות שמות הנקודות ב-90°.
+ - מחווני **שקיפות תוויות**, **בהירות מפה**, **גודל ציון דרך**, **גודל חץ קטע**.
+diff --git a/Features.md b/Features.md
+index b5aa69b..42aeccd 100644
+--- a/Features.md
++++ b/Features.md
+@@ -14,13 +14,13 @@ The toolbar (a menu bar on a computer, the deck's Menu sheet on a phone) is grou
+ | --- | --- |
+ | **Edit** | Add waypoint, add note, search, reverse, **undo**, clear, fit, **reset all marker positions**, **reset all waypoint names**, **auto-route through waypoints**, **snap to nearest point** |
+ | **Map** | Base layer, Show Nav-WP / Show Airfields / Show VOR stations + VOR ref / Show/Add Freq Changes, **Show cumulative time**, **Show drift lines**, **Show mandatory reports**, hotspots, **magnifier**, Show leg dist, Highlight diff |
+-| **Display** | **Light mode (default)**, label transparency, map opacity, waypoint size, leg arrow size, **leg line width**, **drift line width** |
++| **Display** | Label transparency, map opacity, waypoint size, leg arrow size, **leg line width**, **drift line width** |
+ | **Flight plan** | Opens the flight plan table (+ CSV export) — see [Flight Plan](Flight-Plan) |
+ | **Charts** | **Route templates**, flight planning form, airport approach charts viewer, **SIGWX charts**, **wind/temp charts**, **SIGMET** and **AIRMET** lists, route check, **NOTAM list**, **LSA bubbles** (Low Alt), **offline CVFR** |
+ | **Extra layers** | **Show NOTAMs** (areas/lines/badges, decoded text, timeline), **Show AIRMETs**, **Show SIGMETs**, wind effect + field, **Show wind/temp** (PWX, FL030–FL180), **Show SIGWX**, **airfield plates** (incl. the **aerodrome chart**), IFR chart, traffic, NavAid pilots, terrain, airspace, **Show LSA bubbles** (Low Alt) — see [Extra layers](Extra-Layers) |
+ | **Export/import** | Export / import JSON / GPX / PLN, ✈️ Google Earth, 🔗 share link, **Saved routes** (+ **Google Drive sync**) |
+ | **Print** | A3 / A4 page frame + ▭/▯ orientation toggle + Save PNG |
+-| **Settings** | Language, default speed, magnetic variation, pressure unit, altitude from (GPS / barometer + QNH), record automatically with location, panel while showing position, frequency-defaults table, altitude-pairs table, the tour, screen brightness and Bluetooth GPS (APK), app version |
++| **Settings** | Language, **theme (light by default, or dark)**, default speed, magnetic variation, pressure unit, altitude from (GPS / barometer + QNH), record automatically with location, panel while showing position, frequency-defaults table, altitude-pairs table, the tour, screen brightness and Bluetooth GPS (APK), app version |
+ | **Simulator** (✈) | Footer ✈ icon → panel: live aircraft from SimConnect bridge, heading-rotated icon, **Connect / Follow / Center** — see [Simulator Connect](Simulator-Connect) |
+ | **GPS** | ⏺ **Record** / ⏹ Stop, 📍 **Location** (on a phone, tabs in the bottom bar) — see [GPS track recording](GPS-Track-Recording) |
+ 
+@@ -162,7 +162,6 @@ passes without calling (`commChangeSuppressions`).
+ 
+ ## Display
+ 
+-- **Light mode** — switch the toolbar and panels to a light theme (persisted).
+ - **Show Waypoint names** — when off, waypoints render as plain numbered circles. When on, the name (or the sequence number if no name set) is drawn inside the circle. Snapped nav waypoints carry their published name automatically.
+ - **⟳** — rotate all waypoint name labels 90° (useful if you want labels reading along the route).
+ - **Label Transparency** slider - opacity of every label background.
+diff --git a/The-Map.md b/The-Map.md
+index 0fd415e..b15e8e1 100644
+--- a/The-Map.md
++++ b/The-Map.md
+@@ -170,10 +170,10 @@ would offer to change something you cannot see.
+ - **Legend** — what the symbols mean; drag it anywhere.
+ - **Coordinate readout** and **zoom readout**, bottom right — clear of the zoom buttons on a phone. The zoom readout is two lines (zoom over scale, `z10` / `0.25×`) in a box the round buttons' width, so the column keeps one edge.
+ - **Messages** (toasts) come in front: while one shows, the start-a-route hint and the coordinate readouts under it step back, and return when it goes.
+-- **Zulu clock**, top right.
++- **Zulu clock**, bottom right — left of the zoom buttons, always just above the VOR line's place over the coordinate readout; it stays put when that line comes and goes, and the wind and SIGMET lines sit above it. Fixed in place; the gist's `zuluClockMovable` makes it draggable again.
+ - **Search panel** — a permanent panel on a desktop (left in English, right in Hebrew), a summoned overlay on a phone.
+ 
+-Every one of those panels is draggable, and each remembers its place **per language**, because the RTL and LTR layouts mirror.
++Every one of those panels except the Zulu clock is draggable, and each remembers its place **per language**, because the RTL and LTR layouts mirror.
+ 
+ ## See also
+ 
+diff --git a/Toolbar-he.md b/Toolbar-he.md
+index 5850ff5..da952f8 100644
+--- a/Toolbar-he.md
++++ b/Toolbar-he.md
+@@ -16,13 +16,13 @@
+ |---|---|---|---|
+ | 1 | **עריכה** | הוספה · ביטול · ניקוי | הוסף ציון דרך, הוסף הערה, חפש, הפוך מסלול, ביטול, נקה מפה, התאם למסך, איפוס כל מיקומי הסמנים, איפוס כל שמות הנקודות, נקה אחסון, ניתוב אוטומטי דרך נקודות דיווח, הצמדה לנקודה הקרובה |
+ | 2 | **מפה** | מפת בסיס, שכבות, מידע מסלול | בורר שכבת בסיס + מתגי שכבות (ציוני ניווט, שדות תעופה, VOR + תחנת ייחוס, שינויי תדר, שמות נקודות, זמן מצטבר, קווי סחיפה, כיוון המסלול, מרחק קטע, הדגשת הפרש, שמירת עפיפונים בקטע, נקודות חמות, דיווחי חובה), זכוכית מגדלת |
+-| 3 | **מראה** | תוויות, עפיפונים, שקיפות | מצב בהיר + מחוונים: שקיפות תוויות, בהירות מפה, גודל ציון דרך, גודל חץ קטע, עובי קו רגל, עובי קו סחיפה |
++| 3 | **מראה** | תוויות, עפיפונים, שקיפות | מחוונים: שקיפות תוויות, בהירות מפה, גודל ציון דרך, גודל חץ קטע, עובי קו רגל, עובי קו סחיפה |
+ | 4 | **תכנית טיסה** | — | כפתור אחד: פותח את [תכנית הטיסה](Flight-Plan-he) |
+ | 5 | **דפיות** | דפיות, נתיבים, מזג אוויר | תבניות, טופס תכנון טיסה, דפיות שדות תעופה, מפות SIGWX, מפות רוח/טמפ׳, SIGMET, AIRMET, בדיקת מסלול, רשימת NOTAM, בועות LSA (גובה נמוך בלבד), CVFR לא מקוון |
+ | 6 | **שכבות נוספות** | מזג אוויר, NOTAM, מרחב אוויר | הצג NOTAM / AIRMET / SIGMET (+ מחוון זמן), רוח, מפות מזג אוויר, תרשימי שדה, מפת IFR, תעבורה, טייסי NavAid, פני השטח, מרחבי אוויר, בועות LSA — ראו [שכבות נוספות](Extra-Layers-he) |
+ | 7 | **ייצוא/ייבוא** | קבצים, קישור שיתוף | ייצוא (JSON / GPX / PLN / FDR), ייבוא (JSON / GPX / PLN), מסלולים שמורים (+ סנכרון עם Google Drive), שתף קישור, פתח ב-Google Earth |
+ | 8 | **הדפסה** | עמוד, PNG, כרטיס תכנית | מסגרת A3 / A4 / A4×2, מתג לרוחב / לאורך, שמור PNG |
+-| 9 | **הגדרות** | מהירות, שינוי מגנטי, שפה, טבלאות | שפה, מהירות ברירת מחדל, נטייה מגנטית, הקלטה אוטומטית עם מיקום, חלונית בזמן הצגת מיקום, ואחריהן טבלת התדרים וטבלת הנתיבים, וגרסת האפליקציה |
++| 9 | **הגדרות** | מהירות, שינוי מגנטי, שפה, טבלאות | שפה, מצב תצוגה, מהירות ברירת מחדל, נטייה מגנטית, הקלטה אוטומטית עם מיקום, חלונית בזמן הצגת מיקום, ואחריהן טבלת התדרים וטבלת הנתיבים, וגרסת האפליקציה |
+ 
+ **מפה** ו**הגדרות** היו פעם קטע אחד, *תצוגה/הגדרה*. ב**הגדרות** נמצא עכשיו מה שקובעים פעם אחת: השפה, מהירות ברירת המחדל והנטייה המגנטית, ואחריהן שתי טבלאות העיון. הסימולטור הוא סמל ✈ קטן בתחתית סרגל הכלים.
+ 
+@@ -87,7 +87,6 @@
+ 
+ | פקד | אפקט |
+ |---|---|
+-| **מצב בהיר** | מעבר של סרגל הכלים והפאנלים לערכת נושא בהירה. |
+ | **שקיפות תוויות** | שקיפות רקע תוויות ציוני דרך וקטעים. |
+ | **בהירות מפה** | בהירות אריחי מפת הבסיס (על המסך ובייצוא PNG). |
+ | **גודל ציון דרך** | גודל עיגול ציון הדרך ותווית השם. |
+@@ -120,6 +119,7 @@
+ | פקד | פעולה |
+ |---|---|
+ | **שפה** | English / עברית. מוצע גם בהפעלה הראשונה (מסך התנאים), כך שגם מי שלא קורא אף אחד מהתפריטים יכול להחליף. |
++| **מצב תצוגה** | **בהיר** (ברירת המחדל) או **כהה** (נשמר ב-<span dir="ltr"><code>navaid.theme</code></span>). ממש מתחת לשפה, באותה צורה של שורה. |
+ | **מהירות ברירת מחדל (קשר)** | מהירות ההתחלה לקטע שאין לפניו קטע להעתיק ממנו — קובעים פעם אחת למטוס. <span dir="ltr"><code>navaid.defaultSpeed</code></span>; **↻** מחזיר לברירת המחדל. |
+ | **נטייה מגנטית** | **אוטומטית** (מודל השדה המגנטי העולמי, ללא רשת) או **ידנית** (מעלות שלמות, E או W). <span dir="ltr"><code>navaid.magVarAuto</code></span> / <span dir="ltr"><code>navaid.magVarManual</code></span>. |
+ | **📡 טבלת תדרים** | עורך הניתן לחיפוש לברירות תדר מקומיות — דריסת תדר של אות-קריאה, איפוס שורה, או שחזור מקור. ראו [שינויי תדר](Frequency-Changes-he). |
+diff --git a/Toolbar.md b/Toolbar.md
+index 74e08cc..fabd4c9 100644
+--- a/Toolbar.md
++++ b/Toolbar.md
+@@ -14,13 +14,13 @@ Each header is a full-height row (52 px on a phone): a drawn icon, the title, a
+ |---|---|---|---|
+ | 1 | **Edit** | Add · undo · clear | Add waypoint, Add note, Find, Reverse route, Undo, Clear map, Fit to screen, Reset all marker positions, Reset all waypoint names, Auto-route through waypoints, Snap to nearest point, Clear local store |
+ | 2 | **Map** | Chart, overlays, route info | Base layer + overlay toggles (nav-WP, airfields, VOR + VOR ref, freq changes, waypoint names, cumulative time, drift lines, route direction, mid-leg distance, highlight diff, keep kites inside leg, hotspots, mandatory reports), magnifier |
+-| 3 | **Display** | Labels, kites, opacity | Light mode (default) + sliders: label opacity, map opacity, waypoint size, leg arrow size, leg line width, drift line width |
++| 3 | **Display** | Labels, kites, opacity | Sliders: label opacity, map opacity, waypoint size, leg arrow size, leg line width, drift line width |
+ | 4 | **Flight plan** | — | One button: opens the [Flight Plan](Flight-Plan) |
+ | 5 | **Charts** | Plates, routes, weather | Templates, Flight planning form, Airport charts, SIGWX charts, Wind/temp charts, SIGMET, AIRMET, Route check, NOTAM list, LSA bubbles (Low Alt only), Offline CVFR |
+ | 6 | **Extra layers** | Weather, NOTAM, airspace | Show NOTAMs / AIRMETs / SIGMETs (+ time slider), wind, weather charts, airfield plates, IFR chart, traffic, NavAid pilots, terrain, airspace, LSA bubbles — see [Extra layers](Extra-Layers) |
+ | 7 | **Export/import** | Files, share link | Export (JSON / GPX / PLN / FDR), Import (JSON / GPX / PLN), Saved routes (+ Sync with Google Drive), Share link, Open in Google Earth |
+ | 8 | **Print** | Page, PNG, plan card | A3 / A4 page frame, Landscape / Portrait toggle, Save PNG |
+-| 9 | **Settings** | Speed, variation, language, tables | Language, Default speed, Magnetic variation, Record automatically with location, Panel while showing position, then Freq table and Alt pairs, and the app version |
++| 9 | **Settings** | Speed, variation, language, tables | Language, Theme, Default speed, Magnetic variation, Record automatically with location, Panel while showing position, then Freq table and Alt pairs, and the app version |
+ 
+ **Map** and **Settings** used to be one section, *View/Set*. Settings now holds what you set once: the language, the default speed and the magnetic variation, followed by the two reference tables.
+ 
+@@ -91,7 +91,6 @@ compact — icon, dot and count, with words from 1440 px wide.
+ 
+ | Control | Effect |
+ |---|---|
+-| **Light mode** | Light theme is the **default**; this toggles dark ⇄ light (persisted to `navaid.theme`). |
+ | **Label opacity** | Background opacity of waypoint and leg labels. |
+ | **Map opacity** | Brightness of the base-map tiles (on screen and in PNG export). |
+ | **Waypoint size** | Scale of the waypoint circle and name label. |
+@@ -126,6 +125,7 @@ The NOTAM, SIGMET and AIRMET lists move by their title bar and open again where
+ | Control | What it does |
+ |---|---|
+ | **Language** | English / עברית. Also offered at first start (the terms screen), so a pilot who reads neither menu can still switch. |
++| **Theme** | **Light** (the default) or **Dark** (persisted to `navaid.theme`). Right under Language, the same kind of row. |
+ | **Default speed (kt)** | Seed speed for a leg with no earlier leg to copy from — set it once for your aircraft. Drives the `defaultLegSpeedKt` tuning key and outranks the remote config, so it survives a reload. Accepts 20–400; anything else snaps back to the value in force. Persists to `navaid.defaultSpeed`. **↻** beside it returns to the default — the gist's speed if it sets one, else the built-in — and moves the legs that follow it; dimmed when the default is already in force. |
+ | **Magnetic variation** | **Automatic** (World Magnetic Model at the aircraft / route / map centre, offline) or **Manual** (whole degrees, E or W, read as a chart writes it: `5 E`). The fields always show the value in force — read-only in Automatic, with where it was taken in the tooltip. Persists to `navaid.magVarAuto` / `navaid.magVarManual`; outranks the gist. |
+ | **📡 Freq table** | Searchable editor for local frequency defaults — override any call sign's frequency, reset a row, or restore originals. See [Frequency Changes](Frequency-Changes). |
+-- 
+2.43.0
+

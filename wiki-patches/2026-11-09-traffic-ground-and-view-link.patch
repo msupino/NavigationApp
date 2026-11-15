@@ -1,0 +1,40 @@
+From 43ec111e3f1bb2f6cd8bf93214fd67a300ba613c Mon Sep 17 00:00:00 2001
+From: Marco <marco@supino.org>
+Date: Mon, 9 Nov 2026 10:12:32 +0000
+Subject: [PATCH] Live traffic: ground traffic quiet, labels decluttered, Open
+ on the feed's map
+
+---
+ Features-he.md | 2 +-
+ Features.md    | 2 +-
+ 2 files changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/Features-he.md b/Features-he.md
+index 8f8a834..ceef021 100644
+--- a/Features-he.md
++++ b/Features-he.md
+@@ -309,7 +309,7 @@ NavAid יכול להקליט את הנתיב שבאמת טסתם מ-GPS המכש
+ ## תעבורה חיה (אפליקציה)
+ 
+ **תצוגה/הגדרות ← תעבורה** מציירת את המטוסים האחרים הנקלטים ב-ADS-B: מטוס במבט־על, חרטומו
+-לכיוון התנועה, ולצידו האות הקריאה והגובה, וכל הפרטים בהקשה. מסוק מצויר כמסוק — רוטור, תא וזנב — לפי קטגוריית המשדר (מטוס כנף סובבת) או לפי קוד הדגם, והפרטים מציינים זאת (<span dir="ltr">R44</span> · מסוק). קיימת באפליקציות האנדרואיד והאייפון/אייפד בלבד
++לכיוון התנועה, ולצידו האות הקריאה והגובה, וכל הפרטים בהקשה. מסוק מצויר כמסוק — רוטור, תא וזנב — לפי קטגוריית המשדר (מטוס כנף סובבת) או לפי קוד הדגם, והפרטים מציינים זאת (<span dir="ltr">R44</span> · מסוק). כלי טיס על הקרקע (או במסלול הסעה) מצוירים קטנים ודהויים, עם אות הקריאה בלבד ורק מזום של שדה תעופה; כשתוויות עלולות לעלות זו על זו מוצגת אחת, ושאר כלי הטיס מזוהים בהקשה. **פתיחה ב-<span dir="ltr">adsb.lol</span>** בפרטים מציג את אותו כלי טיס במפה הציבורית של האתר שממנו מגיעים הנתונים. קיימת באפליקציות האנדרואיד והאייפון/אייפד בלבד
+ — שרתי הנתונים דוחים בקשות מדפדפן — ולכן בדפדפן המתג מוצג מעומעם עם הסיבה. גם מקלט ADS-B בתא
+ (Stratux, SkyEcho, Sentry) יכול להזין אותה, ב-Wi-Fi (<span dir="ltr"><code>featureGdl90</code></span>, כבוי כברירת מחדל).
+ 
+diff --git a/Features.md b/Features.md
+index 758372d..247440f 100644
+--- a/Features.md
++++ b/Features.md
+@@ -330,7 +330,7 @@ See [Inspector](Inspector#airfield-density-altitude).
+ ## Live traffic (app)
+ 
+ **Extra layers → Traffic** draws the other aeroplanes heard on ADS-B: a top-down aircraft, nose
+-along its track, with callsign and flight level beside it, and the full read-out on a tap. A helicopter is drawn as one — rotor, cabin and tail — by its emitter category (rotorcraft) or its type code, and the read-out names it (*R44 · Helicopter*).
++along its track, with callsign and flight level beside it, and the full read-out on a tap. A helicopter is drawn as one — rotor, cabin and tail — by its emitter category (rotorcraft) or its type code, and the read-out names it (*R44 · Helicopter*). Aircraft on the ground (or taxiing) are drawn smaller and faded, with their callsign only from airport zoom in; where labels would overprint, one shows and a tap names the rest. The read-out's **Open on adsb.lol** shows the same aircraft on the public map of the site the traffic comes from.
+ It exists in the Android and iPhone/iPad apps only — the public feeds refuse browser requests — so in a
+ browser the switch is shown dimmed with the reason. See
+ [GPS Track Recording](GPS-Track-Recording#traffic-around-you-ads-b). A cockpit ADS-B receiver
+-- 
+2.43.0
+

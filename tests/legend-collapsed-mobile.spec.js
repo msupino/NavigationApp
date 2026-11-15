@@ -1,62 +1,72 @@
 // @ts-check
-// On a phone the legend card covered most of the bottom-left quarter of the chart to say the
-// same six things it says on every flight. It starts collapsed to its title there, opens on a
-// tap, and remembers the choice per device. Desktop has the room and is unchanged.
+// The legend is a dock on every layout: a round Legend button at the bottom left with the route
+// totals beside it, and the key opening ABOVE the button, so the button that opened it is where
+// it closes. Reported on the desktop ("looks unrelated, takes space, closes in the wrong place")
+// and then on the phone ("still using the old button and location"). The key starts closed and
+// the choice is remembered on the device.
 const { test, expect } = require('./_setup');
 
 const PHONE = { width: 390, height: 780 };
 const DESKTOP = { width: 1280, height: 900 };
 
-async function boot(page, size, before) {
+async function boot(page, size, before, lang = 'en') {
   await page.setViewportSize(size);
   if (before) await page.addInitScript(before);
-  await page.goto('?lang=en&nogist');
-  await page.waitForFunction(() => !!document.getElementById('map-legend'));
+  await page.goto('?lang=' + lang + '&nogist');
+  await page.waitForFunction(() => !!document.getElementById('legend-toggle'));
   await page.waitForSelector('#boot-loading', { state: 'detached', timeout: 15000 });
 }
 
 const state = (page) => page.evaluate(() => {
   const el = document.getElementById('map-legend');
-  const title = el.querySelector('.map-legend-title');
   const row = el.querySelector('.map-legend-row');
   return {
     collapsed: el.classList.contains('map-legend-collapsed'),
     rowShown: !!(row && row.offsetParent !== null),
-    expanded: title.getAttribute('aria-expanded'),
-    height: Math.round(el.getBoundingClientRect().height),
+    expanded: document.getElementById('legend-toggle').getAttribute('aria-expanded'),
     stored: localStorage.getItem('navaid.legendCollapsed'),
   };
 });
 
-test('on a phone it starts collapsed, showing only its title', async ({ page }) => {
-  await boot(page, PHONE);
-  const s = await state(page);
-  expect(s.collapsed).toBe(true);
-  expect(s.rowShown).toBe(false);
-  expect(s.expanded).toBe('false');
-});
+for (const [name, size, lang] of [['a phone', PHONE, 'en'], ['a phone in Hebrew', PHONE, 'he'], ['a desktop', DESKTOP, 'en']]) {
+  test(`on ${name} it starts closed; the button opens the key above itself and closes it in place`, async ({ page }) => {
+    await boot(page, size, null, lang);
+    const s = await state(page);
+    expect(s.collapsed).toBe(true);
+    expect(s.rowShown).toBe(false);
+    expect(s.expanded).toBe('false');
+    const btn = page.locator('#legend-toggle');
+    const shut = await btn.boundingBox();
+    expect(shut.x).toBeLessThan(40);                                 // bottom-left, in Hebrew too
+    await btn.click();
+    const open = await state(page);
+    expect(open.collapsed).toBe(false);
+    expect(open.rowShown).toBe(true);
+    expect(open.stored).toBe('0');
+    const key = await page.locator('#map-legend').boundingBox();
+    expect(key.y + key.height).toBeLessThanOrEqual(shut.y);           // above the button
+    const still = await btn.boundingBox();
+    expect(Math.round(still.x)).toBe(Math.round(shut.x));            // the button did not move
+    expect(Math.round(still.y)).toBe(Math.round(shut.y));
+    expect(await page.evaluate(() => getComputedStyle(document.getElementById('legend-toggle')).backgroundColor))
+      .toBe('rgb(29, 111, 224)');                                    // toolbar blue while open
+    await page.keyboard.press('Escape');
+    expect((await state(page)).collapsed).toBe(true);
+    await btn.click();
+    await btn.click();                                               // same spot closes it
+    const again = await state(page);
+    expect(again.collapsed).toBe(true);
+    expect(again.stored).toBe('1');
+  });
+}
 
-test('on a desktop it starts open', async ({ page }) => {
-  await boot(page, DESKTOP);
-  const s = await state(page);
-  expect(s.collapsed).toBe(false);
-  expect(s.rowShown).toBe(true);
-});
-
-test('tapping the title opens it, and tapping again closes it', async ({ page }) => {
+// Android Back closes an open key before anything else, as it does any other panel.
+test('on a phone, Back closes the open key', async ({ page }) => {
   await boot(page, PHONE);
-  const title = page.locator('#map-legend .map-legend-title');
-  const shut = await state(page);
-  await title.click();
-  const open = await state(page);
-  expect(open.collapsed).toBe(false);
-  expect(open.rowShown).toBe(true);
-  expect(open.height).toBeGreaterThan(shut.height);
-  expect(open.stored).toBe('0');
-  await title.click();
-  const shutAgain = await state(page);
-  expect(shutAgain.collapsed).toBe(true);
-  expect(shutAgain.stored).toBe('1');
+  await page.locator('#legend-toggle').click();
+  expect((await state(page)).collapsed).toBe(false);
+  expect(await page.evaluate(() => backButtonStep())).toBe(true);
+  expect((await state(page)).collapsed).toBe(true);
 });
 
 test('the choice is remembered on this device', async ({ page }) => {
@@ -64,25 +74,84 @@ test('the choice is remembered on this device', async ({ page }) => {
   expect((await state(page)).collapsed).toBe(false);
 });
 
-// The card is draggable, and the title is inside it: a drag must not be read as a tap.
-test('dragging the card by its title does not toggle it', async ({ page }) => {
-  await boot(page, PHONE, () => localStorage.setItem('navaid.legendCollapsed', '0'));
-  const title = page.locator('#map-legend .map-legend-title');
-  const box = await title.boundingBox();
-  await page.mouse.move(box.x + 10, box.y + 5);
-  await page.mouse.down();
-  await page.mouse.move(box.x + 10, box.y - 100, { steps: 8 });
-  await page.mouse.up();
-  // It must STAY open: poll for a while so a late toggle would be caught rather than missed.
-  await expect.poll(async () => (await state(page)).collapsed, { timeout: 1500 }).toBe(false);
+// The phone dock sits one row up, clear of the coordinate readout across the bottom.
+// What is drawn, not the dock's box: with the totals above the button the box is an L, and its
+// empty corner over the readout is not on screen.
+test('on a phone the button and the totals are clear of the coordinate readout', async ({ page }) => {
+  await boot(page, PHONE);
+  const hit = await page.evaluate(() => {
+    const wps = [{ lat: 32.0, lng: 34.8, name: 'A' }, { lat: 32.3, lng: 35.0, name: 'B' }];
+    state.waypoints = wps; syncLegs(); draw();
+    const b = document.getElementById('coord-readout').getBoundingClientRect();
+    return ['#legend-toggle', '#route-summary'].map(s => {
+      const a = document.querySelector(s).getBoundingClientRect();
+      return a.width > 0 && a.left < b.right && b.left < a.right && a.top < b.bottom && b.top < a.bottom;
+    });
+  });
+  expect(hit).toEqual([false, false]);
 });
 
-// The chevron is the affordance: it points the way the card will open.
-test('the chevron says which way it opens', async ({ page }) => {
+// A window opened over an open key is what Back closes first: the dock steps aside under it.
+test('on a phone, Back closes a window over an open key before the key', async ({ page }) => {
   await boot(page, PHONE);
-  const mark = () => page.evaluate(() => getComputedStyle(
-    document.querySelector('#map-legend .map-legend-title'), '::after').content);
-  expect(await mark()).toContain('\u25b8');            // collapsed: pointing right
-  await page.locator('#map-legend .map-legend-title').click();
-  expect(await mark()).toContain('\u25be');            // open: pointing down
+  await page.locator('#legend-toggle').click();
+  await page.evaluate(() => { if (typeof showShortcutsHelp === 'function') showShortcutsHelp(); else createDraggableModal('x', 'modal').show(); });
+  await expect(page.locator('.modal-back')).toHaveCount(1);
+  expect(await page.evaluate(() => backButtonStep())).toBe(true);
+  await expect(page.locator('.modal-back')).toHaveCount(0);
+  expect((await state(page)).collapsed).toBe(false);             // the key is still open
+  expect(await page.evaluate(() => backButtonStep())).toBe(true);
+  expect((await state(page)).collapsed).toBe(true);
 });
+
+// Reported: on a phone the Hebrew totals wrapped and ran under the zoom buttons (the width limit
+// left out the pill's padding). They take their own row above the button now; on a short phone,
+// where the edit column reaches that row, they stay beside it. Never under the zoom column.
+for (const [w, h, stacked] of [[445, 1000, true], [390, 844, true], [360, 640, false]]) {
+  test(`route totals at ${w}x${h} are ${stacked ? 'above' : 'beside'} the button and clear of the zoom column`, async ({ page }) => {
+    await boot(page, { width: w, height: h }, null, 'he');
+    const r = await page.evaluate(() => {
+      const wps = []; for (let i = 0; i <= 20; i++) wps.push({ lat: 31.25 + i * 0.03, lng: 34.75, name: 'P' + i });
+      state.waypoints = wps; syncLegs(); state.legs.forEach(l => { l.flightSpeed = 98; }); draw();
+      const b = (s) => document.querySelector(s).getBoundingClientRect();
+      const p = b('#route-summary'), k = b('#legend-toggle'), z = b('.leaflet-control-zoom'), e = b('.edit-col-ctrl');
+      const hit = (a, c) => a.left < c.right && c.left < a.right && a.top < c.bottom && c.top < a.bottom;
+      return { above: p.bottom <= k.top, beside: p.left >= k.right, zoom: hit(p, z), edit: hit(p, e) };
+    });
+    expect(stacked ? r.above : r.beside).toBe(true);
+    expect(r.zoom).toBe(false);
+    expect(r.edit).toBe(false);
+  });
+}
+
+// Asked: a gist setting for the totals text size (an iPhone wrapped them at the default).
+test('the gist sets the route totals text size (routeSummaryFontPx)', async ({ page }) => {
+  await boot(page, PHONE, null, 'he');
+  const size = () => page.evaluate(() => getComputedStyle(document.getElementById('route-summary')).fontSize);
+  await page.evaluate(() => { state.waypoints = [{ lat: 32.0, lng: 34.8, name: 'A' }, { lat: 32.3, lng: 35.0, name: 'B' }]; syncLegs(); draw(); });
+  expect(await size()).toBe('13px');                       // the default
+  await page.evaluate(() => { NavAid.tuning.routeSummaryFontPx = 11; applyTuningCssVars(); });
+  expect(await size()).toBe('11px');
+});
+
+// Asked: "default should not wrap". Where 13 px does not fit (a narrow phone, long Hebrew totals,
+// a device that draws text larger) the totals shrink to one line instead of wrapping.
+for (const [w, h] of [[360, 640], [390, 844]]) {
+  test(`the route totals stay on one line at ${w}x${h}, even with long Hebrew totals`, async ({ page }) => {
+    await boot(page, { width: w, height: h }, null, 'he');
+    const r = await page.evaluate(async () => {
+      const wps = []; for (let i = 0; i <= 20; i++) wps.push({ lat: 31.25 + i * 0.03, lng: 34.75, name: 'P' + i });
+      state.waypoints = wps; syncLegs(); state.legs.forEach(l => { l.flightSpeed = 98; }); draw();
+      // A device that renders text larger: start from 16 px.
+      NavAid.tuning.routeSummaryFontPx = 16; applyTuningCssVars();
+      await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
+      const el = document.getElementById('route-summary');
+      const cs = getComputedStyle(el);
+      const lines = Math.round((el.clientHeight - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom)) / parseFloat(cs.lineHeight));
+      return { lines, fits: el.scrollWidth <= el.clientWidth + 1, size: parseFloat(cs.fontSize) };
+    });
+    expect(r.lines).toBe(1);
+    expect(r.fits).toBe(true);
+    expect(r.size).toBeGreaterThanOrEqual(10);
+  });
+}

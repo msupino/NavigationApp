@@ -727,8 +727,12 @@ for (const theme of ['light', 'dark']) {
       };
       const read = (sel) => {
         const cs = getComputedStyle(document.querySelector(sel));
+        // Against what the label sits on: the cell's own ground when it is solid (Record, red, is
+        // the phone's recording sign now), otherwise the bar showing through a tint.
+        const solid = (c) => { const m = c.match(/[\d.]+/g); return m && (m.length < 4 || Number(m[3]) >= 0.9); };
+        const under = solid(cs.backgroundColor) ? cs.backgroundColor : getComputedStyle(document.getElementById('deck-bar')).backgroundColor;
         return { color: cs.color, bar: cs.boxShadow, ground: cs.backgroundColor,
-                 contrast: Math.abs(lum(cs.color) - lum(getComputedStyle(document.getElementById('deck-bar')).backgroundColor)) };
+                 contrast: Math.abs(lum(cs.color) - lum(under)) };
       };
       const idle = getComputedStyle(document.querySelector('.deck-btn-plan')).color;
       const here = read('.deck-btn-here');
@@ -929,4 +933,26 @@ test('searching from the sheet works, and the box goes home when it closes', asy
              hosted: overlay.classList.contains('deck-hosted-search') };
   });
   expect(home).toEqual({ inSheet: false, hidden: true, hosted: false });
+});
+
+// Reported from an iPhone while recording: "find another place for the record, they should not
+// move from the right of the screen". The REC pill under the strip pushed the right-hand column
+// below it, and the column wrapped away from the edge. On a phone the pill is off and the deck's
+// Record button is the sign: solid red, its icon pulsing. The column starts where it does
+// without a recording.
+test('recording on a phone: no pill over the column, the Record button is the sign', async ({ page }) => {
+  await boot(page);
+  const before = await page.evaluate(() => getComputedStyle(document.querySelector('.leaflet-bottom.leaflet-right')).getPropertyValue('--navaid-col-top'));
+  await page.evaluate(() => { window.gpsRecording = true; updateGpsRecIndicator(); NavAid.refreshMobileDeck(); });
+  const r = await page.evaluate(() => {
+    const b = getComputedStyle(document.querySelector('.deck-btn-record'));
+    return { pill: getComputedStyle(document.getElementById('gps-rec-indicator')).display, bg: b.backgroundColor, color: b.color,
+      pulse: getComputedStyle(document.querySelector('.deck-btn-record i')).animationName,
+      colTop: getComputedStyle(document.querySelector('.leaflet-bottom.leaflet-right')).getPropertyValue('--navaid-col-top') };
+  });
+  expect(r.pill).toBe('none');
+  expect(r.bg).toBe('rgb(215, 38, 61)');
+  expect(r.color).toBe('rgb(255, 255, 255)');
+  expect(r.pulse).toBe('gps-rec-pulse');
+  expect(r.colTop).toBe(before);
 });
