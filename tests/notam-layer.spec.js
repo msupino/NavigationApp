@@ -804,3 +804,35 @@ test('the NOTAM count sits at the end of the label in a Hebrew (RTL) session', a
   // RTL: the logical end of the line is the visual LEFT, so the count is left of the label.
   expect(pos.countLeft).toBeLessThan(pos.labelLeft);
 });
+
+// Reported: LLBG's badge said 2 while its NOTAM list held 3 -- the third was a drilling-tower
+// area near the field, drawn as an area and left out of the badge. The badge counts every
+// active NOTAM of the field, and tapping it lists exactly those; the area is still drawn.
+test('an airfield badge counts its area NOTAMs too, and lists what it counts', async ({ page }) => {
+  const now = Date.now();
+  const iso = d => new Date(now + d).toISOString();
+  await boot(page, { generatedAt: '2026-06-23T09:00:00Z', notams: [
+    { id: 'A0116/26', icao: 'LLBG', start: iso(-3600000), end: 'PERM', geom: null, text: 'RWY 08/26 PCR.' },
+    { id: 'A0117/26', icao: 'LLBG', start: iso(-3600000), end: 'PERM', geom: null, text: 'TWY W4 PCR.' },
+    { id: 'A0720/26', icao: 'LLBG', start: iso(-3600000), end: iso(86400000), text: 'DRILLING TOWER ERECTED WI LLBG CTR.',
+      geom: { type: 'polygon', coords: [[32.03, 34.88], [32.04, 34.90], [32.02, 34.91]] } },
+  ] });
+  await page.locator('#notam-cb').check();
+  await page.evaluate(() => loadAirfields && loadAirfields());
+  await page.waitForFunction(() => Array.isArray(window.airfields) && airfields.length > 0);
+  const out = await page.evaluate(() => {
+    const said = [];
+    const fillText = octx.fillText;
+    octx.fillText = function (t, ...a) { said.push(String(t)); return fillText.call(this, t, ...a); };
+    try { drawNotamAirportMarkers(); } finally { octx.fillText = fillText; }
+    const af = airfields.find(a => a.name === 'LLBG');
+    const p = proj({ lat: af.lat, lng: af.lng });
+    const at = map.containerPointToLatLng([p.x, p.y + tune('notamBadgeOffsetPx')]);
+    return { said, tapped: notamBadgeNotamsAt(at).map(n => n.id).sort(),
+      underTap: notamsAtLatLng(at).map(n => n.id).sort() };
+  });
+  expect(out.said).toContain('3');
+  expect(out.tapped).toEqual(['A0116/26', 'A0117/26', 'A0720/26']);
+  // No NOTAM twice, even where the area and the badge are both under the tap.
+  expect(new Set(out.underTap).size).toBe(out.underTap.length);
+});
