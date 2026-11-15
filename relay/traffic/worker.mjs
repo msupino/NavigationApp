@@ -12,6 +12,8 @@
 // Route (the template the app's `trafficWebApiUrl` gist setting names):
 //   GET /v2/lat/{lat}/lon/{lon}/dist/{dist}
 
+// adsb.lol, not adsb.fi (the apps' feed): adsb.fi answers 403 to a Cloudflare Worker (tried,
+// Nov 2026), so the browsers' relay stays on the feed that serves it.
 export const UPSTREAM = 'https://api.adsb.lol/v2/lat/{lat}/lon/{lon}/dist/{dist}';
 export const ALLOWED_ORIGINS = [
   'https://navaid.supino.org',

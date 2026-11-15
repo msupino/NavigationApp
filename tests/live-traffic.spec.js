@@ -515,7 +515,7 @@ test('the endpoint is settable, and the panel gives it a text field', async ({ p
   expect(control.exists).toBe(true);
   expect(control.type).toBe('text');
   expect(control.range).toBe(false);       // not a slider for a URL
-  expect(control.value).toContain('adsb.lol');
+  expect(control.value).toContain('opendata.adsb.fi');
 });
 
 // Asked: "can ADS-B show a helicopter? it shows planes only, even if it is a heli". A helicopter
