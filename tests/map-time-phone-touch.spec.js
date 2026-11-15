@@ -2,22 +2,23 @@
 // Reported with a phone screenshot: "can't move time slider". The legend dock -- the Legend
 // button with the route totals over it -- shared the clock card's row: the button drew over the
 // card's left end, and the dock's empty box caught the touches meant for the slider. On a phone
-// the card now sits above the dock, and the dock's empty space lets touches through.
+// the clock now opens from the strip as a row under it, clear of every map button, and the
+// dock's empty space lets touches through.
 const { test, expect } = require('./_setup');
 
 test.use({ hasTouch: true, isMobile: true, viewport: { width: 412, height: 915 } });
 
-for (const lang of ['he', 'en']) test(`the map clock's slider takes a touch drag on a phone, clear of the legend dock (${lang})`, async ({ page }) => {
+for (const lang of ['he', 'en']) test(`the map clock opened from the strip takes a touch drag on a phone, clear of the map buttons (${lang})`, async ({ page }) => {
   await page.goto('?lang=' + lang + '&nogist');
   await page.waitForFunction(() => typeof NavAid !== 'undefined' && NavAid.refreshMapClock && typeof syncLegs === 'function');
   await page.evaluate(() => {
     // A route, so the totals pill is in the dock (the tallest the dock gets).
     state.waypoints = [{ lat: 32.18, lng: 34.83, name: 'LLHZ' }, { lat: 32.44, lng: 34.90, name: 'HADERA' }];
     state.legs = []; syncLegs(); draw();
-    setTune('hideIdleMapClockOnPhone', false);
     NavAid.refreshMapClock();
   });
-  await page.waitForTimeout(400);
+  await page.locator('.deck-strip-clock').click();
+  await page.waitForTimeout(300);
   const g = await page.evaluate(() => {
     const box = s => { const r = document.querySelector(s).getBoundingClientRect(); return { l: r.left, t: r.top, r: r.right, b: r.bottom }; };
     const s = document.getElementById('map-time-slider');
@@ -29,10 +30,12 @@ for (const lang of ['he', 'en']) test(`the map clock's slider takes a touch drag
       const e = document.elementFromPoint(sr.left + 4 + (sr.width - 8) * i / 9, cy);
       under.push(e === s);
     }
-    return { card: box('#map-time'), dock: box('.legend-dock'), under, r: [sr.left, sr.top, sr.width, sr.height] };
+    return { card: box('#map-time'), dock: box('.legend-dock'), strip: box('#deck-strip'), under,
+      r: [sr.left, sr.top, sr.width, sr.height] };
   });
-  // The card above the dock, not on it.
-  expect(g.card.b).toBeLessThanOrEqual(g.dock.t + 1);
+  // Under the strip, and nowhere near the dock.
+  expect(g.card.t).toBeGreaterThanOrEqual(g.strip.b);
+  expect(g.card.b).toBeLessThan(g.dock.t);
   expect(g.under.every(Boolean)).toBe(true);
   // A real touch drag from the live end moves the hour.
   const cdp = await page.context().newCDPSession(page);
