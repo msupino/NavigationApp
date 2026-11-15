@@ -33,7 +33,7 @@ test('answers NavAid with the feed and the CORS header', async () => {
   expect(res.headers.get('access-control-allow-origin')).toBe(NAVAID);
   expect(await res.json()).toEqual({ ac: [{ hex: 'abc' }] });
   // Snapped to the 0.1-degree grid, the radius widened to cover the snap.
-  expect(h.calls).toEqual(['https://opendata.adsb.fi/api/v2/lat/32.1/lon/34.9/dist/45']);
+  expect(h.calls).toEqual(['https://api.adsb.lol/v2/lat/32.1/lon/34.9/dist/45']);
 });
 
 test('pilots near one spot share one upstream call', async () => {

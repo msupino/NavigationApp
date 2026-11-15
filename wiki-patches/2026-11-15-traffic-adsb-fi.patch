@@ -1,15 +1,15 @@
-From 56319955beaef16231df8919a2556474b0d01e39 Mon Sep 17 00:00:00 2001
+From a37038450c78bdf3f04368047777dce737939bb3 Mon Sep 17 00:00:00 2001
 From: Marco <marco@supino.org>
-Date: Sun, 15 Nov 2026 07:50:17 +0000
-Subject: [PATCH] Live traffic comes from adsb.fi (the low-level light aircraft
- adsb.lol misses)
+Date: Sun, 15 Nov 2026 07:58:03 +0000
+Subject: [PATCH] Live traffic in the apps comes from adsb.fi (the low-level
+ light aircraft adsb.lol misses)
 
 ---
  Features-he.md            | 2 +-
  Features.md               | 2 +-
- GPS-Track-Recording-he.md | 4 ++--
- GPS-Track-Recording.md    | 4 ++--
- 4 files changed, 6 insertions(+), 6 deletions(-)
+ GPS-Track-Recording-he.md | 2 +-
+ GPS-Track-Recording.md    | 2 +-
+ 4 files changed, 4 insertions(+), 4 deletions(-)
 
 diff --git a/Features-he.md b/Features-he.md
 index 0aae048..0daa48e 100644
@@ -38,46 +38,28 @@ index 93108a3..e996557 100644
  browser the switch is shown dimmed with the reason. See
  [GPS Track Recording](GPS-Track-Recording#traffic-around-you-ads-b). A cockpit ADS-B receiver
 diff --git a/GPS-Track-Recording-he.md b/GPS-Track-Recording-he.md
-index aabafc8..2d61eda 100644
+index aabafc8..23e69e4 100644
 --- a/GPS-Track-Recording-he.md
 +++ b/GPS-Track-Recording-he.md
-@@ -312,7 +312,7 @@ GPS נותן **כיוון תנועה**, ולכן אינו אומר דבר כשא
- המקור הזהה אינו חל, ולכן האפליקציה פונה לשרת ישירות — בלי מתווך ובלי דבר לתחזק.
- 
- **בדפדפן** הבקשה עוברת דרך הממסר של NavAid: Cloudflare Worker קטן (<span dir="ltr"><code>relay/traffic</code></span> במאגר) ששואל את
--adsb.lol ומוסיף את כותרת ה־CORS, לדפי NavAid בלבד. הוא מצמיד כל בקשה לרשת של 0.1° ושומר אותה
-+adsb.fi ומוסיף את כותרת ה־CORS, לדפי NavAid בלבד. הוא מצמיד כל בקשה לרשת של 0.1° ושומר אותה
- 8 שניות, כך שטייסים באותו אזור חולקים פנייה אחת לשרת. <span dir="ltr"><code>trafficWebApiUrl</code></span> ב־gist מצביע עליו; כל עוד
- הוא ריק, תיבת התעבורה בדפדפן נשארת אך מעומעמת, והסיבה כתובה עליה: פקד שנעלם בין הטלפון למחשב
- גורם לתהות מה עוד השתנה. רק <span dir="ltr"><code>featureLiveTraffic</code></span> מסיר אותו.
 @@ -324,7 +324,7 @@ adsb.lol ומוסיף את כותרת ה־CORS, לדפי NavAid בלבד. הוא
  
  | מפתח | מה הוא עושה |
  |---|---|
 -| <span dir="ltr"><code>trafficApiUrl</code></span> | לאן פונים. <span dir="ltr"><code>{lat}</code></span> / <span dir="ltr"><code>{lon}</code></span> / <span dir="ltr"><code>{dist}</code></span> מוחלפים; כתובת בלעדיהם מקבלת אותם כפרמטרים. ברירת מחדל: adsb.lol. |
-+| <span dir="ltr"><code>trafficApiUrl</code></span> | לאן פונים. <span dir="ltr"><code>{lat}</code></span> / <span dir="ltr"><code>{lon}</code></span> / <span dir="ltr"><code>{dist}</code></span> מוחלפים; כתובת בלעדיהם מקבלת אותם כפרמטרים. ברירת מחדל: <span dir="ltr">adsb.fi</span> — מעל ישראל הוא מכיל כל כלי טיס שיש ב-<span dir="ltr">adsb.lol</span>, ובנוסף את המטוסים הקלים בגובה נמוך ואת התנועה על הקרקע שחסרים בו. |
++| <span dir="ltr"><code>trafficApiUrl</code></span> | לאן פונים. <span dir="ltr"><code>{lat}</code></span> / <span dir="ltr"><code>{lon}</code></span> / <span dir="ltr"><code>{dist}</code></span> מוחלפים; כתובת בלעדיהם מקבלת אותם כפרמטרים. ברירת מחדל: <span dir="ltr">adsb.fi</span> — מעל ישראל הוא מכיל כל כלי טיס שיש ב-<span dir="ltr">adsb.lol</span>, ובנוסף את המטוסים הקלים בגובה נמוך ואת התנועה על הקרקע שחסרים בו. הממסר לדפדפן נשאר על <span dir="ltr">adsb.lol</span>: <span dir="ltr">adsb.fi</span> דוחה בקשות מ-Cloudflare. |
  | <span dir="ltr"><code>trafficRadiusNm</code></span> | מרחק הבקשה סביבכם (40 נ״מ). |
  | <span dir="ltr"><code>trafficRefreshSec</code></span> | תדירות הרענון (8 שניות). |
  | <span dir="ltr"><code>trafficFailsBeforeWarn</code></span> | כמה כשלונות רצופים לפני הודעה (3). |
 diff --git a/GPS-Track-Recording.md b/GPS-Track-Recording.md
-index 555b7b6..3088b15 100644
+index 555b7b6..76965fa 100644
 --- a/GPS-Track-Recording.md
 +++ b/GPS-Track-Recording.md
-@@ -366,7 +366,7 @@ in native code (Java on Android, Swift on iOS), where the same-origin rule does
- hosted.
- 
- **In a browser** the request goes through NavAid's own relay: a small Cloudflare Worker
--(`relay/traffic` in the repository) that asks adsb.lol and adds the CORS header, for NavAid's
-+(`relay/traffic` in the repository) that asks adsb.fi and adds the CORS header, for NavAid's
- pages only. It snaps each request to a 0.1° grid and caches it for 8 seconds, so pilots near one
- spot share one call to the feed. The gist's `trafficWebApiUrl` names it; while that is empty the
- Traffic box is still there in a browser but dimmed, with the reason on it — a control that
 @@ -381,7 +381,7 @@ the live app — the Traffic box is there, live in the apps, and live in a brows
  
  | Key | What it does |
  |---|---|
 -| `trafficApiUrl` | Where to ask. `{lat}` / `{lon}` / `{dist}` are filled in; a URL without them gets them as query parameters. Default: adsb.lol. |
-+| `trafficApiUrl` | Where to ask. `{lat}` / `{lon}` / `{dist}` are filled in; a URL without them gets them as query parameters. Default: adsb.fi — over Israel it carries every aircraft adsb.lol does, plus the low-level light aircraft and ground traffic adsb.lol misses. |
++| `trafficApiUrl` | Where to ask. `{lat}` / `{lon}` / `{dist}` are filled in; a URL without them gets them as query parameters. Default: adsb.fi — over Israel it carries every aircraft adsb.lol does, plus the low-level light aircraft and ground traffic adsb.lol misses. The browser relay stays on adsb.lol: adsb.fi refuses requests from Cloudflare. |
  | `trafficRadiusNm` | How far around you to ask for (40 nm). |
  | `trafficRefreshSec` | How often (8 s). |
  | `trafficFailsBeforeWarn` | Failed requests in a row before saying so (3). |
