@@ -1,11 +1,8 @@
-From 73a523dfea2169bf81098558a9ff9e13a9c3aa4b Mon Sep 17 00:00:00 2001
+From ef6c549a18760a5d9086d91595d2be108cd09e99 Mon Sep 17 00:00:00 2001
 From: Marco <marco@supino.org>
-Date: Sun, 15 Nov 2026 08:44:17 +0000
-Subject: [PATCH] =?UTF-8?q?Live=20traffic:=20the=20read-out's=20track=20is?=
- =?UTF-8?q?=20magnetic=20(=C2=B0M)?=
-MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: 8bit
+Date: Sun, 15 Nov 2026 08:50:18 +0000
+Subject: [PATCH] Live traffic: the read-out's track in magnetic and true, each
+ marked
 
 ---
  Features-he.md | 2 +-
@@ -13,7 +10,7 @@ Content-Transfer-Encoding: 8bit
  2 files changed, 2 insertions(+), 2 deletions(-)
 
 diff --git a/Features-he.md b/Features-he.md
-index 0daa48e..a5ddc0c 100644
+index 0daa48e..bd32e77 100644
 --- a/Features-he.md
 +++ b/Features-he.md
 @@ -309,7 +309,7 @@ NavAid יכול להקליט את הנתיב שבאמת טסתם מ-GPS המכש
@@ -21,12 +18,12 @@ index 0daa48e..a5ddc0c 100644
  
  **תצוגה/הגדרות ← תעבורה** מציירת את המטוסים האחרים הנקלטים ב-ADS-B: מטוס במבט־על, חרטומו
 -לכיוון התנועה, ולצידו האות הקריאה והגובה, וכל הפרטים בהקשה. מסוק מצויר כמסוק — רוטור, תא וזנב — לפי קטגוריית המשדר (מטוס כנף סובבת) או לפי קוד הדגם, והפרטים מציינים זאת (<span dir="ltr">R44</span> · מסוק). כלי טיס על הקרקע (או במסלול הסעה) מצוירים קטנים ודהויים, עם אות הקריאה בלבד ורק מזום של שדה תעופה; כשתוויות עלולות לעלות זו על זו מוצגת אחת, ושאר כלי הטיס מזוהים בהקשה. כשכלי טיס יושב מעל נקודה במפה — שדה תעופה, VOR, נקודת ניווט, חץ שינוי-תדר, או אחת מנקודות המסלול שלכם — ההקשה פותחת את בורר **בחר נקודה** עם המטוס בין האפשרויות, כך שאפשר לקרוא את המטוס או את הנקודה שמתחתיו. **פתיחה ב-<span dir="ltr">adsb.fi</span>** בפרטים מציג את אותו כלי טיס במפה הציבורית של האתר שממנו מגיעים הנתונים. קיימת באפליקציות האנדרואיד והאייפון/אייפד בלבד
-+לכיוון התנועה, ולצידו האות הקריאה והגובה, וכל הפרטים בהקשה. ה**כיוון** בפרטים מגנטי, כמו כל כיוון ב-NavAid (<span dir="ltr">139°M</span>): השרת מדווח אותו אמיתי, ו-NavAid ממיר אותו. מסוק מצויר כמסוק — רוטור, תא וזנב — לפי קטגוריית המשדר (מטוס כנף סובבת) או לפי קוד הדגם, והפרטים מציינים זאת (<span dir="ltr">R44</span> · מסוק). כלי טיס על הקרקע (או במסלול הסעה) מצוירים קטנים ודהויים, עם אות הקריאה בלבד ורק מזום של שדה תעופה; כשתוויות עלולות לעלות זו על זו מוצגת אחת, ושאר כלי הטיס מזוהים בהקשה. כשכלי טיס יושב מעל נקודה במפה — שדה תעופה, VOR, נקודת ניווט, חץ שינוי-תדר, או אחת מנקודות המסלול שלכם — ההקשה פותחת את בורר **בחר נקודה** עם המטוס בין האפשרויות, כך שאפשר לקרוא את המטוס או את הנקודה שמתחתיו. **פתיחה ב-<span dir="ltr">adsb.fi</span>** בפרטים מציג את אותו כלי טיס במפה הציבורית של האתר שממנו מגיעים הנתונים. קיימת באפליקציות האנדרואיד והאייפון/אייפד בלבד
++לכיוון התנועה, ולצידו האות הקריאה והגובה, וכל הפרטים בהקשה. ה**כיוון** בפרטים מוצג בשתי הדרכים, כל אחת מסומנת: מגנטי כמו כל כיוון ב-NavAid, ואחריו אמיתי כפי שהשרת מדווח (<span dir="ltr">139°M · 144°T</span>). מסוק מצויר כמסוק — רוטור, תא וזנב — לפי קטגוריית המשדר (מטוס כנף סובבת) או לפי קוד הדגם, והפרטים מציינים זאת (<span dir="ltr">R44</span> · מסוק). כלי טיס על הקרקע (או במסלול הסעה) מצוירים קטנים ודהויים, עם אות הקריאה בלבד ורק מזום של שדה תעופה; כשתוויות עלולות לעלות זו על זו מוצגת אחת, ושאר כלי הטיס מזוהים בהקשה. כשכלי טיס יושב מעל נקודה במפה — שדה תעופה, VOR, נקודת ניווט, חץ שינוי-תדר, או אחת מנקודות המסלול שלכם — ההקשה פותחת את בורר **בחר נקודה** עם המטוס בין האפשרויות, כך שאפשר לקרוא את המטוס או את הנקודה שמתחתיו. **פתיחה ב-<span dir="ltr">adsb.fi</span>** בפרטים מציג את אותו כלי טיס במפה הציבורית של האתר שממנו מגיעים הנתונים. קיימת באפליקציות האנדרואיד והאייפון/אייפד בלבד
  — שרתי הנתונים דוחים בקשות מדפדפן — ולכן בדפדפן המתג מוצג מעומעם עם הסיבה. גם מקלט ADS-B בתא
  (Stratux, SkyEcho, Sentry) יכול להזין אותה, ב-Wi-Fi (<span dir="ltr"><code>featureGdl90</code></span>, כבוי כברירת מחדל).
  
 diff --git a/Features.md b/Features.md
-index e996557..ed7c7bd 100644
+index e996557..3bd5076 100644
 --- a/Features.md
 +++ b/Features.md
 @@ -330,7 +330,7 @@ See [Inspector](Inspector#airfield-density-altitude).
@@ -34,7 +31,7 @@ index e996557..ed7c7bd 100644
  
  **Extra layers → Traffic** draws the other aeroplanes heard on ADS-B: a top-down aircraft, nose
 -along its track, with callsign and flight level beside it, and the full read-out on a tap. A helicopter is drawn as one — rotor, cabin and tail — by its emitter category (rotorcraft) or its type code, and the read-out names it (*R44 · Helicopter*). Aircraft on the ground (or taxiing) are drawn smaller and faded, with their callsign only from airport zoom in; where labels would overprint, one shows and a tap names the rest. When an aircraft sits over a map point — an airfield, VOR, nav waypoint, frequency-change arrow, or one of your own route waypoints — the tap opens the **Choose point** picker with the aircraft among the choices, so you can read the aeroplane or the point beneath it. The read-out's **Open on adsb.fi** shows the same aircraft on the public map of the site the traffic comes from.
-+along its track, with callsign and flight level beside it, and the full read-out on a tap. Its **Track** is magnetic, like every direction in NavAid (*139°M*): the feed reports it true, and NavAid converts it. A helicopter is drawn as one — rotor, cabin and tail — by its emitter category (rotorcraft) or its type code, and the read-out names it (*R44 · Helicopter*). Aircraft on the ground (or taxiing) are drawn smaller and faded, with their callsign only from airport zoom in; where labels would overprint, one shows and a tap names the rest. When an aircraft sits over a map point — an airfield, VOR, nav waypoint, frequency-change arrow, or one of your own route waypoints — the tap opens the **Choose point** picker with the aircraft among the choices, so you can read the aeroplane or the point beneath it. The read-out's **Open on adsb.fi** shows the same aircraft on the public map of the site the traffic comes from.
++along its track, with callsign and flight level beside it, and the full read-out on a tap. Its **Track** gives both, each marked: magnetic as every direction in NavAid, then true as the feed reports it (*139°M · 144°T*). A helicopter is drawn as one — rotor, cabin and tail — by its emitter category (rotorcraft) or its type code, and the read-out names it (*R44 · Helicopter*). Aircraft on the ground (or taxiing) are drawn smaller and faded, with their callsign only from airport zoom in; where labels would overprint, one shows and a tap names the rest. When an aircraft sits over a map point — an airfield, VOR, nav waypoint, frequency-change arrow, or one of your own route waypoints — the tap opens the **Choose point** picker with the aircraft among the choices, so you can read the aeroplane or the point beneath it. The read-out's **Open on adsb.fi** shows the same aircraft on the public map of the site the traffic comes from.
  It exists in the Android and iPhone/iPad apps only — the public feeds refuse browser requests — so in a
  browser the switch is shown dimmed with the reason. See
  [GPS Track Recording](GPS-Track-Recording#traffic-around-you-ads-b). A cockpit ADS-B receiver

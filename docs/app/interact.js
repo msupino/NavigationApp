@@ -4557,11 +4557,13 @@ function showInspector() {
     body.appendChild(textRow(S.trafficGroundSpeed || 'Ground speed',
       Number.isFinite(ac.gs) ? Math.round(ac.gs) + ' ' + (S.unitKt || 'kt') : '—'));
     // The feed's track is TRUE (ADS-B reports it so); every other direction NavAid shows is
-    // magnetic and says so, so this one is converted and marked too -- a bare "144°" beside a
-    // 139°M leg read as 5° off (asked "is the direction real or magnetic?"). The arrow on the
-    // map keeps the true track: that is the way it moves across the chart.
+    // magnetic and says so -- a bare "144°" beside a 139°M leg read as 5° off (asked "is the
+    // direction real or magnetic?"). Both are shown, each marked: magnetic first, as the
+    // pilot's own legs read, then true, as the feed gave it (asked). The arrow on the map
+    // keeps the true track: that is the way it moves across the chart.
+    const deg3 = d => String(Math.round(d) % 360).padStart(3, '0');
     body.appendChild(textRow(S.trafficTrack || 'Track',
-      Number.isFinite(ac.track) ? String(toMagnetic(ac.track)).padStart(3, '0') + '°M' : '—'));
+      Number.isFinite(ac.track) ? deg3(toMagnetic(ac.track)) + '°M \u00b7 ' + deg3(ac.track) + '°T' : '—'));
     // The aircraft type, and the word when it is a helicopter (by its category or its type code).
     const heli = typeof window.trafficIsRotorcraft === 'function' && window.trafficIsRotorcraft(ac);
     const typeText = [ac.type, heli ? (S.trafficHelicopter || 'Helicopter') : ''].filter(Boolean).join(' · ');
