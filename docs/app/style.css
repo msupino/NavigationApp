@@ -5459,6 +5459,16 @@ body.theme-dark .map-time input[type="range"] { background: rgba(20, 18, 18, 0.9
   body.theme-dark .map-time-now { background: rgba(20, 18, 18, 0.6); }
   body.theme-dark .map-time input[type="range"] { background: none; }
 }
+/* The phone's clock is one card, and in the dark theme the card stayed light: the readout's
+   light text sat on white and the hour in effect could not be read at all (reported: "the
+   slider on mobile doesn't show the in-effect time"). The card is dark like the coordinate
+   readout and the zoom keys beside it. */
+@media (max-width: 680px) {
+  body.theme-dark .map-time { background: rgba(20, 18, 18, 0.92); border-color: #3a3636; }
+  /* The hour the layers are showing is what the card is FOR: bold and readable at arm's
+     length, not the 11 px afterthought beside a 44 px Now button. */
+  .map-time-read { font-size: 13px; font-weight: 700; }
+}
 
 /* Legend for the airfield-wind barb styles, under its toolbar switch. */
 .af-wind-legend { font-size: 10px; opacity: 0.75; margin-block-start: 2px; }
