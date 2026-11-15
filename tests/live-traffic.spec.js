@@ -220,7 +220,11 @@ test('the open inspector follows new reports for its selected aircraft', async (
 
   await expect(page.locator('#insp-body')).toContainText('17200 ft');
   await expect(page.locator('#insp-body')).toContainText('401 kt');
-  await expect(page.locator('#insp-body')).toContainText('301°');
+  // The feed's track is true; the read-out is magnetic and says so, like every direction in NavAid.
+  const mag = await page.evaluate(() => String(toMagnetic(301.2)).padStart(3, '0') + '°M');
+  expect(mag).not.toBe('301°M');                  // Israel's variation moves it
+  await expect(page.locator('#insp-body')).toContainText(mag);
+  await expect(page.locator('#insp-body')).not.toContainText('301°');
   await expect(page.locator('#insp-body')).toContainText(/32°07\.2/);
 });
 
