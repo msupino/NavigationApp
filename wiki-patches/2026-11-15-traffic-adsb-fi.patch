@@ -1,0 +1,86 @@
+From 56319955beaef16231df8919a2556474b0d01e39 Mon Sep 17 00:00:00 2001
+From: Marco <marco@supino.org>
+Date: Sun, 15 Nov 2026 07:50:17 +0000
+Subject: [PATCH] Live traffic comes from adsb.fi (the low-level light aircraft
+ adsb.lol misses)
+
+---
+ Features-he.md            | 2 +-
+ Features.md               | 2 +-
+ GPS-Track-Recording-he.md | 4 ++--
+ GPS-Track-Recording.md    | 4 ++--
+ 4 files changed, 6 insertions(+), 6 deletions(-)
+
+diff --git a/Features-he.md b/Features-he.md
+index 0aae048..0daa48e 100644
+--- a/Features-he.md
++++ b/Features-he.md
+@@ -309,7 +309,7 @@ NavAid יכול להקליט את הנתיב שבאמת טסתם מ-GPS המכש
+ ## תעבורה חיה (אפליקציה)
+ 
+ **תצוגה/הגדרות ← תעבורה** מציירת את המטוסים האחרים הנקלטים ב-ADS-B: מטוס במבט־על, חרטומו
+-לכיוון התנועה, ולצידו האות הקריאה והגובה, וכל הפרטים בהקשה. מסוק מצויר כמסוק — רוטור, תא וזנב — לפי קטגוריית המשדר (מטוס כנף סובבת) או לפי קוד הדגם, והפרטים מציינים זאת (<span dir="ltr">R44</span> · מסוק). כלי טיס על הקרקע (או במסלול הסעה) מצוירים קטנים ודהויים, עם אות הקריאה בלבד ורק מזום של שדה תעופה; כשתוויות עלולות לעלות זו על זו מוצגת אחת, ושאר כלי הטיס מזוהים בהקשה. כשכלי טיס יושב מעל נקודה במפה — שדה תעופה, VOR, נקודת ניווט, חץ שינוי-תדר, או אחת מנקודות המסלול שלכם — ההקשה פותחת את בורר **בחר נקודה** עם המטוס בין האפשרויות, כך שאפשר לקרוא את המטוס או את הנקודה שמתחתיו. **פתיחה ב-<span dir="ltr">adsb.lol</span>** בפרטים מציג את אותו כלי טיס במפה הציבורית של האתר שממנו מגיעים הנתונים. קיימת באפליקציות האנדרואיד והאייפון/אייפד בלבד
++לכיוון התנועה, ולצידו האות הקריאה והגובה, וכל הפרטים בהקשה. מסוק מצויר כמסוק — רוטור, תא וזנב — לפי קטגוריית המשדר (מטוס כנף סובבת) או לפי קוד הדגם, והפרטים מציינים זאת (<span dir="ltr">R44</span> · מסוק). כלי טיס על הקרקע (או במסלול הסעה) מצוירים קטנים ודהויים, עם אות הקריאה בלבד ורק מזום של שדה תעופה; כשתוויות עלולות לעלות זו על זו מוצגת אחת, ושאר כלי הטיס מזוהים בהקשה. כשכלי טיס יושב מעל נקודה במפה — שדה תעופה, VOR, נקודת ניווט, חץ שינוי-תדר, או אחת מנקודות המסלול שלכם — ההקשה פותחת את בורר **בחר נקודה** עם המטוס בין האפשרויות, כך שאפשר לקרוא את המטוס או את הנקודה שמתחתיו. **פתיחה ב-<span dir="ltr">adsb.fi</span>** בפרטים מציג את אותו כלי טיס במפה הציבורית של האתר שממנו מגיעים הנתונים. קיימת באפליקציות האנדרואיד והאייפון/אייפד בלבד
+ — שרתי הנתונים דוחים בקשות מדפדפן — ולכן בדפדפן המתג מוצג מעומעם עם הסיבה. גם מקלט ADS-B בתא
+ (Stratux, SkyEcho, Sentry) יכול להזין אותה, ב-Wi-Fi (<span dir="ltr"><code>featureGdl90</code></span>, כבוי כברירת מחדל).
+ 
+diff --git a/Features.md b/Features.md
+index 93108a3..e996557 100644
+--- a/Features.md
++++ b/Features.md
+@@ -330,7 +330,7 @@ See [Inspector](Inspector#airfield-density-altitude).
+ ## Live traffic (app)
+ 
+ **Extra layers → Traffic** draws the other aeroplanes heard on ADS-B: a top-down aircraft, nose
+-along its track, with callsign and flight level beside it, and the full read-out on a tap. A helicopter is drawn as one — rotor, cabin and tail — by its emitter category (rotorcraft) or its type code, and the read-out names it (*R44 · Helicopter*). Aircraft on the ground (or taxiing) are drawn smaller and faded, with their callsign only from airport zoom in; where labels would overprint, one shows and a tap names the rest. When an aircraft sits over a map point — an airfield, VOR, nav waypoint, frequency-change arrow, or one of your own route waypoints — the tap opens the **Choose point** picker with the aircraft among the choices, so you can read the aeroplane or the point beneath it. The read-out's **Open on adsb.lol** shows the same aircraft on the public map of the site the traffic comes from.
++along its track, with callsign and flight level beside it, and the full read-out on a tap. A helicopter is drawn as one — rotor, cabin and tail — by its emitter category (rotorcraft) or its type code, and the read-out names it (*R44 · Helicopter*). Aircraft on the ground (or taxiing) are drawn smaller and faded, with their callsign only from airport zoom in; where labels would overprint, one shows and a tap names the rest. When an aircraft sits over a map point — an airfield, VOR, nav waypoint, frequency-change arrow, or one of your own route waypoints — the tap opens the **Choose point** picker with the aircraft among the choices, so you can read the aeroplane or the point beneath it. The read-out's **Open on adsb.fi** shows the same aircraft on the public map of the site the traffic comes from.
+ It exists in the Android and iPhone/iPad apps only — the public feeds refuse browser requests — so in a
+ browser the switch is shown dimmed with the reason. See
+ [GPS Track Recording](GPS-Track-Recording#traffic-around-you-ads-b). A cockpit ADS-B receiver
+diff --git a/GPS-Track-Recording-he.md b/GPS-Track-Recording-he.md
+index aabafc8..2d61eda 100644
+--- a/GPS-Track-Recording-he.md
++++ b/GPS-Track-Recording-he.md
+@@ -312,7 +312,7 @@ GPS נותן **כיוון תנועה**, ולכן אינו אומר דבר כשא
+ המקור הזהה אינו חל, ולכן האפליקציה פונה לשרת ישירות — בלי מתווך ובלי דבר לתחזק.
+ 
+ **בדפדפן** הבקשה עוברת דרך הממסר של NavAid: Cloudflare Worker קטן (<span dir="ltr"><code>relay/traffic</code></span> במאגר) ששואל את
+-adsb.lol ומוסיף את כותרת ה־CORS, לדפי NavAid בלבד. הוא מצמיד כל בקשה לרשת של 0.1° ושומר אותה
++adsb.fi ומוסיף את כותרת ה־CORS, לדפי NavAid בלבד. הוא מצמיד כל בקשה לרשת של 0.1° ושומר אותה
+ 8 שניות, כך שטייסים באותו אזור חולקים פנייה אחת לשרת. <span dir="ltr"><code>trafficWebApiUrl</code></span> ב־gist מצביע עליו; כל עוד
+ הוא ריק, תיבת התעבורה בדפדפן נשארת אך מעומעמת, והסיבה כתובה עליה: פקד שנעלם בין הטלפון למחשב
+ גורם לתהות מה עוד השתנה. רק <span dir="ltr"><code>featureLiveTraffic</code></span> מסיר אותו.
+@@ -324,7 +324,7 @@ adsb.lol ומוסיף את כותרת ה־CORS, לדפי NavAid בלבד. הוא
+ 
+ | מפתח | מה הוא עושה |
+ |---|---|
+-| <span dir="ltr"><code>trafficApiUrl</code></span> | לאן פונים. <span dir="ltr"><code>{lat}</code></span> / <span dir="ltr"><code>{lon}</code></span> / <span dir="ltr"><code>{dist}</code></span> מוחלפים; כתובת בלעדיהם מקבלת אותם כפרמטרים. ברירת מחדל: adsb.lol. |
++| <span dir="ltr"><code>trafficApiUrl</code></span> | לאן פונים. <span dir="ltr"><code>{lat}</code></span> / <span dir="ltr"><code>{lon}</code></span> / <span dir="ltr"><code>{dist}</code></span> מוחלפים; כתובת בלעדיהם מקבלת אותם כפרמטרים. ברירת מחדל: <span dir="ltr">adsb.fi</span> — מעל ישראל הוא מכיל כל כלי טיס שיש ב-<span dir="ltr">adsb.lol</span>, ובנוסף את המטוסים הקלים בגובה נמוך ואת התנועה על הקרקע שחסרים בו. |
+ | <span dir="ltr"><code>trafficRadiusNm</code></span> | מרחק הבקשה סביבכם (40 נ״מ). |
+ | <span dir="ltr"><code>trafficRefreshSec</code></span> | תדירות הרענון (8 שניות). |
+ | <span dir="ltr"><code>trafficFailsBeforeWarn</code></span> | כמה כשלונות רצופים לפני הודעה (3). |
+diff --git a/GPS-Track-Recording.md b/GPS-Track-Recording.md
+index 555b7b6..3088b15 100644
+--- a/GPS-Track-Recording.md
++++ b/GPS-Track-Recording.md
+@@ -366,7 +366,7 @@ in native code (Java on Android, Swift on iOS), where the same-origin rule does
+ hosted.
+ 
+ **In a browser** the request goes through NavAid's own relay: a small Cloudflare Worker
+-(`relay/traffic` in the repository) that asks adsb.lol and adds the CORS header, for NavAid's
++(`relay/traffic` in the repository) that asks adsb.fi and adds the CORS header, for NavAid's
+ pages only. It snaps each request to a 0.1° grid and caches it for 8 seconds, so pilots near one
+ spot share one call to the feed. The gist's `trafficWebApiUrl` names it; while that is empty the
+ Traffic box is still there in a browser but dimmed, with the reason on it — a control that
+@@ -381,7 +381,7 @@ the live app — the Traffic box is there, live in the apps, and live in a brows
+ 
+ | Key | What it does |
+ |---|---|
+-| `trafficApiUrl` | Where to ask. `{lat}` / `{lon}` / `{dist}` are filled in; a URL without them gets them as query parameters. Default: adsb.lol. |
++| `trafficApiUrl` | Where to ask. `{lat}` / `{lon}` / `{dist}` are filled in; a URL without them gets them as query parameters. Default: adsb.fi — over Israel it carries every aircraft adsb.lol does, plus the low-level light aircraft and ground traffic adsb.lol misses. |
+ | `trafficRadiusNm` | How far around you to ask for (40 nm). |
+ | `trafficRefreshSec` | How often (8 s). |
+ | `trafficFailsBeforeWarn` | Failed requests in a row before saying so (3). |
+-- 
+2.43.0
+

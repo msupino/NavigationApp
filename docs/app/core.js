@@ -1283,7 +1283,11 @@ NavAid.tuningDefaults = {
   defaultShowTraffic: { value: false, type: 'bool',
     label: 'Default: show live traffic while a fix is driving the map' },
   // {lat}/{lon}/{dist} are filled in; a URL without them gets them as query parameters.
-  trafficApiUrl: { value: 'https://api.adsb.lol/v2/lat/{lat}/lon/{lon}/dist/{dist}', type: 'text',
+  // adsb.fi: sampled over Israel (Nov 2026) it carried every aircraft adsb.lol had, plus the
+  // low-level light aircraft (4X- registrations at a few hundred feet) and ground traffic
+  // adsb.lol did not -- the ones a VFR pilot is looking for. Same v2 API (its list is
+  // `aircraft`, adsb.lol's `ac`; both are read). Open data, non-commercial, ~1 request/s per IP.
+  trafficApiUrl: { value: 'https://opendata.adsb.fi/api/v2/lat/{lat}/lon/{lon}/dist/{dist}', type: 'text',
     label: 'Where live traffic is fetched from (empty turns it off)' },
   // The feeds send no CORS header, so a browser needs a relay that adds one (relay/traffic, a
   // Cloudflare Worker). Empty: no live traffic in a browser, the switch dimmed with the reason.

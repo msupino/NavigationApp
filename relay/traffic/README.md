@@ -2,7 +2,7 @@
 
 The public ADS-B feeds send no CORS header, so the web app cannot read them. The Android and
 iOS apps fetch the feed natively. In a browser, the app fetches this relay, which asks
-[adsb.lol](https://adsb.lol) (open data, ODbL) and adds the CORS header, for NavAid's own
+[adsb.fi](https://adsb.fi) (open data, about 1 request/s per IP; the snap and 8 s cache keep under it) and adds the CORS header, for NavAid's own
 origins only (`ALLOWED_ORIGINS` in `worker.mjs`).
 
 To spare the feed, each request snaps to a 0.1° grid with its radius widened to cover the snap.

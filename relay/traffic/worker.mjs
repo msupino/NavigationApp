@@ -2,7 +2,8 @@
 //
 // The public ADS-B feeds answer anyone but send no CORS header, so a browser may not read them.
 // The Android and iOS apps fetch the feed natively; the web app fetches this relay instead, which
-// asks adsb.lol (open data, ODbL) and answers in the same form with the CORS header added -- for
+// asks adsb.fi (open data; ~1 request/s per IP, which the snap and cache below keep under) and
+// answers in the same form with the CORS header added -- for
 // NavAid's own origins only.
 //
 // Kind to the feed: each request is snapped to a 0.1-degree grid (about 6 nm) with the radius
@@ -12,7 +13,9 @@
 // Route (the template the app's `trafficWebApiUrl` gist setting names):
 //   GET /v2/lat/{lat}/lon/{lon}/dist/{dist}
 
-export const UPSTREAM = 'https://api.adsb.lol/v2/lat/{lat}/lon/{lon}/dist/{dist}';
+// adsb.fi rather than adsb.lol: over Israel it carries everything adsb.lol does, plus the
+// low-level light aircraft and ground traffic (see trafficApiUrl in docs/app/core.js).
+export const UPSTREAM = 'https://opendata.adsb.fi/api/v2/lat/{lat}/lon/{lon}/dist/{dist}';
 export const ALLOWED_ORIGINS = [
   'https://navaid.supino.org',
   'https://msupino.github.io',
