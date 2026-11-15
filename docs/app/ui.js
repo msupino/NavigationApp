@@ -2423,13 +2423,27 @@ legendCtrl.addTo(map);
 })();
 // The map clock runs along the same bottom row: it starts right of the dock (style.css .map-time),
 // whose width changes with the route totals.
+// On a phone the clock is a card at the left edge, on the dock's own row; there it sits ABOVE the
+// dock instead (style.css body.deck-on .map-time), at the height published here. It was at a fixed
+// 124 px: the dock -- the Legend button with the route totals over it -- reached up into it, drew
+// on top of the card's left end, and its empty area caught the touches meant for the slider
+// (reported: "can't move time slider").
 function publishLegendDockWidth() {
   const root = document.documentElement;
   const row = legendDock.row;
-  if (!row || !row.getClientRects().length) { root.style.removeProperty('--navaid-legend-dock-clear'); return; }
-  root.style.setProperty('--navaid-legend-dock-clear', Math.ceil(row.getBoundingClientRect().right + 12) + 'px');
+  if (!row || !row.getClientRects().length) {
+    root.style.removeProperty('--navaid-legend-dock-clear');
+    root.style.removeProperty('--navaid-legend-dock-above');
+    return;
+  }
+  const r = row.getBoundingClientRect();
+  root.style.setProperty('--navaid-legend-dock-clear', Math.ceil(r.right + 12) + 'px');
+  const clock = document.getElementById('map-time');
+  const host = (clock && clock.offsetParent) || document.body;
+  root.style.setProperty('--navaid-legend-dock-above', Math.ceil(host.getBoundingClientRect().bottom - r.top + 8) + 'px');
 }
 if (legendDock.row && typeof ResizeObserver === 'function') new ResizeObserver(publishLegendDockWidth).observe(legendDock.row);
+window.addEventListener('resize', publishLegendDockWidth);
 
 // The route totals on one line (asked: "default should not wrap"). The gist's routeSummaryFontPx
 // is the size they start at; where the room beside the zoom column is too small for that -- the
@@ -14543,6 +14557,7 @@ const NavWxTime = (function () {
   // -- the gist withdrawing it, or a live position hiding it, frees the row again.
   const reseatLegend = () => {
     if (typeof window.reconcileLegendPosition === 'function') window.reconcileLegendPosition();
+    if (typeof publishLegendDockWidth === 'function') publishLegendDockWidth();
   };
   // The inspector is rebuilt from scratch on every selection, so what it contains cannot be
   // asked once. Watching it is cheaper than making every caller that opens or closes a panel

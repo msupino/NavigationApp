@@ -9201,7 +9201,8 @@ html[style*="--navaid-map-ctrl-wrapped"] body.deck-on #empty-route-hint {
   max-width: calc(100vw - var(--navaid-map-ctrl-clear) - 16px);
 }
 body.deck-on .map-time {
-  bottom: calc(124px + env(safe-area-inset-bottom, 0px));
+  /* Above the legend dock (ui.js publishLegendDockWidth), never under it. */
+  bottom: max(calc(124px + env(safe-area-inset-bottom, 0px)), var(--navaid-legend-dock-above, 0px));
   /* Clear of the zoom column and its z-level readout, which the deck did not move. */
   right: 112px;
 }
@@ -10945,6 +10946,13 @@ body.deck-on :is(.search-hint, #app-version, #toolbar .slider-val) { font-size: 
    on the phone it sits one row up (below). */
 .legend-ctrl:not(.legend-docked) .legend-dock { display: none; }
 .legend-ctrl.legend-docked { position: relative; }
+/* The dock's box spans the button and the totals pill; the space between them is not a control,
+   and it caught the touches meant for whatever lay under it (the map clock's slider, reported). */
+.leaflet-control.legend-ctrl.legend-docked,
+.legend-ctrl.legend-docked .legend-dock { pointer-events: none; }
+.legend-ctrl.legend-docked .legend-toggle,
+.legend-ctrl.legend-docked #route-summary,
+.legend-ctrl.legend-docked .map-legend { pointer-events: auto; }
 .legend-ctrl.legend-docked .legend-dock {
   display: flex;
   align-items: center;
