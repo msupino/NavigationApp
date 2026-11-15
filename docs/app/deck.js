@@ -757,15 +757,46 @@
   // on every move, which was most of what this cost.
   let fittedKey = '', lastSubKey = null, stripWidth = -1, observed = null;
   const stripRO = typeof ResizeObserver === 'function' ? new ResizeObserver(() => { stripWidth = -1; }) : null;
-  function fitStripVals(full) {
+  function watchStrip() {
     // The strip is rebuilt when the deck is (a layout change): watch whichever one is current.
     if (strip !== observed) {
       if (stripRO) { stripRO.disconnect(); stripRO.observe(strip); }
-      observed = strip; stripWidth = -1; fittedKey = ''; lastSubKey = null;
+      observed = strip; stripWidth = -1; fittedKey = ''; lastSubKey = null; tightKey = '';
     }
     if (stripWidth < 0 || !stripRO) stripWidth = strip.clientWidth;
+  }
+  // The second line -- the Zulu clock and the hour the layers show, which is the way to the time
+  // slider -- shares its column with the top line, and the buttons beside them take what is left.
+  // On a phone in Hebrew "English" beside the globe left the hour cut to ":00Z", so the button
+  // that opens the slider was half off the strip. The switch shows either the other language's
+  // name or the globe, never both, and the same in both languages (asked): the name when it fits
+  // in English AND in Hebrew, otherwise the globe -- its name stays in the title and the
+  // accessible name, and the hour is whole again.
+  let tightKey = '';
+  function fitStripSub(parts) {
+    watchStrip();
+    const key = parts.map(p => p.length).join(',') + '|' + stripWidth + '|' + strip.classList.contains('deck-strip-live');
+    if (key === tightKey) return;
+    tightKey = key;
+    strip.classList.remove('deck-strip-tight');
+    if (stripSub.hidden || !strip.clientWidth) return;
+    // Measured with both names in the button, so English and Hebrew come out the same.
+    const lab = strip.querySelector('.deck-strip-lang .lang-quick-label');
+    const own = lab ? lab.textContent : '';
+    const over = () => stripSub.scrollWidth > stripSub.clientWidth + 1;
+    let tight = false;
+    for (const name of lab ? ['English', '\u05e2\u05d1\u05e8\u05d9\u05ea'] : ['']) {
+      if (lab) lab.textContent = name;
+      if (over()) { tight = true; break; }
+    }
+    if (lab) lab.textContent = own;
+    if (tight) strip.classList.add('deck-strip-tight');
+  }
+  function fitStripVals(full) {
+    watchStrip();
     // The route title shares the line, so it is part of what decides the fit.
-    const key = full + '|' + stripWidth + '|' + (stripLeg ? stripLeg.textContent : '') + '|' + strip.classList.contains('deck-strip-live');
+    const key = full + '|' + stripWidth + '|' + (stripLeg ? stripLeg.textContent : '') + '|' + strip.classList.contains('deck-strip-live')
+      + '|' + strip.classList.contains('deck-strip-tight');
     if (key === fittedKey) return;
     fittedKey = key;
     stripVals.textContent = full;
@@ -804,10 +835,6 @@
     // The live class decides how wide the language button is, so it is set BEFORE the readout is
     // fitted to its line (it used to follow, and the fit measured the roomier, not-live strip).
     strip.classList.toggle('deck-strip-live', !!(typeof gpsPositionLive === 'function' && gpsPositionLive()));
-    fitStripVals(txt('gps-readout'));
-    // Measurements read left to right in Hebrew as well; the readout's own element says so
-    // and the copy on the strip has to say it too.
-    stripVals.dir = 'ltr';
     // Each piece in its own isolate. The Zulu clock is Latin, the look-ahead readout is not
     // -- in Hebrew it is "+2ש 09:00Z" -- and pouring both into one left-to-right text node
     // let the bidi algorithm reorder them into "+209:00 · שZ", which is not a time at all.
@@ -853,6 +880,13 @@
       syncClockButton();
     }
     stripSub.hidden = !parts.length;
+    // The second line decides how wide the language button is, and that width is the readout's
+    // room -- so it is fitted first.
+    fitStripSub(parts);
+    fitStripVals(txt('gps-readout'));
+    // Measurements read left to right in Hebrew as well; the readout's own element says so
+    // and the copy on the strip has to say it too.
+    stripVals.dir = 'ltr';
     const live = typeof gpsPositionLive === 'function' && gpsPositionLive();
     strip.classList.toggle('deck-strip-live', !!live);
     if (buttons.record) {
