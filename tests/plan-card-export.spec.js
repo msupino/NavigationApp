@@ -730,3 +730,21 @@ test('the printed plan card warns where the VOR is beyond its published range', 
   // LOT publishes no coverage: no verdict either way.
   expect(got.LOT.seen.some(t => t.includes('!'))).toBe(false);
 });
+
+// Asked: "hide real time planes when print window is open". Live traffic and NavAid pilots are
+// never in the printed page; while Print is open they are hidden, and back when it closes.
+test('live traffic and NavAid pilots are hidden while Print is open', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await boot(page);
+  await route(page);
+  const shown = () => page.evaluate(() => ['traffic', 'followme', 'publicPilots'].map(n => {
+    const p = map.getPane(n) || map.createPane(n, map.getContainer());
+    if (!p.firstChild) { const d = document.createElement('div'); d.className = 'probe'; d.style.cssText = 'width:10px;height:10px'; p.appendChild(d); }
+    return getComputedStyle(p).display !== 'none';
+  }));
+  expect(await shown()).toEqual([true, true, true]);
+  await page.evaluate(() => showExportModal());
+  expect(await shown()).toEqual([false, false, false]);
+  await page.locator('.modal-back.export-options .modal-cancel').click();
+  expect(await shown()).toEqual([true, true, true]);
+});
