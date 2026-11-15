@@ -321,6 +321,18 @@
     syncClockButton();
   }
   NavAid.setDeckClockOpen = setClockOpen;
+  // A map button pressed while the Menu is open is a move back to the chart: the Menu goes, and
+  // the button does its own job (asked, with a screenshot: the chart picker opened ON the open
+  // Menu, the two panels stacked). Every map button is a Leaflet control -- the edit column, the
+  // right-hand column, the zoom keys, the legend. Capture phase, before the button's own handler,
+  // so what the button opens is not closed with the Menu. Only the Menu: a point's details or the
+  // plan in the sheet stay while the map is used.
+  document.addEventListener('click', (ev) => {
+    if (!sheet || sheet.hidden || sheetKey !== 'menu') return;
+    const t = ev.target;
+    if (!t || !t.closest || !t.closest('.leaflet-control') || t.closest('.deck-sheet')) return;
+    closeSheet();
+  }, true);
   // Android Back asks this first (ui.js backButtonStep): an open sheet is a step to go back.
   NavAid.deckSheetOpen = () => !!(sheet && !sheet.hidden && sheetKey);
 
