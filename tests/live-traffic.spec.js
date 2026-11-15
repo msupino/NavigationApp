@@ -749,3 +749,28 @@ for (const [dev, vp] of [['desktop', { width: 1000, height: 506 }], ['phone', { 
     }, { timeout: 3000 }).toBe(true);
   });
 }
+
+// Reported with a screenshot (a desktop in a narrow window): with the bottom sheet taller than
+// half the map, the followed aircraft was centred on the whole map -- under the sheet.
+test('a followed aircraft stays above a bottom sheet taller than half the map', async ({ page }) => {
+  await page.setViewportSize({ width: 500, height: 700 });
+  await boot(page);
+  await page.evaluate(() => map.setView([32.10, 34.90], 10));
+  await page.locator('.traffic-mark').first().click({ force: true });
+  // The sheet as the screenshot had it: from just above the middle down to the bottom.
+  await page.evaluate(() => {
+    const el = document.getElementById('inspector');
+    el.style.top = Math.round(window.innerHeight * 0.48) + 'px';
+    el.style.bottom = '0px';
+    el.style.height = 'auto';
+  });
+  const sheet = await page.evaluate(() => {
+    const r = document.getElementById('inspector').getBoundingClientRect();
+    const m = map.getContainer().getBoundingClientRect();
+    return { top: r.top, mid: (m.top + m.bottom) / 2, wide: r.width >= m.width * 0.6 };
+  });
+  expect(sheet.wide).toBe(true);
+  expect(sheet.top).toBeLessThan(sheet.mid);              // the case that went wrong
+  await page.locator('#insp-traffic-follow').click();
+  expect(await seen(page, 32.10, 34.90)).toEqual({ onMap: true, underPanel: false });
+});
