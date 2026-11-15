@@ -1,7 +1,8 @@
 // @ts-check
 // Reported from a phone in Hebrew: the hour in the top strip -- the button that opens the time
 // slider -- was cut to ":00Z", half off the strip, because "English" beside the globe took the
-// line's room. When the second line does not fit, the language switch steps down to its globe.
+// line's room. The switch is now the other language's name OR the globe, never both, and the same
+// in English and Hebrew: the name when the line fits beside it in both, else the globe.
 const { test, expect } = require('./_setup');
 
 // At 390 px Chromium's monospace fits with no pixel to spare; the phone's own monospace is wider.
@@ -26,11 +27,33 @@ for (const [lang, w] of [['he', 375], ['en', 375], ['he', 390]]) {
   });
 }
 
-test('a wide phone keeps the language name beside the globe', async ({ page }) => {
+const look = (page) => page.evaluate(() => {
+  const b = document.querySelector('.deck-strip-lang');
+  const vis = (el) => !!el && getComputedStyle(el).display !== 'none' && el.getBoundingClientRect().width > 0;
+  return { name: vis(b.querySelector('.lang-quick-label')), globe: vis(b.querySelector('svg')) };
+});
+
+for (const w of [340, 375, 390, 430, 600]) {
+  test('name or globe, never both, the same in both languages at ' + w + ' px', async ({ page }) => {
+    await page.setViewportSize({ width: w, height: 844 });
+    const seen = [];
+    for (const lang of ['he', 'en']) {
+      await page.goto('?lang=' + lang + '&nogist');
+      await page.waitForFunction(() => document.querySelector('.deck-strip-clock'));
+      const l = await look(page);
+      expect(l.name !== l.globe, lang + ' ' + JSON.stringify(l)).toBe(true);
+      seen.push(l.name);
+    }
+    expect(seen[0], 'Hebrew and English show the same kind of switch').toBe(seen[1]);
+  });
+}
+
+test('a wide phone shows the language name', async ({ page }) => {
   await page.setViewportSize({ width: 600, height: 900 });
   await page.goto('?lang=he&nogist');
   await page.waitForFunction(() => document.querySelector('.deck-strip-clock'));
   if (!(await page.evaluate(() => document.body.classList.contains('deck-on')))) test.skip();
   expect(await page.evaluate(() => document.querySelector('.deck-strip').classList.contains('deck-strip-tight'))).toBe(false);
   await expect(page.locator('.deck-strip-lang .lang-quick-label')).toBeVisible();
+  await expect(page.locator('.deck-strip-lang svg')).toBeHidden();
 });

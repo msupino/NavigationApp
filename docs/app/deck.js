@@ -768,8 +768,9 @@
   // The second line -- the Zulu clock and the hour the layers show, which is the way to the time
   // slider -- shares its column with the top line, and the buttons beside them take what is left.
   // On a phone in Hebrew "English" beside the globe left the hour cut to ":00Z", so the button
-  // that opens the slider was half off the strip. When the line does not fit, the language switch
-  // steps down to its globe (as it does on a 360 px phone): its name stays in the title and the
+  // that opens the slider was half off the strip. The switch shows either the other language's
+  // name or the globe, never both, and the same in both languages (asked): the name when it fits
+  // in English AND in Hebrew, otherwise the globe -- its name stays in the title and the
   // accessible name, and the hour is whole again.
   let tightKey = '';
   function fitStripSub(parts) {
@@ -779,7 +780,17 @@
     tightKey = key;
     strip.classList.remove('deck-strip-tight');
     if (stripSub.hidden || !strip.clientWidth) return;
-    if (stripSub.scrollWidth > stripSub.clientWidth + 1) strip.classList.add('deck-strip-tight');
+    // Measured with both names in the button, so English and Hebrew come out the same.
+    const lab = strip.querySelector('.deck-strip-lang .lang-quick-label');
+    const own = lab ? lab.textContent : '';
+    const over = () => stripSub.scrollWidth > stripSub.clientWidth + 1;
+    let tight = false;
+    for (const name of lab ? ['English', '\u05e2\u05d1\u05e8\u05d9\u05ea'] : ['']) {
+      if (lab) lab.textContent = name;
+      if (over()) { tight = true; break; }
+    }
+    if (lab) lab.textContent = own;
+    if (tight) strip.classList.add('deck-strip-tight');
   }
   function fitStripVals(full) {
     watchStrip();
