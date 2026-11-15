@@ -14442,6 +14442,8 @@ const NavWxTime = (function () {
   // The desktop keeps dimming: it has the room, the strip has a fixed place, and a control
   // that vanishes from a fixed place is one a pilot hunts for. The gist can put it back on a
   // phone too, which is the house rule for removing a control at all.
+  const clockInStrip = () => document.body.classList.contains('deck-on')
+    && !!document.querySelector('#deck-strip');
   const idleHidesOnPhone = () => document.body.classList.contains('deck-on')
     && (typeof tune !== 'function' || tune('hideIdleMapClockOnPhone') !== false);
 
@@ -14539,7 +14541,9 @@ const NavWxTime = (function () {
   function refresh() {
     const timed = anyTimedLayer() || inspectorTimed() || planningFormOpen();
     const was = el.hidden;
-    el.hidden = !featureOn() || liveHides() || (!timed && idleHidesOnPhone());
+    // On a phone the clock is a row under the strip, opened from the hour shown there, so it
+    // spends no map while nobody is moving it; hiding it while idle is no longer needed there.
+    el.hidden = !featureOn() || liveHides() || (!timed && idleHidesOnPhone() && !clockInStrip());
     if (el.hidden !== was) reseatLegend();
     // The panel's copy exists for one reason: on a phone the sheet covers the map's copy. So
     // it appears when there is something for a clock to move and not otherwise -- a waypoint,
@@ -14603,6 +14607,8 @@ const NavWxTime = (function () {
   const backToLive = () => {
     slider.value = '0';
     slider.dispatchEvent(new Event('input'));
+    // Back at live, the phone's clock row has done its job: it folds back into the strip.
+    if (NavAid.setDeckClockOpen) NavAid.setDeckClockOpen(false);
   };
   if (nowBtn) nowBtn.addEventListener('click', backToLive);
   if (inspNow) inspNow.addEventListener('click', backToLive);

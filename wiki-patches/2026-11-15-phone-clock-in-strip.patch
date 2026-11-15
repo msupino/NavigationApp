@@ -1,0 +1,60 @@
+From e4596573547bbeef1a401c165f0576eb9a99efcc Mon Sep 17 00:00:00 2001
+From: Marco <marco@supino.org>
+Date: Sun, 15 Nov 2026 11:39:15 +0000
+Subject: [PATCH] Phone: the map clock opens from the hour in the top strip
+
+---
+ Phone-Layout-he.md | 11 ++++++-----
+ Phone-Layout.md    | 17 +++++++++--------
+ 2 files changed, 15 insertions(+), 13 deletions(-)
+
+diff --git a/Phone-Layout-he.md b/Phone-Layout-he.md
+index 75e8e31..aa21e2d 100644
+--- a/Phone-Layout-he.md
++++ b/Phone-Layout-he.md
+@@ -156,11 +156,12 @@
+ 
+ ## שעון המפה מתפנה מהדרך
+ 
+-רצועת הזמן שוכבת לאורך תחתית התרשים, והרצועה של הסרגל התחתון למעלה כבר נושאת את הקריאה שלה לצד
+-שעון ה-Zulu. לכן בטלפון היא **נעלמת כשאין דבר שמגיב לה** — בלי NOTAM, בלי מזג אוויר, בלי רוח,
+-בלי חלונית שדה פתוחה — וחוזרת מיד כשיש. מיקום חי מסתיר אותה בכל מקרה: השעה שטסים בה היא עכשיו.
++בטלפון השעון יושב ברצועה העליונה. השעה שהשכבות מציגות נמצאת שם לצד שעון ה-Zulu
++(<span dir="ltr">11:00Z ▾</span>, או <span dir="ltr">+3ש · 14:00Z</span> אחרי הזזה), והיא כפתור: הקשה עליה
++פותחת את המחוון **בשורה אחת מתחת לרצועה** — **עכשיו**, השעה והמחוון. הקשה נוספת על השעה, או **עכשיו**
++(חזרה להווה), מקפלת את השורה. סגור, הוא לא תופס דבר מהמפה. מיקום חי מסתיר אותו: השעה שטסים בה היא עכשיו.
+ 
+-במחשב היא מתעמעמת במקום להיעלם. יש מקום, יש לה מקום קבוע, ופקד שנעלם ממקום קבוע הוא פקד שמחפשים
+-אותו. <span dir="ltr"><code>hideIdleMapClockOnPhone</code></span> מחזיר אותה גם בטלפון.
++במחשב השעון שוכב לאורך תחתית התרשים ומתעמעם כשאין דבר שמגיב לו. יש לו מקום, יש לו מקום קבוע, ופקד
++שנעלם ממקום קבוע הוא פקד שמחפשים אותו.
+ 
+ </div>
+diff --git a/Phone-Layout.md b/Phone-Layout.md
+index 39c4e85..510b68b 100644
+--- a/Phone-Layout.md
++++ b/Phone-Layout.md
+@@ -167,11 +167,12 @@ Related: [Toolbar](Toolbar) · [Inspector](Inspector) · [GPS Track Recording](G
+ 
+ ## The map clock gets out of the way
+ 
+-The time strip lies across the bottom of the chart, and the deck's own strip along the top
+-already carries its readout beside the Zulu clock. So on a phone it **goes away when nothing
+-answers to it** — no NOTAM, no weather, no wind, no open airfield panel — and comes straight
+-back when something does. A live position hides it either way: the hour being flown is now.
+-
+-On a desktop it dims instead. There is room for it, it has a fixed place, and a control that
+-vanishes from a fixed place is one a pilot hunts for. `hideIdleMapClockOnPhone` puts it back
+-on a phone too.
++On a phone the clock lives in the top strip. The hour the layers are showing sits there beside
++the Zulu time (*11:00Z ▾*, or *+3h · 14:00Z* when you have moved it), and it is a button: tap it
++and the slider opens as **one row under the strip** — **Now**, the hour, and the slider. Tap the
++hour again, or press **Now** (back to live), and the row folds away. Closed, it takes no map at
++all. A live position hides it: the hour being flown is now.
++
++On a desktop the clock lies across the bottom of the chart and dims when nothing answers to it.
++There is room for it, it has a fixed place, and a control that vanishes from a fixed place is one
++a pilot hunts for.
+-- 
+2.43.0
+
