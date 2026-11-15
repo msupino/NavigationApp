@@ -124,15 +124,24 @@ const timedLayerOn = (page, on) => page.evaluate((want) => {
   return cb.checked;
 }, on);
 
-test('on a phone the clock goes away when nothing answers to it', async ({ page }) => {
+// On a phone the clock lives in the strip: the hour shown there is a button, and the slider
+// opens as one row under the strip only when it is tapped (asked: the card took too much of the
+// map). Closed, it spends nothing -- timed layer or not.
+const clockShown = (page) => page.evaluate(() => {
+  const el = document.getElementById('map-time');
+  return !el.hidden && getComputedStyle(el).display !== 'none';
+});
+test('on a phone the clock spends no map until the hour in the strip is tapped', async ({ page }) => {
   await phone(page);
   expect(await page.evaluate(() => document.body.classList.contains('deck-on'))).toBe(true);
-  expect(await clockHidden(page), 'nothing timed is on').toBe(true);
-  // ...and comes straight back when something needs it.
   await timedLayerOn(page, true);
-  expect(await clockHidden(page)).toBe(false);
-  await timedLayerOn(page, false);
-  expect(await clockHidden(page)).toBe(true);
+  expect(await clockShown(page), 'closed: not on the map').toBe(false);
+  await page.locator('.deck-strip-clock').click();
+  expect(await clockShown(page)).toBe(true);
+  await expect(page.locator('.deck-strip-clock')).toHaveAttribute('aria-expanded', 'true');
+  // A second tap folds it back into the strip.
+  await page.locator('.deck-strip-clock').click();
+  expect(await clockShown(page)).toBe(false);
 });
 
 test('the desktop still dims rather than hides', async ({ page }) => {
@@ -147,15 +156,15 @@ test('the desktop still dims rather than hides', async ({ page }) => {
     .toBe(true);
 });
 
-test('the gist can keep it on screen on a phone too', async ({ page }) => {
+test('opened on a phone, the clock shows even with nothing timed, and Now folds it away', async ({ page }) => {
   await phone(page);
-  expect(await clockHidden(page)).toBe(true);
-  const shown = await page.evaluate(() => {
-    NavAid.tuningDefaults.hideIdleMapClockOnPhone.value = false;
-    NavAid.refreshMapClock();
-    return !document.getElementById('map-time').hidden;
-  });
-  expect(shown).toBe(true);
+  await timedLayerOn(page, false);
+  await page.locator('.deck-strip-clock').click();
+  expect(await clockShown(page)).toBe(true);
+  await page.evaluate(() => { const s = document.getElementById('map-time-slider'); s.value = '3'; s.dispatchEvent(new Event('input')); });
+  await page.locator('#map-time-now').click();
+  expect(await clockShown(page)).toBe(false);
+  expect(await page.evaluate(() => document.getElementById('lookahead-time').value)).toBe('0');
 });
 
 // The live rule still outranks everything: flying is not "nothing to scrub".

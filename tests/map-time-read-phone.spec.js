@@ -11,8 +11,8 @@ for (const theme of ['light', 'dark']) test(`the phone's map clock shows the hou
   await page.goto('?lang=en&nogist');
   await page.waitForFunction(() => typeof NavAid !== 'undefined' && NavAid.refreshMapClock);
   const got = await page.evaluate(() => {
-    setTune('hideIdleMapClockOnPhone', false);
     NavAid.refreshMapClock();
+    NavAid.setDeckClockOpen(true);             // opened from the strip, as a pilot does
     const s = document.getElementById('map-time-slider');
     s.value = '3'; s.dispatchEvent(new Event('input'));
     const rgb = c => (c.match(/[\d.]+/g) || []).map(Number);
@@ -29,9 +29,11 @@ for (const theme of ['light', 'dark']) test(`the phone's map clock shows the hou
     const bg = over(rgb(card.backgroundColor), ground);
     const fg = rgb(getComputedStyle(read).color).slice(0, 3);
     const [a, b] = [lum(fg), lum(bg)].sort((x, y) => y - x);
-    return { text: read.textContent, ratio: (a + 0.05) / (b + 0.05),
+    return { shown: getComputedStyle(document.getElementById('map-time')).display !== 'none',
+      text: read.textContent, ratio: (a + 0.05) / (b + 0.05),
       size: parseFloat(getComputedStyle(read).fontSize), weight: Number(getComputedStyle(read).fontWeight) };
   });
+  expect(got.shown).toBe(true);
   expect(got.text).toMatch(/\+3h · \d\d:00Z/);
   expect(got.ratio).toBeGreaterThanOrEqual(4.5);
   expect(got.size).toBeGreaterThanOrEqual(13);
