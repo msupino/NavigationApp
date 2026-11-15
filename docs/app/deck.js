@@ -311,6 +311,16 @@
     sync();
   }
   NavAid.closeDeckSheet = () => closeSheet();
+  // The map clock's row under the strip (style.css body.deck-clock-open).
+  function syncClockButton() {
+    const btn = stripSub && stripSub.querySelector('.deck-strip-clock');
+    if (btn) btn.setAttribute('aria-expanded', String(document.body.classList.contains('deck-clock-open')));
+  }
+  function setClockOpen(on) {
+    document.body.classList.toggle('deck-clock-open', !!on);
+    syncClockButton();
+  }
+  NavAid.setDeckClockOpen = setClockOpen;
   // Android Back asks this first (ui.js backButtonStep): an open sheet is a step to go back.
   NavAid.deckSheetOpen = () => !!(sheet && !sheet.hidden && sheetKey);
 
@@ -795,6 +805,7 @@
     if (subKey !== lastSubKey) {
       lastSubKey = subKey;
       stripSub.replaceChildren();
+      const clockText = txt('map-time-read');
       parts.forEach((text, i) => {
         if (i) {
           const sep = document.createElement('span');
@@ -806,8 +817,28 @@
         const piece = document.createElement('bdi');
         piece.dir = 'auto';
         piece.textContent = text;
-        stripSub.appendChild(piece);
+        // The hour the layers show is the way to the clock (asked: the card took too much of the
+        // map). Tapped, it opens the slider as one row under this strip; tapped again, or Now,
+        // closes it. Nothing of the map is spent on a clock nobody is moving.
+        if (text === clockText && i === parts.length - 1) {
+          const btn = document.createElement('button');
+          btn.type = 'button';
+          btn.className = 'deck-strip-clock';
+          btn.setAttribute('aria-controls', 'map-time');
+          btn.setAttribute('aria-label', ((typeof S === 'object' && S && S.mapTimeLabel) || 'Map time') + ': ' + text);
+          btn.appendChild(piece);
+          const caret = document.createElement('span');
+          caret.className = 'deck-strip-clock-caret';
+          caret.setAttribute('aria-hidden', 'true');
+          caret.textContent = '\u25be';
+          btn.appendChild(caret);
+          btn.addEventListener('click', () => setClockOpen(!document.body.classList.contains('deck-clock-open')));
+          stripSub.appendChild(btn);
+        } else {
+          stripSub.appendChild(piece);
+        }
       });
+      syncClockButton();
     }
     stripSub.hidden = !parts.length;
     const live = typeof gpsPositionLive === 'function' && gpsPositionLive();

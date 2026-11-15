@@ -9200,6 +9200,45 @@ html[style*="--navaid-map-ctrl-wrapped"] body.deck-on #empty-route-hint {
   left: calc((100vw - var(--navaid-map-ctrl-clear)) / 2);
   max-width: calc(100vw - var(--navaid-map-ctrl-clear) - 16px);
 }
+/* On a phone the clock lives in the strip: the hour there is a button, and the slider opens as
+   one row under the strip (deck.js setClockOpen), spending no map until it is wanted (asked:
+   the card took too much of the map). */
+body.deck-on:not(.deck-clock-open) .map-time { display: none; }
+body.deck-on.deck-clock-open .map-time:not([hidden]) {
+  position: fixed;
+  top: calc(var(--navaid-deck-strip-h, 46px) + 6px);
+  bottom: auto;
+  left: 8px;
+  right: 8px;
+  flex-wrap: nowrap;
+  gap: 8px;
+  padding: 4px 8px;
+  z-index: 2300;                     /* over the map's button columns, under the strip (2400) */
+}
+/* Opened on purpose: legible even with nothing timed yet (the track stays grey, saying so). */
+body.deck-on.deck-clock-open .map-time.idle { opacity: 1; }
+body.deck-on.deck-clock-open .map-time input[type="range"] { flex: 1 1 auto; order: 3; min-width: 0; }
+body.deck-on.deck-clock-open .map-time-now { order: 1; }
+body.deck-on.deck-clock-open .map-time-read { order: 2; }
+body.deck-on.deck-clock-open .map-time-charts { display: none; }
+.deck-strip-clock {
+  font: inherit;
+  color: inherit;
+  background: none;
+  border: 0;
+  padding: 0 2px;
+  margin: 0;
+  min-height: 32px;
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  cursor: pointer;
+  text-decoration: underline dotted;
+  text-underline-offset: 3px;
+}
+.deck-strip-clock[aria-expanded="true"] { color: #6fb6ff; }
+.deck-strip-clock:focus-visible { outline: 2px solid #1d6fe0; outline-offset: 2px; border-radius: 4px; }
+.deck-strip-clock-caret { font-size: 0.8em; opacity: 0.8; }
 body.deck-on .map-time {
   /* Above the legend dock (ui.js publishLegendDockWidth), never under it. */
   bottom: max(calc(124px + env(safe-area-inset-bottom, 0px)), var(--navaid-legend-dock-above, 0px));
