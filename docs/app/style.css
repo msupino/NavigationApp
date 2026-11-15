@@ -1946,6 +1946,8 @@ body.theme-dark .leaflet-control-zoom a:hover {
 }
 .wp-search-item:hover,
 .wp-search-item.active { background: #1d6fe0; color: #fff; }
+/* "Not in the waypoints shown, but in another chart's": a sentence, so it wraps. */
+.wp-search-item.wp-search-other-chart { white-space: normal; line-height: 1.35; }
 #toolbar .navtoggle select,
 .ac-settings-body select {
   font: inherit;
@@ -6215,6 +6217,10 @@ html[dir="rtl"] .charts-airport-header.open::before { transform: rotate(-90deg);
 /* Print open: the search panel steps aside (asked) -- it sat over the page frame being placed.
    Only hidden, not closed: its query and its docked/shown preference come back with it. */
 body:has(> .modal-back.export-options) #search-overlay { display: none !important; }
+/* ...and so do the live aircraft (asked): traffic and NavAid pilots are never printed, so while
+   the page is being set up they are not in the way of seeing what will be. They return on close. */
+body:has(> .modal-back.export-options) :is(.leaflet-traffic-pane, .leaflet-followme-pane,
+  .leaflet-publicPilots-pane) { display: none !important; }
 /* Print's black-and-white preview: the chart as the mono export draws it (setPrintBwPreview). */
 html.print-bw-preview .leaflet-tile-pane { filter: var(--print-bw-filter); }
 .export-res-dpi { font-size: 12px; opacity: 0.8; margin-top: -4px; text-align: end; }
