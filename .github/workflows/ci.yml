@@ -302,7 +302,7 @@ jobs:
       github.head_ref != 'dev' ||
       github.base_ref != 'main') &&
       needs.scope.outputs.e2e == 'full'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     # Cold or slow Playwright browser setup can take 6+ minutes before the
     # suite starts; keep enough headroom for one shard of the local e2e run.
     # The cap has to lead the suite's growth: a SIGINT at the cap surfaces as a
@@ -396,7 +396,7 @@ jobs:
       github.base_ref != 'main') &&
       needs.scope.outputs.e2e == 'specs'
     needs: [lint, scope]
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:
       - name: Checkout
@@ -454,7 +454,7 @@ jobs:
       github.base_ref != 'main') &&
       needs.scope.outputs.e2e == 'full'
     needs: [lint, scope]
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 12
     steps:
       - name: Checkout

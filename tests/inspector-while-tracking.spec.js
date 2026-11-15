@@ -115,10 +115,10 @@ test('the refusal says so, once per tracking session', async ({ page }) => {
   expect(said.total, 'every stray tap toasted').toBe(1);
   // It names where the switch is, because a notice about a control nobody can reach is worse
   // than silence.
-  expect(said.text).toMatch(/View\/Set/i);
+  expect(said.text).toMatch(/Settings/i);
 });
 
-test('the switch in View\/Set opens it, and is remembered', async ({ page }) => {
+test('the switch in Settings opens it, and is remembered', async ({ page }) => {
   await boot(page);
   const got = await page.evaluate(async () => {
     startLiveLocation();
@@ -191,7 +191,7 @@ test('the point chooser obeys the same rule as the panel', async ({ page }) => {
   expect(got.panel).toBe(true);
   expect(got.selected).toBe(null);
   // ...and it says why, in the same words the panel uses.
-  expect(got.said).toMatch(/View\/Set/i);
+  expect(got.said).toMatch(/Settings/i);
 });
 
 test('on the ground the chooser is untouched', async ({ page }) => {

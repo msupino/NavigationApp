@@ -584,9 +584,65 @@ public class BackgroundGeolocationPlugin: CAPPlugin, CAPBridgedPlugin, CLLocatio
     }
 }
 
+// The keyboard bars iOS puts under a focused text field. NavAid has no use for either -- every field
+// is in its own window with its own buttons -- and on a Mac (and an iPad with a keyboard) the
+// shortcuts bar showed as a dark, blurred strip across the bottom of the window whenever a field
+// had focus: the search box, a route's name, Saved routes (reported with screenshots). Cleared for
+// the web view's content view only:
+//  - the shortcuts bar (iPad, Mac): its button groups emptied;
+//  - the < > Done accessory bar (iPhone): the content view's class swapped for a subclass whose
+//    inputAccessoryView is nil -- the usual way to do it for WKWebView, which has no public switch.
+enum NavAidKeyboardBars {
+    static func hide(in webView: WKWebView?) {
+        guard let webView = webView,
+              let content = webView.scrollView.subviews.first(where: {
+                  String(describing: type(of: $0)).hasPrefix("WKContent")
+              }) else { return }
+        content.inputAssistantItem.leadingBarButtonGroups = []
+        content.inputAssistantItem.trailingBarButtonGroups = []
+        let base: AnyClass = type(of: content)
+        let name = "NavAidNoAccessory_" + NSStringFromClass(base)
+        var subclass: AnyClass? = NSClassFromString(name)
+        if subclass == nil, let made = objc_allocateClassPair(base, name, 0) {
+            let selector = #selector(getter: UIResponder.inputAccessoryView)
+            let noBar: @convention(block) (AnyObject) -> AnyObject? = { _ in nil }
+            if let method = class_getInstanceMethod(UIResponder.self, selector) {
+                class_addMethod(made, selector, imp_implementationWithBlock(noBar), method_getTypeEncoding(method))
+            }
+            objc_registerClassPair(made)
+            subclass = made
+        }
+        if let subclass = subclass { object_setClass(content, subclass) }
+    }
+
+    // WebKit may set the shortcuts bar's buttons again when a field takes focus, so they are
+    // cleared each time iOS announces the keyboard too (it does for the bar alone, with a
+    // hardware keyboard on an iPad or a Mac).
+    static func keepHidden(in webView: WKWebView?) -> NSObjectProtocol {
+        return NotificationCenter.default.addObserver(
+            forName: UIResponder.keyboardWillShowNotification, object: nil, queue: .main
+        ) { [weak webView] _ in
+            guard let webView = webView,
+                  let content = webView.scrollView.subviews.first(where: {
+                      String(describing: type(of: $0)).hasPrefix("WKContent")
+                  }) else { return }
+            content.inputAssistantItem.leadingBarButtonGroups = []
+            content.inputAssistantItem.trailingBarButtonGroups = []
+        }
+    }
+}
+
 @objc(NavAidBridgeViewController)
 class NavAidBridgeViewController: CAPBridgeViewController {
+    private var keyboardBarsObserver: NSObjectProtocol?
+
+    deinit {
+        if let observer = keyboardBarsObserver { NotificationCenter.default.removeObserver(observer) }
+    }
+
     override func capacitorDidLoad() {
+        NavAidKeyboardBars.hide(in: webView)
+        keyboardBarsObserver = NavAidKeyboardBars.keepHidden(in: webView)
         bridge?.registerPluginInstance(XPlaneDiscoveryPlugin())
         bridge?.registerPluginInstance(BarometerPlugin())
         bridge?.registerPluginInstance(LocationQualityPlugin())

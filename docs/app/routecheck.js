@@ -395,7 +395,10 @@
       li.className = 'route-check-item route-check-' + f.severity;
       const mark = document.createElement('span');
       mark.className = 'route-check-mark';
-      mark.textContent = f.severity === 'stop' ? '⛔' : '⚠';
+      // Drawn, not emoji. Stop and warning share the triangle: the row's own colour and the
+      // verdict line carry the difference, as they already did for the colour-blind.
+      mark.setAttribute('aria-hidden', 'true');
+      mark.innerHTML = typeof navIconSvg === 'function' ? navIconSvg('warn', 16) : '';
       const text = document.createElement('div');
       const parts = lineFor(f);
       const h = document.createElement('div');

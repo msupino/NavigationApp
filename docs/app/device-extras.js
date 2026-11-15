@@ -20,7 +20,9 @@
     const C = window.Capacitor;
     return (C && typeof C.isNativePlatform === 'function' && C.isNativePlatform() && C.Plugins && C.Plugins[name]) || null;
   };
-  const flying = () => typeof gpsLiveOn !== 'undefined' && !!(gpsLiveOn || gpsRecording);
+  // A connected simulator counts: it is a position source like the GPS ("sim is like gps").
+  const flying = () => typeof gpsLiveOn !== 'undefined' &&
+    !!(gpsLiveOn || gpsRecording || (typeof simOn !== 'undefined' && simOn));
   const call = (p, fn, arg) => { try { const r = p && p[fn] && p[fn](arg); if (r && r.catch) r.catch(() => {}); } catch (e) { /* plugin gone */ } };
 
   // --- keep awake ---------------------------------------------------------------------

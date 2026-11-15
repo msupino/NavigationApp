@@ -641,7 +641,7 @@
     track.className = 'offline-manager-progress';
     const bar = document.createElement('span'); track.appendChild(bar);
     const actions = document.createElement('div');
-    actions.className = 'offline-manager-actions';
+    actions.className = 'offline-manager-actions modal-btns';   // the shared modal buttons, not the browser's
     c.append(layer, state, track, actions);
     return { card: c, state, bar, actions, track };
   }
@@ -702,6 +702,7 @@
             await deleteChart(name);
           });
         del.disabled = busy;
+        del.classList.add('btn-secondary');
         parts.actions.append(del);
       }
       host.appendChild(parts.card);
@@ -735,6 +736,7 @@
           await deleteArea(area.id);
         });
         del.disabled = busy;
+        del.classList.add('btn-secondary');
         parts.actions.append(del);
         box.appendChild(parts.card);
       }
@@ -771,7 +773,7 @@
         () => { downloadArea(layerName, Number(pick.value)).catch(() => {}); }, 'offline-area-add');
       add.disabled = !!why;
       const row = document.createElement('div');
-      row.className = 'offline-manager-actions';
+      row.className = 'offline-manager-actions modal-btns';
       row.appendChild(add);
       box.append(detail, row);
       if (why) {
@@ -852,6 +854,7 @@
         if (!await ask(question, t('offlineDelete', 'Clear offline CVFR'))) return;
         await deletePack();
       });
+    clear.classList.add('btn-secondary');   // removing is the quiet action beside the fetch
     cvfr.actions.append(repair, clear);
     const more = document.createElement('p');
     more.className = 'offline-manager-copy';
@@ -866,6 +869,7 @@
     back.appendChild(box);
     back.onclick = event => { if (event.target === back) close(); };
     document.body.appendChild(back);
+    if (typeof makeWindowAccessible === 'function') makeWindowAccessible(back, box, title);
     manager = { back, box, state: cvfr.state, bar: cvfr.bar, repair, clear, packs };
     // The area button counts the tiles on screen, so it follows the map.
     if (typeof map !== 'undefined' && map.on) map.on('moveend', renderManager);
@@ -964,24 +968,55 @@
     cvfrCoverage(undefined, undefined, { pruneOtherLayers: true }).then(setReport).catch(() => {});
   }
 
+  // The automatic transfer is thousands of tile requests. Started at load, it ran for every
+  // visitor -- one who looked once and left as well as the pilot -- and a page load that never
+  // went quiet made PageSpeed give up ("RPC::DEADLINE_EXCEEDED"). It now waits until the app
+  // is in use: the first tap or key, or offlineCvfrStartSec on screen. The native app keeps
+  // starting at load: it is installed to be flown with.
+  let autoArmed = false;
   function scheduleAuto() {
+    if (!autoArmed) return;
     const go = () => { auditAndMaintain().catch(() => {}); };
     if (window.requestIdleCallback) window.requestIdleCallback(go, { timeout: 8000 });
     else setTimeout(go, 4000);
   }
+  const ARM_EVENTS = ['pointerdown', 'keydown'];
+  let armTimer = 0;
+  function armAuto() {
+    if (autoArmed) return;
+    autoArmed = true;
+    clearTimeout(armTimer);
+    scheduleAuto();
+  }
+  // The timer counts time on screen: a tab opened in the background does not start it.
+  function armTimerWhenShown() {
+    clearTimeout(armTimer);
+    if (document.hidden) return;
+    const sec = typeof tune === 'function' ? Number(tune('offlineCvfrStartSec')) : 60;
+    armTimer = setTimeout(armAuto, (Number.isFinite(sec) ? Math.max(0, sec) : 60) * 1000);
+  }
+  function waitForUse() {
+    if (window.NavAidNativeTiles && NavAidNativeTiles.enabled) { armAuto(); return; }
+    // once: each listener goes by itself; the one not fired stays, and does nothing (armAuto
+    // returns at once), as does the visibility one.
+    for (const e of ARM_EVENTS) window.addEventListener(e, armAuto, { capture: true, once: true, passive: true });
+    document.addEventListener('visibilitychange', () => { if (!autoArmed) armTimerWhenShown(); });
+    armTimerWhenShown();
+  }
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', wire);
   else wire();
-  if (document.readyState === 'complete') scheduleAuto();
-  else window.addEventListener('load', scheduleAuto);
+  if (document.readyState === 'complete') waitForUse();
+  else window.addEventListener('load', waitForUse);
   window.addEventListener('online', scheduleAuto);
 
   window.NavAidOfflineTiles = {
     offlineTileList, cvfrPlan, chartPlan, areaPlan, routeTileDistanceSq, prioritizeRouteTiles, reprioritizeRemaining,
     cvfrCoverage, chartCoverage, areaCoverage, connectionSuitable, automaticCvfrWanted,
-    downloadPack, fetchFloor, deletePack, packSize, auditAndMaintain, scheduleAuto,
+    downloadPack, fetchFloor, deletePack, packSize, auditAndMaintain, scheduleAuto, armAuto,
     connectionUnknownOnPhone, automaticDownloadAgreed,
     downloadChart, deleteChart, downloadArea, deleteArea, screenArea, readPacks, wantedTileUrls, openManager,
     offlineTileCount, previewDeployment, TILE_CACHE, OFFLINE_MIN_Z, OFFLINE_MAX_Z, AREA_TILE_LIMIT,
+    get autoArmed() { return autoArmed; },
   };
 }());

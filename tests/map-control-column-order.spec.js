@@ -115,3 +115,33 @@ test('sharing lights the square, not only the glyph', async ({ page }) => {
   // broadcasting after the flight.
   expect(got.on).not.toBe(got.off);
 });
+
+// Reported, with a phone screenshot: "right side icons can be moved to the edge of the screen".
+// The column is as wide as its widest control (the dial), and the 44 px buttons sat on its LEFT
+// side -- wrap-reverse swaps the cross axis, so align-items: flex-end meant left -- 22 px off the
+// screen edge against the left column's 10. Every control now meets the same right edge, in both
+// languages, as the left column meets the left.
+for (const lang of ['en', 'he']) {
+  test(`the right-hand controls sit on the screen edge, as far in as the left-hand ones (${lang})`, async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto(`?lang=${lang}&nogist`);
+    await page.waitForFunction(() => document.body.classList.contains('deck-on') && document.querySelector('.rotate-ctrl'));
+    await goLive(page);
+    await page.waitForTimeout(300);
+    const m = await page.evaluate(() => {
+      const W = document.documentElement.clientWidth;
+      const left = document.querySelector('.edit-col-ctrl').getBoundingClientRect().left;
+      const right = [...document.querySelector('.rotate-ctrl').parentNode.children]
+        .filter(el => el.getClientRects().length && el.classList.contains('leaflet-control') && !el.classList.contains('leaflet-control-attribution') && !el.classList.contains('coord-readout'))
+        .map(el => ({ c: el.className.split(' ').find(c => c.endsWith('-ctrl') || c === 'leaflet-control-zoom') || el.className, r: Math.round(W - el.getBoundingClientRect().right) }));
+      return { left: Math.round(left), right };
+    });
+    for (const x of m.right) expect(x.r, x.c).toBe(m.left);
+    // Both gaps are the gist's (mapCtrlLeftEdgePx / mapCtrlRightEdgePx).
+    await page.evaluate(() => { setTune('mapCtrlLeftEdgePx', 4); setTune('mapCtrlRightEdgePx', 2); applyTuningCssVars(); });
+    await page.waitForTimeout(200);
+    const g = await page.evaluate(() => ({ left: Math.round(document.querySelector('.edit-col-ctrl').getBoundingClientRect().left),
+      right: Math.round(document.documentElement.clientWidth - document.querySelector('.leaflet-control-zoom').getBoundingClientRect().right) }));
+    expect(g).toEqual({ left: 4, right: 2 });
+  });
+}

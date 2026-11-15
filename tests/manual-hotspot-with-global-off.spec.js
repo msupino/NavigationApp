@@ -129,10 +129,10 @@ test('the button shows whether the point is marked', async ({ page }) => {
   expect(look.off.disabled).toBe(false);
   expect(look.off.opacity).toBe('1');
   // ...and the two states are told apart by more than the weight of the type: quiet while
-  // the point is unmarked, red once it is.
+  // the point is unmarked, the toolbar's selected blue once it is (it was red, which read as Delete).
   expect(look.on.cls).toMatch(/insp-btn-on/);
   expect(look.on.bg).not.toBe(look.off.bg);
-  expect(look.on.bg).toBe('rgb(176, 54, 54)');
+  expect(look.on.bg).toBe('rgb(29, 111, 224)');
 });
 
 // The action row reads in a fixed order — reset, frequency change, hotspot, turn, and delete
@@ -174,8 +174,8 @@ test('the hotspot toggle is quiet until it is set, then red', async ({ page }) =
   });
   // Unmarked: the panel's quiet grey, like every other non-destructive action.
   expect(look.off.safe).toBe(true);
-  expect(look.off.bg).not.toBe('rgb(176, 54, 54)');
+  expect(look.off.bg).not.toBe('rgb(29, 111, 224)');
   // Marked: red, with a plain white border rather than a second accent colour.
-  expect(look.on.bg).toBe('rgb(176, 54, 54)');
+  expect(look.on.bg).toBe('rgb(29, 111, 224)');
   expect(look.on.border).toBe('rgb(255, 255, 255)');
 });

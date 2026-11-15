@@ -175,7 +175,7 @@ test('toggling the overlay loads NOTAMs and draws without error', async ({ page 
   expect(s.n).toBe(3);
   // Update-time + timeline slider show in the panel once the overlay is on.
   await expect(page.locator('#notam-controls')).toBeVisible();
-  await expect(page.locator('#notam-updated')).toContainText('2026-06-23 09:00Z');
+  await expect(page.locator('#notam-updated')).toContainText('23/06/2026 09:00Z');
   // Toggle persists across reload.
   await page.reload();
   await page.waitForFunction(() => document.getElementById('notam-cb'));
@@ -474,6 +474,52 @@ test('prose border NOTAMs are geocoded to buffer polygons', async ({ page }) => 
   expect(g.lngMax).toBeLessThan(35.95);
 });
 
+test('border buffers do not self-intersect at sharp salients (Hermon, Eilat)', async ({ page }) => {
+  // The one-sided inland buffer self-folded where a border salient is narrower than the offset
+  // (the Syria/Hermon spike, the Egypt/Eilat triangle). notamDeloop strips the loop.
+  await boot(page, { generatedAt: '2026-06-23T09:00:00Z', notams: [
+    { id: 'SYR/26', type: 'AELC', end: 'PERM', geom: null, icao: 'LLLL',
+      text: 'AN AREA FM SYRIA BOUNDRAY TO 6KM WB CLSD TO ALL DOM FLT.' },
+    { id: 'EGY/26', type: 'AELC', end: 'PERM', geom: null, icao: 'LLLL',
+      text: 'OPS OF FLT FM EGYPT BOUNDRAY TO 6KM WB REQUIRES TRANSPONDER.' },
+  ] });
+  await page.locator('#notam-cb').check();
+  const r = await page.evaluate(async () => {
+    if (typeof loadNotamBorders === 'function') await loadNotamBorders();
+    if (typeof buildNotamBorderAreas === 'function') buildNotamBorderAreas();
+    const cross = (p1, p2, p3, p4) => {
+      const d1x = p2[0] - p1[0], d1y = p2[1] - p1[1], d2x = p4[0] - p3[0], d2y = p4[1] - p3[1];
+      const den = d1x * d2y - d1y * d2x; if (Math.abs(den) < 1e-12) return false;
+      const t = ((p3[0] - p1[0]) * d2y - (p3[1] - p1[1]) * d2x) / den;
+      const u = ((p3[0] - p1[0]) * d1y - (p3[1] - p1[1]) * d1x) / den;
+      return t > 1e-9 && t < 1 - 1e-9 && u > 1e-9 && u < 1 - 1e-9;
+    };
+    const selfInts = (coords) => {
+      const kx = 111.32 * Math.cos(coords[0][0] * Math.PI / 180);
+      const xy = coords.map(c => [c[1] * kx, c[0] * 110.57]);
+      let c = 0; const n = xy.length - 1;
+      for (let i = 0; i < n; i++) for (let j = i + 2; j < n; j++) {
+        if (i === 0 && j === n - 1) continue;
+        if (cross(xy[i], xy[i + 1], xy[j], xy[j + 1])) c++;
+      }
+      return c;
+    };
+    const out = {};
+    for (const id of ['SYR/26', 'EGY/26']) {
+      const nn = notams.find(x => x.id === id);
+      out[id] = nn && nn.geom && nn.geom.type === 'polygon'
+        ? { pts: nn.geom.coords.length, si: selfInts(nn.geom.coords), border: nn.geom._border } : null;
+    }
+    return out;
+  });
+  expect(r['SYR/26']).not.toBeNull();
+  expect(r['SYR/26'].border).toBe('SYRIA');
+  expect(r['SYR/26'].si).toBe(0);              // the Hermon spike is gone
+  expect(r['EGY/26']).not.toBeNull();
+  expect(r['EGY/26'].border).toBe('EGYPT');
+  expect(r['EGY/26'].si).toBe(0);              // the Eilat triangle is gone
+});
+
 test('a point within the border buffer is detected as inside the NOTAM', async ({ page }) => {
   await boot(page, { generatedAt: '2026-06-23T09:00:00Z', notams: [
     { id: 'BORDER/26', type: 'AELC', end: 'PERM', geom: null, icao: 'LLLL',
@@ -757,4 +803,36 @@ test('the NOTAM count sits at the end of the label in a Hebrew (RTL) session', a
   expect(pos.bidi).toBe('isolate');
   // RTL: the logical end of the line is the visual LEFT, so the count is left of the label.
   expect(pos.countLeft).toBeLessThan(pos.labelLeft);
+});
+
+// Reported: LLBG's badge said 2 while its NOTAM list held 3 -- the third was a drilling-tower
+// area near the field, drawn as an area and left out of the badge. The badge counts every
+// active NOTAM of the field, and tapping it lists exactly those; the area is still drawn.
+test('an airfield badge counts its area NOTAMs too, and lists what it counts', async ({ page }) => {
+  const now = Date.now();
+  const iso = d => new Date(now + d).toISOString();
+  await boot(page, { generatedAt: '2026-06-23T09:00:00Z', notams: [
+    { id: 'A0116/26', icao: 'LLBG', start: iso(-3600000), end: 'PERM', geom: null, text: 'RWY 08/26 PCR.' },
+    { id: 'A0117/26', icao: 'LLBG', start: iso(-3600000), end: 'PERM', geom: null, text: 'TWY W4 PCR.' },
+    { id: 'A0720/26', icao: 'LLBG', start: iso(-3600000), end: iso(86400000), text: 'DRILLING TOWER ERECTED WI LLBG CTR.',
+      geom: { type: 'polygon', coords: [[32.03, 34.88], [32.04, 34.90], [32.02, 34.91]] } },
+  ] });
+  await page.locator('#notam-cb').check();
+  await page.evaluate(() => loadAirfields && loadAirfields());
+  await page.waitForFunction(() => Array.isArray(window.airfields) && airfields.length > 0);
+  const out = await page.evaluate(() => {
+    const said = [];
+    const fillText = octx.fillText;
+    octx.fillText = function (t, ...a) { said.push(String(t)); return fillText.call(this, t, ...a); };
+    try { drawNotamAirportMarkers(); } finally { octx.fillText = fillText; }
+    const af = airfields.find(a => a.name === 'LLBG');
+    const p = proj({ lat: af.lat, lng: af.lng });
+    const at = map.containerPointToLatLng([p.x, p.y + tune('notamBadgeOffsetPx')]);
+    return { said, tapped: notamBadgeNotamsAt(at).map(n => n.id).sort(),
+      underTap: notamsAtLatLng(at).map(n => n.id).sort() };
+  });
+  expect(out.said).toContain('3');
+  expect(out.tapped).toEqual(['A0116/26', 'A0117/26', 'A0720/26']);
+  // No NOTAM twice, even where the area and the badge are both under the tap.
+  expect(new Set(out.underTap).size).toBe(out.underTap.length);
 });

@@ -104,21 +104,20 @@ test('a recording publishes too, and publishes the same corrected altitude', asy
 
 // Both watches run when a pilot records with Location already on. The live one stands down so
 // the two do not fight over the own-ship -- and the share must not stand down with it.
-test('with both watches running, the recording is what keeps the share alive', async ({ page }) => {
+test('with a recording running, Location\'s fix keeps the share alive -- once', async ({ page }) => {
+  // A recording rides on Location's watch now (one watch, not two), so the one fix both draws the
+  // aircraft, joins the recorded line and goes to the share.
   await boot(page);
   const got = await page.evaluate(async () => {
     window.gpsLiveOn = true;
     window.gpsRecording = true;
     window.gpsTrack = [];
     const p = { latitude: 32.1, longitude: 34.9, altitude: 1000, accuracy: 5, speed: 40, heading: 90 };
-    onLivePosition({ coords: p, timestamp: Date.now() });      // stands down: recording owns the fix
-    const afterLive = window.__published.length;
-    onGpsPosition({ coords: p, timestamp: Date.now() });
+    onLivePosition({ coords: p, timestamp: Date.now() });
     await new Promise(r => setTimeout(r, 20));
-    return { afterLive, total: window.__published.length };
+    return { published: window.__published.length, track: gpsTrack.length };
   });
-  expect(got.afterLive).toBe(0);
-  expect(got.total).toBe(1);
+  expect(got).toEqual({ published: 1, track: 1 });
 });
 
 // The same rule for the ground speed. A device omits `speed` when it is stationary and some

@@ -1,0 +1,50 @@
+From 332c4b33bf7e5d8953df9cc746426f89f0a75df9 Mon Sep 17 00:00:00 2001
+From: Marco <marco@supino.org>
+Date: Wed, 11 Nov 2026 06:15:58 +0000
+Subject: [PATCH] Airfields dataset: runway length and width from the AIP
+ charts
+
+---
+ Airfields-Dataset-he.md |  4 ++++
+ Airfields-Dataset.md    | 10 ++++++++++
+ 2 files changed, 14 insertions(+)
+
+diff --git a/Airfields-Dataset-he.md b/Airfields-Dataset-he.md
+index 52f0b81..3c9dbab 100644
+--- a/Airfields-Dataset-he.md
++++ b/Airfields-Dataset-he.md
+@@ -43,6 +43,10 @@
+ את <span dir="ltr"><code>airfields.json?v=</code></span>.
+ 
+ 
++## אורך ורוחב המסלול
++
++<span dir="ltr"><code>runwayDims</code></span> מפרט כל מסלול כפי שמפת הפמ״ת שלו מפרסמת: <span dir="ltr"><code>rwy</code></span> (<span dir="ltr"><code>15/33</code></span>, או כיוון אחד כששני הכיוונים שונים, כמו בראש פינה), <span dir="ltr"><code>lengthM</code></span> ו‑<span dir="ltr"><code>widthM</code></span>. הם נקראו ידנית מסעיף 9 (*נתוני המסלול*) בחוברת של כל שדה, או מ‑AD 2.12 לבן גוריון, רמון וחיפה; של ערד מתרשים השדה. חלונית השדה מציגה כל מסלול ברגל ובסוגריים במטרים, אורך × רוחב, למשל *מסלול 15/33 · <span dir="ltr">4,324 ft (1,318 m) × 98 ft (30 m)</span>*. הרגל מחושבת מהמטרים ותואמת את הרגל שבמפות. לשדות בלי מפת פמ״ת (שדות צבאיים, גבולות, קדם, עין ורד) אין נתון.
++
+ ## תיאום חנייה מראש
+ 
+ שדה שהפמ״ת דורש לתאם בו חנייה **לפני ההמראה** נושא אובייקט <span dir="ltr"><code>parking</code></span>: <span dir="ltr"><code>rule</code></span> (<span dir="ltr"><code>over1h</code></span>,
+diff --git a/Airfields-Dataset.md b/Airfields-Dataset.md
+index d2b2ba2..2e2bec4 100644
+--- a/Airfields-Dataset.md
++++ b/Airfields-Dataset.md
+@@ -16,6 +16,16 @@ The source and validation contract is encoded in the file metadata and
+ `tests/airfields-dataset.spec.js`. After a coordinate update, run
+ `node scripts/sync-airfield-test-arps.js` and the airfield dataset/ARP suites.
+ 
++## Runway length and width
++
++`runwayDims` lists each runway as its AIP chart publishes it: `rwy` (`15/33`, or one direction
++when the two differ, as at Rosh Pina), `lengthM` and `widthM`. They are read by hand from
++section 9 of each field's domestic pack (*נתוני המסלול*), or AD 2.12 for Ben Gurion, Ramon and
++Haifa; Arad's from its aerodrome chart. The airfield panel shows each one in feet with metres in
++brackets, length × width, e.g. *Runway 15/33 · 4,324 ft (1,318 m) × 98 ft (30 m)*. The feet
++are computed from the metres and match the feet the charts print. Fields without an AIP chart
++(the military fields, Gvulot, Kedem, Ein Vered) carry none.
++
+ ## Prior parking coordination
+ 
+ A field the AIP requires parking to be arranged with **before departure** carries a `parking`
+-- 
+2.43.0
+

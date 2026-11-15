@@ -8,6 +8,10 @@ const { test, expect } = require('./_setup');
 const withClose = (page) => page.evaluate(() => { setTune('featureSearchClose', true); refreshSearchClose(); });
 
 const box = '#search-overlay';
+// The card is pinned unless the gist's featureSearchDrag is true; the drag specs turn it on.
+const allowDrag = (page) => page.addInitScript(() => {
+  window.__navaidTune = Object.assign(window.__navaidTune || {}, { featureSearchDrag: true });
+});
 const geom = page => page.evaluate(() => {
   const b = document.getElementById('search-overlay');
   const r = b.getBoundingClientRect();
@@ -165,6 +169,7 @@ test('the ✕ dismisses the docked panel and the toolbar button brings it back',
 });
 
 test('dragging the panel persists its spot across reload', async ({ page }) => {
+  await allowDrag(page);
   await page.setViewportSize({ width: 1280, height: 800 });
   await page.goto('?lang=en&nogist');
   await page.waitForFunction(() => typeof searchDocked === 'function');
@@ -200,6 +205,7 @@ test('typing in the input does not drag the panel', async ({ page }) => {
 });
 
 test('a position dragged in Hebrew does not move the English one', async ({ page }) => {
+  await allowDrag(page);
   // Positions are per-language: the RTL layout mirrors LTR, so one spot cannot
   // serve both. Every draggable stores under navLangPosKey(base).
   await page.setViewportSize({ width: 1280, height: 800 });
@@ -248,31 +254,20 @@ test('every draggable panel stores its position under a per-language key', async
   expect(he).toEqual(bases.map(b => b + '.he'));
 });
 
-test('the legend stays draggable when pushed clear past the docked search', async ({ page }) => {
-  // Both the docked panel and a legend pushed clear of the menu bar want
-  // toolbar.bottom + 6, and the panel paints on top — the legend used to become
-  // ungrabbable there, so the clamp treats the panel as chrome to clear too.
+// The desktop legend is a fixed dock now (bottom-left button, key opening above it): open, it
+// must still keep clear of the docked search panel.
+test('the open legend key keeps clear of the docked search', async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 800 });
   await page.goto('?lang=en&nogist');
-  await page.waitForFunction(() => typeof searchDocked === 'function');
+  await page.waitForFunction(() => typeof searchDocked === 'function' && !!document.getElementById('legend-toggle'));
+  await page.locator('#legend-toggle').click();
+  await expect(page.locator('#map-legend')).toBeVisible();
   const overlap = await page.evaluate(() => {
     const l = document.getElementById('map-legend').getBoundingClientRect();
     const s = document.getElementById('search-overlay').getBoundingClientRect();
     return l.top < s.bottom && l.bottom > s.top && l.left < s.right && l.right > s.left;
   });
   expect(overlap).toBe(false);
-  const legend = page.locator('#map-legend');
-  const drag = async (toX, toY) => {
-    const b = await legend.boundingBox();
-    await page.mouse.move(b.x + 20, b.y + 6);
-    await page.mouse.down();
-    await page.mouse.move(toX, toY, { steps: 6 });
-    await page.mouse.up();
-    return (await legend.boundingBox()).y;
-  };
-  const parked = await drag(60, 8);          // into the bar -> pushed clear of bar + panel
-  const moved = await drag(60, 480);         // and still draggable from there
-  expect(moved).toBeGreaterThan(parked + 100);
 });
 
 // featureSearchClose off (the default): the docked panel has no X, and a dismissal stored while
@@ -305,3 +300,28 @@ test.describe('touch tablet', () => {
     await expect(page.locator('#search-close')).toBeVisible();
   });
 });
+
+// Asked: "make the search also non movable, with gist, like the top menu on desktop" --
+// "featureSearchDrag default or empty false". Pinned: a drag does not move it, a position saved
+// while it could move is not applied, and there is no grab cursor.
+for (const value of [undefined, false, '']) {
+  test(`featureSearchDrag ${JSON.stringify(value)} pins the docked card under the menu`, async ({ page }) => {
+    await page.addInitScript((v) => {
+      try { localStorage.setItem('navaid.searchPos.en', JSON.stringify({ x: 600, y: 400 })); } catch (e) { /* */ }
+      if (v !== undefined) window.__navaidTune = Object.assign(window.__navaidTune || {}, { featureSearchDrag: v });
+    }, value);
+    await page.setViewportSize({ width: 1280, height: 800 });
+    await page.goto('?lang=en&nogist');
+    await page.waitForFunction(() => typeof searchDocked === 'function' && searchDocked());
+    const before = await geom(page);
+    expect(before.left).toBeLessThan(40);                      // docked left, not at the saved 600,400
+    const b = await page.locator(box).boundingBox();
+    await page.mouse.move(b.x + 6, b.y + b.height - 6);
+    await page.mouse.down();
+    await page.mouse.move(b.x + 300, b.y + 250, { steps: 8 });
+    await page.mouse.up();
+    const after = await geom(page);
+    expect([after.left, after.top]).toEqual([before.left, before.top]);
+    expect(await page.locator(box).evaluate(el => getComputedStyle(el).cursor)).not.toBe('grab');
+  });
+}

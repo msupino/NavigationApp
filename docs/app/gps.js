@@ -30,7 +30,7 @@ function gpsMapLocked() {
 // point. In the air it is the opposite -- a stray tap while flying used to cover the map
 // with the inspector, which is the one thing a pilot is looking at.
 function gpsTrackingLive() {
-  const live = !!(gpsRecording || gpsLiveOn);
+  const live = !!((gpsRecording && !gpsRecFromSim) || gpsLiveOn);
   // The "panel stays shut" notice is once per tracking session, not once per install.
   if (!live) window.__inspTrackingToldThisRun = false;
   return live;
@@ -65,12 +65,12 @@ function inspectorAllowedNow(sel) {
 // Wake Lock is auto-released by the browser when the tab is hidden; we re-acquire
 // on visibilitychange (see listener at end of file). Best-effort: silently
 // no-op where unsupported (older Safari) or denied by policy.
-// Recording OR just showing the position: both are the pilot watching the chart move, and a
-// screen that blanks every 30 seconds is one the pilot has to keep waking with a hand that is
-// otherwise flying. Not the simulator -- that is a desk, where the ordinary screen timeout is
-// the right behaviour.
+// Recording, showing the position, or a connected simulator: all are the pilot watching the
+// chart move, and a screen that blanks every 30 seconds is one the pilot has to keep waking with
+// a hand that is otherwise flying. The simulator is a position source like the GPS (asked: "sim
+// is like gps") -- the phone or tablet beside it is the chart -- so it keeps the screen on too.
 function gpsWakeLockWanted() {
-  return !!(gpsRecording || gpsLiveOn);
+  return !!(gpsRecording || gpsLiveOn || (typeof simOn !== 'undefined' && simOn));
 }
 let _gpsWakeLockPending = false;
 function gpsAcquireWakeLock() {
@@ -291,17 +291,12 @@ function onLivePosition(pos) {
   // Every fix, before the accuracy filter below: the status line shows a coarse fix as coarse.
   if (window.NavAid && NavAid.gpsStatus) NavAid.gpsStatus.noteFix(pos);
   const c = pos.coords;
-  if (gpsRecording) {
-    // Recording drives own-ship + recenter; avoid dueling. But the last-fix point is still
-    // kept current: traffic asks around gpsLastFix() and drops its own-ship by it, and the
-    // first live fix after a recording stops takes its heading and speed from it. Left
-    // alone here, it stayed wherever the recording started.
-    if (!(c.accuracy != null && c.accuracy > gpsMaxAccM())) {
-      _gpsLivePrev = { lat: r5(c.latitude), lng: r5(c.longitude), t: pos.timestamp || Date.now() };
-    }
-    return;
-  }
+  // Every recording rides on Location: this handler drives the map exactly as without one, and
+  // adds each fix to the line. (A recording started by hand used to run a watch of its own,
+  // without Location -- the position showed while the Location button sat unlit, and stopping
+  // Location left the recording running. Record now turns Location on; see startGpsRecording.)
   if (c.accuracy != null && c.accuracy > gpsMaxAccM()) return;
+  if (gpsRecording && !gpsRecFromSim) gpsAppendTrackPoint(pos);   // a simulator recording takes the simulator's
   const p = { lat: r5(c.latitude), lng: r5(c.longitude) };
   const t = pos.timestamp || Date.now();
   // NaN, not 0, when neither the device nor a previous fix can supply a heading --
@@ -366,10 +361,10 @@ function onLivePosition(pos) {
     // gpsSetFollow, so the flying band was only ever applied by toggling the switch off and
     // on. A pilot who opened the app zoomed out over the whole route got their aeroplane
     // centred in that same country-wide view, which is the case the band exists for.
-    if (isFirst && gpsFollow) {
+    if (isFirst && gpsOwnshipFollowActive()) {
       map.setView([p.lat, p.lng], gpsFollowZoom(map.getZoom(), p.lat, p.lng));
     }
-    else if (gpsFollow) gpsFollowRecenter(p.lat, p.lng);
+    else if (gpsOwnshipFollowActive()) gpsFollowRecenter(p.lat, p.lng);
     gpsApplyHeadingUp();
   }
 }
@@ -466,16 +461,32 @@ function startLiveLocation() {
   // written once the watch actually registered; onGpsLiveError's stopLiveLocation() below
   // clears it again on a registration failure.
   try { localStorage.setItem('navaid.gpsLiveOn', '1'); } catch (e) { /* */ }
+  // Showing location records the flight too, unless the pilot switched that off -- or Record
+  // itself is turning Location on, for a recording of its own (startGpsRecording).
+  // A recording a reload interrupted (gpsResumeOrSaveRecording) carries on here, with its points.
+  if (!gpsRecording && !_gpsRecStartingLive && (autoRecordOn() || _gpsPendingAutoResume)) {
+    startGpsRecording({ auto: true, resume: _gpsPendingAutoResume || undefined });
+  }
+  _gpsPendingAutoResume = null;
+  if (typeof window.refreshGpsLiveButton === 'function') window.refreshGpsLiveButton();
   scheduleDraw();
 }
 
 function stopLiveLocation() {
+  _gpsLiveByRecord = false;          // stopping Location by hand: nothing left for Record to undo
   try { localStorage.setItem('navaid.gpsLiveOn', '0'); } catch (e) { /* */ }
+  // A recording ends with Location -- it rides on Location's fixes: saved (an automatic one is
+  // dropped when too short; one started with Record is always kept). Not one of the simulator's
+  // flight, which never rode on Location.
+  if (gpsRecording && !gpsRecFromSim) {
+    stopGpsRecordingAndSave();
+    if (typeof window.refreshRouteLibrary === 'function') window.refreshRouteLibrary();
+  }
   gpsStopWatch(gpsLiveWatchId);
   gpsLiveWatchId = null;
   gpsLiveOn = false;
   if (!gpsRecording) gpsStopCompass();
-  if (!gpsRecording) gpsReleaseWakeLock();
+  if (!gpsWakeLockWanted()) gpsReleaseWakeLock();    // a recording or the simulator may still want it
   // Alerts belong to the flight that queued them. With nothing left driving the map, one
   // still talking about the next leg is talking about a flight that has ended.
   if (!gpsRecording && !(typeof simOn !== 'undefined' && simOn)) gpsStopSpeaking();
@@ -491,6 +502,7 @@ function stopLiveLocation() {
   // Otherwise the last live speed/altitude reading sat in the readout forever -- same
   // refresh stopGpsRecording() already does on its own stop.
   if (!gpsRecording && typeof gpsUpdateReadout === 'function') gpsUpdateReadout();
+  if (typeof window.refreshGpsLiveButton === 'function') window.refreshGpsLiveButton();
   scheduleDraw();
 }
 
@@ -504,12 +516,17 @@ try {
   const stored = localStorage.getItem(GPS_FOLLOW_KEY);
   if (stored !== null) gpsFollow = stored === '1';
 } catch (e) { /* storage unavailable: the default stands */ }
+// ADS-B follow temporarily owns the map center without changing the pilot's saved
+// own-aircraft follow preference.
+function gpsOwnshipFollowActive() {
+  return gpsFollow && !(typeof window.trafficFollowTarget === 'function' && window.trafficFollowTarget());
+}
 function gpsSetFollow(on) {
   gpsFollow = !!on;
   try { localStorage.setItem(GPS_FOLLOW_KEY, gpsFollow ? '1' : '0'); } catch (e) { /* */ }
   // Turning it back on should act now rather than at the next fix -- and the pan that
   // preceded the tap must not hold the map hostage for its grace period either.
-  if (gpsFollow && gpsOwn) {
+  if (gpsOwnshipFollowActive() && gpsOwn) {
     _gpsUserMovedAt = 0;
     gpsFollowRecenter(gpsOwn.lat, gpsOwn.lng,
       gpsFollowZoom(map && map.getZoom(), gpsOwn.lat, gpsOwn.lng));
@@ -1078,12 +1095,11 @@ function gpsUpdateReadout() {
   gpsSetReadout(el, [], gpsStaleText());
 }
 
-function onGpsPosition(pos) {
-  if (!gpsRecording || !pos || !pos.coords) return;
-  if (pos.source !== 'ble' && window.NavAid && NavAid.bleGps && NavAid.bleGps.fresh()) return;   // the Bluetooth GPS leads
-  if (window.NavAid && NavAid.gpsStatus) NavAid.gpsStatus.noteFix(pos);   // the status line, before the filter
+// One fix onto the recorded line (the caller has already applied the accuracy filter). Shared
+// by a recording's own watch (onGpsPosition) and by Location's (onLivePosition), which feeds an
+// automatic recording -- that one opens no watch of its own.
+function gpsAppendTrackPoint(pos) {
   const c = pos.coords;
-  if (c.accuracy != null && c.accuracy > gpsMaxAccM()) return;       // too imprecise
   const pt = { lat: r5(c.latitude), lng: r5(c.longitude), t: pos.timestamp || Date.now(),
                alt: c.altitude != null ? c.altitude : null,
                acc: c.accuracy != null ? c.accuracy : null };
@@ -1099,6 +1115,17 @@ function onGpsPosition(pos) {
   // At the cap, stop growing the track but keep the live display (own-ship,
   // GS/alt, readout, recenter) updating instead of freezing.
   if (!jitter && gpsTrack.length < GPS_MAX_POINTS) gpsTrack.push(pt);
+  gpsSaveRecProgress();
+  return { pt, prev, jitter };
+}
+
+function onGpsPosition(pos) {
+  if (!gpsRecording || !pos || !pos.coords) return;
+  if (pos.source !== 'ble' && window.NavAid && NavAid.bleGps && NavAid.bleGps.fresh()) return;   // the Bluetooth GPS leads
+  if (window.NavAid && NavAid.gpsStatus) NavAid.gpsStatus.noteFix(pos);   // the status line, before the filter
+  const c = pos.coords;
+  if (c.accuracy != null && c.accuracy > gpsMaxAccM()) return;       // too imprecise
+  const { pt, prev, jitter } = gpsAppendTrackPoint(pos);
   // Ground speed: device value (m/s) when present, else derived from the last
   // fix; altitude in feet. Both feed the live readout.
   let gsMs = (c.speed != null && !isNaN(c.speed) && c.speed >= 0) ? c.speed : null;
@@ -1120,6 +1147,10 @@ function onGpsPosition(pos) {
     const comp = gpsCompassTrue(gpsLastGS);
     if (comp != null) { hdg = comp; hdgFromCompass = true; }
   }
+  // The first position on screen -- nothing to preserve yet. Showing location now starts a
+  // recording, and while one runs this path, not onLivePosition, drives the map; without the
+  // same first-fix rule a pan before the first fix left the map where it was.
+  const isFirst = !gpsOwn;
   // Same fix time as the live path: a stalled RECORDING freezes the same symbol.
   gpsOwn = { lat: pt.lat, lng: pt.lng, hdg, t: pt.t, hdgCompass: hdgFromCompass };
   gpsNoteFixArrived();
@@ -1128,7 +1159,11 @@ function onGpsPosition(pos) {
   gpsUpdateReadout();
   gpsCheckLegAlerts();
   scheduleDraw();
-  if (gpsFollow) gpsFollowRecenter(pt.lat, pt.lng);
+  // As onLivePosition: the first fix centres and frames (the flying band); later ones follow.
+  if (isFirst && gpsOwnshipFollowActive() && typeof map !== 'undefined') {
+    map.setView([pt.lat, pt.lng], gpsFollowZoom(map.getZoom(), pt.lat, pt.lng));
+  }
+  else if (gpsOwnshipFollowActive()) gpsFollowRecenter(pt.lat, pt.lng);
   gpsApplyHeadingUp();
 }
 
@@ -1213,38 +1248,149 @@ function updateGpsRecIndicator() {
   }
 }
 
-function startGpsRecording() {
+// opts.auto: started by showing location (see autoRecordOn) -- such a recording is dropped
+// when too short. opts.resume: { startT, track } of a recording a reload interrupted.
+var _gpsRecStartingLive = false;    // Record is turning Location on (no automatic recording then)
+// A recording of the connected SIMULATOR's flight: Record with a simulator connected and
+// Location off records the simulator's movement (io.js _simFetch feeds it), not the device GPS.
+// Reported: "record when sim connected should record sim movement, not gps" -- the change that
+// made Record turn Location on had made it record (and show) the desk's real GPS instead.
+var gpsRecFromSim = false;
+function gpsSimRecording() { return !!(gpsRecording && gpsRecFromSim); }
+// The simulator connects while Record is running on a Location that Record itself turned on: the
+// recording carries on from the simulator, and that Location goes off (asked: "if sim is
+// connected after record, which activated location, should deactivate location and record from
+// sim"). A Location the pilot turned on is theirs, and the real GPS keeps precedence then.
+function gpsRecordingSwitchToSim() {
+  if (!gpsRecording || gpsRecFromSim || !_gpsLiveByRecord || !gpsLiveOn) return false;
+  gpsRecFromSim = true;             // first: stopLiveLocation keeps a simulator recording running
+  _gpsLiveByRecord = false;
+  stopLiveLocation();
+  gpsStopCompass();                 // the simulator reports its own heading
+  updateGpsRecIndicator();
+  return true;
+}
+if (typeof window !== 'undefined') window.gpsRecordingSwitchToSim = gpsRecordingSwitchToSim;
+if (typeof window !== 'undefined') window.gpsSimRecording = gpsSimRecording;
+var _gpsLiveByRecord = false;       // ...and Location is on only because Record turned it on
+function startGpsRecording(opts) {
   if (gpsRecording) return;
   if (!navigator.geolocation && !_bgGeo()) { refuse(S.gpsUnsupported || 'GPS is not available in this browser.'); return; }
+  const o = opts || {};
+  // A recording rides on Location's watch. An automatic one exists only because Location is
+  // on; Record turns Location on first (its button lights up with it), and a Location that
+  // will not start means no recording either.
+  if (o.auto && !gpsLiveOn) return;
+  const fromSim = !o.auto && !gpsLiveOn && typeof simOn !== 'undefined' && simOn;
+  if (!o.auto && !gpsLiveOn && !fromSim) {
+    _gpsRecStartingLive = true;
+    try { startLiveLocation(); } finally { _gpsRecStartingLive = false; }
+    if (!gpsLiveOn || gpsRecording) return;
+    _gpsLiveByRecord = true;
+  }
   gpsRecording = true;
+  gpsAutoRec = !!o.auto;
+  gpsRecFromSim = fromSim;
   if (typeof clearPageFrameForLocation === 'function') clearPageFrameForLocation();
-  gpsStartCompass();
+  if (!fromSim) gpsStartCompass();       // the simulator reports its own heading
   _gpsUserMovedAt = 0;
   gpsWatchUserMapMoves();
   updateGpsRecIndicator();
-  gpsTrack = [];
+  gpsTrack = o.resume && Array.isArray(o.resume.track) ? o.resume.track.slice() : [];
   if (!gpsLiveOn) gpsOwn = null;
-  gpsStartT = Date.now();
+  gpsStartT = o.resume && Number.isFinite(o.resume.startT) ? o.resume.startT : Date.now();
+  _gpsRecSavedAt = 0;
+  _gpsRecSimp = gpsTrack.slice(); _gpsRecSimpUpTo = gpsTrack.length;   // a resumed track is already simplified
   gpsResetLegAlerts();
   gpsRequestNotifyPermission();
   gpsMaybeStartDriftTimer();
-  try {
-    gpsWatchId = gpsStartWatch(onGpsPosition, onGpsRecError,
-      S.gpsRecNotifTitle || 'NavAid GPS recording', S.gpsRecNotifText || 'Recording your track — tap to return');
-  } catch (e) {
-    // A synchronous failure registering the watch (e.g. a native plugin API
-    // mismatch on the APK) must roll the recording back — stop, reset the
-    // button + dot, and surface the error — not leave a phantom "recording".
-    // Tagged so gpsErrFatal can tell this apart from a codeless MID-watch error
-    // (a running watch reporting an unrecognized native error) -- only this one,
-    // where the watch never started at all, is unconditionally fatal.
-    if (e && typeof e === 'object') e._gpsRegistrationFailure = true;
-    onGpsRecError(e);
-    return;
-  }
+  // Fed by Location's watch (onLivePosition): one receiver, one battery cost, and the map
+  // behaves exactly as Location without a recording. (Location's own registration failure
+  // already stops it -- see startLiveLocation -- and then the check above returns.)
   gpsAcquireWakeLock();
   gpsUpdateReadout();
   scheduleDraw();
+}
+
+// --- automatic recording ------------------------------------------------------
+// Showing location starts a recording (navaid.autoRecord, the gist's defaultAutoRecord; the
+// gist's featureAutoRecord can withdraw it). Such a recording is kept only once it is a
+// flight: at least autoRecordMinSec long and autoRecordMinNm flown. A recording in progress
+// is kept in storage as it grows, so a reload resumes it instead of losing it.
+var gpsAutoRec = false;
+var _gpsRecSavedAt = 0;
+// The stored copy grows by simplifying only the fixes since the last save: re-simplifying the
+// whole track every 10 s is seconds of work on a phone once a long flight nears the point cap.
+var _gpsRecSimp = [], _gpsRecSimpUpTo = 0;
+// An automatic recording a reload interrupted, waiting for Location to resume and take it up.
+var _gpsPendingAutoResume = null;
+const AUTO_REC_KEY = 'navaid.autoRecord';
+const REC_PROGRESS_KEY = 'navaid.gpsRecInProgress';
+function autoRecordOn() {
+  if (typeof tune === 'function' && tune('featureAutoRecord') === false) return false;
+  let v = null;
+  try { v = localStorage.getItem(AUTO_REC_KEY); } catch (e) { /* storage unavailable */ }
+  if (v === '1') return true;
+  if (v === '0') return false;
+  return typeof tune !== 'function' || tune('defaultAutoRecord') !== false;
+}
+function autoRecMinSec() { return typeof tune === 'function' ? tune('autoRecordMinSec') : 300; }
+function autoRecMinNm() { return typeof tune === 'function' ? tune('autoRecordMinNm') : 1; }
+function gpsRecordingLongEnough(track, startT) {
+  if (!Array.isArray(track) || track.length < 2) return false;
+  const end = track[track.length - 1].t || Date.now();
+  const secs = (end - (Number.isFinite(startT) ? startT : track[0].t)) / 1000;
+  return secs >= autoRecMinSec() && trackDistanceNm(track) >= autoRecMinNm();
+}
+function gpsSaveRecProgress(force) {
+  if (!gpsRecording) return;
+  const now = Date.now();
+  if (!force && now - _gpsRecSavedAt < 10000) return;
+  _gpsRecSavedAt = now;
+  try {
+    if (gpsTrack.length > _gpsRecSimpUpTo) {
+      const from = Math.max(0, _gpsRecSimpUpTo - 1);          // overlap one fix so the pieces join
+      const piece = simplifyTrack(gpsTrack.slice(from), GPS_SIMPLIFY_EPS_DEG);
+      _gpsRecSimp = _gpsRecSimp.concat(_gpsRecSimpUpTo > 0 ? piece.slice(1) : piece);
+      _gpsRecSimpUpTo = gpsTrack.length;
+    }
+    const track = _gpsRecSimp;
+    localStorage.setItem(REC_PROGRESS_KEY, JSON.stringify({ startT: gpsStartT, auto: gpsAutoRec, savedAt: now, track }));
+  } catch (e) { /* storage full or unavailable: the live recording goes on regardless */ }
+}
+function gpsClearRecProgress() {
+  try { localStorage.removeItem(REC_PROGRESS_KEY); } catch (e) { /* storage unavailable */ }
+}
+// On boot: a recording a reload cut short carries on where it was -- unless it was left for
+// longer than recordResumeMin, when it is saved as it stands (or dropped, if automatic and too
+// short) and the next one starts fresh.
+function gpsResumeOrSaveRecording() {
+  let p = null;
+  try { p = JSON.parse(localStorage.getItem(REC_PROGRESS_KEY) || 'null'); } catch (e) { p = null; }
+  if (!p || !Array.isArray(p.track)) return null;
+  const last = p.track.length ? p.track[p.track.length - 1].t : p.savedAt;
+  const gapMin = typeof tune === 'function' ? tune('recordResumeMin') : 30;
+  let liveWillResume = false;
+  try { liveWillResume = localStorage.getItem('navaid.gpsLiveOn') === '1'; } catch (e) { /* */ }
+  const fresh = Number.isFinite(last) && Date.now() - last < gapMin * 60000;
+  // An automatic recording carries on with the Location that started it (it has no watch of
+  // its own); if Location is not coming back, it is saved as it stands.
+  if (fresh && p.auto && liveWillResume) { _gpsPendingAutoResume = p; return 'pending'; }
+  if (fresh && !p.auto) {
+    startGpsRecording({ resume: p });
+    return gpsRecording ? 'resumed' : null;
+  }
+  gpsClearRecProgress();
+  if (p.track.length < 2) return null;                 // nothing worth saving, and nothing to say
+  gpsTrack = p.track; gpsStartT = p.startT; gpsAutoRec = !!p.auto; gpsRecording = true;
+  const entry = stopGpsRecordingAndSave();
+  return entry ? 'saved' : 'dropped';
+}
+if (typeof window !== 'undefined') {
+  window.autoRecordOn = autoRecordOn;
+  window.gpsResumeOrSaveRecording = gpsResumeOrSaveRecording;
+  // A page going away saves the last stretch now, not up to 10 s later.
+  window.addEventListener('pagehide', () => gpsSaveRecProgress(true));
 }
 
 function gpsTrackName() {
@@ -1262,7 +1408,18 @@ function gpsTrackName() {
 // saved-track overlay section below.
 function stopGpsRecordingAndSave() {
   const raw = gpsTrack.slice();
+  const auto = gpsAutoRec, startT = gpsStartT;
   stopGpsRecording();
+  // An automatic recording that never became a flight -- the phone on the desk, a walk to the
+  // hangar -- is not kept: showing location would otherwise fill the library with them.
+  if (auto && !gpsRecordingLongEnough(raw, startT)) {
+    if (typeof showToast === 'function') {
+      showToast(typeof S.gpsAutoRecShort === 'function'
+        ? S.gpsAutoRecShort(Math.round(autoRecMinSec() / 60), autoRecMinNm())
+        : 'Short automatic recording not kept');
+    }
+    return null;
+  }
   if (raw.length < 2) { refuse(S.gpsNoTrack || 'No track recorded.'); return null; }
   const simplified = simplifyTrack(raw, GPS_SIMPLIFY_EPS_DEG);   // keeps the flown line's shape, drops redundant fixes
   const entry = {
@@ -1390,6 +1547,12 @@ function toggleTrackOverlay(entry) {
 }
 function persistShownTrackIds() {
   try { localStorage.setItem(SHOWN_TRACKS_KEY, JSON.stringify(shownTracks.map(t => t.id))); } catch (e) { /* */ }
+  _refreshClearForTracks();
+}
+// Clear map also removes a shown track, so its dim ("the map is already empty") must follow
+// the overlay being shown or hidden, not only route edits.
+function _refreshClearForTracks() {
+  if (typeof window !== 'undefined' && typeof window.refreshEditColumn === 'function') window.refreshEditColumn();
 }
 function loadShownTrackOverlays() {
   _shownTracksBooted = true;
@@ -1403,7 +1566,7 @@ function loadShownTrackOverlays() {
   // Heal the stored key when it drifted from what we restored (an old multi-id
   // list, or ids whose entries were since deleted), so it matches reality.
   if (ids.length !== shownTracks.length) persistShownTrackIds();
-  if (shownTracks.length) scheduleDraw();
+  if (shownTracks.length) { _refreshClearForTracks(); scheduleDraw(); }
 }
 
 // Total great-circle length of a track (NM) — for library row meta.
@@ -1532,7 +1695,7 @@ function gpsGlideTick() {
   if (wait >= 1000) return;                                   // nothing visible to gain: once per fix
   if (Date.now() - _gpsGlideFixAt <= GPS_GLIDE_HOLD_MS) {
     const p = gpsShownOwn();
-    if (gpsFollow && typeof gpsFollowRecenter === 'function') gpsFollowRecenter(p.lat, p.lng);
+    if (gpsOwnshipFollowActive() && typeof gpsFollowRecenter === 'function') gpsFollowRecenter(p.lat, p.lng);
     scheduleDraw();
   }
   _gpsGlideTimer = setTimeout(gpsGlideTick, wait);
@@ -1561,15 +1724,24 @@ function stopGpsRecording() {
   gpsStopWatch(gpsWatchId);
   gpsWatchId = null;
   gpsRecording = false;
+  gpsRecFromSim = false;
+  // Record turned Location on for this recording (startGpsRecording): stopping the recording
+  // puts Location back as it found it, once the rest of the stop below has run. A Location the
+  // pilot had on already stays on.
+  const undoLive = _gpsLiveByRecord && gpsLiveOn;
+  _gpsLiveByRecord = false;
+  gpsAutoRec = false;
+  gpsClearRecProgress();
   if (!gpsLiveOn) gpsStopCompass();
   updateGpsRecIndicator();
-  if (!gpsLiveOn) gpsReleaseWakeLock();     // Location may still be showing
+  if (!gpsWakeLockWanted()) gpsReleaseWakeLock();     // Location or the simulator may still want it
   if (!gpsLiveOn && !(typeof simOn !== 'undefined' && simOn)) gpsStopSpeaking();     // see stopLiveLocation
   gpsLastGS = null; gpsLastAlt = null;
   if (!gpsLiveOn) gpsOwn = null;
   gpsMaybeStopDriftTimer();
   gpsUpdateReadout();
   scheduleDraw();
+  if (undoLive) stopLiveLocation();
 }
 
 // The browser drops the wake lock whenever the tab is backgrounded; re-arm it
@@ -1905,6 +2077,59 @@ function gpsDistanceToDestinationNm(from, fromLegIdx) {
   for (let k = i + 1; k < wps.length - 1; k++) total += geo(wps[k], wps[k + 1]).dist;
   return total;
 }
+// What to fly on leg i (the one starting at wps[i]): planned altitude, magnetic wind-corrected
+// heading and planned time -- the same figures the leg's kite shows. Shared by the next-leg call
+// (two minutes out, as prep) and the after-TOP checklist (the moment to fly them).
+function gpsLegFigures(legs, wps, i) {
+  const nextLeg = legs[i];
+  const nextLegKiteVisible = (typeof legKiteVisible !== 'function') ||
+    legKiteVisible(i, nextLeg);
+  let nextLegAlt = null;
+  let nextLegHdg = null;
+  let nextLegTime = null;
+  let nextLegHms = null;    // {h,m,s} of the SAME figure the kite shows, for speech
+  if (nextLegKiteVisible) {
+    nextLegAlt = (nextLeg && Number.isFinite(nextLeg.inboundAltitude))
+      ? Math.round(nextLeg.inboundAltitude) : null;
+    const afterNext = wps[i + 1];
+    const nextLegGeo = afterNext ? geo(wps[i], afterNext) : null;
+    // Magnetic AND wind-corrected -- the leg inspector's own "With wind" readout
+    // (interact.js) shows toMagnetic(windTriangle(brg, leg.flightSpeed, wind).hdgTrue),
+    // not the plain course; this reported the uncorrected course, which read off by
+    // however many degrees of WCA the leg's wind produced (reported live: leg inspector
+    // said 6°, this said 5°). windTriangle() itself returns null for calm/no-wind/an
+    // unflyable crosswind, in which case the plain course is the right answer anyway.
+    if (nextLegGeo && Number.isFinite(nextLegGeo.brg) && typeof toMagnetic === 'function') {
+      const nextWind = (nextLeg && typeof legWindFor === 'function') ? legWindFor(nextLeg) : null;
+      const fx = (nextWind && typeof windTriangle === 'function' && nextLeg)
+        ? windTriangle(nextLegGeo.brg, nextLeg.flightSpeed, nextWind) : null;
+      // Three digits, same as every other heading the app displays (pad3 -- the leg
+      // kite, the wind-effect readout, VOR radials): "004", not "4".
+      nextLegHdg = (typeof pad3 === 'function')
+        ? pad3(toMagnetic(fx ? fx.hdgTrue : nextLegGeo.brg)) : toMagnetic(fx ? fx.hdgTrue : nextLegGeo.brg);
+    }
+    // Planned time for the next leg -- its own distance at its own PLANNED speed, same
+    // "route plan is the only source of truth ... ignore any drift" rule as the ETA
+    // trigger and the wind-corrected heading above: not an estimate of how long it will
+    // actually take given how the flight is actually going, just what the plan says.
+    if (nextLegGeo && Number.isFinite(nextLegGeo.dist) && nextLeg && nextLeg.flightSpeed > 0 &&
+        typeof toHMS === 'function') {
+      nextLegTime = toHMS(nextLegGeo.dist / nextLeg.flightSpeed);
+      // Whole minutes for the SPOKEN form -- seconds are false precision on a planned
+      // time, and they lengthen the phrase at the moment the pilot is busiest.
+      // Speak the figure the kite ALREADY shows rather than deriving a second one.
+      // toHMS floors the minutes and quantises the seconds to 5s, so rounding its
+      // result again to whole minutes both loses information and disagrees with the
+      // map: a 12:30 leg was being spoken as "13 minutes".
+      const _hms = nextLegTime.split(':').map(Number);
+      nextLegHms = _hms.length === 3
+        ? { h: _hms[0], m: _hms[1], s: _hms[2] }
+        : { h: 0, m: _hms[0], s: _hms[1] };
+    }
+  }
+  return { alt: nextLegAlt, hdg: nextLegHdg, time: nextLegTime, hms: nextLegHms };
+}
+
 function gpsCheckLegAlerts() {
   if (!gpsOwn || typeof state === 'undefined' || typeof geo !== 'function') return;
   const wps = state.waypoints || [];
@@ -1987,52 +2212,9 @@ function gpsCheckLegAlerts() {
       // same effective-visibility rule the kite itself uses, so a leg deliberately
       // decluttered on the map doesn't get its numbers read out here either) and is simply
       // omitted, never guessed.
-      const nextLeg = legs[gpsAlertLegIndex + 1];
-      const nextLegKiteVisible = (typeof legKiteVisible !== 'function') ||
-        legKiteVisible(gpsAlertLegIndex + 1, nextLeg);
-      let nextLegAlt = null;
-      let nextLegHdg = null;
-      let nextLegTime = null;
-      let nextLegHms = null;    // {h,m,s} of the SAME figure the kite shows, for speech
-      if (nextLegKiteVisible) {
-        nextLegAlt = (nextLeg && Number.isFinite(nextLeg.inboundAltitude))
-          ? Math.round(nextLeg.inboundAltitude) : null;
-        const afterNext = wps[gpsAlertLegIndex + 2];
-        const nextLegGeo = afterNext ? geo(next, afterNext) : null;
-        // Magnetic AND wind-corrected -- the leg inspector's own "With wind" readout
-        // (interact.js) shows toMagnetic(windTriangle(brg, leg.flightSpeed, wind).hdgTrue),
-        // not the plain course; this reported the uncorrected course, which read off by
-        // however many degrees of WCA the leg's wind produced (reported live: leg inspector
-        // said 6°, this said 5°). windTriangle() itself returns null for calm/no-wind/an
-        // unflyable crosswind, in which case the plain course is the right answer anyway.
-        if (nextLegGeo && Number.isFinite(nextLegGeo.brg) && typeof toMagnetic === 'function') {
-          const nextWind = (nextLeg && typeof legWindFor === 'function') ? legWindFor(nextLeg) : null;
-          const fx = (nextWind && typeof windTriangle === 'function' && nextLeg)
-            ? windTriangle(nextLegGeo.brg, nextLeg.flightSpeed, nextWind) : null;
-          // Three digits, same as every other heading the app displays (pad3 -- the leg
-          // kite, the wind-effect readout, VOR radials): "004", not "4".
-          nextLegHdg = (typeof pad3 === 'function')
-            ? pad3(toMagnetic(fx ? fx.hdgTrue : nextLegGeo.brg)) : toMagnetic(fx ? fx.hdgTrue : nextLegGeo.brg);
-        }
-        // Planned time for the next leg -- its own distance at its own PLANNED speed, same
-        // "route plan is the only source of truth ... ignore any drift" rule as the ETA
-        // trigger and the wind-corrected heading above: not an estimate of how long it will
-        // actually take given how the flight is actually going, just what the plan says.
-        if (nextLegGeo && Number.isFinite(nextLegGeo.dist) && nextLeg && nextLeg.flightSpeed > 0 &&
-            typeof toHMS === 'function') {
-          nextLegTime = toHMS(nextLegGeo.dist / nextLeg.flightSpeed);
-          // Whole minutes for the SPOKEN form -- seconds are false precision on a planned
-          // time, and they lengthen the phrase at the moment the pilot is busiest.
-          // Speak the figure the kite ALREADY shows rather than deriving a second one.
-          // toHMS floors the minutes and quantises the seconds to 5s, so rounding its
-          // result again to whole minutes both loses information and disagrees with the
-          // map: a 12:30 leg was being spoken as "13 minutes".
-          const _hms = nextLegTime.split(':').map(Number);
-          nextLegHms = _hms.length === 3
-            ? { h: _hms[0], m: _hms[1], s: _hms[2] }
-            : { h: 0, m: _hms[0], s: _hms[1] };
-        }
-      }
+      // What to fly on the leg AFTER this waypoint (gpsLegFigures: the kite's own figures).
+      const fig = gpsLegFigures(legs, wps, gpsAlertLegIndex + 1);
+      const nextLegAlt = fig.alt, nextLegHdg = fig.hdg, nextLegTime = fig.time, nextLegHms = fig.hms;
       const lang = (typeof window !== 'undefined' && window.__navLang) || 'en';
       // A frequency change always happens AT a waypoint, so it belongs in the call that names
       // that waypoint rather than in a second alert of its own: two notifications a minute
@@ -2040,15 +2222,21 @@ function gpsCheckLegAlerts() {
       // point identifies the moment; which unit answers there is on the map callout already.
       const ccAt = gpsCommChangeAt(next);
       const ccFreq = ccAt ? ccAt.freq : '';
-      gpsSendWatchAlert((S && S.watchAlertLegTitle) || 'Next leg',
+      // Clock to map to ground (ש.מ.ש): the two-minute call is also the cue to find the waypoint --
+      // clock, map, then outside. It heads the call: the title of the notification, the first
+      // words spoken. One call, not a second alert a few seconds apart about the same point.
+      const cmg = (typeof tune !== 'function' || tune('legClockMapGround') !== false);
+      const legSpeech = (S && S.speakAlertLeg)
+        ? S.speakAlertLeg(gpsSpokenWaypoint(next, label, lang), nextLegAlt,
+            nextLegHdg == null ? null : gpsSpokenDigits(nextLegHdg, lang),
+            nextLegHms, ccFreq ? gpsSpokenFreq(ccFreq, lang) : null)
+        : null;
+      gpsSendWatchAlert(
+        (cmg && S && S.watchAlertLegTitleCmg) || (S && S.watchAlertLegTitle) || 'Next leg',
         (S && S.watchAlertLegBody)
           ? S.watchAlertLegBody(label, nextLegAlt, nextLegHdg, nextLegTime, ccFreq)
           : ('Approaching ' + label),
-        (S && S.speakAlertLeg)
-          ? S.speakAlertLeg(gpsSpokenWaypoint(next, label, lang), nextLegAlt,
-              nextLegHdg == null ? null : gpsSpokenDigits(nextLegHdg, lang),
-              nextLegHms, ccFreq ? gpsSpokenFreq(ccFreq, lang) : null)
-          : null);
+        legSpeech && cmg && S.speakAlertClockMapGround ? S.speakAlertClockMapGround + ' ' + legSpeech : legSpeech);
     }
   }
 
@@ -2188,9 +2376,28 @@ function gpsCheckLegAlerts() {
       // Passing a waypoint is also the moment the drift check must go quiet for a while:
       // see _gpsLastTopAt in gpsCheckDrift.
       _gpsLastTopAt = Date.now();
-      gpsSendWatchAlert((S && S.watchAlertTopTitle) || 'TOP',
-        (S && S.watchAlertTopBody) || 'TOP',
-        (S && S.speakAlertTop) ? S.speakAlertTop() : null);
+      // Then the essential checks for the new leg (asked; Hebrew בד"ח צא כיוון -- כז״גמ״ד):
+      // heading, time, altitude, instruments, report (English: FREDA) -- with the new leg's figures, the same ones the two-minute call gave as prep.
+      // Not at the last waypoint: there is no leg to set up, so it stays a plain TOP.
+      const checklist = (typeof tune !== 'function' || tune('topChecklist') !== false) &&
+        !!wps[gpsAlertLegIndex + 2] && S && S.watchAlertTopChecklistBody;
+      if (checklist) {
+        const fig = gpsLegFigures(legs, wps, gpsAlertLegIndex + 1);
+        const lang = (typeof window !== 'undefined' && window.__navLang) || 'en';
+        // A frequency change happens at this waypoint: the radio/report item names it.
+        const cc = gpsCommChangeAt(next);
+        const freq = cc ? cc.freq : '';
+        gpsSendWatchAlert(S.watchAlertTopTitle || 'TOP',
+          S.watchAlertTopChecklistBody(fig.hdg, fig.time, fig.alt, freq),
+          S.speakAlertTopChecklist
+            ? S.speakAlertTopChecklist(fig.hdg == null ? null : gpsSpokenDigits(fig.hdg, lang), fig.hms, fig.alt,
+                freq ? gpsSpokenFreq(freq, lang) : null)
+            : null);
+      } else {
+        gpsSendWatchAlert((S && S.watchAlertTopTitle) || 'TOP',
+          (S && S.watchAlertTopBody) || 'TOP',
+          (S && S.speakAlertTop) ? S.speakAlertTop() : null);
+      }
     }
     gpsAlertLegIndex++;
     _gpsAlertMinDistNm = Infinity;

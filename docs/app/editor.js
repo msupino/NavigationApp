@@ -392,7 +392,11 @@
         : curPoints().length + ' / ' + points.length + ' pts (' + (currentLayer() || '—') + ')') +
         (dupeWarning ? '  ⚠ ' + dupeWarning : '');
     }
-    if (finishBtn) finishBtn.style.display = mode === 'polygon' ? '' : 'none';
+    // Never hidden (never hide a button): Finish closes a polygon, so outside Polygon mode it is
+    // dimmed and a tap says why.
+    if (finishBtn && typeof window.setButtonWhy === 'function') {
+      window.setButtonWhy(finishBtn, mode === 'polygon' ? null : 'Finish closes a polygon: switch to Polygon mode');
+    }
     if (typeRow) typeRow.style.display = mode === 'polygon' ? 'none' : '';
   }
 

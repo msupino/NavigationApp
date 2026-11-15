@@ -5,7 +5,7 @@
 const { test, expect, answerAppDialogs } = require('./_setup');
 const { enableShowReturn } = require('./_show-return');
 const { LLHZ, LLHA } = require('./_airfieldArp');
-const { hideToolbarMenus } = require('./_toolbar');
+const { hideToolbarMenus, showToolbarControl } = require('./_toolbar');
 
 const ROUTE = {
   waypoints: [
@@ -767,7 +767,8 @@ test.describe('Overlay toggles', () => {
 
   test('Show return path toggle persists while the feature is on', async ({ page }) => {
     await enableShowReturn(page);
-    await page.locator('#ret-cb').check();
+    await showToolbarControl(page, '#ret-btn');
+    await page.locator('#ret-btn').click();
     await page.waitForFunction(() =>
       localStorage.getItem('navaid.showReturn') === '1');
     await page.reload({ waitUntil: 'domcontentloaded' });
@@ -792,7 +793,7 @@ test.describe('Overlay toggles', () => {
     const out = await page.evaluate(() => ({
       showReturn: window.showReturn,
       checked: document.getElementById('ret-cb').checked,
-      display: getComputedStyle(document.getElementById('ret-cb').closest('label')).display,
+      display: getComputedStyle(document.getElementById('ret-btn')).display,
     }));
     expect(out.showReturn).toBe(false);
     expect(out.checked).toBe(false);

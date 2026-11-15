@@ -454,7 +454,9 @@ test.describe('the voice-alerts setting', () => {
     await stubTts(page);
     await page.goto('?lang=en&nogist');
     await page.waitForFunction(() => !!document.getElementById('voice-toggle'));
-    await page.evaluate(() => { startLiveLocation(); document.getElementById('voice-toggle').click(); });
+    // A route first: without one the button is dimmed (every spoken alert follows the route).
+    await page.evaluate(() => { state.waypoints = [{ lat: 32.18, lng: 34.83, name: 'LLHZ' }, { lat: 32.3, lng: 34.95, name: 'ONE' }]; syncLegs(); draw();
+      startLiveLocation(); document.getElementById('voice-toggle').click(); });
     const after = await page.evaluate(() => ({
       on: window.voiceAlerts, stored: localStorage.getItem('navaid.voiceAlerts'),
     }));

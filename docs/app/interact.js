@@ -331,7 +331,9 @@ function appendNavWaypointCommChangeInfo(body, name) {
   row.className = 'row col commchange-row commchange-map-row';
   const lbl = document.createElement('label');
   lbl.className = 'commchange-label';
-  lbl.textContent = S.commChangeBadge || '📡 Freq change point';
+  // A drawn antenna, not the emoji the string used to carry (it rendered in each OS's own colours).
+  if (typeof navIconSvg === 'function') lbl.innerHTML = navIconSvg('antenna', 14);
+  lbl.append(S.commChangeBadge || 'Freq change point');
   row.appendChild(lbl);
 
   const opts = typeof commCallSignOptions === 'function'
@@ -349,25 +351,42 @@ function appendNavWaypointCommChangeInfo(body, name) {
       item.className = 'val commchange-option';
       item.dataset.callSign = opt.id || '';
 
+      // The name with its code UNDER it, not beside: side by side, a long code (RAMAT_DAVID)
+      // took the width and the name broke inside its words ("Ram / at / Da / vid").
+      const ident = document.createElement('span');
+      ident.className = 'commchange-option-ident';
       const nameSpan = document.createElement('span');
       nameSpan.className = 'commchange-option-name';
       nameSpan.textContent = opt.label || opt.id || '';
-      item.appendChild(nameSpan);
+      ident.appendChild(nameSpan);
 
       if (opt.id) {
         const code = document.createElement('span');
         code.className = 'commchange-option-code';
         code.textContent = opt.id;
-        item.appendChild(code);
+        ident.appendChild(code);
       }
+      item.appendChild(ident);
 
+      // The play slot between the station's name and its frequency, in either language (asked),
+      // as in the airfield rows. Always there (atc-radio.js fills it for a station NavAid plays
+      // live), so the frequencies line up with or without a button.
+      // Button and frequency in one unit: when the panel is narrow (its larger text sizes) the
+      // unit drops under the name whole, rather than the frequency wrapping away from its button.
+      const tune = document.createElement('span');
+      tune.className = 'commchange-option-tune';
+      const play = document.createElement('span');
+      play.className = 'commchange-option-play';
+      tune.appendChild(play);
       if (opt.freq) {
         const freq = document.createElement('span');
         freq.className = 'commchange-option-freq';
         freq.dir = 'ltr';
         freq.textContent = opt.freq + ' MHz';
-        item.appendChild(freq);
+        tune.appendChild(freq);
       }
+      item.appendChild(tune);
+      if (window.atcRadio && typeof window.atcRadio.callSignAttach === 'function') window.atcRadio.callSignAttach(item);
       list.appendChild(item);
     }
     row.appendChild(list);
@@ -491,6 +510,7 @@ function dedupePointCandidates(candidates) {
     if (!c) continue;
     let key;
     if (c.type === 'notam') key = 'notam:' + (c.notam && c.notam.id);
+    else if (c.type === 'traffic') key = 'traffic:' + (c.hex || (c.aircraft && c.aircraft.hex) || '');
     else { if (!Number.isInteger(c.index)) continue; key = c.type + ':' + c.index; }
     if (seen.has(key)) continue;
     seen.add(key);
@@ -521,6 +541,14 @@ function pointChoiceText(c) {
     return {
       primary: n.id || 'NOTAM',
       meta: (S.choosePointNotam || 'NOTAM') + (n.end ? ' / ' + n.end : ''),
+    };
+  }
+  if (c.type === 'traffic') {
+    const a = c.aircraft || {};
+    const name = (a.flight && String(a.flight).trim()) || a.hex || (S.choosePointAircraft || 'Aircraft');
+    return {
+      primary: name,
+      meta: (S.choosePointAircraft || 'Aircraft') + (a.hex && a.hex !== name ? ' \u00b7 ' + a.hex : ''),
     };
   }
   if (c.type === 'commcallout') {
@@ -664,6 +692,12 @@ function selectPointCandidate(c) {
     if (typeof showNotamModal === 'function') showNotamModal([c.notam]);
     return;
   }
+  if (c.type === 'traffic') {
+    state.selected = { type: 'traffic', hex: c.hex || (c.aircraft && c.aircraft.hex) };
+    showInspector();
+    draw();
+    return;
+  }
   state.selected = c.type === 'commcallout'
     ? selectionForNoteHit(c.index)
     : { type: c.type, index: c.index };
@@ -680,10 +714,16 @@ function showPointChoice(candidates) {
   // over the chart, in flight. Reported: the map is locked for selecting a waypoint and the
   // multiple-waypoint chooser still opens.
   //
-  // Aircraft are not in this list -- a traffic tap is handled in traffic.js and names its
-  // aeroplane by transponder address, not by a place in one of these arrays -- so there is
-  // nothing here to keep selectable, and the whole question goes.
-  if (typeof inspectorAllowedNow === 'function' && !inspectorAllowedNow()) {
+  // A traffic tap over another item adds the aeroplane here as a {type:'traffic'} candidate
+  // (traffic.js), so the pilot who tapped a plane sitting on an airfield can still choose the
+  // field. A plane on empty map is selected straight from its marker and never reaches here.
+  //
+  // inspectorAllowedNow() already exempts traffic -- but only for the CURRENT selection, and the
+  // tap has not selected the plane yet, so calling it bare read the old selection and refused the
+  // chooser in flight (reported: tapping a plane over a point does nothing). Hand it the traffic
+  // candidate from this set so its own exception fires; without one it still gates on the setting.
+  const trafficCandidate = items.find(c => c && c.type === 'traffic');
+  if (typeof inspectorAllowedNow === 'function' && !inspectorAllowedNow(trafficCandidate)) {
     if (typeof noteInspectorRefusedWhileTracking === 'function') noteInspectorRefusedWhileTracking();
     return false;
   }
@@ -1705,6 +1745,17 @@ function freqEditRow(label, opts) {
 // in UTC. Anything resting on sunrise/sunset or on the holiday calendar returns null --
 // unknown, and shown as nothing. A confident "not active now" that is wrong is the one
 // answer here that could put an aeroplane somewhere it must not be.
+// The schedule text as printed ("Sun 04:00 (UTCW) - Thu 19:00 (UTCW)", "Mon SR - Mon SS"), with
+// its English words (weekday, the UTC-winter suffix, sunrise / sunset) in the app's language.
+// airspaceActiveNow keeps reading the raw text; only what is shown goes through this.
+function airspaceHoursText(h) {
+  const days = S.airspaceDays || ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  return String(h)
+    .replace(/\b(Sun|Mon|Tue|Wed|Thu|Fri|Sat)\b/g, (d) => days[AIRSPACE_DAY[d.toLowerCase()]] || d)
+    .replace(/\(UTCW\)/g, '(' + (S.airspaceUtcw || 'UTCW') + ')')
+    .replace(/\bSR\b/g, S.airspaceSunrise || 'SR')
+    .replace(/\bSS\b/g, S.airspaceSunset || 'SS');
+}
 const AIRSPACE_DAY = { sun: 0, mon: 1, tue: 2, wed: 3, thu: 4, fri: 5, sat: 6 };
 function airspaceActiveNow(a, nowDate) {
   const hours = (a && a.hours) || [];
@@ -2053,6 +2104,8 @@ function appendAirfieldComms(body, af) {
   // styles select, and a second element wearing it makes every one of those selectors
   // ambiguous.
   sec.className = 'insp-frame comm-section';
+  // atc-radio.js loads in phase 2: a window already open by then gets its buttons by this.
+  if (af && af.name) sec.dataset.icao = af.name;
   const head = document.createElement('div');
   head.className = 'insp-frame-head';
   const lbl = document.createElement('span');
@@ -2067,6 +2120,11 @@ function appendAirfieldComms(body, af) {
     ? AIRFIELD_CALL_SIGN_IDS[af.name] : null;
   const phoneRow = callSignId ? airfieldPhoneRow(callSignId) : null;
   if (phoneRow) sec.appendChild(phoneRow);
+  // Live ATC audio for the fields that have it (atc-radio.js): a small play button in each
+  // frequency row that is on the air.
+  if (window.atcRadio && typeof window.atcRadio.airfieldAttach === 'function') {
+    window.atcRadio.airfieldAttach(af && af.name, sec);
+  }
   // A field with no published frequency gets no empty frame.
   if (sec.querySelectorAll('.row').length) body.appendChild(sec);
 }
@@ -2093,7 +2151,7 @@ function airfieldPhoneRow(callSignId) {
   // A number is a Latin run inside Hebrew prose: isolate it, or the bidi algorithm moves the
   // area code to the wrong end of it.
   a.dir = 'ltr';
-  a.textContent = '☎ ' + shown;
+  a.textContent = shown;       // the row's label says Phone, and the link is a tel: link
   a.title = (S.callNumber || 'Call') + ' — ' + shown;
   row.append(l, a);
   return row;
@@ -2136,6 +2194,36 @@ function appendAirfieldFrequencyRows(body, af) {
       body.appendChild(row);
     } else {
       refreshAirfieldInspectorAfterCommCatalog(af);
+    }
+  }
+  // The catalog carries a fuller set than airfields.json -- a secondary tower frequency (most
+  // controlled fields), and ground / approach / TMA at Ben Gurion. Show every one a field
+  // publishes, right after the primary (asked: "add all known freqs, LLHA/LLHZ have secondary").
+  // Each is editable like the primary (its own override key, below), so any freq can be corrected.
+  if (id) {
+    const crow = typeof commCatalogCallSignRow === 'function' ? commCatalogCallSignRow(id) : null;
+    if (crow) {
+      const extra = [
+        ['secondary', S.secondary || 'Secondary'], ['ground', S.ground || 'Ground'],
+        ['groundWest', S.groundWest || 'Ground W'], ['groundEast', S.groundEast || 'Ground E'],
+        ['appPrimary', S.approach || 'Approach'], ['appSecondary', S.approachSecondary || 'Approach 2'],
+        ['tmaPrimary', S.tma || 'TMA'], ['tmaSecondary', S.tmaSecondary || 'TMA 2'],
+      ];
+      for (const [field, label] of extra) {
+        const base = crow[field] && String(crow[field]).trim();
+        if (!base) continue;
+        // Editable like the primary -- its own key in the same airfieldFreqOverrides map (Drive
+        // synced). "cat:" namespaces it off the clearance/ATIS field-part keys (name|field|i).
+        const def = typeof commFormatFreq === 'function' ? commFormatFreq(base) : base;
+        const key = af.name + '|cat:' + field;
+        const r = freqEditRow(label, {
+          value: airfieldFreqOverrides()[key] || def, def, rowClass: 'secondary-freq-row',
+          isOverride: () => { const o = airfieldFreqOverrides()[key]; return !!o && o !== def; },
+          commit: n => { setAirfieldFreqOverride(key, n === def ? '' : n); return n; },
+          onReset: () => { setAirfieldFreqOverride(key, ''); return def; },
+        });
+        body.appendChild(r);
+      }
     }
   }
   // Clearance / ATIS — one editable numeric field per labelled part (#freq).
@@ -2581,7 +2669,7 @@ function showSatellitePreviewModal(point, label) {
     lmap.setBearing(map.getBearing());
   }
   // Black-on-white zoom buttons, bottom-right — identical to the main map.
-  L.control.zoom({ position: 'bottomright' }).addTo(lmap);
+  L.control.zoom({ position: 'bottomright', zoomInTitle: S.zoomIn || 'Zoom in', zoomOutTitle: S.zoomOut || 'Zoom out' }).addTo(lmap);
   lmap.addControl(satelliteZoomControl(lmap));
   lmap.addControl(satelliteRotateControl(lmap));
   // Two-way bearing sync: rotating either map rotates the other.
@@ -3259,12 +3347,14 @@ function coordRow(lat, lng) {
 // reporting point and for the chart point itself -- tapped on the map, ZYAAR said nothing about
 // being a mandatory report until it was put on the route (reported).
 function appendReportingRow(body, name) {
+  // The row is labelled "Reporting"; the pin glyph the string carries is dropped, not drawn.
+  const plainLabel = (s) => (typeof window.navPlainLabel === 'function' ? window.navPlainLabel(s) : s);
   if (typeof reportingFor !== 'function') return;
   const rep = reportingFor(name);
   if (rep !== 'mandatory' && rep !== 'onRequest') return;
   const row = textRow(S.report || 'Reporting',
-    rep === 'mandatory' ? (S.reportingMandatory || '📍 Mandatory report')
-                        : (S.reportingOnRequest || '📍 Report on request'));
+    rep === 'mandatory' ? plainLabel(S.reportingMandatory || 'Mandatory report')
+                        : plainLabel(S.reportingOnRequest || 'Report on request'));
   row.classList.add('reporting-badge-row');
   body.appendChild(row);
 }
@@ -3273,6 +3363,15 @@ function airfieldInspectorTitle(af) {
   return referenceInspectorTitle(af, 'airfield');
 }
 
+// "4,324 ft (1,318 m) × 98 ft (30 m)": feet from the published metres.
+const FT_PER_M = 1 / 0.3048;
+function runwayDimsText(d) {
+  const n = (v) => Math.round(v).toLocaleString('en-US');
+  // Non-breaking inside each figure, so a narrow panel wraps only at the \u00d7, never mid-figure.
+  const both = (m) => n(m * FT_PER_M) + '\u00a0ft\u00a0(' + n(m) + '\u00a0m)';
+  return both(d.lengthM) + ' \u00d7 ' + both(d.widthM);
+}
+window.runwayDimsText = runwayDimsText;
 function appendAirfieldDetailRows(body, af, label) {
   // What kind of field the chart says it is (its legend's rectangle colour), and the chart's
   // field block: longest runway, lighting, hard surface.
@@ -3282,11 +3381,23 @@ function appendAirfieldDetailRows(body, af, label) {
   if (Number.isFinite(af.elev_ft)) {
     body.appendChild(textRow(S.elevation || 'Elevation', af.elev_ft + ' ft'));
   }
-  if (Number.isFinite(af.runwayLengthM)) {
-    const bits = [af.runwayLengthM + ' m'];
-    if (af.hardRunway) bits.push(S.airfieldHardRunway || 'hard, all weather');
-    if (af.lighting === 'minimal') bits.push(S.airfieldMinimalLighting || 'minimal lighting');
-    body.appendChild(textRow(S.airfieldLongestRunway || 'Runway', bits.join(' · ')));
+  // Each runway's length and width as its AIP chart publishes them: feet first, metres in
+  // brackets (asked: "its length in ft and (m) and width"). The LSA chart's field block -- hard
+  // surface, lighting -- follows on its own row. A field without them shows the field block's
+  // longest-runway figure as before.
+  const extras = [];
+  if (af.hardRunway) extras.push(S.airfieldHardRunway || 'hard, all weather');
+  if (af.lighting === 'minimal') extras.push(S.airfieldMinimalLighting || 'minimal lighting');
+  const dims = Array.isArray(af.runwayDims) ? af.runwayDims : [];
+  if (dims.length) {
+    for (const d of dims) {
+      const row = textRow((S.airfieldLongestRunway || 'Runway') + '\u00a0' + d.rwy, runwayDimsText(d));
+      row.classList.add('rwy-dims-row');
+      body.appendChild(row);
+    }
+    if (extras.length) body.appendChild(textRow(S.airfieldLongestRunway || 'Runway', extras.join(' · ')));
+  } else if (Number.isFinite(af.runwayLengthM)) {
+    body.appendChild(textRow(S.airfieldLongestRunway || 'Runway', [af.runwayLengthM + ' m'].concat(extras).join(' · ')));
   }
   // Published hours before the radios: whether the field is there to be used at all comes
   // before how to talk to it.
@@ -4330,7 +4441,7 @@ function showInspector() {
       const now = airspaceActiveNow(a);
       const state2 = now === true ? (S.airspaceActiveNow || 'active now')
         : now === false ? (S.airspaceNotActiveNow || 'not active now') : '';
-      const row = textRow(S.airspaceHours || 'Hours', a.hours.join(' · '));
+      const row = textRow(S.airspaceHours || 'Hours', a.hours.map(airspaceHoursText).join(' · '));
       if (state2) {
         const tag = document.createElement('span');
         tag.className = 'airspace-now' + (now ? ' is-active' : '');
@@ -4422,15 +4533,56 @@ function showInspector() {
     }
     title.value = ac.flight || ac.hex || (S.trafficTitle || 'Traffic');
     title.readOnly = true;
+    const followBtn = document.createElement('button');
+    followBtn.type = 'button';
+    followBtn.id = 'insp-traffic-follow';
+    followBtn.className = 'insp-btn';
+    const updateFollowButton = () => {
+      const following = typeof window.trafficFollowTarget === 'function' &&
+        window.trafficFollowTarget() === ac.hex;
+      followBtn.textContent = following
+        ? (S.trafficStopFollow || 'Stop following')
+        : (S.trafficFollow || 'Follow aircraft');
+      followBtn.setAttribute('aria-pressed', following ? 'true' : 'false');
+      followBtn.classList.toggle('insp-btn-on', following);
+    };
+    updateFollowButton();
+    followBtn.onclick = () => {
+      if (typeof window.trafficToggleFollow === 'function') window.trafficToggleFollow(ac.hex);
+      updateFollowButton();
+    };
+    body.appendChild(followBtn);
     body.appendChild(textRow(S.trafficAltitude || 'Altitude',
       Number.isFinite(ac.alt) ? Math.round(ac.alt) + ' ' + (S.unitFeet || 'ft') : '—'));
     body.appendChild(textRow(S.trafficGroundSpeed || 'Ground speed',
-      Number.isFinite(ac.gs) ? Math.round(ac.gs) + ' kt' : '—'));
+      Number.isFinite(ac.gs) ? Math.round(ac.gs) + ' ' + (S.unitKt || 'kt') : '—'));
+    // The feed's track is TRUE (ADS-B reports it so); every other direction NavAid shows is
+    // magnetic and says so -- a bare "144°" beside a 139°M leg read as 5° off (asked "is the
+    // direction real or magnetic?"). Both are shown, each marked: magnetic first, as the
+    // pilot's own legs read, then true, as the feed gave it (asked). The arrow on the map
+    // keeps the true track: that is the way it moves across the chart.
+    const deg3 = d => String(Math.round(d) % 360).padStart(3, '0');
     body.appendChild(textRow(S.trafficTrack || 'Track',
-      Number.isFinite(ac.track) ? String(Math.round(ac.track)).padStart(3, '0') + '°' : '—'));
-    if (ac.type) body.appendChild(textRow(S.trafficType || 'Type', ac.type));
+      Number.isFinite(ac.track) ? deg3(toMagnetic(ac.track)) + '°M \u00b7 ' + deg3(ac.track) + '°T' : '—'));
+    // The aircraft type, and the word when it is a helicopter (by its category or its type code).
+    const heli = typeof window.trafficIsRotorcraft === 'function' && window.trafficIsRotorcraft(ac);
+    const typeText = [ac.type, heli ? (S.trafficHelicopter || 'Helicopter') : ''].filter(Boolean).join(' · ');
+    if (typeText) body.appendChild(textRow(S.trafficType || 'Type', typeText));
     if (ac.squawk) body.appendChild(textRow(S.trafficSquawk || 'Squawk', ac.squawk));
     body.appendChild(coordRow(fmtLatLng(ac.lat, 'N', 'S'), fmtLatLng(ac.lon, 'E', 'W')));
+    // The same aircraft on the web, on the map of the site the feed comes from.
+    const view = typeof window.trafficViewLink === 'function' && window.trafficViewLink(ac);
+    if (view) {
+      const a = document.createElement('a');
+      a.id = 'insp-traffic-view';
+      a.className = 'insp-btn insp-btn-safe insp-link-btn';
+      a.href = view.url;
+      a.target = '_blank';
+      a.rel = 'noopener noreferrer';
+      // The site name isolated, so a Latin host reads right inside the Hebrew sentence.
+      a.textContent = (S.trafficViewOn || 'Open on {site}').split('{site}').join('\u2068' + view.site + '\u2069');
+      body.appendChild(a);
+    }
   } else if (state.selected.type === 'coord') {
     // A point that is only a position: typed into the search box, not found in a dataset. It
     // gets an inspector so a coordinate off an exercise or a clearance can be LOOKED at -- where
@@ -4462,10 +4614,12 @@ function showInspector() {
     title.placeholder = ''; title.readOnly = true; title.oninput = null;
     appendPointCoordinateRows(body, nw);
     appendPlaceRows(body, nw);
-    appendNavWaypointCommChangeInfo(body, nw.name);
     appendSatelliteSnippet(body, nw, title.value);
     appendVorRadialRow(body, nw.lat, nw.lng); appendSurfaceWxRow(body, nw.lat, nw.lng);
     appendReportingRow(body, nw.name);
+    // After Reporting, where the route waypoint has it: the same point opened from the map or
+    // from the route reads in the same order.
+    appendNavWaypointCommChangeInfo(body, nw.name);
     appendDirectToButton(body, nw);
     appendAddToRouteButton(body, nw);
   } else {
@@ -4532,28 +4686,15 @@ function showInspector() {
       }
       const cc = commChangeMap && ccKey ? commChangeMap[ccKey] : null;
       if (linkedNote && typeof appendFreqEdit === 'function') {
+        // The chart's call signs with their frequencies and play buttons, as on the map point,
+        // and the editor for this route's callout under them. With only the editor, the same
+        // point showed one call sign and no way to listen once it was on the route.
+        if (cc && cc.commChange) appendNavWaypointCommChangeInfo(body, ccKey);
         appendFreqEdit(body, linkedNote, { deleteButton: true });
       } else if (cc && cc.commChange) {
-        const row = document.createElement('div');
-        row.className = 'row col commchange-row';
-        const lbl = document.createElement('label');
-        lbl.className = 'commchange-label';
-        lbl.textContent = S.commChangeBadge || '📡 Freq change';
-        row.appendChild(lbl);
-        body.appendChild(row);
-        if (cc.from || cc.to) {
-          const freq = document.createElement('span');
-          freq.className = 'val commchange-freq';
-          const arrow = (S.legArrow || '→');
-          freq.textContent = (cc.from || '?') + ' ' + arrow + ' ' + (cc.to || '?');
-          row.appendChild(freq);
-        }
-        if (cc.note) {
-          const note = document.createElement('span');
-          note.className = 'val commchange-note';
-          note.textContent = cc.note;
-          row.appendChild(note);
-        }
+        // The same frame the map waypoint shows (asked: match the styling between waypoint types):
+        // the call signs with their frequencies and live play buttons, or from -> to, and the note.
+        appendNavWaypointCommChangeInfo(body, ccKey);
         appendAddFreqChangeButton(body, wp, ccKey);
       } else if (ccKey) {
         appendAddFreqChangeButton(body, wp, ccKey);
@@ -6099,11 +6240,32 @@ window.addEventListener('keydown', e => {
   // waypoint behind the dialog, silently, with the route and the filed plan one point short.
   // Undo (Ctrl-Z) is deliberately still allowed: it is a recovery key, not a route edit.
   const modalOpen = !!document.querySelector('.modal-back');
+  // A shortcut does what its button does -- including saying no. When the button it stands for
+  // is dimmed, the key gives the button's reason (as a tap on it would) and does nothing. F fitted
+  // the map with Fit dimmed, Ctrl-Z rewrote a locked route with Undo dimmed (reported).
+  const refusedLikeButton = (...ids) => {
+    if (typeof window.refreshRouteButtons === 'function') window.refreshRouteButtons();
+    if (typeof window.refreshEditColumn === 'function') window.refreshEditColumn();
+    const b = ids.map(id => document.getElementById(id)).find(Boolean);
+    if (!b || b.getAttribute('aria-disabled') !== 'true' || !b.dataset.why) return false;
+    if (typeof showToast === 'function') showToast(b.dataset.why, { warn: true });
+    return true;
+  };
+  // The selection keys (D, Delete, X, Z) edit the route like the panel's buttons, which a locked
+  // route dims: the key refuses with the lock's own message.
+  const refusedByLock = () => {
+    if (!(typeof routeEditLocked === 'function' && routeEditLocked())) return false;
+    // A read-only pick (an airfield, a chart point) has nothing for these keys to change.
+    if (!state.selected || (state.selected.type !== 'wp' && state.selected.type !== 'note')) return false;
+    if (typeof showToast === 'function') showToast(S.editLockBlockedToast || 'Route is locked', { warn: true });
+    return true;
+  };
   // Ctrl/Cmd-Z undoes the last committed edit. Shift-Ctrl-Z (redo) is left
   // alone — there is no redo, so don't swallow it.
   if (shortcutKey(e, 'KeyZ', 'z') && (e.ctrlKey || e.metaKey) &&
       !e.altKey && !e.shiftKey) {
     e.preventDefault();
+    if (refusedLikeButton('edit-col-undo')) return;     // locked, or nothing to undo
     if (typeof undo === 'function') undo();
     return;
   }
@@ -6124,6 +6286,7 @@ window.addEventListener('keydown', e => {
   // overlay shortcut handled in ui.js — bail out so we don't shadow it.
   if (shortcutPlain(e, 'KeyF', 'f')) {
     e.preventDefault();
+    if (refusedLikeButton('edit-col-fit', 'fit')) return;   // nothing to fit yet
     fitToScreen();
     return;
   }
@@ -6176,6 +6339,7 @@ window.addEventListener('keydown', e => {
     if (modalOpen || !state.selected) return;
     const freqNote = selectedFreqNoteIndex();
     if (freqNote >= 0) {
+      if (refusedByLock()) return;
       const note = state.notes[freqNote];
       // Suppress so seedCommChangeNotes() doesn't re-seed it on the next
       // drag/add/toggle — matches the other freq-note delete paths.
@@ -6193,6 +6357,7 @@ window.addEventListener('keydown', e => {
     if (!wp || !wp.name || !showCommChange) return;
     const ccKey = waypointFreqChangeKey(wp);
     if (!ccKey || freqChangeNoteForKey(ccKey)) return;
+    if (refusedByLock()) return;
     const idx = addCommChangeNoteForWaypoint(wp, ccKey);
     if (idx >= 0) state.selected.freqNoteIndex = idx;
     draw(); showInspector();
@@ -6201,12 +6366,14 @@ window.addEventListener('keydown', e => {
   // D (no modifier): delete the selected waypoint or note (freq callout goes with its waypoint).
   if (shortcutPlain(e, 'KeyD', 'd')) {
     if (modalOpen || !state.selected) return;
+    if (refusedByLock()) return;
     deleteSelectedWpOrNote();
     return;
   }
   // Delete / Backspace: delete freq callout first, otherwise waypoint/note.
   if (e.key === 'Delete' || e.key === 'Backspace') {
     if (modalOpen || !state.selected) return;
+    if (refusedByLock()) return;
     const freqNote = selectedFreqNoteIndex();
     if (freqNote >= 0) {
       const note = state.notes[freqNote];

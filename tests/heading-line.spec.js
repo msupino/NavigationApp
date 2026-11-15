@@ -140,7 +140,7 @@ test('successive own-location tracks bend the predictor in the measured turn dir
   expect(out.curved).toBe(true);
   expect(out.turnRate).toBeCloseTo(3, 4);
   expect(out.path.length).toBeGreaterThan(2);
-  expect(out.endHeading).toBeCloseTo(63, 4); // current track + the default 60° arc cap
+  expect(out.endHeading).toBeCloseTo(93, 4); // current track + the quarter circle (90°)
   expect(out.path.at(-1).lng).toBeGreaterThan(34.9); // a right turn from north bends east
 });
 
@@ -157,7 +157,7 @@ test('turn measurement crosses north by the shortest direction', async ({ page }
   });
   expect(out.curved).toBe(true);
   expect(out.turnRate).toBeCloseTo(-2, 4);
-  expect(out.endHeading).toBeCloseTo(299, 4); // 2 deg/s for the 30 s look-ahead
+  expect(out.endHeading).toBeCloseTo(269, 4); // a left turn: the quarter circle the other way
 });
 
 test('predictor stays straight without a fresh plausible airborne turn measurement', async ({ page }) => {
@@ -229,7 +229,7 @@ test('every heading-line knob is registered and exposed in the tune menu', async
     const keys = ['liveHeadingLineColor', 'liveHeadingTextColor', 'liveHeadingLineWidthPx',
       'liveHeadingDashPx', 'liveHeadingDashGapPx', 'liveHeadingTickPx',
       'liveHeadingLabelPx', 'liveHeadingLabelGapPx', 'livePredictorTurnMinDegSec',
-      'livePredictorTurnMaxDegSec', 'livePredictorTurnMaxArcDeg', 'livePredictorTurnMaxArcSec',
+      'livePredictorTurnMaxDegSec', 'livePredictorTurnLineDeg',
       'livePredictorTurnMinKt', 'livePredictorTurnHoldSec',
       'livePredictorTurnSmoothing'];
     const group = NavAid.tuningGroups.find(g => g.name === 'Live aircraft');
@@ -451,10 +451,9 @@ test('a gentle 0.6 deg/s turn in GPS noise curves the predictor, under the gist\
   expect(out.endLat).toBeLessThan(32.1);          // a right turn from east bends south
 });
 
-test('the turn is drawn for at most 60 s and 60 deg, so a slow or gentle turn does not bend too far', async ({ page }) => {
+test('a slow turn and a gentle one both bend the line a quarter circle, each its own way', async ({ page }) => {
   await boot(page);
   const out = await page.evaluate(() => {
-    resetHeadingPredictor();
     const run = (key, rate, kt) => {
       const now = Date.now();
       for (let i = 0; i < 5; i++) {
@@ -463,23 +462,24 @@ test('the turn is drawn for at most 60 s and 60 deg, so a slow or gentle turn do
       }
       return window.__headingLine;
     };
-    // The screenshot: 30 kt, a left bend in the road at 3 deg/s. Once drew a line 90 deg off;
-    // now 60 deg at most -- no aeroplane turns further on one trend.
+    // The screenshot that once drew a line 90 deg off at 30 kt, and a 0.5 deg/s drift at 100 kt:
+    // the bend is the same quarter circle for both -- it says which way, not how fast.
     const slow = run('slow', -3, 30);
-    // A gentle 0.5 deg/s drift at 100 kt: once bent 90 deg over the 10 NM line.
     const gentle = run('gentle', 0.5, 100);
     return { slow: slow.endHeading, slowNow: 14 - 3 * 4, gentle: gentle.endHeading, gentleNow: 14 + 0.5 * 4 };
   });
-  expect(out.slow).toBeCloseTo(((out.slowNow - 60) % 360 + 360) % 360, 0);
-  expect(out.gentle).toBeCloseTo(out.gentleNow + 0.5 * 60, 0);
+  expect(out.slow).toBeCloseTo(((out.slowNow - 90) % 360 + 360) % 360, 0);
+  expect(out.gentle).toBeCloseTo(out.gentleNow + 90, 0);
 });
 
-// Reported: "the G1000 curve line lost its curve". Capped at 30 s and 60 deg, the arc was half
-// a mile long under a 10 NM straight tail -- hidden by the aircraft symbol. In a turn the line
-// is now a trend vector: 60 s of flying, curved, no tail; rolled out, the full line is back.
-test('in a turn the line is a 60 s trend vector with no straight 10 NM tail', async ({ page }) => {
+// Asked: "make the G1000 curve line like the 10 NM line when flying straight -- same markers
+// and length", then "the curve line should look like 1/4 of a circle" and "hide the minutes
+// when bent, show only distance". In a turn the whole line is one quarter-circle arc, as long
+// as the straight line, with the 2/5/10 NM marks along it and no minute marks.
+test('in a turn the whole line is a quarter circle, as long as the straight line, distance marks only', async ({ page }) => {
   await boot(page);
   const out = await page.evaluate(() => {
+    map.setView([32.2, 34.9], 11);
     resetHeadingPredictor();
     const fly = (key, rate) => {
       const now = Date.now();
@@ -488,16 +488,21 @@ test('in a turn the line is a 60 s trend vector with no straight 10 NM tail', as
         drawHeadingLine({ lat: 32.1, lng: 34.9, t }, 90 + i * rate, 90, { trackKey: key, sampleTime: t, receivedAt: t });
       }
       const l = window.__headingLine;
-      return { curved: l.curved, lengthNm: l.lengthNm, trendSec: l.trendSec, lastNm: l.path.at(-1).nm };
+      return { curved: l.curved, lengthNm: l.lengthNm, lastNm: l.path.at(-1).nm, marks: l.drawnMarks.slice().sort(),
+        points: l.path.length, endHeading: l.endHeading, startHeading: l.path[0].heading };
     };
     return { turning: fly('turn', 3), straight: fly('level', 0) };
   });
-  expect(out.turning.curved).toBe(true);
-  expect(out.turning.trendSec).toBe(60);
-  expect(out.turning.lengthNm).toBeCloseTo(90 / 60, 2);      // one minute at 90 kt
-  expect(out.turning.lastNm).toBeCloseTo(90 / 60, 2);
   expect(out.straight.curved).toBe(false);
-  expect(out.straight.lengthNm).toBeGreaterThanOrEqual(10);  // the 10 NM line and its marks
+  expect(out.straight.lengthNm).toBeGreaterThanOrEqual(10);
+  expect(out.turning.curved).toBe(true);
+  expect(out.turning.lengthNm).toBeCloseTo(out.straight.lengthNm, 6);   // same length
+  expect(out.turning.lastNm).toBeCloseTo(out.straight.lengthNm, 6);
+  expect(out.straight.marks).toEqual(['10 nm', '2 min', '2 nm', '5 min', '5 nm']);
+  expect(out.turning.marks).toEqual(['10 nm', '2 nm', '5 nm']);        // distance only when bent
+  // ...one arc end to end: many points, ending 90 deg round from where it began.
+  expect(out.turning.points).toBeGreaterThan(20);
+  expect(((out.turning.endHeading - out.turning.startHeading) % 360 + 360) % 360).toBeCloseTo(90, 0);
 });
 
 test('straight flight with ordinary course jitter stays straight under the gentle-turn test', async ({ page }) => {
