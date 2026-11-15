@@ -1,0 +1,45 @@
+From c45e7ad1909dde6e0df8c25df6661faa075381be Mon Sep 17 00:00:00 2001
+From: Marco <marco@supino.org>
+Date: Thu, 5 Nov 2026 10:28:41 +0000
+Subject: [PATCH] Inspector: Pluto West, Haifa and Herzliya also play from a
+ frequency change point
+
+---
+ Inspector-he.md | 5 +++--
+ Inspector.md    | 4 +++-
+ 2 files changed, 6 insertions(+), 3 deletions(-)
+
+diff --git a/Inspector-he.md b/Inspector-he.md
+index 2041811..1515c2e 100644
+--- a/Inspector-he.md
++++ b/Inspector-he.md
+@@ -157,8 +157,9 @@ DA  = PA + 120 × (T − ISA)
+ ו-<span dir="ltr">ATIS</span>.
+ הקשה מנגנת את הערוץ, ■ מפסיקה, ומתנגן ערוץ אחד בכל פעם. הכפתור מהבהב בכחול בזמן התחברות,
+ ירוק בשידור, ומוקף אדום כשהערוץ *לא משודר כרגע*. סגירת החלון לא עוצרת את השמע. אותם ערוצים מרוכזים גם בחלון **רדיו בקרה** — הנפתח בכפתור האוזניות
+-שעל המפה — יחד עם **פלוטו מערב**, הבקרה הארצית, שאינה שייכת לשום שדה
+-ולכן מופיעה רק שם. מצב הערוץ זהה בשני המקומות. החלון מציג את הערוצים בלי תדרים: התדרים מופיעים
++שעל המפה — יחד עם **פלוטו מערב**, הבקרה הארצית, שאינה שייכת לשום שדה.
++גם [נקודת שינוי תדר](Frequency-Changes-he) מנגנת אותם: ברשימת אותות הקריאה שלה, לפלוטו מערב,
++לחיפה ולהרצליה (המגדלים שלהן) יש אותו כפתור. מצב הערוץ זהה בכל מקום שבו הוא מופיע. החלון מציג את הערוצים בלי תדרים: התדרים מופיעים
+ בשורות של השדה עצמו, כך שתדר שהשתנה לא מופיע פעמיים. בזמן שערוץ מתנגן כפתור האוזניות ירוק;
+ הקשה עליו עוצרת.
+ 
+diff --git a/Inspector.md b/Inspector.md
+index bc0a7ea..4dda210 100644
+--- a/Inspector.md
++++ b/Inspector.md
+@@ -169,7 +169,9 @@ time. The button pulses blue while connecting, turns green when live, and rings
+ channel is *Not on the air right now*. Closing the window keeps the
+ audio playing. The same channels are listed together in the **ATC radio** window — opened by the
+ headset button on the map — with **Pluto West**, the country-wide control, which belongs to
+-no airfield and is in that window only. A channel's state is the same in both places. The window lists the channels without frequencies:
++no airfield. A [frequency change point](Frequency-Changes) plays them too: in its call-sign list,
++Pluto West, Haifa and Herzliya (their towers) each get the same button. A channel's state is the
++same everywhere it shows. The window lists the channels without frequencies:
+ the airfield's own rows carry those, so a changed frequency is never shown twice. While a channel
+ plays the headset button is green; tap it to stop.
+ 
+-- 
+2.43.0
+

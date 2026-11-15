@@ -1,0 +1,44 @@
+From 1cc44328744cced5ec82ddfae6565db28c737d6a Mon Sep 17 00:00:00 2001
+From: Marco <marco@supino.org>
+Date: Sun, 15 Nov 2026 10:18:58 +0000
+Subject: [PATCH] NOTAMs: an airfield's badge counts all its NOTAMs, areas
+ included
+
+---
+ Extra-Layers-he.md | 5 +++--
+ Extra-Layers.md    | 3 ++-
+ 2 files changed, 5 insertions(+), 3 deletions(-)
+
+diff --git a/Extra-Layers-he.md b/Extra-Layers-he.md
+index cac2236..b58f482 100644
+--- a/Extra-Layers-he.md
++++ b/Extra-Layers-he.md
+@@ -90,8 +90,9 @@ SIGMET בינלאומיים (מערבולות, קרח, גל הרים, אפר ג
+ 
+ מתג **הצג NOTAM** מציג NOTAM פעילים עבור FIR ישראל (LLLL).
+ 
+-- **גאומטריה על המפה** — מצולעים, מעגלים, קווי סגירת מסלול, ותג ספירה בשדות
+-  עבור NOTAM ללא קואורדינטות.
++- **גאומטריה על המפה** — מצולעים, מעגלים, קווי סגירת מסלול, ותג ספירה בכל שדה עם NOTAM
++  פעילים. התג סופר את **כל** ה-NOTAM של השדה — גם אלה שמצוירים כשטח או כקו — כך שהוא תואם
++  את רשימת ה-NOTAM של השדה; הקשה עליו מציגה אותם.
+ - **לחיצה / מעבר עכבר** על אזור, קו או תג פותחים את טקסט ה-NOTAM. כשיש חפיפה עם
+   סימון אחר (VOR / שדה / ציון ניווט) ה-NOTAM מופיע בבורר **בחר נקודה**.
+ - **תצוגה מפוענחת** — הטקסט מפוענח מקוד ה-Q של ICAO עם הרחבת קיצורים; מתג **גולמי**
+diff --git a/Extra-Layers.md b/Extra-Layers.md
+index c3de0a0..548dea7 100644
+--- a/Extra-Layers.md
++++ b/Extra-Layers.md
+@@ -93,7 +93,8 @@ straight from the IMS.
+ Toggle **Show NOTAMs** to overlay active NOTAMs for the Israel FIR (LLLL).
+ 
+ - **Map geometry** — polygons, circles, route-closure lines, and a count badge
+-  at airfields for NOTAMs that carry no coordinates.
++  at each airfield with active NOTAMs. The badge counts **all** of the field's NOTAMs — those
++  drawn as an area or a line too — so it matches the field's NOTAM list; tapping it lists them.
+ - **Click / hover** any area, line, or badge to open that NOTAM's text. Where a
+   NOTAM overlaps another marker (VOR / airfield / nav-WP), it appears in the
+   **Choose point** picker.
+-- 
+2.43.0
+

@@ -139,29 +139,6 @@ test('add-mode shows a lasting cue on the map that can stop it', async ({ page }
   await expect(add).not.toHaveClass(/edit-col-on/);
 });
 
-// The floating phone menu: with the deck on (the default) it is never shown, so this is the
-// deck-off layout (?deck=0, or featureMobileDeck off in the gist).
-test('mobile: arming a map tool gets the menu off the map', async ({ page }) => {
-  await boot(page, 375, 812, '&deck=0');
-  const r = await page.evaluate(async () => {
-    const bar = document.getElementById('toolbar');
-    if (typeof window.collapseToolbarForMapTool === 'function') { /* present */ }
-    bar.classList.remove('collapsed');                    // menu open, as after tapping ☰
-    const openPct = () => {
-      const b = bar.getBoundingClientRect();
-      return Math.round((Math.min(b.bottom, innerHeight) - Math.max(b.top, 0)) / innerHeight * 100);
-    };
-    const before = openPct();
-    document.getElementById('tool-add').click();
-    await new Promise(r2 => setTimeout(r2, 150));
-    return { before, after: openPct(), mode: state.mode };
-  });
-  expect(r.mode).toBe('add');
-  // It used to cover ~98% of the height, so points went in through a narrow strip.
-  expect(r.before).toBeGreaterThan(50);
-  expect(r.after).toBeLessThan(r.before);
-});
-
 test('mobile: inspector actions stay on screen, and only delete is red', async ({ page }) => {
   await boot(page, 375, 812);
   const r = await page.evaluate(async () => {
@@ -212,16 +189,22 @@ test('the flight plan is not covered by the inspector, and shows a mobile summar
   expect(r.summary).toMatch(/NM/);
 });
 
-test('the storage wipe is not beside the everyday edit actions', async ({ page }) => {
+test('the storage wipe lives only in the Storage window, not beside the toolbar actions', async ({ page }) => {
   await boot(page);
-  const r = await page.evaluate(() => ({
+  // No stray danger button anywhere in the toolbar — the wipe used to sit in Export/Import.
+  const before = await page.evaluate(() => ({
+    anyButton: !!document.getElementById('clear-store'),
     inEdit: !!document.querySelector('[data-sec="build"] #clear-store'),
     inDataMenu: !!document.querySelector('[data-sec="export"] #clear-store'),
-    stillExists: !!document.getElementById('clear-store'),
+    storageEntry: !!document.querySelector('[data-sec="settings"] #storage-manage'),
   }));
-  expect(r.stillExists).toBe(true);
-  expect(r.inEdit).toBe(false);       // it used to sit next to Undo / Clear / Fit
-  expect(r.inDataMenu).toBe(true);
+  expect(before.anyButton).toBe(false);
+  expect(before.inEdit).toBe(false);
+  expect(before.inDataMenu).toBe(false);
+  expect(before.storageEntry).toBe(true);       // reached from Settings > Storage
+  // It is the marked last-resort row inside the Storage window.
+  await page.evaluate(() => showStorageModal());
+  await expect(page.locator('.storage-wipe-btn')).toHaveCount(1);
 });
 
 test('the Edit menu head has an accessible name', async ({ page }) => {

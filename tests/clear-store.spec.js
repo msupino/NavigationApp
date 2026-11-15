@@ -5,8 +5,8 @@
 const { test, expect, answerAppDialogs } = require('./_setup');
 
 test('clear store removes the route from the map (no re-persist on reload)', async ({ page }) => {
-  // #clear-store now lives with the other data-management controls, not in Edit.
-  await page.addInitScript(() => { try { localStorage.setItem('navaid.sec.export', '1'); } catch (e) {} });
+  // The wipe is the last-resort row in the Settings > Storage window now.
+  await page.addInitScript(() => { try { localStorage.setItem('navaid.sec.settings', '1'); } catch (e) {} });
   await page.goto('?lang=en');
   await page.waitForFunction(() => typeof state !== 'undefined' && typeof flushPersist === 'function');
 
@@ -21,11 +21,13 @@ test('clear store removes the route from the map (no re-persist on reload)', asy
   });
   expect(await page.evaluate(() => localStorage.getItem('navaid.route'))).toBeTruthy();
 
-  // Accept the confirm, click Clear store → it reloads.
+  // Accept the confirm, open the Storage window and click its last-resort wipe → it reloads.
   await answerAppDialogs(page, true);
+  await page.evaluate(() => showStorageModal());
+  await page.waitForSelector('.storage-wipe-btn');
   await Promise.all([
     page.waitForNavigation({ waitUntil: 'load' }),
-    page.locator('#clear-store').click(),
+    page.locator('.storage-wipe-btn').click(),
   ]);
 
   await page.waitForFunction(() => typeof state !== 'undefined');

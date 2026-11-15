@@ -1,0 +1,108 @@
+From 0d46b9a84a07ed4bf70cce7fab06fea9f534caa7 Mon Sep 17 00:00:00 2001
+From: Marco <marco@supino.org>
+Date: Mon, 26 Oct 2026 18:40:17 +0000
+Subject: [PATCH] Live traffic works in the iPhone/iPad app too, not only
+ Android
+
+---
+ Features-he.md            |  2 +-
+ Features.md               |  4 ++--
+ GPS-Track-Recording-he.md |  4 ++--
+ GPS-Track-Recording.md    | 10 +++++-----
+ 4 files changed, 10 insertions(+), 10 deletions(-)
+
+diff --git a/Features-he.md b/Features-he.md
+index b59f6ee..373ac0b 100644
+--- a/Features-he.md
++++ b/Features-he.md
+@@ -310,7 +310,7 @@ NavAid יכול להקליט את הנתיב שבאמת טסתם מ-GPS המכש
+ ## תעבורה חיה (אפליקציה)
+ 
+ **תצוגה/הגדרות ← תעבורה** מציירת את המטוסים האחרים הנקלטים ב-ADS-B: מטוס במבט־על, חרטומו
+-לכיוון התנועה, ולצידו האות הקריאה והגובה, וכל הפרטים בהקשה. קיימת באפליקציית האנדרואיד בלבד
++לכיוון התנועה, ולצידו האות הקריאה והגובה, וכל הפרטים בהקשה. קיימת באפליקציות האנדרואיד והאייפון/אייפד בלבד
+ — שרתי הנתונים דוחים בקשות מדפדפן — ולכן בדפדפן המתג מוצג מעומעם עם הסיבה. גם מקלט ADS-B בתא
+ (Stratux, SkyEcho, Sentry) יכול להזין אותה, ב-Wi-Fi (<span dir="ltr"><code>featureGdl90</code></span>, כבוי כברירת מחדל).
+ 
+diff --git a/Features.md b/Features.md
+index 492c69b..95979a9 100644
+--- a/Features.md
++++ b/Features.md
+@@ -328,11 +328,11 @@ it now* but *what time can I get out of here*. Hour zero prefers the field's own
+ the panel names which source it used. Pressure is shown in both scales (1009 hPa · 29.80″).
+ See [Inspector](Inspector#airfield-density-altitude).
+ 
+-## Live traffic (APK)
++## Live traffic (app)
+ 
+ **Extra layers → Traffic** draws the other aeroplanes heard on ADS-B: a top-down aircraft, nose
+ along its track, with callsign and flight level beside it, and the full read-out on a tap.
+-It exists in the Android app only — the public feeds refuse browser requests — so in a
++It exists in the Android and iPhone/iPad apps only — the public feeds refuse browser requests — so in a
+ browser the switch is shown dimmed with the reason. See
+ [GPS Track Recording](GPS-Track-Recording#traffic-around-you-ads-b). A cockpit ADS-B receiver
+ (Stratux, SkyEcho, Sentry) can feed it too, over Wi-Fi (`featureGdl90`, off by default).
+diff --git a/GPS-Track-Recording-he.md b/GPS-Track-Recording-he.md
+index 4b36cf1..474c7be 100644
+--- a/GPS-Track-Recording-he.md
++++ b/GPS-Track-Recording-he.md
+@@ -286,14 +286,14 @@ GPS נותן **כיוון תנועה**, ולכן אינו אומר דבר כשא
+ 
+ הבחירה נשמרת לכל מכשיר ומסתנכרנת כמו שאר מתגי השכבות.
+ 
+-### באפליקציה בלבד (APK)
++### באפליקציה בלבד
+ 
+ שרתי ה־ADS-B הציבוריים מגישים נתונים לכל דורש וכותרות CORS לאיש: adsb.lol ו־adsb.fi עונים
+ לבקשה משורת הפקודה ונכשלים בדפדפן, airplanes.live ו־adsb.one משיבים 403, OpenSky מתיר רק
+ את המקור שלו עצמו, ושרתי ה־CORS הציבוריים חורגים מזמן או חוסמים בקצב הרבה לפני קצב של
+ פנייה כל 8 שניות. לאתר סטטי אין למי לפנות.
+ 
+-האפליקציה אינה דפדפן. שכבת ה־HTTP המקורית של Capacitor מבצעת את הבקשה ב־Java, שם כלל
++אפליקציות האנדרואיד והאייפון/אייפד אינן דפדפן. שכבת ה־HTTP המקורית של Capacitor מבצעת את הבקשה בקוד מקורי (Java באנדרואיד, Swift ב־iOS), שם כלל
+ המקור הזהה אינו חל, ולכן האפליקציה פונה לשרת ישירות — בלי מתווך ובלי דבר לתחזק. **בדפדפן
+ התיבה נשארת אך מעומעמת**, והסיבה כתובה עליה: פקד שנעלם בין הטלפון למחשב גורם לתהות מה עוד
+ השתנה. רק <span dir="ltr"><code>featureLiveTraffic</code></span> מסיר אותו.
+diff --git a/GPS-Track-Recording.md b/GPS-Track-Recording.md
+index 40c750b..b0538bf 100644
+--- a/GPS-Track-Recording.md
++++ b/GPS-Track-Recording.md
+@@ -131,7 +131,7 @@ Device extras, each with its own gist switch:
+ | **Barometer** (`featureBarometer`) | on | Pressure, pressure altitude and vertical speed in [the GPS details](#the-gps-line). |
+ | **Battery warning** (`featureBatteryWarn`) | off | In flight and not charging: a warning and a vibration at 20 % and 10 %. |
+ | **Full screen in flight** (`featureFullscreenFlight`) | off | Hides the status bar while a position shows. |
+-| **ADS-B receiver** (`featureGdl90`) | off | Traffic from a cockpit receiver (Stratux, SkyEcho, Sentry) over Wi-Fi, GDL90 on UDP 4000. Its targets join the [traffic layer](Features#live-traffic-apk), and win over the internet feed for the same aircraft; a target unheard for 20 s is dropped. |
++| **ADS-B receiver** (`featureGdl90`) | off | Traffic from a cockpit receiver (Stratux, SkyEcho, Sentry) over Wi-Fi, GDL90 on UDP 4000. Its targets join the [traffic layer](Features#live-traffic-app), and win over the internet feed for the same aircraft; a target unheard for 20 s is dropped. |
+ | **Bluetooth GPS** (`featureBleGps`) | off | **Settings → Connect Bluetooth GPS** — see [Toolbar](Toolbar#settings). |
+ 
+ The ADS-B receiver and Bluetooth GPS paths are tested with synthetic data, not yet with real
+@@ -332,7 +332,7 @@ looking current.
+ 
+ The switch is remembered per device and syncs like the other layer toggles.
+ 
+-### APK only
++### In the app only
+ 
+ The public ADS-B aggregators serve data to anyone and CORS headers to nobody: adsb.lol
+ and adsb.fi answer a command-line request and fail in a browser, airplanes.live and
+@@ -340,14 +340,14 @@ adsb.one answer 403, OpenSky allows only its own origin, and the public CORS pro
+ either time out or rate-limit long before an 8-second poll. A static site has nothing to
+ call.
+ 
+-The APK is not a browser. Capacitor's native HTTP makes the request in Java, where the
+-same-origin rule does not apply, so the app calls the feed directly — no proxy, nothing
++The Android and iPhone/iPad apps are not browsers. Capacitor's native HTTP makes the request
++in native code (Java on Android, Swift on iOS), where the same-origin rule does not apply, so the app calls the feed directly — no proxy, nothing
+ hosted. **In a browser the Traffic box is still there but dimmed**, with the reason on it:
+ a control that vanishes between the phone and the desktop makes you wonder what else moved.
+ Only `featureLiveTraffic` removes it.
+ 
+ `featureLiveTraffic` in the tuning gist decides whether the feature exists. It is **on** in
+-the live app — the Traffic box is there, dimmed in a browser and live in the APK.
++the live app — the Traffic box is there, dimmed in a browser and live in the apps.
+ 
+ ### Tuning
+ 
+-- 
+2.43.0
+

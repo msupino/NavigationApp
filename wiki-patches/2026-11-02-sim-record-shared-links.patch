@@ -1,0 +1,101 @@
+From 7a2fe3f58413b20b029cc5d611ded34a76910d21 Mon Sep 17 00:00:00 2001
+From: Marco <marco@supino.org>
+Date: Mon, 2 Nov 2026 07:02:53 +0000
+Subject: [PATCH] Record with a simulator connected records the simulator; no
+ tour on shared links
+
+---
+ GPS-Track-Recording-he.md | 2 +-
+ GPS-Track-Recording.md    | 2 +-
+ Quick-Start-he.md         | 2 +-
+ Quick-Start.md            | 2 +-
+ Simulator-Connect-he.md   | 4 ++++
+ Simulator-Connect.md      | 5 +++++
+ 6 files changed, 13 insertions(+), 4 deletions(-)
+
+diff --git a/GPS-Track-Recording-he.md b/GPS-Track-Recording-he.md
+index dcfa2c1..19cb2c4 100644
+--- a/GPS-Track-Recording-he.md
++++ b/GPS-Track-Recording-he.md
+@@ -16,7 +16,7 @@ NavAid יכול להקליט את הנתיב שבאמת טסתם מה-GPS של 
+ 
+ | כפתור | פעולה |
+ |---|---|
+-| **⏺ הקלטה** | מתחיל להקליט את הנתיב הטוס מ-GPS המכשיר, ומדליק לשם כך את **המיקום** אם הוא כבוי (גם הכפתור שלו מודגש). בזמן ההקלטה התווית משתנה ל-**⏹ עצור**. עצירת ההקלטה מכבה שוב את המיקום אם ההקלטה הדליקה אותו. |
++| **⏺ הקלטה** | מתחיל להקליט את הנתיב הטוס מ-GPS המכשיר, ומדליק לשם כך את **המיקום** אם הוא כבוי (גם הכפתור שלו מודגש). בזמן ההקלטה התווית משתנה ל-**⏹ עצור**. עצירת ההקלטה מכבה שוב את המיקום אם ההקלטה הדליקה אותו. כש[סימולטור](Simulator-Connect-he) מחובר (והמיקום כבוי), ההקלטה מקליטה את **טיסת הסימולטור** במקום, בלי GPS המכשיר. |
+ | **📍 מיקום** | מציג את מיקומכם החי על המפה, ומקליט גם את הטיסה אלא אם *הקלטה אוטומטית עם מיקום* כבויה (ראו למטה). בזמן פעולה התווית משתנה ל-**הסתר**. |
+ 
+ קריאה **חיה** קטנה ליד הכפתורים מציגה בזמן ההקלטה: מספר נקודות, זמן שחלף
+diff --git a/GPS-Track-Recording.md b/GPS-Track-Recording.md
+index 91b88e8..f8db8c2 100644
+--- a/GPS-Track-Recording.md
++++ b/GPS-Track-Recording.md
+@@ -14,7 +14,7 @@ Simulator ✈ icon), so they're reachable no matter which section is open.
+ 
+ | Button | What it does |
+ |---|---|
+-| **⏺ Record** | Starts recording your flown path from the device GPS, and turns **Location** on for it if it is off (its button lights up too). While recording the label changes to **⏹ Stop**. Stopping the recording turns Location off again if Record turned it on. |
++| **⏺ Record** | Starts recording your flown path from the device GPS, and turns **Location** on for it if it is off (its button lights up too). While recording the label changes to **⏹ Stop**. Stopping the recording turns Location off again if Record turned it on. With a [simulator](Simulator-Connect) connected (and Location off), Record records the **simulator's flight** instead, without the device GPS. |
+ | **📍 Location** | Shows your live own-ship on the map, and records the flight too unless *Record automatically with location* is off (see below). While active the label changes to **Hide**. |
+ 
+ A small live **readout** next to the buttons shows, while recording: number of
+diff --git a/Quick-Start-he.md b/Quick-Start-he.md
+index 7e41f3f..c574f69 100644
+--- a/Quick-Start-he.md
++++ b/Quick-Start-he.md
+@@ -61,7 +61,7 @@ NavAid מחשב מרחקים, כיוונים וזמני טיסה באופן חי
+ בהפעלה הראשונה, אחרי [הודעת הבטיחות](Safety-Notice-he), סיור קצר עובר על כפתורי המפה אחד אחד: כל השאר מתעמעם, טבעת כחולה מסמנת את הכפתור, בועה מסבירה מה הוא עושה וחץ כחול מצביע עליו. **הבא**, **הקודם** ו**דלג**, מונה צעדים, Escape ומקשי החצים (הפוכים בעברית).
+ 
+ - הצעדים: בדיקת מסלול, כפתורי העריכה (הטבעת מקיפה רק את הוספה, הערה, ביטול וניקוי), מדידה, נעילת העריכה, החוגה, המיקום שלכם, הקלטה, תקלת קשר, התפריט, ואז חיפוש (מחשב) או לחיצה ארוכה (טלפון). כפתור שלא מוצג על המסך מדולג.
+-- הסיור מוצג פעם אחת בכל מכשיר. **הגדרות ← הצג את הסיור** מציג אותו שוב.
++- הסיור מוצג פעם אחת בכל מכשיר. **הגדרות ← הצג את הסיור** מציג אותו שוב. קישור ששותף (צפייה ב-Follow me, מסלול ששותף, קישור הטייסים) נפתח בלעדיו, והסיור נשאר לביקור הראשון שלכם.
+ - מתג ב-gist: <span dir="ltr"><code>featureTour</code></span> (פעיל כברירת מחדל). "הפחתת תנועה" עוצרת את תנועת החץ.
+ 
+ **סיור הטיסה.** בפעם הראשונה שהמיקום שלכם חי, סיור שני עובר על הכפתורים שמופיעים רק אז: הסימן
+diff --git a/Quick-Start.md b/Quick-Start.md
+index c650082..dad2620 100644
+--- a/Quick-Start.md
++++ b/Quick-Start.md
+@@ -31,7 +31,7 @@ Your route is auto-saved in the browser. Reload the page and it's still there.
+ On the first launch, after the [safety notice](Safety-Notice), a short tour walks round the map's controls one at a time: everything else dims, a blue ring marks the control, a bubble says what it does and a blue arrow points at it. **Next**, **Back** and **Skip**, a step counter, Escape and the arrow keys (mirrored in Hebrew).
+ 
+ - Steps: Route check, the edit buttons (the ring covers Add, Note, Undo and Clear only), Measure, the edit lock, the dial, your position, Record, Comm fail, the menu, then Find (computer) or press-and-hold (phone). A control not on screen is left out.
+-- It plays once per device. **Settings → Show the tour** plays it again.
++- It plays once per device. **Settings → Show the tour** plays it again. A shared link (a Follow me view, a shared route, the pilots link) opens without it, and it stays unseen for your own first visit.
+ - Gist switch `featureTour` (default on). Reduced motion stops the arrow's nudge.
+ 
+ **The in-flight tour.** The first time your position is live, a second tour walks round the
+diff --git a/Simulator-Connect-he.md b/Simulator-Connect-he.md
+index db5b6aa..de1f3c7 100644
+--- a/Simulator-Connect-he.md
++++ b/Simulator-Connect-he.md
+@@ -58,6 +58,10 @@ NavAid יכול להציג את **מיקום המטוס בזמן אמת** על 
+ מחוץ למסלול — פועלות ממיקום סימולטור בדיוק כמו מפעימת GPS, וזו הדרך הנוחה לנסות
+ אותן על הקרקע.
+ 
++**⏺ הקלטה** בזמן שהסימולטור מחובר מקליטה את **טיסת הסימולטור**, לא את GPS המכשיר. הקלטה
++שהתחילה על GPS המכשיר לפני שהסימולטור התחבר ממשיכה מהסימולטור, והמיקום נכבה (מיקום שהדלקתם
++בעצמכם נשאר דלוק, וה-GPS קודם). ניתוק הסימולטור מסיים את ההקלטה שלו ושומר אותה.
++
+ ## אפשרויות
+ 
+ | פקד | תיאור |
+diff --git a/Simulator-Connect.md b/Simulator-Connect.md
+index 0beb109..cecaf61 100644
+--- a/Simulator-Connect.md
++++ b/Simulator-Connect.md
+@@ -54,6 +54,11 @@ Your aircraft appears on the map as a **blue top-down high-wing airplane** with
+ 
+ A **heading line** runs ahead of the icon, marked at 2 / 5 / 10 nm and at 2 / 5 min; in a turn it becomes a quarter circle bending the way you turn, with the distance marks only (see [The heading line](GPS-Track-Recording#the-heading-line)). The footer shows ground speed, altitude and magnetic heading from the sim feed, and the [in-flight alerts](GPS-Track-Recording#in-flight-alerts) — next leg, TOP, altitude, drift, off route — run off a simulator position exactly as they do off a GPS fix, which is the easiest way to try them on the ground.
+ 
++**⏺ Record** while connected records the **simulator's flight**, not the device GPS. A recording
++that Record started on the device GPS before the simulator connected carries on from the
++simulator, and Location goes off (one you turned on yourself stays on, and the GPS keeps
++precedence). Disconnecting the simulator ends its recording and saves it.
++
+ ## Options
+ 
+ | Control | Description |
+-- 
+2.43.0
+

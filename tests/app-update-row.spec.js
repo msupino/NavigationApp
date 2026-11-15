@@ -51,6 +51,22 @@ async function boot(page, o) {
   return row;
 }
 
+// A delta that changes only a script says its own size, in tenths below a megabyte, in the row and
+// in the mobile-data question -- not the full 27 MB (reported as 38 MB on every update).
+test('a small delta update says its own size, not the full bundle', async ({ page }) => {
+  const h = (t) => require('crypto').createHash('sha256').update(t).digest('hex');
+  await page.route('**/bundle-manifest.json', r => r.fulfill({ contentType: 'application/json',
+    body: JSON.stringify({ hashes: { 'img/chart.png': h('chart'), 'app/ui.js': h('old') } }) }));
+  const manifest = Object.assign({}, MANIFEST, { files: [
+    { file_name: 'img/chart.png', file_hash: h('chart'), download_url: 'x', size: 26 * 1048576 },
+    { file_name: 'app/ui.js', file_hash: h('new'), download_url: 'y', size: 200 * 1024 },
+  ] });
+  const row = await boot(page, { manifest, network: 'cellular', running: '1.0-0000000' });
+  await expect(row).toContainText(/Update available · \u2066?0\.2 MB/);
+  await row.locator('.app-update-btn').click();
+  await expect(page.locator('.follow-me-ask-modal')).toContainText(/0\.2 MB\u2069? of mobile data/);
+});
+
 test('already on the latest build: Up to date, and a check, not a download', async ({ page }) => {
   // The APK's own stamp has 8 characters of the commit, the deploy's 7: the same build.
   const row = await boot(page, { manifest: MANIFEST, network: 'cellular', running: '1.0-abcdef12' });
@@ -76,6 +92,11 @@ test('an update on mobile data is downloaded now, after asking, and waits for th
   expect(await row.locator('.app-update-progress').evaluate(b => b.value)).toBe(45);
   await page.evaluate(() => window.__ota.finish());
   await expect(row).toContainText('installs the next time NavAid starts');
+  // Asked once, and the menu is still there: its row offers the restart, no second question
+  // over the map (reported).
+  await expect(page.locator('#deck-sheet')).toBeVisible();
+  await expect(row.locator('.app-update-btn')).toHaveText('Restart now');
+  await expect(page.locator('.follow-me-ask-modal')).toHaveCount(0);
   await expect(row.locator('.app-update-progress')).toHaveAttribute('hidden', '');
   expect(await page.evaluate(() => (window.__ota.listeners.download || []).length)).toBe(0);   // listener removed
   expect(await page.evaluate(() => window.__ota.downloads)).toBe(1);
@@ -96,13 +117,23 @@ test('on Wi-Fi it downloads without asking', async ({ page }) => {
   await page.waitForFunction(() => typeof window.__ota.finish === 'function');
   await page.evaluate(() => window.__ota.finish());
   await expect(row).toContainText('installs the next time');
-  // No mobile-data question -- the only one is the offer to restart onto it now.
+  // No question at all: the row the pilot is looking at offers the restart.
+  await expect(row.locator('.app-update-btn')).toHaveText('Restart now');
+  await expect(page.locator('.follow-me-ask-modal')).toHaveCount(0);
+});
+
+// The menu put away while it downloaded: the row is out of sight, so the restart is asked for.
+test('a download that finishes with the menu closed offers the restart in a question', async ({ page }) => {
+  const row = await boot(page, { manifest: MANIFEST, network: 'cellular', running: '1.0-0000000' });
+  await row.locator('.app-update-btn').click();
+  await page.locator('.follow-me-ask-modal').getByRole('button', { name: 'Download now' }).click();
+  await page.waitForFunction(() => typeof window.__ota.finish === 'function');
+  await page.locator('.deck-sheet-close').click();
+  await expect(row).not.toBeInViewport();
+  await page.evaluate(() => window.__ota.finish());
   const ask = page.locator('.follow-me-ask-modal');
   await expect(ask).toHaveCount(1);
-  await expect(ask).not.toContainText('mobile data');
   await expect(ask.locator('.follow-me-ask-ok')).toHaveText('Restart now');
-  await ask.locator('.follow-me-ask-cancel').click();
-  await expect(row.locator('.app-update-btn')).toHaveText('Restart now');
 });
 
 // Reported: "when the APK downloads in the background because Wi-Fi is on, it is not shown by
@@ -115,7 +146,9 @@ test('the automatic Wi-Fi download shows its progress, and Download does not sta
   // What ota.js does by itself on Wi-Fi.
   await page.evaluate(() => { window.__auto = NavAid.ota.checkForUpdate(); });
   await expect(row).toContainText('Downloading… 45%');
-  await expect(row.locator('.app-update-btn')).toBeHidden();          // nothing to press meanwhile
+  // Nothing to press meanwhile: still there (never hide a button), dimmed with what it is doing.
+  await expect(row.locator('.app-update-btn')).toBeVisible();
+  await expect(row.locator('.app-update-btn')).toHaveAttribute('aria-disabled', 'true');
   expect(await row.locator('.app-update-progress').evaluate(b => b.value)).toBe(45);
   expect(await page.evaluate(() => NavAid.ota.status().then(s => s.state))).toBe('downloading');
   // Asked for again while it runs (a button press, another automatic look): it joins.

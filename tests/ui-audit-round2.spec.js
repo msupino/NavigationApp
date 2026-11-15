@@ -435,32 +435,23 @@ test('the Hebrew summary keeps its numbers in order (bidi isolation)', async ({ 
   expect(r.logical).toMatch(/^2 קטעים · 37\.8 NM · \d+:\d\d · [\d.]+ גלון$/);
 });
 
-test('dragging the legend takes the route totals with it', async ({ page }) => {
-  // The totals started life as a sibling Leaflet control: dragging the legend left
-  // them behind at the corner, which read as the route info vanishing.
+// Desktop: the route totals are their own pill beside the Legend button, shown whether the key is
+// open or closed (the old card hid them when it was collapsed). The phone card still carries them.
+test('the route totals stay beside the legend button, open or closed', async ({ page }) => {
   await boot(page);
   await withRoute(page);
-  const legend = page.locator('#map-legend');
   const pill = page.locator('#route-summary');
+  const btn = page.locator('#legend-toggle');
   await expect(pill).toBeVisible();
-  const before = await legend.boundingBox();
-  await page.mouse.move(before.x + 20, before.y + 6);
-  await page.mouse.down();
-  await page.mouse.move(520, 220, { steps: 8 });
-  await page.mouse.up();
-  const after = await legend.boundingBox();
-  const box = await pill.boundingBox();
-  expect(Math.abs(after.x - before.x)).toBeGreaterThan(50);   // it really moved
+  const where = async () => { const p = await pill.boundingBox(); const b = await btn.boundingBox(); return { p, b }; };
+  const shut = await where();
+  expect(shut.p.x).toBeGreaterThan(shut.b.x + shut.b.width - 1);                  // right of the button
+  expect(Math.abs((shut.p.y + shut.p.height / 2) - (shut.b.y + shut.b.height / 2))).toBeLessThan(3);   // same row
+  await btn.click();
+  await expect(page.locator('#map-legend')).toBeVisible();
   await expect(pill).toBeVisible();
-  expect(box.y).toBeGreaterThanOrEqual(after.y - 1);          // still inside the card
-  expect(box.y).toBeLessThan(after.y + after.height);
-  // ...and the position persists for both together
-  await page.reload();
-  await page.waitForFunction(() => typeof syncLegs === 'function');
-  await withRoute(page);
-  const restored = await legend.boundingBox();
-  expect(Math.abs(restored.x - after.x)).toBeLessThan(4);
-  await expect(pill).toBeVisible();
+  const open = await where();
+  expect(Math.round(open.p.x)).toBe(Math.round(shut.p.x));
 });
 
 test('route totals are shown in exactly one place', async ({ page }) => {
@@ -572,50 +563,6 @@ test('leg labels stop growing past the cap', async ({ page }) => {
   expect(r.scales.z14).toBeCloseTo(2, 2);      // capped
   expect(r.scales.z15).toBeCloseTo(2, 2);
   expect(r.raised).toBeCloseTo(4, 2);          // and the cap is gistable
-});
-
-test('the legend cannot come to rest under the toolbar', async ({ page }) => {
-  await boot(page);
-  await withRoute(page);
-  const legend = page.locator('#map-legend');
-  const b = await legend.boundingBox();
-  await page.mouse.move(b.x + 20, b.y + 6);
-  await page.mouse.down();
-  await page.mouse.move(60, 8, { steps: 6 });   // aim into the menu bar
-  await page.mouse.up();
-  const overlaps = () => page.evaluate(() => {
-    const l = document.getElementById('map-legend').getBoundingClientRect();
-    const t = document.getElementById('toolbar').getBoundingClientRect();
-    return !(l.right < t.left || t.right < l.left || l.bottom < t.top || t.bottom < l.top);
-  });
-  expect(await overlaps()).toBe(false);        // pushed clear on drop
-  await page.reload();
-  await page.waitForFunction(() => typeof syncLegs === 'function');
-  await withRoute(page);
-  expect(await overlaps()).toBe(false);        // and on restore, where it used to hide the totals
-});
-
-test('the legend can still be dragged freely after being pushed clear', async ({ page }) => {
-  // The first version of the clamp tested only "fully above the bar", so a card whose
-  // x-range overlapped the toolbar was pinned to bottom+6: draggable up, never back down.
-  await boot(page);
-  await withRoute(page);
-  const legend = page.locator('#map-legend');
-  const drag = async (toX, toY) => {
-    const b = await legend.boundingBox();
-    await page.mouse.move(b.x + 20, b.y + 6);
-    await page.mouse.down();
-    await page.mouse.move(toX, toY, { steps: 6 });
-    await page.mouse.up();
-    return (await legend.boundingBox()).y;
-  };
-  await drag(60, 8);                          // into the bar -> pushed clear below it
-  const parked = (await legend.boundingBox()).y;
-  const moved = await drag(60, 420);          // now drag it far down the same column
-  expect(moved).toBeGreaterThan(parked + 100);
-  // ...and still further down, then back up to just below the bar
-  const lower = await drag(60, 650);
-  expect(lower).toBeGreaterThan(moved);
 });
 
 test('printing warns when the route runs off the page, and can fit it', async ({ page }) => {

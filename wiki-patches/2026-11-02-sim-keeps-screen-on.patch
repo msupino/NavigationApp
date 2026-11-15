@@ -1,0 +1,40 @@
+From ead9cabfa69117e32db6398a31bbb00f0dbe01a7 Mon Sep 17 00:00:00 2001
+From: Marco <marco@supino.org>
+Date: Mon, 2 Nov 2026 09:49:44 +0000
+Subject: [PATCH] Keep the screen on: a connected simulator counts, like the
+ GPS
+
+---
+ GPS-Track-Recording-he.md | 2 +-
+ GPS-Track-Recording.md    | 2 +-
+ 2 files changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/GPS-Track-Recording-he.md b/GPS-Track-Recording-he.md
+index 19cb2c4..5c52474 100644
+--- a/GPS-Track-Recording-he.md
++++ b/GPS-Track-Recording-he.md
+@@ -134,7 +134,7 @@ NavAid יכול להקליט את הנתיב שבאמת טסתם מה-GPS של 
+ 
+ | | ברירת מחדל | |
+ | --- | --- | --- |
+-| **מסך דולק** (<span dir="ltr"><code>featureKeepAwake</code></span>) | פעיל | כל עוד מיקום מוצג. בדפדפן — Wake Lock של הדפדפן. |
++| **מסך דולק** (<span dir="ltr"><code>featureKeepAwake</code></span>) | פעיל | כל עוד מיקום מוצג: מיקום, הקלטה, או סימולטור מחובר (מקור מיקום כמו ה-GPS). בדפדפן — Wake Lock של הדפדפן. |
+ | **רטט עם כל התראה** (<span dir="ltr"><code>featureHaptics</code></span>) | פעיל | רטט אזהרה עם כל [התראה בטיסה](#התראות-בטיסה), לטלפון על הברך מתחת לאוזניות. |
+ | **בהירות מסך** (<span dir="ltr"><code>featureBrightness</code></span>) | פעיל | **הגדרות ← בהירות מסך** — ראו [סרגל הכלים](Toolbar-he#הגדרות). |
+ | **ברומטר** (<span dir="ltr"><code>featureBarometer</code></span>) | פעיל | לחץ, גובה לחץ ומהירות אנכית ב[פרטי ה-GPS](#שורת-ה-gps). |
+diff --git a/GPS-Track-Recording.md b/GPS-Track-Recording.md
+index f8db8c2..dc15e83 100644
+--- a/GPS-Track-Recording.md
++++ b/GPS-Track-Recording.md
+@@ -146,7 +146,7 @@ Device extras, each with its own gist switch:
+ 
+ | | Default | |
+ | --- | --- | --- |
+-| **Keep the screen on** (`featureKeepAwake`) | on | While a position shows. Browsers use the web Wake Lock. |
++| **Keep the screen on** (`featureKeepAwake`) | on | While a position shows: Location, a recording, or a connected simulator (a position source like the GPS). Browsers use the web Wake Lock. |
+ | **Vibrate with every alert** (`featureHaptics`) | on | A warning vibration with each [in-flight alert](#in-flight-alerts), for a phone on the kneeboard under a headset. |
+ | **Screen brightness** (`featureBrightness`) | on | **Settings → Screen brightness** — see [Toolbar](Toolbar#settings). |
+ | **Barometer** (`featureBarometer`) | on | Pressure, pressure altitude and vertical speed in [the GPS details](#the-gps-line). |
+-- 
+2.43.0
+

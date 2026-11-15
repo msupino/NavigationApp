@@ -1,0 +1,43 @@
+From da12a1c338c3fd2525a53eff43e7fcf86f0fc116 Mon Sep 17 00:00:00 2001
+From: Marco <marco@supino.org>
+Date: Fri, 13 Nov 2026 16:30:35 +0000
+Subject: [PATCH] Divert: the steps-down icon, and Comm fail an icon in the
+ phone strip
+
+---
+ Diversion-he.md | 2 +-
+ Diversion.md    | 4 ++--
+ 2 files changed, 3 insertions(+), 3 deletions(-)
+
+diff --git a/Diversion-he.md b/Diversion-he.md
+index 6481dd4..abdebab 100644
+--- a/Diversion-he.md
++++ b/Diversion-he.md
+@@ -4,7 +4,7 @@
+ 
+ # הסטה
+ 
+-כפתור אחד להחלטה לאן לטוס **עכשיו**. **↱ הסטה** נמצא בשורת הכפתורים התחתונה ליד **תקלת קשר** ו**מיקום** — שלושתם החלטות שמתקבלות באוויר. בטלפון הוא כפתור **↱** מסומן ב[רצועה העליונה](Phone-Layout-he#הרצועה), ליד תקלת הקשר האדומה; בטיסה (מיקום דלוק) הוא תופס שם את מקום מתג השפה, כדי שהמהירות, הגובה והכיוון יישארו שלמים — השפה נשארת בהגדרות והגלובוס חוזר כשהמיקום כבה. לחיצה עליו:
++כפתור אחד להחלטה לאן לטוס **עכשיו**. **הסטה** (הסמל: מדרגות יורדות אל מסלול) נמצא בשורת הכפתורים התחתונה ליד **תקלת קשר** ו**מיקום** — שלושתם החלטות שמתקבלות באוויר. בטלפון הוא סמל המדרגות היורדות ב[רצועה העליונה](Phone-Layout-he#הרצועה), ליד סמל תקלת הקשר האדום; בטיסה (מיקום דלוק) הוא תופס שם את מקום מתג השפה, כדי שהמהירות, הגובה והכיוון יישארו שלמים — השפה נשארת בהגדרות והגלובוס חוזר כשהמיקום כבה. לחיצה עליו:
+ 
+ 1. **מאתרת את המיקום.** אם מיקום, הקלטה או הסימולטור כבר נותנים מיקום, משתמשים בו. אחרת
+    הכפתור מדליק את המיקום וממתין לקליטה הראשונה; בזמן ההמתנה כרטיס מציע
+diff --git a/Diversion.md b/Diversion.md
+index 8f1f098..c7e2331 100644
+--- a/Diversion.md
++++ b/Diversion.md
+@@ -2,9 +2,9 @@
+ 
+ # Divert
+ 
+-One button for deciding where to go **now**. **↱ Divert** sits in the footer beside **Comm
++One button for deciding where to go **now**. **Divert** (its icon: steps going down to a runway) sits in the footer beside **Comm
+ failure** and **Location** — all three are in-flight decisions. On a phone it is the outlined
+-**↱** button in the top [strip](Phone-Layout#the-strip), beside the red Comm fail; in flight (Location
++steps-down icon in the top [strip](Phone-Layout#the-strip), beside the red Comm fail icon; in flight (Location
+ on) it takes the language switch's place there, so the speed, altitude and heading stay whole —
+ the language stays in Settings and the globe returns when Location is off. Press it and NavAid:
+ 
+-- 
+2.43.0
+

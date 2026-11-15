@@ -1,0 +1,67 @@
+From 96b4c1c46cf716863b620f9b4a9ea8e3bf0d9b77 Mon Sep 17 00:00:00 2001
+From: Marco <marco@supino.org>
+Date: Wed, 28 Oct 2026 18:42:12 +0000
+Subject: [PATCH] Live traffic in a browser, through NavAid's relay
+ (trafficWebApiUrl)
+
+---
+ GPS-Track-Recording-he.md | 12 ++++++++----
+ GPS-Track-Recording.md    | 15 +++++++++++----
+ 2 files changed, 19 insertions(+), 8 deletions(-)
+
+diff --git a/GPS-Track-Recording-he.md b/GPS-Track-Recording-he.md
+index 474c7be..b94dbf1 100644
+--- a/GPS-Track-Recording-he.md
++++ b/GPS-Track-Recording-he.md
+@@ -294,12 +294,16 @@ GPS נותן **כיוון תנועה**, ולכן אינו אומר דבר כשא
+ פנייה כל 8 שניות. לאתר סטטי אין למי לפנות.
+ 
+ אפליקציות האנדרואיד והאייפון/אייפד אינן דפדפן. שכבת ה־HTTP המקורית של Capacitor מבצעת את הבקשה בקוד מקורי (Java באנדרואיד, Swift ב־iOS), שם כלל
+-המקור הזהה אינו חל, ולכן האפליקציה פונה לשרת ישירות — בלי מתווך ובלי דבר לתחזק. **בדפדפן
+-התיבה נשארת אך מעומעמת**, והסיבה כתובה עליה: פקד שנעלם בין הטלפון למחשב גורם לתהות מה עוד
+-השתנה. רק <span dir="ltr"><code>featureLiveTraffic</code></span> מסיר אותו.
++המקור הזהה אינו חל, ולכן האפליקציה פונה לשרת ישירות — בלי מתווך ובלי דבר לתחזק.
++
++**בדפדפן** הבקשה עוברת דרך הממסר של NavAid: Cloudflare Worker קטן (<span dir="ltr"><code>relay/traffic</code></span> במאגר) ששואל את
++adsb.lol ומוסיף את כותרת ה־CORS, לדפי NavAid בלבד. הוא מצמיד כל בקשה לרשת של 0.1° ושומר אותה
++8 שניות, כך שטייסים באותו אזור חולקים פנייה אחת לשרת. <span dir="ltr"><code>trafficWebApiUrl</code></span> ב־gist מצביע עליו; כל עוד
++הוא ריק, תיבת התעבורה בדפדפן נשארת אך מעומעמת, והסיבה כתובה עליה: פקד שנעלם בין הטלפון למחשב
++גורם לתהות מה עוד השתנה. רק <span dir="ltr"><code>featureLiveTraffic</code></span> מסיר אותו.
+ 
+ <span dir="ltr"><code>featureLiveTraffic</code></span> ב־gist הכוונון קובע אם התכונה קיימת. באפליקציה החיה היא **דלוקה** —
+-תיבת התעבורה נמצאת שם, מעומעמת בדפדפן ופעילה באפליקציה.
++תיבת התעבורה נמצאת שם, פעילה באפליקציה, ופעילה בדפדפן כש־<span dir="ltr"><code>trafficWebApiUrl</code></span> מצביע על הממסר.
+ 
+ ### כוונון
+ 
+diff --git a/GPS-Track-Recording.md b/GPS-Track-Recording.md
+index b0538bf..7edc77d 100644
+--- a/GPS-Track-Recording.md
++++ b/GPS-Track-Recording.md
+@@ -342,12 +342,19 @@ call.
+ 
+ The Android and iPhone/iPad apps are not browsers. Capacitor's native HTTP makes the request
+ in native code (Java on Android, Swift on iOS), where the same-origin rule does not apply, so the app calls the feed directly — no proxy, nothing
+-hosted. **In a browser the Traffic box is still there but dimmed**, with the reason on it:
+-a control that vanishes between the phone and the desktop makes you wonder what else moved.
+-Only `featureLiveTraffic` removes it.
++hosted.
++
++**In a browser** the request goes through NavAid's own relay: a small Cloudflare Worker
++(`relay/traffic` in the repository) that asks adsb.lol and adds the CORS header, for NavAid's
++pages only. It snaps each request to a 0.1° grid and caches it for 8 seconds, so pilots near one
++spot share one call to the feed. The gist's `trafficWebApiUrl` names it; while that is empty the
++Traffic box is still there in a browser but dimmed, with the reason on it — a control that
++vanishes between the phone and the desktop makes you wonder what else moved. Only
++`featureLiveTraffic` removes it.
+ 
+ `featureLiveTraffic` in the tuning gist decides whether the feature exists. It is **on** in
+-the live app — the Traffic box is there, dimmed in a browser and live in the apps.
++the live app — the Traffic box is there, live in the apps, and live in a browser when
++`trafficWebApiUrl` names the relay.
+ 
+ ### Tuning
+ 
+-- 
+2.43.0
+

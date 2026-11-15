@@ -37,7 +37,8 @@ test('phone bottom bar: five places, drawn icons; Comm fail is the red button in
   const comm = page.locator('#deck-strip .deck-strip-commfail');
   await expect(comm).toBeVisible();
   const box = await comm.boundingBox();
-  expect(box.height).toBeGreaterThanOrEqual(36);
+  expect(box.height).toBeGreaterThanOrEqual(44);
+  expect(box.width).toBeGreaterThanOrEqual(44);
   expect(await comm.evaluate(el => getComputedStyle(el).backgroundColor)).toBe('rgb(198, 47, 47)');
 });
 

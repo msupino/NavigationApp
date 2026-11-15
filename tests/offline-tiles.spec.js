@@ -182,8 +182,12 @@ test('known 404 cells are cached as transparent tiles and count as complete', as
     await caches.delete(O.TILE_CACHE);
     const original = window.fetch;
     let first = true;
-    window.fetch = function () {
-      if (first) { first = false; return Promise.resolve(new Response('', { status: 404 })); }
+    // Only a tile request: the world outlines (world-offline.js) load at idle and can be the
+    // first fetch of all.
+    window.fetch = function (url) {
+      if (first && /\/CVFR\/|\/cvfr\//.test(String(url && url.url || url))) {
+        first = false; return Promise.resolve(new Response('', { status: 404 }));
+      }
       return original.apply(this, arguments);
     };
     const result = await O.downloadPack(() => {}, 7, 7);

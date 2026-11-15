@@ -9,8 +9,8 @@ test('the feature ships OFF: control hidden, state clear, nothing drawn', async 
   await page.waitForFunction(() => typeof tune === 'function');
   const out = await page.evaluate(() => ({
     flag: tune('featureShowReturn'),
-    rowHidden: document.getElementById('ret-cb').closest('label').hidden,
-    rowDisplay: getComputedStyle(document.getElementById('ret-cb').closest('label')).display,
+    rowHidden: document.getElementById('ret-btn').hidden,
+    rowDisplay: getComputedStyle(document.getElementById('ret-btn')).display,
     featureOn: showReturnFeatureOn(),
     showReturn: window.showReturn,
   }));
@@ -47,10 +47,10 @@ test('with the flag off the control is hidden and the state forced off', async (
     window.showReturn = true;                 // a stored 'on' from before it was disabled
     if (!showReturnFeatureOn()) {
       window.showReturn = false;
-      document.getElementById('ret-cb').closest('label').hidden = true;
+      document.getElementById('ret-btn').hidden = true;
     }
     return { featureOn: showReturnFeatureOn(), showReturn: window.showReturn,
-             hidden: document.getElementById('ret-cb').closest('label').hidden };
+             hidden: document.getElementById('ret-btn').hidden };
   });
   expect(out.featureOn).toBe(false);
   expect(out.showReturn).toBe(false);   // a stale 'on' cannot survive
@@ -205,14 +205,14 @@ test('a gist that switches the feature on restores the row without a reload', as
   await page.goto('?lang=en&nogist');
   await page.waitForFunction(() => typeof refreshShowReturnFeature === 'function');
   const hiddenAtBoot = await page.evaluate(() =>
-    getComputedStyle(document.getElementById('ret-cb').closest('label')).display);
+    getComputedStyle(document.getElementById('ret-btn')).display);
   expect(hiddenAtBoot).toBe('none');
 
   const after = await page.evaluate(() => {
     const orig = window.tune;
     window.tune = (k) => (k === 'featureShowReturn' ? true : orig(k));
     refreshShowReturnFeature();              // what the gist-applied hook calls
-    const row = document.getElementById('ret-cb').closest('label');
+    const row = document.getElementById('ret-btn');
     const res = { display: getComputedStyle(row).display, hidden: row.hidden };
     window.tune = orig;
     return res;
@@ -232,7 +232,7 @@ test('switching it back off hides the row and clears the state again', async ({ 
     window.showReturn = true;
     window.tune = orig;                       // gist flips it back off
     refreshShowReturnFeature();
-    const row = document.getElementById('ret-cb').closest('label');
+    const row = document.getElementById('ret-btn');
     return { display: getComputedStyle(row).display, showReturn: window.showReturn,
              checked: document.getElementById('ret-cb').checked };
   });

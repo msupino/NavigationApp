@@ -1,0 +1,328 @@
+From 7eb5ef227ffecca541fbd5d0bf5c45b2093bd2e0 Mon Sep 17 00:00:00 2001
+From: Marco <marco@supino.org>
+Date: Mon, 26 Oct 2026 18:10:43 +0000
+Subject: [PATCH] Menu: the floating card is retired; iPad menu bar switch;
+ menu bar pinned by default
+
+---
+ Bilingual-UI-he.md       |  2 +-
+ Bilingual-UI.md          |  2 +-
+ Features-he.md           |  2 +-
+ Features.md              |  2 +-
+ Keyboard-and-Touch-he.md |  3 +--
+ Keyboard-and-Touch.md    |  3 +--
+ Phone-Layout-he.md       | 15 +++++++--------
+ Phone-Layout.md          | 16 +++++++---------
+ Toolbar-he.md            | 16 ++++------------
+ Toolbar.md               | 18 ++++--------------
+ Tuning-Panel-he.md       |  5 +++--
+ Tuning-Panel.md          |  5 +++--
+ User-Guide-he.md         |  2 +-
+ User-Guide.md            |  7 +++----
+ 14 files changed, 38 insertions(+), 60 deletions(-)
+
+diff --git a/Bilingual-UI-he.md b/Bilingual-UI-he.md
+index afb1ea1..edceabb 100644
+--- a/Bilingual-UI-he.md
++++ b/Bilingual-UI-he.md
+@@ -64,7 +64,7 @@ navaid.supino.org" הפכה לשאלה שאי אפשר לענות עליה — 
+ ## טיפול ב-RTL
+ 
+ - <span dir="ltr"><code>&lt;html dir="rtl"&gt;</code></span> מוגדר כשהעברית פעילה.
+-- סרגל הכלים מחליף את הידית ואת אייקון הכיווץ באמצעות תכונות CSS לוגיות
++- סרגל הכלים ממקם את הידית באמצעות תכונות CSS לוגיות
+   (<span dir="ltr"><code>inline-start</code></span> / <span dir="ltr"><code>inline-end</code></span>).
+ - לעברית יש עמוד כניסה ב-<span dir="ltr"><code>docs/he/index.html</code></span> שמפנה ל-<span dir="ltr"><code>/?lang=he</code></span>, כדי לשמור כתובת עברית
+   יציבה שניתנת לאינדוקס.
+diff --git a/Bilingual-UI.md b/Bilingual-UI.md
+index 4e296f6..294fc1e 100644
+--- a/Bilingual-UI.md
++++ b/Bilingual-UI.md
+@@ -57,7 +57,7 @@ Adding a new translated string requires:
+ ## RTL handling
+ 
+ - `<html dir="rtl">` is set when Hebrew is active.
+-- The toolbar swaps its handle / collapse icons via CSS logical properties (`inline-start` / `inline-end`).
++- The toolbar places its handle via CSS logical properties (`inline-start` / `inline-end`).
+ - The Hebrew page uses an entry-point HTML at `docs/he/index.html` that redirects to `/?lang=he` to preserve a stable, indexable Hebrew URL.
+ 
+ ## Dataset names
+diff --git a/Features-he.md b/Features-he.md
+index c1ab9b2..b59f6ee 100644
+--- a/Features-he.md
++++ b/Features-he.md
+@@ -10,7 +10,7 @@
+ 
+ ![NavAid באנגלית](img/01-overview-en.jpg)
+ 
+-סרגל הכלים (שמאל-עליון, נגרר) מקובץ לקטעים מתכווצים:
++סרגל הכלים (שורת תפריט במחשב, מגירת התפריט של הסרגל התחתון בטלפון) מקובץ לקטעים:
+ 
+ | קטע | מטרה |
+ | --- | --- |
+diff --git a/Features.md b/Features.md
+index 64e5628..492c69b 100644
+--- a/Features.md
++++ b/Features.md
+@@ -8,7 +8,7 @@ A guided tour of what NavAid can do, organised by toolbar section.
+ 
+ ![NavAid in English](img/01-overview-en.jpg)
+ 
+-The toolbar (top-left, draggable) is grouped into collapsible sections:
++The toolbar (a menu bar on a computer, the deck's Menu sheet on a phone) is grouped into sections:
+ 
+ | Section | Purpose |
+ | --- | --- |
+diff --git a/Keyboard-and-Touch-he.md b/Keyboard-and-Touch-he.md
+index 6e1cec3..de9c018 100644
+--- a/Keyboard-and-Touch-he.md
++++ b/Keyboard-and-Touch-he.md
+@@ -20,8 +20,7 @@ NavAid הוא בעיקר אפליקציית **מפה** — רוב האינטרא
+ | לחיצה ימנית | פעולות מהירות למה שמתחת לסמן — ראו [תפריט לחיצה ימנית](#תפריט-לחיצה-ימנית). **Shift** + לחיצה ימנית פותח את תפריט הדפדפן |
+ | לחיצה במצב הוספת נקודת ציון | הוספת נקודת ציון |
+ | לחיצה במצב הוספת הערה | הוספת הערה |
+-| גרירת ידית סרגל הכלים (⋯) | הזזת הסרגל. (התפריט הצף; כש[פריסת הטלפון](Phone-Layout-he) פעילה, התפריט נמצא במגירה.) |
+-| לחיצה על ☰ | כיווץ/הרחבת הסרגל (בתפריט הצף בלבד) |
++| גרירת ידית סרגל הכלים (⋯) | הזזת שורת התפריט (מחשב, כש-<span dir="ltr"><code>featureMenubarDrag</code></span> דלוק). בטלפון התפריט נמצא במגירה של [הסרגל התחתון](Phone-Layout-he). |
+ | גרירת חוגת סיבוב | סיבוב המפה |
+ | לחיצה על חוגת סיבוב | שינוי כיוון ב-90° |
+ 
+diff --git a/Keyboard-and-Touch.md b/Keyboard-and-Touch.md
+index 4d1b766..238f209 100644
+--- a/Keyboard-and-Touch.md
++++ b/Keyboard-and-Touch.md
+@@ -17,8 +17,7 @@ NavAid is primarily a **map** app — most interaction is mouse / touch on the c
+ | Right-click | Quick actions for whatever is under the pointer — see [Right-click menu](#right-click-menu). **Shift** + right-click opens the browser's own menu. |
+ | Click in **Add Waypoint** mode | Drop a new waypoint. |
+ | Click in **Add Note** mode | Drop a new note. |
+-| Drag the toolbar handle (⋯) | Move the toolbar. (The floating menu; with the [phone deck](Phone-Layout) on, the menu is in the deck's sheet.) |
+-| Click the hamburger (☰) | Collapse / expand the toolbar (floating menu only). |
++| Drag the toolbar handle (⋯) | Move the menu bar (computer, when `featureMenubarDrag` is on). On a phone the menu is in the [deck's](Phone-Layout) sheet. |
+ | Drag the rotate dial | Rotate the map. |
+ | Tap the rotate dial | Cycle bearing 0° / 90° / 180° / 270°. |
+ 
+diff --git a/Phone-Layout-he.md b/Phone-Layout-he.md
+index f56dbec..75e8e31 100644
+--- a/Phone-Layout-he.md
++++ b/Phone-Layout-he.md
+@@ -11,11 +11,10 @@
+ של חמש לשוניות למטה, ו**מגירה** אחת לכל השאר. **תקלת קשר**, פעולת החירום, עומדת בנפרד מהלשוניות:
+ כפתור אדום ברצועה.
+ 
+-פעיל כברירת מחדל במסכים צרים ובמכשירי מגע. <span dir="ltr"><code>?deck=0</code></span> בכתובת מחזיר את תפריט־החלון הצף (וזה גם
+-מה שמסך שולחני מקבל), וה-gist יכול לבטל את הפריסה לכולם דרך <span dir="ltr"><code>featureMobileDeck</code></span>.
+-
+-כשהסרגל פעיל, התפריט הצף כבוי לגמרי: התפריט נמצא רק במגירה של הסרגל. זה כולל מסך מגע בכל רוחב,
+-כך שאייפד מקבל את הסרגל ואף פעם לא את שני התפריטים. חיפוש שמוקלד במגירה של **תפריט** סוגר את
++זו הפריסה של כל מסך צר ושל כל מכשיר מגע; כרטיס התפריט הצף שהיא החליפה הוסר. מחשב מקבל את
++שורת התפריט בראש המסך ([סרגל הכלים](Toolbar-he)). מסך מגע בכל רוחב נחשב, כך שגם אייפד מקבל את
++הסרגל — אלא אם <span dir="ltr"><code>featureTabletDesktop</code></span> ב-gist נותן לו את שורת התפריט במקום. <span dir="ltr"><code>?deck=1</code></span> בכתובת
++מציג את הסרגל במסך רחב, כדי להסתכל עליו. חיפוש שמוקלד במגירה של **תפריט** סוגר את
+ המגירה ברגע שעשה את שלו (מסלול שנבנה ב-Return, או תוצאה שנבחרה), כולל המקלדת. באפליקציית
+ האנדרואיד, כפתור **חזרה** כשהתפריט פתוח סוגר את התפריט, לא את האפליקציה.
+ 
+@@ -105,8 +104,8 @@
+ מתחת לגובה הקטן ביותר וזו סגירה. מקשי החצים ו-Escape עושים את אותו הדבר.
+ 
+ **תפריט פותח את התפריט עצמו בתוך המגירה** — אותו אלמנט, מועבר פנימה ומוחזר בסגירה, כך שכל קטע,
+-כל מטפל אירועים וכל בחירה שמורה הם אלה שכבר עובדים. בזמן האירוח הוא מוותר רק על מה שהפך אותו
+-לחלון צף: הפינה, מגבלת הרוחב, הגלילה הפרטית, ידית הגרירה וההמבורגר. ופריט תפריט שפותח משהו —
++כל מטפל אירועים וכל בחירה שמורה הם אלה שכבר עובדים. בזמן האירוח הוא מוותר על ידית הגרירה של
++שורת התפריט; כפתורי הקלטה, מיקום ותקלת קשר נמצאים בסרגל וברצועה, ולכן המגירה משמיטה אותם (הסימולטור נשאר). ופריט תפריט שפותח משהו —
+ דפית, תבניות מסלול, רשימת NOTAM — סיים להיות תפריט, ולכן המגירה נסגרת מאחוריו.
+ 
+ חלונות נפתחים **בין** הרצועה לסרגל, ולא ממורכזים בחלון ששני פסים מכסים. הם תלויים מה**קצה התחתון** בפועל
+@@ -148,7 +147,7 @@
+ 
+ | מפתח | ערך פעיל | מה הוא עושה |
+ | --- | --- | --- |
+-| <span dir="ltr"><code>featureMobileDeck</code></span> | <span dir="ltr"><code>true</code></span> | הרצועה, הסרגל והמגירה במסכים צרים |
++| <span dir="ltr"><code>featureTabletDesktop</code></span> | <span dir="ltr"><code>false</code></span> | טאבלט (האייפד) מקבל את שורת התפריט של המחשב במקום הסרגל |
+ | <span dir="ltr"><code>hideMapClockWhileLive</code></span> | <span dir="ltr"><code>true</code></span> | להסתיר את שעון ההיערכות כשמיקום חי מניע את המפה |
+ 
+ קשור: [סרגל כלים](Toolbar-he) · [חלונית](Inspector-he) · [הקלטת מסלול GPS](GPS-Track-Recording-he) · [עקבו אחריי](Follow-Me-he)
+diff --git a/Phone-Layout.md b/Phone-Layout.md
+index 927377e..39c4e85 100644
+--- a/Phone-Layout.md
++++ b/Phone-Layout.md
+@@ -8,12 +8,10 @@ phone has one screen — so the layout is a **data strip** along the top, a **de
+ tabs along the bottom, and one **sheet** for everything else. **Comm fail**, the emergency
+ action, sits apart from the tabs: a red button in the strip.
+ 
+-It is on by default on narrow screens and on touch devices. `?deck=0` in the address brings
+-back the floating menu card (which is also what a desktop gets), and the gist can withdraw it
+-for everyone with `featureMobileDeck`.
+-
+-With the deck on, the floating menu is off entirely: the menu is only in the deck's sheet. That
+-includes a touch screen of any width, so an iPad gets the deck and never both menus. A search
++It is what every narrow screen and every touch device gets; the floating menu card it replaced
++is gone. A computer gets the menu bar along the top ([Toolbar](Toolbar)). A touch screen of any
++width counts, so an iPad gets the deck too — unless the gist's `featureTabletDesktop` gives it the
++menu bar instead. `?deck=1` in the address shows the deck on a wide screen, to look at it. A search
+ typed in the **Menu** sheet puts the sheet away once it has done its job (a route built with
+ Return, or a result picked), keyboard and all. In the Android app, **Back** with the Menu open
+ closes the Menu, not the app.
+@@ -114,8 +112,8 @@ the same from a keyboard.
+ 
+ **Menu opens the menu itself inside the sheet** — the same element, moved in and put back on
+ close, so every section, every handler and every remembered choice is the one that already
+-works. While it is hosted it gives up only what made it a floating card: its corner, its width
+-cap, its own scroll, its drag handle and the hamburger. And a menu item that opens something —
++works. While it is hosted it gives up the menu bar's drag handle; the Record, Location and Comm
++fail buttons are on the deck and the strip, so the sheet leaves them out (the Simulator stays). And a menu item that opens something —
+ a chart, the route templates, the NOTAM list — has finished being a menu, so the sheet closes
+ behind it.
+ 
+@@ -162,7 +160,7 @@ and sides, the deck at the bottom and sides, the map controls in their corners.
+ 
+ | Key | Live value | What it does |
+ | --- | --- | --- |
+-| `featureMobileDeck` | `true` | The strip, the deck and the sheet on narrow screens |
++| `featureTabletDesktop` | `false` | A tablet (the iPad) gets the desktop menu bar instead of the deck |
+ | `hideMapClockWhileLive` | `true` | Put the look-ahead clock away while a position is driving the map |
+ 
+ Related: [Toolbar](Toolbar) · [Inspector](Inspector) · [GPS Track Recording](GPS-Track-Recording) · [Follow me](Follow-Me)
+diff --git a/Toolbar-he.md b/Toolbar-he.md
+index 9c39917..313ed02 100644
+--- a/Toolbar-he.md
++++ b/Toolbar-he.md
+@@ -4,9 +4,7 @@
+ 
+ # סרגל הכלים
+ 
+-סרגל הכלים נמצא בפינה השמאלית-עליונה של המפה. גררו אותו דרך ידית **⋯** וכווצו דרך כפתור ההמבורגר. בורר השפה נמצא ב**הגדרות**. כל פקד שומר את מצבו ב-<span dir="ltr"><code>localStorage</code></span> (ראו [LocalStorage Schema](LocalStorage-Schema-he)).
+-
+-![סרגל הכלים מכווץ לתפריט המבורגר בטלפון](img/07-toolbar-collapsed-he.jpg)
++במחשב סרגל הכלים הוא שורת תפריט קבועה לאורך ראש המפה (ההגדרה <span dir="ltr"><code>featureMenubarDrag</code></span> ב-gist מאפשרת לגרור אותה דרך ידית **⋯**). בטלפון ובטאבלט אותו תפריט הוא מגירת **תפריט** של הסרגל התחתון — ראו [פריסת הטלפון](Phone-Layout-he). אפשר לתת לאייפד את שורת התפריט במקום זאת דרך <span dir="ltr"><code>featureTabletDesktop</code></span> ב-gist. בורר השפה נמצא ב**הגדרות**. כל פקד שומר את מצבו ב-<span dir="ltr"><code>localStorage</code></span> (ראו [LocalStorage Schema](LocalStorage-Schema-he)).
+ 
+ ## מבנה הקטעים
+ 
+@@ -28,16 +26,10 @@
+ 
+ **מפה** ו**הגדרות** היו פעם קטע אחד, *תצוגה/הגדרה*. ב**הגדרות** נמצא עכשיו מה שקובעים פעם אחת: השפה, מהירות ברירת המחדל והנטייה המגנטית, ואחריהן שתי טבלאות העיון. הסימולטור הוא סמל ✈ קטן בתחתית סרגל הכלים.
+ 
+-### בטלפון: ראש התפריט נשאר במקום
+-
+-ה־☰ הוא הדרך היחידה להיכנס לתפריטים ולצאת מהם בטלפון, והוא נהג לגלול יחד איתם — פותחים את
+-״מראה״, גוללים לתחתית קטע ארוך, והפקד שסוגר אותו נמצא מעל קצה המסך. שורת הראש (הידית, ה־☰
+-והשפה) מוצמדת כעת לראש החלונית והקטעים נגללים תחתיה, וזו **אותה שורה שהכרטיס הסגור מציג**,
+-כך שפתיחת התפריט אינה מסדרת מחדש את ראשו.
++### בטלפון ובטאבלט
+ 
+-**הקשה על המפה סוגרת את התפריט.** בטלפון העמודה הפתוחה מכסה חצי מהמפה, ולכן הקשה על המפה
+-סוגרת אותה — גם הקטע הפתוח וגם כל העמודה מתכווצים חזרה ל־☰. כל אינטראקציה עם המפה נחשבת,
+-כך שהתחלת הזזה או הוספת נקודת ציון גם היא מפנה את התפריט מהדרך.
++כפתור **תפריט** בסרגל התחתון פותח את התפריט כמגירה; הידית וה-X שלה סוגרים אותה, וכך גם לחיצה
++נוספת על תפריט. **הקשה על המפה סוגרת קטע פתוח.**
+ 
+ ## שמור / המסלולים שלי
+ 
+diff --git a/Toolbar.md b/Toolbar.md
+index 5cf4d5e..c1dd014 100644
+--- a/Toolbar.md
++++ b/Toolbar.md
+@@ -2,9 +2,7 @@
+ 
+ # Toolbar
+ 
+-The toolbar sits at the top-left of the map. Drag it by the **⋯** handle and collapse it with the hamburger toggle. The language picker is in **Settings**. Each control persists its state to `localStorage` (see [LocalStorage Schema](LocalStorage-Schema)).
+-
+-![The toolbar collapsed to its hamburger on a phone](img/07-toolbar-collapsed.jpg)
++On a computer the toolbar is a menu bar pinned along the top of the map (the gist's `featureMenubarDrag` lets it be dragged by a **⋯** handle). On a phone or a tablet the same menu is the bottom deck's **Menu** sheet — see [Phone Layout](Phone-Layout). An iPad can be given the menu bar instead with the gist's `featureTabletDesktop`. The language picker is in **Settings**. Each control persists its state to `localStorage` (see [LocalStorage Schema](LocalStorage-Schema)).
+ 
+ ## Section layout
+ 
+@@ -29,18 +27,10 @@ Each header is a full-height row (52 px on a phone): a drawn icon, the title, a
+ The **Simulator** is a small ✈ icon in the toolbar footer (next to Terms /
+ Privacy) that opens the [Simulator](Simulator-Connect) panel.
+ 
+-### On a phone: the head stays put
+-
+-The ☰ is the only way in and out of the menus on a phone, and it used to scroll away with
+-them — open Display, scroll to the bottom of a long section, and the control that closes it
+-is above the top of the screen. The head row (grip, ☰, language) is now pinned to the top of
+-the panel while the sections scroll underneath, and it is the **same row the closed card
+-shows**, so opening the menu does not rearrange its own head.
++### On a phone or a tablet
+ 
+-**Tapping the map closes the menu.** On a phone the open column covers half the chart, so a
+-tap on the map dismisses it — both the open section and the whole column collapse back to the
+-☰. Any map interaction counts, so starting a pan or dropping a waypoint clears the menu out of
+-the way too.
++The deck's **Menu** button opens the menu as a sheet; its grip and its X close it, and so
++does pressing Menu again. **Tapping the map closes an open section.**
+ 
+ ## Save / My routes
+ 
+diff --git a/Tuning-Panel-he.md b/Tuning-Panel-he.md
+index d8551ba..4a7ee73 100644
+--- a/Tuning-Panel-he.md
++++ b/Tuning-Panel-he.md
+@@ -56,8 +56,9 @@
+   <span dir="ltr"><code>featureFollowMeRoute</code></span> (דלוק), <span dir="ltr"><code>followMeRouteCompress</code></span> (gzip / deflate-raw / off),
+   <span dir="ltr"><code>followMeRouteMaxKb</code></span> (64) ו-<span dir="ltr"><code>followMeRouteDebounceMs</code></span> (1500).
+   ראו [עקבו אחריי](Follow-Me-he).
+-- **פריסת הטלפון** — <span dir="ltr"><code>featureMobileDeck</code></span> (דלוק) מציב את רצועת הנתונים, הסרגל התחתון והמגירה
+-  במסכים צרים, ו-<span dir="ltr"><code>hideMapClockWhileLive</code></span> (דלוק) מסלק את שעון ההיערכות מהמפה כשמיקום חי מניע
++- **פריסת הטלפון** — רצועת הנתונים, הסרגל התחתון והמגירה הם מה שכל טלפון וטאבלט מקבל.
++  <span dir="ltr"><code>featureTabletDesktop</code></span> (כבוי) נותן לטאבלט את שורת התפריט של המחשב במקום,
++  <span dir="ltr"><code>featureMenubarDrag</code></span> (כבוי: שורת התפריט קבועה; דלוק מוסיף לה ידית גרירה), ו-<span dir="ltr"><code>hideMapClockWhileLive</code></span> (דלוק) מסלק את שעון ההיערכות מהמפה כשמיקום חי מניע
+   אותה. ראו [פריסת הטלפון](Phone-Layout-he).
+ - **GPS ומכשיר** — [שורת ה-GPS](GPS-Track-Recording-he#שורת-ה-gps) (<span dir="ltr"><code>featureGpsStatus</code></span>, דלוק)
+   ותוספות האנדרואיד: <span dir="ltr"><code>featureKeepAwake</code></span>, <span dir="ltr"><code>featureHaptics</code></span>, <span dir="ltr"><code>featureBrightness</code></span>,
+diff --git a/Tuning-Panel.md b/Tuning-Panel.md
+index cbf6107..7063a11 100644
+--- a/Tuning-Panel.md
++++ b/Tuning-Panel.md
+@@ -62,8 +62,9 @@ Constants are grouped into collapsible sections. Each control edits one constant
+   Public share: `featureFollowMePublic` (on), `publicPilotsViewHash` (the secret viewing link's
+   SHA-256), `followMePublicZoomGrow`, `followMePublicDimSec`, `followMePublicDropSec`.
+   See [Follow me](Follow-Me).
+-- **Phone layout** — `featureMobileDeck` (on) puts the data strip, the bottom deck and the sheet
+-  on narrow screens, and `hideMapClockWhileLive` (on) takes the look-ahead clock off the chart
++- **Phone layout** — the data strip, the bottom deck and the sheet are what every phone and
++  tablet gets. `featureTabletDesktop` (off) gives a tablet the desktop menu bar instead,
++  `featureMenubarDrag` (off: the desktop menu bar is pinned; on gives it a drag handle), and `hideMapClockWhileLive` (on) takes the look-ahead clock off the chart
+   while a position is driving the map. See [Phone layout](Phone-Layout).
+ - **GPS and device** — the [GPS line](GPS-Track-Recording#the-gps-line) (`featureGpsStatus`, on)
+   and the Android extras: `featureKeepAwake`, `featureHaptics`, `featureBrightness`,
+diff --git a/User-Guide-he.md b/User-Guide-he.md
+index f3eeb0f..724bd41 100644
+--- a/User-Guide-he.md
++++ b/User-Guide-he.md
+@@ -161,7 +161,7 @@
+ 
+ - **Esc** מנקה את הבחירה הנוכחית וסוגר את החלונית.
+ - **חוגת הסיבוב** — גררו לכל זווית, לחצו למעבר 0° / 90° / 180° / 270°.
+-- מצב הכיווץ של הסרגל משותף לשתי השפות; רק *מיקומי* החלוניות הנגררות נזכרים לכל שפה.
++- *מיקומי* החלוניות הנגררות נזכרים לכל שפה.
+ - חלון תוכנית הטיסה משתמש ב-<span dir="ltr"><code>change</code></span> (ולא ב-<span dir="ltr"><code>input</code></span>) לתאים לעריכה, כך שאפשר להקליד
+   בחופשיות; הערך נקלט ביציאה מהשדה או ב-Tab.
+ - פרמטרים נסתרים בכתובת: <span dir="ltr"><code>?tune=1</code></span>, <span dir="ltr"><code>?editor=1</code></span>, <span dir="ltr"><code>?graphlegs=1</code></span>, <span dir="ltr"><code>?hotspots=1</code></span> —
+diff --git a/User-Guide.md b/User-Guide.md
+index 4fed8cf..d972cf9 100644
+--- a/User-Guide.md
++++ b/User-Guide.md
+@@ -6,10 +6,9 @@ A reference for every interactive element. For a quick tour see [Features](Featu
+ 
+ ## The toolbar
+ 
+-The toolbar (top-left) is a vertical column with collapsible sections (Edit, Map, Display, Flight plan, Charts, Extra layers, Export/import, Print, Settings) — see [Toolbar](Toolbar). Behaviour:
++The toolbar has sections (Edit, Map, Display, Flight plan, Charts, Extra layers, Export/import, Print, Settings) — see [Toolbar](Toolbar). On a computer it is a menu bar along the top; on a phone or a tablet it is the bottom deck's **Menu** sheet ([Phone Layout](Phone-Layout)). Behaviour:
+ 
+-- **Drag handle (⋯)** — drag the toolbar anywhere on the screen. Position is persisted.
+-- **Hamburger toggle (☰)** — collapse / expand the whole toolbar. State is persisted across reloads and language switches; default is **collapsed** on phones.
++- **Drag handle (⋯)** — on a computer, when the gist's `featureMenubarDrag` allows it, drag the menu bar anywhere on the screen. Position is persisted.
+ - **Section headers** — click a section header to expand or collapse just that section.
+ 
+ ## Add modes
+@@ -198,5 +197,5 @@ Below the toolbar sections you'll see live totals - **Waypoints**, **Legs**, **D
+ - **Long-press a waypoint** on touch devices selects it without adding a new one (when in Add mode, briefly leave the mode by pressing Esc).
+ - **Esc** clears the current selection / inspector.
+ - **Map rotation dial** — drag for any bearing; tap to cycle 0° / 90° / 180° / 270°.
+-- The toolbar collapse state is shared across languages; only *positions* of draggable panels are remembered per language.
++- *Positions* of draggable panels are remembered per language.
+ - The flight plan modal uses `change` (not `input`) for editable cells, so you can type freely; commit on blur or Tab.
+-- 
+2.43.0
+

@@ -1,7 +1,7 @@
 // @ts-check
 // Option B, first slice: a data strip along the top and a deck of five targets along the
-// bottom, on narrow screens only. On by default (`featureMobileDeck`); `?deck=0` puts the
-// floating menu back without waiting for a config push.
+// bottom, on narrow and touch screens. Always on there: the floating menu card it replaced
+// is gone.
 //
 // The point is where the furniture sits, not what it does: every deck button drives a control
 // that already exists by clicking it, so the state, the persistence and the existing tests of
@@ -15,7 +15,7 @@ const PHONE = { width: 390, height: 844 };
 async function boot(page, opts) {
   const o = opts || {};
   await page.setViewportSize(o.size || PHONE);
-  await page.goto('?lang=en&nogist' + (o.deck === false ? '&deck=0' : ''));
+  await page.goto('?lang=en&nogist');
   await page.waitForFunction(() => typeof draw === 'function' && window.NavAid
     && typeof NavAid.refreshMobileDeck === 'function');
   await page.evaluate(() => {
@@ -29,13 +29,6 @@ const route = (page) => page.evaluate(() => {
   state.waypoints = [{ lat: 32.0, lng: 34.9, name: 'HRTZ' }, { lat: 32.3, lng: 35.1, name: 'LLEV' }];
   syncLegs();
   draw();
-});
-
-test('the gist can put the floating menu back', async ({ page }) => {
-  await boot(page, { deck: false });
-  await expect(page.locator('#deck-bar')).toHaveCount(0);
-  await expect(page.locator('#deck-strip')).toHaveCount(0);
-  expect(await page.evaluate(() => document.body.classList.contains('deck-on'))).toBe(false);
 });
 
 test('a phone gets the strip and the deck', async ({ page }) => {
@@ -100,6 +93,7 @@ test('the numbers on the strip are the live readout, not a second copy of it', a
 
 test('Record and Here press the buttons that already exist', async ({ page }) => {
   await boot(page);
+  await route(page);          // Plan is dimmed with no route; this is about the forwarding
   const got = await page.evaluate(() => {
     const hits = [];
     for (const id of ['gps-record', 'gps-live', 'plan']) {
@@ -153,7 +147,7 @@ test('Map puts everything away again', async ({ page }) => {
   });
   await page.evaluate(() => document.querySelector('.deck-btn-map').click());
   const got = await page.evaluate(() => ({
-    menu: document.getElementById('toolbar').classList.contains('collapsed'),
+    menu: getComputedStyle(document.getElementById('toolbar')).display === 'none',
     panel: document.getElementById('inspector').classList.contains('hidden'),
     selected: state.selected,
   }));
@@ -262,11 +256,10 @@ test('Menu opens the menu inside the sheet, at the working height', async ({ pag
     // and not the one most taps are for.
     forced: document.querySelectorAll('.tb-section.open').length,
     pressed: document.querySelector('.deck-btn-menu').getAttribute('aria-pressed'),
-    // ...minus the two controls that belonged to the floating card.
+    // ...minus the menubar's drag grip.
     handle: document.getElementById('toolbar-handle').getClientRects().length,
-    burger: document.getElementById('toolbar-toggle').getClientRects().length,
   }));
-  expect(got).toEqual({ hosted: true, forced: 0, pressed: 'true', handle: 0, burger: 0 });
+  expect(got).toEqual({ hosted: true, forced: 0, pressed: 'true', handle: 0 });
 });
 
 test('the grip cycles the three heights', async ({ page }) => {
@@ -308,10 +301,10 @@ test('dragging it down dismisses it, and the menu goes back where it came from',
   const got = await page.evaluate(() => {
     const bar = document.getElementById('toolbar');
     return { parent: bar.parentNode.tagName, hosted: bar.classList.contains('deck-hosted'),
-             collapsed: bar.classList.contains('collapsed') };
+             shown: bar.getClientRects().length > 0 };
   });
   // Back in the body, closed, and no longer wearing the sheet's layout.
-  expect(got).toEqual({ parent: 'BODY', hosted: false, collapsed: true });
+  expect(got).toEqual({ parent: 'BODY', hosted: false, shown: false });
 });
 
 test('dragging it up snaps to the next height rather than wherever the finger stopped', async ({ page }) => {
@@ -347,7 +340,7 @@ test('Map clears the chart: the plan, the charts, the menu and the panel', async
     fpOpen: typeof fpOpen !== 'undefined' ? fpOpen : null,
     stored: sessionStorage.getItem('navaid.fpOpen'),
     sheet: document.getElementById('deck-sheet').hidden,
-    menu: document.getElementById('toolbar').classList.contains('collapsed'),
+    menu: getComputedStyle(document.getElementById('toolbar')).display === 'none',
     sections: document.querySelectorAll('.tb-section.open').length,
   }));
   expect(got).toEqual({ overlays: 0, fpOpen: false, stored: null, sheet: true, menu: true, sections: 0 });
@@ -366,7 +359,7 @@ test('Map closes the menu', async ({ page }) => {
   await page.evaluate(() => document.querySelector('.deck-btn-map').click());
   const got = await page.evaluate(() => ({
     sheet: document.getElementById('deck-sheet').hidden,
-    menu: document.getElementById('toolbar').classList.contains('collapsed'),
+    menu: getComputedStyle(document.getElementById('toolbar')).display === 'none',
     // No section left open behind the closed menu: reopening it should show the menu, not
     // whatever was being read last time.
     sections: document.querySelectorAll('.tb-section.open').length,
@@ -384,15 +377,12 @@ test('Map closes the sheet', async ({ page }) => {
     document.querySelector('.deck-btn-menu').getAttribute('aria-pressed'))).toBe('false');
 });
 
-test('turning the deck off puts the menu back before it goes', async ({ page }) => {
+test('leaving the deck puts the menu back before it goes', async ({ page }) => {
   await boot(page);
   await page.evaluate(() => document.querySelector('.deck-btn-menu').click());
-  await page.evaluate(() => {
-    NavAid.tuningDefaults.featureMobileDeck.value = false;
-    // The URL override is what is on in this test; drop it the way a config push would.
-    history.replaceState(null, '', '?lang=en&nogist');
-    NavAid.refreshMobileDeck();
-  });
+  // A window widened past the phone breakpoint is a desktop: the menubar, not the deck.
+  await page.setViewportSize({ width: 1280, height: 820 });
+  await page.waitForFunction(() => !document.getElementById('deck-bar'));
   const got = await page.evaluate(() => {
     const bar = document.getElementById('toolbar');
     return { sheet: !!document.getElementById('deck-sheet'), deck: !!document.getElementById('deck-bar'),
@@ -737,8 +727,12 @@ for (const theme of ['light', 'dark']) {
       };
       const read = (sel) => {
         const cs = getComputedStyle(document.querySelector(sel));
+        // Against what the label sits on: the cell's own ground when it is solid (Record, red, is
+        // the phone's recording sign now), otherwise the bar showing through a tint.
+        const solid = (c) => { const m = c.match(/[\d.]+/g); return m && (m.length < 4 || Number(m[3]) >= 0.9); };
+        const under = solid(cs.backgroundColor) ? cs.backgroundColor : getComputedStyle(document.getElementById('deck-bar')).backgroundColor;
         return { color: cs.color, bar: cs.boxShadow, ground: cs.backgroundColor,
-                 contrast: Math.abs(lum(cs.color) - lum(getComputedStyle(document.getElementById('deck-bar')).backgroundColor)) };
+                 contrast: Math.abs(lum(cs.color) - lum(under)) };
       };
       const idle = getComputedStyle(document.querySelector('.deck-btn-plan')).color;
       const here = read('.deck-btn-here');
@@ -849,11 +843,15 @@ test('the menu does not repeat what the deck and the strip already say', async (
     const shown = (sel) => { const el = document.querySelector(sel);
       return !!el && el.getClientRects().length > 0; };
     return { readout: shown('#deck-sheet #gps-readout'),
-             gpsRow: shown('#deck-sheet .footer-gps-group'),
+             record: shown('#deck-sheet #gps-record'),
+             location: shown('#deck-sheet #gps-live'),
+             commfail: shown('#deck-sheet #commfail-btn'),
+             // The simulator has no deck button, so the sheet keeps it.
+             sim: shown('#deck-sheet #sim-trigger'),
              // The links the card carried are still there -- only the duplicates went.
              links: shown('#deck-sheet #footer-links') };
   });
-  expect(got).toEqual({ readout: false, gpsRow: false, links: true });
+  expect(got).toEqual({ readout: false, record: false, location: false, commfail: false, sim: true, links: true });
 });
 
 // Reported from an iPad: the top bar is hidden by the status bar -- the clock, the wifi and
@@ -935,4 +933,26 @@ test('searching from the sheet works, and the box goes home when it closes', asy
              hosted: overlay.classList.contains('deck-hosted-search') };
   });
   expect(home).toEqual({ inSheet: false, hidden: true, hosted: false });
+});
+
+// Reported from an iPhone while recording: "find another place for the record, they should not
+// move from the right of the screen". The REC pill under the strip pushed the right-hand column
+// below it, and the column wrapped away from the edge. On a phone the pill is off and the deck's
+// Record button is the sign: solid red, its icon pulsing. The column starts where it does
+// without a recording.
+test('recording on a phone: no pill over the column, the Record button is the sign', async ({ page }) => {
+  await boot(page);
+  const before = await page.evaluate(() => getComputedStyle(document.querySelector('.leaflet-bottom.leaflet-right')).getPropertyValue('--navaid-col-top'));
+  await page.evaluate(() => { window.gpsRecording = true; updateGpsRecIndicator(); NavAid.refreshMobileDeck(); });
+  const r = await page.evaluate(() => {
+    const b = getComputedStyle(document.querySelector('.deck-btn-record'));
+    return { pill: getComputedStyle(document.getElementById('gps-rec-indicator')).display, bg: b.backgroundColor, color: b.color,
+      pulse: getComputedStyle(document.querySelector('.deck-btn-record i')).animationName,
+      colTop: getComputedStyle(document.querySelector('.leaflet-bottom.leaflet-right')).getPropertyValue('--navaid-col-top') };
+  });
+  expect(r.pill).toBe('none');
+  expect(r.bg).toBe('rgb(215, 38, 61)');
+  expect(r.color).toBe('rgb(255, 255, 255)');
+  expect(r.pulse).toBe('gps-rec-pulse');
+  expect(r.colTop).toBe(before);
 });

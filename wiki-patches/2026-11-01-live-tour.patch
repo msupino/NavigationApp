@@ -1,0 +1,194 @@
+From 7d4579c167a1aaaeece8503cb11656cdb3bc7d59 Mon Sep 17 00:00:00 2001
+From: Marco <marco@supino.org>
+Date: Sun, 1 Nov 2026 18:49:14 +0000
+Subject: [PATCH] The in-flight tour, the REC sign, and a pinned desktop search
+ (featureSearchDrag)
+
+---
+ Keyboard-and-Touch-he.md  | 2 +-
+ Keyboard-and-Touch.md     | 2 +-
+ LocalStorage-Schema-he.md | 1 +
+ LocalStorage-Schema.md    | 1 +
+ Quick-Start-he.md         | 6 ++++++
+ Quick-Start.md            | 8 ++++++++
+ Simulator-Connect-he.md   | 3 +++
+ Simulator-Connect.md      | 4 ++++
+ Toolbar-he.md             | 2 +-
+ Toolbar.md                | 2 +-
+ Tuning-Panel-he.md        | 3 ++-
+ Tuning-Panel.md           | 4 +++-
+ 12 files changed, 32 insertions(+), 6 deletions(-)
+
+diff --git a/Keyboard-and-Touch-he.md b/Keyboard-and-Touch-he.md
+index 7a84c89..0ff9af3 100644
+--- a/Keyboard-and-Touch-he.md
++++ b/Keyboard-and-Touch-he.md
+@@ -61,7 +61,7 @@ NavAid הוא בעיקר אפליקציית **מפה** — רוב האינטרא
+ 
+ | מקש | פעולה |
+ | --- | --- |
+-| **Ctrl-F / Cmd-F** | פתיחת חיפוש נקודות והעברת המיקוד אליו. במחשב החיפוש נשאר מתחת לסרגל הכלים וניתן לגרירה; בטלפון הוא נפתח לפי בקשה. Esc מנקה את השאילתה, התוצאות והדוגמאות אך אינו מסתיר את שורת החיפוש, גם כשהיא ריקה. במחשב החלונית נשארת: אין לה ✕ אלא אם <span dir="ltr"><code>featureSearchClose</code></span> ב-gist מוסיף אותו, ואז רק ✕ מסתיר אותה. לחיפוש שנפתח לפי בקשה תמיד יש ✕. אם Enter פתח חלונית מידע של נקודה, Esc סוגר גם אותה — אפילו אחרי גלילה כשהמיקוד נשאר בחיפוש. |
++| **Ctrl-F / Cmd-F** | פתיחת חיפוש נקודות והעברת המיקוד אליו. במחשב החיפוש נשאר מתחת לסרגל הכלים, קבוע שם אלא אם <span dir="ltr"><code>featureSearchDrag</code></span> ב-gist מאפשר לגרור אותו; בטלפון הוא נפתח לפי בקשה. Esc מנקה את השאילתה, התוצאות והדוגמאות אך אינו מסתיר את שורת החיפוש, גם כשהיא ריקה. במחשב החלונית נשארת: אין לה ✕ אלא אם <span dir="ltr"><code>featureSearchClose</code></span> ב-gist מוסיף אותו, ואז רק ✕ מסתיר אותה. לחיפוש שנפתח לפי בקשה תמיד יש ✕. אם Enter פתח חלונית מידע של נקודה, Esc סוגר גם אותה — אפילו אחרי גלילה כשהמיקוד נשאר בחיפוש. |
+ | **?** | פתיחת **דף קיצורי המקלדת** המובנה (זמין גם דרך כפתור **Shortcuts** בכותרת התחתונה של סרגל הכלים) |
+ | **Ctrl-Z / Cmd-Z** | ביטול העריכה, ההזזה או המחיקה האחרונה |
+ | **M** | הפעלה/כיבוי של זכוכית המגדלת (תצוגה מוגדלת ליד הסמן) |
+diff --git a/Keyboard-and-Touch.md b/Keyboard-and-Touch.md
+index 5db177b..973673b 100644
+--- a/Keyboard-and-Touch.md
++++ b/Keyboard-and-Touch.md
+@@ -55,7 +55,7 @@ Closing an inspector during a trackpad scroll keeps the remaining scroll samples
+ 
+ | Key | Action |
+ | --- | --- |
+-| **Ctrl-F / Cmd-F** | Reveal the nav-WP search and put the caret in it. On a desktop the search is a draggable panel under the menu bar (left in English, right in Hebrew); on a phone it is a summoned overlay. Escape clears the query, results and examples but keeps the search bar visible, even when already empty. On a desktop the panel stays: it has no ✕ unless the gist's `featureSearchClose` gives it one, and then only ✕ dismisses it. A summoned search always has its ✕. If Enter opened a point's inspector, Escape also closes that inspector, even after scrolling it while focus remains in search. |
++| **Ctrl-F / Cmd-F** | Reveal the nav-WP search and put the caret in it. On a desktop the search is a panel under the menu bar (left in English, right in Hebrew), pinned there unless the gist's `featureSearchDrag` lets it be dragged; on a phone it is a summoned overlay. Escape clears the query, results and examples but keeps the search bar visible, even when already empty. On a desktop the panel stays: it has no ✕ unless the gist's `featureSearchClose` gives it one, and then only ✕ dismisses it. A summoned search always has its ✕. If Enter opened a point's inspector, Escape also closes that inspector, even after scrolling it while focus remains in search. |
+ | **?** | Open the in-app **keyboard-shortcuts cheat-sheet** (also reachable via the **Shortcuts** button in the toolbar footer). |
+ | **Ctrl-Z / Cmd-Z** | Undo the last edit, move, or delete. |
+ | **M** | Toggle the magnifying-glass loupe (zoomed view at the cursor). |
+diff --git a/LocalStorage-Schema-he.md b/LocalStorage-Schema-he.md
+index 5af84e1..4bef25b 100644
+--- a/LocalStorage-Schema-he.md
++++ b/LocalStorage-Schema-he.md
+@@ -45,6 +45,7 @@
+   העדפה, וסנכרון שלה היה מעמיד שני מכשירים על אותו נושא ומעביר את המפתח לכל מכשיר בחשבון. ראו
+   [עקבו אחריי](Follow-Me-he).
+ - <span dir="ltr"><code>navaid.tourSeen</code></span> — סיור המפה כבר הוצג במכשיר הזה. מקומי למכשיר: טלפון חדש מקבל את הסיור גם הוא.
++- <span dir="ltr"><code>navaid.liveTourSeen</code></span> — סיור הטיסה (הכפתורים שמוצגים כשהמיקום חי) כבר הוצג במכשיר הזה. מקומי למכשיר, כמו <span dir="ltr"><code>navaid.tourSeen</code></span>.
+ - <span dir="ltr"><code>navaid.notamModalSize</code></span> — הגודל שאליו נגרר חלון ה-NOTAM. גאומטריה מקומית למכשיר.
+ - <span dir="ltr"><code>navaid.notamListPos</code></span>, <span dir="ltr"><code>navaid.sigmetListPos</code></span>, <span dir="ltr"><code>navaid.airmetListPos</code></span> (כל אחד <span dir="ltr"><code>.en</code></span> / <span dir="ltr"><code>.he</code></span>) — היכן
+   נגררו רשימות ה-NOTAM, ה-SIGMET וה-AIRMET. מקומי למכשיר, כמו כל <span dir="ltr"><code>*Pos</code></span>.
+diff --git a/LocalStorage-Schema.md b/LocalStorage-Schema.md
+index 7f52347..f04b536 100644
+--- a/LocalStorage-Schema.md
++++ b/LocalStorage-Schema.md
+@@ -63,6 +63,7 @@ human-readable map; the complete enforceable registry is
+   followed (up to 32), so a link with the verify key stripped out cannot downgrade a viewer
+   that was already checking signatures. Never synced, for the same reason as the session below.
+ - `navaid.tourSeen` — the map tour has played on this device. Device-local: a new phone gets the tour too.
++- `navaid.liveTourSeen` — the in-flight tour (the controls shown while the position is live) has played on this device. Device-local, like `navaid.tourSeen`.
+ - `navaid.notamModalSize` — the size the NOTAM sheet was dragged to. Device-local geometry.
+ - `navaid.notamListPos`, `navaid.sigmetListPos`, `navaid.airmetListPos` (each `.en` / `.he`) —
+   where the NOTAM, SIGMET and AIRMET lists were dragged to. Device-local, like every `*Pos`.
+diff --git a/Quick-Start-he.md b/Quick-Start-he.md
+index 514f5ad..7e41f3f 100644
+--- a/Quick-Start-he.md
++++ b/Quick-Start-he.md
+@@ -64,6 +64,12 @@ NavAid מחשב מרחקים, כיוונים וזמני טיסה באופן חי
+ - הסיור מוצג פעם אחת בכל מכשיר. **הגדרות ← הצג את הסיור** מציג אותו שוב.
+ - מתג ב-gist: <span dir="ltr"><code>featureTour</code></span> (פעיל כברירת מחדל). "הפחתת תנועה" עוצרת את תנועת החץ.
+ 
++**סיור הטיסה.** בפעם הראשונה שהמיקום שלכם חי, סיור שני עובר על הכפתורים שמופיעים רק אז: הסימן
++האדום **מקליט**, מהירות / גובה / כיוון, איכות ה-GPS, מעקב, צפון למעלה או כיוון התקדמות, התראות
++מוקראות, עקבו אחריי (כשהוא פעיל), וקו המגמה (סימוני 2 / 5 / 10 nm ו-2 / 5 min, ורבע המעגל בפנייה).
++הוא מוצג פעם אחת; **הצג את הסיור** מציג את שני הסיורים, זה אחר זה. כשהמיקום כבוי, כפתורי
++הטיסה וסימן ההקלטה מוצגים לאורך הסיור ומוסתרים אחריו (התצוגה החיה וסימן ה-GPS, שצריכים מיקום, מדולגים אז).
++
+ ## מה עוד?
+ 
+ - הוסיפו **הערות** (📝 הוסף הערה) לכל מה שאין על המפה: קריאת "טפס 4500 רגל", ה-ATIS של השדה, או
+diff --git a/Quick-Start.md b/Quick-Start.md
+index a5f0095..c650082 100644
+--- a/Quick-Start.md
++++ b/Quick-Start.md
+@@ -34,6 +34,14 @@ On the first launch, after the [safety notice](Safety-Notice), a short tour walk
+ - It plays once per device. **Settings → Show the tour** plays it again.
+ - Gist switch `featureTour` (default on). Reduced motion stops the arrow's nudge.
+ 
++**The in-flight tour.** The first time your position is live, a second tour walks round the
++controls that only appear then: the red **REC** sign, speed / altitude / track, GPS quality,
++Follow, north up or heading up, spoken alerts, Follow me (when it is on), and the heading line
++(its 2 / 5 / 10 nm and 2 / 5 min marks, and the quarter circle in a turn). It plays once; **Show
++the tour** plays both tours, one after the other. With Location off, the in-flight buttons and
++the REC sign are shown for the tour and put away after it (the readout and the GPS chip, which
++need a fix, are left out then).
++
+ ## First flight plan
+ 
+ 1. Build a route as above.
+diff --git a/Simulator-Connect-he.md b/Simulator-Connect-he.md
+index 7afcfde..db5b6aa 100644
+--- a/Simulator-Connect-he.md
++++ b/Simulator-Connect-he.md
+@@ -41,6 +41,9 @@ NavAid יכול להציג את **מיקום המטוס בזמן אמת** על 
+ הפאנל הוא כפתור **התחבר לסימולטור**, שדה כתובת הגשר ושורת המצב. החיבור מציג מצב
+ פעיל ירוק.
+ 
++כשהסימולטור מחובר, אייקון המטוס מודגש כמו מיקום והקלטה שלידו, והוא מתג: לחיצה עליו
++**מנתקת** (הודעה קצרה: *הסימולטור נותק*) במקום לפתוח את הפאנל. כשהוא מנותק, לחיצה פותחת את הפאנל שוב.
++
+ מעקב ומרכוז **אינם** בפאנל הזה: אלה [מתג המעקב ומצפן כיוון המפה](The-Map-he)
+ שעל המפה, אותם שני פקדים שמשמשים גם קליטת GPS אמיתית. בעבר היו לפאנל עותקים
+ משלו, ומכיוון שנדרשו שניהם, מתג המפה יכול היה שלא לעשות דבר כשדגל הפאנל כבוי.
+diff --git a/Simulator-Connect.md b/Simulator-Connect.md
+index 5c9e875..0beb109 100644
+--- a/Simulator-Connect.md
++++ b/Simulator-Connect.md
+@@ -39,6 +39,10 @@ The bridge exposes a JSON endpoint on `http://localhost:2020` by default.
+ The panel is the **Connect to simulator** button, the Bridge URL field and the
+ status line. Connect shows a green active state.
+ 
++While connected, the plane icon is lit like Location and Record beside it, and it is a switch:
++pressing it **disconnects** (a toast says *Simulator disconnected*) instead of opening the panel.
++Disconnected, it opens the panel again.
++
+ Following and centring are **not** in this panel: they are the map's own
+ [follow switch and orientation compass](The-Map#the-control-column-bottom-right), the same two
+ controls a real fix uses. The panel used to carry its own copies, and requiring
+diff --git a/Toolbar-he.md b/Toolbar-he.md
+index d8d5f90..5850ff5 100644
+--- a/Toolbar-he.md
++++ b/Toolbar-he.md
+@@ -128,7 +128,7 @@
+ | **גובה לפי** | **GPS** (מתוקן למחוון, כמו קודם) או **ברומטר + QNH** — חיישן הלחץ של הטלפון עם ה-QNH שהאפליקציה כבר מביאה, החישוב של מד הגובה עצמו <span dir="ltr">`145366 × (1 − (p / QNH)^0.19)`</span> רגל. הגובה בטיסה והתראות הגובה הולכים אחריו. בלי קריאה עדכנית (5 שנ׳) או QNH — חוזר ל-GPS. לא לתא מופעל לחץ. מקומי למכשיר (<span dir="ltr"><code>navaid.altSource</code></span>; ב-gist: <span dir="ltr"><code>defaultAltSource</code></span>, gps). |
+ | **הקלטה אוטומטית עם מיקום** | מסומן כברירת מחדל: הצגת המיקום מקליטה גם את הטיסה, והקלטה קצרה מכדי להיות טיסה אינה נשמרת — ראו [הקלטת מסלול GPS](GPS-Track-Recording-he#הקלטה-אוטומטית-עם-מיקום). |
+ | **חלונית בזמן הצגת מיקום** | כבוי כברירת מחדל: מאפשר לנגיעה לפתוח את החלונית בזמן שהמיקום מוצג — ראו [החלונית למידע נוסף](Inspector-he). |
+-| **הצג את הסיור** | מנגן שוב את סיור המפה. |
++| **הצג את הסיור** | מנגן שוב את סיור המפה, ואחריו את סיור הטיסה (כשהמיקום כבוי, כפתוריו מוצגים לאורך הסיור). |
+ | **בהירות מסך** | *(אפליקציית אנדרואיד)* מחוון לתא הטייס בלילה, גם מתחת למינימום של הטלפון (מסך כהה משלים את השאר; בדפדפן יש רק אותו). **בהירות: חזרה להגדרת הטלפון** מחזירה לטלפון. מקומי למכשיר (<span dir="ltr"><code>navaid.brightness</code></span>). ב-gist: <span dir="ltr"><code>featureBrightness</code></span>. |
+ | **חיבור GPS בבלוטות׳** | *(אפליקציית אנדרואיד, כבוי כברירת מחדל — <span dir="ltr"><code>featureBleGps</code></span>)* GPS חיצוני ב-Bluetooth LE (NMEA $..RMC/$..GGA). כשהוא מספק מיקום, המיקום של הטלפון זז הצידה ושורת ה-GPS מראה **BT**. מחוץ לאפליקציה הוא מעומעם, עם הסיבה. |
+ | **גרסת האפליקציה** | הגרסה המותקנת, וב-APK למה עדכון מחכה — ראו [לא מקוון ו-PWA](Offline-and-PWA-he#אפליקציית-מובייל-android-apk). |
+diff --git a/Toolbar.md b/Toolbar.md
+index 901fcfd..74e08cc 100644
+--- a/Toolbar.md
++++ b/Toolbar.md
+@@ -134,7 +134,7 @@ The NOTAM, SIGMET and AIRMET lists move by their title bar and open again where
+ | **Altitude from** | **GPS** (corrected to indicated, as before) or **Barometer + QNH** — the phone's pressure sensor with the QNH the app already fetches, the altimeter's own sum `145366 × (1 − (p / QNH)^0.19)` ft. The in-flight altitude and the altitude alerts follow it. Without a fresh reading (5 s) or a QNH it falls back to GPS. Not for a pressurised cabin. Device-local (`navaid.altSource`; gist `defaultAltSource`, `gps`). |
+ | **Record automatically with location** | On by default: showing your location also records the flight, and a recording too short to be a flight is not kept — see [GPS Track Recording](GPS-Track-Recording#recording-automatically-with-location). |
+ | **Panel while showing position** | Off by default: lets a tap open the inspector while your position is on the map — see [Inspector](Inspector). |
+-| **Show the tour** | Plays the map tour again. |
++| **Show the tour** | Plays the map tour again, then the in-flight tour (with Location off, its buttons are shown for the tour). |
+ | **Screen brightness** | *(Android app)* A slider for the cockpit at night, below the phone's own minimum if needed (a dark veil does the rest; in a browser the veil is all there is). **Brightness: back to the phone's setting** hands it back. Device-local (`navaid.brightness`). Gist: `featureBrightness`. |
+ | **Connect Bluetooth GPS** | *(Android app, off by default — `featureBleGps`)* An external GPS over Bluetooth LE (NMEA $..RMC/$..GGA). While it delivers, the phone's own fixes step aside and the GPS line shows **BT**. Dimmed, with its reason, outside the app. |
+ | **App version** | The installed version, and in the APK what an update is waiting for — see [Offline and PWA](Offline-and-PWA#mobile-app-android-apk). |
+diff --git a/Tuning-Panel-he.md b/Tuning-Panel-he.md
+index e7197ea..f98c71e 100644
+--- a/Tuning-Panel-he.md
++++ b/Tuning-Panel-he.md
+@@ -58,7 +58,8 @@
+   ראו [עקבו אחריי](Follow-Me-he).
+ - **פריסת הטלפון** — רצועת הנתונים, הסרגל התחתון והמגירה הם מה שכל טלפון וטאבלט מקבל.
+   <span dir="ltr"><code>featureTabletDesktop</code></span> (כבוי) נותן לטאבלט את שורת התפריט של המחשב במקום,
+-  <span dir="ltr"><code>featureMenubarDrag</code></span> (כבוי: שורת התפריט קבועה; דלוק מוסיף לה ידית גרירה), ו-<span dir="ltr"><code>hideMapClockWhileLive</code></span> (דלוק) מסלק את שעון ההיערכות מהמפה כשמיקום חי מניע
++  <span dir="ltr"><code>featureMenubarDrag</code></span> (כבוי: שורת התפריט קבועה; דלוק מוסיף לה ידית גרירה),
++  <span dir="ltr"><code>featureSearchDrag</code></span> (כבוי, ריק או חסר: כרטיס החיפוש במחשב קבוע מתחת לתפריט; רק <span dir="ltr"><code>true</code></span> מאפשר לגרור אותו, ורק אז משמש מיקום שנשמר), ו-<span dir="ltr"><code>hideMapClockWhileLive</code></span> (דלוק) מסלק את שעון ההיערכות מהמפה כשמיקום חי מניע
+   אותה. ראו [פריסת הטלפון](Phone-Layout-he).
+ - **GPS ומכשיר** — [שורת ה-GPS](GPS-Track-Recording-he#שורת-ה-gps) (<span dir="ltr"><code>featureGpsStatus</code></span>, דלוק)
+   ותוספות האנדרואיד: <span dir="ltr"><code>featureKeepAwake</code></span>, <span dir="ltr"><code>featureHaptics</code></span>, <span dir="ltr"><code>featureBrightness</code></span>,
+diff --git a/Tuning-Panel.md b/Tuning-Panel.md
+index 7d0ed23..f28de4d 100644
+--- a/Tuning-Panel.md
++++ b/Tuning-Panel.md
+@@ -64,7 +64,9 @@ Constants are grouped into collapsible sections. Each control edits one constant
+   See [Follow me](Follow-Me).
+ - **Phone layout** — the data strip, the bottom deck and the sheet are what every phone and
+   tablet gets. `featureTabletDesktop` (off) gives a tablet the desktop menu bar instead,
+-  `featureMenubarDrag` (off: the desktop menu bar is pinned; on gives it a drag handle), and `hideMapClockWhileLive` (on) takes the look-ahead clock off the chart
++  `featureMenubarDrag` (off: the desktop menu bar is pinned; on gives it a drag handle),
++  `featureSearchDrag` (off, empty or missing: the desktop search card is pinned under the menu;
++  only `true` lets it be dragged, and a saved position is used only then), and `hideMapClockWhileLive` (on) takes the look-ahead clock off the chart
+   while a position is driving the map. See [Phone layout](Phone-Layout).
+ - **GPS and device** — the [GPS line](GPS-Track-Recording#the-gps-line) (`featureGpsStatus`, on)
+   and the Android extras: `featureKeepAwake`, `featureHaptics`, `featureBrightness`,
+-- 
+2.43.0
+

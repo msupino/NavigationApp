@@ -1,0 +1,39 @@
+From ba91a219554ca5aa410aaed77b8f96e8df349e31 Mon Sep 17 00:00:00 2001
+From: Marco <marco@supino.org>
+Date: Thu, 5 Nov 2026 05:50:48 +0000
+Subject: [PATCH] Keyboard: a key refuses like its dimmed button
+
+---
+ Keyboard-and-Touch-he.md | 2 ++
+ Keyboard-and-Touch.md    | 2 ++
+ 2 files changed, 4 insertions(+)
+
+diff --git a/Keyboard-and-Touch-he.md b/Keyboard-and-Touch-he.md
+index 0ff9af3..c3c53e0 100644
+--- a/Keyboard-and-Touch-he.md
++++ b/Keyboard-and-Touch-he.md
+@@ -81,6 +81,8 @@ NavAid הוא בעיקר אפליקציית **מפה** — רוב האינטרא
+ | **Enter** | אישור שדה; מעבר לתוצאת חיפוש ראשונה |
+ | **חצי מקלדת** | מעבר מיקוד בסרגל הכלים. כשהפוקוס על חוגת הסיבוב הם מסובבים את המפה — ראו למטה |
+ 
++מקש עושה מה שהכפתור שלו עושה — וגם מסרב באותה דרך. כשהכפתור מעומעם (אין עדיין מה להתאים, אין מה לבטל, המסלול נעול), המקש מציג את הסיבה של הכפתור ואינו עושה דבר; <span dir="ltr"><b>D</b></span>, <span dir="ltr"><b>Delete</b></span>, <span dir="ltr"><b>X</b></span> ו-<span dir="ltr"><b>Z</b></span> מסרבים כשהמסלול נעול, כמו הכפתורים בחלונית.
++
+ ### חוגת הסיבוב
+ 
+ Tab אל החוגה, והיא מגיבה למקשים שמחוון מגיב להם: **↑ / ←** ו-**↓ / →** מסובבים במעלה
+diff --git a/Keyboard-and-Touch.md b/Keyboard-and-Touch.md
+index 973673b..b6b4011 100644
+--- a/Keyboard-and-Touch.md
++++ b/Keyboard-and-Touch.md
+@@ -75,6 +75,8 @@ Closing an inspector during a trackpad scroll keeps the remaining scroll samples
+ | **Enter** | Commit an inspector / plan field; jump to the first search result. |
+ | **Arrow keys** | Move focus inside the toolbar where it's a `role=button`. With the rotate dial focused they turn the map instead — see below. |
+ 
++A key does what its button does — and says no the same way. When the button is dimmed (nothing to fit yet, nothing to undo, the route locked), the key shows the button's reason and does nothing; **D**, **Delete**, **X** and **Z** refuse on a locked route, like the panel's buttons.
++
+ ### The rotate dial
+ 
+ Tab to the dial and it answers the keys a slider answers: **↑ / →** and **↓ / ←** turn 1°,
+-- 
+2.43.0
+

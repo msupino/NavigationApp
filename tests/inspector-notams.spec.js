@@ -7,7 +7,7 @@ const { test, expect } = require('./_setup');
 const NOW = Date.now();
 
 async function lowAlt(page) {
-  await page.goto('?lang=en&nogist&deck=0');
+  await page.goto('?lang=en&nogist');
   await page.waitForFunction(() => typeof showInspector === 'function' && document.getElementById('layer-select'));
   await page.evaluate(() => {
     const s = document.getElementById('layer-select');

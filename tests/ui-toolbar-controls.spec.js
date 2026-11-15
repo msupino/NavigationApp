@@ -1,7 +1,4 @@
 // @ts-check
-// The floating menu card is what this file is about, and the phone deck replaces it: the
-// deck's own spec covers that layout, and `?deck=0` is the switch a gist -- or a pilot --
-// can use to have the card back. So these open with the card.
 // Coverage for toolbar UI controls whose state must persist across reload.
 // Targets gaps in the existing spec suite: section headers, display checkboxes,
 // sliders, base-map layer, and toolbar collapse state.
@@ -16,13 +13,13 @@ async function boot(page) {
       if (localStorage.getItem('__test_tb_init') !== '1') {
         localStorage.clear();
         sessionStorage.clear();
-        for (const s of ['build','view','display','charts','export','print'])
+        for (const s of ['build','view','display','charts','export','print','settings'])
           localStorage.setItem('navaid.sec.' + s, '1');
         localStorage.setItem('__test_tb_init', '1');
       }
     } catch (e) {}
   });
-  await page.goto('?lang=en&deck=0');
+  await page.goto('?lang=en');
   await page.waitForFunction(() => typeof state !== 'undefined');
 }
 
@@ -49,7 +46,8 @@ test.describe('Toolbar section toggles', () => {
 
 test.describe('Display checkbox toggles', () => {
   const cases = [
-    { id: '#ret-cb',      key: 'navaid.showReturn',     startsChecked: false },
+    // A toggle button in Edit now, driving the hidden checkbox: press the button.
+    { id: '#ret-cb',      key: 'navaid.showReturn',     startsChecked: false, press: '#ret-btn' },
     { id: '#mid-cb',      key: 'navaid.showMidLeg',     startsChecked: false },
     { id: '#diff-cb',     key: 'navaid.highlightDiff',  startsChecked: false },
     { id: '#limit-kites-cb', key: 'navaid.limitLegKites', startsChecked: true },
@@ -66,7 +64,7 @@ test.describe('Display checkbox toggles', () => {
       const cb = page.locator(c.id);
       const before = await cb.isChecked();
       expect(before).toBe(c.startsChecked);
-      await cb.click();
+      await (c.press ? page.locator(c.press) : cb).click();
       const stored = await page.evaluate(k => localStorage.getItem(k), c.key);
       expect(stored).toBe(c.startsChecked ? '0' : '1');
     });
@@ -76,6 +74,8 @@ test.describe('Display checkbox toggles', () => {
 test.describe('Map legend', () => {
   test('floats over the map (not in the toolbar) with airfield, waypoint, freq-change symbols', async ({ page }) => {
     await boot(page);
+    // The desktop key opens from its round Legend button (closed by default).
+    await page.locator('#legend-toggle').click();
     const legend = page.locator('#map-legend');
     await expect(legend).toBeVisible();
     await expect(legend).toContainText('Legend');
@@ -105,24 +105,28 @@ test.describe('Map legend', () => {
 });
 
 test.describe('Sliders persist to localStorage', () => {
-  test('theme toggle button writes navaid.theme and persists across reload', async ({ page }) => {
+  test('the Theme setting writes navaid.theme and persists across reload', async ({ page }) => {
     await boot(page);
-    const btn = page.locator('#theme-toggle');
-    // Light by default → button offers to switch TO dark.
+    const sel = page.locator('#theme-select');
+    // A setting beside the language, and the same kind of row: a label and a choice -- not in
+    // Display, and not a full-width button (asked).
+    await expect(page.locator('.tb-section[data-sec="settings"] label#theme-row #theme-select')).toHaveCount(1);
+    await expect(page.locator('.tb-section[data-sec="display"] #theme-select')).toHaveCount(0);
+    await expect(page.locator('#theme-row > span')).toHaveText('Theme');
+    expect(await sel.locator('option').allTextContents()).toEqual(['Light', 'Dark']);
+    // Light by default.
     await expect(page.locator('body')).toHaveClass(/theme-light/);
-    await expect(btn).toContainText('Dark mode');
-    await btn.click();
+    await expect(sel).toHaveValue('light');
+    await sel.selectOption('dark');
     expect(await page.evaluate(() => localStorage.getItem('navaid.theme'))).toBe('dark');
     await expect(page.locator('body')).not.toHaveClass(/theme-light/);
-    // Now in dark → button offers to switch back TO light.
-    await expect(btn).toContainText('Light mode');
 
     await page.reload();
     await page.waitForFunction(() => typeof state !== 'undefined');
     await expect(page.locator('body')).not.toHaveClass(/theme-light/);
-    await expect(page.locator('#theme-toggle')).toContainText('Light mode');
+    await expect(page.locator('#theme-select')).toHaveValue('dark');
 
-    await page.locator('#theme-toggle').click();
+    await page.locator('#theme-select').selectOption('light');
     expect(await page.evaluate(() => localStorage.getItem('navaid.theme'))).toBe('light');
     await expect(page.locator('body')).toHaveClass(/theme-light/);
   });
@@ -136,7 +140,9 @@ test.describe('Sliders persist to localStorage', () => {
       localStorage.setItem('keepme', '1');           // non-navaid key survives
     });
     await answerAppDialogs(page, true);
-    await page.locator('#clear-store').click();
+    // The wipe lives in the Settings > Storage window now (last-resort row), not a toolbar button.
+    await page.evaluate(() => showStorageModal());
+    await page.locator('.storage-wipe-btn').click();
     await page.waitForFunction(() => typeof state !== 'undefined');  // reloaded
     // Note: the test harness re-seeds navaid.sec.* on every load, so assert the
     // keys we set are gone rather than the whole namespace being empty.
@@ -279,38 +285,3 @@ test.describe('Layer selector', () => {
   });
 });
 
-test.describe('Toolbar collapse on mobile', () => {
-  test.use({ viewport: { width: 390, height: 844 } });
-
-  test('hamburger expands/collapses the floating toolbar and persists navaid.toolbarCollapsed', async ({ page }) => {
-    await boot(page);
-    await expect(page.locator('#toolbar')).toHaveClass(/collapsed/);
-
-    await page.locator('#toolbar-toggle').click();
-    await expect(page.locator('#toolbar')).not.toHaveClass(/collapsed/);
-    let stored = await page.evaluate(() => localStorage.getItem('navaid.toolbarCollapsed'));
-    expect(stored).toBe('0');
-
-    await page.locator('#toolbar-toggle').click();
-    await expect(page.locator('#toolbar')).toHaveClass(/collapsed/);
-    stored = await page.evaluate(() => localStorage.getItem('navaid.toolbarCollapsed'));
-    expect(stored).toBe('1');
-
-    await page.reload();
-    await page.waitForFunction(() => typeof state !== 'undefined');
-    await expect(page.locator('#toolbar')).toHaveClass(/collapsed/);
-    const reloaded = await page.evaluate(() => localStorage.getItem('navaid.toolbarCollapsed'));
-    expect(reloaded).toBe('1');
-  });
-
-  test('expanded mobile toolbar persists across reload', async ({ page }) => {
-    await boot(page);
-    await page.locator('#toolbar-toggle').click();
-    const stored = await page.evaluate(() => localStorage.getItem('navaid.toolbarCollapsed'));
-    expect(stored).toBe('0');
-
-    await page.reload();
-    await page.waitForFunction(() => typeof state !== 'undefined');
-    await expect(page.locator('#toolbar')).not.toHaveClass(/collapsed/);
-  });
-});

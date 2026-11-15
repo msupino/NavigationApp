@@ -1,6 +1,6 @@
 'use strict';
 // Option B, first slice: a data strip along the top of the chart and a deck of five targets
-// along the bottom, on narrow screens only, behind `featureMobileDeck` (off).
+// along the bottom, on narrow and touch screens.
 //
 // Why: measured at 390x844, the phone screen carried six floating islands -- the menu card,
 // the Zulu clock, the look-ahead strip, the coordinate readout, the zoom column and the
@@ -17,19 +17,20 @@
 (function mobileDeck() {
   const NARROW = '(max-width: 680px), (pointer: coarse)';
 
-  // On by default now, narrow screens only. `?deck=0` puts the floating menu back without
-  // waiting for a config push, and `?deck=1` brings the deck up on a wide screen to look at
-  // it -- the same escape hatch `?tune=1` gives the tuning panel. The gist still owns the
-  // switch itself.
+  // Always on, narrow and touch screens only: the floating menu it replaced is gone there.
+  // `?deck=1` brings the deck up on a wide screen to look at it -- the same escape hatch `?tune=1`
+  // gives the tuning panel.
   function flagOn() {
     let param = null;
     try { param = new URLSearchParams(location.search).get('deck'); } catch (e) { /* no URL */ }
-    if (param === '1' || param === 'true') return true;
-    if (param === '0' || param === 'false') return false;
-    return typeof tune !== 'function' || tune('featureMobileDeck') !== false;
+    return param === '1' || param === 'true';
   }
-  const narrow = () => !window.matchMedia || window.matchMedia(NARROW).matches;
-  const wanted = () => flagOn() && narrow();
+  // A tablet gets the deck through the coarse pointer -- unless the gist's `featureTabletDesktop`
+  // gives it the desktop menubar (ui.js toolbarUsesDesktopMenu), which the deck must not cover.
+  const desktopMenu = () => !!(window.NavAid && typeof NavAid.usesDesktopMenu === 'function'
+    && NavAid.usesDesktopMenu());
+  const narrow = () => !window.matchMedia || (window.matchMedia(NARROW).matches && !desktopMenu());
+  const wanted = () => flagOn() || narrow();
 
   const txt = (id) => {
     const el = document.getElementById(id);
@@ -59,6 +60,7 @@
   let stripSub = null;
   let deck = null;
   let commBtn = null;
+  let divertBtn = null;
   const buttons = {};
   let observers = [];
 
@@ -78,14 +80,17 @@
     strip.append(top, stripSub);
     // Comm fail: the emergency action, in red at the top, always in reach and apart from the
     // five places on the bottom bar. It presses the toolbar's own button (one behaviour).
+    // Icon-only like Divert beside it, so the readout keeps its room; red marks it out.
     commBtn = document.createElement('button');
     commBtn.type = 'button';
     commBtn.className = 'deck-strip-commfail deck-btn-commfail';
     const commLabel = (typeof S === 'object' && S && S.deckCommFail) || 'Comm fail';
-    commBtn.innerHTML = (typeof navIconSvg === 'function' ? navIconSvg('commfail', 18) : '')
-      + '<span class="deck-strip-commfail-label"></span>';
-    commBtn.querySelector('.deck-strip-commfail-label').textContent = commLabel;
-    commBtn.setAttribute('aria-label', (typeof S === 'object' && S && S.commFailTitle) || commLabel);
+    commBtn.innerHTML = typeof navIconSvg === 'function' ? navIconSvg('commfail', 20) : '';
+    // The accessible name starts with the short label (voice control: "tap Comm fail"); the
+    // longer explanation follows after a colon. The title shows the label on a mouse.
+    const commHelp = (typeof S === 'object' && S && S.commFailTitle) || '';
+    commBtn.setAttribute('aria-label', commHelp ? (commHelp.indexOf(commLabel) === 0 ? commHelp : commLabel + ': ' + commHelp) : commLabel);
+    commBtn.title = commLabel;
     commBtn.setAttribute('aria-pressed', 'false');
     commBtn.addEventListener('click', () => { click('commfail-btn'); sync(); });
     // Language, findable without reading the current one: a globe and the other language's name.
@@ -95,7 +100,20 @@
     langBtn.innerHTML = (typeof navIconSvg === 'function' ? navIconSvg('globe', 18) : '')
       + '<span class="lang-quick-label"></span>';
     if (typeof dressLangQuick === 'function') dressLangQuick(langBtn);
+    // Divert: the other in-flight decision, beside Comm fail. Not red -- it is not the emergency --
+    // and icon-only so the readout keeps its room; the words are in the accessible name.
+    divertBtn = document.createElement('button');
+    divertBtn.type = 'button';
+    divertBtn.className = 'deck-strip-divert';
+    divertBtn.innerHTML = typeof navIconSvg === 'function' ? navIconSvg('divert', 20) : '';
+    const divLabel = (typeof S === 'object' && S && S.divert) || 'Divert';
+    const divHelp = (typeof S === 'object' && S && S.divertTitle) || '';
+    divertBtn.setAttribute('aria-label', divHelp ? divLabel + ': ' + divHelp : divLabel);
+    divertBtn.title = divLabel;
+    divertBtn.setAttribute('aria-pressed', 'false');
+    divertBtn.addEventListener('click', () => { click('divert-btn'); sync(); });
     strip.appendChild(langBtn);
+    strip.appendChild(divertBtn);
     strip.appendChild(commBtn);
     document.body.appendChild(strip);
     // The menu opens under the strip, so it has to know how tall the strip is -- which
@@ -176,6 +194,8 @@
       || 'Drag to resize, tap to change height');
     sheetTitle = document.createElement('h2');
     sheetTitle.className = 'deck-sheet-title';
+    sheetTitle.id = 'deck-sheet-title';
+    sheet.setAttribute('aria-labelledby', sheetTitle.id);   // the dialog's accessible name
     const close = document.createElement('button');
     close.type = 'button';
     close.className = 'deck-sheet-close';
@@ -186,6 +206,11 @@
     sheetBody = document.createElement('div');
     sheetBody.className = 'deck-sheet-body';
     sheet.append(head, sheetBody);
+    // Escape closes from anywhere inside the sheet, not only the grip. A dialog (e.g. an ask
+    // card) opened over it handles its own Escape first and marks the event handled.
+    sheet.addEventListener('keydown', (ev) => {
+      if (ev.key === 'Escape' && !ev.defaultPrevented && ev.target.tagName !== 'INPUT' && ev.target.tagName !== 'SELECT' && ev.target.tagName !== 'TEXTAREA') closeSheet();
+    });
     document.body.appendChild(sheet);
     wireGrip(grip);
   }
@@ -286,6 +311,18 @@
     sync();
   }
   NavAid.closeDeckSheet = () => closeSheet();
+  // A map button pressed while the Menu is open is a move back to the chart: the Menu goes, and
+  // the button does its own job (asked, with a screenshot: the chart picker opened ON the open
+  // Menu, the two panels stacked). Every map button is a Leaflet control -- the edit column, the
+  // right-hand column, the zoom keys, the legend. Capture phase, before the button's own handler,
+  // so what the button opens is not closed with the Menu. Only the Menu: a point's details or the
+  // plan in the sheet stay while the map is used.
+  document.addEventListener('click', (ev) => {
+    if (!sheet || sheet.hidden || sheetKey !== 'menu') return;
+    const t = ev.target;
+    if (!t || !t.closest || !t.closest('.leaflet-control') || t.closest('.deck-sheet')) return;
+    closeSheet();
+  }, true);
   // Android Back asks this first (ui.js backButtonStep): an open sheet is a step to go back.
   NavAid.deckSheetOpen = () => !!(sheet && !sheet.hidden && sheetKey);
 
@@ -322,7 +359,6 @@
     const next = bar.nextSibling;
     const inline = bar.getAttribute('style') || '';
     bar.removeAttribute('style');              // a dragged position means nothing in a sheet
-    bar.classList.remove('collapsed');
     bar.classList.add('deck-hosted');
     body.appendChild(bar);
     restore = () => {
@@ -331,7 +367,6 @@
       if (inline) bar.setAttribute('style', inline);
       if (next && next.parentNode === parent) parent.insertBefore(bar, next);
       else parent.appendChild(bar);
-      if (typeof window.collapseToolbarForMapTool === 'function') window.collapseToolbarForMapTool();
     };
   }
 
@@ -363,7 +398,6 @@
     closeSheet();
     closeOverlays();
     if (typeof window.closeToolbarMenus === 'function') window.closeToolbarMenus();
-    if (typeof window.collapseToolbarForMapTool === 'function') window.collapseToolbarForMapTool();
     if (typeof state === 'object' && state && state.selected) {
       state.selected = null;
       if (typeof showInspector === 'function') showInspector();
@@ -394,6 +428,9 @@
   function showMenu() {
     if (sheet && !sheet.hidden && sheetKey === 'menu') { closeSheet(); return; }
     closeOverlays();
+    // Going to the menu is not answering the map's "tap to start a route", as the old card's
+    // hamburger was not: the onboarding stands down.
+    if (typeof dismissRoutePriming === 'function') dismissRoutePriming();
     openSheet('menu', (typeof S === 'object' && S && S.deckMenu) || 'Menu', hostToolbar);
   }
 
@@ -718,7 +755,7 @@
     }
     if (stripWidth < 0 || !stripRO) stripWidth = strip.clientWidth;
     // The route title shares the line, so it is part of what decides the fit.
-    const key = full + '|' + stripWidth + '|' + (stripLeg ? stripLeg.textContent : '');
+    const key = full + '|' + stripWidth + '|' + (stripLeg ? stripLeg.textContent : '') + '|' + strip.classList.contains('deck-strip-live');
     if (key === fittedKey) return;
     fittedKey = key;
     stripVals.textContent = full;
@@ -754,6 +791,9 @@
   function sync() {
     if (!strip) return;
     stripLeg.textContent = routeTitle();
+    // The live class decides how wide the language button is, so it is set BEFORE the readout is
+    // fitted to its line (it used to follow, and the fit measured the roomier, not-live strip).
+    strip.classList.toggle('deck-strip-live', !!(typeof gpsPositionLive === 'function' && gpsPositionLive()));
     fitStripVals(txt('gps-readout'));
     // Measurements read left to right in Hebrew as well; the readout's own element says so
     // and the copy on the strip has to say it too.
@@ -790,6 +830,10 @@
     if (commBtn) {
       const cf = document.getElementById('commfail-btn');
       commBtn.setAttribute('aria-pressed', String(!!(cf && cf.getAttribute('aria-pressed') === 'true')));
+    }
+    if (divertBtn) {
+      const dv = document.getElementById('divert-btn');
+      divertBtn.setAttribute('aria-pressed', String(!!(dv && dv.getAttribute('aria-pressed') === 'true')));
     }
     if (buttons.here) {
       buttons.here.setAttribute('aria-pressed', String(!!(typeof gpsLiveOn !== 'undefined' && gpsLiveOn)));
@@ -845,7 +889,13 @@
       for (const rec of records) {
         for (const node of rec.addedNodes) {
           if (node.nodeType !== 1) continue;
-          if (node.matches && node.matches('.modal-back, .sim-overlay')) { closeSheet(); return; }
+          if (!node.matches || !node.matches('.modal-back, .sim-overlay')) continue;
+          // A yes/no question (askYesNo, appConfirm) is not somewhere the menu sent the pilot: it
+          // asks about the menu's own button, and the answer comes back to it. Reported: Download
+          // on mobile data asked, the menu was gone by the time it was answered, and the restart
+          // offer that followed came up over the map instead of in the row that had asked.
+          if (node.querySelector(':scope > .follow-me-ask-modal')) continue;
+          closeSheet(); return;
         }
       }
     });
@@ -892,10 +942,11 @@
   NavAid.deckFmtBearing = fmtBearing;
   NavAid.deckNearestFieldText = nearestFieldText;
   if (window.matchMedia) {
-    const mq = window.matchMedia(NARROW);
     const onChange = () => apply();
-    if (mq.addEventListener) mq.addEventListener('change', onChange);
-    else if (mq.addListener) mq.addListener(onChange);
+    for (const mq of [window.matchMedia(NARROW), window.matchMedia('(min-width: 681px) and (pointer: coarse)')]) {
+      if (mq.addEventListener) mq.addEventListener('change', onChange);
+      else if (mq.addListener) mq.addListener(onChange);
+    }
   }
   // The gist arrives after boot, so the first apply() runs on the code default and the
   // config's answer lands a moment later, like every other feature switch.

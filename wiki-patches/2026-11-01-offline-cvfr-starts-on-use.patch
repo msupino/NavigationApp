@@ -1,0 +1,42 @@
+From 2019cf712ae67dc04f207e4ff4a74fa30652d5b3 Mon Sep 17 00:00:00 2001
+From: Marco <marco@supino.org>
+Date: Sun, 1 Nov 2026 14:49:03 +0000
+Subject: [PATCH] Offline CVFR: the automatic download starts after the first
+ tap or a minute on screen
+
+---
+ Offline-and-PWA-he.md | 3 +++
+ Offline-and-PWA.md    | 3 +++
+ 2 files changed, 6 insertions(+)
+
+diff --git a/Offline-and-PWA-he.md b/Offline-and-PWA-he.md
+index aa02fcd..4d90ece 100644
+--- a/Offline-and-PWA-he.md
++++ b/Offline-and-PWA-he.md
+@@ -23,6 +23,9 @@
+ במכשיר אוטומטית** — זומים 7–13, הגיליון כולו, לא רק החלק שבמקרה הסתכלתם עליו. בכל הפעלה היא
+ בודקת מה כבר שמור ומורידה רק את החסר.
+ 
++- **היא מתחילה כשמשתמשים באפליקציה.** ההורדה מתחילה אחרי הנגיעה או הקשת המקש הראשונה, או אחרי
++  דקה על המסך (<span dir="ltr"><code>offlineCvfrStartSec</code></span>), ולא ברגע שהדף נפתח — כך
++  שביקור של הצצה בלבד לא מוריד את כל המפה. באפליקציית האנדרואיד היא מתחילה מיד.
+ - **היא ממתינה לחיבור מתאים.** כש-<span dir="ltr"><code>offlineCvfrUnmeteredOnly</code></span> פעיל (ברירת מחדל), ההורדה
+   האוטומטית נמנעת ברשת סלולרית, בחיבור שמדווח 2G/3G, וכשמצב חיסכון בנתונים פעיל. הסטטוס אז
+   מציג *ממתין לחיבור*.
+diff --git a/Offline-and-PWA.md b/Offline-and-PWA.md
+index b267e09..35cb2a1 100644
+--- a/Offline-and-PWA.md
++++ b/Offline-and-PWA.md
+@@ -24,6 +24,9 @@ NavAid **keeps the whole CVFR chart on the device automatically** — zooms 7–
+ sheet, not just the part you happened to look at. It audits what is already stored on each
+ start and fetches only what is missing.
+ 
++- **It starts once you use the app.** The transfer begins after your first tap or key press,
++  or after a minute on screen (`offlineCvfrStartSec`), not the moment the page opens — so a
++  visit that only looks does not pull the whole chart. The Android app starts it at once.
+ - **It waits for a suitable connection.** With `offlineCvfrUnmeteredOnly` on (default), the
+   automatic transfer holds off on cellular, on a connection reporting 2G/3G, and when the
+   browser's data-saver is on. The status then reads *waiting for connection*.
+-- 
+2.43.0
+

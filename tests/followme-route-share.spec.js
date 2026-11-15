@@ -57,6 +57,16 @@ async function boot(page) {
       const len = (f[at] << 8) | f[at + 1];
       return { topic: String.fromCharCode(...f.slice(at + 2, at + 2 + len)), frame: f };
     });
+    // The sealed route goes out a moment after the share connects: encryption is async, and a
+    // fixed 60 ms was too short on a busy CI runner (the frame was not there yet). Wait for it.
+    window.__routeFrame = async () => {
+      for (let t = 0; t < 150; t++) {
+        const r = window.__frames().find(p => p.topic.endsWith('/route'));
+        if (r) return r;
+        await new Promise(res => setTimeout(res, 20));
+      }
+      return undefined;
+    };
     window.__fixFrame = async () => {
       await NavAid.followMe.publish({ lat: 32.2, lng: 34.85, trk: 10, kt: 90 });
       await new Promise(r => setTimeout(r, 20));
@@ -148,7 +158,7 @@ test('the viewer is asked, and yes loads the plan', async ({ page }) => {
     await new Promise(r => setTimeout(r, 60));
     // Keep the sealed route packet, then become a viewer with a different route drawn.
     const fixFrame = await window.__fixFrame();
-    const routeFrame = window.__frames().find(p => p.topic.endsWith('/route'));
+    const routeFrame = await window.__routeFrame();
     state.waypoints = [{ lat: 31.2, lng: 34.6, name: 'MINE' }, { lat: 31.4, lng: 34.7, name: 'OWN' }];
     syncLegs();
     const url = new URL(link);
@@ -183,7 +193,7 @@ test('a route with no live position behind it is not offered', async ({ page }) 
     const link = await F.start('4X-RTE');
     window.__sockets[0].connack();
     await new Promise(r => setTimeout(r, 60));
-    const routeFrame = window.__frames().find(p => p.topic.endsWith('/route'));
+    const routeFrame = await window.__routeFrame();
     // Both packets are captured while this device is still the publisher -- becoming a
     // viewer stops the share, and a stopped publisher sends tombstones, not fixes.
     const fixFrame = await window.__fixFrame();
@@ -224,7 +234,7 @@ test('the plan already on the map is not offered again', async ({ page }) => {
     const link = await F.start('4X-RTE');
     window.__sockets[0].connack();
     await new Promise(r => setTimeout(r, 60));
-    const routeFrame = window.__frames().find(p => p.topic.endsWith('/route'));
+    const routeFrame = await window.__routeFrame();
     const fixFrame = await window.__fixFrame();
     // The viewer is already flying the pilot's plan -- which is what the map looks like
     // after a reload, once the accepted route has been restored from storage.
@@ -253,7 +263,7 @@ test('a plan already declined is not asked about again after a restart', async (
     const link = await F.start('4X-RTE');
     window.__sockets[0].connack();
     await new Promise(r => setTimeout(r, 60));
-    const routeFrame = window.__frames().find(p => p.topic.endsWith('/route'));
+    const routeFrame = await window.__routeFrame();
     const fixFrame = await window.__fixFrame();
     state.waypoints = [{ lat: 31.2, lng: 34.6, name: 'MINE' }, { lat: 31.4, lng: 34.7, name: 'OWN' }];
     syncLegs();
@@ -292,7 +302,7 @@ test('a route held against a stale fix is still not offered', async ({ page }) =
     const link = await F.start('4X-RTE');
     window.__sockets[0].connack();
     await new Promise(r => setTimeout(r, 60));
-    const routeFrame = window.__frames().find(p => p.topic.endsWith('/route'));
+    const routeFrame = await window.__routeFrame();
     let n = 0;
     window.__answer(true, () => { n++; });
     const url = new URL(link);
@@ -318,7 +328,7 @@ test('no means no, and the same plan is not asked about twice', async ({ page })
     window.__sockets[0].connack();
     await new Promise(r => setTimeout(r, 60));
     const fixFrame = await window.__fixFrame();
-    const routeFrame = window.__frames().find(p => p.topic.endsWith('/route'));
+    const routeFrame = await window.__routeFrame();
     state.waypoints = [{ lat: 31.2, lng: 34.6, name: 'MINE' }, { lat: 31.4, lng: 34.7, name: 'OWN' }];
     syncLegs();
     const asked = [];

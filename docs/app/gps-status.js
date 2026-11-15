@@ -110,11 +110,15 @@
     el.querySelector('.gps-status-text').textContent = t;
     el.setAttribute('aria-label', str('gpsStatusDetailTitle', 'GPS position') + ': ' + t);
     el.dataset.q = quality();
-    // On a computer, under the menubar's actual bottom: in flight it grows a second row.
+    // On a computer, under the menubar's actual bottom (it can wrap to a second row) -- or under
+    // the live readout's frame when that shows there (ui.js readoutFrame), which it would
+    // otherwise cover.
     if (!document.body.classList.contains('deck-on')) {
       const tb = document.getElementById('toolbar');
       const r = tb && tb.getClientRects().length ? tb.getBoundingClientRect() : null;
-      el.style.top = Math.round((r ? r.bottom : 54) + 8) + 'px';
+      const fr = document.getElementById('gps-readout-frame');
+      const f = fr && getComputedStyle(fr).display !== 'none' ? fr.getBoundingClientRect() : null;
+      el.style.top = Math.round((f ? f.bottom : (r ? r.bottom : 54)) + 8) + 'px';
     } else el.style.top = '';
     if (detail) fillDetail();
   }

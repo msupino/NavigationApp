@@ -73,6 +73,23 @@ test('a newly published SIGMET appears on the next re-poll', async ({ page }) =>
   expect(await sigmetCount(page)).toBe(1);
 });
 
+// Charts -> SIGMET and Extra layers -> Show SIGMET count the same feed. The re-poll moved only the
+// Charts one, so the layer kept its boot-time number: (5) beside (3), same moment (reported).
+test('a re-poll moves the Extra layers SIGMET count with the Charts one', async ({ page }) => {
+  const holder = { sigmets: [] };
+  await page.route('**/sigmet.json', r =>
+    r.fulfill({ contentType: 'application/json', body: JSON.stringify({ generatedAt: null, sigmets: holder.sigmets }) }));
+  await boot(page);
+  await page.evaluate(() => loadSigmets(true));
+  holder.sigmets = [SIGMET, Object.assign({}, SIGMET, { id: 'LC02' })];
+  await repoll(page);
+  await page.waitForFunction(() => activeSigmets().length === 2);
+  const counts = await page.evaluate(() => ['sigmet-count', 'sigmet-layer-count']
+    .map(id => document.getElementById(id).textContent.trim()));
+  expect(counts[1]).toBe(counts[0]);
+  expect(counts[0]).toContain('2');
+});
+
 test('a newly published NOTAM appears on the next re-poll', async ({ page }) => {
   const holder = { notams: [notam('A0001/26')] };
   await page.route('**/notam.json', r =>

@@ -1,6 +1,6 @@
 // @ts-check
 // Public share: beside the private link, a pilot can tick Public, and every NavAid user with
-// Extra layers -> Show public NavAid pilots sees the aircraft. Off unless ticked. The public
+// Extra layers -> NavAid pilots on Share & see sees the aircraft. Off unless ticked. The public
 // packet is signed, not encrypted; a viewer holds each public id to the first key it saw.
 const { test, expect } = require('./_setup');
 
@@ -178,12 +178,108 @@ test('others are shown only while this device shares publicly -- or on the secre
   expect(out).toEqual({ before: false, sharingPublic: true, sharingPrivate: false, wrong: false, right: true, after: true });
 });
 
-test('the switch is dimmed, not hidden, and says why while this device does not share publicly', async ({ page }) => {
+// NavAid pilots is one control: Off / See others / Share & see. Seeing others is the other half
+// of being seen, so "See others" alone is for a secret pilots link only -- dimmed, never hidden,
+// and it says why.
+// The control lives in Extra layers: open that menu, the way a pilot reaches it.
+const openLayers = async (page) => {
+  const sec = await page.evaluate(() => document.getElementById('public-pilots-frame').closest('.tb-section').dataset.sec);
+  if (!(await page.locator('#public-pilots-mode').isVisible())) {
+    await page.locator('.tb-section[data-sec="' + sec + '"] > .tb-section-head').click();
+  }
+  await expect(page.locator('#public-pilots-mode')).toBeVisible();
+};
+const mode = (page) => page.evaluate(() => [...document.querySelectorAll('#public-pilots-mode [data-mode]')]
+  .filter(b => b.getAttribute('aria-pressed') === 'true').map(b => b.dataset.mode).join());
+
+test('Off is chosen to begin with, and See others is dimmed with the reason', async ({ page }) => {
   await boot(page);
   await page.evaluate(() => window.refreshPublicPilotsFeature());
-  const label = page.locator('#public-pilots-frame label');
-  await expect(label).toHaveClass(/is-dim/);
-  await expect(label).toHaveAttribute('title', /Public to see others/);
+  await openLayers(page);
+  expect(await mode(page)).toBe('off');
+  // The choice is said in words under the control.
+  await expect(page.locator('#public-pilots-hint')).toHaveText('Other NavAid pilots are not shown, and they cannot see you.');
+  const see = page.locator('#public-pilots-mode [data-mode="see"]');
+  await expect(see).toBeVisible();
+  await expect(see).toHaveClass(/is-dim/);
+  await expect(see).toHaveAttribute('title', /Share & see/);
+  await expect(page.locator('#public-pilots-mode [data-mode="share"]')).not.toHaveClass(/is-dim/);
+  // Pressing it anyway (aria-disabled, so forced) changes nothing and says why.
+  await see.click({ force: true });
+  await expect(page.locator('.toast').last()).toContainText('Share & see');
+  expect(await mode(page)).toBe('off');
+});
+
+test('Share & see starts a public share through the usual identifier step, and shows everyone', async ({ page }) => {
+  await boot(page);
+  await page.evaluate(() => window.refreshPublicPilotsFeature());
+  await openLayers(page);
+  await page.locator('#public-pilots-mode [data-mode="share"]').click();
+  const dlg = page.locator('.follow-me-ask-modal');
+  await expect(dlg).toBeVisible();
+  // The dialog's own Public box already says what was asked for.
+  await expect(dlg.locator('.follow-me-public-cb')).toBeChecked();
+  await dlg.locator('input[type="text"], input:not([type])').first().fill('4X-ONE');
+  await dlg.getByRole('button', { name: 'Share' }).click();
+  await page.waitForFunction(() => window.__sockets.length > 0);
+  await page.evaluate(() => window.__sockets[0].connack());
+  await expect.poll(() => page.evaluate(() => NavAid.followMe.sharing() && NavAid.followMe.publicOn())).toBe(true);
+  await expect.poll(() => mode(page)).toBe('share');
+  await expect(page.locator('#public-pilots-hint')).toHaveText(/and they see you/);
+  await expect.poll(() => page.evaluate(() => NavAid.publicPilots.running())).toBe(true);
+  expect(await page.evaluate(() => localStorage.getItem('navaid.showPublicPilots'))).toBe('1');
+});
+
+test('Share & see cancelled at the identifier leaves nothing switched on', async ({ page }) => {
+  await boot(page);
+  await page.evaluate(() => window.refreshPublicPilotsFeature());
+  await openLayers(page);
+  await page.locator('#public-pilots-mode [data-mode="share"]').click();
+  const dlg = page.locator('.follow-me-ask-modal');
+  await expect(dlg).toBeVisible();
+  await dlg.getByRole('button', { name: 'Cancel' }).click();
+  await expect.poll(() => page.evaluate(() => ({
+    sharing: NavAid.followMe.sharing(), pub: NavAid.followMe.publicOn(),
+    view: document.getElementById('public-pilots-cb').checked }))).toEqual({ sharing: false, pub: false, view: false });
+  expect(await mode(page)).toBe('off');
+});
+
+test('Off takes this aircraft off the public map and stops showing others; the private link goes on', async ({ page }) => {
+  await boot(page);
+  await page.evaluate(async () => {
+    NavAid.followMe.setPublic(true);
+    await NavAid.followMe.start('4X-OFF');
+    window.__sockets[0].connack();
+    document.getElementById('public-pilots-cb').checked = true;
+    window.refreshPublicPilotsFeature();
+  });
+  await expect.poll(() => mode(page)).toBe('share');
+  await openLayers(page);
+  await page.locator('#public-pilots-mode [data-mode="off"]').click();
+  expect(await page.evaluate(() => ({
+    sharing: NavAid.followMe.sharing(), pub: NavAid.followMe.publicOn(), running: NavAid.publicPilots.running(),
+  }))).toEqual({ sharing: true, pub: false, running: false });
+  expect(await mode(page)).toBe('off');
+});
+
+test('See others works on a secret pilots link, without sharing', async ({ page }) => {
+  await boot(page);
+  await page.evaluate(async () => {
+    const secret = 'test-secret';
+    const hex = Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(secret))))
+      .map(b => b.toString(16).padStart(2, '0')).join('');
+    setTune('publicPilotsViewHash', hex);
+    await NavAid.publicPilots.unlock(secret);
+    window.refreshPublicPilotsFeature();
+  });
+  await openLayers(page);
+  const see = page.locator('#public-pilots-mode [data-mode="see"]');
+  await expect(see).not.toHaveClass(/is-dim/);
+  await see.click();
+  expect(await mode(page)).toBe('see');
+  await expect(page.locator('#public-pilots-hint')).toHaveText(/They do not see you/);
+  expect(await page.evaluate(() => NavAid.followMe.sharing())).toBe(false);
+  await expect.poll(() => page.evaluate(() => NavAid.publicPilots.running())).toBe(true);
 });
 
 test('the aircraft and its label grow a little zoomed in, and shrink a little zoomed out', async ({ page }) => {
@@ -333,4 +429,79 @@ test('Public can be switched on and off during a share, from the menu', async ({
   expect(out.went).toBe(true);        // switched on mid-share: on the public channel from the next fix
   expect(out.cleared).toBe(true);     // switched off: taken off it at once
   expect(out.on).toBe(false);
+});
+
+// Public sharing turned on in the Follow me dialog, not here, is still Share & see: you are seen,
+// so you see -- the control does not claim Off and "they cannot see you" (reported).
+test('a public share started from the Follow me dialog shows as Share & see, with the others on the map', async ({ page }) => {
+  await boot(page);
+  await page.evaluate(async () => {
+    NavAid.followMe.setPublic(true);
+    await NavAid.followMe.start('4X-DLG');
+    window.__sockets[0].connack();
+    window.refreshPublicPilotsFeature();
+  });
+  await openLayers(page);
+  await expect.poll(() => mode(page)).toBe('share');
+  await expect(page.locator('#public-pilots-hint')).toHaveText(/and they see you/);
+  await expect.poll(() => page.evaluate(() => NavAid.publicPilots.running())).toBe(true);
+});
+
+test('See others is open while sharing publicly: it hides you and keeps showing the others until the share ends', async ({ page }) => {
+  await boot(page);
+  await page.evaluate(async () => {
+    NavAid.followMe.setPublic(true);
+    await NavAid.followMe.start('4X-HIDE');
+    window.__sockets[0].connack();
+    window.refreshPublicPilotsFeature();
+  });
+  await openLayers(page);
+  const see = page.locator('#public-pilots-mode [data-mode="see"]');
+  await expect(see).not.toHaveClass(/is-dim/);
+  await see.click();
+  expect(await page.evaluate(() => ({
+    sharing: NavAid.followMe.sharing(), pub: NavAid.followMe.publicOn(), running: NavAid.publicPilots.running(),
+  }))).toEqual({ sharing: true, pub: false, running: true });
+  expect(await mode(page)).toBe('see');
+  await expect(page.locator('#public-pilots-hint')).toHaveText(/They do not see you/);
+  // The share ends: so does seeing without being seen.
+  // Noticed by itself (the share watch), not by a refresh from the test.
+  await page.evaluate(async () => { await NavAid.followMe.stop(); });
+  await expect.poll(() => page.evaluate(() => NavAid.publicPilots.running()), { timeout: 6000 }).toBe(false);
+  expect(await mode(page)).toBe('off');
+  await expect(see).toHaveClass(/is-dim/);
+});
+
+test('seeing without being seen does not carry over to the next share', async ({ page }) => {
+  await boot(page);
+  const out = await page.evaluate(async () => {
+    const F = NavAid.followMe, P = NavAid.publicPilots;
+    F.setPublic(true);
+    await F.start('4X-ONE');
+    window.__sockets[0].connack();
+    P.setKeepSeeing(true);
+    F.setPublic(false);
+    const during = P.allowed();
+    await F.stop();
+    // The next share is private: the bargain starts over.
+    await F.start('4X-TWO');
+    window.__sockets[window.__sockets.length - 1].connack();
+    return { during, next: P.allowed(), keep: P.keepSeeing() };
+  });
+  expect(out).toEqual({ during: true, next: false, keep: false });
+});
+
+test('Share & see during a private share goes public on the spot, with no dialog', async ({ page }) => {
+  await boot(page);
+  await page.evaluate(async () => {
+    await NavAid.followMe.start('4X-PRIV');
+    window.__sockets[0].connack();
+    window.refreshPublicPilotsFeature();
+  });
+  await openLayers(page);
+  await page.locator('#public-pilots-mode [data-mode="share"]').click();
+  await expect(page.locator('.follow-me-ask-modal')).toHaveCount(0);
+  expect(await page.evaluate(() => NavAid.followMe.sharing() && NavAid.followMe.publicOn())).toBe(true);
+  await expect.poll(() => mode(page)).toBe('share');
+  await expect.poll(() => page.evaluate(() => NavAid.publicPilots.running())).toBe(true);
 });

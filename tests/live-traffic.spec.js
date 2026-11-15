@@ -44,7 +44,7 @@ async function stubNative(page, opts) {
 
 async function boot(page, opts) {
   await stubNative(page, opts);
-  await page.goto('?lang=en&nogist');
+  await page.goto(`?lang=${(opts && opts.lang) || 'en'}&nogist`);
   await page.waitForFunction(() => typeof window.trafficRefresh === 'function');
   // The feature is off in the shipped gist (featureLiveTraffic): turn it on the way the
   // gist would, so these tests are about the layer rather than the switch above it.
@@ -61,6 +61,15 @@ const fly = (page, lat = 32.05, lng = 34.92) => page.evaluate(async ([la, ln]) =
 }, [lat, lng]);
 
 const marks = (page) => page.locator('.traffic-mark');
+// Where a followed aircraft sits on screen: on the map, and not under the inspector that follows it.
+const seen = (page, lat, lon) => page.evaluate(([la, lo]) => {
+  const box = map.getContainer().getBoundingClientRect();
+  const p = map.latLngToContainerPoint([la, lo]);
+  const x = box.left + p.x, y = box.top + p.y;
+  const i = document.getElementById('inspector').getBoundingClientRect();
+  return { onMap: x > box.left && x < box.right && y > box.top && y < box.bottom,
+    underPanel: x >= i.left && x <= i.right && y >= i.top && y <= i.bottom };
+}, [lat, lon]);
 const asked = (page) => page.evaluate(() => window.__asked || []);
 const frameShown = (page) => page.evaluate(() => {
   const f = document.getElementById('traffic-cb').closest('.tb-layer-frame');
@@ -86,6 +95,32 @@ test('a plain browser keeps the switch, dimmed, and says why', async ({ page }) 
   // ...and it draws nothing, whatever the stored preference said.
   await fly(page);
   expect(await marks(page).count()).toBe(0);
+  expect(await asked(page)).toEqual([]);
+});
+
+// With NavAid's relay named in the gist (trafficWebApiUrl, relay/traffic), a browser shows
+// traffic too: the relay adds the CORS header the feeds leave out.
+test('a browser shows traffic through the relay the gist names', async ({ page }) => {
+  await boot(page, { native: false });
+  const relayed = [];
+  await page.route('https://relay.navaid.test/**', (r) => {
+    relayed.push(r.request().url());
+    return r.fulfill({ contentType: 'application/json', headers: { 'Access-Control-Allow-Origin': '*' },
+      body: JSON.stringify({ ac: AC }) });
+  });
+  await page.evaluate(() => {
+    setTune('trafficWebApiUrl', 'https://relay.navaid.test/v2/lat/{lat}/lon/{lon}/dist/{dist}');
+    refreshTrafficFeature();
+  });
+  const state = await page.evaluate(() => {
+    const cb = document.getElementById('traffic-cb');
+    return { disabled: cb.disabled, dimmed: cb.closest('label').classList.contains('navtoggle-disabled') };
+  });
+  expect(state).toEqual({ disabled: false, dimmed: false });
+  await page.evaluate(() => map.setView([32.05, 34.92], 10));
+  await expect(marks(page)).toHaveCount(2);
+  expect(relayed[0]).toMatch(/^https:\/\/relay\.navaid\.test\/v2\/lat\/32\.\d+\/lon\/34\.\d+\/dist\/\d+$/);
+  // The feed itself is never asked from a browser.
   expect(await asked(page)).toEqual([]);
 });
 
@@ -147,7 +182,7 @@ test('each mark says who and how high, pointing where it is going', async ({ pag
     return { text: el.textContent.trim(), rotated: el.querySelector('.traffic-arrow').style.transform };
   });
   expect(first.text).toContain('BBG802');       // trimmed: the feed pads callsigns to 8
-  expect(first.text).toContain('160');          // 15 975 ft, in hundreds, as it is said
+  expect(first.text).toContain('FL160');         // 15 975 ft, shown as flight level
   expect(first.rotated).toBe('rotate(284.9deg)');
 });
 
@@ -169,6 +204,115 @@ test('tapping one opens the inspector on it, in flight', async ({ page }) => {
   expect(out.rows).toMatch(/377 kt/);
   expect(out.rows).toMatch(/A320/);
   expect(out.rows).toMatch(/2225/);
+});
+
+test('the open inspector follows new reports for its selected aircraft', async ({ page }) => {
+  await boot(page);
+  await fly(page);
+  await page.evaluate(() => map.setView([32.10, 34.90], 10));
+  await page.locator('.traffic-mark').first().click({ force: true });
+  await expect(page.locator('#insp-body')).toContainText('15975 ft');
+
+  await page.evaluate(async (report) => {
+    window.__body = { ac: [report] };
+    await window.trafficPoll();
+  }, { ...AC[0], alt_baro: 17200, gs: 401, track: 301.2, lat: 32.12, lon: 34.93 });
+
+  await expect(page.locator('#insp-body')).toContainText('17200 ft');
+  await expect(page.locator('#insp-body')).toContainText('401 kt');
+  // The feed's track is true; the read-out gives magnetic (as every direction in NavAid) and
+  // true (as the feed reported it), each marked.
+  const mag = await page.evaluate(() => String(toMagnetic(301.2)).padStart(3, '0') + '°M');
+  expect(mag).not.toBe('301°M');                  // Israel's variation moves it
+  await expect(page.locator('#insp-body')).toContainText(mag + ' \u00b7 301°T');
+  await expect(page.locator('#insp-body')).toContainText(/32°07\.2/);
+});
+
+test('the traffic inspector follows its aircraft until follow is stopped', async ({ page }) => {
+  await boot(page);
+  await fly(page);
+  await page.evaluate(() => map.setView([32.10, 34.90], 10));
+  await page.locator('.traffic-mark').first().click({ force: true });
+  const follow = page.locator('#insp-traffic-follow');
+  await expect(follow).toHaveText('Follow aircraft');
+
+  await follow.click();
+  await expect(follow).toHaveAttribute('aria-pressed', 'true');
+  const startState = await page.evaluate(() => ({
+    ownFollow: gpsFollow,
+    storedFollow: localStorage.getItem('navaid.gpsFollow'),
+  }));
+  // Centred in the map you can see -- beside the open inspector, not under it.
+  expect(await seen(page, 32.10, 34.90)).toEqual({ onMap: true, underPanel: false });
+  expect(startState.ownFollow).toBe(true);
+  expect(startState.storedFollow).toBeNull();
+
+  await page.evaluate(async (report) => {
+    window.__body = { ac: [report] };
+    await window.trafficPoll();
+  }, { ...AC[0], alt_baro: 16200, lat: 32.16, lon: 34.96 });
+  await expect.poll(() => seen(page, 32.16, 34.96)).toEqual({ onMap: true, underPanel: false });
+  const followedAt = await page.evaluate(() => map.getCenter());
+  await expect(follow).toHaveText('Stop following');
+  await page.evaluate(() => {
+    window.__geoCb({ coords: { latitude: 32.05, longitude: 34.92, accuracy: 5 }, timestamp: Date.now() });
+  });
+  // The pilot's own fix does not take the view back while an aircraft is followed.
+  await expect.poll(() => page.evaluate(() => map.getCenter().lat)).toBeCloseTo(followedAt.lat, 4);
+
+  await follow.click();
+  await expect(follow).toHaveAttribute('aria-pressed', 'false');
+  const stoppedAt = await page.evaluate(() => map.getCenter());
+  await page.evaluate(async (report) => {
+    window.__body = { ac: [report] };
+    await window.trafficPoll();
+  }, { ...AC[0], lat: 32.20, lon: 35.02 });
+  await expect.poll(() => page.evaluate(() => map.getCenter().lat)).toBeCloseTo(stoppedAt.lat, 4);
+  await expect.poll(() => page.evaluate(() => map.getCenter().lng)).toBeCloseTo(stoppedAt.lng, 4);
+  expect(await page.evaluate(() => localStorage.getItem('navaid.gpsFollow'))).toBeNull();
+
+  await follow.click();
+  await page.locator('#insp-close').click();
+  expect(await page.evaluate(() => window.trafficFollowTarget())).toBe('');
+});
+
+// Reported: on a phone, following an aircraft put it in the middle of the screen -- under the
+// inspector sheet that carries Stop following. It goes to the middle of the map left uncovered.
+test('on a phone the followed aircraft sits above the inspector sheet, not under it', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await boot(page);
+  await fly(page);
+  await page.evaluate(() => map.setView([32.10, 34.90], 10));
+  await page.evaluate(() => { state.selected = { type: 'traffic', hex: '4c80b8' }; showInspector(); });
+  await page.locator('#insp-traffic-follow').click();
+  const r = await page.evaluate(() => {
+    const box = map.getContainer().getBoundingClientRect();
+    const p = map.latLngToContainerPoint([32.10, 34.90]);
+    const y = box.top + p.y;
+    const sheet = document.getElementById('inspector').getBoundingClientRect();
+    const strip = document.getElementById('deck-strip').getBoundingClientRect();
+    return { y, sheetTop: sheet.top, stripBottom: strip.bottom };
+  });
+  expect(r.y).toBeLessThan(r.sheetTop);
+  expect(r.y).toBeGreaterThan(r.stripBottom);
+  // Centred in that gap, give or take.
+  expect(Math.abs(r.y - (r.stripBottom + r.sheetTop) / 2)).toBeLessThan(12);
+});
+
+test('turning traffic off clears its temporary follow target', async ({ page }) => {
+  await boot(page);
+  await fly(page);
+  await page.evaluate(() => map.setView([32.10, 34.90], 10));
+  await page.locator('.traffic-mark').first().click({ force: true });
+  await page.locator('#insp-traffic-follow').click();
+  expect(await page.evaluate(() => window.trafficFollowTarget())).toBe('4c80b8');
+
+  await page.evaluate(() => {
+    const cb = document.getElementById('traffic-cb');
+    cb.checked = false;
+    cb.dispatchEvent(new Event('change', { bubbles: true }));
+  });
+  await expect.poll(() => page.evaluate(() => window.trafficFollowTarget())).toBe('');
 });
 
 test('an aircraft that stops being heard takes its panel with it', async ({ page }) => {
@@ -221,12 +365,24 @@ test('it reads either spelling of the feed', async ({ page }) => {
 });
 
 // An aeroplane on the runway reports alt_baro "ground", not a number.
-test('an aircraft on the ground is drawn without an altitude', async ({ page }) => {
+// On the ground it is drawn quiet -- no label at all (asked, decluttering a busy airport); it is
+// still named on hover (the marker's title) and on a tap (the inspector).
+test('an aircraft on the ground is drawn quiet, named on hover', async ({ page }) => {
   await boot(page, { body: { ac: [{ hex: 'gnd001', flight: 'ELY7', lat: 32.10, lon: 34.90, alt_baro: 'ground', track: 0 }] } });
   await fly(page);
-  const el = await page.evaluate(() => document.querySelector('.traffic-mark').textContent.trim());
-  expect(el).toContain('ELY7');
-  expect(el).not.toMatch(/\d\d\d/);
+  await page.evaluate(() => map.setView([32.10, 34.90], 11, { animate: false }));
+  await page.waitForTimeout(200);
+  const el = await page.evaluate(() => { const m = document.querySelector('.traffic-mark'); const l = m.querySelector('.traffic-label');
+    return { shown: !!(l && l.getClientRects().length), title: m.title, ground: m.classList.contains('traffic-ground') }; });
+  expect(el.ground).toBe(true);
+  expect(el.shown).toBe(false);
+  expect(el.title).toBe('ELY7');
+  // Asked: "zooming in restore the plane info?" -- at airport zoom the callsign comes back (no altitude).
+  await page.evaluate(() => map.setView([32.10, 34.90], 14, { animate: false }));
+  await page.waitForTimeout(200);
+  const near = await page.evaluate(() => { const l = document.querySelector('.traffic-mark .traffic-label');
+    return { shown: !!(l && l.getClientRects().length), text: l.textContent }; });
+  expect(near).toEqual({ shown: true, text: 'ELY7' });
 });
 
 // One dropped request is not an outage. The feed times out or rate-limits now and then, and
@@ -363,5 +519,258 @@ test('the endpoint is settable, and the panel gives it a text field', async ({ p
   expect(control.exists).toBe(true);
   expect(control.type).toBe('text');
   expect(control.range).toBe(false);       // not a slider for a URL
-  expect(control.value).toContain('adsb.lol');
+  expect(control.value).toContain('opendata.adsb.fi');
+});
+
+// Asked: "can ADS-B show a helicopter? it shows planes only, even if it is a heli". A helicopter
+// is drawn as one -- by its emitter category (A7, rotorcraft) or, where a report carries none,
+// by its type code. The inspector names it, and shows the aircraft type rather than the
+// report's source tag (it said "Type adsb_icao").
+test('a helicopter is drawn as a helicopter, and the inspector names its type', async ({ page }) => {
+  await boot(page);
+  await fly(page);
+  await page.evaluate(async (body) => { window.__body = body; await window.trafficPoll(); }, { ac: [
+    { hex: 'aaa001', flight: 'HELI1', lat: 32.06, lon: 34.93, alt_baro: 1500, track: 90, gs: 110, category: 'A7', type: 'adsb_icao' },
+    { hex: 'aaa002', flight: 'HELI2', lat: 32.07, lon: 34.94, alt_baro: 1200, track: 180, gs: 100, t: 'R44', type: 'mlat' },
+    { hex: 'aaa003', flight: 'PLANE', lat: 32.08, lon: 34.95, alt_baro: 3500, track: 270, gs: 140, t: 'C172', category: 'A1', type: 'adsb_icao' },
+  ] });
+  const kinds = await page.evaluate(() => [...document.querySelectorAll('.traffic-mark')].map(m =>
+    [m.querySelector('.traffic-label').textContent.split(' ')[0], m.querySelector('.traffic-heli') ? 'heli' : 'plane']).sort());
+  expect(kinds).toEqual([['HELI1', 'heli'], ['HELI2', 'heli'], ['PLANE', 'plane']]);
+  // The inspector: the aircraft type and the word, never the source tag.
+  const typeRow = async (hex) => page.evaluate((h) => {
+    state.selected = { type: 'traffic', hex: h }; showInspector();
+    const row = [...document.querySelectorAll('#inspector .row')].find(r => /Type/.test(r.textContent));
+    return row ? row.querySelector('.val').textContent : null;
+  }, hex);
+  expect(await typeRow('aaa001')).toBe('Helicopter');
+  expect(await typeRow('aaa002')).toBe('R44 · Helicopter');
+  expect(await typeRow('aaa003')).toBe('C172');
+});
+
+test('a GDL90 receiver target with the rotorcraft emitter category is drawn as a helicopter', async ({ page }) => {
+  await boot(page);
+  await fly(page);
+  await page.evaluate(() => window.trafficSetExternal([
+    { hex: 'bbb001', flight: 'RCV1', lat: 32.06, lon: 34.93, alt: 900, gs: 90, track: 45, type: '', category: 7, squawk: '' },
+    { hex: 'bbb002', flight: 'RCV2', lat: 32.07, lon: 34.95, alt: 2500, gs: 120, track: 45, type: '', category: 1, squawk: '' },
+  ], 'gdl90'));
+  await page.waitForTimeout(300);
+  const kinds = await page.evaluate(() => [...document.querySelectorAll('.traffic-mark')].map(m =>
+    [m.querySelector('.traffic-label').textContent.split(' ')[0], m.querySelector('.traffic-heli') ? 'heli' : 'plane'])
+    .filter(k => /^RCV/.test(k[0])).sort());
+  expect(kinds).toEqual([['RCV1', 'heli'], ['RCV2', 'plane']]);
+});
+
+// Asked, with a Ben Gurion screenshot: aircraft on the ground covered the map, and zoomed out the
+// labels overprinted each other. On the ground: smaller, faded, no label. Overlapping labels:
+// the first keeps it; the followed or selected aircraft goes first.
+test('aircraft on the ground are quiet: small, faded, no label; a slow low helicopter is not', async ({ page }) => {
+  await boot(page);
+  await fly(page);
+  await page.evaluate(() => map.setView([32.02, 34.90], 11, { animate: false }));   // below airport zoom
+  await page.evaluate(async (body) => { window.__body = body; await window.trafficPoll(); }, { ac: [
+    { hex: 'ccc001', flight: 'GND1', lat: 32.00, lon: 34.87, alt_baro: 'ground', gs: 12, track: 90, t: 'B738' },
+    { hex: 'ccc002', flight: 'TAXI', lat: 32.01, lon: 34.88, alt_baro: 150, gs: 18, track: 90, t: 'A320' },
+    { hex: 'ccc003', flight: 'HOVER', lat: 32.02, lon: 34.89, alt_baro: 300, gs: 10, track: 90, category: 'A7' },
+    { hex: 'ccc004', flight: 'AIR', lat: 32.03, lon: 34.95, alt_baro: 4500, gs: 160, track: 90, t: 'C172' },
+  ] });
+  const by = await page.evaluate(() => {
+    const out = {};
+    document.querySelectorAll('.traffic-mark').forEach(m => {
+      const lab = m.querySelector('.traffic-label');
+      const hex = m.title;
+      out[hex] = { ground: m.classList.contains('traffic-ground'), label: !!(lab && lab.getClientRects().length && !lab.classList.contains('traffic-label-hidden')), px: Number(m.querySelector('svg').getAttribute('width')),
+        opacity: Number(getComputedStyle(m).opacity) };
+    });
+    return out;
+  });
+  expect(by.GND1.ground && !by.GND1.label).toBe(true);
+  expect(by.TAXI.ground && !by.TAXI.label).toBe(true);
+  expect(by.HOVER.ground).toBe(false);                   // slow and low is how a helicopter flies
+  expect(by.AIR.ground).toBe(false);
+  expect(by.GND1.px).toBeLessThan(by.AIR.px);
+  expect(by.GND1.opacity).toBeLessThan(1);
+});
+
+test('labels that would overprint: one shows; the selected aircraft keeps its label', async ({ page }) => {
+  await boot(page);
+  await fly(page);
+  await page.evaluate(() => map.setView([32.05, 34.90], 8, { animate: false }));
+  await page.evaluate(async (body) => { window.__body = body; await window.trafficPoll(); }, { ac: [
+    { hex: 'ddd001', flight: 'ONE', lat: 32.050, lon: 34.900, alt_baro: 5000, gs: 200, track: 90, t: 'A320' },
+    { hex: 'ddd002', flight: 'TWO', lat: 32.052, lon: 34.902, alt_baro: 6000, gs: 210, track: 90, t: 'A320' },
+  ] });
+  await page.waitForTimeout(200);
+  const shown = () => page.evaluate(() => [...document.querySelectorAll('.traffic-label')]
+    .filter(l => !l.classList.contains('traffic-label-hidden')).map(l => l.textContent.split(' ')[0]));
+  expect((await shown()).length).toBe(1);
+  // Select the one whose label is hidden: its label comes first now.
+  const hidden = await page.evaluate(() => {
+    const l = [...document.querySelectorAll('.traffic-label')].find(x => x.classList.contains('traffic-label-hidden'));
+    return l.textContent.split(' ')[0];
+  });
+  const hex = hidden === 'ONE' ? 'ddd001' : 'ddd002';
+  await page.evaluate((h) => { state.selected = { type: 'traffic', hex: h }; showInspector(); window.trafficDeclutter(); }, hex);
+  expect(await shown()).toEqual([hidden]);
+});
+
+// Reported: "location still drifts" -- in Hebrew the marker's row ran right to left, so the aircraft
+// sat at the far end of its box, east of the point it is anchored to, and slid against the chart
+// as the zoom changed. The aircraft's centre is its position, in either language, at any zoom.
+for (const lang of ['en', 'he']) {
+  test(`the aircraft is drawn on its position (${lang})`, async ({ page }) => {
+    await boot(page, { lang, body: { ac: [
+      { hex: 'pos001', flight: 'ISR972', lat: 32.005, lon: 34.877, alt_baro: 3000, gs: 150, track: 90, t: 'B738' },
+      { hex: 'pos002', flight: 'BBG252', lat: 32.000, lon: 34.890, alt_baro: 'ground', gs: 5, track: 0, t: 'B738' },
+    ] } });
+    await fly(page);
+    for (const z of [10, 14]) {
+      await page.evaluate((zz) => map.setView([32.003, 34.884], zz, { animate: false }), z);
+      await page.waitForTimeout(150);
+      const off = await page.evaluate(() => window.trafficAircraft.map((a) => {
+        const want = map.latLngToContainerPoint([a.lat, a.lon]);
+        const c = map.getContainer().getBoundingClientRect();
+        const el = [...document.querySelectorAll('.traffic-mark')].find(m => m.title === a.flight);
+        const r = el.querySelector('svg').getBoundingClientRect();
+        return Math.hypot(r.left + r.width / 2 - c.left - want.x, r.top + r.height / 2 - c.top - want.y);
+      }));
+      for (const d of off) expect(d).toBeLessThan(1.5);
+    }
+  });
+}
+
+// Reported (Haifa): a pressure altitude below zero was labelled "FL0-3" -- the padding went in front
+// of the sign. It reads FL-003, and FL000 for an aircraft right at the standard pressure level.
+test('a negative pressure altitude is labelled FL-003, not FL0-3', async ({ page }) => {
+  await boot(page, { body: { ac: [
+    { hex: 'neg001', flight: '4XCDE', lat: 32.81, lon: 35.04, alt_baro: -300, gs: 90, track: 340, t: 'C172' },
+    { hex: 'neg002', flight: '4XZRO', lat: 32.83, lon: 35.06, alt_baro: 20, gs: 90, track: 340, t: 'C172' },
+    // Masada (LLMZ) lies about 1,270 ft below sea level: a circuit there is a negative flight level.
+    { hex: 'neg003', flight: '4XMZD', lat: 32.84, lon: 35.07, alt_baro: -1300, gs: 80, track: 340, t: 'C172' },
+  ] } });
+  await fly(page, 32.82, 35.05);
+  const labels = await page.evaluate(() => [...document.querySelectorAll('.traffic-label')].map(l => l.textContent).sort());
+  expect(labels).toEqual(['4XCDE FL-003', '4XMZD FL-013', '4XZRO FL000']);
+});
+
+// Reported (Haifa): an aircraft on a runway was hidden by the runway. Runways, the route and its
+// waypoints are painted on #overlay, a canvas above the whole Leaflet map, so traffic lives in its
+// own pane on the map container, above that canvas -- and still on its position as the map moves.
+test('traffic is drawn above the chart overlay (runways), and stays on its position when panned', async ({ page }) => {
+  await boot(page, { body: { ac: [{ hex: 'rwy001', flight: '4XCDE', lat: 32.81, lon: 35.043, alt_baro: 500, gs: 70, track: 340, t: 'C172' }] } });
+  await fly(page, 32.82, 35.05);
+  const z = await page.evaluate(() => {
+    const m = document.querySelector('.traffic-mark');
+    const pane = m.parentElement;
+    const zOf = (el) => Number(getComputedStyle(el).zIndex) || 0;
+    // The stacking contexts that decide it are the direct children of the map container.
+    const top = (el) => { while (el.parentElement && el.parentElement !== map.getContainer() && el.parentElement !== document.body) el = el.parentElement; return el; };
+    const ov = document.getElementById('overlay');
+    return { paneOnContainer: pane.parentElement === map.getContainer(), traffic: zOf(top(m)), overlay: zOf(ov),
+      overlayAfterMap: !!(map.getContainer().compareDocumentPosition(ov) & Node.DOCUMENT_POSITION_FOLLOWING) };
+  });
+  expect(z.paneOnContainer).toBe(true);
+  expect(z.traffic).toBeGreaterThan(z.overlay);
+  for (const dx of [0, 120]) {
+    await page.evaluate((d) => map.panBy([d, 60], { animate: false }), dx);
+    await page.waitForTimeout(100);
+    const off = await page.evaluate(() => {
+      const a = window.trafficAircraft[0], want = map.latLngToContainerPoint([a.lat, a.lon]);
+      const c = map.getContainer().getBoundingClientRect(), r = document.querySelector('.traffic-mark svg').getBoundingClientRect();
+      return Math.hypot(r.left + r.width / 2 - c.left - want.x, r.top + r.height / 2 - c.top - want.y);
+    });
+    expect(off).toBeLessThan(1.5);
+  }
+});
+
+// Asked: a link from the traffic inspector to the aircraft on the web, "use same data origin" --
+// the public map of the site the feed comes from. None for an aircraft only a cockpit receiver
+// hears, and the gist can point it elsewhere. Never followed here (tests load no third party).
+test('the traffic inspector links to the aircraft on the feed’s own map', async ({ page }) => {
+  await boot(page);
+  await fly(page);
+  await page.evaluate(() => setTune('trafficApiUrl', 'https://api.adsb.lol/v2/lat/{lat}/lon/{lon}/dist/{dist}'));
+  const hex = await page.evaluate(() => window.trafficAircraft[0].hex);
+  await page.evaluate((h) => { state.selected = { type: 'traffic', hex: h }; showInspector(); }, hex);
+  const link = page.locator('#insp-traffic-view');
+  await expect(link).toHaveAttribute('href', `https://globe.adsb.lol/?icao=${hex.toLowerCase()}`);
+  await expect(link).toHaveAttribute('target', '_blank');
+  await expect(link).toContainText('adsb.lol');
+  // Another feed: its own map.
+  await page.evaluate(() => { setTune('trafficApiUrl', 'https://opendata.adsb.fi/api/v2/lat/{lat}/lon/{lon}/dist/{dist}'); showInspector(); });
+  await expect(link).toHaveAttribute('href', `https://globe.adsb.fi/?icao=${hex.toLowerCase()}`);
+  // The gist's own link.
+  await page.evaluate(() => { setTune('trafficViewUrl', 'https://example.org/ac/{hex}'); showInspector(); });
+  await expect(link).toHaveAttribute('href', `https://example.org/ac/${hex.toLowerCase()}`);
+  // Heard only by a receiver in the cockpit: no page anywhere, no link.
+  await page.evaluate(() => {
+    setTune('trafficViewUrl', '');
+    window.trafficSetExternal([{ hex: 'abcdef', flight: 'RCV1', lat: 32.06, lon: 34.93, alt: 2000, gs: 100, track: 0, type: '', squawk: '' }]);
+    state.selected = { type: 'traffic', hex: 'abcdef' }; showInspector();
+  });
+  await expect(page.locator('#insp-traffic-view')).toHaveCount(0);
+});
+
+// Reported: "followed plane is in corner", then "check mobile follow as well". A zoom scales the
+// map about the middle of the whole map, but the followed aircraft is held in the middle of the
+// part you can see, so each zoom carried it further off, into a corner. It is put back the
+// moment a zoom ends; and after a pan it comes back when the pan's grace ends, not at the next
+// report. On a desktop with the panel at the side, and a phone with the panel as a bottom sheet.
+for (const [dev, vp] of [['desktop', { width: 1000, height: 506 }], ['phone', { width: 390, height: 844 }]]) {
+  test(`a followed aircraft stays where it is held when the map zooms or after a pan, ${dev}`, async ({ page }) => {
+    await page.setViewportSize(vp);
+    await boot(page);
+    await page.evaluate(() => map.setView([32.10, 34.90], 10));
+    await page.locator('.traffic-mark').first().click({ force: true });
+    await page.locator('#insp-traffic-follow').click();
+    const at = () => page.evaluate(() => {
+      const p = map.latLngToContainerPoint([32.10, 34.90]);
+      return { x: Math.round(p.x), y: Math.round(p.y) };
+    });
+    const held = await at();
+    expect(await seen(page, 32.10, 34.90)).toEqual({ onMap: true, underPanel: false });
+    // Zoom in twice and out once, as the buttons do (no gesture on the map, so no grace).
+    for (const dz of [1, 1, -1]) {
+      await page.evaluate((dz) => map.setZoom(map.getZoom() + dz, { animate: false }), dz);
+      const now = await at();
+      expect(Math.abs(now.x - held.x)).toBeLessThanOrEqual(2);
+      expect(Math.abs(now.y - held.y)).toBeLessThanOrEqual(2);
+    }
+    // A pan holds the view for its grace period, then the aircraft comes back -- with no report.
+    await page.evaluate(() => { setTune('followResumeMs', 800); setTune('trafficRefreshSec', 60); refreshTrafficFeature(); });
+    // Too small a move to ask the feed again: only the end of the grace can bring it back.
+    await page.evaluate(() => { gpsNoteUserMapMove(); map.panBy([28, 22], { animate: false }); });
+    const panned = await at();
+    expect(Math.abs(panned.x - held.x) + Math.abs(panned.y - held.y)).toBeGreaterThan(30);
+    await expect.poll(async () => {
+      const now = await at();
+      return Math.abs(now.x - held.x) <= 2 && Math.abs(now.y - held.y) <= 2;
+    }, { timeout: 3000 }).toBe(true);
+  });
+}
+
+// Reported with a screenshot (a desktop in a narrow window): with the bottom sheet taller than
+// half the map, the followed aircraft was centred on the whole map -- under the sheet.
+test('a followed aircraft stays above a bottom sheet taller than half the map', async ({ page }) => {
+  await page.setViewportSize({ width: 500, height: 700 });
+  await boot(page);
+  await page.evaluate(() => map.setView([32.10, 34.90], 10));
+  await page.locator('.traffic-mark').first().click({ force: true });
+  // The sheet as the screenshot had it: from just above the middle down to the bottom.
+  await page.evaluate(() => {
+    const el = document.getElementById('inspector');
+    el.style.top = Math.round(window.innerHeight * 0.48) + 'px';
+    el.style.bottom = '0px';
+    el.style.height = 'auto';
+  });
+  const sheet = await page.evaluate(() => {
+    const r = document.getElementById('inspector').getBoundingClientRect();
+    const m = map.getContainer().getBoundingClientRect();
+    return { top: r.top, mid: (m.top + m.bottom) / 2, wide: r.width >= m.width * 0.6 };
+  });
+  expect(sheet.wide).toBe(true);
+  expect(sheet.top).toBeLessThan(sheet.mid);              // the case that went wrong
+  await page.locator('#insp-traffic-follow').click();
+  expect(await seen(page, 32.10, 34.90)).toEqual({ onMap: true, underPanel: false });
 });

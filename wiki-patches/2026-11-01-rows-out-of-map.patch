@@ -1,0 +1,206 @@
+From 793e1c468df76dbf866734fc2cb4c12a82897ff6 Mon Sep 17 00:00:00 2001
+From: Marco <marco@supino.org>
+Date: Sun, 1 Nov 2026 08:04:31 +0000
+Subject: [PATCH] Toolbar: Auto-route and Snap to nearest point move to Edit;
+ Panel while showing position to Settings
+
+---
+ Features-he.md  |  8 ++++----
+ Features.md     |  8 ++++----
+ Inspector-he.md |  2 +-
+ Inspector.md    |  2 +-
+ Toolbar-he.md   | 11 +++++++----
+ Toolbar.md      | 11 +++++++----
+ 6 files changed, 24 insertions(+), 18 deletions(-)
+
+diff --git a/Features-he.md b/Features-he.md
+index 373ac0b..eae7d22 100644
+--- a/Features-he.md
++++ b/Features-he.md
+@@ -14,15 +14,15 @@
+ 
+ | קטע | מטרה |
+ | --- | --- |
+-| **עריכה** | הוספת נקודה, הוספת הערה, חיפוש, היפוך, **ביטול**, ניקוי, התאמה, **איפוס כל מיקומי הסמנים**, **איפוס כל שמות הנקודות** |
+-| **מפה** | שכבת בסיס, הצגת נקודות ניווט / שדות תעופה / תחנות VOR + ייחוס VOR / הצגת-הוספת שינויי תדר, **הצג זמן מצטבר**, **הצג קווי סחיפה**, **הצג דיווחי חובה**, נקודות חמות, **הצמדה לנקודה הקרובה**, **זכוכית מגדלת**, הצג מרחק קטע, הדגש הפרש |
++| **עריכה** | הוספת נקודה, הוספת הערה, חיפוש, היפוך, **ביטול**, ניקוי, התאמה, **איפוס כל מיקומי הסמנים**, **איפוס כל שמות הנקודות**, **ניתוב אוטומטי דרך נקודות דיווח**, **הצמדה לנקודה הקרובה** |
++| **מפה** | שכבת בסיס, הצגת נקודות ניווט / שדות תעופה / תחנות VOR + ייחוס VOR / הצגת-הוספת שינויי תדר, **הצג זמן מצטבר**, **הצג קווי סחיפה**, **הצג דיווחי חובה**, נקודות חמות, **זכוכית מגדלת**, הצג מרחק קטע, הדגש הפרש |
+ | **מראה** | **מצב בהיר**, שקיפות תווית, אטימות מפה, גודל נקודה, גודל חץ קטע, **עובי קו קטע**, **עובי קו סחיפה** |
+ | **תכנית טיסה** | פותח את טבלת תכנית הטיסה (+ייצוא CSV) — ראו [תוכנית טיסה](Flight-Plan-he) |
+ | **דפיות** | **תבניות מסלול**, טופס תכנון טיסה, מציג מפות גישה לשדות, **מפות SIGWX**, **מפות רוח/טמפ׳**, רשימות **SIGMET** ו-**AIRMET**, בדיקת מסלול, **רשימת NOTAM**, **בועות LSA** (גובה נמוך), **CVFR לא מקוון** |
+ | **שכבות נוספות** | **הצג NOTAM** (+ ציר זמן), **הצג AIRMET**, **הצג SIGMET**, רוח, **הצג רוח/טמפ׳** (PWX), **הצג SIGWX**, **תרשימי שדה** (כולל **תרשים שדה** מנספח א׳), מפת IFR, תעבורה, טייסי NavAid, פני השטח, מרחבי אוויר, **הצג בועות LSA** (גובה נמוך) — ראו [שכבות נוספות](Extra-Layers-he) |
+ | **ייצוא/ייבוא** | ייצוא/ייבוא JSON / GPX / PLN, ✈️ Google Earth, 🔗 שיתוף קישור, **מסלולים שמורים** (+ **סנכרון Google Drive**) |
+ | **הדפסה** | מסגרת עמוד A3 / A4 + מתג כיוון ▭/▯ + שמירת PNG |
+-| **הגדרות** | שפה, מהירות ברירת מחדל, נטייה מגנטית, יחידת לחץ, גובה לפי (GPS / ברומטר + QNH), טבלת ברירות תדר, טבלת זוגות גובה, הסיור, בהירות מסך ו-GPS בבלוטות׳ (אפליקציה), גרסת האפליקציה |
++| **הגדרות** | שפה, מהירות ברירת מחדל, נטייה מגנטית, יחידת לחץ, גובה לפי (GPS / ברומטר + QNH), הקלטה אוטומטית עם מיקום, חלונית בזמן הצגת מיקום, טבלת ברירות תדר, טבלת זוגות גובה, הסיור, בהירות מסך ו-GPS בבלוטות׳ (אפליקציה), גרסת האפליקציה |
+ | **GPS** | ⏺ **הקלטה** / ⏹ עצור, 📍 **מיקום** (בטלפון — לשוניות בסרגל התחתון) — ראו [הקלטת מסלול GPS](GPS-Track-Recording-he) |
+ 
+ בורר השפה (🌐) יושב מעל הקטעים; הוא מתג מהיר, לא חלק מקטע כלשהו.
+@@ -77,7 +77,7 @@
+   המעבר, והחלונית מראה היכן הנקודה נופלת, על איזה רדיאל VOR היא יושבת, ואת אותו **➕ הוסף למסלול**
+   שיש לכל נקודה על הדפית. כל התיבה נקראת כנקודת ציון אחת לפני תחביר המסלול שמופרד ברווחים, כך
+   ש-<span dir="ltr"><code>N32 30 E035 00</code></span> הוא מקום ולא ארבע נקודות ציון.
+-- הצמדה בהשלכה ובגרירה משתמשת בשני המאגרים; שדות מקבלים עדיפות כששניהם קרובים. מתג **הצמדה לנקודה הקרובה** (קטע מפה) גורם לכל לחיצה להצמיד לנקודה הידועה הקרובה ביותר ללא תלות במרחק.
++- הצמדה בהשלכה ובגרירה משתמשת בשני המאגרים; שדות מקבלים עדיפות כששניהם קרובים. מתג **הצמדה לנקודה הקרובה** (קטע עריכה) גורם לכל לחיצה להצמיד לנקודה הידועה הקרובה ביותר ללא תלות במרחק.
+ 
+ ![שכבת חיפוש צפה](img/04-search-he.jpg)
+ 
+diff --git a/Features.md b/Features.md
+index 95979a9..b5aa69b 100644
+--- a/Features.md
++++ b/Features.md
+@@ -12,15 +12,15 @@ The toolbar (a menu bar on a computer, the deck's Menu sheet on a phone) is grou
+ 
+ | Section | Purpose |
+ | --- | --- |
+-| **Edit** | Add waypoint, add note, search, reverse, **undo**, clear, fit, **reset all marker positions**, **reset all waypoint names** |
+-| **Map** | Base layer, Show Nav-WP / Show Airfields / Show VOR stations + VOR ref / Show/Add Freq Changes, **Show cumulative time**, **Show drift lines**, **Show mandatory reports**, hotspots, **Force snap**, **magnifier**, Show leg dist, Highlight diff |
++| **Edit** | Add waypoint, add note, search, reverse, **undo**, clear, fit, **reset all marker positions**, **reset all waypoint names**, **auto-route through waypoints**, **snap to nearest point** |
++| **Map** | Base layer, Show Nav-WP / Show Airfields / Show VOR stations + VOR ref / Show/Add Freq Changes, **Show cumulative time**, **Show drift lines**, **Show mandatory reports**, hotspots, **magnifier**, Show leg dist, Highlight diff |
+ | **Display** | **Light mode (default)**, label transparency, map opacity, waypoint size, leg arrow size, **leg line width**, **drift line width** |
+ | **Flight plan** | Opens the flight plan table (+ CSV export) — see [Flight Plan](Flight-Plan) |
+ | **Charts** | **Route templates**, flight planning form, airport approach charts viewer, **SIGWX charts**, **wind/temp charts**, **SIGMET** and **AIRMET** lists, route check, **NOTAM list**, **LSA bubbles** (Low Alt), **offline CVFR** |
+ | **Extra layers** | **Show NOTAMs** (areas/lines/badges, decoded text, timeline), **Show AIRMETs**, **Show SIGMETs**, wind effect + field, **Show wind/temp** (PWX, FL030–FL180), **Show SIGWX**, **airfield plates** (incl. the **aerodrome chart**), IFR chart, traffic, NavAid pilots, terrain, airspace, **Show LSA bubbles** (Low Alt) — see [Extra layers](Extra-Layers) |
+ | **Export/import** | Export / import JSON / GPX / PLN, ✈️ Google Earth, 🔗 share link, **Saved routes** (+ **Google Drive sync**) |
+ | **Print** | A3 / A4 page frame + ▭/▯ orientation toggle + Save PNG |
+-| **Settings** | Language, default speed, magnetic variation, pressure unit, altitude from (GPS / barometer + QNH), frequency-defaults table, altitude-pairs table, the tour, screen brightness and Bluetooth GPS (APK), app version |
++| **Settings** | Language, default speed, magnetic variation, pressure unit, altitude from (GPS / barometer + QNH), record automatically with location, panel while showing position, frequency-defaults table, altitude-pairs table, the tour, screen brightness and Bluetooth GPS (APK), app version |
+ | **Simulator** (✈) | Footer ✈ icon → panel: live aircraft from SimConnect bridge, heading-rotated icon, **Connect / Follow / Center** — see [Simulator Connect](Simulator-Connect) |
+ | **GPS** | ⏺ **Record** / ⏹ Stop, 📍 **Location** (on a phone, tabs in the bottom bar) — see [GPS track recording](GPS-Track-Recording) |
+ 
+@@ -77,7 +77,7 @@ The selected layer is remembered across reloads. See [Map Layers](Map-Layers) fo
+   shows where the point falls, the VOR radial it sits on, and the same **➕ Add to route** every
+   chart point has. The whole box is read as one coordinate before the space-separated route
+   syntax below, so `N32 30 E035 00` is a place rather than four waypoints.
+-- Snap-on-drop and snap-on-drag use both datasets; airfields take priority when both are nearby. **Force snap** toggle (Map menu) makes every click snap to the absolute nearest known point regardless of distance.
++- Snap-on-drop and snap-on-drag use both datasets; airfields take priority when both are nearby. **Snap to nearest point** toggle (Edit menu) makes every click snap to the absolute nearest known point regardless of distance.
+ 
+ ![Floating search overlay](img/04-search.jpg)
+ 
+diff --git a/Inspector-he.md b/Inspector-he.md
+index 0858543..7668c75 100644
+--- a/Inspector-he.md
++++ b/Inspector-he.md
+@@ -254,7 +254,7 @@ DA  = PA + 120 × (T − ISA)
+ מסורב, במקום לפתוח חלון מעל המפה באוויר.
+ 
+ האפליקציה אומרת זאת פעם אחת בכל מפגש מעקב במקום פשוט לא לעשות דבר, וזה מתג ולא חוק:
+-**מפה ← "חלונית בזמן הצגת מיקום"** (כבוי). הבחירה נזכרת ונוסעת אתכם; מכשיר שמעולם לא
++**הגדרות ← "חלונית בזמן הצגת מיקום"** (כבוי). הבחירה נזכרת ונוסעת אתכם; מכשיר שמעולם לא
+ נגע בה מקבל את תשובת ה-gist (<span dir="ltr"><code>featureInspectorWhileTracking</code></span>).
+ 
+ מטוסים הם היוצא מן הכלל בכל מקרה: הקשה על מטוס ADS-B פותחת את החלונית שלו גם בזמן מעקב, כי
+diff --git a/Inspector.md b/Inspector.md
+index 77e2629..fa7ce8f 100644
+--- a/Inspector.md
++++ b/Inspector.md
+@@ -220,7 +220,7 @@ overlap, or on a frequency-change arrow, the *chooser* that would ask which one
+ rather than opening a modal over the chart in flight.
+ 
+ It says so once per tracking session rather than doing nothing, and it is a switch, not a rule:
+-**Map → "Panel while showing position"** (off). Your choice is remembered and travels with
++**Settings → "Panel while showing position"** (off). Your choice is remembered and travels with
+ you; a device that has never touched it takes the gist's answer (`featureInspectorWhileTracking`).
+ 
+ Aircraft are the exception either way: a tap on ADS-B traffic opens its panel while tracking,
+diff --git a/Toolbar-he.md b/Toolbar-he.md
+index 313ed02..d8d5f90 100644
+--- a/Toolbar-he.md
++++ b/Toolbar-he.md
+@@ -14,15 +14,15 @@
+ 
+ | סדר | קטע | רמז | תוכן |
+ |---|---|---|---|
+-| 1 | **עריכה** | הוספה · ביטול · ניקוי | הוסף ציון דרך, הוסף הערה, חפש, הפוך מסלול, ביטול, נקה מפה, התאם למסך, איפוס כל מיקומי הסמנים, איפוס כל שמות הנקודות, נקה אחסון |
+-| 2 | **מפה** | מפת בסיס, שכבות, מידע מסלול | בורר שכבת בסיס + מתגי שכבות (ציוני ניווט, שדות תעופה, VOR + תחנת ייחוס, שינויי תדר, שמות נקודות, זמן מצטבר, קווי סחיפה, כיוון המסלול, מרחק קטע, הדגשת הפרש, שמירת עפיפונים בקטע, נקודות חמות, דיווחי חובה, הצמדה לנקודה הקרובה), זכוכית מגדלת |
++| 1 | **עריכה** | הוספה · ביטול · ניקוי | הוסף ציון דרך, הוסף הערה, חפש, הפוך מסלול, ביטול, נקה מפה, התאם למסך, איפוס כל מיקומי הסמנים, איפוס כל שמות הנקודות, נקה אחסון, ניתוב אוטומטי דרך נקודות דיווח, הצמדה לנקודה הקרובה |
++| 2 | **מפה** | מפת בסיס, שכבות, מידע מסלול | בורר שכבת בסיס + מתגי שכבות (ציוני ניווט, שדות תעופה, VOR + תחנת ייחוס, שינויי תדר, שמות נקודות, זמן מצטבר, קווי סחיפה, כיוון המסלול, מרחק קטע, הדגשת הפרש, שמירת עפיפונים בקטע, נקודות חמות, דיווחי חובה), זכוכית מגדלת |
+ | 3 | **מראה** | תוויות, עפיפונים, שקיפות | מצב בהיר + מחוונים: שקיפות תוויות, בהירות מפה, גודל ציון דרך, גודל חץ קטע, עובי קו רגל, עובי קו סחיפה |
+ | 4 | **תכנית טיסה** | — | כפתור אחד: פותח את [תכנית הטיסה](Flight-Plan-he) |
+ | 5 | **דפיות** | דפיות, נתיבים, מזג אוויר | תבניות, טופס תכנון טיסה, דפיות שדות תעופה, מפות SIGWX, מפות רוח/טמפ׳, SIGMET, AIRMET, בדיקת מסלול, רשימת NOTAM, בועות LSA (גובה נמוך בלבד), CVFR לא מקוון |
+ | 6 | **שכבות נוספות** | מזג אוויר, NOTAM, מרחב אוויר | הצג NOTAM / AIRMET / SIGMET (+ מחוון זמן), רוח, מפות מזג אוויר, תרשימי שדה, מפת IFR, תעבורה, טייסי NavAid, פני השטח, מרחבי אוויר, בועות LSA — ראו [שכבות נוספות](Extra-Layers-he) |
+ | 7 | **ייצוא/ייבוא** | קבצים, קישור שיתוף | ייצוא (JSON / GPX / PLN / FDR), ייבוא (JSON / GPX / PLN), מסלולים שמורים (+ סנכרון עם Google Drive), שתף קישור, פתח ב-Google Earth |
+ | 8 | **הדפסה** | עמוד, PNG, כרטיס תכנית | מסגרת A3 / A4 / A4×2, מתג לרוחב / לאורך, שמור PNG |
+-| 9 | **הגדרות** | מהירות, שינוי מגנטי, שפה, טבלאות | שפה, מהירות ברירת מחדל, נטייה מגנטית, ואחריהן טבלת התדרים וטבלת הנתיבים, וגרסת האפליקציה |
++| 9 | **הגדרות** | מהירות, שינוי מגנטי, שפה, טבלאות | שפה, מהירות ברירת מחדל, נטייה מגנטית, הקלטה אוטומטית עם מיקום, חלונית בזמן הצגת מיקום, ואחריהן טבלת התדרים וטבלת הנתיבים, וגרסת האפליקציה |
+ 
+ **מפה** ו**הגדרות** היו פעם קטע אחד, *תצוגה/הגדרה*. ב**הגדרות** נמצא עכשיו מה שקובעים פעם אחת: השפה, מהירות ברירת המחדל והנטייה המגנטית, ואחריהן שתי טבלאות העיון. הסימולטור הוא סמל ✈ קטן בתחתית סרגל הכלים.
+ 
+@@ -54,6 +54,8 @@
+ | **⇄ הפוך מסלול** (R) | הופך את סדר ציוני הדרך; מחליף גובה נכנס / יוצא בכל קטע ומסובב תוויות שם 180°. מתריע ש**ייתכן שהמסלול ההפוך אינו תואם למסלולים המאושרים** — הרשת המפורסמת היא מכוונת, ומסדרונות יכולים להיות חד-כיווניים. ללא מסלול מצויר הוא אומר זאת במקום. אינו זמין כאשר מסומנת [נקודת חזרה](Route-and-Legs-he#נקודת-חזרה): המסלול כבר טס הלוך וחזור. |
+ | **↶ ביטול** (Ctrl-Z) | חזרה אחורה על העריכה, ההזזה או המחיקה האחרונה. |
+ | **🗑 נקה מפה** (C) | מסיר את כל ציוני הדרך וההערות לאחר אישור, ומסיר איתם את מסגרת עמוד ההדפסה. |
++| **ניתוב אוטומטי דרך נקודות דיווח** | כבוי כברירת מחדל. הוספת נקודה ממלאת את נקודות הדיווח המפורסמות בינה לבין הקודמת (CVFR); נתיבים סגורים נעקפים. |
++| **הצמדה לנקודה הקרובה** (Force snap) | כל לחיצה נצמדת לשדה או לציון הניווט הקרוב ביותר ללא תלות במרחק (אחרת רדיוס 18 פיקסל). |
+ | **⌖ התאם למסך** (F) | מצמצם את המפה כך שכל ציוני הדרך נראים. |
+ | **↺ איפוס כל מיקומי הסמנים** | מחזיר את היסט סמן המידע של כל קטע (כיוון / גובה / זמן) למקומו המוגדר. |
+ | **↺ איפוס כל שמות הנקודות** | קובע כל שם לנקודת הייחוס הקרובה, או מנקה כשמחוץ לרשת. |
+@@ -71,7 +73,6 @@
+ | **הצג זמן מצטבר** | עפיפון זמן-טיסה מצטבר אחרי כל קטע. |
+ | **הצג קווי סחיפה** | קווי ייחוס סחיפה של 10° בקצה כל קטע (העובי ממחוון "עובי קו סחיפה"). |
+ | **הצג/הוסף שינויי תדר** | קריאות ברק, עם אות קריאה ותדר, לנקודות מסלול שעל נקודות שינוי תדר ATC מוכרות. ברירת מחדל: פעיל. |
+-| **הצמדה לנקודה הקרובה** (Force snap) | כל לחיצה נצמדת לשדה או לציון הניווט הקרוב ביותר ללא תלות במרחק (אחרת רדיוס 18 פיקסל). |
+ | **🧭 כיוון המסלול** | אילו עפיפוני קטע לצייר: שני הכיוונים, הלוך בלבד, או חזור בלבד. מסנן את העפיפונים ואת חצי הזמן המצטבר — קו המסלול, תוויות המרחק וקווי הסחיפה נשארים תמיד. מעומעם עד שלמסלול יש [נקודת חזרה](Route-and-Legs-he#נקודת-חזרה), כי אין מה לחלק; אז הוא מראה **לא רלוונטי** (העפיפונים שמתחת שומרים על הסינון שלהם: הלוך במסלול בלי נקודת חזרה). עם נקודת חזרה מוצעות רק שלוש האפשרויות האמיתיות. |
+ | ~~הצג מסלול חזרה~~ | **כבוי כברירת מחדל ומוסתר.** הוא שיקף מסלול חד-כיווני כדי להראות את הדרך חזרה; עם נקודת חזרה המסלול כבר מכיל את החזרה שלו, ולכן השיקוף היה מיותר. הקוד קיים — הגדירו <span dir="ltr"><code>featureShowReturn</code></span> בגיסט הכיול (או בחלונית <span dir="ltr"><code>?tune=1</code></span>) כדי להחזיר את הפקד, את קיצור המקש **B** ואת הציור. |
+ | **הצג מרחק קטע** | תג מרחק צהוב באמצע כל קטע. |
+@@ -125,6 +126,8 @@
+ | **🧭 נתיבים** | טבלה הניתנת לחיפוש של זוגות הגובה הנלמדים של CVFR; העתק JSON ללוח. |
+ | **יחידת לחץ** | **inHg** או **hPa**. הרצועה בטיסה מציגה בה את ה-QNH (<span dir="ltr">`29.91″` / `1013 hPa`</span>); שורות METAR ושדות שומרות את שתי הסקאלות, הנבחרת ראשונה; לחץ התא בפרטי ה-GPS הולך אחריה. מסונכרנת עם שאר הגדרות הטייס (<span dir="ltr"><code>navaid.pressureUnit</code></span>; ברירת מחדל ב-gist: <span dir="ltr"><code>defaultPressureUnit</code></span>, inHg). |
+ | **גובה לפי** | **GPS** (מתוקן למחוון, כמו קודם) או **ברומטר + QNH** — חיישן הלחץ של הטלפון עם ה-QNH שהאפליקציה כבר מביאה, החישוב של מד הגובה עצמו <span dir="ltr">`145366 × (1 − (p / QNH)^0.19)`</span> רגל. הגובה בטיסה והתראות הגובה הולכים אחריו. בלי קריאה עדכנית (5 שנ׳) או QNH — חוזר ל-GPS. לא לתא מופעל לחץ. מקומי למכשיר (<span dir="ltr"><code>navaid.altSource</code></span>; ב-gist: <span dir="ltr"><code>defaultAltSource</code></span>, gps). |
++| **הקלטה אוטומטית עם מיקום** | מסומן כברירת מחדל: הצגת המיקום מקליטה גם את הטיסה, והקלטה קצרה מכדי להיות טיסה אינה נשמרת — ראו [הקלטת מסלול GPS](GPS-Track-Recording-he#הקלטה-אוטומטית-עם-מיקום). |
++| **חלונית בזמן הצגת מיקום** | כבוי כברירת מחדל: מאפשר לנגיעה לפתוח את החלונית בזמן שהמיקום מוצג — ראו [החלונית למידע נוסף](Inspector-he). |
+ | **הצג את הסיור** | מנגן שוב את סיור המפה. |
+ | **בהירות מסך** | *(אפליקציית אנדרואיד)* מחוון לתא הטייס בלילה, גם מתחת למינימום של הטלפון (מסך כהה משלים את השאר; בדפדפן יש רק אותו). **בהירות: חזרה להגדרת הטלפון** מחזירה לטלפון. מקומי למכשיר (<span dir="ltr"><code>navaid.brightness</code></span>). ב-gist: <span dir="ltr"><code>featureBrightness</code></span>. |
+ | **חיבור GPS בבלוטות׳** | *(אפליקציית אנדרואיד, כבוי כברירת מחדל — <span dir="ltr"><code>featureBleGps</code></span>)* GPS חיצוני ב-Bluetooth LE (NMEA $..RMC/$..GGA). כשהוא מספק מיקום, המיקום של הטלפון זז הצידה ושורת ה-GPS מראה **BT**. מחוץ לאפליקציה הוא מעומעם, עם הסיבה. |
+diff --git a/Toolbar.md b/Toolbar.md
+index c1dd014..901fcfd 100644
+--- a/Toolbar.md
++++ b/Toolbar.md
+@@ -12,15 +12,15 @@ Each header is a full-height row (52 px on a phone): a drawn icon, the title, a
+ 
+ | Order | Section | Hint | Contents |
+ |---|---|---|---|
+-| 1 | **Edit** | Add · undo · clear | Add waypoint, Add note, Find, Reverse route, Undo, Clear map, Fit to screen, Reset all marker positions, Reset all waypoint names, Clear local store |
+-| 2 | **Map** | Chart, overlays, route info | Base layer + overlay toggles (nav-WP, airfields, VOR + VOR ref, freq changes, waypoint names, cumulative time, drift lines, route direction, mid-leg distance, highlight diff, keep kites inside leg, hotspots, mandatory reports, snap to nearest), magnifier |
++| 1 | **Edit** | Add · undo · clear | Add waypoint, Add note, Find, Reverse route, Undo, Clear map, Fit to screen, Reset all marker positions, Reset all waypoint names, Auto-route through waypoints, Snap to nearest point, Clear local store |
++| 2 | **Map** | Chart, overlays, route info | Base layer + overlay toggles (nav-WP, airfields, VOR + VOR ref, freq changes, waypoint names, cumulative time, drift lines, route direction, mid-leg distance, highlight diff, keep kites inside leg, hotspots, mandatory reports), magnifier |
+ | 3 | **Display** | Labels, kites, opacity | Light mode (default) + sliders: label opacity, map opacity, waypoint size, leg arrow size, leg line width, drift line width |
+ | 4 | **Flight plan** | — | One button: opens the [Flight Plan](Flight-Plan) |
+ | 5 | **Charts** | Plates, routes, weather | Templates, Flight planning form, Airport charts, SIGWX charts, Wind/temp charts, SIGMET, AIRMET, Route check, NOTAM list, LSA bubbles (Low Alt only), Offline CVFR |
+ | 6 | **Extra layers** | Weather, NOTAM, airspace | Show NOTAMs / AIRMETs / SIGMETs (+ time slider), wind, weather charts, airfield plates, IFR chart, traffic, NavAid pilots, terrain, airspace, LSA bubbles — see [Extra layers](Extra-Layers) |
+ | 7 | **Export/import** | Files, share link | Export (JSON / GPX / PLN / FDR), Import (JSON / GPX / PLN), Saved routes (+ Sync with Google Drive), Share link, Open in Google Earth |
+ | 8 | **Print** | Page, PNG, plan card | A3 / A4 page frame, Landscape / Portrait toggle, Save PNG |
+-| 9 | **Settings** | Speed, variation, language, tables | Language, Default speed, Magnetic variation, then Freq table and Alt pairs, and the app version |
++| 9 | **Settings** | Speed, variation, language, tables | Language, Default speed, Magnetic variation, Record automatically with location, Panel while showing position, then Freq table and Alt pairs, and the app version |
+ 
+ **Map** and **Settings** used to be one section, *View/Set*. Settings now holds what you set once: the language, the default speed and the magnetic variation, followed by the two reference tables.
+ 
+@@ -56,6 +56,8 @@ compact — icon, dot and count, with words from 1440 px wide.
+ | **⇄ Reverse route** (R) | Flips the waypoint order; swaps inbound / outbound altitudes per leg and rotates name labels 180°. Warns that a reversed route **might not match allowed routes** — the published network is directed, so corridors can be one-way. With no route drawn it says so instead. Unavailable once a [turning point](Route-and-Legs#turning-point) is marked: the route already flies out and back. |
+ | **↶ Undo** (Ctrl-Z) | Steps back the last edit, move, or delete. |
+ | **🗑 Clear map** (C) | Removes every waypoint and note after confirmation, and clears the print page frame with them. |
++| **Auto-route through waypoints** | Off by default. Adding a point fills in the published reporting points between it and the previous one (CVFR); closed routes are avoided. |
++| **Snap to nearest point** (Force snap) | Every click snaps to the nearest airfield or nav-waypoint regardless of distance (otherwise an 18 px radius). |
+ | **⌖ Fit to screen** (F) | Zooms the map so all waypoints are visible (capped so two close waypoints don't snap to a tight view). |
+ | **↺ Reset all marker positions** | Returns every leg's info-marker offset (heading / altitude / time kite) to its default spot. |
+ | **↺ Reset all waypoint names** | Sets each name to its nearest reference point, or clears it when off-grid. |
+@@ -74,7 +76,6 @@ compact — icon, dot and count, with words from 1440 px wide.
+ | **Show cumulative time** | A running total-flight-time kite after each leg. |
+ | **Show drift lines** | 10° drift reference lines at each leg end (thickness from the Drift line width slider). |
+ | **Show/Add Freq Changes** | Creates / restores lightning callouts, with call sign and frequency, for route waypoints on known ATC-change reporting points. Default: on. |
+-| **Snap to nearest point** (Force snap) | Every click snaps to the nearest airfield or nav-waypoint regardless of distance (otherwise an 18 px radius). |
+ | **🧭 Route direction** | Which direction's leg kites to draw: both, outbound only, or return only. Filters the kites and their cumulative arrows — the route line, distance badges and drift lines always stay. Dimmed until the route has a [turning point](Route-and-Legs#turning-point), since there is nothing to divide; it then reads **Not relevant** (the kites underneath keep their filter: outbound for a route with no turn). With a turn, only the three real choices are offered. |
+ | ~~Show return path~~ | **Off by default and hidden.** It mirrored a one-way route to picture the way home; with a turning point the route already contains its return, so the mirror was redundant. The code is intact — set `featureShowReturn` in the tuning gist (or the `?tune=1` panel) to bring back the control, its **B** shortcut and the drawing. |
+ | **Show leg distance** | A small distance badge in the middle of each leg. |
+@@ -131,6 +132,8 @@ The NOTAM, SIGMET and AIRMET lists move by their title bar and open again where
+ | **🧭 Alt pairs** | Searchable table of the learned CVFR altitude pairs; Copy JSON to clipboard. |
+ | **Pressure unit** | **inHg** or **hPa**. The in-flight strip shows the QNH in it (`29.91″` / `1013 hPa`); METAR and airfield lines keep both scales with the chosen one first; the cabin pressure in the GPS details follows it. Syncs with the other pilot settings (`navaid.pressureUnit`; gist default `defaultPressureUnit`, `inHg`). |
+ | **Altitude from** | **GPS** (corrected to indicated, as before) or **Barometer + QNH** — the phone's pressure sensor with the QNH the app already fetches, the altimeter's own sum `145366 × (1 − (p / QNH)^0.19)` ft. The in-flight altitude and the altitude alerts follow it. Without a fresh reading (5 s) or a QNH it falls back to GPS. Not for a pressurised cabin. Device-local (`navaid.altSource`; gist `defaultAltSource`, `gps`). |
++| **Record automatically with location** | On by default: showing your location also records the flight, and a recording too short to be a flight is not kept — see [GPS Track Recording](GPS-Track-Recording#recording-automatically-with-location). |
++| **Panel while showing position** | Off by default: lets a tap open the inspector while your position is on the map — see [Inspector](Inspector). |
+ | **Show the tour** | Plays the map tour again. |
+ | **Screen brightness** | *(Android app)* A slider for the cockpit at night, below the phone's own minimum if needed (a dark veil does the rest; in a browser the veil is all there is). **Brightness: back to the phone's setting** hands it back. Device-local (`navaid.brightness`). Gist: `featureBrightness`. |
+ | **Connect Bluetooth GPS** | *(Android app, off by default — `featureBleGps`)* An external GPS over Bluetooth LE (NMEA $..RMC/$..GGA). While it delivers, the phone's own fixes step aside and the GPS line shows **BT**. Dimmed, with its reason, outside the app. |
+-- 
+2.43.0
+

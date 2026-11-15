@@ -9,7 +9,7 @@ const fits = fs.readFileSync(D + 'fits.jsonl', 'utf8').trim().split('\n').map(l 
   const b = await chromium.launch(); const meta = {};
   const p = await b.newPage({ viewport: { width: 800, height: 800 } });
   await p.addInitScript(() => { window.__navaidNoDisclaimer = true; });
-  await p.goto(process.argv[2] + '?lang=en&nogist&deck=0');
+  await p.goto(process.argv[2] + '?lang=en&nogist');
   await p.waitForFunction(() => typeof map !== 'undefined' && typeof loadAirfields === 'function' && document.getElementById('layer-select'), null, { timeout: 60000 });
   await p.evaluate(async (lay) => { const b = document.getElementById('boot-loading'); if (b) b.remove(); document.documentElement.classList.remove('app-booting');
     const s = document.getElementById('layer-select'); s.value = lay; s.dispatchEvent(new Event('change', { bubbles: true }));

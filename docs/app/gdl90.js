@@ -75,6 +75,10 @@
       alt: altRaw === 0xfff ? null : altRaw * 25 - 1000,      // pressure altitude, ft
       gs: hv === 0xfff ? null : hv,                             // kt
       track: trackValid ? m[17] * 360 / 256 : null,
+      // §3.5.1.10 emitter category: 7 is a rotorcraft (traffic.js draws a helicopter for it).
+      category: m[18],
+      // §3.5.1.5 "m" field, bit 3: 1 airborne, 0 on the ground (traffic.js draws it quiet).
+      ground: (misc & 0x08) === 0,
       type: '', squawk: '',
       _seen: Date.now(),
     };

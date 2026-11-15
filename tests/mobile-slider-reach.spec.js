@@ -4,19 +4,18 @@
 // screen that is not a control: a fingertip is about 45 px across. The label and the value
 // keep the first line; the slider gets the next one.
 const { test, expect } = require('./_setup');
-// The floating phone menu exists only with the deck off (?deck=0): with the deck on, the menu
-// is in the deck's Menu sheet and the floating one is not shown at all (deck-ipad.spec.js).
+// On a phone the menu is the deck's Menu sheet.
 
 const PHONE = { width: 390, height: 760 };
 
 // Every slider that is reachable with the menus open, measured where it actually renders.
 async function sliders(page, lang = 'en') {
   await page.setViewportSize(PHONE);
-  await page.goto('?lang=' + lang + '&nogist&deck=0');
-  await page.waitForFunction(() => !!document.getElementById('toolbar-toggle'));
+  await page.goto('?lang=' + lang + '&nogist');
+  await page.waitForFunction(() => !!document.getElementById('deck-bar'));
+  await page.evaluate(() => { document.getElementById('boot-loading')?.remove(); document.documentElement.classList.remove('app-booting'); });
+  await page.locator('#deck-bar .deck-btn-menu').click();   // a phone's menu is the deck's Menu sheet
   return page.evaluate(async () => {
-    const tb = document.getElementById('toolbar');
-    if (tb.classList.contains('collapsed')) document.getElementById('toolbar-toggle').click();
     const out = [];
     for (const sec of document.querySelectorAll('.tb-section')) {
       sec.querySelector('.tb-section-head').click();
@@ -60,7 +59,7 @@ test('the same holds in Hebrew, where the labels are a different length', async 
 // slider is pinned to a fixed width so it does not resize as its value label changes.
 test('a desktop menu keeps its fixed-width sliders', async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 900 });
-  await page.goto('?lang=en&nogist&deck=0');
+  await page.goto('?lang=en&nogist');
   await page.waitForFunction(() => !!document.getElementById('toolbar'));
   const wrapped = await page.evaluate(() => {
     const row = document.querySelector('#toolbar .navtoggle-slider');
