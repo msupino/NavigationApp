@@ -1284,7 +1284,11 @@ NavAid.tuningDefaults = {
   defaultShowTraffic: { value: false, type: 'bool',
     label: 'Default: show live traffic while a fix is driving the map' },
   // {lat}/{lon}/{dist} are filled in; a URL without them gets them as query parameters.
-  trafficApiUrl: { value: 'https://api.adsb.lol/v2/lat/{lat}/lon/{lon}/dist/{dist}', type: 'text',
+  // adsb.fi: sampled over Israel (Nov 2026) it carried every aircraft adsb.lol had, plus the
+  // low-level light aircraft (4X- registrations at a few hundred feet) and ground traffic
+  // adsb.lol did not -- the ones a VFR pilot is looking for. Same v2 API (its list is
+  // `aircraft`, adsb.lol's `ac`; both are read). Open data, non-commercial, ~1 request/s per IP.
+  trafficApiUrl: { value: 'https://opendata.adsb.fi/api/v2/lat/{lat}/lon/{lon}/dist/{dist}', type: 'text',
     label: 'Where live traffic is fetched from (empty turns it off)' },
   // The feeds send no CORS header, so a browser needs a relay that adds one (relay/traffic, a
   // Cloudflare Worker). Empty: no live traffic in a browser, the switch dimmed with the reason.
@@ -1832,6 +1836,15 @@ window.S = Object.assign({
   tbSearchPlaceholder: 'Find navigation waypoint',
   tbSearchHint: 'Tip: type space-separated waypoint codes (e.g. LLHZ BAZRA DEROR SHARO HADRA) and press Enter to build a route.',
   errSearchUnknown: function(t) { return 'Unknown waypoint: ' + t; },
+  // A code the waypoints in use do not have, but another chart's do (ATS while CVFR is in use).
+  errSearchOtherChart: function (t, where, current) {
+    return t + ' is a waypoint of the ' + where + ' chart; the waypoints in use are ' + current +
+      '\u2019s. Change \u201cNav waypoints from\u201d to use it.';
+  },
+  searchOtherChartRow: function (t, where, target) {
+    return t + ' is a waypoint of the ' + where + ' chart, not of those shown \u2014 tap to use the ' +
+      target + ' waypoints';
+  },
   searchReplaceConfirm: 'Replace the current route with these waypoints?',
   choosePointTitle: 'Choose point',
   choosePointRoute: 'Route waypoint',
@@ -2462,6 +2475,10 @@ window.S = Object.assign({
   exportPlanPlace: 'Place flight plan on the map',
   exportPlanPlaceTitle: 'Overlay the flight-plan table on the export; drag it to position it inside the page frame',
   exportPlanNoFrame: 'Place flight plan — set an A3/A4 page first',
+  // Printed plan card: all or some of the waypoints lie beyond the VOR's published coverage.
+  planVorOutOfRange: function (nm, all) {
+    return '(! ' + (all ? 'all' : 'some') + ' waypoints beyond its ' + nm + ' NM range)';
+  },
   exportPlanNoLegs: 'Place flight plan — add a route leg first',
   fpVorLabel: 'VOR',
   fpVorRadialEmpty: '—',
@@ -2942,6 +2959,8 @@ window.S = Object.assign({
   exportResLow: 'Low',
   exportResMedium: 'Medium',
   exportResHigh: 'High',
+  // What a quality step means on paper -- a screen cannot show it. \u2066..\u2069 isolate the Latin run.
+  exportResDpi: function (dpi) { return 'On paper: \u2066\u2248' + dpi + ' dpi\u2069'; },
   exportBwTitle: 'The chart in light grey and the route black on white, so it reads on a printer without colour',
   ctxMenuLabel: 'Quick actions',
   ctxAddNoteHere: 'Add note here',

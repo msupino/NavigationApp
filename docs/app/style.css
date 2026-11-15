@@ -1946,6 +1946,8 @@ body.theme-dark .leaflet-control-zoom a:hover {
 }
 .wp-search-item:hover,
 .wp-search-item.active { background: #1d6fe0; color: #fff; }
+/* "Not in the waypoints shown, but in another chart's": a sentence, so it wraps. */
+.wp-search-item.wp-search-other-chart { white-space: normal; line-height: 1.35; }
 #toolbar .navtoggle select,
 .ac-settings-body select {
   font: inherit;
@@ -5457,6 +5459,16 @@ body.theme-dark .map-time input[type="range"] { background: rgba(20, 18, 18, 0.9
   body.theme-dark .map-time-now { background: rgba(20, 18, 18, 0.6); }
   body.theme-dark .map-time input[type="range"] { background: none; }
 }
+/* The phone's clock is one card, and in the dark theme the card stayed light: the readout's
+   light text sat on white and the hour in effect could not be read at all (reported: "the
+   slider on mobile doesn't show the in-effect time"). The card is dark like the coordinate
+   readout and the zoom keys beside it. */
+@media (max-width: 680px) {
+  body.theme-dark .map-time { background: rgba(20, 18, 18, 0.92); border-color: #3a3636; }
+  /* The hour the layers are showing is what the card is FOR: bold and readable at arm's
+     length, not the 11 px afterthought beside a 44 px Now button. */
+  .map-time-read { font-size: 13px; font-weight: 700; }
+}
 
 /* Legend for the airfield-wind barb styles, under its toolbar switch. */
 .af-wind-legend { font-size: 10px; opacity: 0.75; margin-block-start: 2px; }
@@ -6212,6 +6224,17 @@ html[dir="rtl"] .charts-airport-header.open::before { transform: rotate(-90deg);
   width: min(420px, 90vw);
 }
 #search-overlay.hidden { display: none; }
+/* Print open: the search panel steps aside (asked) -- it sat over the page frame being placed.
+   Only hidden, not closed: its query and its docked/shown preference come back with it. */
+body:has(> .modal-back.export-options) #search-overlay { display: none !important; }
+/* ...and so do the live aircraft (asked): traffic and NavAid pilots are never printed, so while
+   the page is being set up they are not in the way of seeing what will be. They return on close. */
+body:has(> .modal-back.export-options) :is(.leaflet-traffic-pane, .leaflet-followme-pane,
+  .leaflet-publicPilots-pane) { display: none !important; }
+/* Print's black-and-white preview: the chart as the mono export draws it (setPrintBwPreview). */
+html.print-bw-preview .leaflet-tile-pane { filter: var(--print-bw-filter); }
+.export-res-dpi { font-size: 12px; opacity: 0.8; margin-top: -4px; text-align: end; }
+.export-res-dpi[hidden] { display: none; }
 /* On a phone the deck's strip owns the top edge (and is taller with the Comm fail button):
    the search card opens below it, not under it. */
 body.deck-on #search-overlay { top: calc(var(--navaid-deck-strip-h, 46px) + 8px); }
@@ -9187,8 +9210,52 @@ html[style*="--navaid-map-ctrl-wrapped"] body.deck-on #empty-route-hint {
   left: calc((100vw - var(--navaid-map-ctrl-clear)) / 2);
   max-width: calc(100vw - var(--navaid-map-ctrl-clear) - 16px);
 }
+/* On a phone the clock lives in the strip: the hour there is a button, and the slider opens as
+   one row under the strip (deck.js setClockOpen), spending no map until it is wanted (asked:
+   the card took too much of the map). */
+body.deck-on:not(.deck-clock-open) .map-time { display: none; }
+body.deck-on.deck-clock-open .map-time:not([hidden]) {
+  position: fixed;
+  top: calc(var(--navaid-deck-strip-h, 46px) + 6px);
+  bottom: auto;
+  left: 8px;
+  right: 8px;
+  flex-wrap: nowrap;
+  gap: 8px;
+  padding: 4px 8px;
+  z-index: 2300;                     /* over the map's button columns, under the strip (2400) */
+}
+/* Opened on purpose: legible even with nothing timed yet (the track stays grey, saying so). */
+body.deck-on.deck-clock-open .map-time.idle { opacity: 1; }
+body.deck-on.deck-clock-open .map-time input[type="range"] { flex: 1 1 auto; order: 3; min-width: 0; }
+body.deck-on.deck-clock-open .map-time-now { order: 1; }
+body.deck-on.deck-clock-open .map-time-read { order: 2; }
+body.deck-on.deck-clock-open .map-time-charts { display: none; }
+.deck-strip-clock {
+  font: inherit;
+  line-height: inherit;
+  color: inherit;
+  background: none;
+  border: 0;
+  padding: 0 2px;
+  margin: 0;
+  display: inline-flex;
+  align-items: baseline;
+  gap: 2px;
+  cursor: pointer;
+  text-decoration: underline dotted;
+  text-underline-offset: 3px;
+  position: relative;
+}
+/* A finger's target without growing the strip: the strip's height places the map's button
+   column, and a taller line arriving with the hour moved that column on boot (phone-boot-no-shift). */
+.deck-strip-clock::before { content: ''; position: absolute; inset: -12px -6px; }
+.deck-strip-clock[aria-expanded="true"] { color: #6fb6ff; }
+.deck-strip-clock:focus-visible { outline: 2px solid #1d6fe0; outline-offset: 2px; border-radius: 4px; }
+.deck-strip-clock-caret { font-size: 0.8em; opacity: 0.8; }
 body.deck-on .map-time {
-  bottom: calc(124px + env(safe-area-inset-bottom, 0px));
+  /* Above the legend dock (ui.js publishLegendDockWidth), never under it. */
+  bottom: max(calc(124px + env(safe-area-inset-bottom, 0px)), var(--navaid-legend-dock-above, 0px));
   /* Clear of the zoom column and its z-level readout, which the deck did not move. */
   right: 112px;
 }
@@ -10263,7 +10330,20 @@ body.deck-on .flight-table input { min-height: 28px; }
 }
 .deck-strip-lang svg { display: block; flex: none; }
 .deck-strip-lang:focus-visible { outline: 2px solid #4c9bff; outline-offset: 2px; }
-@media (max-width: 360px) { .deck-strip-lang .lang-quick-label { display: none; } .deck-strip-lang { padding: 0 11px; } }
+/* On the strip the switch is the other language's name OR the globe, never both (asked), and the
+   same in English and Hebrew. deck.js fitStripSub picks: the name when the strip's second line --
+   with the hour that opens the time slider -- fits beside it in both languages, else the globe. */
+.deck-strip .deck-strip-lang svg { display: none; }
+.deck-strip .deck-strip-lang { padding: 0 12px; }
+.deck-strip.deck-strip-tight .deck-strip-lang .lang-quick-label { display: none; }
+.deck-strip.deck-strip-tight .deck-strip-lang svg { display: block; }
+.deck-strip.deck-strip-tight .deck-strip-lang { padding: 0 11px; }
+/* A 360 px phone: the globe, whatever the line says. */
+@media (max-width: 360px) {
+  .deck-strip .deck-strip-lang .lang-quick-label { display: none; }
+  .deck-strip .deck-strip-lang svg { display: block; }
+  .deck-strip .deck-strip-lang { padding: 0 11px; }
+}
 #lang-quick .lang-quick-label { font-weight: 600; }
 /* Desktop menubar: :where(html.menubar) (index.html head, ui.js toolbarUsesDesktopMenu). */
   /* The menubar is one row with ~20px to spare, so the switch is the globe alone here -- the
@@ -10932,6 +11012,13 @@ body.deck-on :is(.search-hint, #app-version, #toolbar .slider-val) { font-size: 
    on the phone it sits one row up (below). */
 .legend-ctrl:not(.legend-docked) .legend-dock { display: none; }
 .legend-ctrl.legend-docked { position: relative; }
+/* The dock's box spans the button and the totals pill; the space between them is not a control,
+   and it caught the touches meant for whatever lay under it (the map clock's slider, reported). */
+.leaflet-control.legend-ctrl.legend-docked,
+.legend-ctrl.legend-docked .legend-dock { pointer-events: none; }
+.legend-ctrl.legend-docked .legend-toggle,
+.legend-ctrl.legend-docked #route-summary,
+.legend-ctrl.legend-docked .map-legend { pointer-events: auto; }
 .legend-ctrl.legend-docked .legend-dock {
   display: flex;
   align-items: center;

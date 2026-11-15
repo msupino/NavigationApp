@@ -85,14 +85,18 @@ test('a preserved IMS category is announced, and two preserved is an error', asy
 // --- the NOTAM feed must not publish half a list as complete ------------------------
 test('the NOTAM feed demands near-complete detail and records its coverage', () => {
   const yml = read('.github/workflows/notam.yml');
+  // The parsing (and its thresholds) lives in app/notam-iaa.js, shared with the apps, which
+  // read IAA directly; the workflow requires it.
+  const parser = read('docs/app/notam-iaa.js');
+  expect(yml).toContain("('./docs/app/notam-iaa.js')");
   // At the old 0.5 a Radware throttle that let the list through but blocked half the detail
   // pages published a HALF list under a fresh generatedAt, with the missing NOTAMs -- possibly
   // a route closure or an active danger area -- indistinguishable from "no NOTAM there".
-  expect(yml).not.toMatch(/uniq\.length \* 0\.5/);
-  expect(yml).toMatch(/Math\.ceil\(uniq\.length \* 0\.9\)/);
+  expect(parser).not.toMatch(/uniq\.length \* 0\.5/);
+  expect(parser).toMatch(/Math\.ceil\(uniq\.length \* 0\.9\)/);
   // Coverage travels with the payload, so a consumer can tell a full list from a clipped one.
-  expect(yml).toContain('out.detailOk = ok;');
-  expect(yml).toContain('out.detailTotal = uniq.length;');
+  expect(yml).toContain('out.detailOk = parsed.detailOk;');
+  expect(yml).toContain('out.detailTotal = parsed.detailTotal;');
   // Publishing nothing is loud, and not a green check.
   expect(yml).toMatch(/::error::Not publishing/);
   expect(yml).toContain('process.exitCode = 1;');

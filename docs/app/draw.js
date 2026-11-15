@@ -1695,18 +1695,29 @@ let airmetMeta = null;
 // Declared here, beside the loader that writes it; read elsewhere as window.sigmetMeta.
 let sigmetMeta = null;
 window.airmets = airmets;
-// NOTAMs: a scheduled Action queries the FAA NOTAM API for the Israel FIR
-// (LLLL), normalises geometry, and publishes notam.json to the `notam-data`
-// branch (filename unchanged there). data/notam.json is the offline /
-// first-run fallback.
+// NOTAMs: the hourly "Update NOTAMs" Action fetches the Israel Airports Authority's NOTAMs for
+// the Israel FIR (LLLL) through a relay, normalises geometry (app/notam-iaa.js), and publishes
+// notam.json to the `notam-data` branch. That is what a browser reads. The apps ask IAA
+// directly first (NavAidNotamIaa.fetchIaaDirect, native HTTP from the pilot's connection) and
+// read notam.json only when IAA does not answer. data/notam.json is the offline / first-run
+// fallback for both.
 const NOTAM_URL =
   'https://raw.githubusercontent.com/msupino/NavigationApp/notam-data/notam.json';
 async function loadNotam(force) {
   if (notams !== null && !force) return notams;
   const parse = d => {
-    notamMeta = { generatedAt: (d && d.generatedAt) || null };
+    notamMeta = { generatedAt: (d && d.generatedAt) || null, source: (d && d.source) || null };
     return Array.isArray(d && d.notams) ? d.notams.filter(n => n && n.id) : [];
   };
+  const iaa = typeof window !== 'undefined' && window.NavAidNotamIaa;
+  if (iaa && iaa.usable()) {
+    try {
+      notams = parse(await iaa.fetchIaaDirect());
+      return notams;
+    } catch (e) {
+      console.warn('IAA NOTAMs directly failed; reading notam.json:', e && e.message);
+    }
+  }
   try {
     const res = await fetch(NOTAM_URL, { cache: 'no-store' });
     if (!res.ok) throw new Error('HTTP ' + res.status);
@@ -2669,16 +2680,22 @@ function airfieldFreqChanges(icao) {
   return out;
 }
 
+// An airfield's active NOTAMs, by ICAO, for its count badge -- ALL of them, including those
+// also drawn as an area or a route line. The badge used to skip those, so LLBG showed "2"
+// while its NOTAM list held 3, the third being a drilling-tower area near the field (reported).
+// The badge says how many the field has; the area is still drawn where it applies.
+function notamsByAirfield(act) {
+  const byIcao = {};
+  for (const n of act || []) {
+    const c = n && n.icao;
+    if (c) (byIcao[c] = byIcao[c] || []).push(n);
+  }
+  return byIcao;
+}
+
 function drawNotamAirportMarkers() {
   if (!Array.isArray(airfields) || !airfields.length) return;
-  const byIcao = {};
-  for (const n of activeNotams()) {
-    if (n && n.geom) continue;                 // already drawn as an area
-    if (n && Array.isArray(n._routeLines) && n._routeLines.length) continue;  // drawn as a route line
-    const c = n && n.icao;
-    if (!c) continue;
-    (byIcao[c] = byIcao[c] || []).push(n);
-  }
+  const byIcao = notamsByAirfield(activeNotams());
   const col = tune('notamColor');
   const flashId = notamFlashId;
   const flashPulse = notamFlashPulse();
@@ -2783,18 +2800,13 @@ function notamsAtLatLng(latlng) {
   // Airport count badges (no-geom NOTAMs grouped by ICAO) — see
   // drawNotamAirportMarkers(): a notamBadgeRadiusPx disc notamBadgeOffsetPx below the field.
   if (Array.isArray(airfields) && airfields.length) {
-    const byIcao = {};
-    for (const n of act) {
-      if (n && n.geom) continue;
-      if (n && Array.isArray(n._routeLines) && n._routeLines.length) continue;
-      const c = n && n.icao;
-      if (c) (byIcao[c] = byIcao[c] || []).push(n);
-    }
+    const byIcao = notamsByAirfield(act);
     for (const code in byIcao) {
       const af = airfieldByIcao(code);
       if (!af || !Number.isFinite(af.lat) || !Number.isFinite(af.lng)) continue;
       const p = proj({ lat: af.lat, lng: af.lng });
-      if (notamBadgeHit(pt, p)) out.push(...byIcao[code]);
+      // An area NOTAM under the same tap is already in the list once.
+      if (notamBadgeHit(pt, p)) for (const n of byIcao[code]) if (!out.includes(n)) out.push(n);
     }
   }
   return out;
@@ -2815,12 +2827,7 @@ function notamBadgeNotamsAt(latlng) {
   if (!window.showNotam || !latlng || !Array.isArray(airfields) || !airfields.length) return [];
   const act = (typeof activeNotams === 'function') ? activeNotams() : [];
   if (!act.length) return [];
-  const byIcao = {};
-  for (const n of act) {
-    if (n && n.geom) continue;
-    if (n && Array.isArray(n._routeLines) && n._routeLines.length) continue;
-    if (n && n.icao) (byIcao[n.icao] = byIcao[n.icao] || []).push(n);
-  }
+  const byIcao = notamsByAirfield(act);
   const pt = proj(latlng);
   for (const code in byIcao) {
     const af = airfieldByIcao(code);
@@ -2978,6 +2985,30 @@ async function _fetchLayerDataRaw(kind) {
   if (!r.ok) throw new Error('HTTP ' + r.status);
   return { data: await r.json(), prefix: 'cvfr' };
 }
+
+// Which OTHER charts' nav-waypoint sets know `token` (a code, an English name, a Hebrew name),
+// as data prefixes. The search reads only the set in use -- the base chart's, or the one
+// "Nav waypoints from" names -- so a code from another chart (an ATS point while the CVFR
+// set is in use) used to be just "unknown" (reported). Only charts the app offers.
+async function navWaypointOtherCharts(token) {
+  const t = String(token || '').trim();
+  if (!t) return [];
+  const key = s => String(s || '').toUpperCase().replace(/[\s_-]+/g, '');
+  const want = key(t);
+  const current = layerDataPrefix();
+  const out = [];
+  for (const prefix of Object.keys(_PREFIX_LAYER_NAME)) {
+    if (prefix === current) continue;
+    if (typeof layerOffered === 'function' && !layerOffered(_PREFIX_LAYER_NAME[prefix])) continue;
+    try {
+      const d = routeShapeFromGraph('nav-waypoints', await routeGraphData(prefix), prefix);
+      const arr = Array.isArray(d) ? d : (d.waypoints || d.points || []);
+      if (arr.some(w => w && (key(w.name) === want || key(w.en) === want || (w.he && w.he === t)))) out.push(prefix);
+    } catch (e) { /* that chart's data did not load: say nothing about it */ }
+  }
+  return out;
+}
+window.navWaypointOtherCharts = navWaypointOtherCharts;
 
 async function loadNavWaypoints() {
   if (navWP !== null) return navWP;
@@ -7234,9 +7265,15 @@ function drawFlightPlanTable(ctx, x, y, w, h, align) {
   const vorCells = (wp, lg) => {
     const v = (lg && lg.vorRef && typeof vorByIdent === 'function' ? vorByIdent(lg.vorRef) : null) ||
               (typeof activeVor === 'function' ? activeVor() : null);
-    if (!v || !wp || typeof vorRadialDme !== 'function') return [empty, empty];
+    if (!v || !wp || typeof vorRadialDme !== 'function') return [empty, empty, null];
     const rd = vorRadialDme(v, wp.lat, wp.lng);
-    return rd ? ['R-' + rd.radial, String(rd.dme)] : [empty, empty];
+    return rd ? ['R-' + rd.radial, String(rd.dme), v] : [empty, empty, null];
+  };
+  // The station a pilot tunes to fly the radial: its ident and its (override-aware)
+  // frequency, the same pair the chart prints beside the VOR.
+  const vorTune = v => {
+    const f = typeof vorEffectiveFreq === 'function' ? vorEffectiveFreq(v) : (v.freq || '');
+    return v.ident + (f ? ' ' + f + ' MHz' : '');
   };
   const rows = [];
   let totTime = 0, totFuel = 0;
@@ -7269,7 +7306,7 @@ function drawFlightPlanTable(ctx, x, y, w, h, align) {
       time: cardPre ? '---' : (dur > 0 ? toHMS(dur) : '--'), fuel: fLabel,
       cumTime: cardPre ? '---' : (totTime > 0 ? toHMS(totTime) : '--'),
       cumFuel: ac ? totFuel.toFixed(1) : '--',
-      radial: rd[0], dme: rd[1] });
+      radial: rd[0], dme: rd[1], vor: rd[2] });
   }
   if (!rows.length) return null;
   // Active comm frequency per leg — departure/arrival airfield freqs +
@@ -7284,9 +7321,30 @@ function drawFlightPlanTable(ctx, x, y, w, h, align) {
   // Time of leg, Fuel of leg, [Comm freq]. (Was #,From,To,Hdg,Dist,Spd,Alt,
   // Time,Fuel,CumTime,CumFuel,Radial,DME — trimmed to what a pilot reads.)
   // Radial / DME columns appear only when a reference VOR is selected (global
-  // or any per-leg). The Radial header carries the reference VOR ident.
-  const refVor = typeof activeVor === 'function' ? activeVor() : null;
+  // or any per-leg). A caption line above the table names the station a pilot tunes: its
+  // ident and frequency ("VOR BGN 113.50 MHz"), outside the table so the Radial column stays as
+  // narrow as its values. Legs on different stations (the flight plan's per-leg picker) list
+  // each station there, and each radial cell names the station it is from.
   const vorActive = flightPlanCardHasVorInfo();
+  const usedVors = [];
+  for (const r of rows) if (r.vor && !usedVors.includes(r.vor)) usedVors.push(r.vor);
+  const mixedVors = usedVors.length > 1;
+  // Beyond the station's published coverage (AIP ENR 4.1, the ring the map draws): the radial and
+  // DME printed for that point may not be receivable there. The DME cell is marked "!" and the
+  // VOR line says all or some waypoints are beyond it, so the paper warns as the map's ring does. A station that publishes
+  // no coverage is not judged.
+  for (const r of rows) {
+    const cov = r.vor && Number(r.vor.coverageNm);
+    r.outOfRange = !!(cov > 0 && Number(r.dme) > cov);
+    if (r.outOfRange) r.dme += ' !';
+  }
+  // "All" or "some" of the waypoints read from that station: the "!" cells say which.
+  const vorLine = v => {
+    const on = rows.filter(r => r.vor === v), out = on.filter(r => r.outOfRange);
+    return vorTune(v) + (out.length
+      ? ' ' + S.planVorOutOfRange(v.coverageNm, out.length === on.length) : '');
+  };
+  if (mixedVors) for (const r of rows) if (r.vor) r.radial = r.vor.ident + ' ' + r.radial;
   const headers = [
     '#',
     S.planColDestination || 'Destination',
@@ -7296,14 +7354,19 @@ function drawFlightPlanTable(ctx, x, y, w, h, align) {
     S.planColLegTime || 'Time of leg',
     S.planColLegFuel || 'Fuel of leg',
   ];
-  if (vorActive) headers.push((S.planColRadial || 'Radial') + (refVor ? ' ' + refVor.ident : ''),
+  // One station: the Radial header keeps its ident ("Radial NAT"), as it always has. Several:
+  // each radial cell names its own, so the header stays "Radial".
+  if (vorActive) headers.push((S.planColRadial || 'Radial') + (usedVors.length === 1 ? ' ' + usedVors[0].ident : ''),
     S.planColDme || 'DME');
+  const caption = usedVors.length
+    ? (S.fpVorLabel || 'VOR') + ' ' + usedVors.map(vorLine).join(' \u00b7 ') : '';
+  const capRows = caption ? 1 : 0;
   if (freqActive) headers.push(S.planColComm || 'Comm freq');
   const numCols = headers.length;
   const numRows = rows.length + 2;            // header + data + total
   // Derive the font FROM the row height (not an independent floor) so text
   // can never grow taller than its row → no vertical overlap at any size.
-  const rowH = h / numRows;
+  const rowH = h / (numRows + capRows);
   const fontSize = Math.max(1, Math.min(rowH * 0.62, 22));
   const padX = Math.max(2, Math.round(fontSize * 0.5));
   const aligns = ['center', 'left', 'center', 'right', 'right', 'center', 'right'];
@@ -7331,6 +7394,11 @@ function drawFlightPlanTable(ctx, x, y, w, h, align) {
     for (let mc = 0; mc < numCols; mc++) colW[mc] = Math.max(colW[mc], ctx.measureText(String(mvals[mc])).width);
   }
   for (let mc = 0; mc < numCols; mc++) colW[mc] = Math.ceil(colW[mc] + 2 * padX);
+  // A caption wider than the table widens the Destination column, so the card is one box.
+  ctx.font = 'bold ' + fontSize + 'px sans-serif';
+  const capW = caption ? Math.ceil(ctx.measureText(caption).width + 2 * padX) : 0;
+  const sumW = colW.reduce((a, b) => a + b, 0);
+  if (capW > sumW) colW[1] += capW - sumW;
   const colX = new Array(numCols + 1).fill(0);
   for (let mc = 0; mc < numCols; mc++) colX[mc + 1] = colX[mc] + colW[mc];
   const totalW = colX[numCols];
@@ -7345,11 +7413,24 @@ function drawFlightPlanTable(ctx, x, y, w, h, align) {
   const STRIPE_BG = tune('planCardStripeBgColor');
   const GRID = tune('planCardGridColor');
   const TEXT = tune('planCardTextColor');
-  const tableH = Math.round(rowH * numRows);
+  const capH = Math.round(rowH * capRows);
+  const tableH = Math.round(rowH * numRows) + capH;
   const al = align || 'tl';
   if (al === 'tr' || al === 'br') x = x + Math.max(0, w - totalW);
   if (al === 'bl' || al === 'br') y = y + Math.max(0, h - tableH);
   if (al === 'center') { x = x + Math.max(0, (w - totalW) / 2); y = y + Math.max(0, (h - tableH) / 2); }
+  const top = y;
+  if (caption) {
+    // Plain text on the card's own paper: no header shading, no grid -- a title, not a row.
+    ctx.fillStyle = tune('planCardBgColor');
+    ctx.fillRect(x, y, totalW, capH);
+    ctx.fillStyle = TEXT;
+    ctx.font = 'bold ' + fontSize + 'px sans-serif';
+    ctx.textBaseline = 'middle';
+    ctx.textAlign = rtl ? 'right' : 'left';
+    ctx.fillText(caption, rtl ? x + totalW - padX : x + padX, y + capH / 2 + fontSize * 0.08);
+    y += capH;
+  }
   // Integer-snapped row boundaries so cell text and grid lines line up exactly
   // (fractional row heights otherwise drift the text off its row at small
   // sizes). Every row uses rowY[row]..rowY[row+1].
@@ -7392,7 +7473,9 @@ function drawFlightPlanTable(ctx, x, y, w, h, align) {
   for (let c4 = 0; c4 < numCols; c4++) if (totVals[c4] !== undefined) cell(tr, c4, String(totVals[c4]), true, null);
   ctx.strokeStyle = GRID;
   ctx.lineWidth = tune('fpTableBorderWidthPx');
-  ctx.strokeRect(x + 0.5, y + 0.5, totalW - 1, tableHActual - 1);
+  // One outline round the caption and the table: a single card on the paper.
+  ctx.strokeRect(x + 0.5, top + 0.5, totalW - 1, tableHActual + capH - 1);
+  if (capH) { ctx.beginPath(); ctx.moveTo(x, y + 0.5); ctx.lineTo(x + totalW, y + 0.5); ctx.stroke(); }
   ctx.lineWidth = tune('fpTableGridWidthPx');
   for (let gc = 1; gc < numCols; gc++) {
     const gx = Math.round(x + (rtl ? totalW - colX[gc] : colX[gc])) + 0.5;
@@ -7403,7 +7486,7 @@ function drawFlightPlanTable(ctx, x, y, w, h, align) {
     ctx.beginPath(); ctx.moveTo(x, gy); ctx.lineTo(x + totalW, gy); ctx.stroke();
   }
   ctx.restore();
-  return { x, y, w: totalW, h: tableHActual };
+  return { x, y: top, w: totalW, h: tableHActual + capH };
 }
 
 // Draw the placed flight-plan card on the overlay (live preview + export).
@@ -7412,7 +7495,8 @@ function drawFlightPlanTable(ctx, x, y, w, h, align) {
 function drawPlanCard() {
   if (!planCard) { window.planCardRect = null; return; }
   const scale = planCard.scale > 0 ? planCard.scale : 1;
-  const numRows = flightPlanCardLegIndexes().length + 2;
+  // + the VOR caption line, so it adds a row instead of shrinking every row.
+  const numRows = flightPlanCardLegIndexes().length + 2 + (flightPlanCardHasVorInfo() ? 1 : 0);
   const h = numRows * tune('planCardBaseRowPx') * scale;
   window.planCardRect = drawFlightPlanTable(octx, planCard.x, planCard.y, 1e6, h, 'tl');
   // The resize grip is a UI handle — never bake it into the exported PNG.

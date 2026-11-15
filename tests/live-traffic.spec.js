@@ -220,7 +220,11 @@ test('the open inspector follows new reports for its selected aircraft', async (
 
   await expect(page.locator('#insp-body')).toContainText('17200 ft');
   await expect(page.locator('#insp-body')).toContainText('401 kt');
-  await expect(page.locator('#insp-body')).toContainText('301°');
+  // The feed's track is true; the read-out gives magnetic (as every direction in NavAid) and
+  // true (as the feed reported it), each marked.
+  const mag = await page.evaluate(() => String(toMagnetic(301.2)).padStart(3, '0') + '°M');
+  expect(mag).not.toBe('301°M');                  // Israel's variation moves it
+  await expect(page.locator('#insp-body')).toContainText(mag + ' \u00b7 301°T');
   await expect(page.locator('#insp-body')).toContainText(/32°07\.2/);
 });
 
@@ -515,7 +519,7 @@ test('the endpoint is settable, and the panel gives it a text field', async ({ p
   expect(control.exists).toBe(true);
   expect(control.type).toBe('text');
   expect(control.range).toBe(false);       // not a slider for a URL
-  expect(control.value).toContain('adsb.lol');
+  expect(control.value).toContain('opendata.adsb.fi');
 });
 
 // Asked: "can ADS-B show a helicopter? it shows planes only, even if it is a heli". A helicopter
@@ -745,3 +749,28 @@ for (const [dev, vp] of [['desktop', { width: 1000, height: 506 }], ['phone', { 
     }, { timeout: 3000 }).toBe(true);
   });
 }
+
+// Reported with a screenshot (a desktop in a narrow window): with the bottom sheet taller than
+// half the map, the followed aircraft was centred on the whole map -- under the sheet.
+test('a followed aircraft stays above a bottom sheet taller than half the map', async ({ page }) => {
+  await page.setViewportSize({ width: 500, height: 700 });
+  await boot(page);
+  await page.evaluate(() => map.setView([32.10, 34.90], 10));
+  await page.locator('.traffic-mark').first().click({ force: true });
+  // The sheet as the screenshot had it: from just above the middle down to the bottom.
+  await page.evaluate(() => {
+    const el = document.getElementById('inspector');
+    el.style.top = Math.round(window.innerHeight * 0.48) + 'px';
+    el.style.bottom = '0px';
+    el.style.height = 'auto';
+  });
+  const sheet = await page.evaluate(() => {
+    const r = document.getElementById('inspector').getBoundingClientRect();
+    const m = map.getContainer().getBoundingClientRect();
+    return { top: r.top, mid: (m.top + m.bottom) / 2, wide: r.width >= m.width * 0.6 };
+  });
+  expect(sheet.wide).toBe(true);
+  expect(sheet.top).toBeLessThan(sheet.mid);              // the case that went wrong
+  await page.locator('#insp-traffic-follow').click();
+  expect(await seen(page, 32.10, 34.90)).toEqual({ onMap: true, underPanel: false });
+});

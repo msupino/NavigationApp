@@ -69,6 +69,17 @@ window.S = {
   tbSearchPlaceholder: 'חפש ציון ניווטי',
   tbSearchHint: 'טיפ: הקלד קודים מופרדים ברווח (למשל \u2066LLHZ\u00a0BAZRA\u00a0DEROR\u00a0SHARO\u00a0HADRA\u2069) ולחץ \u2066Enter\u2069 לבניית מסלול.',
   errSearchUnknown: function(t) { return 'ציון ניווט לא מוכר: ' + t; },
+  // \u2068..\u2069 isolate the code and the chart names: Latin runs ("ABIMI", "נתיבי ATS,")
+  // otherwise pulled the comma and the words around them out of order.
+  errSearchOtherChart: function (t, where, current) {
+    const i = x => '\u2068' + x + '\u2069';
+    return i(t) + ' הוא ציון ניווט של המפה ' + i(where) + '; הציונים בשימוש הם של ' + i(current) +
+      '. שנו את ״ציוני ניווט מתוך״ כדי להשתמש בו.';
+  },
+  searchOtherChartRow: function (t, where, target) {
+    const i = x => '\u2068' + x + '\u2069';
+    return i(t) + ' הוא ציון ניווט של המפה ' + i(where) + ', לא מהמוצגים \u2014 הקישו כדי לעבור לציוני ' + i(target);
+  },
   searchReplaceConfirm: 'להחליף את המסלול הנוכחי בציוני הדרך האלה?',
   choosePointTitle: 'בחר נקודה',
   choosePointRoute: 'ציון דרך במסלול',
@@ -706,6 +717,11 @@ window.S = {
   exportPlanPlace: 'הצב תכנית טיסה על המפה',
   exportPlanPlaceTitle: 'הטבע את טבלת תכנית הטיסה בייצוא; גרור אותה למיקום בתוך מסגרת הדף',
   exportPlanNoFrame: 'הצב תכנית טיסה — בחר תחילה דף A3/A4',
+  planVorOutOfRange: function (nm, all) {
+    // An RTL isolate: the line around it starts in Latin (VOR BGN ...), and without one the
+    // parentheses and the "!" were laid out the Latin way.
+    return '\u2067(! ' + (all ? 'כל ציוני הדרך' : 'חלק מציוני הדרך') + ' מחוץ לטווח \u2066' + nm + ' NM\u2069 שלה)\u2069';
+  },
   exportPlanNoLegs: 'הצב תכנית טיסה — הוסף תחילה מקטע מסלול',
   fpVorLabel: 'VOR',
   fpVorRadialEmpty: '—',
@@ -1163,6 +1179,7 @@ window.S = {
   exportResLow: 'נמוכה',
   exportResMedium: 'בינונית',
   exportResHigh: 'גבוהה',
+  exportResDpi: function (dpi) { return 'על הנייר: \u2066\u2248' + dpi + ' dpi\u2069'; },
   exportBwTitle: 'המפה באפור בהיר והמסלול בשחור על לבן, כך שהוא קריא במדפסת ללא צבע',
   ctxMenuLabel: 'פעולות מהירות',
   ctxAddNoteHere: 'הוסף הערה כאן',

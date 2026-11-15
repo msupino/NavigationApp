@@ -2427,13 +2427,27 @@ legendCtrl.addTo(map);
 })();
 // The map clock runs along the same bottom row: it starts right of the dock (style.css .map-time),
 // whose width changes with the route totals.
+// On a phone the clock is a card at the left edge, on the dock's own row; there it sits ABOVE the
+// dock instead (style.css body.deck-on .map-time), at the height published here. It was at a fixed
+// 124 px: the dock -- the Legend button with the route totals over it -- reached up into it, drew
+// on top of the card's left end, and its empty area caught the touches meant for the slider
+// (reported: "can't move time slider").
 function publishLegendDockWidth() {
   const root = document.documentElement;
   const row = legendDock.row;
-  if (!row || !row.getClientRects().length) { root.style.removeProperty('--navaid-legend-dock-clear'); return; }
-  root.style.setProperty('--navaid-legend-dock-clear', Math.ceil(row.getBoundingClientRect().right + 12) + 'px');
+  if (!row || !row.getClientRects().length) {
+    root.style.removeProperty('--navaid-legend-dock-clear');
+    root.style.removeProperty('--navaid-legend-dock-above');
+    return;
+  }
+  const r = row.getBoundingClientRect();
+  root.style.setProperty('--navaid-legend-dock-clear', Math.ceil(r.right + 12) + 'px');
+  const clock = document.getElementById('map-time');
+  const host = (clock && clock.offsetParent) || document.body;
+  root.style.setProperty('--navaid-legend-dock-above', Math.ceil(host.getBoundingClientRect().bottom - r.top + 8) + 'px');
 }
 if (legendDock.row && typeof ResizeObserver === 'function') new ResizeObserver(publishLegendDockWidth).observe(legendDock.row);
+window.addEventListener('resize', publishLegendDockWidth);
 
 // The route totals on one line (asked: "default should not wrap"). The gist's routeSummaryFontPx
 // is the size they start at; where the room beside the zoom column is too small for that -- the
@@ -2983,6 +2997,41 @@ function syncSearchResultsStacking() {
   const res = document.getElementById('wp-search-results');
   if (ov && res) ov.classList.toggle('has-results', !res.classList.contains('hidden'));
 }
+// Nothing found in the set in use, but another chart has the code: one row says which, and
+// tapping it switches "Nav waypoints from" to that chart (through the selector's own handler,
+// so every dataset follows) and searches again.
+async function showOtherChartHint(token) {
+  if (!token || token.length < 2 || typeof navWaypointOtherCharts !== 'function') return;
+  const others = await navWaypointOtherCharts(token);
+  // Typed on meanwhile, or found after all: this answer is stale.
+  if (!others.length || wpSearch.value.trim() !== token) return;
+  const target = others[0];
+  const where = others.map(layerLabelForPrefix).join(' / ');
+  wpResults.innerHTML = '';
+  const item = document.createElement('div');
+  item.className = 'wp-search-item wp-search-other-chart';
+  item.setAttribute('role', 'option');
+  item.textContent = S.searchOtherChartRow(token.toUpperCase(), where, layerLabelForPrefix(target));
+  item.onclick = async (e) => {
+    // The switch rebuilds the list under this click; left to bubble, the document's
+    // click-outside handler no longer found the row inside the search and closed it.
+    e.stopPropagation();
+    const sel = document.getElementById('navwp-source');
+    if (sel && Array.from(sel.options).some(o => o.value === target)) {
+      sel.value = target;
+      if (typeof sel.onchange === 'function') sel.onchange();
+    } else {
+      window.navDataPrefix = target;
+      if (typeof reloadLayerDatasets === 'function') reloadLayerDatasets();
+    }
+    if (typeof loadNavWaypoints === 'function') await loadNavWaypoints();
+    runSearch();
+  };
+  wpResults.appendChild(item);
+  wpResults.classList.remove('hidden');
+  syncSearchResultsStacking();
+}
+
 function closeSearch() {
   wpResults.classList.add('hidden');
   syncSearchResultsStacking();
@@ -3046,7 +3095,14 @@ async function buildRouteFromQuery(raw) {
   const resolved = [];
   for (const t of tokens) {
     const w = findNavWpToken(t);
-    if (!w) { refuse(S.errSearchUnknown(t)); return false; }
+    if (!w) {
+      // Another chart's waypoint? Say so, and where to switch -- not just "unknown".
+      const others = await navWaypointOtherCharts(t);
+      refuse(others.length
+        ? S.errSearchOtherChart(t, others.map(layerLabelForPrefix).join(' / '), layerLabelForPrefix(layerDataPrefix()))
+        : S.errSearchUnknown(t));
+      return false;
+    }
     resolved.push(w);
   }
   // A typed route is vetted before it replaces what is on the map: "LLHZ BAZRA LLHZ BAZRA"
@@ -4604,7 +4660,11 @@ function runSearch() {
     hits.push(...perSource[i].slice(0, take));
     budget -= take;
   }
-  if (!hits.length) { closeSearch(); return; }
+  if (!hits.length) {
+    closeSearch();
+    if (!multi) showOtherChartHint(lastToken);
+    return;
+  }
   wpResults.innerHTML = '';
   const wpField = S.navWpSearchField;
   const afField = S.airfieldLabelField;
@@ -14386,6 +14446,8 @@ const NavWxTime = (function () {
   // The desktop keeps dimming: it has the room, the strip has a fixed place, and a control
   // that vanishes from a fixed place is one a pilot hunts for. The gist can put it back on a
   // phone too, which is the house rule for removing a control at all.
+  const clockInStrip = () => document.body.classList.contains('deck-on')
+    && !!document.querySelector('#deck-strip');
   const idleHidesOnPhone = () => document.body.classList.contains('deck-on')
     && (typeof tune !== 'function' || tune('hideIdleMapClockOnPhone') !== false);
 
@@ -14483,7 +14545,9 @@ const NavWxTime = (function () {
   function refresh() {
     const timed = anyTimedLayer() || inspectorTimed() || planningFormOpen();
     const was = el.hidden;
-    el.hidden = !featureOn() || liveHides() || (!timed && idleHidesOnPhone());
+    // On a phone the clock is a row under the strip, opened from the hour shown there, so it
+    // spends no map while nobody is moving it; hiding it while idle is no longer needed there.
+    el.hidden = !featureOn() || liveHides() || (!timed && idleHidesOnPhone() && !clockInStrip());
     if (el.hidden !== was) reseatLegend();
     // The panel's copy exists for one reason: on a phone the sheet covers the map's copy. So
     // it appears when there is something for a clock to move and not otherwise -- a waypoint,
@@ -14501,6 +14565,7 @@ const NavWxTime = (function () {
   // -- the gist withdrawing it, or a live position hiding it, frees the row again.
   const reseatLegend = () => {
     if (typeof window.reconcileLegendPosition === 'function') window.reconcileLegendPosition();
+    if (typeof publishLegendDockWidth === 'function') publishLegendDockWidth();
   };
   // The inspector is rebuilt from scratch on every selection, so what it contains cannot be
   // asked once. Watching it is cheaper than making every caller that opens or closes a panel
@@ -14546,6 +14611,8 @@ const NavWxTime = (function () {
   const backToLive = () => {
     slider.value = '0';
     slider.dispatchEvent(new Event('input'));
+    // Back at live, the phone's clock row has done its job: it folds back into the strip.
+    if (NavAid.setDeckClockOpen) NavAid.setDeckClockOpen(false);
   };
   if (nowBtn) nowBtn.addEventListener('click', backToLive);
   if (inspNow) inspNow.addEventListener('click', backToLive);
