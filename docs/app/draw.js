@@ -2680,16 +2680,22 @@ function airfieldFreqChanges(icao) {
   return out;
 }
 
+// An airfield's active NOTAMs, by ICAO, for its count badge -- ALL of them, including those
+// also drawn as an area or a route line. The badge used to skip those, so LLBG showed "2"
+// while its NOTAM list held 3, the third being a drilling-tower area near the field (reported).
+// The badge says how many the field has; the area is still drawn where it applies.
+function notamsByAirfield(act) {
+  const byIcao = {};
+  for (const n of act || []) {
+    const c = n && n.icao;
+    if (c) (byIcao[c] = byIcao[c] || []).push(n);
+  }
+  return byIcao;
+}
+
 function drawNotamAirportMarkers() {
   if (!Array.isArray(airfields) || !airfields.length) return;
-  const byIcao = {};
-  for (const n of activeNotams()) {
-    if (n && n.geom) continue;                 // already drawn as an area
-    if (n && Array.isArray(n._routeLines) && n._routeLines.length) continue;  // drawn as a route line
-    const c = n && n.icao;
-    if (!c) continue;
-    (byIcao[c] = byIcao[c] || []).push(n);
-  }
+  const byIcao = notamsByAirfield(activeNotams());
   const col = tune('notamColor');
   const flashId = notamFlashId;
   const flashPulse = notamFlashPulse();
@@ -2794,18 +2800,13 @@ function notamsAtLatLng(latlng) {
   // Airport count badges (no-geom NOTAMs grouped by ICAO) — see
   // drawNotamAirportMarkers(): a notamBadgeRadiusPx disc notamBadgeOffsetPx below the field.
   if (Array.isArray(airfields) && airfields.length) {
-    const byIcao = {};
-    for (const n of act) {
-      if (n && n.geom) continue;
-      if (n && Array.isArray(n._routeLines) && n._routeLines.length) continue;
-      const c = n && n.icao;
-      if (c) (byIcao[c] = byIcao[c] || []).push(n);
-    }
+    const byIcao = notamsByAirfield(act);
     for (const code in byIcao) {
       const af = airfieldByIcao(code);
       if (!af || !Number.isFinite(af.lat) || !Number.isFinite(af.lng)) continue;
       const p = proj({ lat: af.lat, lng: af.lng });
-      if (notamBadgeHit(pt, p)) out.push(...byIcao[code]);
+      // An area NOTAM under the same tap is already in the list once.
+      if (notamBadgeHit(pt, p)) for (const n of byIcao[code]) if (!out.includes(n)) out.push(n);
     }
   }
   return out;
@@ -2826,12 +2827,7 @@ function notamBadgeNotamsAt(latlng) {
   if (!window.showNotam || !latlng || !Array.isArray(airfields) || !airfields.length) return [];
   const act = (typeof activeNotams === 'function') ? activeNotams() : [];
   if (!act.length) return [];
-  const byIcao = {};
-  for (const n of act) {
-    if (n && n.geom) continue;
-    if (n && Array.isArray(n._routeLines) && n._routeLines.length) continue;
-    if (n && n.icao) (byIcao[n.icao] = byIcao[n.icao] || []).push(n);
-  }
+  const byIcao = notamsByAirfield(act);
   const pt = proj(latlng);
   for (const code in byIcao) {
     const af = airfieldByIcao(code);
