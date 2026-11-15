@@ -97,7 +97,11 @@
     if (insp) {
       // Across most of the map it is a sheet (above or below); narrower, it is a side panel.
       if (insp.width >= (right - left) * 0.6) {
-        if (insp.top > (top + bottom) / 2) bottom = Math.min(bottom, insp.top);
+        // Above or below by the edge it sits on, not by where its top edge falls: a bottom sheet
+        // dragged up past the middle was taken for a TOP sheet, the space left "above" it came
+        // out empty, and the aircraft went to the plain centre -- under the sheet (reported,
+        // a desktop in a narrow window).
+        if (bottom - insp.bottom <= insp.top - top) bottom = Math.min(bottom, insp.top);
         else top = Math.max(top, insp.bottom);
       } else if (insp.left > (left + right) / 2) right = Math.min(right, insp.left);
       else left = Math.max(left, insp.right);
