@@ -1,0 +1,41 @@
+From 2c73150bb17a44752d9cbba23b5761a8c3953616 Mon Sep 17 00:00:00 2001
+From: Marco <marco@supino.org>
+Date: Sun, 15 Nov 2026 06:58:28 +0000
+Subject: [PATCH] Search: a code from another chart's waypoints is named with
+ its chart, and one row switches to it
+
+---
+ Route-and-Legs-he.md | 2 ++
+ Route-and-Legs.md    | 3 +++
+ 2 files changed, 5 insertions(+)
+
+diff --git a/Route-and-Legs-he.md b/Route-and-Legs-he.md
+index 3ad8f72..bf947d7 100644
+--- a/Route-and-Legs-he.md
++++ b/Route-and-Legs-he.md
+@@ -19,6 +19,8 @@
+ קטע באורך אפס או מעבר שלישי באותו קטע נדחים, שינויי התדר מתווספים והמסדרון המפורסם משלים את הדרך.
+ <span dir="ltr"><code>LLHZ BAZRA DEROR SHARO</code></span> יוצא זהה — עם שינוי התדר לפלוטו מערב ב-DEROR — בכל דרך שהוא נבנה.
+ 
++בחיפוש, הקודים נלקחים מציוני הניווט שבשימוש: של מפת הבסיס, או של המפה שנבחרה ב**ציוני ניווט מתוך**. קוד ששייך למפה אחרת (נקודת ATS כשציוני ה-CVFR בשימוש) מוצג עם שם המפה שלו במקום ״ציון ניווט לא מוכר״, וחיפוש שלו לבדו מציע שורה שמעבירה את **ציוני ניווט מתוך** למפה ההיא.
++
+ ## מעקב אחר המסדרונות המפורסמים
+ 
+ בשכבת CVFR, הוספת נקודת דיווח יכולה להאריך את המסלול **לאורך המסדרון המפורסם** מהנקודה הקודמת במקום לצייר קו ישר. נקודות המסדרון נשתלות כנקודות ציון רגילות — מחיקה של אחת מוחקת רק אותה, בדיוק כמו כל נקודה אחרת.
+diff --git a/Route-and-Legs.md b/Route-and-Legs.md
+index c16ccbe..bfe5d7d 100644
+--- a/Route-and-Legs.md
++++ b/Route-and-Legs.md
+@@ -11,6 +11,9 @@ A route is **waypoints** plus the **legs** between them. There is always exactly
+ - **First click on an empty map** starts the route and arms add-mode, but only while the "click a point on the map to start a route" hint is up. Once you have learned the app, a plain click inspects instead of dropping a point.
+ - **Add mode** (Edit menu, or **A**) keeps adding on each click. The mode chip shows what is happening and stops it.
+ - **Search** — type space-separated codes (`LLHZ BAZRA DEROR`) and press Enter to build a whole route at once.
++  Codes come from the waypoints in use: the base chart's, or the set chosen in **Nav waypoints from**. A code that
++  belongs to another chart (an ATS point while the CVFR waypoints are in use) is named with its chart instead of
++  "Unknown waypoint", and searching it alone offers a row that switches **Nav waypoints from** to that chart.
+ - **Templates** — Charts → Templates for a ready-made route.
+ - **Split a leg** — drag its midpoint, and the new waypoint inherits the leg's speed.
+ 
+-- 
+2.43.0
+

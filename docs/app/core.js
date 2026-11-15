@@ -1831,6 +1831,15 @@ window.S = Object.assign({
   tbSearchPlaceholder: 'Find navigation waypoint',
   tbSearchHint: 'Tip: type space-separated waypoint codes (e.g. LLHZ BAZRA DEROR SHARO HADRA) and press Enter to build a route.',
   errSearchUnknown: function(t) { return 'Unknown waypoint: ' + t; },
+  // A code the waypoints in use do not have, but another chart's do (ATS while CVFR is in use).
+  errSearchOtherChart: function (t, where, current) {
+    return t + ' is a waypoint of the ' + where + ' chart; the waypoints in use are ' + current +
+      '\u2019s. Change \u201cNav waypoints from\u201d to use it.';
+  },
+  searchOtherChartRow: function (t, where, target) {
+    return t + ' is a waypoint of the ' + where + ' chart, not of those shown \u2014 tap to use the ' +
+      target + ' waypoints';
+  },
   searchReplaceConfirm: 'Replace the current route with these waypoints?',
   choosePointTitle: 'Choose point',
   choosePointRoute: 'Route waypoint',

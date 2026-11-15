@@ -2979,6 +2979,41 @@ function syncSearchResultsStacking() {
   const res = document.getElementById('wp-search-results');
   if (ov && res) ov.classList.toggle('has-results', !res.classList.contains('hidden'));
 }
+// Nothing found in the set in use, but another chart has the code: one row says which, and
+// tapping it switches "Nav waypoints from" to that chart (through the selector's own handler,
+// so every dataset follows) and searches again.
+async function showOtherChartHint(token) {
+  if (!token || token.length < 2 || typeof navWaypointOtherCharts !== 'function') return;
+  const others = await navWaypointOtherCharts(token);
+  // Typed on meanwhile, or found after all: this answer is stale.
+  if (!others.length || wpSearch.value.trim() !== token) return;
+  const target = others[0];
+  const where = others.map(layerLabelForPrefix).join(' / ');
+  wpResults.innerHTML = '';
+  const item = document.createElement('div');
+  item.className = 'wp-search-item wp-search-other-chart';
+  item.setAttribute('role', 'option');
+  item.textContent = S.searchOtherChartRow(token.toUpperCase(), where, layerLabelForPrefix(target));
+  item.onclick = async (e) => {
+    // The switch rebuilds the list under this click; left to bubble, the document's
+    // click-outside handler no longer found the row inside the search and closed it.
+    e.stopPropagation();
+    const sel = document.getElementById('navwp-source');
+    if (sel && Array.from(sel.options).some(o => o.value === target)) {
+      sel.value = target;
+      if (typeof sel.onchange === 'function') sel.onchange();
+    } else {
+      window.navDataPrefix = target;
+      if (typeof reloadLayerDatasets === 'function') reloadLayerDatasets();
+    }
+    if (typeof loadNavWaypoints === 'function') await loadNavWaypoints();
+    runSearch();
+  };
+  wpResults.appendChild(item);
+  wpResults.classList.remove('hidden');
+  syncSearchResultsStacking();
+}
+
 function closeSearch() {
   wpResults.classList.add('hidden');
   syncSearchResultsStacking();
@@ -3042,7 +3077,14 @@ async function buildRouteFromQuery(raw) {
   const resolved = [];
   for (const t of tokens) {
     const w = findNavWpToken(t);
-    if (!w) { refuse(S.errSearchUnknown(t)); return false; }
+    if (!w) {
+      // Another chart's waypoint? Say so, and where to switch -- not just "unknown".
+      const others = await navWaypointOtherCharts(t);
+      refuse(others.length
+        ? S.errSearchOtherChart(t, others.map(layerLabelForPrefix).join(' / '), layerLabelForPrefix(layerDataPrefix()))
+        : S.errSearchUnknown(t));
+      return false;
+    }
     resolved.push(w);
   }
   // A typed route is vetted before it replaces what is on the map: "LLHZ BAZRA LLHZ BAZRA"
@@ -4600,7 +4642,11 @@ function runSearch() {
     hits.push(...perSource[i].slice(0, take));
     budget -= take;
   }
-  if (!hits.length) { closeSearch(); return; }
+  if (!hits.length) {
+    closeSearch();
+    if (!multi) showOtherChartHint(lastToken);
+    return;
+  }
   wpResults.innerHTML = '';
   const wpField = S.navWpSearchField;
   const afField = S.airfieldLabelField;

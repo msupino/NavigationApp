@@ -2990,6 +2990,30 @@ async function _fetchLayerDataRaw(kind) {
   return { data: await r.json(), prefix: 'cvfr' };
 }
 
+// Which OTHER charts' nav-waypoint sets know `token` (a code, an English name, a Hebrew name),
+// as data prefixes. The search reads only the set in use -- the base chart's, or the one
+// "Nav waypoints from" names -- so a code from another chart (an ATS point while the CVFR
+// set is in use) used to be just "unknown" (reported). Only charts the app offers.
+async function navWaypointOtherCharts(token) {
+  const t = String(token || '').trim();
+  if (!t) return [];
+  const key = s => String(s || '').toUpperCase().replace(/[\s_-]+/g, '');
+  const want = key(t);
+  const current = layerDataPrefix();
+  const out = [];
+  for (const prefix of Object.keys(_PREFIX_LAYER_NAME)) {
+    if (prefix === current) continue;
+    if (typeof layerOffered === 'function' && !layerOffered(_PREFIX_LAYER_NAME[prefix])) continue;
+    try {
+      const d = routeShapeFromGraph('nav-waypoints', await routeGraphData(prefix), prefix);
+      const arr = Array.isArray(d) ? d : (d.waypoints || d.points || []);
+      if (arr.some(w => w && (key(w.name) === want || key(w.en) === want || (w.he && w.he === t)))) out.push(prefix);
+    } catch (e) { /* that chart's data did not load: say nothing about it */ }
+  }
+  return out;
+}
+window.navWaypointOtherCharts = navWaypointOtherCharts;
+
 async function loadNavWaypoints() {
   if (navWP !== null) return navWP;
   const gen = _layerGen;

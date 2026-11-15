@@ -1946,6 +1946,8 @@ body.theme-dark .leaflet-control-zoom a:hover {
 }
 .wp-search-item:hover,
 .wp-search-item.active { background: #1d6fe0; color: #fff; }
+/* "Not in the waypoints shown, but in another chart's": a sentence, so it wraps. */
+.wp-search-item.wp-search-other-chart { white-space: normal; line-height: 1.35; }
 #toolbar .navtoggle select,
 .ac-settings-body select {
   font: inherit;
