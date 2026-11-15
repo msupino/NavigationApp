@@ -10330,7 +10330,20 @@ body.deck-on .flight-table input { min-height: 28px; }
 }
 .deck-strip-lang svg { display: block; flex: none; }
 .deck-strip-lang:focus-visible { outline: 2px solid #4c9bff; outline-offset: 2px; }
-@media (max-width: 360px) { .deck-strip-lang .lang-quick-label { display: none; } .deck-strip-lang { padding: 0 11px; } }
+/* On the strip the switch is the other language's name OR the globe, never both (asked), and the
+   same in English and Hebrew. deck.js fitStripSub picks: the name when the strip's second line --
+   with the hour that opens the time slider -- fits beside it in both languages, else the globe. */
+.deck-strip .deck-strip-lang svg { display: none; }
+.deck-strip .deck-strip-lang { padding: 0 12px; }
+.deck-strip.deck-strip-tight .deck-strip-lang .lang-quick-label { display: none; }
+.deck-strip.deck-strip-tight .deck-strip-lang svg { display: block; }
+.deck-strip.deck-strip-tight .deck-strip-lang { padding: 0 11px; }
+/* A 360 px phone: the globe, whatever the line says. */
+@media (max-width: 360px) {
+  .deck-strip .deck-strip-lang .lang-quick-label { display: none; }
+  .deck-strip .deck-strip-lang svg { display: block; }
+  .deck-strip .deck-strip-lang { padding: 0 11px; }
+}
 #lang-quick .lang-quick-label { font-weight: 600; }
 /* Desktop menubar: :where(html.menubar) (index.html head, ui.js toolbarUsesDesktopMenu). */
   /* The menubar is one row with ~20px to spare, so the switch is the globe alone here -- the
