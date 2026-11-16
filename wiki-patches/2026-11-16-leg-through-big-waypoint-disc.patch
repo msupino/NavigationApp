@@ -1,0 +1,37 @@
+From 4d7fb09bd9c5677bbfa5b7dc9604bfb9a1d2f6bd Mon Sep 17 00:00:00 2001
+From: Marco <marco@supino.org>
+Date: Mon, 16 Nov 2026 09:20:37 +0000
+Subject: [PATCH] Leg line through a big waypoint circle selects the leg
+
+---
+ User-Guide-he.md | 1 +
+ User-Guide.md    | 1 +
+ 2 files changed, 2 insertions(+)
+
+diff --git a/User-Guide-he.md b/User-Guide-he.md
+index a02569b..60d4c46 100644
+--- a/User-Guide-he.md
++++ b/User-Guide-he.md
+@@ -37,6 +37,7 @@
+ - **גלול** — התקרבות/התרחקות.
+ - **לחץ על נקודת ציון** — בחירה ופתיחת החלונית למידע נוסף.
+ - **גרור נקודת ציון** — הזזה.
++- **לחץ על קו הקטע** — בחירת הקטע, גם בזום קרוב שבו עיגולי הנקודות מכסים אותו; רק מרכז העיגול בוחר (וגורר) את הנקודה.
+ - **לחיצה כפולה על קטע מסלול** — פיצול הקטע והוספת נקודת <span dir="ltr"><code>WP #</code></span> במיקום הלחיצה.
+ - **חוגת סיבוב** — סיבוב המפה (גרור או לחץ לסיבוב של 90°).
+ 
+diff --git a/User-Guide.md b/User-Guide.md
+index f370e44..ffeaf6b 100644
+--- a/User-Guide.md
++++ b/User-Guide.md
+@@ -40,6 +40,7 @@ Double-click an existing route leg to insert a blank waypoint at that exact map
+ - A new waypoint snaps to a nearby published navigation waypoint or airfield when one is within snap radius - both on **drop** and on **drag**. Airfields take priority over navigation waypoints.
+ - A snapped waypoint adopts the published name automatically: localized navigation-waypoint name, or ICAO code for airfields. You can rename it in the inspector.
+ - The waypoint circle shows the **name** when "Show Waypoint names" is on, otherwise the sequence number.
++- Zoomed in, the circles grow with the chart and can cover the whole leg between two close points. A tap on the leg line still selects the **leg**; only the centre of a circle picks (and drags) the waypoint.
+ - Double-click a leg to split it: NavAid inserts a new `WP #` waypoint at the clicked coordinate, selects it immediately, and turns the original leg into two legs. The new point is not snapped to published nav-waypoint / airfield data, so you can drag or rename it afterwards.
+ - Splitting a leg copies the old leg's speed, altitude pair, return / one-way altitude flags, and per-leg VOR reference to both new legs. Leg-marker positions reset to their defaults so the labels fit the new geometry.
+ - Editing a leg's altitude in the inspector **propagates** along the same cruise level until a different altitude already exists, so you don't have to click ten legs to change your cruise.
+-- 
+2.43.0
+

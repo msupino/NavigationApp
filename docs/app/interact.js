@@ -413,10 +413,22 @@ function hitWaypoint(px, py) {
 }
 function hitWaypointCandidates(px, py) {
   const hits = [];
+  // Zoomed in, the discs grow with the chart: two close points' discs covered the whole leg
+  // between them, so a tap on the line found only waypoints -- one, or the chooser offering both
+  // and never the leg (reported). Outside a fixed core at the centre, the leg line running
+  // through a disc is the leg; the core still picks (and drags) the point. At normal zoom the
+  // disc is no bigger than the core and nothing changes.
+  const core = tune('hitWaypointCorePx');
+  let onLeg = null;
   for (let i = state.waypoints.length - 1; i >= 0; i--) {
     if (typeof legDirWaypointVisible === 'function' && !legDirWaypointVisible(i)) continue;
     const s = proj(state.waypoints[i]);
-    if (Math.hypot(s.x - px, s.y - py) <= waypointGeom(i).r + tune('hitWaypointExtraPx')) {
+    const d = Math.hypot(s.x - px, s.y - py);
+    if (d <= waypointGeom(i).r + tune('hitWaypointExtraPx')) {
+      if (d > core) {
+        if (onLeg === null) onLeg = hitLeg(px, py) >= 0;
+        if (onLeg) continue;
+      }
       hits.push({ type: 'wp', index: i });
     }
   }
