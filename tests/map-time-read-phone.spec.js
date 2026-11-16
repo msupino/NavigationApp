@@ -34,7 +34,8 @@ for (const theme of ['light', 'dark']) test(`the phone's map clock shows the hou
       size: parseFloat(getComputedStyle(read).fontSize), weight: Number(getComputedStyle(read).fontWeight) };
   });
   expect(got.shown).toBe(true);
-  expect(got.text).toMatch(/\+3h · \d\d:00Z/);
+  // The readout prepends MM-DD when +3h lands on another date (near UTC midnight); tolerate it.
+  expect(got.text).toMatch(/\+3h · (\d\d-\d\d )?\d\d:00Z/);
   expect(got.ratio).toBeGreaterThanOrEqual(4.5);
   expect(got.size).toBeGreaterThanOrEqual(13);
   expect(got.weight).toBeGreaterThanOrEqual(700);
