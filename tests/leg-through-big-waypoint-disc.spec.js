@@ -71,3 +71,29 @@ test('the chooser lists the leg when the tap was on it', async ({ page }) => {
   await leg.click();
   await expect.poll(() => page.evaluate(() => state.selected && state.selected.type + ':' + state.selected.index)).toBe('leg:0');
 });
+
+// Reported (screenshot, zoomed out): the two points nearly touch, the tap lands on the circles
+// beside the hidden line -- the chooser listed WP 1 and WP 2 only. Zoomed in, where the finger
+// happened to be on the line, it listed the leg too. Both ends in the chooser = offer their leg.
+test('the chooser lists the leg between two listed points even off the line', async ({ page }) => {
+  await boot(page);
+  await page.evaluate(() => {
+    state.waypoints[1].lng = 34.8020;
+    syncLegs();
+    map.setView([32.1, 34.801], 14, { animate: false });
+    draw();
+  });
+  const mid = await pt(page, 0.5, 12);
+  const pre = await page.evaluate(([x, y]) => ({
+    hits: hitWaypointCandidates(x, y).map(h => h.index).sort(), leg: hitLeg(x, y),
+  }), [mid.x, mid.y]);
+  expect(pre, JSON.stringify(mid)).toEqual({ hits: [0, 1], leg: -1 });   // both points, not the line
+  expect(mid.gap).toBeGreaterThan(await page.evaluate(() => tune('hitLegPx')));
+  await page.mouse.click(mid.x, mid.y);
+  const options = page.locator('.point-choice-modal .point-choice-option');
+  await expect(options).toHaveCount(3);
+  const leg = options.filter({ hasText: 'Leg 1' });
+  await expect(leg).toHaveCount(1);
+  await leg.click();
+  await expect.poll(() => page.evaluate(() => state.selected && state.selected.type + ':' + state.selected.index)).toBe('leg:0');
+});
