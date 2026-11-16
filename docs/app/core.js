@@ -500,6 +500,9 @@ NavAid.tuningDefaults = {
 
   hitWaypointExtraPx: { value: 6, min: 0, max: 40, step: 1, label: 'Waypoint hit extra (px)' },
   hitLegPx: { value: 8, min: 1, max: 60, step: 1, label: 'Leg line hit width (px)' },
+  // Zoomed in, a waypoint disc is far wider than this; outside it, the leg line through the
+  // disc is the leg (interact.js hitWaypointCandidates).
+  hitWaypointCorePx: { value: 26, min: 8, max: 120, step: 1, label: 'Waypoint core over a leg (px)' },
   defaultLegSpeedKt: { value: 90, min: 20, max: 400, step: 5, label: 'Default leg speed (kt)' },
   // Flight-plan filing rules, from AIP Israel א׳-11. Tunable so an AIP amendment can be
   // followed from the gist instead of waiting for a release.
@@ -1402,7 +1405,7 @@ NavAid.tuningGroups = [
     'fplSignatureInk', 'fplSignatureWidthPx'] },
   { name: 'Google Earth tour', keys: ['kmlTourSecPerFlightMin', 'kmlTourLegMinSec', 'kmlTourLegMaxSec', 'kmlTourMinSegSec', 'kmlUnsetLegAglFt'] },
   { name: 'Gestures', keys: ['touchRotateGesture'] },
-  { name: 'Hit testing', keys: ['hitWaypointExtraPx', 'hitLegPx', 'hitLegLabelMinPx', 'hitCumLabelMinPx'] },
+  { name: 'Hit testing', keys: ['hitWaypointExtraPx', 'hitWaypointCorePx', 'hitLegPx', 'hitLegLabelMinPx', 'hitCumLabelMinPx'] },
   { name: 'Alt pairs', keys: ['altPairFocusColor', 'altPairFocusWidthPx', 'altPairFocusDashOnPx', 'altPairFocusDashOffPx', 'altPairFocusDotRadiusPx', 'altPairFocusDotColor', 'altPairFocusMs', 'altPairFocusLineAlpha', 'altPairFocusDotAlpha'] },
   { name: 'VOR stations', keys: ['vorMarkerRadiusPx', 'vorMarkerWidthPx', 'vorMarkerColor', 'vorSelectedColor', 'vorLabelFontPx', 'vorRangeRingLabelAlpha'] },
   { name: 'Reporting badges', keys: ['reportBadgeRadiusPx', 'reportBadgeOffsetPx', 'reportBadgeStrokeWidthPx'] },

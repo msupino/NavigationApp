@@ -413,10 +413,22 @@ function hitWaypoint(px, py) {
 }
 function hitWaypointCandidates(px, py) {
   const hits = [];
+  // Zoomed in, the discs grow with the chart: two close points' discs covered the whole leg
+  // between them, so a tap on the line found only waypoints -- one, or the chooser offering both
+  // and never the leg (reported). Outside a fixed core at the centre, the leg line running
+  // through a disc is the leg; the core still picks (and drags) the point. At normal zoom the
+  // disc is no bigger than the core and nothing changes.
+  const core = tune('hitWaypointCorePx');
+  let onLeg = null;
   for (let i = state.waypoints.length - 1; i >= 0; i--) {
     if (typeof legDirWaypointVisible === 'function' && !legDirWaypointVisible(i)) continue;
     const s = proj(state.waypoints[i]);
-    if (Math.hypot(s.x - px, s.y - py) <= waypointGeom(i).r + tune('hitWaypointExtraPx')) {
+    const d = Math.hypot(s.x - px, s.y - py);
+    if (d <= waypointGeom(i).r + tune('hitWaypointExtraPx')) {
+      if (d > core) {
+        if (onLeg === null) onLeg = hitLeg(px, py) >= 0;
+        if (onLeg) continue;
+      }
       hits.push({ type: 'wp', index: i });
     }
   }
@@ -564,6 +576,9 @@ function pointChoiceText(c) {
       primary: S.choosePointCommChange || 'Freq-change arrow',
       meta: parts.join(' - '),
     };
+  }
+  if (c.type === 'leg') {
+    return { primary: legPairTitle(c.index), meta: S.legTitle(c.index + 1) };
   }
   if (c.type === 'wp') {
     const wp = state.waypoints[c.index] || {};
@@ -767,6 +782,20 @@ function showPointChoice(candidates) {
   const first = body.querySelector('button');
   if (first) first.focus();
   return true;
+}
+// The leg under a tap, as a chooser entry: where waypoints crowd onto a leg the chooser opened
+// with the points alone and no way to the leg between them (reported). [] when off every leg --
+// and when the tap is at one of the leg's own ends: a tap ON a waypoint is that waypoint, and a
+// leg too short to see (two points a metre apart) is not something anyone tapped.
+function legChoiceAt(px, py) {
+  const i = hitLeg(px, py);
+  if (i < 0) return [];
+  const ends = typeof legScreenEnds === 'function' ? legScreenEnds(i) : null;
+  const a = ends ? ends.a : proj(state.waypoints[i]);
+  const b = ends ? ends.b : proj(state.waypoints[i + 1]);
+  const clear = tune('hitLegPx');
+  if (Math.hypot(px - a.x, py - a.y) < clear || Math.hypot(px - b.x, py - b.y) < clear) return [];
+  return [{ type: 'leg', index: i }];
 }
 function hitLeg(px, py) {
   for (let i = 0; i < state.legs.length; i++) {
@@ -5776,7 +5805,7 @@ map.on('mousedown', e => {
   const commChoiceHits = commHits.concat(wpHits, ovAll);
   if (commHits.length && commChoiceHits.length > 1) {
     downHit = true;
-    showPointChoice(commChoiceHits);
+    showPointChoice(commChoiceHits.concat(legChoiceAt(p.x, p.y)));
     return;
   }
   const note = hitNote(p.x, p.y);
@@ -5808,7 +5837,7 @@ map.on('mousedown', e => {
   }
   if (wpHits.length > 1) {
     downHit = true;
-    showPointChoice(wpHits);
+    showPointChoice(wpHits.concat(legChoiceAt(p.x, p.y)));
     return;
   }
   const wp = wpHits.length ? wpHits[0].index : -1;
@@ -6491,7 +6520,7 @@ mapEl.addEventListener('touchstart', e => {
   const commChoiceHits = commHits.concat(wpHits, ovAll);
   if (commHits.length && commChoiceHits.length > 1) {
     e.preventDefault();
-    showPointChoice(commChoiceHits);
+    showPointChoice(commChoiceHits.concat(legChoiceAt(p.x, p.y)));
     return;
   }
   const note = hitNote(p.x, p.y);
@@ -6530,7 +6559,7 @@ mapEl.addEventListener('touchstart', e => {
     state.selected = { type: 'wp', index: lead };
   } else if (wpAmbiguous) {
     e.preventDefault();
-    showPointChoice(activeWpHits);
+    showPointChoice(activeWpHits.concat(legChoiceAt(p.x, p.y)));
     return;
   } else if (wp >= 0) {
     touchDrag = { kind: 'wp', i: wp, moved: false,
