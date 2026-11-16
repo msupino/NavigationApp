@@ -1,0 +1,43 @@
+From 86035503439e491ff8593c5ce8cdcdef6891b087 Mon Sep 17 00:00:00 2001
+From: Marco <marco@supino.org>
+Date: Mon, 16 Nov 2026 19:40:54 +0000
+Subject: [PATCH] FAQ: Settings > Memory window (live RAM + loaded counts)
+
+---
+ FAQ-and-Troubleshooting-he.md | 4 ++++
+ FAQ-and-Troubleshooting.md    | 4 ++++
+ 2 files changed, 8 insertions(+)
+
+diff --git a/FAQ-and-Troubleshooting-he.md b/FAQ-and-Troubleshooting-he.md
+index 3fb096e..b20a676 100644
+--- a/FAQ-and-Troubleshooting-he.md
++++ b/FAQ-and-Troubleshooting-he.md
+@@ -120,6 +120,10 @@ NavAid משתמש במוסכמה: `מגנטי = אמיתי + נטייה`. ישר
+ כל סירוב הוא כעת הודעה צפה, וכל שאלה שהאפליקציה שואלת היא חלון משלה. אם נתקלתם בפקד ששותק — כדאי
+ לדווח: זה באג מהצורה הזאת בדיוק.
+ 
++### "האפליקציה איטית / רוצה לראות כמה זיכרון היא משתמשת"
++
++**הגדרות ← 📊 זיכרון** מציג את הזיכרון החי שהאפליקציה הפעילה משתמשת בו ומה טעון כעת — ציוני דרך וקטעים במסלול, הערות, מסלול ההקלטה הפעיל, ושכבות הניווט (נקודות דיווח, שדות תעופה, תחנות VOR/DME, נוטאמים). הוא אינו קורא דבר שמור ואינו מנקה כלום; **רענן** מודד מחדש. פס הניצול שלמעלה הוא ערימת ה‑<span dir="ltr">JavaScript</span> של הדפדפן, שרק <span dir="ltr">Chrome</span> ואנדרואיד מדווחים — באייפון ובאייפד הפס מוחלף בהערה שהנתון אינו זמין, והמניינים שמתחת עדיין עובדים. זהו המקביל החי ל‑**💾 אחסון**, המודד מה *שמור* במכשיר.
++
+ ## דיווח על באג
+ 
+ 1. בדקו [רשימת Issues](https://github.com/msupino/NavigationApp/issues).
+diff --git a/FAQ-and-Troubleshooting.md b/FAQ-and-Troubleshooting.md
+index 502337a..8cfad62 100644
+--- a/FAQ-and-Troubleshooting.md
++++ b/FAQ-and-Troubleshooting.md
+@@ -105,6 +105,10 @@ the follow-me name button did nothing.
+ Every refusal is a toast now, and every question the app asks is its own dialog. If you find a
+ control that still says nothing, that is worth reporting — it is a bug of this exact shape.
+ 
++### "The app feels slow / I want to see how much memory it is using"
++
++**Settings → 📊 Memory** shows the live memory the running app is using and what is loaded right now — route waypoints and legs, notes, the flown track being recorded, and the navigation overlays (reporting points, airfields, VOR/DME stations, NOTAMs). It reads nothing saved and clears nothing; **Refresh** re-measures. The used-of-limit bar at the top is the browser’s JavaScript heap, which only Chrome and Android report — on iPhone and iPad the bar is replaced by a note that the figure is not available, and the counts below still work. This is the live counterpart to **💾 Storage**, which measures what is *saved* on the device.
++
+ ## Reporting a bug
+ 
+ 1. Check the [open issues](https://github.com/msupino/NavigationApp/issues).
+-- 
+2.43.0
+

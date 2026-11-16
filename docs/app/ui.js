@@ -5835,6 +5835,10 @@ document.getElementById('alt-pairs').onclick = showAltitudePairsModal;
   if (btn && typeof showStorageModal === 'function') btn.onclick = showStorageModal;
 }());
 (function () {
+  const btn = document.getElementById('memory-status');
+  if (btn && typeof showMemoryModal === 'function') btn.onclick = showMemoryModal;
+}());
+(function () {
   // The nav log sits with the other tables, not beside Plan: it is a different document, and a
   // pilot reaching for the plan in the air must not land on a sheet of exercise arithmetic.
   const btn = document.getElementById('nav-log');
