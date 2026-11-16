@@ -1,0 +1,40 @@
+From 80e5f3350229761b424d2625d7cfc7f693fedb3c Mon Sep 17 00:00:00 2001
+From: Marco <marco@supino.org>
+Date: Mon, 16 Nov 2026 12:23:08 +0000
+Subject: [PATCH] User Guide: Choose point lists the leg between two crowded
+ points
+
+---
+ User-Guide-he.md | 2 +-
+ User-Guide.md    | 2 +-
+ 2 files changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/User-Guide-he.md b/User-Guide-he.md
+index 60d4c46..5eab5ae 100644
+--- a/User-Guide-he.md
++++ b/User-Guide-he.md
+@@ -37,7 +37,7 @@
+ - **גלול** — התקרבות/התרחקות.
+ - **לחץ על נקודת ציון** — בחירה ופתיחת החלונית למידע נוסף.
+ - **גרור נקודת ציון** — הזזה.
+-- **לחץ על קו הקטע** — בחירת הקטע, גם בזום קרוב שבו עיגולי הנקודות מכסים אותו; רק מרכז העיגול בוחר (וגורר) את הנקודה.
++- **לחץ על קו הקטע** — בחירת הקטע, גם בזום קרוב שבו עיגולי הנקודות מכסים אותו; רק מרכז העיגול בוחר (וגורר) את הנקודה. כששתי נקודות צפופות עד שנפתח **בחר נקודה**, הוא מציע גם את הקטע שביניהן.
+ - **לחיצה כפולה על קטע מסלול** — פיצול הקטע והוספת נקודת <span dir="ltr"><code>WP #</code></span> במיקום הלחיצה.
+ - **חוגת סיבוב** — סיבוב המפה (גרור או לחץ לסיבוב של 90°).
+ 
+diff --git a/User-Guide.md b/User-Guide.md
+index ffeaf6b..8ac90e0 100644
+--- a/User-Guide.md
++++ b/User-Guide.md
+@@ -40,7 +40,7 @@ Double-click an existing route leg to insert a blank waypoint at that exact map
+ - A new waypoint snaps to a nearby published navigation waypoint or airfield when one is within snap radius - both on **drop** and on **drag**. Airfields take priority over navigation waypoints.
+ - A snapped waypoint adopts the published name automatically: localized navigation-waypoint name, or ICAO code for airfields. You can rename it in the inspector.
+ - The waypoint circle shows the **name** when "Show Waypoint names" is on, otherwise the sequence number.
+-- Zoomed in, the circles grow with the chart and can cover the whole leg between two close points. A tap on the leg line still selects the **leg**; only the centre of a circle picks (and drags) the waypoint.
++- Zoomed in, the circles grow with the chart and can cover the whole leg between two close points. A tap on the leg line still selects the **leg**; only the centre of a circle picks (and drags) the waypoint. When the points crowd so close that **Choose point** opens, it also lists the leg between them.
+ - Double-click a leg to split it: NavAid inserts a new `WP #` waypoint at the clicked coordinate, selects it immediately, and turns the original leg into two legs. The new point is not snapped to published nav-waypoint / airfield data, so you can drag or rename it afterwards.
+ - Splitting a leg copies the old leg's speed, altitude pair, return / one-way altitude flags, and per-leg VOR reference to both new legs. Leg-marker positions reset to their defaults so the labels fit the new geometry.
+ - Editing a leg's altitude in the inspector **propagates** along the same cruise level until a different altitude already exists, so you don't have to click ten legs to change your cruise.
+-- 
+2.43.0
+

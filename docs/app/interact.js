@@ -797,6 +797,28 @@ function legChoiceAt(px, py) {
   if (Math.hypot(px - a.x, py - a.y) < clear || Math.hypot(px - b.x, py - b.y) < clear) return [];
   return [{ type: 'leg', index: i }];
 }
+// The chooser's options plus the leg(s) it should also offer: the leg under the tap, and every
+// leg whose BOTH ends are already listed. Two consecutive points crowded together at low zoom
+// hide their leg under the circles, so the tap rarely lands on the thin line itself (reported:
+// zoomed in the leg was offered, zoomed out it was not). A leg shorter than the line's own hit
+// width is not drawn as anything a pilot could mean, so it stays out.
+function withLegChoices(hits, px, py) {
+  const out = hits.concat(legChoiceAt(px, py));
+  const has = (i) => out.some((c) => c.type === 'leg' && c.index === i);
+  const wps = new Set(hits.filter((c) => c.type === 'wp').map((c) => c.index));
+  wps.forEach((i) => {
+    if (!wps.has(i + 1) || has(i) || i >= state.legs.length) return;
+    if (typeof legDirVisible === 'function' && !legDirVisible(i)) return;
+    const A = state.waypoints[i], B = state.waypoints[i + 1];
+    if (!A || !B) return;
+    const ends = typeof legScreenEnds === 'function' ? legScreenEnds(i) : null;
+    const a = ends ? ends.a : proj(A);
+    const b = ends ? ends.b : proj(B);
+    if (Math.hypot(b.x - a.x, b.y - a.y) < tune('hitLegPx')) return;
+    out.push({ type: 'leg', index: i });
+  });
+  return out;
+}
 function hitLeg(px, py) {
   for (let i = 0; i < state.legs.length; i++) {
     if (typeof legDirVisible === 'function' && !legDirVisible(i)) continue;
@@ -5805,7 +5827,7 @@ map.on('mousedown', e => {
   const commChoiceHits = commHits.concat(wpHits, ovAll);
   if (commHits.length && commChoiceHits.length > 1) {
     downHit = true;
-    showPointChoice(commChoiceHits.concat(legChoiceAt(p.x, p.y)));
+    showPointChoice(withLegChoices(commChoiceHits, p.x, p.y));
     return;
   }
   const note = hitNote(p.x, p.y);
@@ -5837,7 +5859,7 @@ map.on('mousedown', e => {
   }
   if (wpHits.length > 1) {
     downHit = true;
-    showPointChoice(wpHits.concat(legChoiceAt(p.x, p.y)));
+    showPointChoice(withLegChoices(wpHits, p.x, p.y));
     return;
   }
   const wp = wpHits.length ? wpHits[0].index : -1;
@@ -6520,7 +6542,7 @@ mapEl.addEventListener('touchstart', e => {
   const commChoiceHits = commHits.concat(wpHits, ovAll);
   if (commHits.length && commChoiceHits.length > 1) {
     e.preventDefault();
-    showPointChoice(commChoiceHits.concat(legChoiceAt(p.x, p.y)));
+    showPointChoice(withLegChoices(commChoiceHits, p.x, p.y));
     return;
   }
   const note = hitNote(p.x, p.y);
@@ -6559,7 +6581,7 @@ mapEl.addEventListener('touchstart', e => {
     state.selected = { type: 'wp', index: lead };
   } else if (wpAmbiguous) {
     e.preventDefault();
-    showPointChoice(activeWpHits.concat(legChoiceAt(p.x, p.y)));
+    showPointChoice(withLegChoices(activeWpHits, p.x, p.y));
     return;
   } else if (wp >= 0) {
     touchDrag = { kind: 'wp', i: wp, moved: false,
