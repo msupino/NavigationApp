@@ -1110,6 +1110,10 @@
              one-tap clear of the caches it can rebuild -- never the pilot's routes, recordings,
              frequencies or settings. -->
         <button id="storage-manage" type="button" data-i18n="tbStorage" data-i18n-title="tbStorageTitle"></button>
+        <!-- Memory: the live RAM the running app uses (JS heap, where the browser reports it) and
+             the counts of what is loaded now -- route, flown track, nav overlays. Reads nothing
+             saved; sits beside Storage, which is the on-device counterpart. -->
+        <button id="memory-status" type="button" data-i18n="tbMemory" data-i18n-title="tbMemoryTitle"></button>
         <!-- The phone's own hardware (device-extras.js, ble-gps.js): screen brightness for the
              cockpit, and an external Bluetooth GPS. Each is dimmed where it cannot work. -->
         <div class="tb-group-separator" aria-hidden="true"></div>
