@@ -9515,6 +9515,18 @@ body:not(.deck-on) .leaflet-bottom { padding-bottom: env(safe-area-inset-bottom,
     max-height: calc(100% - var(--navaid-toolbar-bottom, 58px));
     overflow-y: auto;
   }
+
+  /* The docked inspector (and the export panel that floats opposite it) are NOT modals, so the
+     rule above does not reach them. They anchor to --navaid-inspector-default-top (96 px), which
+     on a tablet with the desktop menubar is under the bar -- and on an iPad the bar wraps onto
+     two rows, so its header (the leg title, the +/- zoom and the x close) hid behind it
+     (reported). Drop an UNDRAGGED inspector to the bar's measured bottom when that is lower. A
+     dragged panel sets its top inline and wins over this; a mouse desktop (fine pointer) centres
+     clear of the bar and is untouched. */
+  html.menubar body:not(.deck-on) #inspector,
+  html.menubar body:not(.deck-on) .modal-back.export-place > .modal.export-floating {
+    top: max(var(--navaid-inspector-default-top, 96px), calc(var(--navaid-toolbar-bottom, 58px) + 8px));
+  }
 }
 
 /* The safety acknowledgement. Deliberately plain: it is read once, and the only thing on it
