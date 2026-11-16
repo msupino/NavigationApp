@@ -49,3 +49,25 @@ test('at a normal zoom the disc is the point, line or not', async ({ page }) => 
   expect(r.g + 6, 'disc no wider than the core here').toBeLessThanOrEqual(r.core);
   expect(r.hit).toContain(0);
 });
+
+// Closer still: both centres reach the middle of the line, so the tap there is both points --
+// the chooser opens, and now it lists the leg between them too.
+test('the chooser lists the leg when the tap was on it', async ({ page }) => {
+  await boot(page);
+  await page.evaluate(() => {
+    state.waypoints[1].lng = 34.8003;
+    syncLegs();
+    map.setView([32.1, 34.80015], 17, { animate: false });
+    draw();
+  });
+  const mid = await pt(page, 0.5, 0);
+  expect(mid.gap, 'both cores reach the middle').toBeLessThan(2 * await page.evaluate(() => tune('hitWaypointCorePx')));
+  await page.mouse.click(mid.x, mid.y);
+  const options = page.locator('.point-choice-modal .point-choice-option');
+  await expect(options).toHaveCount(3);
+  const leg = options.filter({ hasText: 'Leg 1' });
+  await expect(leg).toHaveCount(1);
+  await expect(leg.locator('.point-choice-primary')).toHaveText(/→/);
+  await leg.click();
+  await expect.poll(() => page.evaluate(() => state.selected && state.selected.type + ':' + state.selected.index)).toBe('leg:0');
+});
