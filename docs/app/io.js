@@ -9389,6 +9389,124 @@ function showStorageModal() {
 }
 window.showStorageModal = showStorageModal;
 
+// Settings > Memory: the running app's live RAM picture -- the JS heap where the browser
+// reports it, then the counts of what is loaded. It mirrors the Storage window's look (bar +
+// used-of line + breakdown) and reuses its CSS, but reads nothing persistent: a Refresh button
+// re-measures in place, since the heap moves under GC while the window is open. See
+// navMemoryHeap / navMemoryCounts in core.js for the platform note (no heap on iOS WebKit).
+function showMemoryModal() {
+  const fmt = (b) => (typeof navStorageFmtBytes === 'function' ? navStorageFmtBytes(b) : (b + ' B'));
+  // Same bidi guard as the Storage window: a number+unit run ("41 MB", "63%") isolated so the
+  // Hebrew line keeps the figures in order instead of reflowing them under RTL.
+  const ltr = (txt) => {
+    const s = document.createElement('span');
+    s.dir = 'ltr';
+    s.style.unicodeBidi = 'isolate';
+    s.textContent = txt;
+    return s;
+  };
+  const modal = createDraggableModal(S.tbMemory || 'Memory', 'modal');
+  const body = document.createElement('div');
+  body.className = 'storage-modal-body';
+  modal.box.appendChild(body);
+
+  function render() {
+    body.textContent = '';
+    const heap = (typeof navMemoryHeap === 'function') ? navMemoryHeap() : { available: false };
+    const counts = (typeof navMemoryCounts === 'function') ? navMemoryCounts() : {};
+
+    if (heap.available && heap.limit > 0) {
+      const pct = Math.min(100, Math.round(heap.used / heap.limit * 100));
+      // Same bar as Storage: fills and turns amber then red as the heap nears its ceiling.
+      // Colour is never the only signal -- the figure and percent say the same.
+      const bar = document.createElement('div');
+      bar.className = 'storage-bar';
+      const fill = document.createElement('div');
+      fill.className = 'storage-bar-fill' + (pct >= 90 ? ' is-full' : pct >= 70 ? ' is-high' : '');
+      fill.style.width = pct + '%';
+      bar.appendChild(fill);
+      body.appendChild(bar);
+
+      const usedLine = document.createElement('div');
+      usedLine.className = 'storage-used';
+      usedLine.appendChild(ltr(fmt(heap.used)));
+      usedLine.appendChild(document.createTextNode(' ' + (S.storageOf || 'of') + ' '));
+      usedLine.appendChild(ltr(fmt(heap.limit)));
+      usedLine.appendChild(document.createTextNode(' · '));
+      usedLine.appendChild(ltr(pct + '%'));
+      body.appendChild(usedLine);
+    } else {
+      // Dim, never hide: on iOS WebKit there is no heap readout, so the slot stays and says so
+      // rather than vanishing and leaving the window looking broken.
+      const na = document.createElement('p');
+      na.className = 'storage-note memory-heap-na';
+      na.textContent = S.memoryHeapUnavailable || 'Live memory is not reported on this device.';
+      body.appendChild(na);
+    }
+
+    const devGb = (typeof navMemoryDeviceGb === 'function') ? navMemoryDeviceGb() : 0;
+    const note = document.createElement('p');
+    note.className = 'storage-note';
+    note.textContent = (devGb > 0 && typeof S.memoryDeviceNote === 'function')
+      ? S.memoryDeviceNote(devGb) : (S.memoryNote || '');
+    body.appendChild(note);
+
+    // Breakdown: what is loaded in RAM now, each row shown only when it holds something. These
+    // are counts, not bytes -- right-aligned tabular so they line up like the Storage sizes.
+    const rows = [
+      ['waypoints', S.memoryCatWaypoints], ['legs', S.memoryCatLegs],
+      ['notes', S.memoryCatNotes], ['track', S.memoryCatTrack],
+      ['navwp', S.memoryCatNavWp], ['airfields', S.memoryCatAirfields],
+      ['vors', S.memoryCatVors], ['notams', S.memoryCatNotams],
+    ].filter(([k]) => (counts[k] || 0) > 0);
+    const h = document.createElement('div');
+    h.className = 'storage-breakdown-title';
+    h.textContent = S.memoryBreakdownTitle || '';
+    body.appendChild(h);
+    if (rows.length) {
+      const list = document.createElement('div');
+      list.className = 'storage-breakdown';
+      rows.forEach(([k, label]) => {
+        const row = document.createElement('div');
+        row.className = 'storage-row';
+        const name = document.createElement('span');
+        name.className = 'storage-row-name';
+        name.textContent = label || k;
+        const val = ltr(String(counts[k]));
+        val.className = 'storage-row-size';
+        row.appendChild(name);
+        row.appendChild(val);
+        list.appendChild(row);
+      });
+      body.appendChild(list);
+    } else {
+      const empty = document.createElement('p');
+      empty.className = 'storage-hint';
+      empty.textContent = S.memoryNothingLoaded || '';
+      body.appendChild(empty);
+    }
+
+    const actions = document.createElement('div');
+    actions.className = 'storage-actions';
+    const refresh = document.createElement('button');
+    refresh.type = 'button';
+    refresh.className = 'storage-clear-btn';
+    refresh.textContent = S.memoryRefresh || 'Refresh';
+    refresh.onclick = () => render();
+    actions.appendChild(refresh);
+    body.appendChild(actions);
+
+    const hint = document.createElement('p');
+    hint.className = 'storage-hint';
+    hint.textContent = S.memoryHint || '';
+    body.appendChild(hint);
+  }
+
+  render();
+  modal.show();
+}
+window.showMemoryModal = showMemoryModal;
+
 function altitudePairSegmentsForChart() {
   if (legAltitudeDataset && Array.isArray(legAltitudeDataset.segments)) {
     return legAltitudeDataset.segments.slice();

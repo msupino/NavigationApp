@@ -3356,6 +3356,23 @@ window.S = Object.assign({
   storageCleared: freedStr => 'Cleared ' + freedStr + ' of cache.',
   storageTrimHint: 'To free more, delete old recordings in Saved routes.',
   storageWipeNote: 'Last resort — erases every route, recording and setting saved on this device.',
+  tbMemory: '📊 Memory',
+  tbMemoryTitle: 'See the live memory this app is using and what is loaded now',
+  memoryBreakdownTitle: 'Loaded now',
+  memoryCatWaypoints: 'Route waypoints',
+  memoryCatLegs: 'Route legs',
+  memoryCatNotes: 'Notes',
+  memoryCatTrack: 'Track fixes (recording)',
+  memoryCatNavWp: 'Reporting points',
+  memoryCatAirfields: 'Airfields',
+  memoryCatVors: 'VOR/DME stations',
+  memoryCatNotams: 'NOTAMs',
+  memoryHeapUnavailable: 'Live memory use is not reported on this device (iPhone and iPad do not expose it).',
+  memoryDeviceNote: gb => 'This device reports about ' + gb + ' GB of RAM.',
+  memoryNote: 'Live figures are the browser’s own estimate and change as memory is reclaimed.',
+  memoryNothingLoaded: 'No route or overlays loaded yet.',
+  memoryRefresh: 'Refresh',
+  memoryHint: 'Nothing here is saved — it is what the running app holds right now.',
   tbCharts: '🗺️ Airport charts',
   tbChartsTitle: 'Browse approach charts for all airfields',
   tbFly: '✈️ Open in Google Earth',
@@ -6257,6 +6274,52 @@ function navStorageFmtBytes(b) {
   if (b < 1024) return b + ' B';
   if (b < 1024 * 1024) return Math.round(b / 1024) + ' KB';
   return (Math.round(b / (1024 * 1024) * 10) / 10) + ' MB';
+}
+
+// Settings > Memory: what the running app holds in RAM right now -- the live JS heap where the
+// browser reports it, and the counts of the things actually loaded (route, flown track, nav
+// overlays). Separate from Storage, which measures what is SAVED on the device; a pilot who
+// hits a slow or crashing app wants the live picture, not the saved one.
+//
+// performance.memory is a non-standard Chrome/Android-WebView extra. iOS WebKit (every iPhone
+// and iPad, and our iOS app) does not expose it, so heap.available is false there and the
+// window shows a dim "not available on this device" line in its place -- the counts below still
+// work everywhere. The figures are the engine's own estimate and move as GC runs; they are a
+// gauge, not an audit.
+function navMemoryHeap() {
+  try {
+    const m = (typeof performance !== 'undefined' && performance) ? performance.memory : null;
+    if (m && m.jsHeapSizeLimit > 0) {
+      return { available: true, used: m.usedJSHeapSize || 0, limit: m.jsHeapSizeLimit };
+    }
+  } catch (e) { /* no heap readout */ }
+  return { available: false, used: 0, limit: 0 };
+}
+// Total device RAM in GB, when the browser will say (Chrome's navigator.deviceMemory; coarsely
+// rounded by the browser for privacy). 0 when unknown -- the window then omits the line.
+function navMemoryDeviceGb() {
+  try {
+    const g = (typeof navigator !== 'undefined') ? navigator.deviceMemory : 0;
+    return (typeof g === 'number' && g > 0) ? g : 0;
+  } catch (e) { return 0; }
+}
+// The live counts the window lists. Each reads a global the app keeps in memory; a null or
+// missing one (an overlay not loaded yet) counts 0, never throws. These are OBJECT counts, not
+// bytes -- "how much is loaded", which is what the heap figure above cannot break down.
+function navMemoryCounts() {
+  const len = (v) => (Array.isArray(v) ? v.length : 0);
+  const g = (typeof window !== 'undefined') ? window : {};
+  const st = (typeof state !== 'undefined' && state) ? state : {};
+  return {
+    waypoints: len(st.waypoints),
+    legs: len(st.legs),
+    notes: len(st.notes),
+    track: len(typeof gpsTrack !== 'undefined' ? gpsTrack : null),
+    navwp: len(typeof navWP !== 'undefined' ? navWP : null),
+    airfields: len(typeof airfields !== 'undefined' ? airfields : null),
+    vors: len(typeof vors !== 'undefined' ? vors : null),
+    notams: len(g.notams),
+  };
 }
 
 function setAirfieldFreqOverride(key, val) {
