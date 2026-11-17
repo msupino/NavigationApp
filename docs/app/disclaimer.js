@@ -134,6 +134,9 @@
         'Chart, airspace, NOTAM and weather data here may be incomplete, delayed or wrong.'),
       textOf('disclaimerPointPic',
         'The pilot in command is responsible for the safe conduct of every flight.'),
+      textOf('disclaimerPointIndependent',
+        'NavAid is an independent app. It is not affiliated with or endorsed by the Civil '
+        + 'Aviation Authority of Israel, the Israel Airports Authority, or any government entity.'),
     ];
     for (const line of points) {
       const li = document.createElement('li');
