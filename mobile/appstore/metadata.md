@@ -34,6 +34,18 @@ fuel. Terrain along the route is drawn as a profile, with minimum safe altitudes
 • Offline route planning and CVFR charts after the CVFR download reports ready
 • Hebrew and English
 
+Official data sources — aeronautical data in NavAid is derived from Israel's official
+publications; always verify against the current official source:
+• Charts, airspace, reporting points, frequencies and flight-plan rules — AIP, Civil
+  Aviation Authority of Israel: https://www.gov.il/en/departments/guides/aip-israel
+• NOTAMs — Israel Airports Authority, Aeronautical Information Service:
+  https://www.iaa.gov.il/en/about/aeronautical-information/
+• Aviation weather — Israel Meteorological Service: https://ims.gov.il
+
+NavAid is an independent application. It is not affiliated with, endorsed by, or operated by
+the Civil Aviation Authority of Israel, the Israel Airports Authority, the Israel
+Meteorological Service, or any other government entity.
+
 NavAid is a planning aid. It is not certified for navigation and must not be used as a
 primary reference in flight. Always plan and fly using current official charts, AIP, NOTAM
 and weather, and comply with all applicable regulations and ATC instructions. The pilot in
