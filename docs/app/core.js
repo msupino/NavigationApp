@@ -4046,6 +4046,7 @@ window.S = Object.assign({
   disclaimerPointIndependent: 'NavAid is an independent app. It is not affiliated with or endorsed by the Civil Aviation Authority of Israel, the Israel Airports Authority, or any government entity.',
   disclaimerAnalytics: 'This site uses Google Analytics to count anonymous visits, and it sets Google\u2019s cookies. Your routes, positions and flight plans are never sent to it.',
   disclaimerAccept: 'Accept',
+  disclaimerDocBack: 'Back',
   tbPrivacy: 'Privacy',
   tbTerms: 'Terms',
   tbIssues: 'Issues / requests',

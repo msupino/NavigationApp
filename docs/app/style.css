@@ -9543,6 +9543,52 @@ body:not(.deck-on) .leaflet-bottom { padding-bottom: env(safe-area-inset-bottom,
   justify-content: center;
   background: rgba(0, 0, 0, 0.62);
 }
+/* Terms / Privacy opened from the notice, layered ABOVE it (3200) so the acknowledgement
+   stays mounted underneath; a slim bar with a Back button, then the page in an iframe. */
+.disclaimer-doc-back {
+  position: fixed;
+  inset: 0;
+  z-index: 3300;
+  display: flex;
+  flex-direction: column;
+  background: #000;
+}
+.disclaimer-doc-bar {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  padding-top: calc(10px + env(safe-area-inset-top, 0px));
+  background: #15191e;
+  color: #fff;
+}
+.disclaimer-doc-close {
+  min-height: 44px;
+  min-width: 44px;
+  padding: 0 16px;
+  border: 0;
+  border-radius: 8px;
+  background: #1d6fe0;
+  color: #fff;
+  font-weight: 700;
+  font-size: 15px;
+  cursor: pointer;
+}
+.disclaimer-doc-close:focus-visible {
+  outline: 3px solid #9ec5ff;
+  outline-offset: 2px;
+}
+.disclaimer-doc-title {
+  font-weight: 600;
+  font-size: 15px;
+}
+.disclaimer-doc-frame {
+  flex: 1 1 auto;
+  width: 100%;
+  border: 0;
+  background: #fff;
+}
 .modal.disclaimer-modal {
   max-width: min(460px, 92vw);
   line-height: 1.5;

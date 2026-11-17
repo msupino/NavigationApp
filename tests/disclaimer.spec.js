@@ -342,6 +342,39 @@ test.describe('the analytics line', () => {
   });
 });
 
+// Terms / Privacy open IN the app, ABOVE the notice -- not in a new tab/window, which the
+// iOS app-bound webview stacks below the notice ("Terms opens below the EULA").
+test.describe('the Terms and Privacy links open in-app above the notice', () => {
+  test('Terms opens an overlay over the notice, in the current language, and Back closes it', async ({ page }) => {
+    await openApp(page, 'he');
+    const terms = notice(page).locator('.disclaimer-links a').first();
+    await terms.click();
+    const doc = page.locator('.disclaimer-doc-back');
+    await expect(doc).toBeVisible();
+    // Above the still-mounted notice.
+    await expect(notice(page)).toHaveCount(1);
+    const z = await doc.evaluate((e) => parseInt(getComputedStyle(e).zIndex, 10));
+    const zn = await notice(page).evaluate((e) => parseInt(getComputedStyle(e).zIndex, 10));
+    expect(z).toBeGreaterThan(zn);
+    // The page, in the notice's language, same origin (iframe, not a new window).
+    const src = await doc.locator('iframe').getAttribute('src');
+    expect(src).toMatch(/terms\.html/);
+    expect(src).toMatch(/lang=he/);
+    // Back returns to the notice, which never left.
+    await doc.locator('.disclaimer-doc-close').click();
+    await expect(page.locator('.disclaimer-doc-back')).toHaveCount(0);
+    await expect(notice(page)).toBeVisible();
+  });
+
+  test('the link does not open a new browser tab/window', async ({ page, context }) => {
+    await openApp(page);
+    const before = context.pages().length;
+    await notice(page).locator('.disclaimer-links a').first().click();
+    await expect(page.locator('.disclaimer-doc-back')).toBeVisible();
+    expect(context.pages().length).toBe(before);   // handled in-app, no popup
+  });
+});
+
 // The browser's own link colours, on the one screen every pilot sees before every flight: a
 // default blue on a near-black panel that turns purple once visited -- the one colour in the
 // app belonging to no palette in it.

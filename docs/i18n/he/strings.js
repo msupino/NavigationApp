@@ -2058,6 +2058,7 @@ window.S = {
   disclaimerPointIndependent: 'NavAid הוא יישום עצמאי. הוא אינו מסונף לרשות התעופה האזרחית, לרשות שדות התעופה או לכל גוף ממשלתי אחר, ואינו מאושר על ידם.',
   disclaimerAnalytics: 'האתר הזה משתמש ב-Google Analytics כדי לספור ביקורים אנונימיים, והוא מציב עוגיות של Google. המסלולים, המיקומים ותוכניות הטיסה שלך לעולם אינם נשלחים אליו.',
   disclaimerAccept: 'מסכים',
+  disclaimerDocBack: 'חזרה',
   tbPrivacy: 'פרטיות',
   tbTerms: 'תנאי שימוש',
   tbIssues: 'בעיות / הצעות',

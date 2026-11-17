@@ -88,6 +88,65 @@
     return (document.documentElement.lang || '').toLowerCase().startsWith('he') ? 'he' : 'en';
   }
 
+  // Terms and Privacy, shown IN the app and ABOVE the notice rather than in a new tab. A
+  // new tab or window is the wrong mechanism here: the iOS app-bound WKWebView
+  // (limitsNavigationsToAppBoundDomains) hands a target=_blank link to a window it stacks
+  // BELOW the notice, so the page "opens below the EULA" and the pilot never sees it. An
+  // in-app overlay at a higher z-index keeps the unanswered acknowledgement mounted
+  // underneath -- the reason the links never navigated the page in the first place -- and
+  // works the same on the web. Same origin (the pages sit next to index.html), so the
+  // app-bound webview loads the iframe without objection.
+  function openLegalDoc(href, label) {
+    const prior = document.querySelector('.disclaimer-doc-back');
+    if (prior) prior.remove();
+    const back = document.createElement('div');
+    back.className = 'disclaimer-doc-back';
+    back.setAttribute('role', 'dialog');
+    back.setAttribute('aria-modal', 'true');
+    back.setAttribute('aria-label', label);
+
+    const bar = document.createElement('div');
+    bar.className = 'disclaimer-doc-bar';
+    const close = document.createElement('button');
+    close.type = 'button';
+    close.className = 'disclaimer-doc-close';
+    const backLabel = textOf('disclaimerDocBack', 'Back');
+    close.textContent = backLabel;
+    close.setAttribute('aria-label', backLabel);
+    const title = document.createElement('span');
+    title.className = 'disclaimer-doc-title';
+    title.textContent = label;
+    bar.appendChild(close);
+    bar.appendChild(title);
+
+    const frame = document.createElement('iframe');
+    frame.className = 'disclaimer-doc-frame';
+    frame.title = label;
+    // Open the page in the language the notice is being read in.
+    try {
+      const u = new URL(href, location.href);
+      u.searchParams.set('lang', lang());
+      frame.src = u.toString();
+    } catch (e) { frame.src = href; }
+
+    back.appendChild(bar);
+    back.appendChild(frame);
+
+    function shut() {
+      back.remove();
+      document.removeEventListener('keydown', onKey, true);
+    }
+    // Capture + stop so Escape closes this overlay only, without reaching the app's global
+    // handler (which removes .modal-back panels); the notice behind it stays, as it must.
+    function onKey(e) { if (e.key === 'Escape') { e.stopPropagation(); e.preventDefault(); shut(); } }
+    close.addEventListener('click', shut);
+    document.addEventListener('keydown', onKey, true);
+
+    document.body.appendChild(back);
+    try { close.focus(); } catch (e) { /* not focusable yet */ }
+    return back;
+  }
+
   // Built by hand rather than through createDraggableModal: this one is not draggable, has
   // no close X, and does not answer to Escape or a click on the backdrop. A notice with a
   // way out that is not "Accept" is a notice that can be dismissed without being read.
@@ -168,9 +227,12 @@
                                          ['privacy.html', 'tbPrivacy', 'Privacy']]) {
       const a = document.createElement('a');
       a.href = href;
+      // target=_blank stays only as the no-JS fallback; the handler opens the page in-app,
+      // above the notice (see openLegalDoc) because the shell mishandles a new window.
       a.target = '_blank';
       a.rel = 'noopener noreferrer';
       a.textContent = textOf(key, fallback);
+      a.addEventListener('click', (e) => { e.preventDefault(); openLegalDoc(href, a.textContent); });
       if (links.childNodes.length) links.appendChild(document.createTextNode(' · '));
       links.appendChild(a);
     }
@@ -220,6 +282,7 @@
   window.NavAid = window.NavAid || {};
   NavAid.showDisclaimer = showDisclaimer;
   NavAid.maybeShowDisclaimer = maybeShowDisclaimer;
+  NavAid.openLegalDoc = openLegalDoc;
 
   // AFTER the boot screen, and `load` is not that moment. #boot-loading is fixed, opaque and
   // z-index 6000 -- above this notice -- and comes down only when the first chart tiles paint
