@@ -19,8 +19,10 @@ const DOCS = path.join(ROOT, 'docs');
 // KB, gzipped after the deploy's own minification -- what production sends before the first
 // tile is asked for. 480 KB on 2026-11-01; 500.4 KB on 2026-11-12 after steady growth (date
 // format, the extra airfield frequencies, and the Settings > Storage window, whose code only
-// runs when that window is opened, not at boot). Raised to leave ~2% of room again.
-const CRITICAL_PATH_BUDGET_KB = 512;
+// runs when that window is opened, not at boot). 512.0 KB on 2026-11-17 after the Google Play
+// compliance work (the independence point in the launch notice and its in-app Terms/Privacy
+// overlay, both of which load at boot in disclaimer.js). Raised to leave ~1.5% of room again.
+const CRITICAL_PATH_BUDGET_KB = 520;
 
 // The first phase of the loader (index.html `var srcs = [...]`): our own files only -- the
 // pinned CDN libraries change only with a version bump and its new SRI hash.
