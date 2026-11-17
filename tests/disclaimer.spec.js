@@ -299,9 +299,24 @@ test.describe('the analytics line', () => {
     await expect(note).toContainText('cookies');
     // What it does NOT see is the half a pilot cares about.
     await expect(note).toContainText(/routes, positions and flight plans are never sent/i);
-    // Not one of the three flight-safety points: those are about the flight.
-    await expect(notice(page).locator('.disclaimer-points li')).toHaveCount(3);
+    // Not one of the four points (three flight-safety + the independence notice): the
+    // analytics line is about the web site, not the flight or who stands behind the app.
+    await expect(notice(page).locator('.disclaimer-points li')).toHaveCount(4);
     await expect(notice(page).locator('.disclaimer-points')).not.toContainText('Analytics');
+  });
+
+  // Google Play's Misleading Claims policy requires an app that shows government aeronautical
+  // information to state, where a user sees it, that it is not a government entity. The
+  // every-launch notice is that place.
+  test('the notice says NavAid is not a government entity, in both languages', async ({ page }) => {
+    await openApp(page);
+    await expect(notice(page).locator('.disclaimer-points')).toContainText(/independent app/i);
+    await expect(notice(page).locator('.disclaimer-points'))
+      .toContainText(/not affiliated with or endorsed by/i);
+    await page.evaluate(() => document.querySelector('.disclaimer-back').remove());
+    await openApp(page, 'he');
+    await expect(notice(page).locator('.disclaimer-points')).toContainText('יישום עצמאי');
+    await expect(notice(page).locator('.disclaimer-points')).toContainText('גוף ממשלתי');
   });
 
   test('it is not shown where the tag does not load', async ({ page }) => {
