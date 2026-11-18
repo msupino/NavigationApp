@@ -3913,6 +3913,9 @@ function vorByIdent(ident) {
 }
 // The currently-selected reference VOR object (or null).
 function activeVor() { return vorByIdent(vorRef); }
+// VOR2 is explicit-only: the station tuned, or nothing. No nearest-usable fallback (that is
+// VOR1's behaviour), so a reading appears only for the one the pilot chose.
+function activeVor2() { return vorByIdent(vorRef2); }
 // Magnetic radial FROM the VOR to a point + DME (great-circle nm).
 // Radial is magnetic (VOR radials are defined magnetic; matches the Hdg
 // column). Returns { radial: '263', dme: '12.4' } strings, or null.
@@ -4331,8 +4334,11 @@ function drawVors(force) {
   for (const v of vors) {
     const s = proj(v);
     const sel = v.ident === selIdent;
-    const col = sel ? tune('vorSelectedColor') : tune('vorMarkerColor');
-    drawVorSymbol(octx, s.x, s.y, r, col, tune('vorMarkerWidthPx') * (sel ? 1.6 : 1), undefined, v.type);
+    // VOR2's tuned station gets its own colour, so both references read apart on the map. VOR1
+    // wins when (improbably) the same station is both.
+    const sel2 = !sel && typeof vorRef2 === 'string' && vorRef2 && v.ident === vorRef2;
+    const col = sel ? tune('vorSelectedColor') : (sel2 ? tune('vorSelectedColor2') : tune('vorMarkerColor'));
+    drawVorSymbol(octx, s.x, s.y, r, col, tune('vorMarkerWidthPx') * ((sel || sel2) ? 1.6 : 1), undefined, v.type);
     if (showLabels) {
       const label = v.ident + '  ' + (typeof vorEffectiveFreq === 'function' ? vorEffectiveFreq(v) : v.freq);
       const lx = s.x + r + 6, ly = s.y;

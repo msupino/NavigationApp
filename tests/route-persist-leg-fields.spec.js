@@ -93,7 +93,7 @@ test.describe('per-leg VOR override survives every persistence path', () => {
     await page.locator('.modal-back').waitFor();
     await page.locator('#fp-vor-select').selectOption('NAT');       // global default
     const headers = await page.locator('.flight-table thead th').allTextContents();
-    const radialIdx = headers.indexOf('Radial');
+    const radialIdx = headers.indexOf('Radial 1');
     const firstRow = page.locator('.flight-table tbody tr').first();
     // Let any debounced write already scheduled by the GLOBAL select land and clear, then
     // remove the blob. Otherwise that pending timer writes the leg's value for us and the
