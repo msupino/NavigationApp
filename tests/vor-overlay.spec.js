@@ -150,7 +150,7 @@ test.describe('VOR overlay + radial/DME (#404)', () => {
     const label = row.locator('label');
     const controls = row.locator('.vor-radial-controls');
     const val = row.locator('.vor-radial-val');
-    await expect(label).toHaveText('ייחוס VOR');
+    await expect(label).toHaveText('VOR 1');
     await expect(val).toHaveText(/R-\d{3}° \/ \d+\.\d NM/);
     const bidi = await val.evaluate(el => {
       const style = getComputedStyle(el);
@@ -403,7 +403,7 @@ test.describe('VOR overlay + radial/DME (#404)', () => {
     await page.evaluate(t => { state.selected = t; showInspector(); }, hit);
     await expect(page.locator('#insp-title')).toHaveValue(/NAT.*Natania/);
     await expect(page.locator('#insp-body .vor-freq-row .charts-freq-input')).toHaveValue('112.40');
-    const useBtn = page.locator('#insp-body .insp-btn', { hasText: /reference/i });
+    const useBtn = page.locator('#insp-vor-use-ref');     // VOR 1's slot ("Use as VOR 1")
     await expect(useBtn).toBeVisible();
     await useBtn.click();
     expect(await page.evaluate(() => vorRef)).toBe('NAT');
@@ -762,7 +762,7 @@ test.describe('VOR overlay + radial/DME (#404)', () => {
       showInspector();
     });
     // "Use as reference" sets vorRef.
-    const useBtn = page.locator('#insp-body .insp-btn', { hasText: /reference/i });
+    const useBtn = page.locator('#insp-vor-use-ref');     // VOR 1's slot ("Use as VOR 1")
     await useBtn.click();
     expect(await page.evaluate(() => vorRef)).toBe('NAT');
     expect(await page.evaluate(() => localStorage.getItem('navaid.vorRef'))).toBe('NAT');

@@ -3910,8 +3910,11 @@ function mkAcInput(id, label, title, min, max, step) {
 // exported is exactly what the pilot sees -- hidden columns stay hidden. `table` and
 // `scrollArea` were closed over; they are arguments now, which is the whole change.
 function flightPlanCsv(table, scrollArea) {
+  // No VOR2 tuned: its pair is only dashes, so it stays out of the file (as it is off screen).
+  const skipVor2 = table.classList.contains('vor2-off');
   const visibleHeaders = Array.from(table.querySelectorAll('thead th'))
     .filter(th => !(th.classList && th.classList.contains('fp-col-hidden')))
+    .filter(th => !(skipVor2 && th.classList && th.classList.contains('fp-vor2-col')))
     // data-csv is the stable export name; the visible text may carry units or other
     // wording that must never reach the file.
     .map(th => (th.dataset && th.dataset.csv) || th.textContent || '')
@@ -3936,6 +3939,7 @@ function flightPlanCsv(table, scrollArea) {
     for (const cell of row.children) {
       if (cell.classList && cell.classList.contains('fp-del')) continue;
       if (cell.classList && cell.classList.contains('fp-col-hidden')) continue;
+      if (skipVor2 && cell.classList && cell.classList.contains('fp-vor2-col')) continue;
       const span = Math.max(1, cell.colSpan || 1);
       const input = cell.querySelector('input');
       const radialVal = cell.querySelector('.fp-radial-val');
@@ -4020,6 +4024,7 @@ function exportNavLog(scrollArea) {
       el.replaceWith(span);
     });
     clone.querySelectorAll('.fp-col-hidden').forEach(el => el.remove());
+    if (t.classList.contains('vor2-off')) clone.querySelectorAll('.fp-vor2-col').forEach(el => el.remove());
     clone.querySelectorAll('[data-fp-col="delete"], .fp-del').forEach(el => el.remove());
     // The delete column has no .fp-del marker in the header / Total rows —
     // it's just an empty trailing cell. Drop it so the table has no stray
@@ -4103,6 +4108,11 @@ function exportNavLog(scrollArea) {
     .map(v => ltr(v.ident) + ' \u2014 ' + esc((lang === 'he' && v.he) ? v.he : v.name) +
               (v.freq ? ' \u2014 ' + ltr(v.freq + ' MHz') : ''))
     .join(' \u00b7 ');
+  const vor2 = (typeof activeVor2 === 'function') ? activeVor2() : null;
+  const vor2Html = vor2
+    ? ltr(vor2.ident) + ' \u2014 ' + esc((lang === 'he' && vor2.he) ? vor2.he : vor2.name) +
+      (vor2.freq ? ' \u2014 ' + ltr(vor2.freq + ' MHz') : '')
+    : '';
 
   const ac = (typeof aircraft === 'object' && aircraft) ? aircraft : { gph: tune('defaultGph'), taxiGal: tune('defaultTaxiGal') };
   const today = new Date().toISOString().slice(0, 10);
@@ -4130,6 +4140,7 @@ function exportNavLog(scrollArea) {
         esc(S.tbGph || 'GPH') + ' ' + esc(ac.gph) + ' \u00b7 ' +
         esc(S.tbTaxiGal || 'Taxi/T.O.') + ' ' + esc(ac.taxiGal) + '</div>' +
       (vorHtml ? '<div><b>' + esc(S.navLogVor || 'Reference VOR') + ':</b> ' + vorHtml + '</div>' : '') +
+      (vor2Html ? '<div><b>' + esc(S.navLogVor2 || 'VOR 2') + ':</b> ' + vor2Html + '</div>' : '') +
     '</div>' +
     depFreqHtml +
     tablesHtml +
@@ -4351,7 +4362,7 @@ function showFlightPlan() {
   vorWrap.className = 'fp-vor';
   vorWrap.title = S.tbShowVorTitle || '';
   const vorLbl = document.createElement('span');
-  vorLbl.textContent = (S.fpVorLabel || 'VOR') + ': ';
+  vorLbl.textContent = (S.vorRef1Label || S.fpVorLabel || 'VOR 1') + ': ';
   vorWrap.appendChild(vorLbl);
   const vorSel = document.createElement('select');
   vorSel.id = 'fp-vor-select';
@@ -4383,15 +4394,52 @@ function showFlightPlan() {
   };
   vorWrap.appendChild(vorSel);
   vorWrap.appendChild(vorFreqSpan);
+  // VOR2 beside it: the second reference, feeding the Radial 2 / DME 2 pair.
+  const vor2Wrap = document.createElement('label');
+  vor2Wrap.className = 'fp-vor-2';
+  vor2Wrap.title = S.tbShowVorTitle || '';
+  const vor2Lbl = document.createElement('span');
+  vor2Lbl.textContent = (S.vorRef2Label || 'VOR 2') + ': ';
+  vor2Wrap.appendChild(vor2Lbl);
+  const vor2Sel = document.createElement('select');
+  vor2Sel.id = 'fp-vor-select-2';
+  const vor2FreqSpan = document.createElement('span');
+  vor2FreqSpan.className = 'fp-vor-freq-2';
+  function fillFpVor2Select() {
+    vor2Sel.innerHTML = '';
+    const none = document.createElement('option');
+    none.value = ''; none.textContent = S.vorRefNone || '— none —';
+    vor2Sel.appendChild(none);
+    for (const v of (vors || [])) {
+      const opt = document.createElement('option');
+      opt.value = v.ident;
+      opt.textContent = v.ident + ' · ' + v.name;
+      vor2Sel.appendChild(opt);
+    }
+    vor2Sel.value = vorRef2 || '';
+    const cur = typeof activeVor2 === 'function' ? activeVor2() : null;
+    vor2FreqSpan.textContent = cur ? (typeof vorEffectiveFreq === 'function' ? vorEffectiveFreq(cur) : cur.freq) + ' MHz' : '';
+  }
+  vor2Sel.onchange = () => {
+    setReferenceVor2(vor2Sel.value);
+    fillFpVor2Select();
+    draw();
+    refresh();
+    if (retRefresh) retRefresh();
+  };
+  vor2Wrap.appendChild(vor2Sel);
+  vor2Wrap.appendChild(vor2FreqSpan);
   // The reference VOR is the route's, not the aircraft's: a line of its own under the Aircraft row
   // (asked). Styled as that row (fp-aircraft), so both themes, the phone sizes and printing hold.
   const fpVorRow = document.createElement('div');
   fpVorRow.className = 'fp-aircraft fp-vor-row';
   fpVorRow.appendChild(vorWrap);
+  fpVorRow.appendChild(vor2Wrap);
   if (vors === null && typeof loadVors === 'function') {
-    loadVors().then(() => { fillFpVorSelect(); refresh(); if (retRefresh) retRefresh(); });
+    loadVors().then(() => { fillFpVorSelect(); fillFpVor2Select(); refresh(); if (retRefresh) retRefresh(); });
   } else {
     fillFpVorSelect();
+    fillFpVor2Select();
   }
   box.appendChild(fpAircraft);
   box.appendChild(fpVorRow);
@@ -4650,6 +4698,10 @@ function showFlightPlan() {
     { key: 'eta', label: S.fpEta || 'ETA', display: S.fpEta || 'ETA' },
     { key: 'radial', label: baseHeaders[11] || 'Radial', display: dispHeaders[11] || 'Radial', className: 'fp-vor-col' },
     { key: 'dme', label: baseHeaders[12] || 'DME', display: dispHeaders[12] || 'DME', className: 'fp-vor-col' },
+    // VOR2's pair: the second reference, explicit-only (no per-leg override, no fallback).
+    // After VOR1's pair so the CSV's existing columns keep their names and their order.
+    { key: 'radial2', label: S.fpRadial2 || 'Radial 2', display: S.fpRadial2 || 'Radial 2', className: 'fp-vor2-col' },
+    { key: 'dme2', label: S.fpDme2 || 'DME 2', display: S.fpDme2 || 'DME 2', className: 'fp-vor2-col' },
   ];
   if (freqActive) fpColumns.push({ key: 'freq', label: S.fpFreq || 'Freq', className: 'fp-freq-col' });
   fpColumns.push({ key: 'delete', label: '', className: 'fp-del-col', control: true });
@@ -4677,7 +4729,7 @@ function showFlightPlan() {
     // is one tap away in the Columns menu, and the totals line above the table always
     // carries distance/ETE/fuel. The full table is 874px wide, so on a 375px phone the
     // columns you actually fly by started off-screen behind a sideways scroll.
-    ? ['from', 'dist', 'speed', 'fuel', 'cumTime', 'eta', 'cumFuel', 'radial', 'dme', 'freq']
+    ? ['from', 'dist', 'speed', 'fuel', 'cumTime', 'eta', 'cumFuel', 'radial', 'dme', 'radial2', 'dme2', 'freq']
     : [];
   let savedFpColumns = fpDefaultHiddenColumns;
   try {
@@ -4852,6 +4904,21 @@ function showFlightPlan() {
   const etaCells = [];                  // leg index -> clock time over the To point
   const cumFuelCells = [];            // leg index -> cumulative fuel (gal)
   const radialCells = [];              // leg index -> VOR radial cell (To wp)
+  const radial2Cells = [];             // leg index -> VOR2 radial cell
+  const dme2Cells = [];                // leg index -> VOR2 DME cell
+  // VOR2's radial/DME of a waypoint: the tuned station only, blank otherwise.
+  function vor2Cells(wp) {
+    const v = typeof activeVor2 === 'function' ? activeVor2() : null;
+    const empty = S.fpVorRadialEmpty || '—';
+    if (!v || !wp) return [empty, empty];
+    const rd = vorRadialDme(v, wp.lat, wp.lng);
+    return rd ? ['R-' + rd.radial, rd.dme] : [empty, empty];
+  }
+  function vor2PlanCells() {
+    const r = planCell(''); r.classList.add('fp-vor2-col');
+    const d = planCell(''); d.classList.add('fp-vor2-col');
+    return { r, d };
+  }
   const dmeCells = [];                 // leg index -> VOR DME cell (To wp)
   const legRows = [];                  // leg index -> forward table row
   const seqCells = [];                 // leg index -> visible sequence number
@@ -4997,6 +5064,10 @@ function showFlightPlan() {
     dmeCells[i] = dmeCell;
     dmeCell.classList.add('fp-vor-col');
     tr.appendChild(fpCell('dme', dmeCell));
+    const v2c = vor2PlanCells();
+    radial2Cells[i] = v2c.r; dme2Cells[i] = v2c.d;
+    tr.appendChild(fpCell('radial2', v2c.r));
+    tr.appendChild(fpCell('dme2', v2c.d));
     if (freqActive) {
       const freqCell = planCell(legFreqText(i));
       freqCell.classList.add('fp-freq-col');
@@ -5201,6 +5272,7 @@ function showFlightPlan() {
   trF.appendChild(fpCell('eta', totEtaCell));
   const totRadial = planCell(''); totRadial.classList.add('fp-vor-col'); trF.appendChild(fpCell('radial', totRadial));
   const totDme = planCell(''); totDme.classList.add('fp-vor-col'); trF.appendChild(fpCell('dme', totDme));
+  { const t2 = vor2PlanCells(); trF.appendChild(fpCell('radial2', t2.r)); trF.appendChild(fpCell('dme2', t2.d)); }
   if (freqActive) { const tf2 = planCell(''); tf2.classList.add('fp-freq-col'); trF.appendChild(fpCell('freq', tf2)); }
   trF.appendChild(fpCell('delete', planCell('')));        // Delete column (empty)
   tfoot.appendChild(trF);
@@ -5302,6 +5374,7 @@ function showFlightPlan() {
     // any per-leg override is set.
     fillLegVorSelects();
     table.classList.toggle('no-vor', !anyVorActive());
+    table.classList.toggle('vor2-off', !(typeof activeVor2 === 'function' && activeVor2()));
     let td = 0, th = 0, tf = 0;
     const ac = aircraft;
     const visibleIndexes = typeof legDirVisibleIndexes === 'function'
@@ -5333,6 +5406,11 @@ function showFlightPlan() {
         const rc = vorCells(A, state.legs[i]); // radial/DME to the leg's start
         radialCells[i].textContent = rc[0];
         dmeCells[i].textContent = rc[1];
+      }
+      if (radial2Cells[i]) {
+        const rc2 = vor2Cells(A);
+        radial2Cells[i].textContent = rc2[0];
+        dme2Cells[i].textContent = rc2[1];
       }
       const dur = prof && prof.legs[i] ? prof.legs[i].timeH
         : (state.legs[i].flightSpeed > 0 ? dist / state.legs[i].flightSpeed : 0);
@@ -5444,6 +5522,8 @@ function showFlightPlan() {
     const rCumFuelCells = [];
     const rRadialCells = [];
     const rDmeCells = [];
+    const rRadial2Cells = [];
+    const rDme2Cells = [];
     let rTotDistCell, rTotTimeCell, rTotFuelCell, rTotCumTimeCell, rTotCumFuelCell;
 
     for (let i = 0; i < state.legs.length; i++) {
@@ -5522,6 +5602,10 @@ function showFlightPlan() {
       rDmeCells[i] = dmeCell;
       dmeCell.classList.add('fp-vor-col');
       tr.appendChild(fpCell('dme', dmeCell));
+      const rv2 = vor2PlanCells();
+      rRadial2Cells[i] = rv2.r; rDme2Cells[i] = rv2.d;
+      tr.appendChild(fpCell('radial2', rv2.r));
+      tr.appendChild(fpCell('dme2', rv2.d));
       if (freqActive) {
         const freqCell = planCell(legFreqText(ri));
         freqCell.classList.add('fp-freq-col');
@@ -5556,6 +5640,7 @@ function showFlightPlan() {
     rtrF.appendChild(fpCell('eta', planCell('')));
     const rTotRadial = planCell(''); rTotRadial.classList.add('fp-vor-col'); rtrF.appendChild(fpCell('radial', rTotRadial));
     const rTotDme = planCell(''); rTotDme.classList.add('fp-vor-col'); rtrF.appendChild(fpCell('dme', rTotDme));
+    { const rt2 = vor2PlanCells(); rtrF.appendChild(fpCell('radial2', rt2.r)); rtrF.appendChild(fpCell('dme2', rt2.d)); }
     if (freqActive) { const rtf = planCell(''); rtf.classList.add('fp-freq-col'); rtrF.appendChild(fpCell('freq', rtf)); }
     rtrF.appendChild(fpCell('delete', planCell('')));        // Delete column (empty)
     rtfoot.appendChild(rtrF);
@@ -5565,6 +5650,7 @@ function showFlightPlan() {
     retRefresh = function () {
       if (state.legs.length !== rDistCells.length) { closeFlightPlan(); return; }
       rtable.classList.toggle('no-vor', !anyVorActive());
+      rtable.classList.toggle('vor2-off', !(typeof activeVor2 === 'function' && activeVor2()));
       let td = 0, th = 0, tf = 0;
       const retTaxi = aircraft && aircraft.taxiGal && isAirport(state.waypoints[state.waypoints.length - 1]) ? aircraft.taxiGal : 0;
       if (retTaxi) tf = retTaxi;
@@ -5579,6 +5665,11 @@ function showFlightPlan() {
           const rc = vorCells(A, state.legs[ri]); // radial/DME to leg start
           rRadialCells[i].textContent = rc[0];
           rDmeCells[i].textContent = rc[1];
+        }
+        if (rRadial2Cells[i]) {
+          const rc2 = vor2Cells(A);
+          rRadial2Cells[i].textContent = rc2[0];
+          rDme2Cells[i].textContent = rc2[1];
         }
         const dur = state.legs[ri].outboundSpeed > 0 ? dist / state.legs[ri].outboundSpeed : 0;
         // The same physical leg, flown back: the CTR gate applies to the return direction

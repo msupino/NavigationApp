@@ -110,8 +110,8 @@ test('the inspector VOR selector repaints the map', async ({ page }) => {
 test('tapping "Reference VOR (tap to clear)" removes the ring immediately', async ({ page }) => {
   await boot(page);
   const r = await page.evaluate(`(() => {
-    const btn = () => Array.from(document.querySelectorAll('#insp-body button.insp-btn'))
-      .find(b => /reference/i.test(b.textContent));
+    // VOR 1's slot button (its label became "Use as VOR 1" when VOR 2 arrived).
+    const btn = () => document.getElementById('insp-vor-use-ref');
     state.selected = { type: 'vor', index: vors.findIndex(v => v.ident === 'NAT') };
     showInspector(); draw();
     const tapped = ${RING2};
@@ -135,8 +135,8 @@ test('tapping "Reference VOR (tap to clear)" removes the ring immediately', asyn
 test('the suppression is per station, and ends when a reference is set again', async ({ page }) => {
   await boot(page);
   const r = await page.evaluate(`(() => {
-    const btn = () => Array.from(document.querySelectorAll('#insp-body button.insp-btn'))
-      .find(b => /reference/i.test(b.textContent));
+    // VOR 1's slot button (its label became "Use as VOR 1" when VOR 2 arrived).
+    const btn = () => document.getElementById('insp-vor-use-ref');
     state.selected = { type: 'vor', index: vors.findIndex(v => v.ident === 'NAT') };
     showInspector(); draw();
     btn().click(); btn().click();                   // set, then clear on NAT

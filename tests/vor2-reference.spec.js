@@ -121,3 +121,56 @@ test('a point inspector shows a VOR2 row with its own radial/DME', async ({ page
   const txt = await row2.locator('.vor-radial-val').textContent();
   expect(txt).toMatch(/R-\d+° \/ [\d.]+ NM/);
 });
+
+async function openPlan(page) {
+  await page.evaluate(() => {
+    state.waypoints = [
+      { lat: 32.1, lng: 34.85, name: 'A' },
+      { lat: 32.46472, lng: 34.91222, name: 'HADRA' },
+    ];
+    syncLegs(); draw();
+  });
+  await page.locator('#plan').click();
+  await page.locator('.modal-back').waitFor();
+}
+
+test('flight plan: the Radial 2 / DME 2 pair stays off until VOR 2 is tuned', async ({ page }) => {
+  await boot(page);
+  await openPlan(page);
+  const table = page.locator('.flight-table').first();
+  await expect(table).toHaveClass(/vor2-off/);
+  await expect(table.locator('thead .fp-vor2-col').first()).toBeHidden();
+  await page.locator('#fp-vor-select-2').selectOption('NAT');
+  expect(await page.evaluate(() => vorRef2)).toBe('NAT');
+  await expect(table).not.toHaveClass(/vor2-off/);
+  await expect(table.locator('thead .fp-vor2-col').first()).toBeVisible();
+});
+
+test('flight plan: VOR 2 reads its own Radial/DME to the leg start, beside VOR 1', async ({ page }) => {
+  await boot(page);
+  await openPlan(page);
+  await page.locator('#fp-vor-select').selectOption('BGN');
+  await page.locator('#fp-vor-select-2').selectOption('NAT');
+  const headers = await page.locator('.flight-table thead th').allTextContents();
+  const r2 = headers.indexOf('Radial 2');
+  expect(r2).toBeGreaterThan(headers.indexOf('DME'));      // after VOR 1's pair
+  const exp = await page.evaluate(() => {
+    const rd = vorRadialDme(vorByIdent('NAT'), 32.1, 34.85);
+    return { r: 'R-' + rd.radial, d: String(rd.dme) };
+  });
+  const row = page.locator('.flight-table tbody tr').first();
+  await expect(row.locator('td').nth(r2)).toHaveText(exp.r);
+  await expect(row.locator('td').nth(r2 + 1)).toHaveText(exp.d);
+});
+
+test('the CSV carries VOR 2 only when it is tuned', async ({ page }) => {
+  await boot(page);
+  await openPlan(page);
+  const csvHead = () => page.evaluate(() => {
+    const area = document.querySelector('.flight-table').parentElement;
+    return flightPlanCsv(document.querySelector('.flight-table'), area).split(/\r?\n/).slice(0, 3).join('\n');
+  });
+  expect(await csvHead()).not.toContain('Radial 2');
+  await page.locator('#fp-vor-select-2').selectOption('NAT');
+  expect(await csvHead()).toContain('Radial 2');
+});

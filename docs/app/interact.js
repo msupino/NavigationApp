@@ -1598,7 +1598,7 @@ function appendVorRadialRow(body, lat, lng) {
   controls.className = 'vor-radial-controls';
   const sel = document.createElement('select');
   sel.className = 'insp-vor-ref';
-  sel.setAttribute('aria-label', S.vorRefLabel || 'VOR Reference');
+  sel.setAttribute('aria-label', S.vorRef1Label || 'VOR 1');
   const val = document.createElement('span');
   val.className = 'val vor-radial-val';
   // Out-of-range notice only: it depends on THIS point's distance, so it belongs
@@ -1653,13 +1653,13 @@ function appendVorRadialRow2(body, lat, lng) {
     loadVors().then(() => { refreshInspectorIfVisible(); });
   }
   const row = document.createElement('div');
-  row.className = 'row vor-radial-row vor-radial-row-2';
+  row.className = 'row vor-radial-row-2';
   const label = document.createElement('label');
   label.textContent = S.vorRef2Label || 'VOR 2';
   const controls = document.createElement('div');
   controls.className = 'vor-radial-controls';
   const sel = document.createElement('select');
-  sel.className = 'insp-vor-ref insp-vor-ref-2';
+  sel.className = 'insp-vor-ref-2';
   sel.setAttribute('aria-label', S.vorRef2Label || 'VOR 2');
   const val = document.createElement('span');
   val.className = 'val vor-radial-val';

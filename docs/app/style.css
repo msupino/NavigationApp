@@ -59,9 +59,11 @@ body.measuring #map .leaflet-pane * { cursor: crosshair; }
 #map.leaflet-dragging .leaflet-grab { cursor: grabbing; }
 /* Flight-plan VOR Radial/DME columns collapse when no reference VOR is set. */
 .flight-table.no-vor .fp-vor-col { display: none; }
+/* VOR2's Radial/DME pair: off until a second reference is tuned. */
+.flight-table.vor2-off .fp-vor2-col { display: none; }
 .flight-table .fp-col-hidden { display: none !important; }
-.fp-vor { display: inline-flex; align-items: center; gap: 4px; margin-left: 8px; }
-.fp-vor-freq { color: #9ad; font-size: 12px; }
+.fp-vor, .fp-vor-2 { display: inline-flex; align-items: center; gap: 4px; margin-left: 8px; }
+.fp-vor-freq, .fp-vor-freq-2 { color: #9ad; font-size: 12px; }
 .fp-leg-vor { font-size: 10px; max-width: 56px; margin-inline-end: 3px; vertical-align: middle;
   background: #2f2b2b; color: #e8e8e8; border: 1px solid #443f3f; border-radius: 3px; }
 .fp-radial-val { white-space: nowrap; }
@@ -2286,14 +2288,14 @@ body.theme-light .resize-grip {
    with no ↻ keep a gap the size of one, so their field lines up with the fields that have it. */
 .row input[type="number"].row-num-narrow { width: 78px; }
 .row > input.row-num-narrow:last-child { margin-inline-end: 30px; }
-.vor-radial-row {
+.vor-radial-row, .vor-radial-row-2 {
   justify-content: flex-start;
   /* "VOR Reference" + picker + readout outgrow a default-width inspector: the controls
      then take a line of their own, at the far edge, instead of pushing the readout out. */
   flex-wrap: wrap;
   gap: 4px 10px;
 }
-.vor-radial-row label {
+.vor-radial-row label, .vor-radial-row-2 label {
   flex: 0 0 auto;
   white-space: nowrap;
   unicode-bidi: isolate;
@@ -2310,7 +2312,7 @@ body.theme-light .resize-grip {
   min-width: 0;
   margin-inline-start: auto;
 }
-.vor-radial-row select {
+.vor-radial-row select, .vor-radial-row-2 select {
   /* A fixed 58px fit the VOR idents (2-3 letters: "BGN", "NAT") this control mostly
      shows, but clipped the "— none —" / "— ללא —" placeholder option, which is much
      longer -- reported live as a stray "א —" (the placeholder's own trailing letters,
@@ -3174,6 +3176,10 @@ body.printing-plan .ac-custom { display: none !important; }
   }
   body.printing-plan .flight-table .fp-vor-col select {
     display: none !important;
+  }
+  body.printing-plan .flight-table .fp-vor2-col {
+    font-size: inherit;
+    padding: 1px 2px;
   }
   /* # From To Hdg Dist Speed Alt Time Fuel Cum.time Cum.fuel ETA Radial DME */
   body.printing-plan .flight-table th:nth-child(1) { width: 3%; }
@@ -10796,6 +10802,7 @@ body.theme-light #export-progress { background: #fafcff; color: #1d2430; border-
 .fp-aircraft:has(+ .fp-vor-row) { border-bottom: 0; margin-bottom: 0; padding-bottom: 4px; }
 .fp-vor-row { padding-top: 0; }
 .fp-vor-row .fp-vor { margin-left: 0; }
+.fp-vor-row .fp-vor-2 { margin-inline-start: 14px; }
 .fp-aircraft .ac-panel { display: contents; }
 #ac-panel-home { display: none; }
 .ac-type-row { display: inline-flex; align-items: center; }
