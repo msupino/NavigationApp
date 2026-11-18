@@ -8418,6 +8418,9 @@ function createDraggableModal(titleText, className, onClose, options = {}) {
   const back = document.createElement('div');
   back.className = options.nonBlocking ? 'modal-back flight-plan' : 'modal-back';
   if (options.chartKind) back.dataset.chartModal = options.chartKind;
+  // A chart/plate window opening over the map dismisses the point inspector rather than
+  // stacking on it (same as the legend key), so the two panels do not overlap.
+  if (options.chartKind && typeof window.closeInspectorIfOpen === 'function') window.closeInspectorIfOpen();
   const box = document.createElement('div');
   box.className = className || 'modal wide';
   // Say what this is. Three hand-built windows (the SIGWX and PWX viewers, the offline
