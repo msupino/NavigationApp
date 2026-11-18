@@ -37,9 +37,16 @@ test('collapsing the legend does not touch the inspector', async ({ page }) => {
   expect(await inspHidden(page)).toBe(false);        // collapsing left the inspector alone
 });
 
-test('opening a chart/plate window closes the inspector', async ({ page }) => {
+test('opening the airport charts/plates window closes the inspector', async ({ page }) => {
+  await openInspector(page);
+  await page.evaluate(() => { if (typeof showChartsModal === 'function') showChartsModal(); });
+  await expect(page.locator('.modal-back[data-chart-modal="airport-charts"]')).toHaveCount(1);
+  await expect.poll(() => inspHidden(page)).toBe(true);
+});
+
+test('the companion freq-table panel leaves the inspector open', async ({ page }) => {
   await openInspector(page);
   await page.evaluate(() => { if (typeof showFreqTableModal === 'function') showFreqTableModal(); });
-  await expect(page.locator('.modal-back[data-chart-modal]')).toHaveCount(1);
-  await expect.poll(() => inspHidden(page)).toBe(true);
+  await expect(page.locator('.modal-back[data-chart-modal="freq-table"]')).toHaveCount(1);
+  expect(await inspHidden(page)).toBe(false);
 });

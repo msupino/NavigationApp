@@ -8418,9 +8418,13 @@ function createDraggableModal(titleText, className, onClose, options = {}) {
   const back = document.createElement('div');
   back.className = options.nonBlocking ? 'modal-back flight-plan' : 'modal-back';
   if (options.chartKind) back.dataset.chartModal = options.chartKind;
-  // A chart/plate window opening over the map dismisses the point inspector rather than
-  // stacking on it (same as the legend key), so the two panels do not overlap.
-  if (options.chartKind && typeof window.closeInspectorIfOpen === 'function') window.closeInspectorIfOpen();
+  // The airport charts/plates viewer is a full window over the map; opening it dismisses the
+  // point inspector rather than stacking on it (same as the legend key). The freq-table and
+  // altitude-pairs panels are deliberately companions of the open inspector -- you edit a leg's
+  // altitude in the inspector and watch the pairs chart refresh -- so they leave it alone.
+  if (options.chartKind === 'airport-charts' && typeof window.closeInspectorIfOpen === 'function') {
+    window.closeInspectorIfOpen();
+  }
   const box = document.createElement('div');
   box.className = className || 'modal wide';
   // Say what this is. Three hand-built windows (the SIGWX and PWX viewers, the offline
