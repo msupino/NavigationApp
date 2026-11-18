@@ -163,7 +163,9 @@ test.describe('Flight-plan modal table print', () => {
 
     expect(fit).toHaveLength(2);
     for (const table of fit) {
-      expect(table.layout).toBe('fixed');
+      // Content-sized (table-layout:auto), not forced to fixed per-column widths: the fixed
+      // widths starved the VOR 2 / Freq columns to one character per line. What matters is that
+      // it still fits the page without a sideways overflow.
       expect(table.left).toBeGreaterThanOrEqual(0);
       expect(table.right).toBeLessThanOrEqual(table.pageWidth + 1);
       expect(table.scrollWidth).toBeLessThanOrEqual(table.width + 1);
