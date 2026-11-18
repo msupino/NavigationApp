@@ -48,9 +48,12 @@ test('VOR2 is explicit-only: out of range it goes blank, where VOR1 would fall b
     NavAid.tuning.vorReadoutMaxNm = 30;
     const v1 = vors.find(v => v.ident === 'BGN') || vors[0];
     const south = vors.slice().sort((a, b) => a.lat - b.lat)[0];
+    // Two different stations (one is at most one reference), both far from the test point: VOR 1
+    // on BGN (which falls back to the nearest in range), VOR 2 on a northern station (no fallback).
+    const north = vors.slice().sort((a, b) => b.lat - a.lat).find(v => v.ident !== v1.ident);
     setReferenceVor(v1.ident);
-    setReferenceVor2(v1.ident);
-    // A point near the southern VOR but far from the tuned one (BGN), past the 30 NM cap.
+    setReferenceVor2(north.ident);
+    // A point near the southern VOR but far from both tuned stations, past the 30 NM cap.
     return {
       vor1: vorReadoutText(south.lat + 0.05, south.lng),   // falls back to the nearest in range
       vor2: vorReadoutText2(south.lat + 0.05, south.lng),  // no fallback -> blank
@@ -221,4 +224,32 @@ test('VOR 2 has a per-leg picker too, and a retune carries forward like VOR 1', 
   // And it is a route field: it survives the route round trip.
   const rt = await page.evaluate(() => JSON.parse(JSON.stringify(serializeRoute())).legs.map(l => l.vorRef2 || null));
   expect(rt).toEqual([null, 'BGN', 'BGN']);
+});
+
+test('a station is at most one reference: taking it as VOR 2 releases it from VOR 1', async ({ page }) => {
+  await boot(page);
+  const r = await page.evaluate(() => {
+    const v1 = vors.find(v => v.ident === 'BGN') || vors[0];
+    setReferenceVor(v1.ident);
+    setReferenceVor2(v1.ident);                    // same station -> moves to VOR 2
+    const moved = { vor1: vorRef, vor2: vorRef2 };
+    setReferenceVor(v1.ident);                     // back to VOR 1 -> releases VOR 2
+    const back = { vor1: vorRef, vor2: vorRef2 };
+    return { moved, back, id: v1.ident };
+  });
+  expect(r.moved).toEqual({ vor1: null, vor2: r.id });
+  expect(r.back).toEqual({ vor1: r.id, vor2: null });
+});
+
+test('the station inspector disables the slot a station already fills on the other', async ({ page }) => {
+  await boot(page);
+  await page.evaluate(() => {
+    const v = vors.find(x => x.ident === 'BGN') || vors[0];
+    setReferenceVor(v.ident);                      // this station is VOR 1
+    window.showVorStations = true; if (typeof syncVorUI === 'function') syncVorUI(); draw();
+    state.selected = { type: 'vor', index: vors.indexOf(v) }; showInspector();
+  });
+  // VOR 1 button active (clearable); VOR 2 button disabled (can't also be VOR 2).
+  await expect(page.locator('#insp-vor-use-ref')).toBeEnabled();
+  await expect(page.locator('#insp-vor-use-ref-2')).toBeDisabled();
 });

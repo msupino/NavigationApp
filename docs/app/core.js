@@ -2296,6 +2296,7 @@ window.S = Object.assign({
   vorUse1Active: '✓ VOR 1 (tap to clear)',
   vorUse2: 'Use as VOR 2',
   vorUse2Active: '✓ VOR 2 (tap to clear)',
+  vorAlreadyOther: 'Already the other reference VOR — clear it first',
   elevation: 'Elevation',
   navHebrew: 'Waypoint name',
   vorFrom: function(id) { return 'From ' + id + ' VOR'; }, // inspector / readout prefix
@@ -5826,6 +5827,11 @@ var vorRingSuppressIdent = null;   // station the pilot un-referenced while it w
 
 function setReferenceVor(ident) {
   const next = ident || null;
+  // One station is at most one reference: taking it as VOR 1 releases it from VOR 2, so the two
+  // never read the same radial/DME. Clearing (next=null) never collides. Guarded so null -> null
+  // cannot recurse.
+  if (next && typeof window.vorRef2 === 'string' && window.vorRef2 === next
+      && typeof setReferenceVor2 === 'function') setReferenceVor2(null);
   window.vorRef = next;
   try {
     if (next) localStorage.setItem('navaid.vorRef', next);
@@ -5854,6 +5860,9 @@ function setReferenceVor(ident) {
 // keep every VOR2 picker showing the same answer.
 function setReferenceVor2(ident) {
   const next = ident || null;
+  // Same invariant the other way: taking a station as VOR 2 releases it from VOR 1.
+  if (next && typeof window.vorRef === 'string' && window.vorRef === next
+      && typeof setReferenceVor === 'function') setReferenceVor(null);
   window.vorRef2 = next;
   try {
     if (next) localStorage.setItem('navaid.vorRef2', next);

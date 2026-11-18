@@ -4487,8 +4487,12 @@ function showInspector() {
     useBtn.className = 'insp-btn';
     useBtn.id = 'insp-vor-use-ref';
     const isRef = vorRef === v.ident;
+    const isRef2 = vorRef2 === v.ident;
     useBtn.textContent = isRef ? (S.vorUse1Active || '✓ VOR 1 (tap to clear)')
                                : (S.vorUse1 || 'Use as VOR 1');
+    // One station is at most one reference: while it is the other slot's station, its button
+    // here is disabled (clear that slot first), so it can never be both VOR 1 and VOR 2.
+    if (isRef2) { useBtn.disabled = true; useBtn.title = S.vorAlreadyOther || ''; }
     useBtn.onclick = () => {
       // setReferenceVor also drops this station's SELECTION ring when clearing, which is why
       // "tap to clear" used to look like it did nothing until the inspector was closed.
@@ -4500,9 +4504,9 @@ function showInspector() {
     const useBtn2 = document.createElement('button');
     useBtn2.className = 'insp-btn';
     useBtn2.id = 'insp-vor-use-ref-2';
-    const isRef2 = vorRef2 === v.ident;
     useBtn2.textContent = isRef2 ? (S.vorUse2Active || '✓ VOR 2 (tap to clear)')
                                  : (S.vorUse2 || 'Use as VOR 2');
+    if (isRef) { useBtn2.disabled = true; useBtn2.title = S.vorAlreadyOther || ''; }
     useBtn2.onclick = () => {
       setReferenceVor2(isRef2 ? null : v.ident);
       if (typeof refreshFlightPlan === 'function' && refreshFlightPlan) refreshFlightPlan();
