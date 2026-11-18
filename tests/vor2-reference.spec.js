@@ -276,3 +276,29 @@ test('a VOR co-located with a route point is offered in the chooser with the VOR
   const metas = await page.locator('.point-choice-option').allTextContents();
   expect(metas.join(' ')).toContain('ROP');
 });
+
+test('the LLHZ->LLIB template: tapping LLIB offers the Rosh Pina VOR (ROP), layer off', async ({ page }) => {
+  // Real geometry: the LLIB waypoint sits on the field, and ROP VOR/DME is ~0.15 NM away --
+  // too far for an exact-point match or a zoomed-in tap radius, but the same facility.
+  await page.goto('?lang=en&nogist');
+  await page.waitForFunction(() => typeof applyRouteTemplate === 'function'
+    && typeof loadVors === 'function' && typeof loadAirfields === 'function');
+  await page.evaluate(async () => {
+    await loadVors(); await loadAirfields();
+    const list = await (await fetch('data/route-templates.json')).json();
+    const tpl = (Array.isArray(list) ? list : list.templates).find(x => x.id === 'llhz-llib-north');
+    await applyRouteTemplate(tpl, 90, false);
+    const wp = state.waypoints[state.waypoints.length - 1];
+    map.setView([wp.lat, wp.lng], 13, { animate: false });
+    window.showVorStations = false;        // VOR overlay OFF
+    draw();
+  });
+  const p = await page.evaluate(() => {
+    const wp = state.waypoints[state.waypoints.length - 1];
+    const c = map.latLngToContainerPoint([wp.lat, wp.lng]);
+    return { x: c.x, y: c.y };
+  });
+  await page.mouse.click(p.x, p.y);
+  await expect(page.locator('.point-choice-modal')).toHaveCount(1);
+  expect((await page.locator('.point-choice-option').allTextContents()).join(' ')).toContain('ROP');
+});

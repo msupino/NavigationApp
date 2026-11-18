@@ -451,19 +451,22 @@ function hitVorMarkerCandidates(px, py) {
   }
   return hits;
 }
-// VOR stations under the point, IGNORING the VOR overlay toggle. A VOR/DME co-located with a
-// field or a route point (Rosh Pina: LLIB + ROP) is a reference a pilot wants to reach from the
-// chooser even with the VOR layer off, the way the airfield there already is. Only added to the
-// chooser beside a waypoint/airfield/nav-point hit, so a plain tap on empty map is unchanged.
-function coincidentVorCandidates(px, py) {
-  const hits = [];
-  if (!vors || !vors.length || !layerShownAtZoom('vorMinZoom')) return hits;
-  const r = tune('vorMarkerRadiusPx') * symbolZoomScale() + tune('hitWaypointExtraPx');
+// A VOR/DME co-located with a field or a route point (Rosh Pina: LLIB airfield + ROP, ~0.15 NM
+// apart) is a reference a pilot wants to reach from the chooser even with the VOR layer off, the
+// way the airfield there already is. "Co-located" is GEOGRAPHIC, not a pixel radius: an on-field
+// VOR/DME sits a few hundred metres from the ARP, too far to fall under the same tap when zoomed
+// in. VOR_COLOCATED_NM is wide enough for that (Rosh Pina 0.15 NM) and short of the nearest
+// neighbouring VOR (BGN is 1.48 NM from the route point the regression test taps).
+const VOR_COLOCATED_NM = 0.6;
+function vorsNearRef(anchors, nm) {
+  const out = [];
+  if (!vors || !vors.length || !layerShownAtZoom('vorMinZoom') || typeof geo !== 'function') return out;
   for (let i = vors.length - 1; i >= 0; i--) {
-    const s = proj(vors[i]);
-    if (Math.hypot(s.x - px, s.y - py) <= r) hits.push({ type: 'vor', index: i });
+    for (const a of anchors) {
+      if (a && geo(a, vors[i]).dist <= nm) { out.push(i); break; }
+    }
   }
-  return hits;
+  return out;
 }
 function hitAirfieldMarker(px, py) {
   const hits = hitAirfieldMarkerCandidates(px, py);
@@ -5873,22 +5876,19 @@ map.on('mousedown', e => {
     return !(wi >= 0 && wpHitSet.has(wi));
   });
   let ovHits = includeOverlayChoices ? hitOverlayMarkerCandidates(p.x, p.y) : [];
-  // A VOR co-located with a field or a route point is offered even with the VOR layer off, but
-  // only when it sits on the SAME point (not merely within its click radius: a tap near, but not
-  // on, a VOR must still select the waypoint) and only when such a point is here -- never a bare
-  // tap. Deduped against a VOR the layer already surfaced.
-  const vorSameSpot = (a, b) => a && b && (typeof sameMapPoint === 'function'
-    ? sameMapPoint(a, b) : (Math.abs(a.lat - b.lat) < 2e-4 && Math.abs(a.lng - b.lng) < 2e-4));
-  const vorIsColocated = (idx) => {
-    const v = vors && vors[idx];
-    if (!v) return false;
-    return wpHits.some(w => vorSameSpot(state.waypoints[w.index], v))
-      || ovHits.some(h => h.type === 'airfield' && airfields && vorSameSpot(airfields[h.index], v))
-      || ovHits.some(h => h.type === 'navwp' && navWP && vorSameSpot(navWP[h.index], v));
-  };
-  if (includeOverlayChoices && (wpHits.length || ovHits.some(h => h.type === 'airfield' || h.type === 'navwp'))) {
+  // Offer a VOR co-located (geographically) with a waypoint / airfield / nav-point under the tap,
+  // even with the VOR layer off -- never on a bare tap. Deduped against a VOR the layer surfaced.
+  // Anchor on the tapped WAYPOINT(S) only -- not every airfield that falls under a low-zoom tap:
+  // at a wide zoom an unrelated field a mile away is "under" the tap, and offering its on-field
+  // VOR would hijack a plain waypoint click (the Ben Gurion case). A waypoint sitting on a field
+  // (LLIB) is at the field's own point, so the field's VOR is near the waypoint anyway.
+  const vorAnchors = [];
+  for (const w of wpHits) if (state.waypoints[w.index]) vorAnchors.push(state.waypoints[w.index]);
+  const nearVorSet = new Set((includeOverlayChoices && vorAnchors.length)
+    ? vorsNearRef(vorAnchors, VOR_COLOCATED_NM) : []);
+  {
     const haveVor = new Set(ovHits.filter(h => h.type === 'vor').map(h => h.index));
-    for (const c of coincidentVorCandidates(p.x, p.y)) if (!haveVor.has(c.index) && vorIsColocated(c.index)) ovHits.push(c);
+    for (const idx of nearVorSet) if (!haveVor.has(idx)) ovHits.push({ type: 'vor', index: idx });
   }
   // While the map is PRIMED (see routePrimingArmed: empty route and the hint still up), a
   // press on a CHART POINT falls through to the add path instead of being consumed as a
@@ -5939,7 +5939,7 @@ map.on('mousedown', e => {
   // A route point that also sits on a VOR (and so, usually, a field) opens the chooser, so the
   // coincident VOR is reachable even with the VOR layer off. Airfield / nav-point still merge
   // into the waypoint inside showPointChoice, so this only fires for the non-merging VOR.
-  if (wpHits.length && ovAll.some(c => c.type === 'vor' && vorIsColocated(c.index))) {
+  if (wpHits.length && ovAll.some(c => c.type === 'vor' && nearVorSet.has(c.index))) {
     downHit = true;
     showPointChoice(withLegChoices(wpHits.concat(ovAll), p.x, p.y));
     return;
@@ -6626,22 +6626,19 @@ mapEl.addEventListener('touchstart', e => {
     return !(wi >= 0 && wpHitSet.has(wi));
   });
   let ovHits = includeOverlayChoices ? hitOverlayMarkerCandidates(p.x, p.y) : [];
-  // A VOR co-located with a field or a route point is offered even with the VOR layer off, but
-  // only when it sits on the SAME point (not merely within its click radius: a tap near, but not
-  // on, a VOR must still select the waypoint) and only when such a point is here -- never a bare
-  // tap. Deduped against a VOR the layer already surfaced.
-  const vorSameSpot = (a, b) => a && b && (typeof sameMapPoint === 'function'
-    ? sameMapPoint(a, b) : (Math.abs(a.lat - b.lat) < 2e-4 && Math.abs(a.lng - b.lng) < 2e-4));
-  const vorIsColocated = (idx) => {
-    const v = vors && vors[idx];
-    if (!v) return false;
-    return wpHits.some(w => vorSameSpot(state.waypoints[w.index], v))
-      || ovHits.some(h => h.type === 'airfield' && airfields && vorSameSpot(airfields[h.index], v))
-      || ovHits.some(h => h.type === 'navwp' && navWP && vorSameSpot(navWP[h.index], v));
-  };
-  if (includeOverlayChoices && (wpHits.length || ovHits.some(h => h.type === 'airfield' || h.type === 'navwp'))) {
+  // Offer a VOR co-located (geographically) with a waypoint / airfield / nav-point under the tap,
+  // even with the VOR layer off -- never on a bare tap. Deduped against a VOR the layer surfaced.
+  // Anchor on the tapped WAYPOINT(S) only -- not every airfield that falls under a low-zoom tap:
+  // at a wide zoom an unrelated field a mile away is "under" the tap, and offering its on-field
+  // VOR would hijack a plain waypoint click (the Ben Gurion case). A waypoint sitting on a field
+  // (LLIB) is at the field's own point, so the field's VOR is near the waypoint anyway.
+  const vorAnchors = [];
+  for (const w of wpHits) if (state.waypoints[w.index]) vorAnchors.push(state.waypoints[w.index]);
+  const nearVorSet = new Set((includeOverlayChoices && vorAnchors.length)
+    ? vorsNearRef(vorAnchors, VOR_COLOCATED_NM) : []);
+  {
     const haveVor = new Set(ovHits.filter(h => h.type === 'vor').map(h => h.index));
-    for (const c of coincidentVorCandidates(p.x, p.y)) if (!haveVor.has(c.index) && vorIsColocated(c.index)) ovHits.push(c);
+    for (const idx of nearVorSet) if (!haveVor.has(idx)) ovHits.push({ type: 'vor', index: idx });
   }
   // While the map is PRIMED (see routePrimingArmed: empty route and the hint still up), a
   // press on a CHART POINT falls through to the add path instead of being consumed as a
@@ -6676,7 +6673,7 @@ mapEl.addEventListener('touchstart', e => {
     showPointChoice(withLegChoices(commChoiceHits, p.x, p.y));
     return;
   }
-  if (wpHits.length && ovAll.some(c => c.type === 'vor' && vorIsColocated(c.index))) {
+  if (wpHits.length && ovAll.some(c => c.type === 'vor' && nearVorSet.has(c.index))) {
     e.preventDefault();
     showPointChoice(withLegChoices(wpHits.concat(ovAll), p.x, p.y));
     return;
