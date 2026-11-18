@@ -451,6 +451,20 @@ function hitVorMarkerCandidates(px, py) {
   }
   return hits;
 }
+// VOR stations under the point, IGNORING the VOR overlay toggle. A VOR/DME co-located with a
+// field or a route point (Rosh Pina: LLIB + ROP) is a reference a pilot wants to reach from the
+// chooser even with the VOR layer off, the way the airfield there already is. Only added to the
+// chooser beside a waypoint/airfield/nav-point hit, so a plain tap on empty map is unchanged.
+function coincidentVorCandidates(px, py) {
+  const hits = [];
+  if (!vors || !vors.length || !layerShownAtZoom('vorMinZoom')) return hits;
+  const r = tune('vorMarkerRadiusPx') * symbolZoomScale() + tune('hitWaypointExtraPx');
+  for (let i = vors.length - 1; i >= 0; i--) {
+    const s = proj(vors[i]);
+    if (Math.hypot(s.x - px, s.y - py) <= r) hits.push({ type: 'vor', index: i });
+  }
+  return hits;
+}
 function hitAirfieldMarker(px, py) {
   const hits = hitAirfieldMarkerCandidates(px, py);
   return hits.length ? hits[0].index : -1;
@@ -5859,6 +5873,13 @@ map.on('mousedown', e => {
     return !(wi >= 0 && wpHitSet.has(wi));
   });
   let ovHits = includeOverlayChoices ? hitOverlayMarkerCandidates(p.x, p.y) : [];
+  // A VOR co-located with a field or a route point is offered even with the VOR layer off, but
+  // only when there is such a point here -- never on a bare tap. Deduped against a VOR the layer
+  // already surfaced.
+  if (includeOverlayChoices && (wpHits.length || ovHits.some(h => h.type === 'airfield' || h.type === 'navwp'))) {
+    const haveVor = new Set(ovHits.filter(h => h.type === 'vor').map(h => h.index));
+    for (const c of coincidentVorCandidates(p.x, p.y)) if (!haveVor.has(c.index)) ovHits.push(c);
+  }
   // While the map is PRIMED (see routePrimingArmed: empty route and the hint still up), a
   // press on a CHART POINT falls through to the add path instead of being consumed as a
   // selection — clicking the named points you want to route between is the obvious gesture
@@ -5903,6 +5924,14 @@ map.on('mousedown', e => {
   if (commHits.length && commChoiceHits.length > 1) {
     downHit = true;
     showPointChoice(withLegChoices(commChoiceHits, p.x, p.y));
+    return;
+  }
+  // A route point that also sits on a VOR (and so, usually, a field) opens the chooser, so the
+  // coincident VOR is reachable even with the VOR layer off. Airfield / nav-point still merge
+  // into the waypoint inside showPointChoice, so this only fires for the non-merging VOR.
+  if (wpHits.length && ovAll.some(c => c.type === 'vor')) {
+    downHit = true;
+    showPointChoice(withLegChoices(wpHits.concat(ovAll), p.x, p.y));
     return;
   }
   const note = hitNote(p.x, p.y);
@@ -6587,6 +6616,13 @@ mapEl.addEventListener('touchstart', e => {
     return !(wi >= 0 && wpHitSet.has(wi));
   });
   let ovHits = includeOverlayChoices ? hitOverlayMarkerCandidates(p.x, p.y) : [];
+  // A VOR co-located with a field or a route point is offered even with the VOR layer off, but
+  // only when there is such a point here -- never on a bare tap. Deduped against a VOR the layer
+  // already surfaced.
+  if (includeOverlayChoices && (wpHits.length || ovHits.some(h => h.type === 'airfield' || h.type === 'navwp'))) {
+    const haveVor = new Set(ovHits.filter(h => h.type === 'vor').map(h => h.index));
+    for (const c of coincidentVorCandidates(p.x, p.y)) if (!haveVor.has(c.index)) ovHits.push(c);
+  }
   // While the map is PRIMED (see routePrimingArmed: empty route and the hint still up), a
   // press on a CHART POINT falls through to the add path instead of being consumed as a
   // selection — clicking the named points you want to route between is the obvious gesture
@@ -6618,6 +6654,11 @@ mapEl.addEventListener('touchstart', e => {
   if (commHits.length && commChoiceHits.length > 1) {
     e.preventDefault();
     showPointChoice(withLegChoices(commChoiceHits, p.x, p.y));
+    return;
+  }
+  if (wpHits.length && ovAll.some(c => c.type === 'vor')) {
+    e.preventDefault();
+    showPointChoice(withLegChoices(wpHits.concat(ovAll), p.x, p.y));
     return;
   }
   const note = hitNote(p.x, p.y);

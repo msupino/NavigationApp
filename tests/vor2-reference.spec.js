@@ -253,3 +253,26 @@ test('the station inspector disables the slot a station already fills on the oth
   await expect(page.locator('#insp-vor-use-ref')).toBeEnabled();
   await expect(page.locator('#insp-vor-use-ref-2')).toBeDisabled();
 });
+
+test('a VOR co-located with a route point is offered in the chooser with the VOR layer off', async ({ page }) => {
+  await boot(page);
+  await page.evaluate(async () => {
+    if (typeof loadAirfields === 'function') await loadAirfields();
+    const rop = vors.find(v => v.ident === 'ROP');
+    map.setView([rop.lat, rop.lng], 11, { animate: false });
+    state.waypoints = [{ lat: rop.lat, lng: rop.lng, name: 'LLIB' }, { lat: rop.lat + 0.3, lng: rop.lng, name: 'X' }];
+    syncLegs();
+    window.showVorStations = false;     // VOR overlay OFF
+    draw();
+  });
+  const p = await page.evaluate(() => {
+    const rop = vors.find(v => v.ident === 'ROP');
+    const c = map.latLngToContainerPoint([rop.lat, rop.lng]);
+    return { x: c.x, y: c.y };
+  });
+  await page.mouse.click(p.x, p.y);
+  await expect(page.locator('.point-choice-modal')).toHaveCount(1);
+  // One of the options names the VOR (R-/DME or the ROP ident in the meta).
+  const metas = await page.locator('.point-choice-option').allTextContents();
+  expect(metas.join(' ')).toContain('ROP');
+});
