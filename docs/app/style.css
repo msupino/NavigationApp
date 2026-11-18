@@ -10801,9 +10801,11 @@ body.theme-light #export-progress { background: #fafcff; color: #1d2430; border-
 .fp-aircraft { position: relative; }
 /* The VOR row sits right under the Aircraft row: one separator below both. */
 .fp-aircraft:has(+ .fp-vor-row) { border-bottom: 0; margin-bottom: 0; padding-bottom: 4px; }
-.fp-vor-row { padding-top: 0; }
-.fp-vor-row .fp-vor { margin-left: 0; }
-.fp-vor-row .fp-vor-2 { margin-left: 0; }
+/* The two VOR pickers stay on one line (scroll if they must), rather than wrapping: a wrapped
+   second row made the plan panel taller than the phone's frame, and the position restore then
+   clamped it to the top -- losing a remembered drag position. */
+.fp-vor-row { padding-top: 0; flex-wrap: nowrap; overflow-x: auto; }
+.fp-vor-row .fp-vor, .fp-vor-row .fp-vor-2 { margin-left: 0; flex: 0 0 auto; }
 /* A picker's label and its MHz never break mid-phrase: on a phone "VOR 2:" became "VOR / 2:". */
 .fp-vor > span, .fp-vor-2 > span { white-space: nowrap; }
 .fp-aircraft .ac-panel { display: contents; }
