@@ -5685,6 +5685,14 @@ function drawClosedLegs() {
   const when = (typeof notamViewNow === 'function') ? notamViewNow() : Date.now();
   const idx = closedLegIndexes(when);
   window.closedLegs = idx;
+  // Tell the map clock when the route's closable state flips (route edited, NOTAMs arrived),
+  // so the slider enables as a closable corridor appears and relaxes when it is gone -- without
+  // re-running this on every draw. drawClosedLegs runs after each route/NOTAM change.
+  const closable = routeHasClosableLeg();
+  if (closable !== window.__routeClosable) {
+    window.__routeClosable = closable;
+    if (window.NavAid && typeof NavAid.refreshMapClock === 'function') NavAid.refreshMapClock();
+  }
   if (!idx.length) return;
   octx.save();
   octx.strokeStyle = tune('closedLegColor');
@@ -5702,6 +5710,27 @@ function drawClosedLegs() {
   octx.restore();
 }
 if (typeof window !== 'undefined') window.closedLegIndexes = closedLegIndexes;
+
+// Does the route touch a corridor any route-closure NOTAM names, regardless of whether it is
+// shut at the current clock? Time-independent on purpose: a leg closed now and a leg that will
+// shut later both make the map clock a live consumer, so the slider stays usable to scrub to
+// the hour the corridor opens or closes -- even with no Extra layer on. Reported: a closed
+// route is painted without any layer, but the slider was disabled so you could not see when it
+// opened.
+function routeHasClosableLeg() {
+  if (typeof fplNotamClosedPairs !== 'function') return false;
+  const wps = state.waypoints || [];
+  if (wps.length < 2) return false;
+  if (typeof notams === 'undefined' || !Array.isArray(notams) || !notams.length) return false;
+  const closable = fplNotamClosedPairs(null);   // null `when` -> every closure, in force or not
+  if (!closable.size) return false;
+  for (let i = 0; i < wps.length - 1; i++) {
+    const a = wps[i] && wps[i].name, b = wps[i + 1] && wps[i + 1].name;
+    if (a && b && closable.has([String(a).toUpperCase(), String(b).toUpperCase()].sort().join('|'))) return true;
+  }
+  return false;
+}
+if (typeof window !== 'undefined') window.routeHasClosableLeg = routeHasClosableLeg;
 
 function drawLegs() {
   const zoomScale = legZoomScale();

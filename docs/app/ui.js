@@ -14463,6 +14463,12 @@ const NavWxTime = (function () {
   // which is exactly when it decides something.
   const planningFormOpen = () => !!document.querySelector('.navlog-modal');
 
+  // A route that crosses a corridor a NOTAM closes is a timed consumer too, with no Extra layer
+  // on: the closed legs are painted on the chart at this clock's hour, and the pilot scrubs to
+  // find when the corridor opens. Requested: closed routes show without any layer, so the slider
+  // must stay usable to see when they open.
+  const routeTimed = () => typeof routeHasClosableLeg === 'function' && routeHasClosableLeg();
+
   // "+14h · 21:00Z" is a Hebrew word, a number and a clock in one string, and in an RTL
   // paragraph the bidi algorithm runs them together: "+14ש · 21:00Z" rendered as
   // "+1421:00 · שZ", with the digits merged and the Z adrift. Each part gets its own <bdi>
@@ -14543,7 +14549,7 @@ const NavWxTime = (function () {
     }
   }
   function refresh() {
-    const timed = anyTimedLayer() || inspectorTimed() || planningFormOpen();
+    const timed = anyTimedLayer() || inspectorTimed() || planningFormOpen() || routeTimed();
     const was = el.hidden;
     // On a phone the clock is a row under the strip, opened from the hour shown there, so it
     // spends no map while nobody is moving it; hiding it while idle is no longer needed there.
