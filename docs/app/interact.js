@@ -5874,11 +5874,21 @@ map.on('mousedown', e => {
   });
   let ovHits = includeOverlayChoices ? hitOverlayMarkerCandidates(p.x, p.y) : [];
   // A VOR co-located with a field or a route point is offered even with the VOR layer off, but
-  // only when there is such a point here -- never on a bare tap. Deduped against a VOR the layer
-  // already surfaced.
+  // only when it sits on the SAME point (not merely within its click radius: a tap near, but not
+  // on, a VOR must still select the waypoint) and only when such a point is here -- never a bare
+  // tap. Deduped against a VOR the layer already surfaced.
+  const vorSameSpot = (a, b) => a && b && (typeof sameMapPoint === 'function'
+    ? sameMapPoint(a, b) : (Math.abs(a.lat - b.lat) < 2e-4 && Math.abs(a.lng - b.lng) < 2e-4));
+  const vorIsColocated = (idx) => {
+    const v = vors && vors[idx];
+    if (!v) return false;
+    return wpHits.some(w => vorSameSpot(state.waypoints[w.index], v))
+      || ovHits.some(h => h.type === 'airfield' && airfields && vorSameSpot(airfields[h.index], v))
+      || ovHits.some(h => h.type === 'navwp' && navWP && vorSameSpot(navWP[h.index], v));
+  };
   if (includeOverlayChoices && (wpHits.length || ovHits.some(h => h.type === 'airfield' || h.type === 'navwp'))) {
     const haveVor = new Set(ovHits.filter(h => h.type === 'vor').map(h => h.index));
-    for (const c of coincidentVorCandidates(p.x, p.y)) if (!haveVor.has(c.index)) ovHits.push(c);
+    for (const c of coincidentVorCandidates(p.x, p.y)) if (!haveVor.has(c.index) && vorIsColocated(c.index)) ovHits.push(c);
   }
   // While the map is PRIMED (see routePrimingArmed: empty route and the hint still up), a
   // press on a CHART POINT falls through to the add path instead of being consumed as a
@@ -5929,7 +5939,7 @@ map.on('mousedown', e => {
   // A route point that also sits on a VOR (and so, usually, a field) opens the chooser, so the
   // coincident VOR is reachable even with the VOR layer off. Airfield / nav-point still merge
   // into the waypoint inside showPointChoice, so this only fires for the non-merging VOR.
-  if (wpHits.length && ovAll.some(c => c.type === 'vor')) {
+  if (wpHits.length && ovAll.some(c => c.type === 'vor' && vorIsColocated(c.index))) {
     downHit = true;
     showPointChoice(withLegChoices(wpHits.concat(ovAll), p.x, p.y));
     return;
@@ -6617,11 +6627,21 @@ mapEl.addEventListener('touchstart', e => {
   });
   let ovHits = includeOverlayChoices ? hitOverlayMarkerCandidates(p.x, p.y) : [];
   // A VOR co-located with a field or a route point is offered even with the VOR layer off, but
-  // only when there is such a point here -- never on a bare tap. Deduped against a VOR the layer
-  // already surfaced.
+  // only when it sits on the SAME point (not merely within its click radius: a tap near, but not
+  // on, a VOR must still select the waypoint) and only when such a point is here -- never a bare
+  // tap. Deduped against a VOR the layer already surfaced.
+  const vorSameSpot = (a, b) => a && b && (typeof sameMapPoint === 'function'
+    ? sameMapPoint(a, b) : (Math.abs(a.lat - b.lat) < 2e-4 && Math.abs(a.lng - b.lng) < 2e-4));
+  const vorIsColocated = (idx) => {
+    const v = vors && vors[idx];
+    if (!v) return false;
+    return wpHits.some(w => vorSameSpot(state.waypoints[w.index], v))
+      || ovHits.some(h => h.type === 'airfield' && airfields && vorSameSpot(airfields[h.index], v))
+      || ovHits.some(h => h.type === 'navwp' && navWP && vorSameSpot(navWP[h.index], v));
+  };
   if (includeOverlayChoices && (wpHits.length || ovHits.some(h => h.type === 'airfield' || h.type === 'navwp'))) {
     const haveVor = new Set(ovHits.filter(h => h.type === 'vor').map(h => h.index));
-    for (const c of coincidentVorCandidates(p.x, p.y)) if (!haveVor.has(c.index)) ovHits.push(c);
+    for (const c of coincidentVorCandidates(p.x, p.y)) if (!haveVor.has(c.index) && vorIsColocated(c.index)) ovHits.push(c);
   }
   // While the map is PRIMED (see routePrimingArmed: empty route and the hint still up), a
   // press on a CHART POINT falls through to the add path instead of being consumed as a
@@ -6656,7 +6676,7 @@ mapEl.addEventListener('touchstart', e => {
     showPointChoice(withLegChoices(commChoiceHits, p.x, p.y));
     return;
   }
-  if (wpHits.length && ovAll.some(c => c.type === 'vor')) {
+  if (wpHits.length && ovAll.some(c => c.type === 'vor' && vorIsColocated(c.index))) {
     e.preventDefault();
     showPointChoice(withLegChoices(wpHits.concat(ovAll), p.x, p.y));
     return;
