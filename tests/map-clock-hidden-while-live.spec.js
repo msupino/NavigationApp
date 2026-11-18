@@ -16,6 +16,15 @@ async function boot(page) {
     && window.NavAid && NavAid.refreshMapClock && typeof gpsUpdateReadout === 'function');
 }
 
+// The desktop takes the idle clock away on its own now, so the live/following rule is tested
+// with a timed layer up: the clock is on screen to begin with, and going live is what removes
+// it. (The wind overlay stands in for NOTAM, which a nogist boot disables without a feed.)
+const timedUp = (page) => page.evaluate(() => {
+  const cb = document.getElementById('show-wind-cb');
+  if (!cb.checked) { cb.checked = true; cb.dispatchEvent(new Event('change', { bubbles: true })); }
+  NavAid.refreshMapClock();
+});
+
 const clockHidden = (page) => page.evaluate(() => document.getElementById('map-time').hidden);
 
 // Live the way the app judges it: gpsPositionLive() reads these three.
@@ -28,6 +37,7 @@ const setLive = (page, how) => page.evaluate((mode) => {
 
 test('showing a position puts the clock away, and stopping brings it back', async ({ page }) => {
   await boot(page);
+  await timedUp(page);
   expect(await clockHidden(page), 'nothing live yet').toBe(false);
   await setLive(page, 'location');
   expect(await clockHidden(page)).toBe(true);
@@ -48,6 +58,7 @@ for (const mode of ['recording', 'sim']) {
 // nothing on that page answers to it.
 test('following someone else\'s aeroplane puts the clock away too', async ({ page }) => {
   await boot(page);
+  await timedUp(page);
   await page.waitForFunction(() => window.NavAid && NavAid.followMe);
   expect(await clockHidden(page), 'not following yet').toBe(false);
   const hiddenWhileViewing = await page.evaluate(() => {
@@ -84,11 +95,12 @@ test('the look-ahead keeps running behind it', async ({ page }) => {
 
 test('the gist can keep it on screen in flight', async ({ page }) => {
   await boot(page);
+  await timedUp(page);                 // a layer answers to it, or the idle rule would hide it anyway
   await page.evaluate(() => { NavAid.tuningDefaults.hideMapClockWhileLive.value = false; });
   await setLive(page, 'location');
   expect(await clockHidden(page)).toBe(false);
-  // ...and it is dim or lit on the usual rule, not on this one.
-  expect(await page.evaluate(() => document.getElementById('map-time').classList.contains('idle'))).toBe(true);
+  // ...and it is lit on the usual rule, not on this one.
+  expect(await page.evaluate(() => document.getElementById('map-time').classList.contains('idle'))).toBe(false);
 });
 
 test('the feature switch still wins over both', async ({ page }) => {
@@ -144,16 +156,22 @@ test('on a phone the clock spends no map until the hour in the strip is tapped',
   expect(await clockShown(page)).toBe(false);
 });
 
-test('the desktop still dims rather than hides', async ({ page }) => {
+test('the desktop takes the idle clock away too, and the gist can keep it dimmed in place', async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 900 });
   await page.goto('?lang=en&nogist');
-  await page.waitForFunction(() => document.getElementById('map-time') && window.NavAid);
-  // No deck: the strip has a fixed place and the room to keep it, and a control that
-  // vanishes from a fixed place is one a pilot hunts for.
+  await page.waitForFunction(() => document.getElementById('map-time') && window.NavAid && NavAid.refreshMapClock);
+  // No deck, and nothing answering to the clock: it is taken away rather than left dim on a
+  // band of chart (requested). The class still marks it idle while it is gone.
   expect(await page.evaluate(() => document.body.classList.contains('deck-on'))).toBe(false);
+  expect(await clockHidden(page)).toBe(true);
+  expect(await page.evaluate(() => document.getElementById('map-time').classList.contains('idle'))).toBe(true);
+  // House rule: only the gist removes a control, so the old dim-in-place stays available.
+  await page.evaluate(() => {
+    NavAid.tuningDefaults.hideIdleMapClockOnDesktop.value = false;
+    NavAid.refreshMapClock();
+  });
   expect(await clockHidden(page)).toBe(false);
-  expect(await page.evaluate(() => document.getElementById('map-time').classList.contains('idle')))
-    .toBe(true);
+  expect(await page.evaluate(() => document.getElementById('map-time').classList.contains('idle'))).toBe(true);
 });
 
 test('opened on a phone, the clock shows even with nothing timed, and Now folds it away', async ({ page }) => {
