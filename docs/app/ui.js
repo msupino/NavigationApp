@@ -14558,6 +14558,12 @@ const NavWxTime = (function () {
     // rebuilt for every selection, so there is no place to keep.
     if (inspStrip) inspStrip.hidden = !featureOn() || !timed;
     el.classList.toggle('idle', !timed);
+    // Dim it AND make it inert while nothing answers to it. A dimmed slider a pilot can still
+    // drag moves a look-ahead no layer is reading -- reported as "dimmed, but still slidable".
+    // The readout stays, so the clock still says "now"; Now stays governed by offLive, so an
+    // hour scrubbed before the last layer went off can still be brought back to live.
+    slider.disabled = !timed;
+    if (inspSlider) inspSlider.disabled = !timed;
     label();
   }
   NavAid.refreshMapClock = refresh;

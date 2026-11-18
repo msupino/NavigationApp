@@ -5344,7 +5344,10 @@ body.theme-light .msa-low .val { color: #c0392b; }
 /* Nothing time-dependent is switched on: the clock stays put and says so by going quiet,
    rather than vanishing and leaving the pilot to wonder where it went. */
 .map-time.idle { opacity: 0.45; }
+/* Idle, the slider is disabled, not just greyed: a dimmed control a pilot can still drag would
+   move a look-ahead no layer is reading. */
 .map-time.idle #map-time-slider { filter: grayscale(1); }
+.map-time input[type="range"]:disabled { cursor: not-allowed; }
 .map-time input[type="range"] {
   flex: 0 1 420px;
   max-width: 420px;
