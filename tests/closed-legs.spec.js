@@ -58,3 +58,33 @@ test('a closure NOTAM is judged at the time asked, not now (filing a later depar
   expect(r.atNow).toBe(false);
   expect(r.later).toBe(true);
 });
+
+test('a route on a closure NOTAM keeps the map clock live with no Extra layer (slider usable)', async ({ page }) => {
+  await boot(page);
+  await page.waitForFunction(() => window.NavAid && NavAid.refreshMapClock && typeof routeHasClosableLeg === 'function');
+  const r = await page.evaluate((hour) => {
+    const now = Date.now();
+    // No Extra layer on; the only time-dependent thing is the closed corridor the route crosses.
+    const before = {
+      idle: document.getElementById('map-time').classList.contains('idle'),
+      disabled: document.getElementById('map-time-slider').disabled,
+      closable: routeHasClosableLeg(),
+    };
+    new Function('n', 'notams = n;')([{ id: 'A0009/26', text: 'RTE AFULA-TAVOR CLSD DUE TO MIL ACT',
+      start: new Date(now - hour).toISOString(), end: new Date(now + 4 * hour).toISOString() }]);
+    draw();   // drawClosedLegs nudges the clock when the closable state flips
+    const after = {
+      idle: document.getElementById('map-time').classList.contains('idle'),
+      disabled: document.getElementById('map-time-slider').disabled,
+      closable: routeHasClosableLeg(),
+    };
+    return { before, after };
+  }, hour);
+  // No closure to begin with: the clock is idle and (on the desktop) its slider disabled.
+  expect(r.before.closable).toBe(false);
+  expect(r.before.idle).toBe(true);
+  // With the route crossing the closed corridor, the clock is live and the slider usable.
+  expect(r.after.closable).toBe(true);
+  expect(r.after.idle).toBe(false);
+  expect(r.after.disabled).toBe(false);
+});
