@@ -159,7 +159,9 @@ test('flight plan: VOR 2 reads its own Radial/DME to the leg start, beside VOR 1
     return { r: 'R-' + rd.radial, d: String(rd.dme) };
   });
   const row = page.locator('.flight-table tbody tr').first();
-  await expect(row.locator('td').nth(r2)).toHaveText(exp.r);
+  // Radial 2 carries its own per-leg picker, like Radial 1, plus the value.
+  await expect(row.locator('td').nth(r2).locator('select.fp-leg-vor2')).toHaveCount(1);
+  await expect(row.locator('td').nth(r2).locator('.fp-radial-val')).toHaveText(exp.r);
   await expect(row.locator('td').nth(r2 + 1)).toHaveText(exp.d);
 });
 
@@ -197,4 +199,26 @@ test('retuning a leg\'s VOR carries to the legs after it, until a later retune',
   await legSel(1).selectOption('NAT');
   expect(await page.evaluate(() => state.legs.map(l => l.vorRef || null)))
     .toEqual([null, 'NAT', 'NAT', 'BGN']);
+});
+
+test('VOR 2 has a per-leg picker too, and a retune carries forward like VOR 1', async ({ page }) => {
+  await boot(page);
+  await page.evaluate(() => {
+    state.waypoints = [
+      { lat: 32.0, lng: 34.85, name: 'A' }, { lat: 32.2, lng: 34.88, name: 'B' },
+      { lat: 32.4, lng: 34.91, name: 'C' }, { lat: 32.6, lng: 34.95, name: 'D' },
+    ];
+    syncLegs(); draw();
+  });
+  await page.locator('#plan').click();
+  await page.locator('.modal-back').waitFor();
+  await page.locator('#fp-vor-select-2').selectOption('NAT');      // route VOR 2 on: pickers show
+  const sel2 = (i) => page.locator('.flight-table').first().locator('tbody tr').nth(i).locator('select.fp-leg-vor2');
+  await sel2(1).selectOption('BGN');
+  expect(await page.evaluate(() => state.legs.map(l => l.vorRef2 || null))).toEqual([null, 'BGN', 'BGN']);
+  // VOR 1's per-leg choices are untouched by VOR 2's.
+  expect(await page.evaluate(() => state.legs.map(l => l.vorRef || null))).toEqual([null, null, null]);
+  // And it is a route field: it survives the route round trip.
+  const rt = await page.evaluate(() => JSON.parse(JSON.stringify(serializeRoute())).legs.map(l => l.vorRef2 || null));
+  expect(rt).toEqual([null, 'BGN', 'BGN']);
 });

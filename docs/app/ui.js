@@ -5352,6 +5352,7 @@ document.getElementById('reverse').onclick = () => {
       // vorRef silently moved that leg's published Radial/DME back to the GLOBAL VOR;
       // dropping hideKite made a deliberately decluttered leg redraw its kite.
       ...(l.vorRef ? { vorRef: l.vorRef } : {}),
+      ...(l.vorRef2 ? { vorRef2: l.vorRef2 } : {}),
       ...(l.hideKite ? { hideKite: 1 } : {}),
       ...(l.showKite ? { showKite: 1 } : {}),
       ...(l.hideDrift ? { hideDrift: 1 } : {}),

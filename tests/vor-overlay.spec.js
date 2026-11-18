@@ -495,7 +495,7 @@ test.describe('VOR overlay + radial/DME (#404)', () => {
       const rd = vorRadialDme(activeVor(), 32.46472, 34.91222);
       return 'R-' + rd.radial;
     });
-    await expect(retRow.locator('td .fp-radial-val')).toHaveText(expected);
+    await expect(retRow.locator('td.fp-vor-col .fp-radial-val')).toHaveText(expected);
   });
 
   test('flight plan: print export includes radial/DME values', async ({ page }) => {

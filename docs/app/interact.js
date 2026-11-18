@@ -1302,6 +1302,7 @@ function splitLegCopy(source) {
     cumLabelRet: d.cumLabelRet,
   };
   if (source && source.vorRef) leg.vorRef = source.vorRef;
+  if (source && source.vorRef2) leg.vorRef2 = source.vorRef2;
   for (const key of ['_legAltitudeInboundBlocked', '_legAltitudeOutboundBlocked', '_legAltitudeOneWay']) {
     if (source && source[key]) leg[key] = source[key];
   }

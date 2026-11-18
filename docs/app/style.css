@@ -64,7 +64,7 @@ body.measuring #map .leaflet-pane * { cursor: crosshair; }
 .flight-table .fp-col-hidden { display: none !important; }
 .fp-vor, .fp-vor-2 { display: inline-flex; align-items: center; gap: 4px; margin-left: 8px; }
 .fp-vor-freq, .fp-vor-freq-2 { color: #9ad; font-size: 12px; }
-.fp-leg-vor { font-size: 10px; max-width: 56px; margin-inline-end: 3px; vertical-align: middle;
+.fp-leg-vor, .fp-leg-vor2 { font-size: 10px; max-width: 56px; margin-inline-end: 3px; vertical-align: middle;
   background: #2f2b2b; color: #e8e8e8; border: 1px solid #443f3f; border-radius: 3px; }
 .fp-radial-val { white-space: nowrap; }
 
@@ -3127,7 +3127,10 @@ body.printing-plan .ac-custom { display: none !important; }
   }
   body.printing-plan .flight-table {
     width: 100%;
-    table-layout: fixed;
+    /* Sized by content, not by fixed per-position widths: those were pinned with nth-child
+       for the original 14 columns, so a hidden or added column (VOR 2's pair, Freq) shifted
+       them and the last columns got ~0% -- each value printed one character per line. */
+    table-layout: auto;
     margin: 0 0 12px;
     color: #111;
     background: #fff;
@@ -3153,8 +3156,14 @@ body.printing-plan .ac-custom { display: none !important; }
     border: 1px solid #555;
     text-align: start;
     vertical-align: top;
+    /* Figures never break: "R-234" or "13:50" split per character is unreadable. */
+    white-space: nowrap;
+  }
+  /* Only the waypoint names may wrap, and only between words. */
+  body.printing-plan .flight-table .fp-col-from,
+  body.printing-plan .flight-table .fp-col-to {
     white-space: normal;
-    overflow-wrap: anywhere;
+    overflow-wrap: break-word;
   }
   body.printing-plan .flight-table th {
     position: static;
@@ -3169,7 +3178,7 @@ body.printing-plan .ac-custom { display: none !important; }
   body.printing-plan .flight-table td:last-child:empty {
     display: none !important;
   }
-  body.printing-plan .flight-table .fp-vor-col {
+  body.printing-plan .flight-table:not(.no-vor) .fp-vor-col {
     display: table-cell !important;
     font-size: inherit;
     padding: 1px 2px;
@@ -3177,30 +3186,16 @@ body.printing-plan .ac-custom { display: none !important; }
   body.printing-plan .flight-table .fp-col-hidden {
     display: none !important;
   }
-  body.printing-plan .flight-table .fp-vor-col select {
+  body.printing-plan .flight-table .fp-vor-col select,
+  body.printing-plan .flight-table .fp-vor2-col select {
     display: none !important;
   }
   body.printing-plan .flight-table .fp-vor2-col {
     font-size: inherit;
     padding: 1px 2px;
   }
-  /* # From To Hdg Dist Speed Alt Time Fuel Cum.time Cum.fuel ETA Radial DME */
-  body.printing-plan .flight-table th:nth-child(1) { width: 3%; }
-  body.printing-plan .flight-table th:nth-child(2),
-  body.printing-plan .flight-table th:nth-child(3) { width: 9%; }
-  body.printing-plan .flight-table th:nth-child(4),
-  body.printing-plan .flight-table th:nth-child(5),
-  body.printing-plan .flight-table th:nth-child(6) { width: 6%; }
-  body.printing-plan .flight-table th:nth-child(7),
-  body.printing-plan .flight-table th:nth-child(8),
-  body.printing-plan .flight-table th:nth-child(9),
-  body.printing-plan .flight-table th:nth-child(11) { width: 7%; }
-  body.printing-plan .flight-table th:nth-child(10) { width: 8%; }
-  body.printing-plan .flight-table th:nth-child(12) { width: 6%; }
-  body.printing-plan .flight-table th:nth-child(13) { width: 9%; }
-  body.printing-plan .flight-table th:nth-child(14) { width: 6%; }
   body.printing-plan .fp-radial-val {
-    white-space: normal;
+    white-space: nowrap;
   }
   body.printing-plan .plan-name,
   body.printing-plan .plan-num {
@@ -3286,7 +3281,7 @@ body.printing-plan .ac-custom { display: none !important; }
   /* Flight-plan table is wider than a phone — scroll sideways instead of
      truncating columns. With the narrow default column set (see io.js) plus these
      tighter metrics the flown-by numbers fit without any sideways scroll at all. */
-  .fp-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .fp-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; overscroll-behavior: contain; }
   .fp-scroll table { font-size: 12px; }
   .fp-scroll th,
   .fp-scroll td { padding: 3px 4px; }
@@ -3664,6 +3659,8 @@ html:not([dir="rtl"]) .comm-section.has-atc .row:not(:has(.atc-inline)) > .val:h
   pointer-events: auto;
   position: absolute;
   margin: 0;
+  /* Keep the plan's own scroll from chaining to the click-through map behind it. */
+  overscroll-behavior: contain;
 }
 /* Chart modals reuse the flight plan's non-blocking backdrop so the map stays pannable
    underneath, and inherited its 2000 with it — below the inspector (2320). Opening the
@@ -4249,7 +4246,8 @@ body.theme-light .route-template-path { color: #1f252c; }
 body.theme-light .route-template-description,
 body.theme-light .route-template-empty { color: #647184; }
 /* Per-leg VOR override dropdown in the flight-plan table — was dark on light. */
-body.theme-light .fp-leg-vor {
+body.theme-light .fp-leg-vor,
+body.theme-light .fp-leg-vor2 {
   color: #1f252c;
   background: #fff;
   border-color: #b8c0cc;
@@ -10805,7 +10803,9 @@ body.theme-light #export-progress { background: #fafcff; color: #1d2430; border-
 .fp-aircraft:has(+ .fp-vor-row) { border-bottom: 0; margin-bottom: 0; padding-bottom: 4px; }
 .fp-vor-row { padding-top: 0; }
 .fp-vor-row .fp-vor { margin-left: 0; }
-.fp-vor-row .fp-vor-2 { margin-inline-start: 14px; }
+.fp-vor-row .fp-vor-2 { margin-left: 0; }
+/* A picker's label and its MHz never break mid-phrase: on a phone "VOR 2:" became "VOR / 2:". */
+.fp-vor > span, .fp-vor-2 > span { white-space: nowrap; }
 .fp-aircraft .ac-panel { display: contents; }
 #ac-panel-home { display: none; }
 .ac-type-row { display: inline-flex; align-items: center; }
