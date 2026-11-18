@@ -250,7 +250,7 @@ const GLYPH_ICONS = { '🗑': 'trash', '↻': 'reset', '🔥': 'hotspot', '⏱':
   '🖨': 'print', '⊘': 'hide', '✓': 'check', '✔': 'check', '⚠': 'warn', '✅': 'check' };
 // Every button carries an icon ("every button should have an icon, new or existing"). The ones
 // whose label has no glyph to key on are named by their id or class instead.
-const BUTTON_ICONS = { 'insp-direct-to': 'direct', 'insp-add-to-route': 'plus', 'insp-add-rp': 'plus', 'insp-vor-use-ref': 'compass',
+const BUTTON_ICONS = { 'insp-direct-to': 'direct', 'insp-add-to-route': 'plus', 'insp-add-rp': 'plus', 'insp-vor-use-ref': 'compass', 'insp-vor-use-ref-2': 'compass',
   'satellite-expand-hint': 'expand', 'insp-charts-btn': 'charts', 'add-freq-change-btn': 'antenna',
   'hours-toggle': 'list' };
 function buttonIconName(btn) {

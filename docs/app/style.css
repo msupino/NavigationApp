@@ -2330,7 +2330,10 @@ body.theme-light .resize-grip {
   flex-shrink: 0;
 }
 .row .val.vor-radial-val {
-  min-width: 92px;
+  /* Wide enough for the longest reading ("R-360° / 999.9 NM"), so VOR 1's and VOR 2's
+     rows keep one readout width and their pickers line up -- at 92px a "6.1 NM" fitted
+     while a "55.5 NM" overflowed, and the second row's picker shifted sideways. */
+  min-width: max(92px, 17ch);
   direction: ltr;
   text-align: right;
   white-space: nowrap;

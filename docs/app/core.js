@@ -2509,6 +2509,8 @@ window.S = Object.assign({
   navLogFreqs: 'Frequencies',
   navLogVor: 'Reference VOR',
   navLogVor2: 'VOR 2',
+  fpRadial1: 'Radial 1',
+  fpDme1: 'DME 1',
   fpRadial2: 'Radial 2',
   fpDme2: 'DME 2',
   navLogDepFreqs: 'Departure frequencies',

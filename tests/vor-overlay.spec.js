@@ -239,10 +239,10 @@ test.describe('VOR overlay + radial/DME (#404)', () => {
     await page.locator('#plan').click();
     await page.locator('.modal-back').waitFor();
     const headers = await page.locator('.flight-table thead th').allTextContents();
-    expect(headers).toEqual(expect.arrayContaining(['Radial', 'DME']));
+    expect(headers).toEqual(expect.arrayContaining(['Radial 1', 'DME 1']));
     await page.locator('#fp-vor-select').selectOption('NAT');
     await expect(page.locator('.fp-vor-freq')).toContainText('112.40');
-    const radialIdx = headers.indexOf('Radial');
+    const radialIdx = headers.indexOf('Radial 1');
     const firstRow = page.locator('.flight-table tbody tr').first();
     // Radial/DME are for the leg's START point (A), not the destination.
     const expected = await page.evaluate(() => {
@@ -267,7 +267,7 @@ test.describe('VOR overlay + radial/DME (#404)', () => {
     await page.locator('.modal-back').waitFor();
     await page.locator('#fp-vor-select').selectOption('NAT');     // default = NAT
     const headers = await page.locator('.flight-table thead th').allTextContents();
-    const radialIdx = headers.indexOf('Radial');
+    const radialIdx = headers.indexOf('Radial 1');
     const firstRow = page.locator('.flight-table tbody tr').first();
     // Override leg 0 to BGN.
     await firstRow.locator('td').nth(radialIdx).locator('select.fp-leg-vor').selectOption('BGN');

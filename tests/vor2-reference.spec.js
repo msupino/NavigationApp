@@ -153,7 +153,7 @@ test('flight plan: VOR 2 reads its own Radial/DME to the leg start, beside VOR 1
   await page.locator('#fp-vor-select-2').selectOption('NAT');
   const headers = await page.locator('.flight-table thead th').allTextContents();
   const r2 = headers.indexOf('Radial 2');
-  expect(r2).toBeGreaterThan(headers.indexOf('DME'));      // after VOR 1's pair
+  expect(r2).toBeGreaterThan(headers.indexOf('DME 1'));      // after VOR 1's pair
   const exp = await page.evaluate(() => {
     const rd = vorRadialDme(vorByIdent('NAT'), 32.1, 34.85);
     return { r: 'R-' + rd.radial, d: String(rd.dme) };
@@ -173,4 +173,28 @@ test('the CSV carries VOR 2 only when it is tuned', async ({ page }) => {
   expect(await csvHead()).not.toContain('Radial 2');
   await page.locator('#fp-vor-select-2').selectOption('NAT');
   expect(await csvHead()).toContain('Radial 2');
+});
+
+test('retuning a leg\'s VOR carries to the legs after it, until a later retune', async ({ page }) => {
+  await boot(page);
+  await page.evaluate(() => {
+    state.waypoints = [
+      { lat: 32.0, lng: 34.85, name: 'A' }, { lat: 32.2, lng: 34.88, name: 'B' },
+      { lat: 32.4, lng: 34.91, name: 'C' }, { lat: 32.6, lng: 34.95, name: 'D' },
+      { lat: 32.8, lng: 35.0, name: 'E' },
+    ];
+    syncLegs(); draw();
+  });
+  await page.locator('#plan').click();
+  await page.locator('.modal-back').waitFor();
+  // A route VOR first: the per-leg pickers live in the Radial column, hidden until one is on.
+  const routeVor = await page.evaluate(() => vors.find(v => v.ident !== 'BGN' && v.ident !== 'NAT').ident);
+  await page.locator('#fp-vor-select').selectOption(routeVor);
+  const legSel = (i) => page.locator('.flight-table').first().locator('tbody tr').nth(i).locator('select.fp-leg-vor');
+  // Leg 4 (index 3) tuned to its own station first: a later retune that must hold.
+  await legSel(3).selectOption('BGN');
+  // Retune leg 2 (index 1): legs 2-3 follow, leg 4 keeps BGN, leg 1 is untouched.
+  await legSel(1).selectOption('NAT');
+  expect(await page.evaluate(() => state.legs.map(l => l.vorRef || null)))
+    .toEqual([null, 'NAT', 'NAT', 'BGN']);
 });

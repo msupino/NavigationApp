@@ -4696,8 +4696,10 @@ function showFlightPlan() {
     // Clock time over the leg's To point: departure + cumulative time (#667). After the
     // cumulative pair, so the CSV's leading columns keep their names and their order.
     { key: 'eta', label: S.fpEta || 'ETA', display: S.fpEta || 'ETA' },
-    { key: 'radial', label: baseHeaders[11] || 'Radial', display: dispHeaders[11] || 'Radial', className: 'fp-vor-col' },
-    { key: 'dme', label: baseHeaders[12] || 'DME', display: dispHeaders[12] || 'DME', className: 'fp-vor-col' },
+    // Shown as "Radial 1 / DME 1" now that VOR 2 has its own pair; the export names
+    // (label -> data-csv) stay "Radial" / "DME" -- the CSV header is a contract.
+    { key: 'radial', label: baseHeaders[11] || 'Radial', display: S.fpRadial1 || 'Radial 1', className: 'fp-vor-col' },
+    { key: 'dme', label: baseHeaders[12] || 'DME', display: S.fpDme1 || 'DME 1', className: 'fp-vor-col' },
     // VOR2's pair: the second reference, explicit-only (no per-leg override, no fallback).
     // After VOR1's pair so the CSV's existing columns keep their names and their order.
     { key: 'radial2', label: S.fpRadial2 || 'Radial 2', display: S.fpRadial2 || 'Radial 2', className: 'fp-vor2-col' },
@@ -4944,13 +4946,26 @@ function showFlightPlan() {
   // A Radial cell carries a per-leg VOR picker (default = global reference)
   // plus the radial value; the DME cell stays plain text. Returns the value
   // span so refresh() can update it.
-  function radialCellWithPicker(legIdx) {
+  // Retuning a leg's VOR carries forward, like a receiver that stays tuned: the legs after it
+  // that were on the same station follow, up to the first leg tuned to something else (a later
+  // retune holds). `step` is the table's flying order: +1 out, -1 on the return.
+  function propagateLegVor(legIdx, value, step) {
+    const legs = state.legs;
+    if (!legs[legIdx]) return;
+    const was = legs[legIdx].vorRef || null;
+    for (let j = legIdx; j >= 0 && j < legs.length; j += step) {
+      if (!legs[j]) break;
+      if (j !== legIdx && (legs[j].vorRef || null) !== was) break;
+      legs[j].vorRef = value;
+    }
+  }
+  function radialCellWithPicker(legIdx, step) {
     const td = planCell('');
     td.classList.add('fp-vor-col');
     const sel = document.createElement('select');
     sel.className = 'fp-leg-vor';
     sel.onchange = () => {
-      if (state.legs[legIdx]) state.legs[legIdx].vorRef = sanitizeVorRef(sel.value);
+      propagateLegVor(legIdx, sanitizeVorRef(sel.value), step || 1);
       refresh();
       if (retRefresh) retRefresh();
       // A per-leg VOR is a route edit: it has to reach the working-route snapshot and
@@ -5595,7 +5610,7 @@ function showFlightPlan() {
       tr.appendChild(fpCell('cumFuel', cumFuelCell));
       // The return is a flight of its own, with no departure time here: no ETA.
       tr.appendChild(fpCell('eta', planCell('')));
-      const radial = radialCellWithPicker(ri);
+      const radial = radialCellWithPicker(ri, -1);
       rRadialCells[i] = radial.val;
       tr.appendChild(fpCell('radial', radial.td));
       const dmeCell = planCell('');

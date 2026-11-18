@@ -749,6 +749,8 @@ window.S = {
   navLogFreqs: 'תדרים',
   navLogVor: 'VOR ייחוס',
   navLogVor2: 'VOR 2',
+  fpRadial1: 'רדיאל 1',
+  fpDme1: 'DME 1',
   fpRadial2: 'רדיאל 2',
   fpDme2: 'DME 2',
   navLogDepFreqs: 'תדרי שדה יציאה',
