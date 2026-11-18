@@ -27,12 +27,6 @@ const scrub = (page, h) => page.evaluate((v) => {
 
 test('the clock is on the map, not in a menu', async ({ page }) => {
   await boot(page);
-  // A timed layer on, so the clock is showing to be placed: on the desktop it is taken away
-  // while nothing answers to it (see the idle test below).
-  await page.evaluate(() => {
-    const cb = document.getElementById('show-wind-cb');
-    cb.checked = true; cb.dispatchEvent(new Event('change', { bubbles: true }));
-  });
   const where = await page.evaluate(() => {
     const el = document.getElementById('map-time');
     return { onMap: !el.closest('#toolbar'), hidden: el.hidden,
@@ -80,13 +74,11 @@ test('forward only, and no further than the tunable allows', async ({ page }) =>
   expect(await page.evaluate(() => NavAid.tuningDefaults.mapClockHoursAhead.value)).toBe(12);
 });
 
-test('with nothing time-dependent on, the desktop clock is taken away, and comes back with a timed layer', async ({ page }) => {
+test('with nothing time-dependent on, the clock goes quiet instead of vanishing', async ({ page }) => {
   await boot(page);
-  // Desktop (the suite's viewport): a control that answers to nothing is a band of chart
-  // spent on the word "now", so it is taken away while idle -- and it marks itself idle
-  // whether or not it is on screen, so the class holds while hidden.
+  // House rule: dim, never hide. A control that disappears is a control the pilot hunts for.
   expect(await page.evaluate(() => document.getElementById('map-time').classList.contains('idle'))).toBe(true);
-  expect(await page.evaluate(() => document.getElementById('map-time').hidden)).toBe(true);
+  expect(await page.evaluate(() => document.getElementById('map-time').hidden)).toBe(false);
   // The wind-effect toggle, because it does not fetch on enable: NOTAM and the wind grids
   // switch themselves back off when their feed cannot be reached, which in a test looks
   // exactly like the clock ignoring the toggle.
@@ -98,19 +90,6 @@ test('with nothing time-dependent on, the desktop clock is taken away, and comes
   });
   expect(on, 'the layer stayed on').toBe(true);
   expect(await page.evaluate(() => document.getElementById('map-time').classList.contains('idle'))).toBe(false);
-  expect(await page.evaluate(() => document.getElementById('map-time').hidden), 'back the moment it has work').toBe(false);
-});
-
-test('the gist can keep the desktop clock dimmed-in-place instead of taking it away', async ({ page }) => {
-  // House rule: only the gist removes a control. The default now takes the idle clock away on
-  // the desktop too, so the dim-in-place behaviour stays available behind the tunable.
-  await boot(page);
-  await page.evaluate(() => {
-    NavAid.tuningDefaults.hideIdleMapClockOnDesktop.value = false;
-    NavAid.refreshMapClock();
-  });
-  expect(await page.evaluate(() => document.getElementById('map-time').classList.contains('idle'))).toBe(true);
-  expect(await page.evaluate(() => document.getElementById('map-time').hidden)).toBe(false);
 });
 
 test('the weather charts snap to the sheet valid nearest that hour, and say which', async ({ page }) => {
@@ -404,12 +383,6 @@ for (const [name, w, h] of [['desktop', 1200, 850], ['phone', 390, 780]]) {
 
 test('the gist can withdraw the clock, and it comes back without a reload', async ({ page }) => {
   await boot(page);
-  // A timed layer on, so coming back is the feature returning and not the idle rule: the
-  // desktop otherwise takes the idle clock away on its own.
-  await page.evaluate(() => {
-    const cb = document.getElementById('show-wind-cb');
-    cb.checked = true; cb.dispatchEvent(new Event('change', { bubbles: true }));
-  });
   await page.evaluate(() => {
     NavAid.tuningDefaults.featureMapClock.value = false;
     NavAid.refreshMapClock();

@@ -889,7 +889,6 @@ NavAid.tuningDefaults = {
   featureRouteCheck: { value: true, type: 'bool',
     label: 'Feature: check the route against airspace, NOTAMs and the weather' },
   hideIdleMapClockOnPhone: { value: true, type: 'bool', label: 'Phone: take the map clock away when nothing answers to it' },
-  hideIdleMapClockOnDesktop: { value: true, type: 'bool', label: 'Desktop: take the map clock away when nothing answers to it' },
   hideMapClockWhileLive: { value: true, type: 'bool', label: 'Hide the map clock while a position is live' },
   mapClockHoursAhead: { value: 24, min: 1, max: 48, step: 1, label: 'Map clock range (h ahead)' },
 
@@ -1423,7 +1422,7 @@ NavAid.tuningGroups = [
   // sliders are live menu controls; their defaults live here.
   // The map's own clock: one control for every time-dependent layer, so it is not a
   // setting that belongs under any single layer's heading.
-  { name: 'Map clock', keys: ['featureMapClock', 'hideMapClockWhileLive', 'hideIdleMapClockOnPhone', 'hideIdleMapClockOnDesktop', 'mapClockHoursAhead'] },
+  { name: 'Map clock', keys: ['featureMapClock', 'hideMapClockWhileLive', 'hideIdleMapClockOnPhone', 'mapClockHoursAhead'] },
   { name: 'Route check', keys: ['featureRouteCheck'] },
   { name: 'Airfield wind', keys: ['afWindBarbLenPx', 'afWindBarbTickPx', 'afWindBarbTickGapPx', 'afWindBarbWidthPx', 'afWindCalmRadiusPx', 'afWindBarbColor', 'afWindOffsetPx', 'afWindLabelFontPx', 'afWindLabelHaloPx', 'afWindMinZoom', 'afWindLabelMinZoom', 'afWindGustDeltaKt', 'afWindRunwayMinKt', 'afWindCalmMaxKt', 'afWindCrossDeadbandKt', 'afWindCacheMin', 'afWindForecastDays', 'afWindSampleToleranceMin', 'afWindPennantWidthFactor', 'afWindPennantGapFactor', 'afWindFullTickSlantFactor', 'afWindHalfTickSlantFactor', 'afWindHalfTickLenFactor', 'afWindStartGapPx', 'afWindBarbHaloPx', 'afWindObsColor', 'afWindModelDashPx', 'afWindModelGapPx', 'afWindModelLabelAlpha', 'afWindObsMaxAgeMin', 'featureAirfieldWind'] },
   { name: 'Surface weather', keys: ['featureSurfaceWx', 'swxDotRingWidthPx', 'swxMinZoom', 'swxDotRadiusPx', 'swxLabelFontPx', 'swxLabelHaloPx', 'swxStationGapPx', 'swxMinSpacingPx', 'swxStationSpacingFactor', 'swxTempColor', 'swxWarnColor', 'swxCautionColor', 'swxQuietColor', 'swxSpreadWarnC', 'swxSpreadCautionC', 'swxBaseFtPerC', 'swxBaseWarnFt', 'swxBaseCautionFt', 'swxIsobarColor', 'swxIsobarWidthPx', 'swxIsobarMinLines', 'swxCentreFontPx', 'swxHighColor', 'swxLowColor', 'swxCentreRadiusSteps', 'swxCentreMinHpa', 'swxGridSouth', 'swxGridNorth', 'swxGridWest', 'swxGridEast', 'swxGridStepDeg', 'swxCacheMin', 'swxForecastDays', 'swxSampleToleranceMin', 'swxRetryMin'] },

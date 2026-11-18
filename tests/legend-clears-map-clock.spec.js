@@ -34,10 +34,7 @@ async function boot(page, lang) {
   await page.evaluate(() => {
     state.waypoints = [{ lat: 32.18, lng: 34.83, name: 'LLHZ' }, { lat: 32.78, lng: 35.04, name: 'LLHA' }];
     syncLegs(); draw();
-    // A timed layer, so the clock is live and on the chart to be measured against the legend.
-    // The wind overlay, not NOTAM: NOTAM switches itself back off without a feed, and the
-    // clock then goes idle and (on the desktop) is taken away mid-test, which races the audit.
-    const cb = document.getElementById('show-wind-cb');
+    const cb = document.getElementById('notam-cb');       // a timed layer, so the clock is live
     if (cb && !cb.checked) { cb.checked = true; cb.dispatchEvent(new Event('change', { bubbles: true })); }
   });
 }
