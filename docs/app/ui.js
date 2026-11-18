@@ -14562,8 +14562,14 @@ const NavWxTime = (function () {
     // drag moves a look-ahead no layer is reading -- reported as "dimmed, but still slidable".
     // The readout stays, so the clock still says "now"; Now stays governed by offLive, so an
     // hour scrubbed before the last layer went off can still be brought back to live.
-    slider.disabled = !timed;
-    if (inspSlider) inspSlider.disabled = !timed;
+    //
+    // ...but only the desktop's fixed, dimmed face is inert. On a phone the clock is hidden
+    // until the pilot taps the strip to open its row, and opening it is a deliberate request to
+    // scrub -- so leave it draggable there even with nothing yet on. (deck-on, not the open
+    // class: the row's open state is set without a refresh, so the layout is the stable gate.)
+    const dimmedInPlace = !timed && !document.body.classList.contains('deck-on');
+    slider.disabled = dimmedInPlace;
+    if (inspSlider) inspSlider.disabled = dimmedInPlace;
     label();
   }
   NavAid.refreshMapClock = refresh;
