@@ -969,6 +969,7 @@ NavAid.tuningDefaults = {
   vorMarkerWidthPx: { value: 2, min: 0.25, max: 8, step: 0.25, label: 'VOR marker stroke width (px)' },
   vorMarkerColor: { value: '#127a7a', type: 'color', label: 'VOR marker color' },
   vorSelectedColor: { value: '#e67e22', type: 'color', label: 'VOR selected (reference) color' },
+  vorSelectedColor2: { value: '#8e44ad', type: 'color', label: 'VOR 2 selected (reference) color' },
   vorLabelFontPx: { value: 10, min: 4, max: 28, step: 1, label: 'VOR label text size (px)' },
   vorRangeRingLabelAlpha: { value: 1, min: 0, max: 1, step: 0.05, label: 'VOR range ring label opacity' },
   reportBadgeRadiusPx: { value: 7, min: 3, max: 20, step: 0.5, label: 'Compulsory-report badge (▲) radius (px)' },
@@ -2202,6 +2203,8 @@ window.S = Object.assign({
   tbShowLsa: 'Show LSA bubbles',
   tbShowLsaTitle: 'Overlay LSA airspace areas (bubbles) — shown on the Low Alt layer',
   vorRefLabel: 'VOR Reference',
+  vorRef1Label: 'VOR 1',
+  vorRef2Label: 'VOR 2',
   vorRefNone: '— none —',
   tbShowWind: 'Show per-leg wind effect',
   tbShowWindTitle: 'Show the wind inputs, the per-leg wind arrows, and the wind-corrected readout in the leg inspector',
@@ -2289,6 +2292,10 @@ window.S = Object.assign({
   vorFreq: 'Frequency',
   vorUseRef: 'Use as reference VOR',
   vorRefActive: '✓ Reference VOR (tap to clear)',
+  vorUse1: 'Use as VOR 1',
+  vorUse1Active: '✓ VOR 1 (tap to clear)',
+  vorUse2: 'Use as VOR 2',
+  vorUse2Active: '✓ VOR 2 (tap to clear)',
   elevation: 'Elevation',
   navHebrew: 'Waypoint name',
   vorFrom: function(id) { return 'From ' + id + ' VOR'; }, // inspector / readout prefix
@@ -4250,8 +4257,12 @@ var showAirmet = false;     // IMS Tel Aviv FIR AIRMET hazard areas (Extra layer
 // is opt-in from View/Set rather than something a route inherits by surprise.
 var autoRouteCorridors = false;
 var vors = null;            // null = not loaded yet; [] or populated once fetched
-var vorRef = null;          // ident of the selected reference VOR (radial/DME source)
+var vorRef = null;          // ident of the selected reference VOR (radial/DME source) -- VOR1
 var inspectorVorRef = undefined; // undefined = follow vorRef; string/'' = inspector-only ref
+// A second reference VOR, like a cockpit's VOR2 receiver: an independent station the pilot
+// tunes for a fresh radial/DME alongside VOR1. Explicit-only -- unlike VOR1 it does NOT fall
+// back to the nearest usable station, so it reads only the one tuned, blank when out of range.
+var vorRef2 = null;         // ident of the SECOND reference VOR (VOR2)
 var forceSnap = false;      // when on, every click snaps to the
                             // absolute nearest airfield / nav-WP regardless
                             // of click distance (otherwise: 18 px radius).
@@ -5826,6 +5837,24 @@ function setReferenceVor(ident) {
   window.vorRingSuppressIdent = (!next && selIdent) ? selIdent : null;
   // Keep every picker showing the same answer.
   for (const id of ['vor-ref-select', 'fp-vor-select']) {
+    const el = document.getElementById(id);
+    if (el) el.value = next || '';
+  }
+  return next;
+}
+
+// VOR2's setter. Deliberately simpler than VOR1's: no inspector-only override to reset and no
+// selection-ring suppression, because VOR2 is an explicit second slot tuned from the toolbar or
+// a station's inspector, not the station the coverage ring answers to. Assign, persist, and
+// keep every VOR2 picker showing the same answer.
+function setReferenceVor2(ident) {
+  const next = ident || null;
+  window.vorRef2 = next;
+  try {
+    if (next) localStorage.setItem('navaid.vorRef2', next);
+    else localStorage.removeItem('navaid.vorRef2');
+  } catch (e) { /* storage unavailable */ }
+  for (const id of ['vor-ref-select-2', 'fp-vor-select-2']) {
     const el = document.getElementById(id);
     if (el) el.value = next || '';
   }

@@ -1724,6 +1724,10 @@ html[dir="rtl"] .leaflet-control.zulu-clock {
 .leaflet-bottom.leaflet-right .vor-readout {
   bottom: 46px;
 }
+/* VOR2's readout line, tinted to echo its distinct map highlight (vorSelectedColor2). A light
+   purple so it reads on the dark readout box in both themes. */
+.vor-readout .vor-readout-2 { color: #c89be0; }
+body.theme-light .vor-readout .vor-readout-2 { color: #7d3ca5; }
 .leaflet-bottom.leaflet-right .wind-readout {
   bottom: 66px;
 }

@@ -2610,14 +2610,32 @@ function vorReadoutText(lat, lng) {
   if (!v || !rd) return '';
   return v.ident + ' ' + S.vorRadialDme(rd.radial, rd.dme);
 }
-function setVorReadout(text) {
+// VOR2 is explicit-only: the one the pilot tuned, never a nearest-usable stand-in. Blank when
+// nothing is tuned or the point is past the readout range, so its line simply does not appear.
+function vorReadoutText2(lat, lng) {
+  if (typeof activeVor2 !== 'function') return '';
+  const v = activeVor2();
+  if (!v) return '';
+  const maxNm = Number(tune('vorReadoutMaxNm')) || 200;
+  const rd = vorRadialDme(v, lat, lng);
+  if (!rd || rd.dme > maxNm) return '';
+  return v.ident + ' ' + S.vorRadialDme(rd.radial, rd.dme);
+}
+function setVorReadout(line1, line2) {
   if (!vorReadoutBox) return;
-  vorReadoutBox.textContent = text || '';
-  vorReadoutBox.classList.toggle('show', !!text);
-  vorReadoutBox.setAttribute('aria-hidden', text ? 'false' : 'true');
+  const lines = [line1, line2].filter(Boolean);
+  vorReadoutBox.textContent = '';
+  lines.forEach((t, i) => {
+    const d = document.createElement('div');
+    d.textContent = t;
+    if (i === 1) d.className = 'vor-readout-2';   // VOR2 tinted to match its map highlight
+    vorReadoutBox.appendChild(d);
+  });
+  vorReadoutBox.classList.toggle('show', lines.length > 0);
+  vorReadoutBox.setAttribute('aria-hidden', lines.length ? 'false' : 'true');
 }
 function showVorReadout(lat, lng) {
-  setVorReadout(vorReadoutText(lat, lng));
+  setVorReadout(vorReadoutText(lat, lng), vorReadoutText2(lat, lng));
 }
 function showZoom() {
   // Two lines -- the zoom, then the scale -- in a box no wider than the round buttons it
@@ -11426,9 +11444,12 @@ for (const id of ['circuit-cb', 'training-cb', 'cvfr-cb', 'heli-cb', 'commfail-c
 const VOR_STATIONS_KEY = 'navaid.showVorStations';
 const VOR_LEGACY_KEY = 'navaid.showVor';
 const VOR_REF_KEY = 'navaid.vorRef';
+const VOR_REF2_KEY = 'navaid.vorRef2';
 const vorCb = document.getElementById('vor-cb');
 const vorRefRow = document.getElementById('vor-ref-row');
 const vorRefSelect = document.getElementById('vor-ref-select');
+const vorRefRow2 = document.getElementById('vor-ref-row-2');
+const vorRefSelect2 = document.getElementById('vor-ref-select-2');
 try {
   const storedStations = lsGet(VOR_STATIONS_KEY);
   const legacyStations = lsGet(VOR_LEGACY_KEY);
@@ -11441,27 +11462,34 @@ try {
   }
   const ref = lsGet(VOR_REF_KEY);
   if (ref) window.vorRef = ref;
+  const ref2 = lsGet(VOR_REF2_KEY);
+  if (ref2) window.vorRef2 = ref2;
 } catch (e) { /* storage unavailable */ }
-function populateVorRefSelect() {
-  if (!vorRefSelect) return;
-  vorRefSelect.innerHTML = '';
+function fillVorOptions(sel, current) {
+  if (!sel) return;
+  sel.innerHTML = '';
   const none = document.createElement('option');
   none.value = '';
   none.textContent = S.vorRefNone || '— none —';
-  vorRefSelect.appendChild(none);
+  sel.appendChild(none);
   for (const v of (vors || [])) {
     const opt = document.createElement('option');
     opt.value = v.ident;
     opt.textContent = v.ident + ' · ' + v.name + ' (' + v.freq + ')';
-    vorRefSelect.appendChild(opt);
+    sel.appendChild(opt);
   }
-  vorRefSelect.value = vorRef || '';
+  sel.value = current || '';
+}
+function populateVorRefSelect() {
+  fillVorOptions(vorRefSelect, vorRef);
+  fillVorOptions(vorRefSelect2, vorRef2);
 }
 function syncVorUI() {
   if (vorCb) vorCb.checked = showVorStations;
-  // The reference selector is always available: picking a VOR for
+  // The reference selectors are always available: picking a VOR for
   // radial/DME readouts is independent of the map-marker overlay.
   if (vorRefRow) vorRefRow.style.display = '';
+  if (vorRefRow2) vorRefRow2.style.display = '';
   populateVorRefSelect();
 }
 if (vorCb) {
@@ -11486,6 +11514,15 @@ if (vorRefSelect) {
     refreshInspectorIfVisible();
     if (typeof showCenterCoord === 'function') showCenterCoord();
     // Keep an open flight plan's Radial/DME columns in sync.
+    if (typeof refreshFlightPlan === 'function' && refreshFlightPlan) refreshFlightPlan();
+  };
+}
+if (vorRefSelect2) {
+  vorRefSelect2.onchange = e => {
+    setReferenceVor2(e.target.value);
+    draw();
+    refreshInspectorIfVisible();
+    if (typeof showCenterCoord === 'function') showCenterCoord();
     if (typeof refreshFlightPlan === 'function' && refreshFlightPlan) refreshFlightPlan();
   };
 }

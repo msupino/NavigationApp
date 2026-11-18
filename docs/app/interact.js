@@ -1593,7 +1593,7 @@ function appendVorRadialRow(body, lat, lng) {
   const row = document.createElement('div');
   row.className = 'row vor-radial-row';
   const label = document.createElement('label');
-  label.textContent = S.vorRefLabel || 'VOR Reference';
+  label.textContent = S.vorRef1Label || 'VOR 1';
   const controls = document.createElement('div');
   controls.className = 'vor-radial-controls';
   const sel = document.createElement('select');
@@ -1634,6 +1634,62 @@ function appendVorRadialRow(body, lat, lng) {
     // The published-coverage ring is canvas ink keyed on this override, so changing it
     // has to repaint. Without this the ring kept showing the previous station until
     // something else happened to redraw.
+    if (typeof draw === 'function') draw();
+  };
+  controls.append(sel, val);
+  row.append(label, controls);
+  render();
+  body.appendChild(row);
+  body.appendChild(info);
+}
+
+// VOR2's inspector row: the same radial/DME readout for this point, from the second reference.
+// Unlike VOR1 this slot is persistent (the dropdown writes vorRef2 straight away, like the
+// toolbar picker) and explicit-only -- no inspector-scoped override, no nearest-usable
+// fallback. Shown always, so the pilot can tune a second station from any point's panel.
+function appendVorRadialRow2(body, lat, lng) {
+  if (typeof vorByIdent !== 'function' || typeof vorRadialDme !== 'function') return;
+  if (vors === null && typeof loadVors === 'function') {
+    loadVors().then(() => { refreshInspectorIfVisible(); });
+  }
+  const row = document.createElement('div');
+  row.className = 'row vor-radial-row vor-radial-row-2';
+  const label = document.createElement('label');
+  label.textContent = S.vorRef2Label || 'VOR 2';
+  const controls = document.createElement('div');
+  controls.className = 'vor-radial-controls';
+  const sel = document.createElement('select');
+  sel.className = 'insp-vor-ref insp-vor-ref-2';
+  sel.setAttribute('aria-label', S.vorRef2Label || 'VOR 2');
+  const val = document.createElement('span');
+  val.className = 'val vor-radial-val';
+  const info = document.createElement('div');
+  info.className = 'vor-aip-info';
+  const renderInfo = (v) => {
+    info.textContent = '';
+    if (!v) return;
+    const rd2 = vorRadialDme(v, lat, lng);
+    if (rd2 && v.coverageNm && Number(rd2.dme) > v.coverageNm) {
+      const w = document.createElement('div');
+      w.className = 'vor-aip-line vor-aip-warn';
+      w.textContent = (S.vorInfoOutOfRange ||
+        'This point is {dme} NM out — beyond the published {cov} NM coverage.')
+        .replace('{dme}', rd2.dme).replace('{cov}', v.coverageNm);
+      info.appendChild(w);
+    }
+  };
+  const render = () => {
+    const v = vorByIdent(sel.value);
+    const rd = v ? vorRadialDme(v, lat, lng) : null;
+    val.textContent = rd ? (v.dmeOnly ? S.vorDmeOnlyReadout(rd.dme) : S.vorRadialDme(rd.radial, rd.dme)) : '';
+    val.title = v && rd ? S.vorFrom(v.ident) : '';
+    renderInfo(v);
+  };
+  populateInspectorVorSelect(sel, (typeof vorRef2 === 'string' && vorRef2) || '');
+  sel.onchange = () => {
+    setReferenceVor2(sel.value || null);
+    render();
+    if (typeof refreshFlightPlan === 'function' && refreshFlightPlan) refreshFlightPlan();
     if (typeof draw === 'function') draw();
   };
   controls.append(sel, val);
@@ -3465,7 +3521,7 @@ function appendAirfieldDetailRows(body, af, label) {
   // this runway today -- and they were being read a satellite photograph apart.
   appendAirfieldRunways(body, af);
   appendSatelliteSnippet(body, af, label || airfieldInspectorTitle(af));
-  appendVorRadialRow(body, af.lat, af.lng); appendSurfaceWxRow(body, af.lat, af.lng);
+  appendVorRadialRow(body, af.lat, af.lng); appendVorRadialRow2(body, af.lat, af.lng); appendSurfaceWxRow(body, af.lat, af.lng);
   // NOTAMs, charts and map layers are the three things the field publishes, and they read as
   // one group: a label, and its control at the end of the row. They were three designs --
   // a link, a big button under its own divider, a dropdown -- side by side (reported).
@@ -4424,12 +4480,14 @@ function showInspector() {
     // A VOR is a point to fly to like any other: the same two actions as a reporting point.
     appendDirectToButton(body, v);
     appendAddToRouteButton(body, v);
+    // Tune this station as VOR1 or VOR2 -- the two reference slots, like a cockpit's pair of
+    // receivers. Each button toggles its slot; tapping the one this station already fills clears it.
     const useBtn = document.createElement('button');
     useBtn.className = 'insp-btn';
     useBtn.id = 'insp-vor-use-ref';
     const isRef = vorRef === v.ident;
-    useBtn.textContent = isRef ? (S.vorRefActive || '✓ Reference VOR (tap to clear)')
-                               : (S.vorUseRef || 'Use as reference VOR');
+    useBtn.textContent = isRef ? (S.vorUse1Active || '✓ VOR 1 (tap to clear)')
+                               : (S.vorUse1 || 'Use as VOR 1');
     useBtn.onclick = () => {
       // setReferenceVor also drops this station's SELECTION ring when clearing, which is why
       // "tap to clear" used to look like it did nothing until the inspector was closed.
@@ -4438,6 +4496,18 @@ function showInspector() {
       draw(); showInspector();
     };
     body.appendChild(useBtn);
+    const useBtn2 = document.createElement('button');
+    useBtn2.className = 'insp-btn';
+    useBtn2.id = 'insp-vor-use-ref-2';
+    const isRef2 = vorRef2 === v.ident;
+    useBtn2.textContent = isRef2 ? (S.vorUse2Active || '✓ VOR 2 (tap to clear)')
+                                 : (S.vorUse2 || 'Use as VOR 2');
+    useBtn2.onclick = () => {
+      setReferenceVor2(isRef2 ? null : v.ident);
+      if (typeof refreshFlightPlan === 'function' && refreshFlightPlan) refreshFlightPlan();
+      draw(); showInspector();
+    };
+    body.appendChild(useBtn2);
   } else if (state.selected.type === 'airfield') {
     const af = airfields && airfields[state.selected.index];
     if (!af) {
@@ -4647,7 +4717,7 @@ function showInspector() {
     appendPointCoordinateRows(body, pt);
     appendPlaceRows(body, pt);
     appendSatelliteSnippet(body, pt, title.value);
-    appendVorRadialRow(body, pt.lat, pt.lng); appendSurfaceWxRow(body, pt.lat, pt.lng);
+    appendVorRadialRow(body, pt.lat, pt.lng); appendVorRadialRow2(body, pt.lat, pt.lng); appendSurfaceWxRow(body, pt.lat, pt.lng);
     appendDirectToButton(body, pt);
     appendAddToRouteButton(body, pt);
   } else if (state.selected.type === 'navwp') {
@@ -4666,7 +4736,7 @@ function showInspector() {
     appendPointCoordinateRows(body, nw);
     appendPlaceRows(body, nw);
     appendSatelliteSnippet(body, nw, title.value);
-    appendVorRadialRow(body, nw.lat, nw.lng); appendSurfaceWxRow(body, nw.lat, nw.lng);
+    appendVorRadialRow(body, nw.lat, nw.lng); appendVorRadialRow2(body, nw.lat, nw.lng); appendSurfaceWxRow(body, nw.lat, nw.lng);
     appendReportingRow(body, nw.name);
     // After Reporting, where the route waypoint has it: the same point opened from the map or
     // from the route reads in the same order.
@@ -4714,7 +4784,7 @@ function showInspector() {
     } else {
       appendPlaceRows(body, wp);
       appendSatelliteSnippet(body, wp, title.value);
-      appendVorRadialRow(body, wp.lat, wp.lng); appendSurfaceWxRow(body, wp.lat, wp.lng);
+      appendVorRadialRow(body, wp.lat, wp.lng); appendVorRadialRow2(body, wp.lat, wp.lng); appendSurfaceWxRow(body, wp.lat, wp.lng);
     }
     appendReportingRow(body, wp.name);
     // Comm-change badge/editor, including manual callouts. Known
