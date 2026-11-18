@@ -79,6 +79,9 @@ test('with nothing time-dependent on, the clock goes quiet instead of vanishing'
   // House rule: dim, never hide. A control that disappears is a control the pilot hunts for.
   expect(await page.evaluate(() => document.getElementById('map-time').classList.contains('idle'))).toBe(true);
   expect(await page.evaluate(() => document.getElementById('map-time').hidden)).toBe(false);
+  // ...and dim here means inert, not just grey: a slider a pilot can still drag would move a
+  // look-ahead no layer is reading. Reported: "dimmed, but still slidable".
+  expect(await page.evaluate(() => document.getElementById('map-time-slider').disabled)).toBe(true);
   // The wind-effect toggle, because it does not fetch on enable: NOTAM and the wind grids
   // switch themselves back off when their feed cannot be reached, which in a test looks
   // exactly like the clock ignoring the toggle.
@@ -90,6 +93,8 @@ test('with nothing time-dependent on, the clock goes quiet instead of vanishing'
   });
   expect(on, 'the layer stayed on').toBe(true);
   expect(await page.evaluate(() => document.getElementById('map-time').classList.contains('idle'))).toBe(false);
+  // ...and now a layer answers to it, it is slidable again.
+  expect(await page.evaluate(() => document.getElementById('map-time-slider').disabled)).toBe(false);
 });
 
 test('the weather charts snap to the sheet valid nearest that hour, and say which', async ({ page }) => {
