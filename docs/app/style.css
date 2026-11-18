@@ -5343,11 +5343,18 @@ body.theme-light .msa-low .val { color: #c0392b; }
 .map-time[hidden] { display: none !important; }
 /* Nothing time-dependent is switched on: the clock stays put and says so by going quiet,
    rather than vanishing and leaving the pilot to wonder where it went. */
-.map-time.idle { opacity: 0.45; }
-/* Idle, the slider is disabled, not just greyed: a dimmed control a pilot can still drag would
-   move a look-ahead no layer is reading. */
+/* Idle: dim, never hide. 0.45 over the whole strip sank the bare slider pill into the chart
+   until it read as gone; 0.6 keeps it plainly there. The slider is disabled, not just greyed,
+   so a dimmed control a pilot can still drag cannot move a look-ahead no layer is reading. */
+.map-time.idle { opacity: 0.6; }
 .map-time.idle #map-time-slider { filter: grayscale(1); }
-.map-time input[type="range"]:disabled { cursor: not-allowed; }
+/* Keep the track's pill and shadow on the disabled slider -- some engines drop a range's
+   background when it is disabled, which is what left it a faint line on the map. */
+.map-time input[type="range"]:disabled {
+  cursor: not-allowed;
+  background: var(--navaid-ctrl-bg);
+  box-shadow: var(--navaid-ctrl-shadow);
+}
 .map-time input[type="range"] {
   flex: 0 1 420px;
   max-width: 420px;
