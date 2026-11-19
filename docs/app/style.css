@@ -59,10 +59,12 @@ body.measuring #map .leaflet-pane * { cursor: crosshair; }
 #map.leaflet-dragging .leaflet-grab { cursor: grabbing; }
 /* Flight-plan VOR Radial/DME columns collapse when no reference VOR is set. */
 .flight-table.no-vor .fp-vor-col { display: none; }
+/* VOR2's Radial/DME pair: off until a second reference is tuned. */
+.flight-table.vor2-off .fp-vor2-col { display: none; }
 .flight-table .fp-col-hidden { display: none !important; }
-.fp-vor { display: inline-flex; align-items: center; gap: 4px; margin-left: 8px; }
-.fp-vor-freq { color: #9ad; font-size: 12px; }
-.fp-leg-vor { font-size: 10px; max-width: 56px; margin-inline-end: 3px; vertical-align: middle;
+.fp-vor, .fp-vor-2 { display: inline-flex; align-items: center; gap: 4px; margin-left: 8px; }
+.fp-vor-freq, .fp-vor-freq-2 { color: #9ad; font-size: 12px; }
+.fp-leg-vor, .fp-leg-vor2 { font-size: 10px; max-width: 56px; margin-inline-end: 3px; vertical-align: middle;
   background: #2f2b2b; color: #e8e8e8; border: 1px solid #443f3f; border-radius: 3px; }
 .fp-radial-val { white-space: nowrap; }
 
@@ -1724,6 +1726,10 @@ html[dir="rtl"] .leaflet-control.zulu-clock {
 .leaflet-bottom.leaflet-right .vor-readout {
   bottom: 46px;
 }
+/* VOR2's readout line, tinted to echo its distinct map highlight (vorSelectedColor2). A light
+   purple so it reads on the dark readout box in both themes. */
+.vor-readout .vor-readout-2 { color: #c89be0; }
+body.theme-light .vor-readout .vor-readout-2 { color: #7d3ca5; }
 .leaflet-bottom.leaflet-right .wind-readout {
   bottom: 66px;
 }
@@ -2282,14 +2288,14 @@ body.theme-light .resize-grip {
    with no ↻ keep a gap the size of one, so their field lines up with the fields that have it. */
 .row input[type="number"].row-num-narrow { width: 78px; }
 .row > input.row-num-narrow:last-child { margin-inline-end: 30px; }
-.vor-radial-row {
+.vor-radial-row, .vor-radial-row-2 {
   justify-content: flex-start;
   /* "VOR Reference" + picker + readout outgrow a default-width inspector: the controls
      then take a line of their own, at the far edge, instead of pushing the readout out. */
   flex-wrap: wrap;
   gap: 4px 10px;
 }
-.vor-radial-row label {
+.vor-radial-row label, .vor-radial-row-2 label {
   flex: 0 0 auto;
   white-space: nowrap;
   unicode-bidi: isolate;
@@ -2306,7 +2312,7 @@ body.theme-light .resize-grip {
   min-width: 0;
   margin-inline-start: auto;
 }
-.vor-radial-row select {
+.vor-radial-row select, .vor-radial-row-2 select {
   /* A fixed 58px fit the VOR idents (2-3 letters: "BGN", "NAT") this control mostly
      shows, but clipped the "— none —" / "— ללא —" placeholder option, which is much
      longer -- reported live as a stray "א —" (the placeholder's own trailing letters,
@@ -2324,7 +2330,10 @@ body.theme-light .resize-grip {
   flex-shrink: 0;
 }
 .row .val.vor-radial-val {
-  min-width: 92px;
+  /* Wide enough for the longest reading ("R-360° / 999.9 NM"), so VOR 1's and VOR 2's
+     rows keep one readout width and their pickers line up -- at 92px a "6.1 NM" fitted
+     while a "55.5 NM" overflowed, and the second row's picker shifted sideways. */
+  min-width: max(92px, 17ch);
   direction: ltr;
   text-align: right;
   white-space: nowrap;
@@ -3118,7 +3127,10 @@ body.printing-plan .ac-custom { display: none !important; }
   }
   body.printing-plan .flight-table {
     width: 100%;
-    table-layout: fixed;
+    /* Sized by content, not by fixed per-position widths: those were pinned with nth-child
+       for the original 14 columns, so a hidden or added column (VOR 2's pair, Freq) shifted
+       them and the last columns got ~0% -- each value printed one character per line. */
+    table-layout: auto;
     margin: 0 0 12px;
     color: #111;
     background: #fff;
@@ -3144,8 +3156,14 @@ body.printing-plan .ac-custom { display: none !important; }
     border: 1px solid #555;
     text-align: start;
     vertical-align: top;
+    /* Figures never break: "R-234" or "13:50" split per character is unreadable. */
+    white-space: nowrap;
+  }
+  /* Only the waypoint names may wrap, and only between words. */
+  body.printing-plan .flight-table .fp-col-from,
+  body.printing-plan .flight-table .fp-col-to {
     white-space: normal;
-    overflow-wrap: anywhere;
+    overflow-wrap: break-word;
   }
   body.printing-plan .flight-table th {
     position: static;
@@ -3160,7 +3178,7 @@ body.printing-plan .ac-custom { display: none !important; }
   body.printing-plan .flight-table td:last-child:empty {
     display: none !important;
   }
-  body.printing-plan .flight-table .fp-vor-col {
+  body.printing-plan .flight-table:not(.no-vor) .fp-vor-col {
     display: table-cell !important;
     font-size: inherit;
     padding: 1px 2px;
@@ -3168,26 +3186,16 @@ body.printing-plan .ac-custom { display: none !important; }
   body.printing-plan .flight-table .fp-col-hidden {
     display: none !important;
   }
-  body.printing-plan .flight-table .fp-vor-col select {
+  body.printing-plan .flight-table .fp-vor-col select,
+  body.printing-plan .flight-table .fp-vor2-col select {
     display: none !important;
   }
-  /* # From To Hdg Dist Speed Alt Time Fuel Cum.time Cum.fuel ETA Radial DME */
-  body.printing-plan .flight-table th:nth-child(1) { width: 3%; }
-  body.printing-plan .flight-table th:nth-child(2),
-  body.printing-plan .flight-table th:nth-child(3) { width: 9%; }
-  body.printing-plan .flight-table th:nth-child(4),
-  body.printing-plan .flight-table th:nth-child(5),
-  body.printing-plan .flight-table th:nth-child(6) { width: 6%; }
-  body.printing-plan .flight-table th:nth-child(7),
-  body.printing-plan .flight-table th:nth-child(8),
-  body.printing-plan .flight-table th:nth-child(9),
-  body.printing-plan .flight-table th:nth-child(11) { width: 7%; }
-  body.printing-plan .flight-table th:nth-child(10) { width: 8%; }
-  body.printing-plan .flight-table th:nth-child(12) { width: 6%; }
-  body.printing-plan .flight-table th:nth-child(13) { width: 9%; }
-  body.printing-plan .flight-table th:nth-child(14) { width: 6%; }
+  body.printing-plan .flight-table .fp-vor2-col {
+    font-size: inherit;
+    padding: 1px 2px;
+  }
   body.printing-plan .fp-radial-val {
-    white-space: normal;
+    white-space: nowrap;
   }
   body.printing-plan .plan-name,
   body.printing-plan .plan-num {
@@ -3273,7 +3281,7 @@ body.printing-plan .ac-custom { display: none !important; }
   /* Flight-plan table is wider than a phone — scroll sideways instead of
      truncating columns. With the narrow default column set (see io.js) plus these
      tighter metrics the flown-by numbers fit without any sideways scroll at all. */
-  .fp-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .fp-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; overscroll-behavior: contain; }
   .fp-scroll table { font-size: 12px; }
   .fp-scroll th,
   .fp-scroll td { padding: 3px 4px; }
@@ -3651,6 +3659,8 @@ html:not([dir="rtl"]) .comm-section.has-atc .row:not(:has(.atc-inline)) > .val:h
   pointer-events: auto;
   position: absolute;
   margin: 0;
+  /* Keep the plan's own scroll from chaining to the click-through map behind it. */
+  overscroll-behavior: contain;
 }
 /* Chart modals reuse the flight plan's non-blocking backdrop so the map stays pannable
    underneath, and inherited its 2000 with it — below the inspector (2320). Opening the
@@ -4236,7 +4246,8 @@ body.theme-light .route-template-path { color: #1f252c; }
 body.theme-light .route-template-description,
 body.theme-light .route-template-empty { color: #647184; }
 /* Per-leg VOR override dropdown in the flight-plan table — was dark on light. */
-body.theme-light .fp-leg-vor {
+body.theme-light .fp-leg-vor,
+body.theme-light .fp-leg-vor2 {
   color: #1f252c;
   background: #fff;
   border-color: #b8c0cc;
@@ -10790,8 +10801,13 @@ body.theme-light #export-progress { background: #fafcff; color: #1d2430; border-
 .fp-aircraft { position: relative; }
 /* The VOR row sits right under the Aircraft row: one separator below both. */
 .fp-aircraft:has(+ .fp-vor-row) { border-bottom: 0; margin-bottom: 0; padding-bottom: 4px; }
-.fp-vor-row { padding-top: 0; }
-.fp-vor-row .fp-vor { margin-left: 0; }
+/* The two VOR pickers stay on one line (scroll if they must), rather than wrapping: a wrapped
+   second row made the plan panel taller than the phone's frame, and the position restore then
+   clamped it to the top -- losing a remembered drag position. */
+.fp-vor-row { padding-top: 0; flex-wrap: nowrap; overflow-x: auto; }
+.fp-vor-row .fp-vor, .fp-vor-row .fp-vor-2 { margin-left: 0; flex: 0 0 auto; }
+/* A picker's label and its MHz never break mid-phrase: on a phone "VOR 2:" became "VOR / 2:". */
+.fp-vor > span, .fp-vor-2 > span { white-space: nowrap; }
 .fp-aircraft .ac-panel { display: contents; }
 #ac-panel-home { display: none; }
 .ac-type-row { display: inline-flex; align-items: center; }
