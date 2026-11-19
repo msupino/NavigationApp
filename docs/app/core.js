@@ -2297,6 +2297,7 @@ window.S = Object.assign({
   vorUse2: 'Use as VOR 2',
   vorUse2Active: '✓ VOR 2 (tap to clear)',
   vorAlreadyOther: 'Already the other reference VOR — clear it first',
+  vorReplaces: function(id) { return ' — replaces ' + id; },
   elevation: 'Elevation',
   navHebrew: 'Waypoint name',
   vorFrom: function(id) { return 'From ' + id + ' VOR'; }, // inspector / readout prefix

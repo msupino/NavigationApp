@@ -302,3 +302,18 @@ test('the LLHZ->LLIB template: tapping LLIB offers the Rosh Pina VOR (ROP), laye
   await expect(page.locator('.point-choice-modal')).toHaveCount(1);
   expect((await page.locator('.point-choice-option').allTextContents()).join(' ')).toContain('ROP');
 });
+
+test('a VOR station inspector names the station each occupied slot would replace', async ({ page }) => {
+  await boot(page);
+  await page.evaluate(() => {
+    setReferenceVor('BGN');                 // VOR 1 held by another station
+    setReferenceVor2(null);                 // VOR 2 empty
+    window.showVorStations = true; if (typeof syncVorUI === 'function') syncVorUI(); draw();
+    state.selected = { type: 'vor', index: vors.findIndex(x => x.ident === 'NAT') }; showInspector();
+  });
+  await expect(page.locator('#insp-vor-use-ref')).toContainText('replaces BGN');
+  await expect(page.locator('#insp-vor-use-ref-2')).not.toContainText('replaces');
+  // Tuning NAT as VOR 2 now: the VOR 1 button still names BGN, VOR 2 shows active.
+  await page.locator('#insp-vor-use-ref-2').click();
+  await expect(page.locator('#insp-vor-use-ref-2')).toContainText('tap to clear');
+});
