@@ -413,7 +413,7 @@ const GDRIVE_SETTINGS_KEYS = [
   // Siblings of the above that were never added: the VOR corrections belong with
   // the other freq overrides, the nav-data source with the base layer, and the
   // cruise/climb numbers with the aircraft profile.
-  'navaid.vorFreqOverrides', 'navaid.vorRef', 'navaid.navDataPrefix',
+  'navaid.vorFreqOverrides', 'navaid.vorRef', 'navaid.vorRef2', 'navaid.navDataPrefix',
   'navaid.defaultSpeed', 'navaid.profileVS', 'navaid.geTourSpeed', 'navaid.etaZulu',
   'navaid.magVarAuto', 'navaid.magVarManual', 'navaid.pressureUnit',
   'navaid.dateFormat',   // display preference: how user-visible dates are written

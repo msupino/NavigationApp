@@ -673,6 +673,13 @@ function validateRoute(d) {
           if (!l[k]._default) _v(l[k], 'p', 'number', p + '.' + k, errs);
         }
       }
+      if (Object.prototype.hasOwnProperty.call(l, 'vorRef2')) {
+        if (_vKind(l.vorRef2) !== 'string') {
+          errs.push(p + '.vorRef2: expected string, got ' + _vKind(l.vorRef2));
+        } else if (l.vorRef2.length > 8) {
+          errs.push(p + '.vorRef2: expected an ident of at most 8 characters');
+        }
+      }
       if (Object.prototype.hasOwnProperty.call(l, 'vorRef')) {
         if (_vKind(l.vorRef) !== 'string') {
           errs.push(p + '.vorRef: expected string, got ' + _vKind(l.vorRef));
@@ -1210,6 +1217,7 @@ function serializeRoute() {
       // back silently recomputed every Radial/DME against the GLOBAL VOR -- the
       // plan and nav log then showed different navigational values than when saved.
       ...(sanitizeVorRef(l.vorRef) ? { vorRef: sanitizeVorRef(l.vorRef) } : {}),
+      ...(sanitizeVorRef(l.vorRef2) ? { vorRef2: sanitizeVorRef(l.vorRef2) } : {}),
       // Whether the pilot hid this leg's nav kite. Same class of state as the dragged
       // label offsets beside it: their own decision about how the chart should read.
       ...(l.hideKite ? { hideKite: 1 } : {}),
@@ -3341,6 +3349,7 @@ function applyRouteData(d) {
     cumLabelRet: l.cumLabelRet ? _normalizeLegLabel(l.cumLabelRet, legacyAS)
                                : { a: 0, _default: 1, _m: 1 },
     ...(sanitizeVorRef(l.vorRef) ? { vorRef: sanitizeVorRef(l.vorRef) } : {}),
+      ...(sanitizeVorRef(l.vorRef2) ? { vorRef2: sanitizeVorRef(l.vorRef2) } : {}),
     ...(l.hideKite ? { hideKite: 1 } : {}),
       ...(l.showKite ? { showKite: 1 } : {}),
     ...(l.hideDrift ? { hideDrift: 1 } : {}),
@@ -3910,8 +3919,11 @@ function mkAcInput(id, label, title, min, max, step) {
 // exported is exactly what the pilot sees -- hidden columns stay hidden. `table` and
 // `scrollArea` were closed over; they are arguments now, which is the whole change.
 function flightPlanCsv(table, scrollArea) {
+  // No VOR2 tuned: its pair is only dashes, so it stays out of the file (as it is off screen).
+  const skipVor2 = table.classList.contains('vor2-off');
   const visibleHeaders = Array.from(table.querySelectorAll('thead th'))
     .filter(th => !(th.classList && th.classList.contains('fp-col-hidden')))
+    .filter(th => !(skipVor2 && th.classList && th.classList.contains('fp-vor2-col')))
     // data-csv is the stable export name; the visible text may carry units or other
     // wording that must never reach the file.
     .map(th => (th.dataset && th.dataset.csv) || th.textContent || '')
@@ -3936,6 +3948,7 @@ function flightPlanCsv(table, scrollArea) {
     for (const cell of row.children) {
       if (cell.classList && cell.classList.contains('fp-del')) continue;
       if (cell.classList && cell.classList.contains('fp-col-hidden')) continue;
+      if (skipVor2 && cell.classList && cell.classList.contains('fp-vor2-col')) continue;
       const span = Math.max(1, cell.colSpan || 1);
       const input = cell.querySelector('input');
       const radialVal = cell.querySelector('.fp-radial-val');
@@ -4008,10 +4021,11 @@ function exportNavLog(scrollArea) {
       const live = origEls[i];
       const val = live ? live.value : el.value;
       const span = document.createElement('span');
-      if (el.classList.contains('fp-leg-vor')) {
+      if (el.classList.contains('fp-leg-vor') || el.classList.contains('fp-leg-vor2')) {
         // Per-leg VOR picker: print the EFFECTIVE ident (override or the
         // route-wide reference), so each Radial row says which VOR it's from.
-        const ident = val || (typeof vorRef === 'string' && vorRef) || '';
+        const glob = el.classList.contains('fp-leg-vor2') ? vorRef2 : vorRef;
+        const ident = val || (typeof glob === 'string' && glob) || '';
         span.textContent = ident ? ident + ' ' : '';
         span.className = 'nl-vor-ident';
       } else {
@@ -4020,6 +4034,7 @@ function exportNavLog(scrollArea) {
       el.replaceWith(span);
     });
     clone.querySelectorAll('.fp-col-hidden').forEach(el => el.remove());
+    if (t.classList.contains('vor2-off')) clone.querySelectorAll('.fp-vor2-col').forEach(el => el.remove());
     clone.querySelectorAll('[data-fp-col="delete"], .fp-del').forEach(el => el.remove());
     // The delete column has no .fp-del marker in the header / Total rows —
     // it's just an empty trailing cell. Drop it so the table has no stray
@@ -4103,6 +4118,16 @@ function exportNavLog(scrollArea) {
     .map(v => ltr(v.ident) + ' \u2014 ' + esc((lang === 'he' && v.he) ? v.he : v.name) +
               (v.freq ? ' \u2014 ' + ltr(v.freq + ' MHz') : ''))
     .join(' \u00b7 ');
+  const vor2Idents = [];
+  const pushVor2 = id => { if (id && typeof id === 'string' && !vor2Idents.includes(id)) vor2Idents.push(id); };
+  pushVor2(typeof vorRef2 === 'string' ? vorRef2 : null);
+  (state.legs || []).forEach(l => pushVor2(l && l.vorRef2));
+  const vor2Html = vor2Idents
+    .map(id => (typeof vorByIdent === 'function' ? vorByIdent(id) : null))
+    .filter(Boolean)
+    .map(v => ltr(v.ident) + ' \u2014 ' + esc((lang === 'he' && v.he) ? v.he : v.name) +
+              (v.freq ? ' \u2014 ' + ltr(v.freq + ' MHz') : ''))
+    .join(' \u00b7 ');
 
   const ac = (typeof aircraft === 'object' && aircraft) ? aircraft : { gph: tune('defaultGph'), taxiGal: tune('defaultTaxiGal') };
   const today = new Date().toISOString().slice(0, 10);
@@ -4130,6 +4155,7 @@ function exportNavLog(scrollArea) {
         esc(S.tbGph || 'GPH') + ' ' + esc(ac.gph) + ' \u00b7 ' +
         esc(S.tbTaxiGal || 'Taxi/T.O.') + ' ' + esc(ac.taxiGal) + '</div>' +
       (vorHtml ? '<div><b>' + esc(S.navLogVor || 'Reference VOR') + ':</b> ' + vorHtml + '</div>' : '') +
+      (vor2Html ? '<div><b>' + esc(S.navLogVor2 || 'VOR 2') + ':</b> ' + vor2Html + '</div>' : '') +
     '</div>' +
     depFreqHtml +
     tablesHtml +
@@ -4245,6 +4271,12 @@ function showFlightPlan() {
   back._navaidClose = closeFlightPlan;
   const box = document.createElement('div');
   box.className = 'modal wide';
+  // The backdrop is deliberately click-through (pointer-events:none) so the map stays pannable
+  // underneath, but that let a wheel/trackpad scroll over the plan -- once its own scroll hit an
+  // edge -- chain straight to the map's zoom behind it (reported: closing the plan carried the
+  // scroll into the map). Swallow wheel on the panel itself, as the tuning panel does; the
+  // overscroll-behavior:contain in CSS stops the same chaining from a touch flick.
+  box.addEventListener('wheel', e => e.stopPropagation(), { passive: true });
   // Built by hand rather than by createDraggableModal, so it needs the same announcement the
   // factory gives the others. No aria-modal: this backdrop is deliberately click-through, so
   // the page behind really is not inert.
@@ -4351,7 +4383,7 @@ function showFlightPlan() {
   vorWrap.className = 'fp-vor';
   vorWrap.title = S.tbShowVorTitle || '';
   const vorLbl = document.createElement('span');
-  vorLbl.textContent = (S.fpVorLabel || 'VOR') + ': ';
+  vorLbl.textContent = (S.vorRef1Label || S.fpVorLabel || 'VOR 1') + ': ';
   vorWrap.appendChild(vorLbl);
   const vorSel = document.createElement('select');
   vorSel.id = 'fp-vor-select';
@@ -4383,15 +4415,52 @@ function showFlightPlan() {
   };
   vorWrap.appendChild(vorSel);
   vorWrap.appendChild(vorFreqSpan);
+  // VOR2 beside it: the second reference, feeding the Radial 2 / DME 2 pair.
+  const vor2Wrap = document.createElement('label');
+  vor2Wrap.className = 'fp-vor-2';
+  vor2Wrap.title = S.tbShowVorTitle || '';
+  const vor2Lbl = document.createElement('span');
+  vor2Lbl.textContent = (S.vorRef2Label || 'VOR 2') + ': ';
+  vor2Wrap.appendChild(vor2Lbl);
+  const vor2Sel = document.createElement('select');
+  vor2Sel.id = 'fp-vor-select-2';
+  const vor2FreqSpan = document.createElement('span');
+  vor2FreqSpan.className = 'fp-vor-freq-2';
+  function fillFpVor2Select() {
+    vor2Sel.innerHTML = '';
+    const none = document.createElement('option');
+    none.value = ''; none.textContent = S.vorRefNone || '— none —';
+    vor2Sel.appendChild(none);
+    for (const v of (vors || [])) {
+      const opt = document.createElement('option');
+      opt.value = v.ident;
+      opt.textContent = v.ident + ' · ' + v.name;
+      vor2Sel.appendChild(opt);
+    }
+    vor2Sel.value = vorRef2 || '';
+    const cur = typeof activeVor2 === 'function' ? activeVor2() : null;
+    vor2FreqSpan.textContent = cur ? (typeof vorEffectiveFreq === 'function' ? vorEffectiveFreq(cur) : cur.freq) + ' MHz' : '';
+  }
+  vor2Sel.onchange = () => {
+    setReferenceVor2(vor2Sel.value);
+    fillFpVor2Select();
+    draw();
+    refresh();
+    if (retRefresh) retRefresh();
+  };
+  vor2Wrap.appendChild(vor2Sel);
+  vor2Wrap.appendChild(vor2FreqSpan);
   // The reference VOR is the route's, not the aircraft's: a line of its own under the Aircraft row
   // (asked). Styled as that row (fp-aircraft), so both themes, the phone sizes and printing hold.
   const fpVorRow = document.createElement('div');
   fpVorRow.className = 'fp-aircraft fp-vor-row';
   fpVorRow.appendChild(vorWrap);
+  fpVorRow.appendChild(vor2Wrap);
   if (vors === null && typeof loadVors === 'function') {
-    loadVors().then(() => { fillFpVorSelect(); refresh(); if (retRefresh) retRefresh(); });
+    loadVors().then(() => { fillFpVorSelect(); fillFpVor2Select(); refresh(); if (retRefresh) retRefresh(); });
   } else {
     fillFpVorSelect();
+    fillFpVor2Select();
   }
   box.appendChild(fpAircraft);
   box.appendChild(fpVorRow);
@@ -4648,8 +4717,14 @@ function showFlightPlan() {
     // Clock time over the leg's To point: departure + cumulative time (#667). After the
     // cumulative pair, so the CSV's leading columns keep their names and their order.
     { key: 'eta', label: S.fpEta || 'ETA', display: S.fpEta || 'ETA' },
-    { key: 'radial', label: baseHeaders[11] || 'Radial', display: dispHeaders[11] || 'Radial', className: 'fp-vor-col' },
-    { key: 'dme', label: baseHeaders[12] || 'DME', display: dispHeaders[12] || 'DME', className: 'fp-vor-col' },
+    // Shown as "Radial 1 / DME 1" now that VOR 2 has its own pair; the export names
+    // (label -> data-csv) stay "Radial" / "DME" -- the CSV header is a contract.
+    { key: 'radial', label: baseHeaders[11] || 'Radial', display: S.fpRadial1 || 'Radial 1', className: 'fp-vor-col' },
+    { key: 'dme', label: baseHeaders[12] || 'DME', display: S.fpDme1 || 'DME 1', className: 'fp-vor-col' },
+    // VOR2's pair: the second reference, explicit-only (no per-leg override, no fallback).
+    // After VOR1's pair so the CSV's existing columns keep their names and their order.
+    { key: 'radial2', label: S.fpRadial2 || 'Radial 2', display: S.fpRadial2 || 'Radial 2', className: 'fp-vor2-col' },
+    { key: 'dme2', label: S.fpDme2 || 'DME 2', display: S.fpDme2 || 'DME 2', className: 'fp-vor2-col' },
   ];
   if (freqActive) fpColumns.push({ key: 'freq', label: S.fpFreq || 'Freq', className: 'fp-freq-col' });
   fpColumns.push({ key: 'delete', label: '', className: 'fp-del-col', control: true });
@@ -4677,7 +4752,7 @@ function showFlightPlan() {
     // is one tap away in the Columns menu, and the totals line above the table always
     // carries distance/ETE/fuel. The full table is 874px wide, so on a 375px phone the
     // columns you actually fly by started off-screen behind a sideways scroll.
-    ? ['from', 'dist', 'speed', 'fuel', 'cumTime', 'eta', 'cumFuel', 'radial', 'dme', 'freq']
+    ? ['from', 'dist', 'speed', 'fuel', 'cumTime', 'eta', 'cumFuel', 'radial', 'dme', 'radial2', 'dme2', 'freq']
     : [];
   let savedFpColumns = fpDefaultHiddenColumns;
   try {
@@ -4852,38 +4927,62 @@ function showFlightPlan() {
   const etaCells = [];                  // leg index -> clock time over the To point
   const cumFuelCells = [];            // leg index -> cumulative fuel (gal)
   const radialCells = [];              // leg index -> VOR radial cell (To wp)
+  const radial2Cells = [];             // leg index -> VOR 2 radial value span
+  const dme2Cells = [];                // leg index -> VOR 2 DME cell
   const dmeCells = [];                 // leg index -> VOR DME cell (To wp)
   const legRows = [];                  // leg index -> forward table row
   const seqCells = [];                 // leg index -> visible sequence number
-  // Radial (magnetic) + DME of a waypoint from the selected reference VOR.
-  // Per-leg override (leg.vorRef) wins over the global reference VOR.
-  const legVorSelects = [];             // { sel, leg } for every Radial cell
-  function legVorObj(leg) {
-    return (leg && leg.vorRef && typeof vorByIdent === 'function' ? vorByIdent(leg.vorRef) : null)
-      || (typeof activeVor === 'function' ? activeVor() : null);
+  // Radial (magnetic) + DME of a waypoint from a reference VOR. Each pair -- VOR 1 on
+  // leg.vorRef, VOR 2 on leg.vorRef2 -- has a per-leg override that wins over its global
+  // reference. VOR 2 stays explicit-only: no nearest-station fallback behind either.
+  const legVorSelects = [];             // { sel, leg, key } for every Radial / Radial 2 cell
+  const globalVor = key => (key === 'vorRef2'
+    ? (typeof activeVor2 === 'function' ? activeVor2() : null)
+    : (typeof activeVor === 'function' ? activeVor() : null));
+  const globalVorIdent = key => (key === 'vorRef2' ? vorRef2 : vorRef);
+  function legVorObj(leg, key) {
+    const k = key || 'vorRef';
+    return (leg && leg[k] && typeof vorByIdent === 'function' ? vorByIdent(leg[k]) : null)
+      || globalVor(k);
   }
-  function anyVorActive() {
-    return !!(typeof activeVor === 'function' && activeVor()) ||
-      state.legs.some((l, i) => l && l.vorRef &&
+  function anyVorActive(key) {
+    const k = key || 'vorRef';
+    return !!globalVor(k) ||
+      state.legs.some((l, i) => l && l[k] &&
         (typeof legDirVisible !== 'function' || legDirVisible(i)));
   }
-  function vorCells(wp, leg) {
-    const v = legVorObj(leg);
+  function vorCells(wp, leg, key) {
+    const v = legVorObj(leg, key);
     const empty = S.fpVorRadialEmpty || '—';
     if (!v || !wp) return [empty, empty];
     const rd = vorRadialDme(v, wp.lat, wp.lng);
     return rd ? ['R-' + rd.radial, rd.dme] : [empty, empty];
   }
-  // A Radial cell carries a per-leg VOR picker (default = global reference)
-  // plus the radial value; the DME cell stays plain text. Returns the value
-  // span so refresh() can update it.
-  function radialCellWithPicker(legIdx) {
+  const vor2Cells = (wp, leg) => vorCells(wp, leg, 'vorRef2');
+  // Retuning a leg's VOR carries forward, like a receiver that stays tuned: the legs after it
+  // that were on the same station follow, up to the first leg tuned to something else (a later
+  // retune holds). `step` is the table's flying order: +1 out, -1 on the return.
+  function propagateLegVor(legIdx, value, step, key) {
+    const k = key || 'vorRef';
+    const legs = state.legs;
+    if (!legs[legIdx]) return;
+    const was = legs[legIdx][k] || null;
+    for (let j = legIdx; j >= 0 && j < legs.length; j += step) {
+      if (!legs[j]) break;
+      if (j !== legIdx && (legs[j][k] || null) !== was) break;
+      if (value) legs[j][k] = value; else delete legs[j][k];
+    }
+  }
+  // A Radial cell carries a per-leg VOR picker (default = that pair's global reference) plus
+  // the radial value; the DME cell stays plain text. Returns the value span for refresh().
+  function radialCellWithPicker(legIdx, step, key) {
+    const k = key || 'vorRef';
     const td = planCell('');
-    td.classList.add('fp-vor-col');
+    td.classList.add(k === 'vorRef2' ? 'fp-vor2-col' : 'fp-vor-col');
     const sel = document.createElement('select');
-    sel.className = 'fp-leg-vor';
+    sel.className = k === 'vorRef2' ? 'fp-leg-vor2' : 'fp-leg-vor';
     sel.onchange = () => {
-      if (state.legs[legIdx]) state.legs[legIdx].vorRef = sanitizeVorRef(sel.value);
+      propagateLegVor(legIdx, sanitizeVorRef(sel.value), step || 1, k);
       refresh();
       if (retRefresh) retRefresh();
       // A per-leg VOR is a route edit: it has to reach the working-route snapshot and
@@ -4895,22 +4994,34 @@ function showFlightPlan() {
     val.className = 'fp-radial-val';
     td.appendChild(sel);
     td.appendChild(val);
-    legVorSelects.push({ sel, leg: legIdx });
+    legVorSelects.push({ sel, leg: legIdx, key: k });
     return { td, val };
   }
+  // VOR 2's pair, with its own per-leg picker like VOR 1's. No leg index = a totals row.
+  function vor2PlanCells(legIdx, step) {
+    if (legIdx === undefined) {
+      const r = planCell(''); r.classList.add('fp-vor2-col');
+      const d = planCell(''); d.classList.add('fp-vor2-col');
+      return { r, d, val: null };
+    }
+    const radial = radialCellWithPicker(legIdx, step, 'vorRef2');
+    const d = planCell(''); d.classList.add('fp-vor2-col');
+    return { r: radial.td, d, val: radial.val };
+  }
   function fillLegVorSelects() {
-    for (const { sel, leg } of legVorSelects) {
+    for (const { sel, leg, key } of legVorSelects) {
       sel.innerHTML = '';
       const def = document.createElement('option');
       def.value = '';
-      def.textContent = (vorRef ? vorRef : (S.vorRefNone || '—'));
+      const g = globalVorIdent(key);
+      def.textContent = (g ? g : (S.vorRefNone || '—'));
       sel.appendChild(def);
       for (const v of (vors || [])) {
         const o = document.createElement('option');
         o.value = v.ident; o.textContent = v.ident;
         sel.appendChild(o);
       }
-      sel.value = (state.legs[leg] && state.legs[leg].vorRef) || '';
+      sel.value = (state.legs[leg] && state.legs[leg][key]) || '';
     }
   }
   let totDistCell, totTimeCell, totFuelCell, totCumTimeCell, totCumFuelCell, totEtaCell;
@@ -4997,6 +5108,10 @@ function showFlightPlan() {
     dmeCells[i] = dmeCell;
     dmeCell.classList.add('fp-vor-col');
     tr.appendChild(fpCell('dme', dmeCell));
+    const v2c = vor2PlanCells(i, 1);
+    radial2Cells[i] = v2c.val; dme2Cells[i] = v2c.d;
+    tr.appendChild(fpCell('radial2', v2c.r));
+    tr.appendChild(fpCell('dme2', v2c.d));
     if (freqActive) {
       const freqCell = planCell(legFreqText(i));
       freqCell.classList.add('fp-freq-col');
@@ -5201,6 +5316,7 @@ function showFlightPlan() {
   trF.appendChild(fpCell('eta', totEtaCell));
   const totRadial = planCell(''); totRadial.classList.add('fp-vor-col'); trF.appendChild(fpCell('radial', totRadial));
   const totDme = planCell(''); totDme.classList.add('fp-vor-col'); trF.appendChild(fpCell('dme', totDme));
+  { const t2 = vor2PlanCells(); trF.appendChild(fpCell('radial2', t2.r)); trF.appendChild(fpCell('dme2', t2.d)); }
   if (freqActive) { const tf2 = planCell(''); tf2.classList.add('fp-freq-col'); trF.appendChild(fpCell('freq', tf2)); }
   trF.appendChild(fpCell('delete', planCell('')));        // Delete column (empty)
   tfoot.appendChild(trF);
@@ -5302,6 +5418,7 @@ function showFlightPlan() {
     // any per-leg override is set.
     fillLegVorSelects();
     table.classList.toggle('no-vor', !anyVorActive());
+    table.classList.toggle('vor2-off', !anyVorActive('vorRef2'));
     let td = 0, th = 0, tf = 0;
     const ac = aircraft;
     const visibleIndexes = typeof legDirVisibleIndexes === 'function'
@@ -5333,6 +5450,11 @@ function showFlightPlan() {
         const rc = vorCells(A, state.legs[i]); // radial/DME to the leg's start
         radialCells[i].textContent = rc[0];
         dmeCells[i].textContent = rc[1];
+      }
+      if (radial2Cells[i]) {
+        const rc2 = vor2Cells(A, state.legs[i]);
+        radial2Cells[i].textContent = rc2[0];
+        dme2Cells[i].textContent = rc2[1];
       }
       const dur = prof && prof.legs[i] ? prof.legs[i].timeH
         : (state.legs[i].flightSpeed > 0 ? dist / state.legs[i].flightSpeed : 0);
@@ -5444,6 +5566,8 @@ function showFlightPlan() {
     const rCumFuelCells = [];
     const rRadialCells = [];
     const rDmeCells = [];
+    const rRadial2Cells = [];
+    const rDme2Cells = [];
     let rTotDistCell, rTotTimeCell, rTotFuelCell, rTotCumTimeCell, rTotCumFuelCell;
 
     for (let i = 0; i < state.legs.length; i++) {
@@ -5515,13 +5639,17 @@ function showFlightPlan() {
       tr.appendChild(fpCell('cumFuel', cumFuelCell));
       // The return is a flight of its own, with no departure time here: no ETA.
       tr.appendChild(fpCell('eta', planCell('')));
-      const radial = radialCellWithPicker(ri);
+      const radial = radialCellWithPicker(ri, -1);
       rRadialCells[i] = radial.val;
       tr.appendChild(fpCell('radial', radial.td));
       const dmeCell = planCell('');
       rDmeCells[i] = dmeCell;
       dmeCell.classList.add('fp-vor-col');
       tr.appendChild(fpCell('dme', dmeCell));
+      const rv2 = vor2PlanCells(ri, -1);
+      rRadial2Cells[i] = rv2.val; rDme2Cells[i] = rv2.d;
+      tr.appendChild(fpCell('radial2', rv2.r));
+      tr.appendChild(fpCell('dme2', rv2.d));
       if (freqActive) {
         const freqCell = planCell(legFreqText(ri));
         freqCell.classList.add('fp-freq-col');
@@ -5556,6 +5684,7 @@ function showFlightPlan() {
     rtrF.appendChild(fpCell('eta', planCell('')));
     const rTotRadial = planCell(''); rTotRadial.classList.add('fp-vor-col'); rtrF.appendChild(fpCell('radial', rTotRadial));
     const rTotDme = planCell(''); rTotDme.classList.add('fp-vor-col'); rtrF.appendChild(fpCell('dme', rTotDme));
+    { const rt2 = vor2PlanCells(); rtrF.appendChild(fpCell('radial2', rt2.r)); rtrF.appendChild(fpCell('dme2', rt2.d)); }
     if (freqActive) { const rtf = planCell(''); rtf.classList.add('fp-freq-col'); rtrF.appendChild(fpCell('freq', rtf)); }
     rtrF.appendChild(fpCell('delete', planCell('')));        // Delete column (empty)
     rtfoot.appendChild(rtrF);
@@ -5565,6 +5694,7 @@ function showFlightPlan() {
     retRefresh = function () {
       if (state.legs.length !== rDistCells.length) { closeFlightPlan(); return; }
       rtable.classList.toggle('no-vor', !anyVorActive());
+      rtable.classList.toggle('vor2-off', !anyVorActive('vorRef2'));
       let td = 0, th = 0, tf = 0;
       const retTaxi = aircraft && aircraft.taxiGal && isAirport(state.waypoints[state.waypoints.length - 1]) ? aircraft.taxiGal : 0;
       if (retTaxi) tf = retTaxi;
@@ -5579,6 +5709,11 @@ function showFlightPlan() {
           const rc = vorCells(A, state.legs[ri]); // radial/DME to leg start
           rRadialCells[i].textContent = rc[0];
           rDmeCells[i].textContent = rc[1];
+        }
+        if (rRadial2Cells[i]) {
+          const rc2 = vor2Cells(A, state.legs[ri]);
+          rRadial2Cells[i].textContent = rc2[0];
+          rDme2Cells[i].textContent = rc2[1];
         }
         const dur = state.legs[ri].outboundSpeed > 0 ? dist / state.legs[ri].outboundSpeed : 0;
         // The same physical leg, flown back: the CTR gate applies to the return direction
@@ -8029,6 +8164,7 @@ function restoreRoute() {
     cumLabelRet: l.cumLabelRet ? _normalizeLegLabel(l.cumLabelRet, legacyAS)
                                : { a: 0, _default: 1, _m: 1 },
     ...(sanitizeVorRef(l.vorRef) ? { vorRef: sanitizeVorRef(l.vorRef) } : {}),
+      ...(sanitizeVorRef(l.vorRef2) ? { vorRef2: sanitizeVorRef(l.vorRef2) } : {}),
     ...(l.hideKite ? { hideKite: 1 } : {}),
       ...(l.showKite ? { showKite: 1 } : {}),
     ...(l.hideDrift ? { hideDrift: 1 } : {}),

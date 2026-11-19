@@ -150,7 +150,7 @@ test.describe('VOR overlay + radial/DME (#404)', () => {
     const label = row.locator('label');
     const controls = row.locator('.vor-radial-controls');
     const val = row.locator('.vor-radial-val');
-    await expect(label).toHaveText('ייחוס VOR');
+    await expect(label).toHaveText('VOR 1');
     await expect(val).toHaveText(/R-\d{3}° \/ \d+\.\d NM/);
     const bidi = await val.evaluate(el => {
       const style = getComputedStyle(el);
@@ -239,10 +239,10 @@ test.describe('VOR overlay + radial/DME (#404)', () => {
     await page.locator('#plan').click();
     await page.locator('.modal-back').waitFor();
     const headers = await page.locator('.flight-table thead th').allTextContents();
-    expect(headers).toEqual(expect.arrayContaining(['Radial', 'DME']));
+    expect(headers).toEqual(expect.arrayContaining(['Radial 1', 'DME 1']));
     await page.locator('#fp-vor-select').selectOption('NAT');
     await expect(page.locator('.fp-vor-freq')).toContainText('112.40');
-    const radialIdx = headers.indexOf('Radial');
+    const radialIdx = headers.indexOf('Radial 1');
     const firstRow = page.locator('.flight-table tbody tr').first();
     // Radial/DME are for the leg's START point (A), not the destination.
     const expected = await page.evaluate(() => {
@@ -267,7 +267,7 @@ test.describe('VOR overlay + radial/DME (#404)', () => {
     await page.locator('.modal-back').waitFor();
     await page.locator('#fp-vor-select').selectOption('NAT');     // default = NAT
     const headers = await page.locator('.flight-table thead th').allTextContents();
-    const radialIdx = headers.indexOf('Radial');
+    const radialIdx = headers.indexOf('Radial 1');
     const firstRow = page.locator('.flight-table tbody tr').first();
     // Override leg 0 to BGN.
     await firstRow.locator('td').nth(radialIdx).locator('select.fp-leg-vor').selectOption('BGN');
@@ -403,7 +403,7 @@ test.describe('VOR overlay + radial/DME (#404)', () => {
     await page.evaluate(t => { state.selected = t; showInspector(); }, hit);
     await expect(page.locator('#insp-title')).toHaveValue(/NAT.*Natania/);
     await expect(page.locator('#insp-body .vor-freq-row .charts-freq-input')).toHaveValue('112.40');
-    const useBtn = page.locator('#insp-body .insp-btn', { hasText: /reference/i });
+    const useBtn = page.locator('#insp-vor-use-ref');     // VOR 1's slot ("Use as VOR 1")
     await expect(useBtn).toBeVisible();
     await useBtn.click();
     expect(await page.evaluate(() => vorRef)).toBe('NAT');
@@ -495,7 +495,7 @@ test.describe('VOR overlay + radial/DME (#404)', () => {
       const rd = vorRadialDme(activeVor(), 32.46472, 34.91222);
       return 'R-' + rd.radial;
     });
-    await expect(retRow.locator('td .fp-radial-val')).toHaveText(expected);
+    await expect(retRow.locator('td.fp-vor-col .fp-radial-val')).toHaveText(expected);
   });
 
   test('flight plan: print export includes radial/DME values', async ({ page }) => {
@@ -762,7 +762,7 @@ test.describe('VOR overlay + radial/DME (#404)', () => {
       showInspector();
     });
     // "Use as reference" sets vorRef.
-    const useBtn = page.locator('#insp-body .insp-btn', { hasText: /reference/i });
+    const useBtn = page.locator('#insp-vor-use-ref');     // VOR 1's slot ("Use as VOR 1")
     await useBtn.click();
     expect(await page.evaluate(() => vorRef)).toBe('NAT');
     expect(await page.evaluate(() => localStorage.getItem('navaid.vorRef'))).toBe('NAT');
