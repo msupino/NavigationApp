@@ -4519,8 +4519,13 @@ function showInspector() {
     useBtn.id = 'insp-vor-use-ref';
     const isRef = vorRef === v.ident;
     const isRef2 = vorRef2 === v.ident;
+    // When a slot already holds ANOTHER station, say so on its button ("replaces BGN"), so the
+    // pilot sees what tapping would retune away.
+    const replaces = (id) => (typeof S.vorReplaces === 'function' ? S.vorReplaces(id) : ' \u2014 replaces ' + id);
+    const other1 = (typeof vorRef === 'string' && vorRef && !isRef) ? vorRef : '';
+    const other2 = (typeof vorRef2 === 'string' && vorRef2 && !isRef2) ? vorRef2 : '';
     useBtn.textContent = isRef ? (S.vorUse1Active || '✓ VOR 1 (tap to clear)')
-                               : (S.vorUse1 || 'Use as VOR 1');
+                               : (S.vorUse1 || 'Use as VOR 1') + (other1 ? replaces(other1) : '');
     // One station is at most one reference: while it is the other slot's station, its button
     // here is disabled (clear that slot first), so it can never be both VOR 1 and VOR 2.
     if (isRef2) { useBtn.disabled = true; useBtn.title = S.vorAlreadyOther || ''; }
@@ -4536,7 +4541,7 @@ function showInspector() {
     useBtn2.className = 'insp-btn';
     useBtn2.id = 'insp-vor-use-ref-2';
     useBtn2.textContent = isRef2 ? (S.vorUse2Active || '✓ VOR 2 (tap to clear)')
-                                 : (S.vorUse2 || 'Use as VOR 2');
+                                 : (S.vorUse2 || 'Use as VOR 2') + (other2 ? replaces(other2) : '');
     if (isRef) { useBtn2.disabled = true; useBtn2.title = S.vorAlreadyOther || ''; }
     useBtn2.onclick = () => {
       setReferenceVor2(isRef2 ? null : v.ident);

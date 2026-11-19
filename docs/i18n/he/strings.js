@@ -540,6 +540,7 @@ window.S = {
   vorUse2: 'הגדר כ-VOR 2',
   vorUse2Active: '✓ VOR 2 (הקישו לביטול)',
   vorAlreadyOther: 'כבר מוגדר כתחנת הייחוס השנייה — בטלו אותה תחילה',
+  vorReplaces: function(id) { return ' — במקום ' + id; },
   elevation: 'גובה',
   navHebrew: 'שם נקודה',
   vorFrom: function(id) { return 'מ-' + id + ' VOR'; },
