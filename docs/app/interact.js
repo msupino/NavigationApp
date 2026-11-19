@@ -193,6 +193,20 @@ function clearStoredInspectorSelection() {
   try { sessionStorage.removeItem(INSPECTOR_SELECTION_KEY); } catch (e) { /* */ }
 }
 
+// Dismiss the point inspector if it is open. Opening another full panel over the chart -- the
+// legend key, a chart/plate window -- should clear the inspector rather than stack on it (on a
+// phone the inspector is a bottom sheet the new panel would sit under or over).
+function closeInspectorIfOpen() {
+  const insp = document.getElementById('inspector');
+  if (!insp || insp.classList.contains('hidden')) return false;
+  state.selected = null;
+  if (typeof clearStoredInspectorSelection === 'function') clearStoredInspectorSelection();
+  if (typeof showInspector === 'function') showInspector();
+  if (typeof draw === 'function') draw();
+  return true;
+}
+if (typeof window !== 'undefined') window.closeInspectorIfOpen = closeInspectorIfOpen;
+
 function resetInspectorVorRef() {
   window.inspectorVorRef = undefined;
 }

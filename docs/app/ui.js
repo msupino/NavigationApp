@@ -2500,7 +2500,12 @@ addEventListener('resize', publishLegendDockWidth);
   setLegendCollapsed(stored === null ? true : stored === '1', false);
   window.setLegendCollapsed = setLegendCollapsed;
   if (!legendDock.btn) return;
-  legendDock.btn.addEventListener('click', () => setLegendCollapsed(!box.classList.contains('map-legend-collapsed'), true));
+  legendDock.btn.addEventListener('click', () => {
+    const opening = box.classList.contains('map-legend-collapsed');
+    setLegendCollapsed(!opening, true);
+    // Opening the key over the chart dismisses the inspector rather than stacking on it.
+    if (opening && typeof window.closeInspectorIfOpen === 'function') window.closeInspectorIfOpen();
+  });
   document.addEventListener('keydown', (e) => {
     if (e.key !== 'Escape' || box.classList.contains('map-legend-collapsed')) return;
     if (e.target && e.target.closest && e.target.closest('input, select, textarea, .modal-back')) return;
