@@ -4522,32 +4522,39 @@ function showInspector() {
     // When a slot already holds ANOTHER station, say so on its button ("replaces BGN"), so the
     // pilot sees what tapping would retune away.
     const replaces = (id) => (typeof S.vorReplaces === 'function' ? S.vorReplaces(id) : ' \u2014 replaces ' + id);
+    const swapWith = (id) => (typeof S.vorSwapWith === 'function' ? S.vorSwapWith(id) : ' \u2014 swaps with ' + id);
     const other1 = (typeof vorRef === 'string' && vorRef && !isRef) ? vorRef : '';
     const other2 = (typeof vorRef2 === 'string' && vorRef2 && !isRef2) ? vorRef2 : '';
-    useBtn.textContent = isRef ? (S.vorUse1Active || '✓ VOR 1 (tap to clear)')
-                               : (S.vorUse1 || 'Use as VOR 1') + (other1 ? replaces(other1) : '');
-    // One station is at most one reference: while it is the other slot's station, its button
-    // here is disabled (clear that slot first), so it can never be both VOR 1 and VOR 2.
-    if (isRef2) { useBtn.disabled = true; useBtn.title = S.vorAlreadyOther || ''; }
-    useBtn.onclick = () => {
-      // setReferenceVor also drops this station's SELECTION ring when clearing, which is why
-      // "tap to clear" used to look like it did nothing until the inspector was closed.
-      setReferenceVor(isRef ? null : v.ident);
+    // A station holds at most one slot. Pressing the OTHER slot's button on a station that
+    // already fills one MOVES it there (a switch, not a dead button); if that slot held another
+    // station, the two swap, like retuning a pair of receivers.
+    const tuneSlot = (target) => {
+      if (target === 1) {
+        const was1 = isRef2 ? other1 : '';          // VOR 1's station, to move into VOR 2
+        setReferenceVor(isRef ? null : v.ident);   // releases VOR 2 when this station held it
+        if (isRef2 && was1) setReferenceVor2(was1);
+      } else {
+        const was2 = isRef ? other2 : '';
+        setReferenceVor2(isRef2 ? null : v.ident);
+        if (isRef && was2) setReferenceVor(was2);
+      }
       if (typeof refreshFlightPlan === 'function' && refreshFlightPlan) refreshFlightPlan();
       draw(); showInspector();
     };
+    useBtn.textContent = isRef ? (S.vorUse1Active || '✓ VOR 1 (tap to clear)')
+      : isRef2 ? (S.vorUse1 || 'Use as VOR 1') + (other1 ? swapWith(other1) : '')
+      : (S.vorUse1 || 'Use as VOR 1') + (other1 ? replaces(other1) : '');
+    // setReferenceVor also drops this station's SELECTION ring when clearing, which is why
+    // "tap to clear" used to look like it did nothing until the inspector was closed.
+    useBtn.onclick = () => tuneSlot(1);
     body.appendChild(useBtn);
     const useBtn2 = document.createElement('button');
     useBtn2.className = 'insp-btn';
     useBtn2.id = 'insp-vor-use-ref-2';
     useBtn2.textContent = isRef2 ? (S.vorUse2Active || '✓ VOR 2 (tap to clear)')
-                                 : (S.vorUse2 || 'Use as VOR 2') + (other2 ? replaces(other2) : '');
-    if (isRef) { useBtn2.disabled = true; useBtn2.title = S.vorAlreadyOther || ''; }
-    useBtn2.onclick = () => {
-      setReferenceVor2(isRef2 ? null : v.ident);
-      if (typeof refreshFlightPlan === 'function' && refreshFlightPlan) refreshFlightPlan();
-      draw(); showInspector();
-    };
+      : isRef ? (S.vorUse2 || 'Use as VOR 2') + (other2 ? swapWith(other2) : '')
+      : (S.vorUse2 || 'Use as VOR 2') + (other2 ? replaces(other2) : '');
+    useBtn2.onclick = () => tuneSlot(2);
     body.appendChild(useBtn2);
   } else if (state.selected.type === 'airfield') {
     const af = airfields && airfields[state.selected.index];
