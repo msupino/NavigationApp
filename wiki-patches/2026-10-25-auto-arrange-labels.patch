@@ -1,0 +1,52 @@
+From 8e79ee87779e2e023a8fc43d8930c4c9761f38e9 Mon Sep 17 00:00:00 2001
+From: Marco <marco@supino.org>
+Date: Sun, 25 Oct 2026 09:14:45 +0000
+Subject: [PATCH] Route and legs: the Auto arrange labels button
+
+---
+ Route-and-Legs-he.md | 8 ++++++++
+ Route-and-Legs.md    | 9 +++++++++
+ 2 files changed, 17 insertions(+)
+
+diff --git a/Route-and-Legs-he.md b/Route-and-Legs-he.md
+index c211608..39adb86 100644
+--- a/Route-and-Legs-he.md
++++ b/Route-and-Legs-he.md
+@@ -87,6 +87,14 @@
+ - **חץ** — כיוון הטיסה, עם תווית מרחק.
+ - **סימון אמצע קטע** — תווית המציגה מרחק (ניתן להפעיל/לכבות).
+ - **עפיפון זמן מצטבר** — הקצה שלו מצביע על נקודת הציון שאליה הוא סופר, ומיקום ברירת המחדל שלו מפנה את מעגל הנקודה. קטע הנטוס בתוך ה-CTR של שדה היציאה אינו מצייר עפיפון זמן מצטבר: הוא נטוס לפי הנוהל של השדה ולא לפי שעון העצר של המסלול.
++- **סידור תוויות אוטומטי** — הכפתור האחרון בעמודת העריכה שעל המפה (שני עפיפונים, אחד מוזז מהשני).
++  כשקטעים קצרים או קטעים צמודים מניחים עפיפון, או זמן מצטבר, ברובו מעל אחר, הוא מזיז את זה שמתחת
++  למקום הפנוי הקרוב, פעם אחת: לאורך הקטע או הרחק ממנו לעפיפון ניווט, סביב נקודת הציון לזמן מצטבר.
++  כל תווית שהוזזה היא אז שלכם כמו תווית שגררתם — כווננו אותה ביד — ו**ביטול** מחזיר את כולן.
++  לחיצה נוספת מסדרת מחדש גם תוויות שהזזתם, חוץ מזו שגררתם אחרונה, שנשארת היכן ששמתם אותה והאחרות
++  מפנות לה מקום.
++  חפיפה קלה נשארת, ותווית שאין לה מקום פנוי בקרבת מקום נשארת במקומה. שום דבר אינו מוסתר. הכפתור
++  מעומעם כשהמסלול נעול או כשאין מסלול.
+ - **סימוני דקות** לאורך הקטע, לפי המהירות המתוכננת: סימון בכל דקה, וכל שני ארוך יותר ועם מספר.
+   **מראה ← סימוני דקות** קובע את ה**גודל** ואת הצבעים (**צבע הלוך** כחול, **צבע חזור** אדום לדרך חזרה).
+ - **מסגרת שינוי גובה / מהירות**: כש**הדגש הפרש גובה/מהירות** דולק, עפיפון שהגובה או המהירות שלו
+diff --git a/Route-and-Legs.md b/Route-and-Legs.md
+index d114b75..237fca3 100644
+--- a/Route-and-Legs.md
++++ b/Route-and-Legs.md
+@@ -79,6 +79,15 @@ A leg with **no altitude** is flown level for timing, and drawn dashed on the pr
+   tuning panel's **Route line** group.
+ - **Leg kite** — heading / time / altitude, per leg.
+ - **Cumulative kite** — running time. Its tip points at the waypoint it counts to, and its default offset clears that waypoint's circle. A leg inside the departure field's CTR draws no cumulative kite: it is flown on the field's procedure, not the route's stopwatch.
++- **Auto arrange labels** — the last button of the edit column on the map (two kites, one
++  drawn off the other). Where short legs or legs side by side put one kite, or cumulative time,
++  mostly over another, it moves the one underneath to the nearest clear place, once: along its
++  leg or further out for a nav kite, round its waypoint for a cumulative time. Each moved label
++  is then yours like one you dragged — adjust it by hand — and **Undo** puts them all back.
++  Pressing it again rearranges labels you moved too, except the one you dragged last, which
++  stays where you put it while the others make room. A
++  slight overlap is left alone, and a label with no clear place nearby stays where it is.
++  Nothing is hidden. Dimmed while the route is locked or there is no route.
+ - **Minute ticks** along the leg, from the planned speed: a tick every minute, every second one
+   longer and numbered. **Display → Minute markers** sets their **Size** and colours (**To color**
+   blue, **From color** red for the way back).
+-- 
+2.43.0
+
