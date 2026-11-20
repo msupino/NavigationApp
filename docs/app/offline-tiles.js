@@ -25,7 +25,7 @@
   ]);
   // Whole-chart packs the pilot can add, beside the automatic CVFR one. Each covers the
   // Israeli charts' frame, like CVFR.
-  const WHOLE_CHARTS = ['Navigation', 'Low Alt', 'Helicopters'];
+  const WHOLE_CHARTS = ['CVFR AIP', 'Navigation', 'Low Alt', 'Helicopters'];
   // Area packs: a chart with no fixed frame, downloaded for the area on screen.
   const AREA_LAYERS = ['OpenFlightMaps'];
   // From a continent's-eye view down to the detail level the pilot picks: most of Europe fits
@@ -104,10 +104,15 @@
     return { min, max };
   }
 
+  // A chart's own published range: never past its top level (Leaflet scales that up), and never
+  // below its first one (CVFR AIP starts at z8 -- asking for z7 would chase tiles never made).
+  const nativeTop = (layer, zMax) => (Number.isFinite(layer.options.maxNativeZoom) ? Math.min(zMax, layer.options.maxNativeZoom) : zMax);
+  const nativeBottom = (layer, zMin) => (Number.isFinite(layer.options.minNativeZoom) ? Math.max(zMin, layer.options.minNativeZoom) : zMin);
+  // A chart with a frame of its own (CVFR AIP: the two sheets) is packed over that frame only.
+  const chartFrame = (layer) => (layer.options && layer.options.chartBounds) || TILE.chartBounds;
   function tilePlan(layer, bounds, zMin, zMax) {
-    // Never past what the chart publishes: above it Leaflet scales the last level up.
-    const top = Number.isFinite(layer.options.maxNativeZoom) ? Math.min(zMax, layer.options.maxNativeZoom) : zMax;
-    return offlineTileList(bounds, zMin, top).map(coords => ({
+    const top = nativeTop(layer, zMax);
+    return offlineTileList(bounds, nativeBottom(layer, zMin), top).map(coords => ({
       coords,
       liveUrl: tileLayerUrl(layer, coords),
       fetchUrl: exportTileLayerUrl(layer, coords),
@@ -117,14 +122,13 @@
     const layer = packableTileLayer(name);
     const range = zoomRange(zMin, zMax);
     if (!layer || !range) return [];
-    return tilePlan(layer, TILE.chartBounds, range.min, range.max);
+    return tilePlan(layer, chartFrame(layer), range.min, range.max);
   }
   function chartTileCount(name) {
     const layer = packableTileLayer(name);
     const range = zoomRange();
     if (!layer || !range) return 0;
-    const top = Number.isFinite(layer.options.maxNativeZoom) ? Math.min(range.max, layer.options.maxNativeZoom) : range.max;
-    return offlineTileCount(TILE.chartBounds, range.min, top);
+    return offlineTileCount(chartFrame(layer), nativeBottom(layer, range.min), nativeTop(layer, range.max));
   }
   function cvfrPlan(zMin, zMax) {
     return cvfrLayer() ? chartPlan('CVFR', zMin, zMax) : [];

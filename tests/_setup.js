@@ -51,6 +51,8 @@ const TRANSPARENT_PNG = Buffer.from(
 const TILE_HOSTS = [
   'flight-maps.com',
   'navaid-tiles.supino.org',
+  // NavAid's own generated layers (CVFR AIP), in their own repository (#2032).
+  'msupino.github.io',
   'tile.openstreetmap.org',
   'newaydata.com',
   // Esri World Imagery: the satellite view every airfield/waypoint/point inspector opens.
@@ -141,7 +143,7 @@ exports.test = base.test.extend({
         if (isTileHost(host)) {
           const mirrored = TILE_MODE === 'mirror' && host !== MIRROR_HOST && mirrorUrlFor(url);
           if (mirrored) return route.continue({ url: mirrored });
-          if (host === MIRROR_HOST && TILE_MODE === 'mirror') return route.continue();
+          if ((host === MIRROR_HOST || host === 'msupino.github.io') && TILE_MODE === 'mirror') return route.continue();
           // The marker header is how a test can prove nothing left the machine.
           return route.fulfill({
             status: 200, contentType: 'image/png', body: TRANSPARENT_PNG,

@@ -699,7 +699,7 @@ const NAVWP_SOURCE_KEY = 'navaid.navDataPrefix';
 const layerSelect = document.getElementById('layer-select');
 // Flight charts first (CVFR / LSA / Heli), then a separator, then base maps.
 // '---' is a non-selectable divider. Any layer not listed is appended after.
-const LAYER_ORDER = ['CVFR', 'Low Alt', 'Helicopters', 'ATS', '---',
+const LAYER_ORDER = ['CVFR', 'CVFR AIP', 'Low Alt', 'Helicopters', 'ATS', '---',
                      'Navigation', 'OpenFlightMaps', 'Satellite', 'OpenStreetMap', 'World'];
 const orderedLayerNames = () => [
   ...LAYER_ORDER.filter(n => n === '---' || (layers[n] && layerOffered(n))),
@@ -740,7 +740,7 @@ rebuildLayerPicker();
 // for any other reason -- no signal in the air -- is not "no data": then nothing is said.
 const LAYERS_EVERYWHERE = ['OpenStreetMap', 'Satellite', 'World'];
 // Where each chart does have data, for the message. A chart not listed is told without it.
-const LAYER_COVERAGE_KEY = { OpenFlightMaps: 'OpenFlightMaps', CVFR: 'israel', Navigation: 'israel',
+const LAYER_COVERAGE_KEY = { OpenFlightMaps: 'OpenFlightMaps', CVFR: 'israel', 'CVFR AIP': 'israel', Navigation: 'israel',
   'Low Alt': 'israel', Helicopters: 'israel', ATS: 'israel' };
 function tileIsBlank(img) {
   const c = document.createElement('canvas');
@@ -833,6 +833,10 @@ let routeChart = null;
 function layerSwitchAllowed(active, target) {
   const hasRoute = !!(typeof state !== 'undefined' && state.waypoints && state.waypoints.length);
   if (!hasRoute) { routeChart = null; return true; }        // nothing to strand
+  // CVFR (AIP) is the CVFR chart itself, from the CAA's own sheets: same points, same graph.
+  // A route belongs to it exactly as to CVFR, and moving between the two is always free.
+  const sameChart = (n) => (n === 'CVFR AIP' ? 'CVFR' : n);
+  active = sameChart(active); target = sameChart(target);
   if (ROUTE_CHARTS.includes(active)) routeChart = active;
   if (!ROUTE_CHARTS.includes(target)) return true;          // scenery: always free
   if (!routeChart || routeChart === target) return true;    // back to its own chart, or never left

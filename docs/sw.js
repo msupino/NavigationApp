@@ -11,8 +11,12 @@ const TILE_HOST = 'flight-maps.com';
 const MIRROR_TILE_HOST = 'navaid-tiles.supino.org';
 // open flightmaps' aero tiles: a pack of them is an area the pilot downloaded.
 const OFM_TILE_HOST = 'nwy-tiles-api.prod.newaydata.com';
+// Layers NavAid generates itself (#2032), in their own repository apart from the mirror.
+const OWNED_TILE_HOST = 'msupino.github.io';
+const OWNED_TILE_PATH = '/NavigationApp-owned-tiles/';
 function isChartTileRequest(url) {
   if (url.host === TILE_HOST) return url.pathname.indexOf('/tiles/') === 0;
+  if (url.host === OWNED_TILE_HOST) return url.pathname.indexOf(OWNED_TILE_PATH) === 0;
   return url.host === MIRROR_TILE_HOST || url.host === OFM_TILE_HOST;
 }
 // Tiles are the hottest request path (pans fetch dozens in a burst), so the

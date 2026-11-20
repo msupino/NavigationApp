@@ -135,9 +135,10 @@ test('one compact status button opens the manager: CVFR first, then every other 
   await expect(page.locator('.offline-manager-modal')).toBeVisible();
   await expect(page.locator('.offline-manager-layer').first()).toHaveText('CVFR');
   // Every other chart can be kept too: the offered Israeli charts whole, open flightmaps by
-  // area. Helicopters ships unoffered, so it has no card until the gist offers it.
-  await expect(page.locator('.offline-manager-card[data-pack]')).toHaveCount(5);
-  for (const key of ['Navigation', 'Low Alt', 'ATS', 'OpenFlightMaps']) {
+  // area. Helicopters ships unoffered, so it has no card until the gist offers it. CVFR (AIP)
+  // (#2032) is a whole chart of its own beside CVFR.
+  await expect(page.locator('.offline-manager-card[data-pack]')).toHaveCount(6);
+  for (const key of ['CVFR AIP', 'Navigation', 'Low Alt', 'ATS', 'OpenFlightMaps']) {
     await expect(page.locator('.offline-manager-card[data-pack="' + key + '"]')).toHaveCount(1);
   }
   // Only the two providers that forbid it stay online, and the dialog says why.
