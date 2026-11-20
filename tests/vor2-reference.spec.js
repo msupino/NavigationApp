@@ -241,17 +241,24 @@ test('a station is at most one reference: taking it as VOR 2 releases it from VO
   expect(r.back).toEqual({ vor1: r.id, vor2: null });
 });
 
-test('the station inspector disables the slot a station already fills on the other', async ({ page }) => {
+test('pressing the other slot on a tuned station switches it (and swaps with that slot)', async ({ page }) => {
   await boot(page);
   await page.evaluate(() => {
-    const v = vors.find(x => x.ident === 'BGN') || vors[0];
-    setReferenceVor(v.ident);                      // this station is VOR 1
+    setReferenceVor('NAT');                        // NAT is VOR 1
+    setReferenceVor2('ROP');                       // ROP is VOR 2
     window.showVorStations = true; if (typeof syncVorUI === 'function') syncVorUI(); draw();
-    state.selected = { type: 'vor', index: vors.indexOf(v) }; showInspector();
+    state.selected = { type: 'vor', index: vors.findIndex(x => x.ident === 'NAT') }; showInspector();
   });
-  // VOR 1 button active (clearable); VOR 2 button disabled (can't also be VOR 2).
-  await expect(page.locator('#insp-vor-use-ref')).toBeEnabled();
-  await expect(page.locator('#insp-vor-use-ref-2')).toBeDisabled();
+  const b2 = page.locator('#insp-vor-use-ref-2');
+  await expect(b2).toBeEnabled();                  // not disabled any more
+  await expect(b2).toContainText('swaps with ROP');
+  await b2.click();                                // move NAT to VOR 2, ROP to VOR 1
+  expect(await page.evaluate(() => [vorRef, vorRef2])).toEqual(['ROP', 'NAT']);
+  // With VOR 2 empty, the same press just moves it.
+  await page.evaluate(() => { setReferenceVor2(null); setReferenceVor('NAT'); showInspector(); });
+  await expect(page.locator('#insp-vor-use-ref-2')).toContainText('Use as VOR 2');
+  await page.locator('#insp-vor-use-ref-2').click();
+  expect(await page.evaluate(() => [vorRef, vorRef2])).toEqual([null, 'NAT']);
 });
 
 test('a VOR co-located with a route point is offered in the chooser with the VOR layer off', async ({ page }) => {
