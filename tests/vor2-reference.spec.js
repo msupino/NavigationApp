@@ -251,12 +251,12 @@ test('pressing the other slot on a tuned station switches it (and swaps with tha
   });
   const b2 = page.locator('#insp-vor-use-ref-2');
   await expect(b2).toBeEnabled();                  // not disabled any more
-  await expect(b2).toContainText('swap with ROP');
+  await expect(b2).toContainText('swaps with ROP');
   await b2.click();                                // move NAT to VOR 2, ROP to VOR 1
   expect(await page.evaluate(() => [vorRef, vorRef2])).toEqual(['ROP', 'NAT']);
   // With VOR 2 empty, the same press just moves it.
   await page.evaluate(() => { setReferenceVor2(null); setReferenceVor('NAT'); showInspector(); });
-  await expect(page.locator('#insp-vor-use-ref-2')).toContainText('Move to VOR 2');
+  await expect(page.locator('#insp-vor-use-ref-2')).toContainText('Use as VOR 2');
   await page.locator('#insp-vor-use-ref-2').click();
   expect(await page.evaluate(() => [vorRef, vorRef2])).toEqual([null, 'NAT']);
 });

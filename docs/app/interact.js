@@ -4522,7 +4522,7 @@ function showInspector() {
     // When a slot already holds ANOTHER station, say so on its button ("replaces BGN"), so the
     // pilot sees what tapping would retune away.
     const replaces = (id) => (typeof S.vorReplaces === 'function' ? S.vorReplaces(id) : ' \u2014 replaces ' + id);
-    const swapWith = (id) => (typeof S.vorSwapWith === 'function' ? S.vorSwapWith(id) : ' \u2014 swap with ' + id);
+    const swapWith = (id) => (typeof S.vorSwapWith === 'function' ? S.vorSwapWith(id) : ' \u2014 swaps with ' + id);
     const other1 = (typeof vorRef === 'string' && vorRef && !isRef) ? vorRef : '';
     const other2 = (typeof vorRef2 === 'string' && vorRef2 && !isRef2) ? vorRef2 : '';
     // A station holds at most one slot. Pressing the OTHER slot's button on a station that
@@ -4542,7 +4542,7 @@ function showInspector() {
       draw(); showInspector();
     };
     useBtn.textContent = isRef ? (S.vorUse1Active || '✓ VOR 1 (tap to clear)')
-      : isRef2 ? (S.vorMoveTo1 || 'Move to VOR 1') + (other1 ? swapWith(other1) : '')
+      : isRef2 ? (S.vorUse1 || 'Use as VOR 1') + (other1 ? swapWith(other1) : '')
       : (S.vorUse1 || 'Use as VOR 1') + (other1 ? replaces(other1) : '');
     // setReferenceVor also drops this station's SELECTION ring when clearing, which is why
     // "tap to clear" used to look like it did nothing until the inspector was closed.
@@ -4552,7 +4552,7 @@ function showInspector() {
     useBtn2.className = 'insp-btn';
     useBtn2.id = 'insp-vor-use-ref-2';
     useBtn2.textContent = isRef2 ? (S.vorUse2Active || '✓ VOR 2 (tap to clear)')
-      : isRef ? (S.vorMoveTo2 || 'Move to VOR 2') + (other2 ? swapWith(other2) : '')
+      : isRef ? (S.vorUse2 || 'Use as VOR 2') + (other2 ? swapWith(other2) : '')
       : (S.vorUse2 || 'Use as VOR 2') + (other2 ? replaces(other2) : '');
     useBtn2.onclick = () => tuneSlot(2);
     body.appendChild(useBtn2);
