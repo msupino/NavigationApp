@@ -5856,10 +5856,9 @@ function setReferenceVor(ident) {
   return next;
 }
 
-// VOR2's setter. Deliberately simpler than VOR1's: no inspector-only override to reset and no
-// selection-ring suppression, because VOR2 is an explicit second slot tuned from the toolbar or
-// a station's inspector, not the station the coverage ring answers to. Assign, persist, and
-// keep every VOR2 picker showing the same answer.
+// VOR2's setter. Like VOR1's but for the second slot: it has no inspector-only override to
+// reset, and it suppresses the SELECTED station's ring the same way when the pilot clears VOR 2
+// on that station -- so the purple ring draws and clears on the press, matching VOR 1.
 function setReferenceVor2(ident) {
   const next = ident || null;
   // Same invariant the other way: taking a station as VOR 2 releases it from VOR 1.
@@ -5870,6 +5869,13 @@ function setReferenceVor2(ident) {
     if (next) localStorage.setItem('navaid.vorRef2', next);
     else localStorage.removeItem('navaid.vorRef2');
   } catch (e) { /* storage unavailable */ }
+  // Clearing VOR 2 on the station whose inspector is open means "not this one": suppress its
+  // selection ring too, or the button looks like it did nothing (the ring lingered as a
+  // plain selection ring). Same rule as setReferenceVor.
+  const selIdent = (typeof state !== 'undefined' && state.selected &&
+    state.selected.type === 'vor' && typeof vors !== 'undefined' && vors[state.selected.index])
+    ? vors[state.selected.index].ident : null;
+  window.vorRingSuppressIdent = (!next && selIdent) ? selIdent : null;
   for (const id of ['vor-ref-select-2', 'fp-vor-select-2']) {
     const el = document.getElementById(id);
     if (el) el.value = next || '';
