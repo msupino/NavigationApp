@@ -1571,7 +1571,9 @@ body.deck-on .leaflet-control.edit-col-ctrl {
    under the clock. The wind and SIGMET lines step up past it, so nothing lands on it. */
 .leaflet-bottom.leaflet-right .leaflet-control.zulu-clock.zulu-fixed {
   position: absolute;
-  right: var(--navaid-map-ctrl-clear-low, var(--navaid-map-ctrl-clear));
+  /* 8px more than the readouts below it: at this height the clock sits level with the zoom
+     "+", and the shared clearance left it touching that button. */
+  right: calc(var(--navaid-map-ctrl-clear-low, var(--navaid-map-ctrl-clear)) + 8px);
   bottom: var(--navaid-zulu-fixed-bottom, 82px);
   top: auto;              /* the Hebrew top-left default sets these */
   left: auto;
