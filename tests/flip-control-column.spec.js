@@ -15,7 +15,7 @@ async function cols(w, h, browser) {
     if (typeof clearBootLoading === 'function') clearBootLoading();
     const bl = document.getElementById('boot-loading'); if (bl) bl.remove();
     // Production reality: ATC + assistant off via the gist.
-    NavAid.tuningDefaults.featureAtcRadio.value = false;
+    NavAid.tuningDefaults.featureAtcIlEmbed.value = false;
     if (NavAid.tuningDefaults.featureAssistant) NavAid.tuningDefaults.featureAssistant.value = false;
     document.querySelectorAll('.atc-fab-control, .assistant-fab-control').forEach(e => { e.style.display = 'none'; });
     draw();
