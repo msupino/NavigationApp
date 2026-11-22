@@ -1,8 +1,6 @@
 {
   "appId": "org.supino.navaid",
   "appName": "NavAid",
-  "appendUserAgent": "NavAidApp/1.0",
-  "appendUserAgent": "NavAidApp/1.0",
   "webDir": "shell",
   "ios": {
     "limitsNavigationsToAppBoundDomains": true,
