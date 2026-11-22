@@ -9095,6 +9095,19 @@ body.deck-on .leaflet-bottom { margin-bottom: calc(var(--navaid-deck-bar-h, 52px
    zoom and the dial in the right-hand column; column-reverse + the reversed DOM order keep
    the top-to-bottom order). On a tall phone the column fits and nothing moves. direction is
    pinned LTR because the corner is physically right in Hebrew too. */
+/* On a short screen (a Samsung flip, split-screen, a landscape phone) the bottom-right control
+   column is a button or two too tall and wraps: a lone audio-alerts (voice) button spilled into a
+   second column LEFT of north-up (reported). Tighten the controls' vertical spacing there to
+   reclaim ~40px, so the stack stays a single right-edge column down to ~560px tall. Shorter than
+   that it still wraps, but two or more together rather than orphaning one. */
+@media (max-height: 680px) {
+  body.deck-on .leaflet-bottom.leaflet-right > .leaflet-control { margin-bottom: 0 !important; }
+  /* Less gap above the column too (the strip + a smaller pad), and drop the map attribution out
+     of the column's height so a non-control line does not push the stack into a second column --
+     it stays pinned at the corner. */
+  body.deck-on .leaflet-bottom.leaflet-right { --navaid-col-top: calc(var(--navaid-deck-strip-h, 46px) + 2px); }
+  body.deck-on .leaflet-bottom.leaflet-right > .leaflet-control-attribution { position: absolute; bottom: 0; right: 0; margin: 0 !important; }
+}
 body.deck-on .leaflet-bottom.leaflet-right {
   --navaid-col-top: calc(var(--navaid-deck-strip-h, 46px) + 8px);
   display: flex;
