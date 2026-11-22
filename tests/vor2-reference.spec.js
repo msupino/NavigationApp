@@ -324,3 +324,17 @@ test('a VOR station inspector names the station each occupied slot would replace
   await page.locator('#insp-vor-use-ref-2').click();
   await expect(page.locator('#insp-vor-use-ref-2')).toContainText('tap to clear');
 });
+
+test('clearing VOR 2 on the open station hides its ring, like VOR 1', async ({ page }) => {
+  await boot(page);
+  await page.evaluate(() => {
+    window.showVorStations = true; if (typeof syncVorUI === 'function') syncVorUI();
+    state.selected = { type: 'vor', index: vors.findIndex(x => x.ident === 'BGN') }; showInspector(); draw();
+  });
+  await page.locator('#insp-vor-use-ref-2').click();                 // tune BGN as VOR 2
+  expect(await page.evaluate(() => vorRef2)).toBe('BGN');
+  expect(await page.evaluate(() => vorRingSuppressIdent)).toBeNull();  // ring draws
+  await page.locator('#insp-vor-use-ref-2').click();                 // clear it
+  expect(await page.evaluate(() => vorRef2)).toBeNull();
+  expect(await page.evaluate(() => vorRingSuppressIdent)).toBe('BGN'); // selection ring suppressed
+});

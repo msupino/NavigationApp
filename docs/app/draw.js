@@ -4294,17 +4294,15 @@ function drawVors(force) {
   }
   const selIdent = selectedStation ||
     (typeof inspectorVorRef === 'string' && inspectorVorRef) || vorRef;
-  const selV = selIdent ? vors.find(v => v.ident === selIdent) : null;
-  const ringPts = (selV && selV.coverageNm > 0 && typeof notamCirclePoints === 'function')
-    ? notamCirclePoints(selV.lat, selV.lng, selV.coverageNm, tune('vorRangeRingSteps'))
-      .map(c => proj({ lat: c[0], lng: c[1] }))
-    : [];
-  // Guarded like every other polygon path here (drawSigmets, drawNotams): the step count is a
-  // tuning key, so the live gist or ?tune=1 can set it to 0, and pts[0] on an empty array
-  // threw INSIDE draw() -- taking the route line, kites, waypoints, notes and the page frame
-  // down with it, not just the ring. Skipping only the ring keeps the stations below drawn.
-  if (ringPts.length >= 3) {
-    const pts = ringPts;
+  // One reference ring, drawn for VOR 1 (the selected / inspector / tuned station) and again for
+  // VOR 2's tuned station in its own colour, so both coverages read on the chart.
+  function drawVorRing(v, color) {
+    if (!v || !(v.coverageNm > 0) || typeof notamCirclePoints !== 'function') return;
+    const pts = notamCirclePoints(v.lat, v.lng, v.coverageNm, tune('vorRangeRingSteps'))
+      .map(c => proj({ lat: c[0], lng: c[1] }));
+    // Guarded like every other polygon path here: the step count is a tuning key the gist can
+    // set to 0, and pts[0] on an empty array threw inside draw(). Skip only the ring.
+    if (pts.length < 3) return;
     octx.save();
     octx.beginPath();
     octx.moveTo(pts[0].x, pts[0].y);
@@ -4312,24 +4310,36 @@ function drawVors(force) {
     octx.closePath();
     octx.setLineDash([tune('vorRangeRingDashPx'), tune('vorRangeRingGapPx')]);
     octx.lineWidth = tune('vorRangeRingWidthPx');
-    octx.strokeStyle = colorWithAlpha(tune('vorRangeRingColor'), tune('vorRangeRingAlpha'));
+    octx.strokeStyle = colorWithAlpha(color, tune('vorRangeRingAlpha'));
     octx.stroke();
     octx.setLineDash([]);
     if (tune('vorRangeRingLabel')) {
-      // Label at the ring's top so it reads without covering the station.
       const top = pts.reduce((a, b) => (b.y < a.y ? b : a), pts[0]);
-      const txt = selV.ident + ' ' + selV.coverageNm + ' NM';
+      const txt = v.ident + ' ' + v.coverageNm + ' NM';
       octx.font = `bold ${tune('vorLabelFontPx')}px sans-serif`;
       octx.textAlign = 'center';
       octx.textBaseline = 'bottom';
       octx.lineWidth = tune('overlayLabelHaloWidthPx');
       octx.strokeStyle = colorWithAlpha(tune('overlayLabelHaloColor'), tune('overlayLabelHaloAlpha'));
       octx.strokeText(txt, top.x, top.y - tune('vorRangeRingLabelGapPx'));
-      octx.fillStyle = colorWithAlpha(tune('vorRangeRingColor'), tune('vorRangeRingLabelAlpha'));
+      octx.fillStyle = colorWithAlpha(color, tune('vorRangeRingLabelAlpha'));
       octx.fillText(txt, top.x, top.y - tune('vorRangeRingLabelGapPx'));
     }
     octx.restore();
   }
+  // Every reference rings, in its slot's colour, AND the selected station rings (what does it
+  // cover) -- opening one station's inspector must not hide the others' rings (reported: opening
+  // VOR 2 hid VOR 1's circle). A station tuned as VOR 2 always rings in VOR 2's colour, so
+  // pressing "Use as VOR 2" recolours it at once rather than on inspector close. Deduped by ident.
+  const ringColorFor = (id) => tune(id && typeof vorRef2 === 'string' && id === vorRef2
+    ? 'vorRangeRingColor2' : 'vorRangeRingColor');
+  const ringIds = [];
+  const addRing = (id) => { if (id && typeof id === 'string' && !ringIds.includes(id)) ringIds.push(id); };
+  addRing(selectedStation);                                              // the inspected station
+  addRing(typeof inspectorVorRef === 'string' ? inspectorVorRef : null); // per-view override
+  addRing(typeof vorRef === 'string' ? vorRef : null);                   // VOR 1
+  addRing(typeof vorRef2 === 'string' ? vorRef2 : null);                 // VOR 2
+  for (const id of ringIds) drawVorRing(vors.find(v => v.ident === id), ringColorFor(id));
 
   for (const v of vors) {
     const s = proj(v);
