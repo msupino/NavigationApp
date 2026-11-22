@@ -4328,9 +4328,13 @@ function drawVors(force) {
     }
     octx.restore();
   }
-  drawVorRing(selV, tune('vorRangeRingColor'));
-  const sel2V = (typeof vorRef2 === 'string' && vorRef2 && (!selV || vorRef2 !== selV.ident))
-    ? vors.find(v => v.ident === vorRef2) : null;
+  // The first ring is the selected / inspector / VOR 1 station, in VOR 1's colour -- UNLESS that
+  // station is the one tuned as VOR 2, in which case it rings in VOR 2's colour. So pressing
+  // "Use as VOR 2" on the open station recolours its ring at once (it draws and clears on the
+  // press, not when the inspector closes). VOR 2's own station always rings in its colour.
+  const isVor2 = (v) => v && typeof vorRef2 === 'string' && vorRef2 && v.ident === vorRef2;
+  drawVorRing(selV, tune(isVor2(selV) ? 'vorRangeRingColor2' : 'vorRangeRingColor'));
+  const sel2V = (vorRef2 && (!selV || vorRef2 !== selV.ident)) ? vors.find(v => v.ident === vorRef2) : null;
   drawVorRing(sel2V, tune('vorRangeRingColor2'));
 
   for (const v of vors) {
