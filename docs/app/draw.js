@@ -4295,16 +4295,15 @@ function drawVors(force) {
   const selIdent = selectedStation ||
     (typeof inspectorVorRef === 'string' && inspectorVorRef) || vorRef;
   const selV = selIdent ? vors.find(v => v.ident === selIdent) : null;
-  const ringPts = (selV && selV.coverageNm > 0 && typeof notamCirclePoints === 'function')
-    ? notamCirclePoints(selV.lat, selV.lng, selV.coverageNm, tune('vorRangeRingSteps'))
-      .map(c => proj({ lat: c[0], lng: c[1] }))
-    : [];
-  // Guarded like every other polygon path here (drawSigmets, drawNotams): the step count is a
-  // tuning key, so the live gist or ?tune=1 can set it to 0, and pts[0] on an empty array
-  // threw INSIDE draw() -- taking the route line, kites, waypoints, notes and the page frame
-  // down with it, not just the ring. Skipping only the ring keeps the stations below drawn.
-  if (ringPts.length >= 3) {
-    const pts = ringPts;
+  // One reference ring, drawn for VOR 1 (the selected / inspector / tuned station) and again for
+  // VOR 2's tuned station in its own colour, so both coverages read on the chart.
+  function drawVorRing(v, color) {
+    if (!v || !(v.coverageNm > 0) || typeof notamCirclePoints !== 'function') return;
+    const pts = notamCirclePoints(v.lat, v.lng, v.coverageNm, tune('vorRangeRingSteps'))
+      .map(c => proj({ lat: c[0], lng: c[1] }));
+    // Guarded like every other polygon path here: the step count is a tuning key the gist can
+    // set to 0, and pts[0] on an empty array threw inside draw(). Skip only the ring.
+    if (pts.length < 3) return;
     octx.save();
     octx.beginPath();
     octx.moveTo(pts[0].x, pts[0].y);
@@ -4312,24 +4311,27 @@ function drawVors(force) {
     octx.closePath();
     octx.setLineDash([tune('vorRangeRingDashPx'), tune('vorRangeRingGapPx')]);
     octx.lineWidth = tune('vorRangeRingWidthPx');
-    octx.strokeStyle = colorWithAlpha(tune('vorRangeRingColor'), tune('vorRangeRingAlpha'));
+    octx.strokeStyle = colorWithAlpha(color, tune('vorRangeRingAlpha'));
     octx.stroke();
     octx.setLineDash([]);
     if (tune('vorRangeRingLabel')) {
-      // Label at the ring's top so it reads without covering the station.
       const top = pts.reduce((a, b) => (b.y < a.y ? b : a), pts[0]);
-      const txt = selV.ident + ' ' + selV.coverageNm + ' NM';
+      const txt = v.ident + ' ' + v.coverageNm + ' NM';
       octx.font = `bold ${tune('vorLabelFontPx')}px sans-serif`;
       octx.textAlign = 'center';
       octx.textBaseline = 'bottom';
       octx.lineWidth = tune('overlayLabelHaloWidthPx');
       octx.strokeStyle = colorWithAlpha(tune('overlayLabelHaloColor'), tune('overlayLabelHaloAlpha'));
       octx.strokeText(txt, top.x, top.y - tune('vorRangeRingLabelGapPx'));
-      octx.fillStyle = colorWithAlpha(tune('vorRangeRingColor'), tune('vorRangeRingLabelAlpha'));
+      octx.fillStyle = colorWithAlpha(color, tune('vorRangeRingLabelAlpha'));
       octx.fillText(txt, top.x, top.y - tune('vorRangeRingLabelGapPx'));
     }
     octx.restore();
   }
+  drawVorRing(selV, tune('vorRangeRingColor'));
+  const sel2V = (typeof vorRef2 === 'string' && vorRef2 && (!selV || vorRef2 !== selV.ident))
+    ? vors.find(v => v.ident === vorRef2) : null;
+  drawVorRing(sel2V, tune('vorRangeRingColor2'));
 
   for (const v of vors) {
     const s = proj(v);
