@@ -2,8 +2,8 @@
 // Asked: "why is there a difference in waypoint inspector when on route and map point? See DEROR",
 // then "also check for line wrap in freq and listen buttons". The same point reads the same way
 // from the map and from the route: the frequency change comes after Reporting in both, and a
-// route waypoint with its callout keeps the chart's call signs and their play buttons above the
-// editor. Frequencies never wrap away from their play buttons, at any text size.
+// route waypoint with its callout keeps the chart's call signs above the editor. Frequencies never
+// wrap away from their reset controls, at any text size.
 const { test, expect } = require('./_setup');
 
 async function boot(page) {
@@ -15,7 +15,7 @@ async function boot(page) {
   await page.waitForFunction(() => typeof state !== 'undefined' && !!window.atcRadio
     && Array.isArray(window.airfields) && typeof addRoutePoint === 'function');
   await page.evaluate(async () => {
-    NavAid.tuning.featureAtcRadio = true; refreshAtcRadioFeature();   // ships on; set explicitly
+    NavAid.tuning.featureAtcIlEmbed = true; refreshAtcRadioFeature();
     await loadNavWaypoints(); await loadCommChange();
     window.showCommChange = true;
     window.appConfirm = async () => true; window.askYesNo = async () => true;
@@ -34,17 +34,16 @@ const sections = (page) => page.evaluate(() => [...document.querySelectorAll('#i
 }).filter((v, i, a) => v && a.indexOf(v) === i));
 
 const callSigns = (page) => page.evaluate(() => [...document.querySelectorAll('#inspector .commchange-option')].map(el => {
-  const b = el.querySelector('[data-atc]');
-  return [el.dataset.callSign, b ? b.dataset.atc : null];
+  return [el.dataset.callSign, !!el.querySelector('[data-atc]')];
 }));
 
-test('DEROR from the map and from the route: same order, same call signs and play buttons', async ({ page }) => {
+test('DEROR from the map and from the route: same order and call signs without inline ATC buttons', async ({ page }) => {
   await boot(page);
   await page.evaluate(() => { state.selected = { type: 'navwp', index: navWP.findIndex(w => w.name === 'DEROR') }; showInspector(); });
   const mapOrder = await sections(page);
   const mapCalls = await callSigns(page);
   expect(mapOrder.indexOf('freq')).toBeGreaterThan(mapOrder.indexOf('reporting'));
-  expect(mapCalls).toEqual([['HERZLIYA', 'herzliya-twr'], ['PLUTO_WEST', 'pluto-west']]);
+  expect(mapCalls).toEqual([['HERZLIYA', false], ['PLUTO_WEST', false]]);
 
   // On a route built through the change point, DEROR carries its callout (the editor).
   await page.evaluate(async () => {
@@ -70,7 +69,7 @@ test('the freq change point label carries a drawn icon, not an emoji', async ({ 
   expect(await lbl.textContent()).toBe('Freq change point');
 });
 
-// Each row's play button, frequency and reset sit on one line, inside the panel.
+// Each frequency and reset control sits on one line, inside the panel.
 const freqRowsHold = (page) => page.evaluate(() => {
   const panel = document.getElementById('inspector').getBoundingClientRect();
   const bad = [];
@@ -83,14 +82,14 @@ const freqRowsHold = (page) => page.evaluate(() => {
   for (const row of document.querySelectorAll('#inspector .comm-section .row')) {
     const v = row.querySelector('.val');
     if (v && v.querySelector('.charts-freq-input')) {
-      sameLine([v.querySelector('.atc-play'), v.querySelector('.charts-freq-input'), v.querySelector('.commchange-freq-reset')],
+      sameLine([v.querySelector('.charts-freq-input'), v.querySelector('.commchange-freq-reset')],
         row.querySelector('label').textContent);
       const inp = v.querySelector('.charts-freq-input');
       if (inp.scrollWidth > inp.clientWidth + 1) bad.push(row.querySelector('label').textContent + ': frequency clipped');
     }
   }
   for (const item of document.querySelectorAll('#inspector .commchange-option')) {
-    sameLine([item.querySelector('.atc-play'), item.querySelector('.commchange-option-freq')], item.dataset.callSign);
+    sameLine([item.querySelector('.commchange-option-freq')], item.dataset.callSign);
     const name = item.querySelector('.commchange-option-name');
     // Broken between words only: no line holds part of a word.
     const words = name.textContent.trim().split(/\s+/);

@@ -2113,8 +2113,9 @@ window.S = {
   // --- Magnifying glass ------------------------------------------------
   tbMagnifier: '🔍 זכוכית מגדלת (M)',
   atcRadio: 'רדיו בקרה',
-  atcRadioTitle: 'האזנה חיה: מגדלי הרצליה וחיפה, ופלוטו מערב',
-  atcRadioNote: 'מקלטי בקרה בשידור חי. ערוץ אחד בכל פעם.',
+  atcRadioTitle: 'פתיחת עמוד הרדיו של ATC-IL',
+  atcRadioNote: 'השתמשו בפקדי הרדיו של ATC-IL למטה. אם הנגן לא נטען, פתחו את ATC-IL בנפרד.',
+  atcOpenProvider: 'פתיחת ATC-IL בנפרד',
   atcTower: 'מגדל',
   atcClearance: 'קלירנס',
   atcPluto: 'פלוטו מערב',
