@@ -570,3 +570,30 @@ test.describe('the clock on the panel', () => {
     expect(await page.evaluate(() => 1 + 1)).toBe(2);
   });
 });
+
+// The Now button and the slider must not shift as the hour label changes width -- including the
+// cross-midnight readout ("+14h · 11-23 03:00Z"), at a mid width where the strip is tightest
+// (reported: the Now button moved when the left-side time changed digit count).
+test('the hour label never shifts the Now button or the slider', async ({ page }) => {
+  await page.setViewportSize({ width: 860, height: 800 });
+  await page.goto('?lang=he&nogist');
+  await page.waitForFunction(() => typeof draw === 'function'
+    && !document.documentElement.classList.contains('app-booting'));
+  await page.evaluate(() => {
+    const b = document.getElementById('boot-loading'); if (b) b.remove();
+    const cb = document.getElementById('notam-cb');            // a timed layer, so the clock is live
+    if (cb && !cb.checked) { cb.checked = true; cb.dispatchEvent(new Event('change', { bubbles: true })); }
+  });
+  const geo = (v) => page.evaluate((v) => {
+    const s = document.getElementById('map-time-slider'); s.value = String(v); s.dispatchEvent(new Event('input'));
+    const n = document.getElementById('map-time-now').getBoundingClientRect();
+    const sl = document.getElementById('map-time-slider').getBoundingClientRect();
+    return { now: Math.round(n.left), sl: Math.round(sl.width) };
+  }, v);
+  const base = await geo(0);                                   // "now"
+  for (const v of [4, 9, 10, 14]) {                            // same-day, then cross-midnight 1- and 2-digit
+    const g = await geo(v);
+    expect(g.now, 'Now moved at +' + v).toBe(base.now);
+    expect(g.sl, 'slider resized at +' + v).toBe(base.sl);
+  }
+});

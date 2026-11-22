@@ -5370,7 +5370,13 @@ body.theme-light .msa-low .val { color: #c0392b; }
   box-shadow: var(--navaid-ctrl-shadow);
 }
 .map-time input[type="range"] {
-  flex: 0 1 420px;
+  /* Grow to fill AND shrink to nothing (min-width:0): the strip then always exactly fills its
+     padded box, so the readout sits pinned at the dock-side edge and grows INWARD into the
+     slider (never out into the legend dock), and the Now button stays pinned at the far edge.
+     With the readout reserved to its widest below, neither the slider nor Now moves as the hour
+     label changes -- at any width (reported: the Now button moved on a cross-midnight scrub). */
+  flex: 1 1 420px;
+  min-width: 0;
   max-width: 420px;
   accent-color: #0b6fb8;
   background: var(--navaid-ctrl-bg);
@@ -5382,26 +5388,18 @@ body.theme-light .msa-low .val { color: #c0392b; }
   font-size: 12px;
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
-  /* Reserve the width of a same-day look-ahead readout ("+14h · 23:00Z") and centre the text,
-     so the slider beside it keeps one width instead of shrinking as the hour label grows
-     (reported: the slider resizes as you scrub). Not the full width of the rarer cross-midnight
-     form ("+14h · 11-23 02:00Z"), because that reserve would push the readout onto the legend
-     dock at ~820px; that one form nudges the slider, every same-day one does not. */
-  min-width: 7rem;
+  /* Reserve the width of the widest readout -- the cross-midnight form with its date prefix
+     ("+14h · 11-23 03:00Z", ~132px) -- and centre the text, so the readout never changes width
+     as the hour label grows. Paired with the grow-and-shrink slider above, that keeps the
+     slider AND the Now button fixed at every width, the legend dock stays clear (the readout
+     grows inward, not out over the dock), and only a sub-700px sliver has no room to spare. */
+  min-width: 8.25rem;
   text-align: center;
   padding: 4px 8px;
   border-radius: var(--navaid-ctrl-radius);
   background: var(--navaid-ctrl-bg);
   color: #1f252c;
   box-shadow: var(--navaid-ctrl-shadow);
-}
-/* Wide desktop has the room: hold the full cross-midnight readout ("+14h · 11-23 03:00Z", ~132px)
-   so the slider AND the Now button stay put even on a scrub that crosses UTC midnight. Below
-   900px (tablet, phone deck) the 7rem reserve above wins -- it clears the legend dock, and the
-   phone deck pins Now regardless, so only a desktop cross-midnight scrub needs this. */
-@media (min-width: 900px) {
-  .map-time-read,
-  .map-time-charts { min-width: 8.25rem; }
 }
 /* What the weather charts could actually give you. They publish at 00/03/06/12/18Z, so at
    +3h the NOTAMs are exactly 15:00Z while SIGWX may only have 12:00Z -- said out loud here
