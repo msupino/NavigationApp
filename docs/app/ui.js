@@ -14612,11 +14612,11 @@ const NavWxTime = (function () {
     // The readout stays, so the clock still says "now"; Now stays governed by offLive, so an
     // hour scrubbed before the last layer went off can still be brought back to live.
     //
-    // ...but only the desktop's fixed, dimmed face is inert. On a phone the clock is hidden
-    // until the pilot taps the strip to open its row, and opening it is a deliberate request to
-    // scrub -- so leave it draggable there even with nothing yet on. (deck-on, not the open
-    // class: the row's open state is set without a refresh, so the layout is the stable gate.)
-    const dimmedInPlace = !timed && !document.body.classList.contains('deck-on');
+    // Nothing answers to it -> inert, everywhere, the phone's opened row included: a slider that
+    // moves a look-ahead no layer is reading is misleading even when the pilot opened it on
+    // purpose (reported: "slider should not move"). The readout stays and Now is governed by
+    // offLive, so an hour scrubbed before the last layer went off can still be brought back.
+    const dimmedInPlace = !timed;
     slider.disabled = dimmedInPlace;
     if (inspSlider) inspSlider.disabled = dimmedInPlace;
     label();

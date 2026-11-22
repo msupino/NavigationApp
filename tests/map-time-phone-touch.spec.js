@@ -15,6 +15,10 @@ for (const lang of ['he', 'en']) test(`the map clock opened from the strip takes
     // A route, so the totals pill is in the dock (the tallest the dock gets).
     state.waypoints = [{ lat: 32.18, lng: 34.83, name: 'LLHZ' }, { lat: 32.44, lng: 34.90, name: 'HADERA' }];
     state.legs = []; syncLegs(); draw();
+    // A timed layer on, or the clock is idle and its slider disabled (nothing to scrub); this
+    // test is about the touch drag reaching it, not about the idle state.
+    const cb = document.getElementById('show-wind-cb');
+    if (cb && !cb.checked) { cb.checked = true; cb.dispatchEvent(new Event('change', { bubbles: true })); }
     NavAid.refreshMapClock();
   });
   await page.locator('.deck-strip-clock').click();
@@ -48,4 +52,15 @@ for (const lang of ['he', 'en']) test(`the map clock opened from the strip takes
   }
   await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
   await expect.poll(() => page.evaluate(() => Number(document.getElementById('lookahead-time').value))).toBeGreaterThan(5);
+});
+
+test('on a phone the opened clock is inert while nothing answers to it', async ({ page }) => {
+  await page.goto('?lang=en&nogist');
+  await page.waitForFunction(() => typeof NavAid !== 'undefined' && NavAid.refreshMapClock);
+  await page.evaluate(() => { if (typeof clearBootLoading === 'function') clearBootLoading(); NavAid.refreshMapClock(); });
+  await page.locator('.deck-strip-clock').click();            // open the row, nothing timed
+  expect(await page.evaluate(() => document.getElementById('map-time-slider').disabled)).toBe(true);
+  // Turn a timed layer on -> it becomes usable.
+  await page.evaluate(() => { const cb = document.getElementById('show-wind-cb'); cb.checked = true; cb.dispatchEvent(new Event('change', { bubbles: true })); });
+  expect(await page.evaluate(() => document.getElementById('map-time-slider').disabled)).toBe(false);
 });
