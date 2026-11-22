@@ -14607,18 +14607,11 @@ const NavWxTime = (function () {
     // rebuilt for every selection, so there is no place to keep.
     if (inspStrip) inspStrip.hidden = !featureOn() || !timed;
     el.classList.toggle('idle', !timed);
-    // Dim it AND make it inert while nothing answers to it. A dimmed slider a pilot can still
-    // drag moves a look-ahead no layer is reading -- reported as "dimmed, but still slidable".
-    // The readout stays, so the clock still says "now"; Now stays governed by offLive, so an
-    // hour scrubbed before the last layer went off can still be brought back to live.
-    //
-    // Nothing answers to it -> inert, everywhere, the phone's opened row included: a slider that
-    // moves a look-ahead no layer is reading is misleading even when the pilot opened it on
-    // purpose (reported: "slider should not move"). The readout stays and Now is governed by
-    // offLive, so an hour scrubbed before the last layer went off can still be brought back.
-    const dimmedInPlace = !timed;
-    slider.disabled = dimmedInPlace;
-    if (inspSlider) inspSlider.disabled = dimmedInPlace;
+    // The slider stays usable even with no Extra layer: the look-ahead also drives the route's
+    // leg status (a corridor a NOTAM closes, last light), so it is never truly idle with a route
+    // up (asked: do not disable it). The `.idle` class only dims it as a quiet cue.
+    slider.disabled = false;
+    if (inspSlider) inspSlider.disabled = false;
     label();
   }
   NavAid.refreshMapClock = refresh;

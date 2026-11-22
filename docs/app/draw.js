@@ -4294,7 +4294,6 @@ function drawVors(force) {
   }
   const selIdent = selectedStation ||
     (typeof inspectorVorRef === 'string' && inspectorVorRef) || vorRef;
-  const selV = selIdent ? vors.find(v => v.ident === selIdent) : null;
   // One reference ring, drawn for VOR 1 (the selected / inspector / tuned station) and again for
   // VOR 2's tuned station in its own colour, so both coverages read on the chart.
   function drawVorRing(v, color) {
@@ -4328,14 +4327,19 @@ function drawVors(force) {
     }
     octx.restore();
   }
-  // The first ring is the selected / inspector / VOR 1 station, in VOR 1's colour -- UNLESS that
-  // station is the one tuned as VOR 2, in which case it rings in VOR 2's colour. So pressing
-  // "Use as VOR 2" on the open station recolours its ring at once (it draws and clears on the
-  // press, not when the inspector closes). VOR 2's own station always rings in its colour.
-  const isVor2 = (v) => v && typeof vorRef2 === 'string' && vorRef2 && v.ident === vorRef2;
-  drawVorRing(selV, tune(isVor2(selV) ? 'vorRangeRingColor2' : 'vorRangeRingColor'));
-  const sel2V = (vorRef2 && (!selV || vorRef2 !== selV.ident)) ? vors.find(v => v.ident === vorRef2) : null;
-  drawVorRing(sel2V, tune('vorRangeRingColor2'));
+  // Every reference rings, in its slot's colour, AND the selected station rings (what does it
+  // cover) -- opening one station's inspector must not hide the others' rings (reported: opening
+  // VOR 2 hid VOR 1's circle). A station tuned as VOR 2 always rings in VOR 2's colour, so
+  // pressing "Use as VOR 2" recolours it at once rather than on inspector close. Deduped by ident.
+  const ringColorFor = (id) => tune(id && typeof vorRef2 === 'string' && id === vorRef2
+    ? 'vorRangeRingColor2' : 'vorRangeRingColor');
+  const ringIds = [];
+  const addRing = (id) => { if (id && typeof id === 'string' && !ringIds.includes(id)) ringIds.push(id); };
+  addRing(selectedStation);                                              // the inspected station
+  addRing(typeof inspectorVorRef === 'string' ? inspectorVorRef : null); // per-view override
+  addRing(typeof vorRef === 'string' ? vorRef : null);                   // VOR 1
+  addRing(typeof vorRef2 === 'string' ? vorRef2 : null);                 // VOR 2
+  for (const id of ringIds) drawVorRing(vors.find(v => v.ident === id), ringColorFor(id));
 
   for (const v of vors) {
     const s = proj(v);

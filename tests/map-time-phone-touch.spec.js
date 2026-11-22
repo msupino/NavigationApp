@@ -54,13 +54,3 @@ for (const lang of ['he', 'en']) test(`the map clock opened from the strip takes
   await expect.poll(() => page.evaluate(() => Number(document.getElementById('lookahead-time').value))).toBeGreaterThan(5);
 });
 
-test('on a phone the opened clock is inert while nothing answers to it', async ({ page }) => {
-  await page.goto('?lang=en&nogist');
-  await page.waitForFunction(() => typeof NavAid !== 'undefined' && NavAid.refreshMapClock);
-  await page.evaluate(() => { if (typeof clearBootLoading === 'function') clearBootLoading(); NavAid.refreshMapClock(); });
-  await page.locator('.deck-strip-clock').click();            // open the row, nothing timed
-  expect(await page.evaluate(() => document.getElementById('map-time-slider').disabled)).toBe(true);
-  // Turn a timed layer on -> it becomes usable.
-  await page.evaluate(() => { const cb = document.getElementById('show-wind-cb'); cb.checked = true; cb.dispatchEvent(new Event('change', { bubbles: true })); });
-  expect(await page.evaluate(() => document.getElementById('map-time-slider').disabled)).toBe(false);
-});
