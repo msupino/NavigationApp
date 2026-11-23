@@ -23,7 +23,7 @@ test('reference VOR in range; the nearest beyond its range; nothing far from any
       ref: ref.ident, far: far.ident, south: south.ident,
     };
   });
-  expect(r.near.text.startsWith(r.ref + ' ')).toBe(true);   // vorReadoutText returns {text, warn, ...}
+  expect(r.near.startsWith(r.ref + ' ')).toBe(true);
   expect(r.milan).toBe('');
   // Beyond 200 NM of the reference, the nearest VOR within range speaks instead.
   const swapped = await page.evaluate(() => {
@@ -33,7 +33,7 @@ test('reference VOR in range; the nearest beyond its range; nothing far from any
     return { text: vorReadoutText(south.lat + 0.05, south.lng), south: south.ident, ref: ref.ident };
   });
   if (swapped.south !== swapped.ref) {
-    expect((swapped.text && swapped.text.text || '').startsWith(swapped.south + ' ')).toBe(true);
+    expect(swapped.text.startsWith(swapped.south + ' ')).toBe(true);
   }
 });
 
@@ -46,10 +46,10 @@ test('the readout marks a line beyond the VOR coverage, not one inside it', asyn
     const v = vors.find(x => Number.isFinite(x.coverageNm) && x.coverageNm > 0) || vors[0];
     new Function('v', 'vorRef = v')(v.ident);
     // A point ~0.1° off is a few NM out -> inside a typical ring; far south is well beyond it.
-    const inside = vorReadoutText(v.lat + 0.1, v.lng + 0.1);
+    const inside = vorReadoutLine(v.lat + 0.1, v.lng + 0.1);
     const nmPerDeg = 60;
     const outLat = v.lat + (v.coverageNm / nmPerDeg) + 0.4;            // comfortably past coverage
-    const outside = vorReadoutText(outLat, v.lng);
+    const outside = vorReadoutLine(outLat, v.lng);
     return { cov: v.coverageNm, inside, outside };
   });
   expect(r.inside && r.inside.warn).toBe(false);

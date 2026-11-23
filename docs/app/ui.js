@@ -2599,7 +2599,10 @@ function centerCoordText() {
 // The CURRENT VOR: the chosen reference while it is within a usable range of the point, else the
 // nearest VOR that is, else nothing -- a radial from Ben Gurion over Milan ("BGN R-309° /
 // 1283.4 NM") is a number no one can fly. The ident in the readout says which one it is.
-function vorReadoutText(lat, lng) {
+// The readout box's lines as data ({ text, warn, dme, cov }) -- what setVorReadout draws. The
+// *Text functions below keep their plain-string contract (no padding, no mark) for every other
+// caller: tests, the bidi check, anything that reads the line as words.
+function vorReadoutLine(lat, lng) {
   if (typeof activeVor !== 'function') return '';
   const chosen = activeVor();
   if (!chosen) return '';
@@ -2615,6 +2618,10 @@ function vorReadoutText(lat, lng) {
   if (!v || !rd) return '';
   return vorReadoutData(v, rd);
 }
+function vorReadoutText(lat, lng) {
+  const l = vorReadoutLine(lat, lng);
+  return l ? l.plain : '';
+}
 // One readout line's data. A point past the station's PUBLISHED coverage (its ring) still gets a
 // radial/DME here -- it is geometry, always computable -- but the reading is not one a receiver
 // could actually hold, so the line is marked (dimmed + a caution glyph) rather than shown as if
@@ -2628,12 +2635,12 @@ function vorReadoutData(v, rd) {
   // gains a digit (reported: the glyph walked a digit). At the end, not before the number: in front
   // it opened a gap after the slash on every sub-100 NM reading (reported: too much space).
   const pad = '\u2007'.repeat(Math.max(0, 5 - String(rd.dme).length));
-  return { ident: v.ident, text: v.ident + ' ' + S.vorRadialDme(rd.radial, rd.dme) + pad,
-           warn: warn, dme: rd.dme, cov: cov };
+  const plain = v.ident + ' ' + S.vorRadialDme(rd.radial, rd.dme);
+  return { ident: v.ident, text: plain + pad, plain: plain, warn: warn, dme: rd.dme, cov: cov };
 }
 // VOR2 is explicit-only: the one the pilot tuned, never a nearest-usable stand-in. Blank when
 // nothing is tuned or the point is past the readout range, so its line simply does not appear.
-function vorReadoutText2(lat, lng) {
+function vorReadoutLine2(lat, lng) {
   if (typeof activeVor2 !== 'function') return '';
   const v = activeVor2();
   if (!v) return '';
@@ -2641,6 +2648,10 @@ function vorReadoutText2(lat, lng) {
   const rd = vorRadialDme(v, lat, lng);
   if (!rd || rd.dme > maxNm) return '';
   return vorReadoutData(v, rd);
+}
+function vorReadoutText2(lat, lng) {
+  const l = vorReadoutLine2(lat, lng);
+  return l ? l.plain : '';
 }
 function setVorReadout(line1, line2) {
   if (!vorReadoutBox) return;
@@ -2686,7 +2697,7 @@ function setVorReadout(line1, line2) {
   vorReadoutBox.setAttribute('aria-hidden', lines.length ? 'false' : 'true');
 }
 function showVorReadout(lat, lng) {
-  setVorReadout(vorReadoutText(lat, lng), vorReadoutText2(lat, lng));
+  setVorReadout(vorReadoutLine(lat, lng), vorReadoutLine2(lat, lng));
 }
 function showZoom() {
   // Two lines -- the zoom, then the scale -- in a box no wider than the round buttons it
