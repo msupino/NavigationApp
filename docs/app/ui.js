@@ -9850,6 +9850,17 @@ function applyIfrPoints(chosen) {
   }
   if (typeof scheduleDraw === 'function') scheduleDraw();
 }
+// A shown sheet's points live in navWP tagged _plate. loadNavWaypoints() REPLACES navWP for the
+// new base layer (switching to ATS loads the ATS set, which has no SFAIM), which drops them --
+// so re-inject the active sheet's points after every navWP reload. The LLHZ SID's reporting
+// points must be tappable on ANY layer the sheet is shown over, not just the one navWP happened
+// to carry them on. loadNavWaypoints calls this right after it assigns navWP.
+function reapplyPlatePoints() {
+  if (!window.showIfr) return;                              // only while a sheet is on the map
+  const chosen = (typeof ifrChosen === 'function') ? ifrChosen() : null;
+  if (chosen) applyIfrPoints(chosen);
+}
+window.reapplyPlatePoints = reapplyPlatePoints;
 
 // ── Helicopter routes overlay ─────────────────────────────────────────────────
 const HELI_SHOW_KEY    = 'navaid.showHeli';

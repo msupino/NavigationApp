@@ -255,14 +255,15 @@ test('the LLHZ ATS departure plate is one of the sheets', async ({ page }) => {
     return b ? { want: row, got: [b.getSouth(), b.getWest(), b.getNorth(), b.getEast()] } : null;
   });
   expect(laid).not.toBeNull();
-  // This sheet is placed by hand -- its graticule labels are set differently on each side,
-  // which no automatic anchor can see -- so it carries three corners rather than a box.
-  // Leaflet reports the box around the rotated picture, which is a hair larger than the
-  // corners themselves; what matters is that every corner the row states is inside it, and
-  // that the box is not some other part of the country.
-  const { tl, tr, bl } = laid.want;
+  // This sheet is placed from its own graticule as a NORTH-UP box (sw/ne): georef-plate.py
+  // reads it conformal, so it no longer carries the hand-set rotated corners it once did.
+  // Whatever corners the row states, every one sits inside the Leaflet bounds, and the box is a
+  // field plate, not some other part of the country.
+  const corners = (laid.want.sw && laid.want.ne)
+    ? [laid.want.sw, laid.want.ne]
+    : [laid.want.tl, laid.want.tr, laid.want.bl];
   const [s0, w0, n0, e0] = laid.got;
-  for (const [lat, lng] of [tl, tr, bl]) {
+  for (const [lat, lng] of corners) {
     expect(lat).toBeGreaterThanOrEqual(s0 - 1e-3);
     expect(lat).toBeLessThanOrEqual(n0 + 1e-3);
     expect(lng).toBeGreaterThanOrEqual(w0 - 1e-3);
@@ -460,4 +461,27 @@ test('a sheet point that is a VOR is not added again as a waypoint', async ({ pa
   });
   expect(dupes.vors).toBeGreaterThan(0);
   expect(dupes.out).toEqual([]);
+});
+
+// The LLHZ SID sheet's points (SFAIM) must stay tappable on ANY base layer. loadNavWaypoints
+// replaces navWP when the layer changes (ATS loads its own set, which has no SFAIM); it now
+// re-applies the shown sheet's points, so a layer switch does not drop them.
+test('a shown sheet keeps its points across a base-layer navWP reload', async ({ page }) => {
+  await page.goto('?lang=en&nogist');
+  await page.waitForFunction(() => typeof airfields !== 'undefined' && airfields
+    && typeof loadNavWaypoints === 'function' && typeof applyIfrPoints === 'function'
+    && typeof reapplyPlatePoints === 'function');
+  const out = await page.evaluate(async () => {
+    const af = airfields.find(a => a.name === 'LLHZ');
+    const sheet = af.ifr_overlays.find(s => s.png === 'LLHZ_ATS.png');
+    window.showIfr = true;
+    try { localStorage.setItem('navaid.ifrSheet', 'LLHZ|LLHZ_ATS.png'); } catch (e) {}
+    window.navDataPrefix = 'cvfr'; navWP = null; await loadNavWaypoints();
+    applyIfrPoints({ icao: 'LLHZ', sheet });
+    const before = navWP.some(w => w && w.name === 'SFAIM');
+    window.navDataPrefix = 'ats'; navWP = null; await loadNavWaypoints();   // switch layer
+    return { before, after: navWP.some(w => w && w.name === 'SFAIM') };
+  });
+  expect(out.before).toBe(true);
+  expect(out.after).toBe(true);
 });
