@@ -2623,11 +2623,12 @@ function vorReadoutText(lat, lng) {
 function vorReadoutData(v, rd) {
   const cov = Number(v.coverageNm);
   const warn = Number.isFinite(cov) && cov > 0 && Number(rd.dme) > cov;
-  // The distance is padded to the widest it can read here (vorReadoutMaxNm, "200.0") with figure
-  // spaces -- a digit's width -- so "7.2" and "47.7" line up and the box keeps one width as the
-  // distance gains a digit (reported: the status glyph walked one digit left and right).
-  const dmeTxt = String(rd.dme).padStart(5, '\u2007');
-  return { ident: v.ident, text: v.ident + ' ' + S.vorRadialDme(rd.radial, dmeTxt),
+  // The line is padded to the widest the distance can read here (vorReadoutMaxNm, "200.0") with
+  // figure spaces -- a digit's width -- AFTER the unit, so the box keeps one width as the distance
+  // gains a digit (reported: the glyph walked a digit). At the end, not before the number: in front
+  // it opened a gap after the slash on every sub-100 NM reading (reported: too much space).
+  const pad = '\u2007'.repeat(Math.max(0, 5 - String(rd.dme).length));
+  return { ident: v.ident, text: v.ident + ' ' + S.vorRadialDme(rd.radial, rd.dme) + pad,
            warn: warn, dme: rd.dme, cov: cov };
 }
 // VOR2 is explicit-only: the one the pilot tuned, never a nearest-usable stand-in. Blank when
