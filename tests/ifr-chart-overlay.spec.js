@@ -398,10 +398,19 @@ test('the LLHZ departure sheet gives up all of its points', async ({ page }) => 
     const pts = navWP.filter(w => w._plate);
     return { names: pts.map(w => w.name),
              benqo: pts.find(w => w.name === 'BENQO'),
+             // SFAIM, the mandatory reporting point the sheet departs to, is tappable while the
+             // sheet shows -- whether it rides in as a plate point or is already the CVFR
+             // dataset's own point (then it is tappable regardless of the _plate tag).
+             sfaimTappable: !!navWP.find(w => w && w.name === 'SFAIM'),
+             sfaimInSheet: airfields.find(a => a.name === 'LLHZ').ifr_overlays
+               .flatMap(o => o.points || []).some(w => w.name === 'SFAIM'),
              nat: airfields.find(a => a.name === 'LLHZ').ifr_overlays
                .flatMap(o => o.points || []).find(w => w.name === 'NAT') };
   });
   expect(out.names).toEqual(expect.arrayContaining(['BENQO', 'YENON', 'DIVLA']));
+  // SFAIM is offered to the route from the LLHZ ATS departure sheet.
+  expect(out.sfaimInSheet).toBe(true);
+  expect(out.sfaimTappable).toBe(true);
   // BENQO is printed at 32°23'29"N 34°45'48"E on that sheet.
   expect(out.benqo.lat).toBeCloseTo(32 + 23 / 60 + 29 / 3600, 4);
   expect(out.benqo.lng).toBeCloseTo(34 + 45 / 60 + 48 / 3600, 4);
