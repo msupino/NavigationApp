@@ -32,7 +32,61 @@ test('reference VOR in range; the nearest beyond its range; nothing far from any
     const south = vors.slice().sort((a, b) => a.lat - b.lat)[0];
     return { text: vorReadoutText(south.lat + 0.05, south.lng), south: south.ident, ref: ref.ident };
   });
-  if (swapped.south !== swapped.ref) expect(swapped.text.startsWith(swapped.south + ' ')).toBe(true);
+  if (swapped.south !== swapped.ref) {
+    expect(swapped.text.startsWith(swapped.south + ' ')).toBe(true);
+  }
+});
+
+// A point beyond the station's PUBLISHED coverage (its ring) still gets a radial/DME -- it is
+// geometry -- but the line is marked (warn) so the pilot sees it is not a reading a receiver
+// would hold; a point inside coverage is not marked.
+test('the readout marks a line beyond the VOR coverage, not one inside it', async ({ page }) => {
+  await boot(page);
+  const r = await page.evaluate(() => {
+    const v = vors.find(x => Number.isFinite(x.coverageNm) && x.coverageNm > 0) || vors[0];
+    new Function('v', 'vorRef = v')(v.ident);
+    // A point ~0.1° off is a few NM out -> inside a typical ring; far south is well beyond it.
+    const inside = vorReadoutLine(v.lat + 0.1, v.lng + 0.1);
+    const nmPerDeg = 60;
+    const outLat = v.lat + (v.coverageNm / nmPerDeg) + 0.4;            // comfortably past coverage
+    const outside = vorReadoutLine(outLat, v.lng);
+    return { cov: v.coverageNm, inside, outside };
+  });
+  expect(r.inside && r.inside.warn).toBe(false);
+  expect(r.outside && r.outside.warn).toBe(true);
+  expect(r.outside.cov).toBe(r.cov);
+  // And setVorReadout draws the caution glyph only for the warned line.
+  const dom = await page.evaluate(() => {
+    setVorReadout({ text: 'NAT R-088° / 94.1 NM', warn: true, dme: 94.1, cov: 40 },
+                  { text: 'ROP R-120° / 20.0 NM', warn: false });
+    const divs = Array.from(document.getElementById('vor-readout').children);
+    return divs.map(d => ({ warn: d.classList.contains('vor-readout-warn'),
+                            mark: (d.querySelector('.vor-readout-mark') || {}).className || '',
+                            title: d.title }));
+  });
+  expect(dom[0].warn).toBe(true);
+  expect(dom[0].mark).toMatch(/is-warn/);
+  expect(dom[0].title).toMatch(/94\.1 NM.*40 NM/);
+  expect(dom[1].warn).toBe(false);
+  expect(dom[1].mark).toMatch(/is-blank/);          // no coverage given -> sized slot, no claim
+});
+
+// The status slot is the same size in and out of coverage, so the box keeps one width as a
+// point crosses a ring (asked: keep the box size; a tick in zone, a warning out).
+test('the readout box keeps its width crossing a coverage ring', async ({ page }) => {
+  await boot(page);
+  const w = await page.evaluate(() => {
+    const box = document.getElementById('vor-readout');
+    const at = (warn) => {
+      setVorReadout({ text: 'NAT R-088° / 34.1 NM', warn, dme: 34.1, cov: 40 });
+      return { w: Math.round(box.getBoundingClientRect().width),
+               mark: box.querySelector('.vor-readout-mark').className };
+    };
+    return { inZone: at(false), out: at(true) };
+  });
+  expect(w.inZone.mark).toMatch(/is-ok/);
+  expect(w.out.mark).toMatch(/is-warn/);
+  expect(w.out.w).toBe(w.inZone.w);
 });
 
 test('on a phone the VOR line sits above the coordinate box, not under it', async ({ page }) => {
@@ -86,4 +140,25 @@ test('VOR Reference row: at the default inspector width the readout stays inside
   const g = await row.evaluate((r) => ({ row: r.getBoundingClientRect().right,
     val: r.querySelector('.vor-radial-val').getBoundingClientRect().right }));
   expect(g.val).toBeLessThanOrEqual(g.row + 1);
+});
+
+// Reported more than once: the status glyph walked a digit left or right as one line's distance
+// had fewer digits than the other's ("7.2" vs "47.7"). The distance is padded to a fixed width
+// and each line pushes its glyph to the box's edge: the glyphs share one column, and the box
+// keeps its width as a distance gains a digit.
+test('the status glyphs share a column and the box holds its width across digit counts', async ({ page }) => {
+  await boot(page);
+  const g = await page.evaluate(() => {
+    const nat = { ident: 'NAT', coverageNm: 40 }, rop = { ident: 'ROP', coverageNm: 20 };
+    const box = document.getElementById('vor-readout');
+    const show = (a, b) => {
+      setVorReadout(vorReadoutData(nat, { radial: '041', dme: a }), vorReadoutData(rop, { radial: '142', dme: b }));
+      return { xs: [...box.querySelectorAll('.vor-readout-mark')].map(m => Math.round(m.getBoundingClientRect().left)),
+               w: Math.round(box.getBoundingClientRect().width) };
+    };
+    return [show(47.7, 7.2), show(147.7, 17.2), show(4.1, 0.3)];
+  });
+  for (const s of g) expect(s.xs[0]).toBe(s.xs[1]);            // one column
+  expect(g[1].w).toBe(g[0].w);                                  // gaining a digit does not resize
+  expect(g[2].w).toBe(g[0].w);
 });

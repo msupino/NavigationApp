@@ -366,6 +366,7 @@ window.S = {
   vorInfoElev: 'אנטנת DME',
   vorInfoLimits: 'מגבלות',
   vorInfoOutOfRange: 'הנקודה במרחק {dme} NM — מעבר לטווח המפורסם {cov} NM.',
+  vorInCoverage: '{dme} NM — בתוך הטווח המפורסם {cov} NM.',
   vorDmeOnlyReadout: function (dme) { return dme + ' NM (DME בלבד)'; },
   searchKindRouteWp: 'במסלול שלך',
   searchKindNote: 'הערה',

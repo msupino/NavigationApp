@@ -2127,6 +2127,7 @@ window.S = Object.assign({
   vorInfoElev: 'DME antenna',
   vorInfoLimits: 'Limits',
   vorInfoOutOfRange: 'This point is {dme} NM out — beyond the published {cov} NM coverage.',
+  vorInCoverage: '{dme} NM — within the published {cov} NM coverage.',
   vorDmeOnlyReadout: function (dme) { return dme + ' NM (DME only)'; },
   searchKindRouteWp: 'on your route',
   searchKindNote: 'note',
