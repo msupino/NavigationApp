@@ -2599,7 +2599,10 @@ function centerCoordText() {
 // The CURRENT VOR: the chosen reference while it is within a usable range of the point, else the
 // nearest VOR that is, else nothing -- a radial from Ben Gurion over Milan ("BGN R-309° /
 // 1283.4 NM") is a number no one can fly. The ident in the readout says which one it is.
-function vorReadoutText(lat, lng) {
+// The readout box's lines as data ({ text, warn, dme, cov }) -- what setVorReadout draws. The
+// *Text functions below keep their plain-string contract (no padding, no mark) for every other
+// caller: tests, the bidi check, anything that reads the line as words.
+function vorReadoutLine(lat, lng) {
   if (typeof activeVor !== 'function') return '';
   const chosen = activeVor();
   if (!chosen) return '';
@@ -2613,34 +2616,88 @@ function vorReadoutText(lat, lng) {
     }
   }
   if (!v || !rd) return '';
-  return v.ident + ' ' + S.vorRadialDme(rd.radial, rd.dme);
+  return vorReadoutData(v, rd);
+}
+function vorReadoutText(lat, lng) {
+  const l = vorReadoutLine(lat, lng);
+  return l ? l.plain : '';
+}
+// One readout line's data. A point past the station's PUBLISHED coverage (its ring) still gets a
+// radial/DME here -- it is geometry, always computable -- but the reading is not one a receiver
+// could actually hold, so the line is marked (dimmed + a caution glyph) rather than shown as if
+// it were in service. maxNm above only caps the absurd (a radial from 1000 NM out); coverageNm
+// is the real in-service limit.
+function vorReadoutData(v, rd) {
+  const cov = Number(v.coverageNm);
+  const warn = Number.isFinite(cov) && cov > 0 && Number(rd.dme) > cov;
+  // The line is padded to the widest the distance can read here (vorReadoutMaxNm, "200.0") with
+  // figure spaces -- a digit's width -- AFTER the unit, so the box keeps one width as the distance
+  // gains a digit (reported: the glyph walked a digit). At the end, not before the number: in front
+  // it opened a gap after the slash on every sub-100 NM reading (reported: too much space).
+  const pad = '\u2007'.repeat(Math.max(0, 5 - String(rd.dme).length));
+  const plain = v.ident + ' ' + S.vorRadialDme(rd.radial, rd.dme);
+  return { ident: v.ident, text: plain + pad, plain: plain, warn: warn, dme: rd.dme, cov: cov };
 }
 // VOR2 is explicit-only: the one the pilot tuned, never a nearest-usable stand-in. Blank when
 // nothing is tuned or the point is past the readout range, so its line simply does not appear.
-function vorReadoutText2(lat, lng) {
+function vorReadoutLine2(lat, lng) {
   if (typeof activeVor2 !== 'function') return '';
   const v = activeVor2();
   if (!v) return '';
   const maxNm = Number(tune('vorReadoutMaxNm')) || 200;
   const rd = vorRadialDme(v, lat, lng);
   if (!rd || rd.dme > maxNm) return '';
-  return v.ident + ' ' + S.vorRadialDme(rd.radial, rd.dme);
+  return vorReadoutData(v, rd);
+}
+function vorReadoutText2(lat, lng) {
+  const l = vorReadoutLine2(lat, lng);
+  return l ? l.plain : '';
 }
 function setVorReadout(line1, line2) {
   if (!vorReadoutBox) return;
   const lines = [line1, line2].filter(Boolean);
   vorReadoutBox.textContent = '';
-  lines.forEach((t, i) => {
+  lines.forEach((ln, i) => {
+    const o = (typeof ln === 'string') ? { text: ln } : ln;
     const d = document.createElement('div');
-    d.textContent = t;
-    if (i === 1) d.className = 'vor-readout-2';   // VOR2 tinted to match its map highlight
+    d.appendChild(document.createTextNode(o.text));
+    if (i === 1) d.classList.add('vor-readout-2');   // VOR2 tinted to match its map highlight
+    // A fixed-width status slot on every line: a tick when the point is within the station's
+    // published coverage, a caution triangle when it is beyond it -- same glyph size either way,
+    // so the box keeps ONE width as a point crosses a ring. Both are drawn (NAV_ICONS, no emoji)
+    // and carry the reason on hover/focus; the slot stays empty (but sized) when coverage is not
+    // published, since then neither in nor out can be claimed.
+    const known = Number.isFinite(o.cov) && o.cov > 0;
+    const mark = document.createElement('span');
+    mark.className = 'vor-readout-mark';
+    if (o.warn) {
+      d.classList.add('vor-readout-warn');           // dim the out-of-coverage reading
+      mark.classList.add('is-warn');
+      mark.innerHTML = (typeof navIconSvg === 'function') ? navIconSvg('warn', 13) : '!';
+      const why = (S.vorInfoOutOfRange ||
+        'This point is {dme} NM out — beyond the published {cov} NM coverage.')
+        .replace('{dme}', o.dme).replace('{cov}', o.cov);
+      d.title = why;
+      d.setAttribute('aria-label', o.text + ' — ' + why);
+    } else if (known) {
+      mark.classList.add('is-ok');
+      mark.innerHTML = (typeof navIconSvg === 'function') ? navIconSvg('check', 13) : '';
+      const ok = (S.vorInCoverage || '{dme} NM — within the published {cov} NM coverage.')
+        .replace('{dme}', o.dme).replace('{cov}', o.cov);
+      d.title = ok;
+      d.setAttribute('aria-label', o.text + ' — ' + ok);
+    } else {
+      mark.classList.add('is-blank');                // reserve the width, draw nothing
+    }
+    d.appendChild(document.createTextNode(' '));
+    d.appendChild(mark);
     vorReadoutBox.appendChild(d);
   });
   vorReadoutBox.classList.toggle('show', lines.length > 0);
   vorReadoutBox.setAttribute('aria-hidden', lines.length ? 'false' : 'true');
 }
 function showVorReadout(lat, lng) {
-  setVorReadout(vorReadoutText(lat, lng), vorReadoutText2(lat, lng));
+  setVorReadout(vorReadoutLine(lat, lng), vorReadoutLine2(lat, lng));
 }
 function showZoom() {
   // Two lines -- the zoom, then the scale -- in a box no wider than the round buttons it
