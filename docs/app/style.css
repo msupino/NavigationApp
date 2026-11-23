@@ -1733,17 +1733,22 @@ html[dir="rtl"] .leaflet-control.zulu-clock {
    purple so it reads on the dark readout box in both themes. */
 .vor-readout .vor-readout-2 { color: #c89be0; }
 body.theme-light .vor-readout .vor-readout-2 { color: #7d3ca5; }
-/* A readout line for a point beyond the station's published coverage: dimmed, with a caution
-   glyph. Dim says "take with care"; the glyph (shape, not colour alone) and its title say why. */
+/* Every readout line ends in a fixed-width status slot: a tick within the station's published
+   coverage, a caution triangle beyond it (the line also dims). Same size either way, so the box
+   keeps one width as a point crosses a ring. Shape carries the meaning, not colour alone. */
 .vor-readout .vor-readout-warn { opacity: 0.6; }
-.vor-readout .vor-readout-warn-mark {
+.vor-readout .vor-readout-mark {
   display: inline-flex;
+  width: 13px;
+  height: 13px;
   vertical-align: -2px;
   margin-inline-start: 1px;
-  color: #e6b84d;                 /* caution amber, legible on the dark readout box */
 }
-.vor-readout .vor-readout-warn-mark .nav-icon { width: 13px; height: 13px; }
-body.theme-light .vor-readout .vor-readout-warn-mark { color: #b5791a; }
+.vor-readout .vor-readout-mark .nav-icon { width: 13px; height: 13px; }
+.vor-readout .vor-readout-mark.is-ok { color: #6cc98a; }
+.vor-readout .vor-readout-mark.is-warn { color: #e6b84d; }
+body.theme-light .vor-readout .vor-readout-mark.is-ok { color: #2e8b57; }
+body.theme-light .vor-readout .vor-readout-mark.is-warn { color: #b5791a; }
 .leaflet-bottom.leaflet-right .wind-readout {
   bottom: 66px;
 }

@@ -2646,21 +2646,35 @@ function setVorReadout(line1, line2) {
     const d = document.createElement('div');
     d.appendChild(document.createTextNode(o.text));
     if (i === 1) d.classList.add('vor-readout-2');   // VOR2 tinted to match its map highlight
+    // A fixed-width status slot on every line: a tick when the point is within the station's
+    // published coverage, a caution triangle when it is beyond it -- same glyph size either way,
+    // so the box keeps ONE width as a point crosses a ring. Both are drawn (NAV_ICONS, no emoji)
+    // and carry the reason on hover/focus; the slot stays empty (but sized) when coverage is not
+    // published, since then neither in nor out can be claimed.
+    const known = Number.isFinite(o.cov) && o.cov > 0;
+    const mark = document.createElement('span');
+    mark.className = 'vor-readout-mark';
     if (o.warn) {
-      // Beyond the station's published coverage: dim the line and add a drawn caution glyph
-      // (NAV_ICONS, not an emoji), with the full reason on hover/focus and for a screen reader.
-      d.classList.add('vor-readout-warn');
-      const mark = document.createElement('span');
-      mark.className = 'vor-readout-warn-mark';
+      d.classList.add('vor-readout-warn');           // dim the out-of-coverage reading
+      mark.classList.add('is-warn');
       mark.innerHTML = (typeof navIconSvg === 'function') ? navIconSvg('warn', 13) : '!';
-      d.appendChild(document.createTextNode(' '));
-      d.appendChild(mark);
       const why = (S.vorInfoOutOfRange ||
         'This point is {dme} NM out — beyond the published {cov} NM coverage.')
         .replace('{dme}', o.dme).replace('{cov}', o.cov);
       d.title = why;
       d.setAttribute('aria-label', o.text + ' — ' + why);
+    } else if (known) {
+      mark.classList.add('is-ok');
+      mark.innerHTML = (typeof navIconSvg === 'function') ? navIconSvg('check', 13) : '';
+      const ok = (S.vorInCoverage || '{dme} NM — within the published {cov} NM coverage.')
+        .replace('{dme}', o.dme).replace('{cov}', o.cov);
+      d.title = ok;
+      d.setAttribute('aria-label', o.text + ' — ' + ok);
+    } else {
+      mark.classList.add('is-blank');                // reserve the width, draw nothing
     }
+    d.appendChild(document.createTextNode(' '));
+    d.appendChild(mark);
     vorReadoutBox.appendChild(d);
   });
   vorReadoutBox.classList.toggle('show', lines.length > 0);

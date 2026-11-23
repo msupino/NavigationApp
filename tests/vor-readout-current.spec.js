@@ -61,12 +61,32 @@ test('the readout marks a line beyond the VOR coverage, not one inside it', asyn
                   { text: 'ROP R-120° / 20.0 NM', warn: false });
     const divs = Array.from(document.getElementById('vor-readout').children);
     return divs.map(d => ({ warn: d.classList.contains('vor-readout-warn'),
-                            glyph: !!d.querySelector('.vor-readout-warn-mark'),
+                            mark: (d.querySelector('.vor-readout-mark') || {}).className || '',
                             title: d.title }));
   });
-  expect(dom[0].warn && dom[0].glyph).toBe(true);
+  expect(dom[0].warn).toBe(true);
+  expect(dom[0].mark).toMatch(/is-warn/);
   expect(dom[0].title).toMatch(/94\.1 NM.*40 NM/);
-  expect(dom[1].warn || dom[1].glyph).toBe(false);
+  expect(dom[1].warn).toBe(false);
+  expect(dom[1].mark).toMatch(/is-blank/);          // no coverage given -> sized slot, no claim
+});
+
+// The status slot is the same size in and out of coverage, so the box keeps one width as a
+// point crosses a ring (asked: keep the box size; a tick in zone, a warning out).
+test('the readout box keeps its width crossing a coverage ring', async ({ page }) => {
+  await boot(page);
+  const w = await page.evaluate(() => {
+    const box = document.getElementById('vor-readout');
+    const at = (warn) => {
+      setVorReadout({ text: 'NAT R-088° / 34.1 NM', warn, dme: 34.1, cov: 40 });
+      return { w: Math.round(box.getBoundingClientRect().width),
+               mark: box.querySelector('.vor-readout-mark').className };
+    };
+    return { inZone: at(false), out: at(true) };
+  });
+  expect(w.inZone.mark).toMatch(/is-ok/);
+  expect(w.out.mark).toMatch(/is-warn/);
+  expect(w.out.w).toBe(w.inZone.w);
 });
 
 test('on a phone the VOR line sits above the coordinate box, not under it', async ({ page }) => {
