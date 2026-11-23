@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>תרגול PPL</title>
+<link rel="canonical" href="https://navaid.supino.org/ppl/">
+<meta name="description" content="תרגול לרישיון טייס פרטי (PPL): מאגר שאלות למבחן המעשי ומבחני חוקה.">
+<link rel="icon" href="../favicon.svg" type="image/svg+xml">
+<style>
+/* Welcome page for the PPL practice pages: a title card, then one card per practice set.
+   Palette shared with questions.html and the rules exams. */
+:root{
+  --paper:#eef2f5; --card:#fff; --ink:#16202b; --muted:#5a6876; --line:#d9e0e5;
+  --blue:#1f4e8c; --blue-soft:#e8eff8; color-scheme:light;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --paper:#10161d; --card:#17202a; --ink:#e6ebf0; --muted:#9aa8b6; --line:#2a3644;
+    --blue:#7fb0f0; --blue-soft:#1b2836; color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --paper:#10161d; --card:#17202a; --ink:#e6ebf0; --muted:#9aa8b6; --line:#2a3644;
+  --blue:#7fb0f0; --blue-soft:#1b2836; color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--paper);color:var(--ink);font:17px/1.6 "Assistant","Arial Hebrew","Segoe UI",Arial,sans-serif}
+.wrap{max-width:720px;margin:0 auto;padding:16px 16px 48px;display:grid;gap:12px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:20px 22px}
+.title{border-top:10px solid var(--blue)}
+.home{font-size:.95rem;text-decoration:none;color:var(--blue)}
+h1{font-size:1.9rem;line-height:1.2;margin:.4rem 0 .5rem;text-wrap:balance}
+.lead{margin:0;color:var(--muted);max-width:60ch}
+h2{font-size:1.05rem;margin:.8rem 0 0;color:var(--muted);font-weight:600}
+.sets{list-style:none;margin:0;padding:0;display:grid;gap:12px}
+.set{display:flex;gap:14px;align-items:center;text-decoration:none;color:inherit;min-height:44px}
+.set:hover{border-color:var(--blue);background:var(--blue-soft)}
+.set .ic{flex:none;width:44px;height:44px;border-radius:10px;background:var(--blue-soft);color:var(--blue);display:grid;place-items:center}
+.set .ic svg{width:22px;height:22px}
+.set strong{display:block;font-size:1.1rem}
+.set span.d{color:var(--muted);font-size:.95rem}
+.set .go{margin-inline-start:auto;color:var(--blue);font-size:1.3rem}
+a:focus-visible{outline:3px solid var(--blue);outline-offset:2px}
+.foot{color:var(--muted);font-size:.85rem;text-align:center;margin:.5rem 0 0}
+</style>
+</head>
+<body>
+<main class="wrap">
+  <header class="card title">
+    <a class="home" href="../">→ <bdi dir="ltr">NavAid</bdi></a>
+    <h1>ברוכים הבאים לתרגול <bdi dir="ltr">PPL</bdi></h1>
+    <p class="lead">חומרי תרגול לרישיון טייס פרטי: מאגר שאלות ותשובות למבחן המעשי ומבחני חוקה אמריקאיים. בחרו נושא להתחיל.</p>
+  </header>
+
+  <h2>מבחן מעשי</h2>
+  <ul class="sets">
+    <li><a class="card set" href="questions.html">
+      <span class="ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5V5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2Z"/><path d="M8 7h7M8 11h5"/></svg></span>
+      <span><strong>מאגר שאלות – מבחן מעשי</strong><span class="d">131 שאלות ותשובות בשמונה נושאים</span></span>
+      <span class="go" aria-hidden="true">‹</span>
+    </a></li>
+  </ul>
+
+  <h2>מבחני חוקה</h2>
+  <ul class="sets">
+    <li><a class="card set" href="rules-exam-1.html">
+      <span class="ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l2 2 4-4"/><rect x="4" y="3" width="16" height="18" rx="2"/></svg></span>
+      <span><strong>מבחן חוקה 1</strong><span class="d">30 שאלות אמריקאיות</span></span>
+      <span class="go" aria-hidden="true">‹</span>
+    </a></li>
+    <li><a class="card set" href="rules-exam-2.html">
+      <span class="ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l2 2 4-4"/><rect x="4" y="3" width="16" height="18" rx="2"/></svg></span>
+      <span><strong>מבחן חוקה 2</strong><span class="d">30 שאלות אמריקאיות</span></span>
+      <span class="go" aria-hidden="true">‹</span>
+    </a></li>
+  </ul>
+
+  <p class="foot">חומר עזר לתרגול בלבד. המקור המחייב הוא קובץ התקנות, הפמ"ת וספר המטוס.</p>
+</main>
+</body>
+</html>

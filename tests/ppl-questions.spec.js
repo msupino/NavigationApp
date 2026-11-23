@@ -43,3 +43,11 @@ for (const exam of ['rules-exam-1', 'rules-exam-2']) test(`${exam} asks all 30, 
   await page.reload();                                  // answers kept in this browser
   await expect(page.locator('#q7 input').first()).toBeChecked();
 });
+
+// The welcome page at /ppl/ lists every practice page, and each link opens a real page.
+test('the PPL welcome page links to every practice page', async ({ page, request }) => {
+  await page.goto('ppl/');
+  const hrefs = await page.locator('a.set').evaluateAll(as => as.map(a => a.href));
+  expect(hrefs.map(h => h.split('/ppl/')[1].replace(/\.html$/, ''))).toEqual(['questions', 'rules-exam-1', 'rules-exam-2']);
+  for (const h of hrefs) expect((await request.get(h)).ok()).toBe(true);
+});
