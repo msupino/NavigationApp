@@ -2613,7 +2613,18 @@ function vorReadoutText(lat, lng) {
     }
   }
   if (!v || !rd) return '';
-  return v.ident + ' ' + S.vorRadialDme(rd.radial, rd.dme);
+  return vorReadoutData(v, rd);
+}
+// One readout line's data. A point past the station's PUBLISHED coverage (its ring) still gets a
+// radial/DME here -- it is geometry, always computable -- but the reading is not one a receiver
+// could actually hold, so the line is marked (dimmed + a caution glyph) rather than shown as if
+// it were in service. maxNm above only caps the absurd (a radial from 1000 NM out); coverageNm
+// is the real in-service limit.
+function vorReadoutData(v, rd) {
+  const cov = Number(v.coverageNm);
+  const warn = Number.isFinite(cov) && cov > 0 && Number(rd.dme) > cov;
+  return { ident: v.ident, text: v.ident + ' ' + S.vorRadialDme(rd.radial, rd.dme),
+           warn: warn, dme: rd.dme, cov: cov };
 }
 // VOR2 is explicit-only: the one the pilot tuned, never a nearest-usable stand-in. Blank when
 // nothing is tuned or the point is past the readout range, so its line simply does not appear.
@@ -2624,16 +2635,32 @@ function vorReadoutText2(lat, lng) {
   const maxNm = Number(tune('vorReadoutMaxNm')) || 200;
   const rd = vorRadialDme(v, lat, lng);
   if (!rd || rd.dme > maxNm) return '';
-  return v.ident + ' ' + S.vorRadialDme(rd.radial, rd.dme);
+  return vorReadoutData(v, rd);
 }
 function setVorReadout(line1, line2) {
   if (!vorReadoutBox) return;
   const lines = [line1, line2].filter(Boolean);
   vorReadoutBox.textContent = '';
-  lines.forEach((t, i) => {
+  lines.forEach((ln, i) => {
+    const o = (typeof ln === 'string') ? { text: ln } : ln;
     const d = document.createElement('div');
-    d.textContent = t;
-    if (i === 1) d.className = 'vor-readout-2';   // VOR2 tinted to match its map highlight
+    d.appendChild(document.createTextNode(o.text));
+    if (i === 1) d.classList.add('vor-readout-2');   // VOR2 tinted to match its map highlight
+    if (o.warn) {
+      // Beyond the station's published coverage: dim the line and add a drawn caution glyph
+      // (NAV_ICONS, not an emoji), with the full reason on hover/focus and for a screen reader.
+      d.classList.add('vor-readout-warn');
+      const mark = document.createElement('span');
+      mark.className = 'vor-readout-warn-mark';
+      mark.innerHTML = (typeof navIconSvg === 'function') ? navIconSvg('warn', 13) : '!';
+      d.appendChild(document.createTextNode(' '));
+      d.appendChild(mark);
+      const why = (S.vorInfoOutOfRange ||
+        'This point is {dme} NM out — beyond the published {cov} NM coverage.')
+        .replace('{dme}', o.dme).replace('{cov}', o.cov);
+      d.title = why;
+      d.setAttribute('aria-label', o.text + ' — ' + why);
+    }
     vorReadoutBox.appendChild(d);
   });
   vorReadoutBox.classList.toggle('show', lines.length > 0);

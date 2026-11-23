@@ -23,7 +23,7 @@ test('reference VOR in range; the nearest beyond its range; nothing far from any
       ref: ref.ident, far: far.ident, south: south.ident,
     };
   });
-  expect(r.near.startsWith(r.ref + ' ')).toBe(true);
+  expect(r.near.text.startsWith(r.ref + ' ')).toBe(true);   // vorReadoutText returns {text, warn, ...}
   expect(r.milan).toBe('');
   // Beyond 200 NM of the reference, the nearest VOR within range speaks instead.
   const swapped = await page.evaluate(() => {
@@ -32,7 +32,41 @@ test('reference VOR in range; the nearest beyond its range; nothing far from any
     const south = vors.slice().sort((a, b) => a.lat - b.lat)[0];
     return { text: vorReadoutText(south.lat + 0.05, south.lng), south: south.ident, ref: ref.ident };
   });
-  if (swapped.south !== swapped.ref) expect(swapped.text.startsWith(swapped.south + ' ')).toBe(true);
+  if (swapped.south !== swapped.ref) {
+    expect((swapped.text && swapped.text.text || '').startsWith(swapped.south + ' ')).toBe(true);
+  }
+});
+
+// A point beyond the station's PUBLISHED coverage (its ring) still gets a radial/DME -- it is
+// geometry -- but the line is marked (warn) so the pilot sees it is not a reading a receiver
+// would hold; a point inside coverage is not marked.
+test('the readout marks a line beyond the VOR coverage, not one inside it', async ({ page }) => {
+  await boot(page);
+  const r = await page.evaluate(() => {
+    const v = vors.find(x => Number.isFinite(x.coverageNm) && x.coverageNm > 0) || vors[0];
+    new Function('v', 'vorRef = v')(v.ident);
+    // A point ~0.1° off is a few NM out -> inside a typical ring; far south is well beyond it.
+    const inside = vorReadoutText(v.lat + 0.1, v.lng + 0.1);
+    const nmPerDeg = 60;
+    const outLat = v.lat + (v.coverageNm / nmPerDeg) + 0.4;            // comfortably past coverage
+    const outside = vorReadoutText(outLat, v.lng);
+    return { cov: v.coverageNm, inside, outside };
+  });
+  expect(r.inside && r.inside.warn).toBe(false);
+  expect(r.outside && r.outside.warn).toBe(true);
+  expect(r.outside.cov).toBe(r.cov);
+  // And setVorReadout draws the caution glyph only for the warned line.
+  const dom = await page.evaluate(() => {
+    setVorReadout({ text: 'NAT R-088° / 94.1 NM', warn: true, dme: 94.1, cov: 40 },
+                  { text: 'ROP R-120° / 20.0 NM', warn: false });
+    const divs = Array.from(document.getElementById('vor-readout').children);
+    return divs.map(d => ({ warn: d.classList.contains('vor-readout-warn'),
+                            glyph: !!d.querySelector('.vor-readout-warn-mark'),
+                            title: d.title }));
+  });
+  expect(dom[0].warn && dom[0].glyph).toBe(true);
+  expect(dom[0].title).toMatch(/94\.1 NM.*40 NM/);
+  expect(dom[1].warn || dom[1].glyph).toBe(false);
 });
 
 test('on a phone the VOR line sits above the coordinate box, not under it', async ({ page }) => {
