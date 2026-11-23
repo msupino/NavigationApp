@@ -27,8 +27,8 @@ test('the page lists 131 questions, toggles an answer, filters by section and se
 });
 
 // The rules-exam questionnaire: 30 required multiple-choice questions, a form-style flow.
-test('the rules exam asks all 30, flags the unanswered, and accepts a complete form', async ({ page }) => {
-  await page.goto('ppl/rules-exam-1.html');
+for (const exam of ['rules-exam-1', 'rules-exam-2']) test(`${exam} asks all 30, flags the unanswered, and accepts a complete form`, async ({ page }) => {
+  await page.goto(`ppl/${exam}.html`);
   await page.evaluate(() => localStorage.clear());
   await page.reload();
   await expect(page.locator('.q')).toHaveCount(30);

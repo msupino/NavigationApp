@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>מבחן חוקה 2 – תרגול</title>
+<link rel="canonical" href="https://navaid.supino.org/ppl/rules-exam-2.html">
+<meta name="description" content="תרגול מבחן חוקה לרישיון טייס פרטי: 30 שאלות אמריקאיות.">
+<link rel="icon" href="../favicon.svg" type="image/svg+xml">
+<style>
+/* Questionnaire layout: an accent-topped title card, then one card per question, then submit.
+   Palette shared with ppl-questions.html (aeronautical blue, chart paper). */
+:root{
+  --paper:#eef2f5; --card:#fff; --ink:#16202b; --muted:#5a6876; --line:#d9e0e5;
+  --blue:#1f4e8c; --blue-soft:#e8eff8; --err:#b3261e; --ok:#1e7a46; --ok-soft:#e6f4ec; --err-soft:#fbeaea;
+  color-scheme:light;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --paper:#10161d; --card:#17202a; --ink:#e6ebf0; --muted:#9aa8b6; --line:#2a3644;
+    --blue:#7fb0f0; --blue-soft:#1b2836; --err:#ff8a80; --ok:#7fd6a0; --ok-soft:#163024; --err-soft:#3a1a1a; color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --paper:#10161d; --card:#17202a; --ink:#e6ebf0; --muted:#9aa8b6; --line:#2a3644;
+  --blue:#7fb0f0; --blue-soft:#1b2836; --err:#ff8a80; --ok:#7fd6a0; --ok-soft:#163024; --err-soft:#3a1a1a; color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--paper);color:var(--ink);font:17px/1.6 "Assistant","Arial Hebrew","Segoe UI",Arial,sans-serif}
+.wrap{max-width:720px;margin:0 auto;padding:16px 16px 48px;display:grid;gap:12px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:20px 22px}
+.title{border-top:10px solid var(--blue)}
+.home{font-size:.95rem;text-decoration:none;color:var(--blue)}
+.home:hover,.home:focus-visible{text-decoration:underline}
+h1{font-size:1.75rem;line-height:1.2;margin:.4rem 0 .5rem;text-wrap:balance}
+.lead{margin:0;color:var(--muted)}
+.req{color:var(--err)}
+.progress{position:sticky;top:0;z-index:2;background:var(--paper);padding:8px 0 4px}
+.bar{height:6px;background:var(--line);border-radius:99px;overflow:hidden}
+.bar span{display:block;height:100%;width:0;background:var(--blue);transition:width .2s}
+.progress p{margin:.3rem 0 0;font-size:.9rem;color:var(--muted)}
+fieldset{border:0;margin:0;padding:0;min-width:0}
+legend{padding:0;font-weight:600;margin-bottom:.8rem;width:100%}
+legend .n{color:var(--muted);font-weight:400;margin-inline-end:.35rem}
+.q.missing{border-color:var(--err)}
+.q .msg{display:none;color:var(--err);font-size:.9rem;margin:.6rem 0 0}
+.q.missing .msg{display:block}
+label.opt{display:flex;gap:.75rem;align-items:flex-start;padding:.55rem .6rem;min-height:44px;border-radius:8px;cursor:pointer}
+label.opt:hover{background:var(--blue-soft)}
+label.opt input{flex:none;width:20px;height:20px;margin:.2rem 0 0;accent-color:var(--blue)}
+label.opt.right{background:var(--ok-soft)}
+label.opt.wrong{background:var(--err-soft)}
+.verdict{margin:.6rem 0 0;font-size:.92rem;font-weight:600}
+.verdict.ok{color:var(--ok)} .verdict.bad{color:var(--err)}
+.actions{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+button{font:inherit;cursor:pointer;border-radius:8px;min-height:44px;padding:.5rem 1.3rem}
+.primary{background:var(--blue);color:var(--card);border:1px solid var(--blue);font-weight:600}
+.link{background:none;border:0;color:var(--blue);padding:.5rem .4rem}
+button:focus-visible,input:focus-visible,a:focus-visible{outline:3px solid var(--blue);outline-offset:2px}
+.result h2{margin:0 0 .4rem;font-size:1.4rem}
+.score{font-size:2rem;font-weight:700;margin:.2rem 0}
+.foot{color:var(--muted);font-size:.85rem;text-align:center;margin:0}
+[hidden]{display:none!important}
+@media (prefers-reduced-motion: reduce){.bar span{transition:none}}
+</style>
+</head>
+<body>
+<main class="wrap">
+  <header class="card title">
+    <a class="home" href="../">→ <bdi dir="ltr">NavAid</bdi></a>
+    <h1>מבחן חוקה 2 – תרגול</h1>
+    <p class="lead">30 שאלות אמריקאיות לתרגול מבחן החוקה לרישיון טייס פרטי. בחרו תשובה אחת בכל שאלה ולחצו <strong>שליחה</strong>. <span class="req">*</span> שאלת חובה.</p>
+  </header>
+  <div class="progress" aria-hidden="true"><div class="bar"><span id="bar"></span></div><p id="prog"></p></div>
+  <form id="form" novalidate></form>
+  <section id="result" class="card result" hidden tabindex="-1" aria-live="polite"></section>
+  <p class="foot">התרגול נשמר בדפדפן שלך בלבד. אין שליחה לשרת.</p>
+</main>
+<script>
+const DATA = [{"q": "על פי תקנה 74, מתי יוצב חץ המראה את כיוון ההקפה?", "o": ["רק כאשר ההקפה היא ימנית", "רק כאשר ההקפה היא שמאלית", "רק כאשר אין מגדל פיקוח (מנחת)", "רק כאשר קיימת תקלת קשר במגדל"]}, {"q": "על פי תקנה 11, לא ימלא אדם תפקיד איש צוות בכלי טיס:", "o": ["תוך 8 שעות מאז שתיית משקה אלכוהולי כלשהו", "תוך 24 שעות מאז שתיית משקה אלכוהולי כלשהו", "תוך 12 שעות מאז שתיית משקה אלכוהולי כלשהו", "תוך 8 שעות מאז שתיית משקה אלכוהולי חריף"]}, {"q": "על פי תקנה 70, מהירות טיסה מרבית מתחת לתחום אזור פיקוח טרמינלי היא:", "o": ["156 קשר", "180 קשר", "200 קשר", "250 קשר"]}, {"q": "על פי תקנה 74, אור ירוק מהבהב למטוס על הקרקע, משמעותו:", "o": ["פנה מיד את המסלול", "רשאי להמריא", "רשאי להסיע", "עצור מיד במקום בו אתה נמצא"]}, {"q": "על פי תקנה 74, מסלול סגור (לא שמיש) ניתן לזהות מהאוויר ע\"י:", "o": ["משקולות צהובות 0---0 צבועות על קצות המסלול", "האותC צבועה בקצות המסלול", "אורות אדומים דלוקים בתחילת המסלול", "מצוייר X או Xים על קצות המסלול"]}, {"q": "על פי תקנה 21, הטרנספונדר המותקן בכלי הטיס תקין ושמיש אוטומטית לאינטרוגציה של ModeC על ידי שידור מידע גובה לחץ בפסיעות של:", "o": ["100 רגל", "200 רגל", "20 רגל", "50 רגל"]}, {"q": "טייס מטוטס חד מנועי מבחין במטוס דו-מנועי המתקרב משמאלו ובאותו הגובה בנתיב ההתנגשות. למי זכות קדימה?", "o": ["החד-מנועי חייב לתת זכות קדימה מפאת כושר התמרון הטוב יותר שלו", "החד-מנועי חייב לתת זכות קדימה כי הדו-מנועי משמאלו", "כל אחד מהמטוסים יפנה ימינה, בגלל בטיחות כנוהל בינלאומי", "הדו-מנועי חייב לתת זכות קדימה כי החד-מנועי מימינו"]}, {"q": "מטוס וספינת אוויר בנתיב התכנסות באותו הגובה. אם ספינת האוויר בצד שמאל של המטוס, איזה כלי ייתן זכות קדימה?", "o": ["המהיר משניהם יקבל זכות קדימה", "הגדול משניהם יפנה שמאלה", "לשנהים זכות קדימה", "לספינת האוויר זכות קדימה"]}, {"q": "על פי תקנה 36, מי ידאג לכל הסידורים הארגוניים הכרוכים בשימוש בכלי טיס לצורך המבחן?", "o": ["מבקש הרישיון", "טייס ראשי או מדריך ראשי של בית הספר", "המדריך האישי של הנבחן", "ראש המבצעים של בית הספר"]}, {"q": "על פי תקנה 67, מה נכון לגבי הובלת נוסעים בטיסת מבנה?", "o": ["לא ניתן להוביל נוסעים בטיסת מבנה מסחרית", "לא ניתן להוביל נוסעים בטיסת מבנה", "לא ניתן להוביל נוסעים בטיסת מבנה פרטית", "לא ניתן להוביל נוסעים בטיסת מבנה בלילה"]}, {"q": "על פי תקנה 68, למי יש זכות קדימה על פני כל כלי טיס?", "o": ["לספינת אוויר", "לכלי טיס בטיסת אמבולנס", "למטוס קרב", "לכלי טיס במצוקה"]}, {"q": "על פי תקנה 4, רשות הרישוי רשאית לתת למבקש רשיון טיס או הגדר זמניים לתקופה שאינה עולה על:", "o": ["120 יום", "60 יום", "90 יום", "30 יום"]}, {"q": "טייס המבחין רצף של רקטות בהפסקות של 10 שניות, אשר כל אחות מהן מתפרקת לאחר התפוצצות לאורות אדומות וירוקות לערך מסיק מזה שעליו:", "o": ["לעזוב מייד את האזור, שהוא באזור מוגבל מסוכן או אסור לטיסה", "לנחות מיד", "עליך לחזור לנחיתה בגלל סופה מתקרבת", "מישהו על הקרקע משדר אות מצוקה"]}, {"q": "על פי תקנה 13 א, היה חשד סביר כי איש צוות ממלא את תפקידו בעודו נתון להשפעת אלכוהול, רשאי המנהל לדרוש מאיש צוות האוויר להיבדק:", "o": ["שעתיים לפני מילוי תפקידו", "4 שעות לפני ו-4 שעות אחרי מילוי תפקידו", "שעה אחת לפני ושעה אחת אחרי מילוי תפקידו", "שעתיים לפני ושעתיים אחרי מילוי תפקידו"]}, {"q": "על פי תקנה 34, לא ייגש מועמד לקבלת רישיון טיס למבחן מעשי אלא אם:", "o": ["עמד בבחינה פנימית שנערכה ע\"י הטייס הראשי של בית הספר", "עמד ב-25 אחוזים מהמבחנים העיוניים הנדרשים לקבלת הרישיון", "עמד בכל המבחנים העיוניים הנדרשים לקבלת רישיון ועמד בבחינת מעבר פנימית שנערכה ע\"י הטייס הראשי של בית הספר", "עמד בכל המבחנים העיוניים הנדרשים לקבלת רישיון"]}, {"q": "על פי תקנה 35, לא ייגש אדם לבחינה מעשית חוזרת אלא:", "o": ["בתום שבועיים מיום המבחן המעשי בו נכשל, אבל עם בוחן אחר", "בתום 30 יום מיום המבחן המעשי בו נכשל", "בתום 30 יום מיום המבחן המעשי בו נכשל, או בתום 14 יום אם נכשל רק באחד מנושאי המבחן", "בתום 30 יום מיום המבחן המעשי בו נכשל, בתנאי שקיבל הדרכה נוספת בהתאם להוראות הבוחן אשר בחן במבחן המעשי בו נכשל"]}, {"q": "על פי תקנה 6, לפני תחילת טיסה כללית חייב טייס מפקד של כלי טיס:", "o": ["להשאיר רשימת נוסעים הנמצאים איתו בכלי הטיס", "לקבל תדריך נוסף לגבי הטיסה מהמדריך הראשי", "לקבל תדריך נוסף מהמגדל על תנועה אווירית באזור", "להשאיר חישוב של משקל ואיזון"]}, {"q": "על פי תקנה 2, טייס המפעיל כלי טיס הרשום בישראל בטיסה מחוץ לשטח מדינת ישראל:", "o": ["יענה על הדרישות המתייחסות לטיסה ולתמרון כלי טיס התקפות בישראל", "יענה על הדרישות המתייחסות לטיסה ולתמרון כלי טיס התקפות באותה מדינה", "יענה על הדרישות הבינלאומיות המתייחסות לטיסה ולתמרון כלי טיס", "יענה על הדרישות של ספר עזר למבצעים של החברה בעלת המטוס"]}, {"q": "על פי תקנה 68, כאשר שני כלי טיס מתקרבים חזיתית או כמעט חזיתית האחד לעומת השני, הפעולה הנכונה היא:", "o": ["ישנה כל אחד את כיוונו לשמאל", "ישנה כל אחד את כיוונו בהסדר מראש בין הטייסים המפקדים", "ישנה כל אחד את הגובה בהסדר מראש בין הטייסים המפקדים", "ישנה כל אחד את כיוונו לימין"]}, {"q": "על פי תקנה 74, אור לבן מהבהב הניתן ממגדל פיקוח לכלי טיס בהקפה, פירושו:", "o": ["רשאי לנחות", "פעל בזהירות מרבית", "אל תנחת, שדה לא בטוח", "אין תשובה נכונה"]}, {"q": "על פי תקנה 13 א, לא ימלא אדם תפקיד איש צוות בכלי טיס, כאשר בבדיקת נשיפה או בבדיקת מעבדה נמצא בו אלכוהול בכמות העולה על:", "o": ["5 גרם של אלכוהול במאה גרם של דם, או ריכוז אלכוהול באוויר נשוף ברמה שווה לריכוז האמור", "25 מיליגרם של אלכוהול במאה מיליליטר של דם, או ריכוז אלכוהול באוויר נשוף ברמה שוות ערך לריכוז האמור", "50 מיליגרם של אלכוהול במאה מיליליטר של דם, או ריכוז אלכוהול באוויר נשוף ברמה שוות ערך לריכוז האמור", "5 מיליגרם של אלכוהול במאה מיליגרם של דם, או ריכוז אלכוהול באוויר נשוף ברמה שוות ערך לריכוז האמור"]}, {"q": "על פי תקנה 11, לא ימלא אדם תפקיד איש צוות בכלי טיס כאשר בבדיקת נשיפה או בבדיקת מעבדה נמצא בו אלכוהול:", "o": ["בכמות כלשהי", "בכמות העולה על שבעים מיליגרם של אלכוהול במאה מיליליטר של דם, או ריכוז אלכוהול באוויר נשוף ברמה שוות ערך", "בכמות העולה על חמישים מיליגרם של אלכוהול במאה מיליליטר של דם, או ריכוז אלכוהול באוויר נשוף ברמה שוות ערך", "בכמות העולה על מאה מיליגרם של אלכוהול במאה מיליליטר של דם, או ריכוז אלכוהול באוויר נשוף ברמה שוות ערך"]}, {"q": "על פי תקנה 25, מפקח על תנועה אווירית רשאי לפטור מדרישות תקנות הטיס בנוגע לטרנספונדר המותקן בכלי טיס:", "o": ["ד. יצא מכלל שימוש בזמן טיסה- כדי לאפשר להמשיך לשדה היעד במרחב הפיקוח התעופתי של ישראל בלבד", "ב. יצא מכלל שימוש בזמן טיסה- כדי לאפשר להמשיך לשדה היעד או לשדה שבו ניתן לתקן את התקלה, יצא מכלל שימוש לפני טיסה- בתנאי שהבקשה לפטור הוגשה לפחות 48 שעות לפני הטיסה המיועדת", "א. יצא מכלל שימוש בזמן טיסה- כדי לאפשר להמשיך את הטיסה לשדה היעד או לשדה שבו ניתן לתקן את התקל, יצא מכלל שימוש לפני טיסה- כדי לאפשר לטוס ולנחות בשדה תעופה שבו ניתן לתקן את התקלה", "ג. יצא מכלל שימוש בזמן טיסה- כדי לאפשר להמשיך לשדה היעד באותו מרחב פיקוח שבו טס המטוס"]}, {"q": "על פי חוק הטיס (סעיף 76), במקרה חירום המצריך פעולה מיידית , רשאי הטייס המפקד לסטות מהוראות הפעלת כלי הטיס ולדווח על כך:", "o": ["למנהל התעופה בכתב מייד עם סיום הטיסה", "למנהל התעופה בכתב תוך חמישה ימים מרגע סיום הטיסה", "לטייס ראשי בכתב מיד עם סיום הטיסה", "לטייס הראשי בכתב תוך חמישה ימים מרגע סיום הטיסה"]}, {"q": "על פי תקנה 22, לא יטיס אדם כטייס מפקד בלילה אלא אם ביצע באותו טיפוס לפחות שלוש המראות ושלוש נחיתות בלילה תוך 90 הימים שקדמו לטיסה האמורה. הדרישה מתייחסת:", "o": ["לביצוע טיסת לילה עם נוסעים", "לכלי טיסת לילה על כלי טיס קטן", "לטיסות לילה מחוץ לתחום הפיקוח של השדה", "לכל טיסת לילה"]}, {"q": "על פי תקנה 8, מה נכון לגבי הידוק חגורת מושב וחגורת כתף?", "o": ["על הטייס להדק את חגורת מושבו וחגורת הכתף בכל עת היותו בעמדתו", "על הטייס להדק את חגורת מושבו בכל עת היותו בעמדתו ולהדק את חגורת הכתף בעת המראת כלי הטיס ונחיתתו", "על הטייס להדק את חגורת מושבו בכל עת היותו בעמדתו ולהדק את חגורת הכתף בעת מקרה חירום", "על הטייס להדק את חגורת מושבו בעת המראת כלי הטיס, בעת נסיקה לגובה 10000 רגל, בעת נחיתה ובמצב חירום"]}, {"q": "על פי תקנה 22, לא יטיס אדם כטייס מפקד אלא אם ביצע באותו טיפוס לפחות שלוש המראות ושלוש נחיתות תוך 90 הימים שקדמו לטיסה האמור. הדרישה מתייחסת:", "o": ["לכל טיסה", "לכל טיסה מסחרית בלבד", "לכל טיסה עם נוסעים", "לביצוע טיסות לילה בלבד"]}, {"q": "מתוך כלי הטיס הבאים, למי יש זכות קדימה על פני כל כלי טיס ממונע אחר?", "o": ["מסוק", "דאון", "מטוס המתדלק מטוס אחר", "ספינת אוויר"]}, {"q": "על פי תקנה 26, הופסק קשר האלחוט בכלי טיס בטיסה על פי כטר\"מ או כטר\"מ מיוחד – טייס כלי הטיס ימשיך את הטיסה וינחת:", "o": ["בשדה התעופה הקרוב ביותר", "בשדה ההמראה בלבד", "בשדה תעופה המשני שצוין בתכנית הטיסה", "בשדה התעופה שבו הוא יועד לנחות על פי תוכנית הטיסה"]}, {"q": "שני מטוסים טסים בנתיבים מתכנסים בגובה זהה, איזה מהטייסים יפנה וייתן זכות קדימה?", "o": ["הטייס במטוס האיטי יותר", "הטיס במטוס המהיר יותר", "זה הרואה את השני בצד שמאל", "זה הרואה את השני בצד ימין"]}];
+// The answer key: question number (1-based) -> index of the correct option (0-based).
+// Empty until the key is exported from the source form; with it, Submit also scores.
+const KEY = {};
+const STORE = 'caai-rules-2';
+const form = document.getElementById('form');
+const result = document.getElementById('result');
+const hasKey = Object.keys(KEY).length === DATA.length;
+
+function load(){ try { return JSON.parse(localStorage.getItem(STORE)) || {}; } catch (e) { return {}; } }
+function save(a){ try { localStorage.setItem(STORE, JSON.stringify(a)); } catch (e) {} }
+let answers = load();
+
+DATA.forEach((d, i) => {
+  const n = i + 1;
+  const card = document.createElement('div'); card.className = 'card q'; card.id = 'q' + n;
+  const fs = document.createElement('fieldset');
+  const lg = document.createElement('legend');
+  const num = document.createElement('span'); num.className = 'n'; num.textContent = n + '.';
+  const req = document.createElement('span'); req.className = 'req'; req.textContent = ' *'; req.setAttribute('aria-hidden', 'true');
+  lg.append(num, document.createTextNode(d.q), req);
+  fs.appendChild(lg);
+  d.o.forEach((o, j) => {
+    const lab = document.createElement('label'); lab.className = 'opt';
+    const inp = document.createElement('input'); inp.type = 'radio'; inp.name = 'q' + n; inp.value = j; inp.required = true;
+    if (answers[n] === j) inp.checked = true;
+    const t = document.createElement('span'); t.textContent = o;
+    lab.append(inp, t); fs.appendChild(lab);
+  });
+  const msg = document.createElement('p'); msg.className = 'msg'; msg.textContent = 'זוהי שאלת חובה';
+  const ver = document.createElement('p'); ver.className = 'verdict'; ver.hidden = true;
+  fs.append(msg, ver);
+  card.appendChild(fs); form.appendChild(card);
+});
+const actions = document.createElement('div'); actions.className = 'actions';
+actions.innerHTML = '<button type="submit" class="primary">שליחה</button><button type="button" class="link" id="clear">ניקוי הטופס</button>';
+form.appendChild(actions);
+
+function progress(){
+  const c = Object.keys(answers).length;
+  document.getElementById('bar').style.width = (100 * c / DATA.length) + '%';
+  document.getElementById('prog').textContent = 'נענו ' + c + ' מתוך ' + DATA.length;
+}
+form.addEventListener('change', (e) => {
+  const n = Number(e.target.name.slice(1));
+  answers[n] = Number(e.target.value); save(answers);
+  document.getElementById('q' + n).classList.remove('missing');
+  progress();
+});
+document.getElementById('clear').addEventListener('click', () => {
+  answers = {}; save(answers); form.reset(); clearMarks(); result.hidden = true; progress();
+  window.scrollTo({ top: 0 });
+});
+function clearMarks(){
+  form.querySelectorAll('.q').forEach(c => { c.classList.remove('missing'); const v = c.querySelector('.verdict'); v.hidden = true; });
+  form.querySelectorAll('label.opt').forEach(l => l.classList.remove('right', 'wrong'));
+}
+form.addEventListener('submit', (e) => {
+  e.preventDefault(); clearMarks();
+  const missing = DATA.map((_, i) => i + 1).filter(n => answers[n] === undefined);
+  if (missing.length) {
+    missing.forEach(n => document.getElementById('q' + n).classList.add('missing'));
+    const first = document.getElementById('q' + missing[0]);
+    first.scrollIntoView({ block: 'center' }); first.querySelector('input').focus({ preventScroll: true });
+    return;
+  }
+  result.replaceChildren();
+  const h = document.createElement('h2'); result.appendChild(h);
+  if (hasKey) {
+    let right = 0;
+    DATA.forEach((_, i) => {
+      const n = i + 1, ok = answers[n] === KEY[n]; if (ok) right++;
+      const labs = document.getElementById('q' + n).querySelectorAll('label.opt');
+      labs[KEY[n]].classList.add('right'); if (!ok) labs[answers[n]].classList.add('wrong');
+      const v = document.getElementById('q' + n).querySelector('.verdict');
+      v.hidden = false; v.className = 'verdict ' + (ok ? 'ok' : 'bad'); v.textContent = ok ? 'נכון' : 'לא נכון – התשובה הנכונה מסומנת';
+    });
+    h.textContent = 'הציון שלך';
+    const s = document.createElement('p'); s.className = 'score'; s.textContent = right + ' / ' + DATA.length;
+    const p = document.createElement('p'); p.textContent = Math.round(100 * right / DATA.length) + '% – גללו לשאלות לראות את התשובות הנכונות.';
+    result.append(s, p);
+  } else {
+    h.textContent = 'התשובות נשמרו';
+    const p = document.createElement('p'); p.textContent = 'ענית על כל ' + DATA.length + ' השאלות. לבדיקה מול מפתח התשובות של הטופס המקורי – הבחירות שלך מסומנות בטופס.';
+    result.appendChild(p);
+  }
+  const again = document.createElement('button'); again.type = 'button'; again.className = 'link'; again.textContent = 'מילוי מחדש';
+  again.onclick = () => document.getElementById('clear').click();
+  result.appendChild(again);
+  result.hidden = false; result.scrollIntoView({ block: 'start' }); result.focus({ preventScroll: true });
+});
+progress();
+</script>
+</body>
+</html>
