@@ -3054,6 +3054,10 @@ async function loadNavWaypoints() {
     // so no duplicate request is issued.
     if (gen !== _layerGen) return loadNavWaypoints();
     navWP = mapped;
+    // A shown instrument/ATS sheet's points (the LLHZ SID's SFAIM) were just dropped with the
+    // old navWP; put them back so they stay tappable on every base layer, not only the one whose
+    // dataset happens to carry them.
+    if (typeof reapplyPlatePoints === 'function') reapplyPlatePoints();
     return navWP;
   } catch (e) {
     // Leave navWP === null so a subsequent toggle / search / snap call can
