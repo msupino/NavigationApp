@@ -1,11 +1,11 @@
 // @ts-check
-// The PPL practical-exam question bank: a standalone page at /ppl-questions.html (not linked
+// The PPL practical-exam question bank: a standalone page at /ppl/questions.html (not linked
 // from the app). It loads nothing from a third party, and its answers open one at a time, by
 // section, or by search.
 const { test, expect } = require('./_setup');
 
 test('the page lists 131 questions, toggles an answer, filters by section and search', async ({ page }) => {
-  await page.goto('ppl-questions.html');
+  await page.goto('ppl/questions.html');
   const origin = new URL(page.url()).origin;
   const foreign = [];
   page.on('request', (r) => { const u = r.url(); if (!u.startsWith('data:') && new URL(u).origin !== origin) foreign.push(u); });
@@ -28,7 +28,7 @@ test('the page lists 131 questions, toggles an answer, filters by section and se
 
 // The rules-exam questionnaire: 30 required multiple-choice questions, a form-style flow.
 test('the rules exam asks all 30, flags the unanswered, and accepts a complete form', async ({ page }) => {
-  await page.goto('caai-rules-exam-1.html');
+  await page.goto('ppl/rules-exam-1.html');
   await page.evaluate(() => localStorage.clear());
   await page.reload();
   await expect(page.locator('.q')).toHaveCount(30);
