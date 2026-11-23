@@ -583,6 +583,11 @@ test('the hour label never shifts the Now button or the slider', async ({ page }
     const b = document.getElementById('boot-loading'); if (b) b.remove();
     const cb = document.getElementById('notam-cb');            // a timed layer, so the clock is live
     if (cb && !cb.checked) { cb.checked = true; cb.dispatchEvent(new Event('change', { bubbles: true })); }
+    // Widen the readout font past what this browser renders, to stand in for a device whose font
+    // is wider: a min-width-only reserve would grow here and nudge Now; the fixed box must not.
+    const st = document.createElement('style');
+    st.textContent = '.map-time-read{letter-spacing:0.6px}';
+    document.head.appendChild(st);
   });
   const geo = (v) => page.evaluate((v) => {
     const s = document.getElementById('map-time-slider'); s.value = String(v); s.dispatchEvent(new Event('input'));

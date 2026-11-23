@@ -5388,12 +5388,17 @@ body.theme-light .msa-low .val { color: #c0392b; }
   font-size: 12px;
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
-  /* Reserve the width of the widest readout -- the cross-midnight form with its date prefix
-     ("+14h · 11-23 03:00Z", ~132px) -- and centre the text, so the readout never changes width
-     as the hour label grows. Paired with the grow-and-shrink slider above, that keeps the
-     slider AND the Now button fixed at every width, the legend dock stays clear (the readout
-     grows inward, not out over the dock), and only a sub-700px sliver has no room to spare. */
-  min-width: 8.25rem;
+  /* FIX the readout to the width of its widest form -- the cross-midnight readout with its date
+     prefix ("+14h · 11-23 03:00Z", ~132px) -- as a hard box (min == max), not just a floor. A
+     min-width alone still let the box GROW when a device's font rendered the text a hair wider
+     than it measures here, and the centred strip then re-centred and nudged the Now button
+     (reported on desktop). A fixed box can never grow, so the Now button and the slider hold at
+     every width and on every font; overflow is clipped (centred, so symmetric) as a last resort,
+     with ~12px of headroom here before that bites. The grow-and-shrink slider absorbs the box on
+     the inline strip, so the legend dock stays clear. */
+  min-width: 9rem;
+  max-width: 9rem;
+  overflow: hidden;
   text-align: center;
   padding: 4px 8px;
   border-radius: var(--navaid-ctrl-radius);
