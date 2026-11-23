@@ -476,10 +476,10 @@ test('a shown sheet keeps its points across a base-layer navWP reload', async ({
     const sheet = af.ifr_overlays.find(s => s.png === 'LLHZ_ATS.png');
     window.showIfr = true;
     try { localStorage.setItem('navaid.ifrSheet', 'LLHZ|LLHZ_ATS.png'); } catch (e) {}
-    window.navDataPrefix = 'cvfr'; navWP = null; await loadNavWaypoints();
+    window.navDataPrefix = 'cvfr'; window.navWP = null; await loadNavWaypoints();
     applyIfrPoints({ icao: 'LLHZ', sheet });
     const before = navWP.some(w => w && w.name === 'SFAIM');
-    window.navDataPrefix = 'ats'; navWP = null; await loadNavWaypoints();   // switch layer
+    window.navDataPrefix = 'ats'; window.navWP = null; await loadNavWaypoints();   // switch layer
     return { before, after: navWP.some(w => w && w.name === 'SFAIM') };
   });
   expect(out.before).toBe(true);
