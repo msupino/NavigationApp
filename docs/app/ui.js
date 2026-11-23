@@ -8754,10 +8754,10 @@ function refreshNotamListBtn() {
 function fmtViewClock(d) {
   if (!d || isNaN(d)) return '';
   const iso = d.toISOString();
-  const hm = iso.slice(11, 16) + 'Z';
-  return iso.slice(0, 10) === new Date().toISOString().slice(0, 10)
-    ? hm
-    : iso.slice(5, 10) + ' ' + hm;
+  // Always carry the UTC date (MM-DD), today included. It used to appear only once a scrub
+  // crossed midnight, so the readout jumped a date's width mid-drag and shoved the slider and
+  // the Now button sideways (reported). A date that is always there keeps the readout one width.
+  return iso.slice(5, 10) + ' ' + iso.slice(11, 16) + 'Z';
 }
 // Unified look-ahead readout: base (0) shows the clock; an offset shows
 // "+Nh · <clock>".
