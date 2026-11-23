@@ -141,3 +141,24 @@ test('VOR Reference row: at the default inspector width the readout stays inside
     val: r.querySelector('.vor-radial-val').getBoundingClientRect().right }));
   expect(g.val).toBeLessThanOrEqual(g.row + 1);
 });
+
+// Reported more than once: the status glyph walked a digit left or right as one line's distance
+// had fewer digits than the other's ("7.2" vs "47.7"). The distance is padded to a fixed width
+// and each line pushes its glyph to the box's edge: the glyphs share one column, and the box
+// keeps its width as a distance gains a digit.
+test('the status glyphs share a column and the box holds its width across digit counts', async ({ page }) => {
+  await boot(page);
+  const g = await page.evaluate(() => {
+    const nat = { ident: 'NAT', coverageNm: 40 }, rop = { ident: 'ROP', coverageNm: 20 };
+    const box = document.getElementById('vor-readout');
+    const show = (a, b) => {
+      setVorReadout(vorReadoutData(nat, { radial: '041', dme: a }), vorReadoutData(rop, { radial: '142', dme: b }));
+      return { xs: [...box.querySelectorAll('.vor-readout-mark')].map(m => Math.round(m.getBoundingClientRect().left)),
+               w: Math.round(box.getBoundingClientRect().width) };
+    };
+    return [show(47.7, 7.2), show(147.7, 17.2), show(4.1, 0.3)];
+  });
+  for (const s of g) expect(s.xs[0]).toBe(s.xs[1]);            // one column
+  expect(g[1].w).toBe(g[0].w);                                  // gaining a digit does not resize
+  expect(g[2].w).toBe(g[0].w);
+});

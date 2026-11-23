@@ -1736,6 +1736,12 @@ body.theme-light .vor-readout .vor-readout-2 { color: #7d3ca5; }
 /* Every readout line ends in a fixed-width status slot: a tick within the station's published
    coverage, a caution triangle beyond it (the line also dims). Same size either way, so the box
    keeps one width as a point crosses a ring. Shape carries the meaning, not colour alone. */
+/* Each line is a row whose status glyph is pushed to the box's far edge, so the glyphs share one
+   column whatever the text widths -- belt and braces with the padded distance (a 4-letter ident
+   or a line from another source must not push its glyph out of line). Tabular figures keep
+   every digit one width; pre keeps the figure-space padding. */
+.vor-readout { font-variant-numeric: tabular-nums; white-space: pre; }
+.vor-readout > div { display: flex; align-items: center; justify-content: space-between; gap: 3px; }
 .vor-readout .vor-readout-warn { opacity: 0.6; }
 .vor-readout .vor-readout-mark {
   display: inline-flex;
