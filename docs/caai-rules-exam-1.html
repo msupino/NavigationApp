@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>מבחן חוקה 1 – תרגול</title>
+<link rel="canonical" href="https://navaid.supino.org/caai-rules-exam-1.html">
+<meta name="description" content="תרגול מבחן חוקה לרישיון טייס פרטי: 30 שאלות אמריקאיות.">
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<style>
+/* Questionnaire layout: an accent-topped title card, then one card per question, then submit.
+   Palette shared with ppl-questions.html (aeronautical blue, chart paper). */
+:root{
+  --paper:#eef2f5; --card:#fff; --ink:#16202b; --muted:#5a6876; --line:#d9e0e5;
+  --blue:#1f4e8c; --blue-soft:#e8eff8; --err:#b3261e; --ok:#1e7a46; --ok-soft:#e6f4ec; --err-soft:#fbeaea;
+  color-scheme:light;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --paper:#10161d; --card:#17202a; --ink:#e6ebf0; --muted:#9aa8b6; --line:#2a3644;
+    --blue:#7fb0f0; --blue-soft:#1b2836; --err:#ff8a80; --ok:#7fd6a0; --ok-soft:#163024; --err-soft:#3a1a1a; color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --paper:#10161d; --card:#17202a; --ink:#e6ebf0; --muted:#9aa8b6; --line:#2a3644;
+  --blue:#7fb0f0; --blue-soft:#1b2836; --err:#ff8a80; --ok:#7fd6a0; --ok-soft:#163024; --err-soft:#3a1a1a; color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--paper);color:var(--ink);font:17px/1.6 "Assistant","Arial Hebrew","Segoe UI",Arial,sans-serif}
+.wrap{max-width:720px;margin:0 auto;padding:16px 16px 48px;display:grid;gap:12px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:20px 22px}
+.title{border-top:10px solid var(--blue)}
+.home{font-size:.95rem;text-decoration:none;color:var(--blue)}
+.home:hover,.home:focus-visible{text-decoration:underline}
+h1{font-size:1.75rem;line-height:1.2;margin:.4rem 0 .5rem;text-wrap:balance}
+.lead{margin:0;color:var(--muted)}
+.req{color:var(--err)}
+.progress{position:sticky;top:0;z-index:2;background:var(--paper);padding:8px 0 4px}
+.bar{height:6px;background:var(--line);border-radius:99px;overflow:hidden}
+.bar span{display:block;height:100%;width:0;background:var(--blue);transition:width .2s}
+.progress p{margin:.3rem 0 0;font-size:.9rem;color:var(--muted)}
+fieldset{border:0;margin:0;padding:0;min-width:0}
+legend{padding:0;font-weight:600;margin-bottom:.8rem;width:100%}
+legend .n{color:var(--muted);font-weight:400;margin-inline-end:.35rem}
+.q.missing{border-color:var(--err)}
+.q .msg{display:none;color:var(--err);font-size:.9rem;margin:.6rem 0 0}
+.q.missing .msg{display:block}
+label.opt{display:flex;gap:.75rem;align-items:flex-start;padding:.55rem .6rem;min-height:44px;border-radius:8px;cursor:pointer}
+label.opt:hover{background:var(--blue-soft)}
+label.opt input{flex:none;width:20px;height:20px;margin:.2rem 0 0;accent-color:var(--blue)}
+label.opt.right{background:var(--ok-soft)}
+label.opt.wrong{background:var(--err-soft)}
+.verdict{margin:.6rem 0 0;font-size:.92rem;font-weight:600}
+.verdict.ok{color:var(--ok)} .verdict.bad{color:var(--err)}
+.actions{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+button{font:inherit;cursor:pointer;border-radius:8px;min-height:44px;padding:.5rem 1.3rem}
+.primary{background:var(--blue);color:var(--card);border:1px solid var(--blue);font-weight:600}
+.link{background:none;border:0;color:var(--blue);padding:.5rem .4rem}
+button:focus-visible,input:focus-visible,a:focus-visible{outline:3px solid var(--blue);outline-offset:2px}
+.result h2{margin:0 0 .4rem;font-size:1.4rem}
+.score{font-size:2rem;font-weight:700;margin:.2rem 0}
+.foot{color:var(--muted);font-size:.85rem;text-align:center;margin:0}
+[hidden]{display:none!important}
+@media (prefers-reduced-motion: reduce){.bar span{transition:none}}
+</style>
+</head>
+<body>
+<main class="wrap">
+  <header class="card title">
+    <a class="home" href="./">→ <bdi dir="ltr">NavAid</bdi></a>
+    <h1>מבחן חוקה 1 – תרגול</h1>
+    <p class="lead">30 שאלות אמריקאיות לתרגול מבחן החוקה לרישיון טייס פרטי. בחרו תשובה אחת בכל שאלה ולחצו <strong>שליחה</strong>. <span class="req">*</span> שאלת חובה.</p>
+  </header>
+  <div class="progress" aria-hidden="true"><div class="bar"><span id="bar"></span></div><p id="prog"></p></div>
+  <form id="form" novalidate></form>
+  <section id="result" class="card result" hidden tabindex="-1" aria-live="polite"></section>
+  <p class="foot">התרגול נשמר בדפדפן שלך בלבד. אין שליחה לשרת.</p>
+</main>
+<script>
+const DATA = [{"q": "לצרכי צבירת ניסיון יש למלא את יומן הטיסות וניתן להגדיר כנחיתת לילה:", "o": ["כל נחיתה שבוצעה לא לפני שקיעת השמש ולא אחרי זריחת השמש", "כל נחיתה שבוצעה בפרק הזמן שבין רבע שעה לאחר שקיעת השמש לבין רבע שעה לפני הזריחה", "כל נחיתה שבוצעה לאחר גמר דמדומי ערב (עפ\"י טבלה המפורסמת בפמ\"ת)", "כל נחיתה שבוצעה בפרק הזמן שבין רבע שעה לפני סיום דמדומי ערב לבין רבע שעה לאחר תחילת דמדומי בוקר"]}, {"q": "עפ\"י תקנות ההפעלה, חובה במרחב האווירי של ישראל לטוס עם טרנספונדר שמיש, בעל 4096 אפשרויות בחירה של קודים מסוג A/3 Mode  וכן:", "o": ["ציוד דיווח אוטומטי של גובה לחץ בפסיעות של 100 רגל", "אין חובה ל-Mode C (דיווח גובה לחץ)", "אין חובה להתקין טרנספונדר לרוטורקראפט הטס באזור פיקוח טרמינלי מתחת ל-1000 רגל מעל הקרקע וכן לדאון המיועד לטוב איזור פיקוח שדה שממנו המריא", "תשובות א' ו-ג' נכונות"]}, {"q": "לטייס ללא הגדר לטיסות לילה הזמן האחרון לנחיתה בשדה הוא:", "o": ["לפני תחילת דמדומי הערב באותו שדה", "15 דקות לפני שקיעת השמש באותו שדה", "לפני שקיעת השמש באותו שדה", "לפני סיום דמדומי הערב באותו שדה"]}, {"q": "על פי תקנה 33 (1) (2), לפני המראה לפי כטר\"מ הטייס מבחין שמקלט VOR אינו תקין. על פי תקנות הטיס:", "o": ["מותר להמריא ולבצע טיסה מקומית בלבד", "אסור להמריא ולבצע את הטיסה", "מקלט VOR אינו חייב להימצא בכלי הטיס בטיסה לפי כטר\"מ, לכן מותר להמריא ולבצע את הטיסה", "מותר להמריא ולבצע את הטיסה בשעות יום בלבד"]}, {"q": "על פי תקנה 89, דרישות הניסיון המזעריות לקבלת הגדר אווירון הן:", "o": ["40 שעות זמן טיסה שבוצעו באווירון במסגררת בית ספר או במסגרת הדרכה אישית", "50 שעות זמן טיסה שבוצעו באווירון במסגררת בית ספר או במסגרת הדרכה אישית", "50 שעות זמן טיסה שבוצעו באווירון במסגררת בית ספר או 40 שעות זמן טיסה שבוצעו באווירון במסגרת הדרכה אישית", "40 שעות זמן טיסה שבוצעו באווירון במסגררת בית ספר או 50 שעות זמן טיסה שבוצעו באווירון במסגרת הדרכה אישית"]}, {"q": "על פי תקנה 129 ב, באיזה תנאים רשאי בעל רישיון טיס לבצע בדיקה יומית של כלי הטיס?", "o": ["בתנאי שהוא בעל המטוס או מפעילו ושיש לאותו טייס הסמכה לכך", "בתנאי שהוא בעל המטוס או מפעילו, שיש לטייס הסמכה לכך ותוגבל הזכות האמורה לביצוע בדיקה יומית מחוץ לבסיס האם בלבד", "בתנאי שהוא בעל המטוס או מפעילו , תוגבל הזכות האמורה לביצוע בדיקה יומית מחוץ לבסיס האם בלבד, כאשר כלי הטיס מופעל לשם הטסת נוסעים בטיסה מסחרית", "בתנאי שהוא בעל המטוס או מפעילו, שיש לאותו טייס הסמכה לכך ושכלי הטיס אינו מופעל לטיסה מסחרית"]}, {"q": "מגבלות טיסה התפעוליות או אחרות של כלי טיס ניתן למצוא:", "o": ["בספר המטוס המפורסם ע\"י היצרן ומאושר ע\"י רשות התעופה האזרחית", "בתעודת כושר טיסה", "בהוראות בעל כלי הטיס ו/או פרסומי האגודה", "בשילוש במטוס, או הוראת מכונאי ראשי"]}, {"q": "על פי תקנה 2, טייס המפעיל כלי טיס הרשום בישראל בטיסה מחוץ לשטח מדינת ישראל:", "o": ["יענה על הדרישות המתייחסות לטיסה ולתמרון כלי טיס התקפות באותה מדינה", "יענה על הדרישות הבין לאומיות המתייחסות לטיסה ולתמרון כלי טיס", "יענה על הדרישות המתייחסות לטיסה ולתמרון כלי טיס התקפות בישראל", "יענה על הדרישות של ספר עזר למבצעים של החברה בעלת המטוס"]}, {"q": "זמן \"טיסת מכשירים\" הוא:", "o": ["אותו חלק מזמן הטיסה שבו הטייס מטיס את כלי הטיס תוך הסתמכות על מכשירי כלי הטיס בלבד", "אותו חלק מזמן הטיסה שבו הטייס מטיס את כלי הטיס תוך הסתמכות על מכשירי כלי הטיס בלבד ולא כולל זמן טיסת מכשירים מדומה בעזרת מדמה טיסה", "כל זמן טיסה בתנאי כט\"מ בליליה", "כל זמן טיסה בתנאי כט\"מ"]}, {"q": "טייס פרטי רשאי:", "o": ["אין תשובה נכונה", "לשמש כטייס מפקד או כטייס משנה בכלי טיס בטיסה מסחרית", "לשמש רק כטייס משנה בכלי טיס בטיסה מסחרית", "לשמש בשכר רק כטייס משנה של כלי טיס"]}, {"q": "על פי תקנה 33 (1) (2), לפני המראה לטיסה כטר\"מ הטייס מבחין שמד הפנייה הג'יירוסקופי עם מד החלקה אינו תקין. על פי תקנות הטיס:", "o": ["מד פניה ג'יירוסקופי אינו חייב להימצא בכלי הטיס בטיסה על פי כטר\"מ לכן מותר להמריא ולבצע את הטיסה", "מותר להמריא ולבצע את הטיסה בשעות יום בלבד", "מותר להמריא ולבצע טיסה מקומית בלבד", "אסור להמריא ולבצע את הטיסה"]}, {"q": "על פי תקנה 74, מסלול סגור (לא שמיש) ניתן לזהות מהאוויר ע\"י:", "o": ["מצוייר X  או Xים על קצות המסלול", "האות C  צבועה בקצות המסלול", "משקולות צהובות 0---0 צבועות על קצות המסלול", "אורות אדומים דלוקים בתחילת המסלול"]}, {"q": "על פי תקנה 103, טייס פרטי לא זכאי לשמש כטייס מפקד בכלי טייס המוליך נוסעים אלא:", "o": ["אם לאחר קבלת הרישיון צבר לפחות 25 שעות טיסה כטייס מפקד", "אם ב-90 הימים שקדמו לאותה טיסה, ביצע כטייס מפקד לפחות שלוש המראות ושלוש נחיתות", "אם לאחר קבלת הרישיון צבר לפחות 50 שעות טיסה כטייס מפקד", "אם לאחר קבלת הרישיון צבר לפחות 50 שעות כטייס מפקד וקיבל אישור מיוחד הרשום ביומן האישי של הטייס"]}, {"q": "על פי תקנה 32, לא יפעיל אדם כלי טיס עם תא לא מדוחס בגובה לחץ תא מעל 15000 רגל, אלא:", "o": ["עומד לרשות צוות ההטסה מלאי של חמצן נשימה והוא משתמש בו במשך כל זמן הטיסה בגבהים אלה", "עומד לרשות כל הנמצאים בכלי הטיס מלאי של חמצן נשימה והם משתמשים בו עבור אותם קטעים של טיסה בגבהים אלה הנמשכים מעל 30 דקות", "עומד לרשות כל הנמצאים בכלי הטיס מלאי של חמצן נשימה", "עומד לרשות צוות ההטסה מלאי של חמצן נשימה והוא משתמש בו עבור אותם קטעים של הטיסה בגבהים אלה הנמשכים מעל 30 דקות"]}, {"q": "מי אחראי להגדיר ולקבוע אם כלי טיס במצב מתאים לטיסה בטוחה?", "o": ["מכונאי מוסמך", "מבקר אחזקה מוסמך", "הטייס המפקד", "בעל המטוס"]}, {"q": "מטוס מיירט מבצע תמרון של ניתוק חד מכלי הטיס המיורט המורכב מפניית טיפוס של 90 מעלות או יותר מבלי לחצות את קו הטיסה של המטוס המיורט. מהי משמעות הסימון?", "o": ["המשך בכיוון המקורי והמתן ליירוט נוסף", "אתה רשאי להמשיך בטיסה", "עליך לנחות בשדה זה", "עבור לתדר מצוקה 121.5 מ\"ה"]}, {"q": "על פי המלצת ICAO:", "o": ["יש תמיד להמריא מול הרוח", "כל התשובות נכונות", "יש לבצע הקפה שמאלית סביב המסלול, אלא אם ניתנה הוראה אחרת", "יש להשתלב בהקפה עם תנועת כלי טיס אחרים"]}, {"q": "אין להמריא או לנחות בשדה תעופה אם:", "o": ["בסיס הענן נמוך מגובה 1500 רגל מעל פני גובה ההקפה, בכל כמות שהיא", "בסיס הענן נמוך מגובה 1500 רגל מעל פני השדה, כאשר כמות העננים עולה על 4/8 מפני השמים", "בסיס הענן נמוך מגובה 1500 רגל מעל פני גובה ההקפה, כאשר כמות העננים עולה על 4/8 מפני השמים", "בסיס הענן נמוך מגובה 1500 רגל מעל פני השדה, בכל כמות שהיא"]}, {"q": "משך כל זמן טיסתו יפעיל הטייס את מכשיר הזע\"ט (טרנספונדר) בקוד מקבוצת הקודים הבאים    (א-13):", "o": ["5100 בטיסות בנתיבי CVFR (כטר\"מ), 6400 בטיסות בין לאומיות, 7500 במצב חירום, 7600 בעת תקלת קשר א/ד במטוס, 7700 במקרה של חטיפת מטוס", "5100 בטיסות בנתיבי CVFR (כטר\"מ), 7500 במקרה של חטיפת מטוס, 7600 בעת תקלת קשר א/ד במטוס, 7700 בעת מצוקה או מצב חירום במטוס. בטיסות בין לאומיות: 3200 המרחב האוויר של ישראל, 4200 בטיסות נכנסות למרחב האווירי של ישראל, 72 בטיסות היוצאות מישראל"]}, {"q": "על פי תקנות ICAO, מה נכון לגבי טיסות לפי כטר\"מ ב-CTR?", "o": ["הטיסות מותרות כאשר תקרת העננים בגובה ההקפה באותו שדה", "הטיסות מותרות כאשר תקרת העננים היא 2000 רגל או יותר מעל לעצם הגבוה ביותר", "הימנעות מוחלטת מטיסה מעל עננים בכל כמות שהיא", "הטיסות מותרות כאשר תקרת העננים יציבה"]}, {"q": "על פי תקנה 89, לצורך קבלת רישיון טיס פרטי עם הגדר אווירון ייזקפו שעות:", "o": ["שבוצעו עד ליום הגשת בקשה לקבלת רישיון", "שבוצעו בשנתיים שקדמו להגשת בקשה לקבלת רישיון", "שבוצעו בשנה שקדמה להגשת בקשה לקבלת רישיון", "שבוצעו ב-6 החודשים שקדמו להגשת בקשה לקבלת רישיון"]}, {"q": "על פי תקנה 32, לא יפעיל אדם כלי טיס עם תא לא מדוחס בגובה לחץ תא מעל 12500 רגל ועד 14000 רגל, אלא:", "o": ["עומד לרשות כל הנמצאים בכלי הטיס מלאי של חמצן נשימה והם משתמשים בו עבור אותם קטעים של הטיסה בגבהים אלה הנמשכים מעל 30 דקות", "עומד לרשות צוות ההטסה מלאי של חמצן נשימה והוא משתמש בו עבור אותם קטעים של הטיסה בגבהים אלה הנמשכים מעל 30 דקות", "עומד לרשות כל הנמצאים בכלי הטיס מלאי של חמצן נשימה", "עומד לרשות צוות ההטסה מלאי של חמצן נשימה והוא משתמש בו במשך כל זמן הטיסה בגבהים אלה"]}, {"q": "בנוגע לכלי טיס שאינו רוטורקראפט, \"טיסה ממושכת מעל למים\" היא:", "o": ["הפעלת כלי טיס מעל לים במרחק אופקי של יותר מ-110 ק\"מ מקו החוף הקרוב ביותר", "טיסה שבה מופעל כלי טיס מעל לים במרחק העולה על מרחק הגלישה במנוע או מנועים מופסקים", "הפעלת כלי טיס מעל לים במרחק אופקי של יותר מ-100 מייל ימי מקו החוף הקרוב ביותר", "טיסה שבה מופעל כלי טיס מעל לים במרחק של 30 דקות טיסה מקו החוף הקרוב ביותר"]}, {"q": "בהתאם לסיבות המוגדרות בתקנות הטיס, רשאית רשות הרישוי להתלות את רשיונו או הגדר ברשיונו של טייס. רשיונו או הגדרו יבוטלו, אם לא עמד טייס בבדיקות ובבחינות הדרושות (הכל בהתאם לנסיבות העניין) תוך תקופה של: (תקנה 15)", "o": ["אין הגבלת זמן", "30 יום מיום ההתליה", "90 יום מיום ההתליה", "60 יום מיום ההתליה"]}, {"q": "מגבלות טיסה תפעוליות או אחרות של כלי טיס ניתן למצוא:", "o": ["בשילוט המטוס, או הוראת מכונאי ראשי", "בהוראות בעל כלי הטיס ו/או פרסומי האגודה", "בספר המטוס המפורסם ע\"י היצרן ומאושר ע\"י רשות התעופה האזרחית", "בתעודת כושר טיסה"]}, {"q": "לפי תקנה 24 (והתקנות הדורשות התקנת טרנספונדר) לא חלות על:", "o": ["מטוס זעיר בשטחי אימונים", "כל התשובות נכונות", "רוטורקרפט הטס באזור פיקוח טרמינלי מתחת ל-1000 רגל", "דאון בשטחי אימנונים"]}, {"q": "מותר לטייס לסטות מחוקי הטיסה:", "o": ["כשהוא יוכל על ידי כך לחסוך בדלק", "רק אם הוא ידווח על כך תוך 24 שעות", "כשהוא קיבל הוראות מהמדריך שלא לעשות כך", "רק אם בטיחות הטיסה דורשת זאת"]}, {"q": "לא יפעיל אדם כלי טיס ממונע בטיסה פרטית ממושכת מעל לים בתנאי כטר\"מ, אלא אם נמצא בכלי הטיס ציוד ההצלה:     ראה תקנה 293 (הפעלת כלי טיס וכללי טיסה)", "o": ["חגורת הצלה צפה עבור כל אחד מהנמצאים בכלי הטיס, חגורת הצלה נוספת אחת הנמצאת בהישג יד של כל אחד מהם ולפחות מתקן איתות פירוטכני אחד", "חגורת הצלה צפה עבור כל אחד מהנמצאים בכלי הטיס, סירות הצלה במספר מספיק לשאת את כל שוכני כלי הטיס ולפחות מתקן איתות פירוטכני אחד", "חגורת הצלה צפה עבור כל אחד מהנמצאים בכלי הטיס", "חגורת הצלה צפה עבור כל אחד מהנמצאים בכלי הטיס וחגורת הצלה נוספת אחת הנמצאת בתא הטייס"]}, {"q": "הכיוונים של נתיבים לפי כט\"ר מבוקר, או כט\"צ, שבהם טסים הן בעולם והן בארץ לפי גבהים חצי ריבועיים הם כיוונים:", "o": ["מצפניים", "מגנטיים", "אחד משלושת הסוגים הנ\"ל לפי בחירת כל מדינה ומדינה", "אמיתיים"]}, {"q": "בשעת דמדומים לקראת לילה הנך מבחין באור אדום קבוע ואור משואה מסתובבת של מטוס אחר באותו גובה בו הנך טס. מהו כיוון התנועה של המטוס האחר?", "o": ["המטוס חוצה את קו הטיסה שלך מימין לשמאל", "המטוס מתרחק ממך", "המטוס חוצה את קו הטיסה שלך משמאל לימין", "המטוס מתקרב חזיתית"]}];
+// The answer key: question number (1-based) -> index of the correct option (0-based).
+// Empty until the key is exported from the source form; with it, Submit also scores.
+const KEY = {};
+const STORE = 'caai-rules-1';
+const form = document.getElementById('form');
+const result = document.getElementById('result');
+const hasKey = Object.keys(KEY).length === DATA.length;
+
+function load(){ try { return JSON.parse(localStorage.getItem(STORE)) || {}; } catch (e) { return {}; } }
+function save(a){ try { localStorage.setItem(STORE, JSON.stringify(a)); } catch (e) {} }
+let answers = load();
+
+DATA.forEach((d, i) => {
+  const n = i + 1;
+  const card = document.createElement('div'); card.className = 'card q'; card.id = 'q' + n;
+  const fs = document.createElement('fieldset');
+  const lg = document.createElement('legend');
+  const num = document.createElement('span'); num.className = 'n'; num.textContent = n + '.';
+  const req = document.createElement('span'); req.className = 'req'; req.textContent = ' *'; req.setAttribute('aria-hidden', 'true');
+  lg.append(num, document.createTextNode(d.q), req);
+  fs.appendChild(lg);
+  d.o.forEach((o, j) => {
+    const lab = document.createElement('label'); lab.className = 'opt';
+    const inp = document.createElement('input'); inp.type = 'radio'; inp.name = 'q' + n; inp.value = j; inp.required = true;
+    if (answers[n] === j) inp.checked = true;
+    const t = document.createElement('span'); t.textContent = o;
+    lab.append(inp, t); fs.appendChild(lab);
+  });
+  const msg = document.createElement('p'); msg.className = 'msg'; msg.textContent = 'זוהי שאלת חובה';
+  const ver = document.createElement('p'); ver.className = 'verdict'; ver.hidden = true;
+  fs.append(msg, ver);
+  card.appendChild(fs); form.appendChild(card);
+});
+const actions = document.createElement('div'); actions.className = 'actions';
+actions.innerHTML = '<button type="submit" class="primary">שליחה</button><button type="button" class="link" id="clear">ניקוי הטופס</button>';
+form.appendChild(actions);
+
+function progress(){
+  const c = Object.keys(answers).length;
+  document.getElementById('bar').style.width = (100 * c / DATA.length) + '%';
+  document.getElementById('prog').textContent = 'נענו ' + c + ' מתוך ' + DATA.length;
+}
+form.addEventListener('change', (e) => {
+  const n = Number(e.target.name.slice(1));
+  answers[n] = Number(e.target.value); save(answers);
+  document.getElementById('q' + n).classList.remove('missing');
+  progress();
+});
+document.getElementById('clear').addEventListener('click', () => {
+  answers = {}; save(answers); form.reset(); clearMarks(); result.hidden = true; progress();
+  window.scrollTo({ top: 0 });
+});
+function clearMarks(){
+  form.querySelectorAll('.q').forEach(c => { c.classList.remove('missing'); const v = c.querySelector('.verdict'); v.hidden = true; });
+  form.querySelectorAll('label.opt').forEach(l => l.classList.remove('right', 'wrong'));
+}
+form.addEventListener('submit', (e) => {
+  e.preventDefault(); clearMarks();
+  const missing = DATA.map((_, i) => i + 1).filter(n => answers[n] === undefined);
+  if (missing.length) {
+    missing.forEach(n => document.getElementById('q' + n).classList.add('missing'));
+    const first = document.getElementById('q' + missing[0]);
+    first.scrollIntoView({ block: 'center' }); first.querySelector('input').focus({ preventScroll: true });
+    return;
+  }
+  result.replaceChildren();
+  const h = document.createElement('h2'); result.appendChild(h);
+  if (hasKey) {
+    let right = 0;
+    DATA.forEach((_, i) => {
+      const n = i + 1, ok = answers[n] === KEY[n]; if (ok) right++;
+      const labs = document.getElementById('q' + n).querySelectorAll('label.opt');
+      labs[KEY[n]].classList.add('right'); if (!ok) labs[answers[n]].classList.add('wrong');
+      const v = document.getElementById('q' + n).querySelector('.verdict');
+      v.hidden = false; v.className = 'verdict ' + (ok ? 'ok' : 'bad'); v.textContent = ok ? 'נכון' : 'לא נכון – התשובה הנכונה מסומנת';
+    });
+    h.textContent = 'הציון שלך';
+    const s = document.createElement('p'); s.className = 'score'; s.textContent = right + ' / ' + DATA.length;
+    const p = document.createElement('p'); p.textContent = Math.round(100 * right / DATA.length) + '% – גללו לשאלות לראות את התשובות הנכונות.';
+    result.append(s, p);
+  } else {
+    h.textContent = 'התשובות נשמרו';
+    const p = document.createElement('p'); p.textContent = 'ענית על כל ' + DATA.length + ' השאלות. לבדיקה מול מפתח התשובות של הטופס המקורי – הבחירות שלך מסומנות בטופס.';
+    result.appendChild(p);
+  }
+  const again = document.createElement('button'); again.type = 'button'; again.className = 'link'; again.textContent = 'מילוי מחדש';
+  again.onclick = () => document.getElementById('clear').click();
+  result.appendChild(again);
+  result.hidden = false; result.scrollIntoView({ block: 'start' }); result.focus({ preventScroll: true });
+});
+progress();
+</script>
+</body>
+</html>

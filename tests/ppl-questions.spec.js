@@ -25,3 +25,21 @@ test('the page lists 131 questions, toggles an answer, filters by section and se
   expect(await page.locator('article.q:visible').count()).toBeLessThan(131);
   await expect(page.locator('a.home')).toBeVisible();   // a way back to NavAid on the web
 });
+
+// The rules-exam questionnaire: 30 required multiple-choice questions, a form-style flow.
+test('the rules exam asks all 30, flags the unanswered, and accepts a complete form', async ({ page }) => {
+  await page.goto('caai-rules-exam-1.html');
+  await page.evaluate(() => localStorage.clear());
+  await page.reload();
+  await expect(page.locator('.q')).toHaveCount(30);
+  await page.locator('button[type=submit]').click();
+  await expect(page.locator('.q.missing')).toHaveCount(30);
+  await expect(page.locator('#result')).toBeHidden();
+  for (let n = 1; n <= 30; n++) await page.locator(`#q${n} input`).first().check();
+  await expect(page.locator('#prog')).toContainText('30');
+  await page.locator('button[type=submit]').click();
+  await expect(page.locator('.q.missing')).toHaveCount(0);
+  await expect(page.locator('#result')).toBeVisible();
+  await page.reload();                                  // answers kept in this browser
+  await expect(page.locator('#q7 input').first()).toBeChecked();
+});
