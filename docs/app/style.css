@@ -1733,6 +1733,28 @@ html[dir="rtl"] .leaflet-control.zulu-clock {
    purple so it reads on the dark readout box in both themes. */
 .vor-readout .vor-readout-2 { color: #c89be0; }
 body.theme-light .vor-readout .vor-readout-2 { color: #7d3ca5; }
+/* Every readout line ends in a fixed-width status slot: a tick within the station's published
+   coverage, a caution triangle beyond it (the line also dims). Same size either way, so the box
+   keeps one width as a point crosses a ring. Shape carries the meaning, not colour alone. */
+/* Each line is a row whose status glyph is pushed to the box's far edge, so the glyphs share one
+   column whatever the text widths -- belt and braces with the padded distance (a 4-letter ident
+   or a line from another source must not push its glyph out of line). Tabular figures keep
+   every digit one width; pre keeps the figure-space padding. */
+.vor-readout { font-variant-numeric: tabular-nums; white-space: pre; }
+.vor-readout > div { display: flex; align-items: center; justify-content: space-between; gap: 3px; }
+.vor-readout .vor-readout-warn { opacity: 0.6; }
+.vor-readout .vor-readout-mark {
+  display: inline-flex;
+  width: 13px;
+  height: 13px;
+  vertical-align: -2px;
+  margin-inline-start: 1px;
+}
+.vor-readout .vor-readout-mark .nav-icon { width: 13px; height: 13px; }
+.vor-readout .vor-readout-mark.is-ok { color: #6cc98a; }
+.vor-readout .vor-readout-mark.is-warn { color: #e6b84d; }
+body.theme-light .vor-readout .vor-readout-mark.is-ok { color: #2e8b57; }
+body.theme-light .vor-readout .vor-readout-mark.is-warn { color: #b5791a; }
 .leaflet-bottom.leaflet-right .wind-readout {
   bottom: 66px;
 }
@@ -5282,7 +5304,13 @@ body.theme-light .msa-low .val { color: #c0392b; }
   box-shadow: var(--navaid-ctrl-shadow);
 }
 .map-time input[type="range"] {
-  flex: 0 1 420px;
+  /* Grow to fill AND shrink to nothing (min-width:0): the strip then always exactly fills its
+     padded box, so the readout sits pinned at the dock-side edge and grows INWARD into the
+     slider (never out into the legend dock), and the Now button stays pinned at the far edge.
+     With the readout reserved to its widest below, neither the slider nor Now moves as the hour
+     label changes -- at any width (reported: the Now button moved on a cross-midnight scrub). */
+  flex: 1 1 420px;
+  min-width: 0;
   max-width: 420px;
   accent-color: #0b6fb8;
   background: var(--navaid-ctrl-bg);
@@ -5294,6 +5322,18 @@ body.theme-light .msa-low .val { color: #c0392b; }
   font-size: 12px;
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
+  /* FIX the readout to the width of its widest form -- the cross-midnight readout with its date
+     prefix ("+14h · 11-23 03:00Z", ~132px) -- as a hard box (min == max), not just a floor. A
+     min-width alone still let the box GROW when a device's font rendered the text a hair wider
+     than it measures here, and the centred strip then re-centred and nudged the Now button
+     (reported on desktop). A fixed box can never grow, so the Now button and the slider hold at
+     every width and on every font; overflow is clipped (centred, so symmetric) as a last resort,
+     with ~12px of headroom here before that bites. The grow-and-shrink slider absorbs the box on
+     the inline strip, so the legend dock stays clear. */
+  min-width: 9rem;
+  max-width: 9rem;
+  overflow: hidden;
+  text-align: center;
   padding: 4px 8px;
   border-radius: var(--navaid-ctrl-radius);
   background: var(--navaid-ctrl-bg);

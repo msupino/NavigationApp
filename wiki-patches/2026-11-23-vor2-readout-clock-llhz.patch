@@ -1,0 +1,252 @@
+From 22231cbc90fdefff1825d93d7b015736e157f1c7 Mon Sep 17 00:00:00 2001
+From: Marco <marco@supino.org>
+Date: Mon, 23 Nov 2026 11:14:39 +0000
+Subject: [PATCH] VOR 2, VOR readout coverage marks, map clock date + steady
+ width, legend closes inspector, LLHZ ATS departure points
+
+---
+ Extra-Layers-he.md       |  6 +++++-
+ Extra-Layers.md          |  8 +++++++-
+ Inspector-he.md          |  2 ++
+ Inspector.md             |  2 ++
+ The-Map-he.md            |  6 +++++-
+ The-Map.md               |  6 ++++++
+ VOR-and-Radial-DME-he.md | 24 +++++++++++++++++-------
+ VOR-and-Radial-DME.md    | 24 +++++++++++++++++-------
+ 8 files changed, 61 insertions(+), 17 deletions(-)
+
+diff --git a/Extra-Layers-he.md b/Extra-Layers-he.md
+index b58f482..05d4487 100644
+--- a/Extra-Layers-he.md
++++ b/Extra-Layers-he.md
+@@ -434,7 +434,11 @@ CVFR — הנתיבים לחזרה לשדה לאחר תקלת קשר. מחוון
+ - **בחירת גיליון מעבירה אליו את המפה** — אלא אם מיקום חי מוביל את המפה.
+ - **המיקומים שהגיליון מדפיס במלואם הופכים לנקודות על המפה** כל עוד הוא מוצג: אפשר ללחוץ
+   עליהן לחלונית המידע או להכניס אותן למסלול. עשרים נקודות בשלושה-עשר גיליונות — VOR, IAF,
+-  השדה עצמו. נקודה שהגיליון מזכיר בלי מיקום אינה מומצאת.
++  השדה עצמו. נקודה שהגיליון מזכיר בלי מיקום אינה מומצאת. הן נשארות **בכל שכבת בסיס** כל עוד
++  הגיליון מוצג: מעבר לשכבת ATS, שהנקודות שלה אינן כוללות אותן, אינו מוריד אותן.
++- **יציאת ה-ATS של הרצליה** מציעה גם את **SFAIM**, נקודת הדיווח החובה שאליה היא יוצאת, במיקום
++  של מאגר ה-CVFR — כך שאפשר להקיש עליה ולהכניס אותה למסלול מתוך גיליון היציאה. הגיליון ממוקם
++  בצפון-למעלה לפי רשת הקואורדינטות שלו; NAT,‏ BGN והשדה נופלים על התחנות והמסלול של האפליקציה.
+ 
+ לא כל גיליון מכשירים ניתן לציור. כל ה-SID, IAC ו-STAR של LLER, ארבעה STAR של LLBG וה-STAR של
+ חיפה הם סכמטיים, בלי רשת קואורדינטות: אין לפי מה למקם אותם, וניחוש סביר בתרשים גישה גרוע
+diff --git a/Extra-Layers.md b/Extra-Layers.md
+index 548dea7..8f6fb46 100644
+--- a/Extra-Layers.md
++++ b/Extra-Layers.md
+@@ -488,7 +488,13 @@ toggle would stack twenty pictures of the same few miles.
+ - **Picking a sheet takes the map to it** — unless a fix is driving the map.
+ - **The positions the sheet prints in full become chart points** while it is showing: tap one
+   for the inspector, or put it in a route. Twenty of them across thirteen sheets — a VOR, an
+-  IAF, the field. A fix the sheet names *without* a position is not invented.
++  IAF, the field. A fix the sheet names *without* a position is not invented. They stay on
++  **every base layer** while the sheet shows: switching to the ATS layer, whose own points do
++  not include them, does not drop them.
++- **LLHZ's ATS departure** also offers **SFAIM**, the mandatory reporting point it departs to, at
++  the CVFR dataset's position — so it can be tapped and put in a route from the departure sheet.
++  The sheet is placed north-up from its own graticule; NAT, BGN and the field land on the app's
++  own stations and runway.
+ 
+ Not every instrument sheet can be drawn. Every LLER SID, IAC and STAR, four LLBG STARs and
+ Haifa's STAR are schematics with no graticule: nothing to place them by, and a plausible
+diff --git a/Inspector-he.md b/Inspector-he.md
+index 51b0b5e..10441c6 100644
+--- a/Inspector-he.md
++++ b/Inspector-he.md
+@@ -17,6 +17,8 @@
+ - **לחצו על נקודת ציון** — החלונית נפתחת עם פרטי נקודת הציון.
+ - **לחצו על הערה** — החלונית נפתחת עם פרטי ההערה.
+ - **הקישו Esc** — סגירת החלונית.
++- פתיחת ה**מקרא** או חלון ה**תרשימים** של שדה סוגרת אותה גם: הם נפתחים באותו חלק של המסך,
++  והבקשה החדשה היא זו שבחזית.
+ - **שינוי גודל** מהפינה הימנית-תחתונה (מחשב). הגודל נשמר **לכל סוג חלונית** — נקודת ציון, קטע, שדה
+   תעופה, VOR, בועה, מרחב אווירי… — כך שבועה בת שתי שורות לא נפתחת בחלונית ששדה תעופה נמתח אליה.
+   סוג שמעולם לא שיניתם את גודלו מתאים את עצמו לתוכן, ברוחב האחרון ששימש (<span dir="ltr"><code>navaid.inspSize</code></span>).
+diff --git a/Inspector.md b/Inspector.md
+index 71a0c1f..66d2d03 100644
+--- a/Inspector.md
++++ b/Inspector.md
+@@ -13,6 +13,8 @@ The panel that opens when you select something on the map. What it shows depends
+   would sit over the ground you are moving it across. A panel that was already open before the drag
+   stays open. The same rule covers waypoints, notes, nav and cumulative-time kites, and leg lines.
+ - **Esc**, or the ✕ in its header — closes it.
++- Opening the **Legend** or an airfield's **Charts** window closes it too: they open over the same
++  part of the screen, and the newer request is the one in front.
+ - Drag the header to move it; the position is remembered per language (`navaid.inspPos.<lang>`).
+ - **Resize** from the bottom-right corner (desktop). The size is remembered **per kind of panel**
+   — waypoint, leg, airfield, VOR, bubble, airspace… — so a two-row bubble does not open in the
+diff --git a/The-Map-he.md b/The-Map-he.md
+index c95269c..0f65ca1 100644
+--- a/The-Map-he.md
++++ b/The-Map-he.md
+@@ -191,7 +191,11 @@ LLKZ, LLMG, LLMZ, LLAR, LLRS) הוא מונח על פס המסלול המודפ
+ מצמידה אותן לגיליון העדכני ביותר שפורסם עד אותה שעה, **ואומרת באיזה גיליון מדובר**.
+ 
+ כשאין על המסך דבר התלוי בזמן הפקד מתעמעם ואינו נעלם. פאנל שדה פתוח נחשב, כי גובה הצפיפות שבו
+-נשמע לשעון הזה.
++נשמע לשעון הזה. מעומעם אינו מושבת: המחוון עדיין זז, כי גם המסלול נשמע לו (מסדרון ש-NOTAM סוגר,
++אור אחרון).
++
++הקריאה תמיד כוללת את התאריך ב-UTC — <span dir="ltr"><code>11-23 15:00Z</code></span>, גם היום — ושומרת על רוחב אחד,
++כך שלא המחוון ולא **עכשיו** זזים כשתווית השעה משתנה (מ-<span dir="ltr">+9</span> ל-<span dir="ltr">+10</span>, או מעבר לחצות).
+ 
+ **בטלפון זה אחרת**: שם הרצועה מונחת על המפה עצמה, ולכן שעון שאין לו עניין איננו
+ ריהוט מעומעם אלא פס על המפה — והוא מוסר (<span dir="ltr"><code>hideIdleMapClockOnPhone</code></span>, דלוק כברירת מחדל) —
+diff --git a/The-Map.md b/The-Map.md
+index 4315e38..ae6e17f 100644
+--- a/The-Map.md
++++ b/The-Map.md
+@@ -150,6 +150,12 @@ rather than leaving two layers quietly disagreeing about what "+3h" means.
+ 
+ With nothing time-dependent on screen the control goes quiet rather than disappearing — dim,
+ never hidden. An open airfield panel counts, because its density altitude answers to this clock.
++Dim is not disabled: the slider still moves, because the route answers to it too (a corridor a
++NOTAM closes, last light).
++
++The readout always carries the UTC date — `11-23 15:00Z`, today included — and keeps one width,
++so neither the slider nor **Now** moves as the hour label changes (`+9h` to `+10h`, or across
++midnight).
+ 
+ **A phone is the exception**: there the strip lies across the chart itself, so an idle clock is
+ not dim furniture but a bar over the map, and it is taken away instead
+diff --git a/VOR-and-Radial-DME-he.md b/VOR-and-Radial-DME-he.md
+index 46824a8..6d75bf8 100644
+--- a/VOR-and-Radial-DME-he.md
++++ b/VOR-and-Radial-DME-he.md
+@@ -15,7 +15,8 @@ NavAid כולל תחנות VOR/DME בישראל כשכבת עזר, ויכול ל
+ | פקד | פעולה |
+ | --- | --- |
+ | **הצג תחנות VOR** | מציג או מסתיר סמני VOR/DME על המפה. |
+-| **תחנת ייחוס** | בוחר את תחנת ה-VOR שממנה מחושבים רדיאל/DME. הבורר נשאר זמין גם כאשר סמני התחנות מוסתרים. |
++| **תחנת ייחוס** (<span dir="ltr">VOR 1</span>) | בוחר את תחנת ה-VOR שממנה מחושבים רדיאל/DME. הבורר נשאר זמין גם כאשר סמני התחנות מוסתרים. |
++| <span dir="ltr"><b>VOR 2</b></span> | תחנת ייחוס שנייה, כמו במטוס עם שני מקלטי NAV (למשל <span dir="ltr">VOR 1</span> על NAT ו-<span dir="ltr">VOR 2</span> על ROP). אופציונלי; ריק משאיר אותה כבויה. |
+ 
+ שני הפקדים נפרדים בכוונה:
+ 
+@@ -23,7 +24,12 @@ NavAid כולל תחנות VOR/DME בישראל כשכבת עזר, ויכול ל
+ - **תחנת ייחוס** שולטת בחישובי רדיאל/DME בתצוגות, באינספקטור ובתכנית הטיסה.
+ - תחנת הייחוס מסומנת בצבע מודגש על המפה כאשר סמני VOR מוצגים.
+ 
+-אפשר גם ללחוץ על סמן תחנת VOR ולבחור באינספקטור **השתמש כתחנת ייחוס**.
++אפשר גם ללחוץ על סמן תחנת VOR ולבחור באינספקטור **הגדר כ-VOR 1** או **הגדר כ-VOR 2**.
++
++- תחנה אחת היא ייחוס אחד: הגדרת תחנה כ-<span dir="ltr">VOR 2</span> כשהיא כבר <span dir="ltr">VOR 1</span> **מחליפה** ביניהן, והכפתור אומר זאת לפני הלחיצה (**הגדר כ-VOR 2 — בהחלפה עם ROP**); הגדרת תחנה במקום שתחנה אחרת תופסת אומרת **— במקום NAT**.
++- כפתור מוגדר מציג **✓ VOR 1 (הקישו לביטול)**; לחיצה נוספת מנקה את המקום.
++- **טבעת הכיסוי** של התחנה (הטווח המפורסם) מצוירת לכל ייחוס — <span dir="ltr">VOR 1</span> בכחול, <span dir="ltr">VOR 2</span> בסגול — ומופיעה או נמחקת **בלחיצה**, לא בסגירת החלונית. פתיחת החלונית של תחנה אחת משאירה על המפה את הטבעת של הייחוס השני.
++- כש-VOR עומד במרחק כמה מאות מטרים מנקודת ציון או משדה (ראש פינה: LLIB ו-ROP), הקשה שם מציעה לבחור בין הנקודה לתחנה.
+ 
+ ## סמלי המפה
+ 
+@@ -44,9 +50,12 @@ NavAid כולל תחנות VOR/DME בישראל כשכבת עזר, ויכול ל
+ <div dir="ltr">
+ 
+ ```text
+-NAT R-263° / 12.4 NM
++NAT R-263° / 12.4 NM  ✓
++ROP R-118° / 46.2 NM  ⚠
+ ```
+ 
++השורה הראשונה היא <span dir="ltr">VOR 1</span>; שורה שנייה, בסגול של <span dir="ltr">VOR 2</span>, מופיעה כשמוגדר <span dir="ltr">VOR 2</span>. כל שורה מסתיימת בסימן מצב: **✓** כשהנקודה בתוך הכיסוי המפורסם של התחנה, **⚠** (והשורה מעומעמת) כשהיא מחוץ לו — הרדיאל עדיין מחושב, אבל מקלט לא היה מחזיק אותו. ריחוף מעל שורה מציג את הסיבה, למשל *הנקודה במרחק 46.2 NM — מעבר לטווח המפורסם 40 NM.* תחנה שלא מפרסמת כיסוי לא מקבלת סימן. הסימנים באותה עמודה והתיבה שומרת על רוחב אחד, כך שאינה זזה כשהמרחק מקבל ספרה.
++
+ </div>
+ 
+ התיבה נפרדת מתצוגת הקואורדינטות כדי שהקואורדינטות יישארו קריאות. הערך עוקב אחרי מיקום העכבר; כאשר העכבר אינו מעל המפה, הוא עוקב אחרי מרכז המפה.
+@@ -69,12 +78,12 @@ NAT R-263° / 12.4 NM
+ 
+ ## תכנית טיסה
+ 
+-בחלון תכנית הטיסה יש בורר VOR מעל הטבלה. לאחר בחירת תחנה:
++בחלון תכנית הטיסה יש בוררי <span dir="ltr">VOR 1</span> ו-<span dir="ltr">VOR 2</span> מעל הטבלה. לאחר בחירת תחנה:
+ 
+-- עמודות **רדיאל** ו-**DME** מופיעות בטבלת ההלוך.
++- עמודות **רדיאל 1** ו-**DME 1** מופיעות בטבלת ההלוך, ולצדן **רדיאל 2** / **DME 2** כשמוגדר <span dir="ltr">VOR 2</span>.
+ - הערכים מחושבים לנקודת ה-**מ-** של הקטע, לא ליעד.
+ - טבלת החזור משתמשת בנקודת ההתחלה של כל קטע חזור.
+-- בכל תא רדיאל יש בורר VOR קטן לכל קטע. השאירו ריק כדי להשתמש בתחנת הייחוס הכללית, או בחרו תחנה אחרת לקטע הזה.
++- בכל תא רדיאל יש בורר VOR קטן לכל קטע (לכל אחד מ-<span dir="ltr">VOR 1</span> ו-<span dir="ltr">VOR 2</span>). השאירו ריק כדי להשתמש בתחנת הייחוס הכללית, או בחרו תחנה אחרת לקטע הזה — הבחירה **עוברת לקטעים שאחריו**, כמו טייס שמשאיר תחנה מכוונת עד שהוא מכוון מחדש.
+ - אם לא נבחרה תחנה כללית ואין עקיפה לקטע, עמודות רדיאל/DME מוסתרות.
+ 
+ ייצוא CSV כולל את ערכי הרדיאל/DME שמוצגים. פריסת ההדפסה דחוסה כדי להתאים את העמודות הנוספות לדף A4 לרוחב.
+@@ -89,7 +98,8 @@ NAT R-263° / 12.4 NM
+ | --- | --- |
+ | <span dir="ltr"><code>navaid.showVorStations</code></span> | האם להציג סמני תחנות VOR (<span dir="ltr"><code>navaid.showVor</code></span> הוא המפתח הישן שהומר). |
+ | <span dir="ltr"><code>navaid.vorRef</code></span> | מזהה תחנת הייחוס הכללית. |
+-| <span dir="ltr"><code>state.legs[i].vorRef</code></span> | עקיפת VOR אופציונלית לקטע, נשמרת בתוך <span dir="ltr"><code>navaid.route</code></span>. |
++| <span dir="ltr"><code>navaid.vorRef2</code></span> | מזהה תחנת <span dir="ltr">VOR 2</span>. |
++| <span dir="ltr"><code>state.legs[i].vorRef</code></span> / <span dir="ltr"><code>state.legs[i].vorRef2</code></span> | עקיפת <span dir="ltr">VOR 1</span> / <span dir="ltr">VOR 2</span> אופציונלית לקטע, נשמרת בתוך <span dir="ltr"><code>navaid.route</code></span>. |
+ 
+ ## הערות
+ 
+diff --git a/VOR-and-Radial-DME.md b/VOR-and-Radial-DME.md
+index 394fb6e..5438941 100644
+--- a/VOR-and-Radial-DME.md
++++ b/VOR-and-Radial-DME.md
+@@ -13,7 +13,8 @@ In the **View** section:
+ | Control | What it does |
+ | --- | --- |
+ | **Show VOR stations** | Shows or hides the VOR/DME station markers on the map. |
+-| **VOR ref** | Selects the reference VOR used for radial/DME readouts. This selector stays available even when station markers are hidden. |
++| **VOR ref** (**VOR 1**) | Selects the reference VOR used for radial/DME readouts. This selector stays available even when station markers are hidden. |
++| **VOR 2** | A second reference, as on an aircraft with two NAV receivers (e.g. VOR 1 on NAT, VOR 2 on ROP). Optional; blank leaves it off. |
+ 
+ The two controls are intentionally separate:
+ 
+@@ -21,7 +22,12 @@ The two controls are intentionally separate:
+ - **VOR ref** controls radial/DME calculations in readouts, inspectors and the Flight Plan.
+ - The selected reference VOR is highlighted on the map when VOR markers are visible.
+ 
+-You can also click a VOR station marker and choose **Use as reference VOR** in the inspector.
++You can also click a VOR station marker and choose **Use as VOR 1** or **Use as VOR 2** in the inspector.
++
++- One station is one reference: tuning a station as VOR 2 that is already VOR 1 **swaps** the two, and the button says so before you press it (**Use as VOR 2 — swaps with ROP**); tuning a station into a slot another station holds says **— replaces NAT**.
++- A tuned button reads **✓ VOR 1 (tap to clear)**; pressing it again clears that slot.
++- The station's **coverage ring** (its published range) is drawn for each reference — VOR 1 in blue, VOR 2 in purple — and appears or clears **on the press**, not when the inspector closes. Opening one station's inspector keeps the other reference's ring on the map.
++- Where a VOR stands within a few hundred metres of a waypoint or a field (Rosh Pina: LLIB and ROP), tapping there offers a choice of the point or the station.
+ 
+ ## Map Symbols
+ 
+@@ -40,9 +46,12 @@ A DME-only station gives distance but no radial, so the readouts show DME alone
+ When a reference VOR is selected, the bottom-right readout area shows a separate VOR box, for example:
+ 
+ ```text
+-NAT R-263° / 12.4 NM
++NAT R-263° / 12.4 NM  ✓
++ROP R-118° / 46.2 NM  ⚠
+ ```
+ 
++The first line is VOR 1; a second line, in VOR 2's purple, appears when VOR 2 is tuned. Each line ends in a status mark: **✓** when the point is within that station's published coverage, **⚠** (and the line dimmed) when it is beyond it — the radial is still computed, but it is not one a receiver could hold. Hover a line for the reason, e.g. *This point is 46.2 NM out — beyond the published 40 NM coverage.* A station that publishes no coverage gets no mark. The marks sit in one column and the box keeps one width, so it does not shift as the distance gains a digit.
++
+ This is separate from the coordinate readout so coordinates remain readable. The value follows the mouse position; when the mouse is not over the map, it follows the map centre.
+ 
+ It is the **current** VOR: the chosen reference while the point is within 200 NM of it (`vorReadoutMaxNm`), otherwise the nearest VOR within that range, otherwise nothing. A radial from Ben Gurion over Milan is a number no one can fly; the ident in the box says which station is speaking. On a phone the box sits **above** the coordinates.
+@@ -59,12 +68,12 @@ The row does not require **Show VOR stations** to be enabled.
+ 
+ ## Flight Plan
+ 
+-The Flight Plan modal has a VOR selector above the table. Once a VOR is selected:
++The Flight Plan modal has **VOR 1** and **VOR 2** selectors above the table. Once a VOR is selected:
+ 
+-- **Radial** and **DME** columns appear in the forward table.
++- **Radial 1** and **DME 1** columns appear in the forward table, and **Radial 2** / **DME 2** beside them when VOR 2 is set.
+ - The values are calculated to the leg's **From** point, not the destination.
+ - The return-route table uses the start point of each return leg.
+-- Each Radial cell includes a small per-leg VOR dropdown. Leave it blank to use the global **VOR ref**, or choose a different VOR for that leg.
++- Each Radial cell includes a small per-leg VOR dropdown (VOR 1 and VOR 2 each have their own). Leave it blank to use the global reference, or choose a different VOR for that leg — the choice **carries forward to the following legs**, the way a pilot keeps a station tuned until they retune.
+ - If no global VOR and no per-leg override are selected, the Radial/DME columns collapse.
+ 
+ CSV export includes the displayed radial/DME values. The print layout is compressed to fit the extra columns on an A4 landscape page.
+@@ -79,7 +88,8 @@ The card also warns where a station is out of range: a point farther than the VO
+ | --- | --- |
+ | `navaid.showVorStations` | Whether VOR station markers are shown (`navaid.showVor` is the migrated legacy key). |
+ | `navaid.vorRef` | The selected global reference VOR ident. |
+-| `state.legs[i].vorRef` | Optional per-leg reference VOR override, saved inside `navaid.route`. |
++| `navaid.vorRef2` | The selected VOR 2 ident. |
++| `state.legs[i].vorRef` / `state.legs[i].vorRef2` | Optional per-leg VOR 1 / VOR 2 override, saved inside `navaid.route`. |
+ 
+ ## Notes
+ 
+-- 
+2.43.0
+

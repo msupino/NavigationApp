@@ -1844,7 +1844,9 @@ function refreshEditColumn() {
     && !(typeof shownTracks !== 'undefined' && Array.isArray(shownTracks) && shownTracks.length)
     // So is the A3/A4 page frame: on an otherwise empty map it was the one thing left, and
     // Clear map stayed dimmed ("already empty") with the frame still drawn.
-    && !(typeof pageSize !== 'undefined' && pageSize);
+    && !(typeof pageSize !== 'undefined' && pageSize)
+    // A reference VOR is cleared too: with only VOR 1 or VOR 2 set, Clear map has work to do.
+    && !(typeof vorRef === 'string' && vorRef) && !(typeof vorRef2 === 'string' && vorRef2);
   setButtonWhy(add, lockWhy);
   setButtonWhy(note, lockWhy);
   setButtonWhy(undoBtn, lockWhy || ((menuUndo && menuUndo.disabled) ? (S.whyNothingToUndo || 'Nothing to undo') : null));
@@ -2590,7 +2592,10 @@ function centerCoordText() {
 // The CURRENT VOR: the chosen reference while it is within a usable range of the point, else the
 // nearest VOR that is, else nothing -- a radial from Ben Gurion over Milan ("BGN R-309° /
 // 1283.4 NM") is a number no one can fly. The ident in the readout says which one it is.
-function vorReadoutText(lat, lng) {
+// The readout box's lines as data ({ text, warn, dme, cov }) -- what setVorReadout draws. The
+// *Text functions below keep their plain-string contract (no padding, no mark) for every other
+// caller: tests, the bidi check, anything that reads the line as words.
+function vorReadoutLine(lat, lng) {
   if (typeof activeVor !== 'function') return '';
   const chosen = activeVor();
   if (!chosen) return '';
@@ -2604,34 +2609,88 @@ function vorReadoutText(lat, lng) {
     }
   }
   if (!v || !rd) return '';
-  return v.ident + ' ' + S.vorRadialDme(rd.radial, rd.dme);
+  return vorReadoutData(v, rd);
+}
+function vorReadoutText(lat, lng) {
+  const l = vorReadoutLine(lat, lng);
+  return l ? l.plain : '';
+}
+// One readout line's data. A point past the station's PUBLISHED coverage (its ring) still gets a
+// radial/DME here -- it is geometry, always computable -- but the reading is not one a receiver
+// could actually hold, so the line is marked (dimmed + a caution glyph) rather than shown as if
+// it were in service. maxNm above only caps the absurd (a radial from 1000 NM out); coverageNm
+// is the real in-service limit.
+function vorReadoutData(v, rd) {
+  const cov = Number(v.coverageNm);
+  const warn = Number.isFinite(cov) && cov > 0 && Number(rd.dme) > cov;
+  // The line is padded to the widest the distance can read here (vorReadoutMaxNm, "200.0") with
+  // figure spaces -- a digit's width -- AFTER the unit, so the box keeps one width as the distance
+  // gains a digit (reported: the glyph walked a digit). At the end, not before the number: in front
+  // it opened a gap after the slash on every sub-100 NM reading (reported: too much space).
+  const pad = '\u2007'.repeat(Math.max(0, 5 - String(rd.dme).length));
+  const plain = v.ident + ' ' + S.vorRadialDme(rd.radial, rd.dme);
+  return { ident: v.ident, text: plain + pad, plain: plain, warn: warn, dme: rd.dme, cov: cov };
 }
 // VOR2 is explicit-only: the one the pilot tuned, never a nearest-usable stand-in. Blank when
 // nothing is tuned or the point is past the readout range, so its line simply does not appear.
-function vorReadoutText2(lat, lng) {
+function vorReadoutLine2(lat, lng) {
   if (typeof activeVor2 !== 'function') return '';
   const v = activeVor2();
   if (!v) return '';
   const maxNm = Number(tune('vorReadoutMaxNm')) || 200;
   const rd = vorRadialDme(v, lat, lng);
   if (!rd || rd.dme > maxNm) return '';
-  return v.ident + ' ' + S.vorRadialDme(rd.radial, rd.dme);
+  return vorReadoutData(v, rd);
+}
+function vorReadoutText2(lat, lng) {
+  const l = vorReadoutLine2(lat, lng);
+  return l ? l.plain : '';
 }
 function setVorReadout(line1, line2) {
   if (!vorReadoutBox) return;
   const lines = [line1, line2].filter(Boolean);
   vorReadoutBox.textContent = '';
-  lines.forEach((t, i) => {
+  lines.forEach((ln, i) => {
+    const o = (typeof ln === 'string') ? { text: ln } : ln;
     const d = document.createElement('div');
-    d.textContent = t;
-    if (i === 1) d.className = 'vor-readout-2';   // VOR2 tinted to match its map highlight
+    d.appendChild(document.createTextNode(o.text));
+    if (i === 1) d.classList.add('vor-readout-2');   // VOR2 tinted to match its map highlight
+    // A fixed-width status slot on every line: a tick when the point is within the station's
+    // published coverage, a caution triangle when it is beyond it -- same glyph size either way,
+    // so the box keeps ONE width as a point crosses a ring. Both are drawn (NAV_ICONS, no emoji)
+    // and carry the reason on hover/focus; the slot stays empty (but sized) when coverage is not
+    // published, since then neither in nor out can be claimed.
+    const known = Number.isFinite(o.cov) && o.cov > 0;
+    const mark = document.createElement('span');
+    mark.className = 'vor-readout-mark';
+    if (o.warn) {
+      d.classList.add('vor-readout-warn');           // dim the out-of-coverage reading
+      mark.classList.add('is-warn');
+      mark.innerHTML = (typeof navIconSvg === 'function') ? navIconSvg('warn', 13) : '!';
+      const why = (S.vorInfoOutOfRange ||
+        'This point is {dme} NM out — beyond the published {cov} NM coverage.')
+        .replace('{dme}', o.dme).replace('{cov}', o.cov);
+      d.title = why;
+      d.setAttribute('aria-label', o.text + ' — ' + why);
+    } else if (known) {
+      mark.classList.add('is-ok');
+      mark.innerHTML = (typeof navIconSvg === 'function') ? navIconSvg('check', 13) : '';
+      const ok = (S.vorInCoverage || '{dme} NM — within the published {cov} NM coverage.')
+        .replace('{dme}', o.dme).replace('{cov}', o.cov);
+      d.title = ok;
+      d.setAttribute('aria-label', o.text + ' — ' + ok);
+    } else {
+      mark.classList.add('is-blank');                // reserve the width, draw nothing
+    }
+    d.appendChild(document.createTextNode(' '));
+    d.appendChild(mark);
     vorReadoutBox.appendChild(d);
   });
   vorReadoutBox.classList.toggle('show', lines.length > 0);
   vorReadoutBox.setAttribute('aria-hidden', lines.length ? 'false' : 'true');
 }
 function showVorReadout(lat, lng) {
-  setVorReadout(vorReadoutText(lat, lng), vorReadoutText2(lat, lng));
+  setVorReadout(vorReadoutLine(lat, lng), vorReadoutLine2(lat, lng));
 }
 function showZoom() {
   // Two lines -- the zoom, then the scale -- in a box no wider than the round buttons it
@@ -5452,6 +5511,12 @@ document.getElementById('clear').onclick = async () => {
   // and its label left on an empty chart is not that.
   if (window.measure && window.measure.on) measureToggle(false);
   routeAltPrefix = null;    // empty route unpins its altitude layer
+  // The reference VORs were picked for THAT route's radials and DME. Per-leg picks went with
+  // state.legs; the global VOR 1 / VOR 2 did not, so the next route started out reading
+  // radials off stations chosen for a different flight. Cleared through their setters, which
+  // also persist the removal and reset every picker.
+  if (typeof setReferenceVor === 'function') setReferenceVor(null);
+  if (typeof setReferenceVor2 === 'function') setReferenceVor2(null);
   // The direction filter belonged to the route that had a direction to filter. With the
   // route gone it hides nothing, and leaving it set meant the next route was drawn with half
   // its legs missing and a picker the pilot had to remember to put back.
@@ -8745,10 +8810,10 @@ function refreshNotamListBtn() {
 function fmtViewClock(d) {
   if (!d || isNaN(d)) return '';
   const iso = d.toISOString();
-  const hm = iso.slice(11, 16) + 'Z';
-  return iso.slice(0, 10) === new Date().toISOString().slice(0, 10)
-    ? hm
-    : iso.slice(5, 10) + ' ' + hm;
+  // Always carry the UTC date (MM-DD), today included. It used to appear only once a scrub
+  // crossed midnight, so the readout jumped a date's width mid-drag and shoved the slider and
+  // the Now button sideways (reported). A date that is always there keeps the readout one width.
+  return iso.slice(5, 10) + ' ' + iso.slice(11, 16) + 'Z';
 }
 // Unified look-ahead readout: base (0) shows the clock; an offset shows
 // "+Nh · <clock>".
@@ -9841,6 +9906,17 @@ function applyIfrPoints(chosen) {
   }
   if (typeof scheduleDraw === 'function') scheduleDraw();
 }
+// A shown sheet's points live in navWP tagged _plate. loadNavWaypoints() REPLACES navWP for the
+// new base layer (switching to ATS loads the ATS set, which has no SFAIM), which drops them --
+// so re-inject the active sheet's points after every navWP reload. The LLHZ SID's reporting
+// points must be tappable on ANY layer the sheet is shown over, not just the one navWP happened
+// to carry them on. loadNavWaypoints calls this right after it assigns navWP.
+function reapplyPlatePoints() {
+  if (!window.showIfr) return;                              // only while a sheet is on the map
+  const chosen = (typeof ifrChosen === 'function') ? ifrChosen() : null;
+  if (chosen) applyIfrPoints(chosen);
+}
+window.reapplyPlatePoints = reapplyPlatePoints;
 
 // ── Helicopter routes overlay ─────────────────────────────────────────────────
 const HELI_SHOW_KEY    = 'navaid.showHeli';
@@ -14598,18 +14674,11 @@ const NavWxTime = (function () {
     // rebuilt for every selection, so there is no place to keep.
     if (inspStrip) inspStrip.hidden = !featureOn() || !timed;
     el.classList.toggle('idle', !timed);
-    // Dim it AND make it inert while nothing answers to it. A dimmed slider a pilot can still
-    // drag moves a look-ahead no layer is reading -- reported as "dimmed, but still slidable".
-    // The readout stays, so the clock still says "now"; Now stays governed by offLive, so an
-    // hour scrubbed before the last layer went off can still be brought back to live.
-    //
-    // ...but only the desktop's fixed, dimmed face is inert. On a phone the clock is hidden
-    // until the pilot taps the strip to open its row, and opening it is a deliberate request to
-    // scrub -- so leave it draggable there even with nothing yet on. (deck-on, not the open
-    // class: the row's open state is set without a refresh, so the layout is the stable gate.)
-    const dimmedInPlace = !timed && !document.body.classList.contains('deck-on');
-    slider.disabled = dimmedInPlace;
-    if (inspSlider) inspSlider.disabled = dimmedInPlace;
+    // The slider stays usable even with no Extra layer: the look-ahead also drives the route's
+    // leg status (a corridor a NOTAM closes, last light), so it is never truly idle with a route
+    // up (asked: do not disable it). The `.idle` class only dims it as a quiet cue.
+    slider.disabled = false;
+    if (inspSlider) inspSlider.disabled = false;
     label();
   }
   NavAid.refreshMapClock = refresh;

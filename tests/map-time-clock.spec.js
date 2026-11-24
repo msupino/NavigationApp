@@ -79,9 +79,9 @@ test('with nothing time-dependent on, the clock goes quiet instead of vanishing'
   // House rule: dim, never hide. A control that disappears is a control the pilot hunts for.
   expect(await page.evaluate(() => document.getElementById('map-time').classList.contains('idle'))).toBe(true);
   expect(await page.evaluate(() => document.getElementById('map-time').hidden)).toBe(false);
-  // ...and dim here means inert, not just grey: a slider a pilot can still drag would move a
-  // look-ahead no layer is reading. Reported: "dimmed, but still slidable".
-  expect(await page.evaluate(() => document.getElementById('map-time-slider').disabled)).toBe(true);
+  // ...but the slider stays usable even while dim: the look-ahead also drives the route's leg
+  // status (a corridor a NOTAM closes, last light), so it is never truly inert (asked).
+  expect(await page.evaluate(() => document.getElementById('map-time-slider').disabled)).toBe(false);
   // The wind-effect toggle, because it does not fetch on enable: NOTAM and the wind grids
   // switch themselves back off when their feed cannot be reached, which in a test looks
   // exactly like the clock ignoring the toggle.
@@ -93,7 +93,7 @@ test('with nothing time-dependent on, the clock goes quiet instead of vanishing'
   });
   expect(on, 'the layer stayed on').toBe(true);
   expect(await page.evaluate(() => document.getElementById('map-time').classList.contains('idle'))).toBe(false);
-  // ...and now a layer answers to it, it is slidable again.
+  // ...and it stays enabled.
   expect(await page.evaluate(() => document.getElementById('map-time-slider').disabled)).toBe(false);
 });
 
@@ -569,4 +569,36 @@ test.describe('the clock on the panel', () => {
     await page.evaluate(() => showInspector());
     expect(await page.evaluate(() => 1 + 1)).toBe(2);
   });
+});
+
+// The Now button and the slider must not shift as the hour label changes width -- including the
+// cross-midnight readout ("+14h · 11-23 03:00Z"), at a mid width where the strip is tightest
+// (reported: the Now button moved when the left-side time changed digit count).
+test('the hour label never shifts the Now button or the slider', async ({ page }) => {
+  await page.setViewportSize({ width: 860, height: 800 });
+  await page.goto('?lang=he&nogist');
+  await page.waitForFunction(() => typeof draw === 'function'
+    && !document.documentElement.classList.contains('app-booting'));
+  await page.evaluate(() => {
+    const b = document.getElementById('boot-loading'); if (b) b.remove();
+    const cb = document.getElementById('notam-cb');            // a timed layer, so the clock is live
+    if (cb && !cb.checked) { cb.checked = true; cb.dispatchEvent(new Event('change', { bubbles: true })); }
+    // Widen the readout font past what this browser renders, to stand in for a device whose font
+    // is wider: a min-width-only reserve would grow here and nudge Now; the fixed box must not.
+    const st = document.createElement('style');
+    st.textContent = '.map-time-read{letter-spacing:0.6px}';
+    document.head.appendChild(st);
+  });
+  const geo = (v) => page.evaluate((v) => {
+    const s = document.getElementById('map-time-slider'); s.value = String(v); s.dispatchEvent(new Event('input'));
+    const n = document.getElementById('map-time-now').getBoundingClientRect();
+    const sl = document.getElementById('map-time-slider').getBoundingClientRect();
+    return { now: Math.round(n.left), sl: Math.round(sl.width) };
+  }, v);
+  const base = await geo(0);                                   // "now"
+  for (const v of [4, 9, 10, 14]) {                            // same-day, then cross-midnight 1- and 2-digit
+    const g = await geo(v);
+    expect(g.now, 'Now moved at +' + v).toBe(base.now);
+    expect(g.sl, 'slider resized at +' + v).toBe(base.sl);
+  }
 });
