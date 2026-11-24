@@ -731,6 +731,8 @@ jobs:
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
       CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
       PROJECT: ${{ vars.CLOUDFLARE_PAGES_PROJECT || 'navaid' }}
+      # Where GitHub Pages (previews, and the oversized update zip) is reachable.
+      PREVIEW_ORIGIN: ${{ vars.PREVIEW_ORIGIN || 'https://navaid.supino.org' }}
     steps:
       - name: Cloudflare configured?
         id: cfg
@@ -778,6 +780,25 @@ jobs:
               '<title>NavAid – לא נמצא</title><p style="font:16px system-ui;padding:2rem">הדף לא נמצא. <a href="/">חזרה ל-NavAid</a></p></html>' \
               > site/404.html
           fi
+          # Pages refuses any file over 25 MiB, and the full update zip for the apps is ~38 MB.
+          # GitHub Pages serves the very same file (same artifact, same checksum), so the copy
+          # here is dropped and the manifest's full-download URL points there. The per-file
+          # delta entries stay on this host. Anything else that big fails the publish loudly.
+                    for f in $(find site -type f -size +25M); do
+            case "$f" in
+              site/ota/*.zip)
+                name=$(basename "$f"); rm -f "$f"
+                node -e '
+                  const fs = require("fs"), [m, origin, name] = process.argv.slice(1);
+                  const j = JSON.parse(fs.readFileSync(m, "utf8"));
+                  if (!String(j.url || "").endsWith("/ota/" + name)) process.exit(0);
+                  j.url = origin.replace(/\/$/, "") + "/ota/" + name;
+                  fs.writeFileSync(m, JSON.stringify(j, null, 2));
+                  console.log("full update zip served from", j.url);
+                ' site/ota/manifest.json "$PREVIEW_ORIGIN" "$name" ;;
+              *) echo "::error::$f is over Cloudflare Pages' 25 MiB file limit"; exit 1 ;;
+            esac
+          done
           # The service workers and the update manifest must never be served from a cache:
           # a stale sw.js or manifest keeps phones on an old build.
           printf '%s\n' \
