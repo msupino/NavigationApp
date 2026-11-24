@@ -11256,3 +11256,30 @@ body.deck-on .satellite-preview-map .leaflet-bottom.leaflet-right {
   display: block;
   max-height: none;
 }
+
+/* Phone: the zoom view's controls in one row along the bottom, not a column up its right side.
+   Back in the corner they still covered a third of a 320 px wide map at the deck's 44 px touch
+   size (reported: "buttons still hide too much of the image"). One row of the same 44 px targets
+   (zoom side by side, then the dial and reset), the credit line under it, and a taller map. */
+body.deck-on .satellite-preview-map { height: min(68dvh, 640px); }
+body.deck-on .satellite-preview-map .leaflet-bottom.leaflet-right {
+  display: flex;
+  flex-direction: row;
+  justify-content: flex-end;
+  align-items: flex-end;
+  gap: 8px;
+  padding: 0 var(--navaid-map-ctrl-right-edge, 10px) 18px 0;
+  direction: ltr;
+}
+body.deck-on .satellite-preview-map .leaflet-bottom.leaflet-right > .leaflet-control { margin: 0 !important; }
+body.deck-on .satellite-preview-map .leaflet-bottom.leaflet-right > .leaflet-control-attribution {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+}
+body.deck-on .satellite-preview-map .leaflet-control-zoom { display: flex; flex-direction: row-reverse; }
+body.deck-on .satellite-preview-map .leaflet-control-zoom a:first-child { border-radius: 0 22px 22px 0; }
+body.deck-on .satellite-preview-map .leaflet-control-zoom a:last-child { border-radius: 22px 0 0 22px; }
+body.deck-on .satellite-preview-map .leaflet-bottom.leaflet-left .satellite-zoom-readout { margin-bottom: 4px; }
+body.deck-on .satellite-preview-map .satellite-layer-control { padding: 2px; }
+body.deck-on .satellite-preview-map .satellite-layer-select { font-size: 14px; min-height: 40px; }

@@ -22,6 +22,10 @@ const gaps = (page) => page.evaluate(() => {
     leftCorner: Math.round(m.bottom - box('.leaflet-bottom.leaflet-left').bottom),
     zoomFromBottom: Math.round(m.bottom - box('.leaflet-control-zoom').bottom),
     zoomFromRight: Math.round(m.right - box('.leaflet-control-zoom').right),
+    // the bottom-right controls' union: on the phone one row along the bottom
+    ctrlTop: Math.round(Math.min(...['.leaflet-control-zoom', '.satellite-rotate-ctrl', '.satellite-reset-control']
+      .map(s => box(s).top)) - m.top),
+    mapH: Math.round(m.height),
   };
 });
 
@@ -36,5 +40,8 @@ for (const vp of [{ width: 390, height: 844 }, { width: 1280, height: 800 }]) {
     // The zoom bar is the lowest control on the right: above the credit line only.
     expect(g.zoomFromBottom).toBeLessThanOrEqual(30);
     expect(g.zoomFromRight).toBeLessThanOrEqual(16);
+    // Reported again: in a column the 44 px controls still covered a third of the phone's map.
+    // On the deck they make one row, so they take only the bottom strip.
+    if (g.deck) expect(g.mapH - g.ctrlTop, 'controls take one bottom strip').toBeLessThanOrEqual(80);
   });
 }
