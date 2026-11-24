@@ -657,7 +657,7 @@ jobs:
         if: github.event_name == 'pull_request' && github.event.action != 'closed' && steps.fresh.outputs.stale != 'true'
         env:
           GH_TOKEN: ${{ github.token }}
-          URL: https://navaid.supino.org/pr/${{ github.event.number }}/
+          URL: ${{ vars.PREVIEW_ORIGIN || 'https://navaid.supino.org' }}/pr/${{ github.event.number }}/
         run: |
           DEPLOY_JSON=$(gh api "repos/${{ github.repository }}/deployments" --input - <<EOF
           {
@@ -691,13 +691,14 @@ jobs:
           PR: ${{ github.event.number }}
           SHA: ${{ github.event.pull_request.head.sha }}
           REPO: ${{ github.repository }}
+          PREVIEW_ORIGIN: ${{ vars.PREVIEW_ORIGIN || 'https://navaid.supino.org' }}
         run: |
           # One URL for both the comment and the deployment record. They used to differ
           # (/branch/<name>/ in the comment, /pr/<n>/ in the record), so the two links on
           # the same PR could show different builds after a rebase.
-          URL="https://navaid.supino.org/pr/${PR}/"
+          URL="${PREVIEW_ORIGIN%/}/pr/${PR}/"
           SHORT="${SHA:0:7}"
-          BODY=$(printf '### 🚀 Preview deployed\n\n<a href="%s" target="_blank">Open PR preview →</a>\n\n`%s`\n\nCommit: `%s`\n\n<sub>⚠️ Unreviewed branch code on the production origin. It gets its own storage namespace and no service worker, but that is not a sandbox — a same-origin frame can still reach the live app'"'"'s saved routes, settings and BYOK/Drive credentials. Open it as you would run this branch locally. Not indexed; rebuilt on every push.</sub>' "$URL" "$URL" "$SHORT")
+          BODY=$(printf '### 🚀 Preview deployed\n\n<a href="%s" target="_blank">Open PR preview →</a>\n\n`%s`\n\nCommit: `%s`\n\n<sub>⚠️ Unreviewed branch code. It gets its own storage namespace and no service worker; while previews share an origin with the live app that is not a sandbox, so open it as you would run this branch locally. Not indexed; rebuilt on every push.</sub>' "$URL" "$URL" "$SHORT")
           # Update the existing bot comment rather than adding one per push.
           EXISTING=$(gh api "repos/${REPO}/issues/${PR}/comments" \
             --jq '[.[] | select(.user.login == "github-actions[bot]" and (.body | startswith("### 🚀 Preview deployed")))] | .[0].id // empty')
@@ -706,6 +707,93 @@ jobs:
           else
             gh api "repos/${REPO}/issues/${PR}/comments" -f body="$BODY"
           fi
+
+  # Production (and /staging/) on Cloudflare Pages. GitHub Pages keeps publishing the whole
+  # artifact -- previews included -- at the address in the PREVIEW_ORIGIN repository variable;
+  # navaid.supino.org itself points at Cloudflare once its DNS is switched. This job takes the
+  # SAME artifact the GitHub publish uses (one build, one cache-bust, one OTA bundle), drops
+  # the previews, and uploads the rest. Push/dispatch on main or dev only: a pull request
+  # never reaches production. Without the CLOUDFLARE_API_TOKEN secret it says so and stops,
+  # so merging this changes nothing until the account is set up.
+  deploy-cloudflare:
+    if: >-
+      github.event_name != 'pull_request' &&
+      (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/dev')
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    concurrency:
+      group: cloudflare-prod
+      cancel-in-progress: false
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+      PROJECT: ${{ vars.CLOUDFLARE_PAGES_PROJECT || 'navaid' }}
+    steps:
+      - name: Cloudflare configured?
+        id: cfg
+        run: |
+          if [ -z "$CLOUDFLARE_API_TOKEN" ] || [ -z "$CLOUDFLARE_ACCOUNT_ID" ]; then
+            echo "::notice::CLOUDFLARE_API_TOKEN / CLOUDFLARE_ACCOUNT_ID not set; skipping the Cloudflare Pages publish."
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          fi
+      # Same guard as the GitHub publish: an artifact built before a newer main deploy must not
+      # roll production back (a dev push carries main as it was when its build started).
+      - name: Skip a publish that would roll production back
+        id: fresh
+        if: steps.cfg.outputs.skip != 'true' && github.ref != 'refs/heads/main'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          BUILT: ${{ needs.build.outputs.main_sha }}
+        run: |
+          NOW=$(gh api "repos/$REPO/commits/main" --jq '.sha' 2>/dev/null || true)
+          if [ -n "$BUILT" ] && [ -n "$NOW" ] && [ "$NOW" != "$BUILT" ]; then
+            echo "::notice::main moved from ${BUILT:0:7} to ${NOW:0:7} since this artifact was built; not publishing it."
+            echo "stale=true" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Download the site artifact
+        if: steps.cfg.outputs.skip != 'true' && steps.fresh.outputs.stale != 'true'
+        uses: actions/download-artifact@v4
+        with:
+          name: github-pages
+          path: artifact
+      - name: Prepare the Cloudflare copy
+        if: steps.cfg.outputs.skip != 'true' && steps.fresh.outputs.stale != 'true'
+        run: |
+          set -euo pipefail
+          mkdir site
+          tar -xf artifact/artifact.tar -C site
+          # Previews stay on GitHub Pages; production carries none.
+          rm -rf site/pr
+          test -f site/index.html && test -f site/sw.js
+          # Pages treats a site with no top-level 404.html as a single-page app and answers
+          # EVERY missing path with index.html and status 200 -- a missing data file would come
+          # back as HTML. A real 404 page keeps a missing file a 404.
+          if [ ! -f site/404.html ]; then
+            printf '%s\n' '<!doctype html><html lang="he" dir="rtl"><meta charset="utf-8">' \
+              '<meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex">' \
+              '<title>NavAid – לא נמצא</title><p style="font:16px system-ui;padding:2rem">הדף לא נמצא. <a href="/">חזרה ל-NavAid</a></p></html>' \
+              > site/404.html
+          fi
+          # The service workers and the update manifest must never be served from a cache:
+          # a stale sw.js or manifest keeps phones on an old build.
+          printf '%s\n' \
+            '/sw.js' '  Cache-Control: no-cache' \
+            '/staging/sw.js' '  Cache-Control: no-cache' \
+            '/ota/manifest.json' '  Cache-Control: no-cache' \
+            > site/_headers
+          echo "files: $(find site -type f | wc -l), size: $(du -sh site | cut -f1)"
+      - name: Publish to Cloudflare Pages
+        if: steps.cfg.outputs.skip != 'true' && steps.fresh.outputs.stale != 'true'
+        run: |
+          set -euo pipefail
+          # The production branch of the Pages project is main; every publish here is the
+          # production deployment (it carries main at / and dev at /staging/).
+          npx --yes wrangler@4 pages deploy site --project-name "$PROJECT" --branch main \
+            --commit-hash "${{ needs.build.outputs.main_sha }}" --commit-dirty=true
 
   # Sharded like CI's e2e (see .github/workflows/ci.yml): one runner took ~21 min.
   # Branch protection requires a check named exactly `e2e-deployed`, which a matrix

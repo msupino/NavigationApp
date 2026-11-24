@@ -12,8 +12,14 @@ carries the static web app source only.
 
 - **Live (production):** https://navaid.supino.org/
 - **Live (staging):** https://navaid.supino.org/staging/
+- **Hosting:** production and staging are published to **Cloudflare Pages**
+  (job `deploy-cloudflare` in `deploy.yml`, project `vars.CLOUDFLARE_PAGES_PROJECT`,
+  secret `CLOUDFLARE_API_TOKEN`, `vars.CLOUDFLARE_ACCOUNT_ID`; skipped until those exist).
+  **GitHub Pages** keeps publishing the same artifact including the previews, at
+  `vars.PREVIEW_ORIGIN`. Until DNS moves, both serve `navaid.supino.org` content and
+  GitHub Pages is what the domain points at.
 - **Pull-request previews:** every open same-repository PR is published at
-  `https://navaid.supino.org/pr/<n>/` (and `/branch/<name>/`), linked from a bot
+  `<PREVIEW_ORIGIN>/pr/<n>/` (today `https://navaid.supino.org/pr/<n>/`), linked from a bot
   comment and a `View deployment` record. Fork PRs are never published.
   **Trust model — read before opening one:** a preview is unreviewed branch code
   on the PRODUCTION origin. It is given its own `localStorage`/`sessionStorage`
@@ -1200,7 +1206,10 @@ downloadable `route.json`.
   - `dev/docs/`  → `/staging/`
   - on PRs, the current head is also assembled under `/pr/NNN/` inside the
     artifact for localhost E2E only; the deploy job is skipped.
-  - `actions/deploy-pages@v4` publishes only trusted non-PR runs.
+  - `actions/deploy-pages@v4` publishes the artifact (with previews) to GitHub Pages.
+  - `deploy-cloudflare` publishes the same artifact minus `/pr/` to Cloudflare Pages on
+    main/dev pushes only, adding `_headers` (no-cache for `sw.js` and the OTA manifest)
+    and a `404.html` so missing files are real 404s (Pages otherwise serves index.html).
 - **Staging deploy** follows an issue + feature-branch PR into `dev`; the merge
   push publishes staging. Direct protected-branch pushes are exceptional and
   require explicit maintainer authorization.
