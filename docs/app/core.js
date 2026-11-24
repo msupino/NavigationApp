@@ -5854,6 +5854,8 @@ function setReferenceVor(ident) {
     const el = document.getElementById(id);
     if (el) el.value = next || '';
   }
+  // A reference is something Clear map removes, so its dim ("already empty") follows it.
+  if (typeof window.refreshEditColumn === 'function') window.refreshEditColumn();
   return next;
 }
 
@@ -5881,6 +5883,8 @@ function setReferenceVor2(ident) {
     const el = document.getElementById(id);
     if (el) el.value = next || '';
   }
+  // A reference is something Clear map removes, so its dim ("already empty") follows it.
+  if (typeof window.refreshEditColumn === 'function') window.refreshEditColumn();
   return next;
 }
 
