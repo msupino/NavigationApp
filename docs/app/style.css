@@ -11256,3 +11256,10 @@ body.deck-on .satellite-preview-map .leaflet-bottom.leaflet-right {
   display: block;
   max-height: none;
 }
+
+/* Phone: a taller zoom view and a compact layer picker. The controls stay the upright 44 px column
+   in the bottom-right corner (the owner chose it over a row along the bottom); the extra height
+   gives the map more room around it. */
+body.deck-on .satellite-preview-map { height: min(68dvh, 640px); }
+body.deck-on .satellite-preview-map .satellite-layer-control { padding: 2px; }
+body.deck-on .satellite-preview-map .satellite-layer-select { font-size: 14px; min-height: 40px; }
