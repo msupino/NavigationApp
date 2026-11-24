@@ -3075,9 +3075,9 @@ function appendSatelliteSnippet(body, point, label) {
   // already does when given one.
   let snipZoom = tune('satellitePreviewZoom');
   // Size: the tunables' fixed 214x118 left most of a phone's inspector empty around a small
-  // picture (reported: "way too small"). Once the section is laid out it takes the panel's
-  // width (up to satellitePreviewMaxWidthPx) at the tunables' aspect ratio; until then, and
-  // where nothing can be measured, the tunables' size.
+  // picture (reported: "way too small"). On the deck, once the section is laid out it takes the
+  // panel's width (up to satellitePreviewMaxWidthPx) at the tunables' aspect ratio; until then,
+  // on the desktop, and where nothing can be measured, the tunables' size.
   let fit = null;
   const build = z => buildSatelliteSnippet(point, Object.assign({ zoom: z }, fit || {}));
   let snippet = build(snipZoom);
@@ -3188,7 +3188,11 @@ function appendSatelliteSnippet(body, point, label) {
   expand.onclick = open;
   section.appendChild(snippet);
   body.appendChild(section);
-  const avail = section.clientWidth;
+  // Only on the deck (phone, tablet): the desktop inspector is a narrow side panel where 40 px
+  // more width bought 22 px more height, which on a 900 px screen tipped the panel into scrolling
+  // as soon as a status line appeared, and its buttons moved under the pointer
+  // (inspector-toggles-hold-position.spec.js).
+  const avail = document.body.classList.contains('deck-on') ? section.clientWidth : 0;
   if (avail > 0) {
     const baseW = tune('satellitePreviewWidthPx');
     const baseH = tune('satellitePreviewHeightPx');

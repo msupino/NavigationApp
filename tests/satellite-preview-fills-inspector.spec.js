@@ -6,7 +6,7 @@
 const { test, expect } = require('./_setup');
 
 for (const vp of [{ width: 390, height: 844 }, { width: 1280, height: 800 }]) {
-  test(`the inspector satellite preview fills the panel width (${vp.width}x${vp.height})`, async ({ page }) => {
+  test(`the inspector satellite preview fills the panel width on the deck (${vp.width}x${vp.height})`, async ({ page }) => {
     await page.setViewportSize(vp);
     await page.goto('?lang=he&nogist');
     await page.waitForFunction(() => typeof showInspector === 'function' && typeof clearBootLoading === 'function'
@@ -22,8 +22,14 @@ for (const vp of [{ width: 390, height: 844 }, { width: 1280, height: 800 }]) {
       return { w: b.width, h: b.height, section: s.parentElement.clientWidth, ratio: w / h,
         max: tune('satellitePreviewMaxWidthPx'), tiles: s.querySelectorAll('img').length };
     });
-    expect(r.w).toBeCloseTo(Math.min(r.section, r.max), 0);
-    expect(r.w).toBeGreaterThan(214);
+    if (vp.width < 600) {
+      expect(r.w).toBeCloseTo(Math.min(r.section, r.max), 0);
+      expect(r.w).toBeGreaterThan(214);
+    } else {
+      // The desktop's narrow side panel keeps the tunables' size: growing it there tipped the
+      // panel into scrolling under a status line (inspector-toggles-hold-position.spec.js).
+      expect(Math.round(r.w)).toBe(214);
+    }
     expect(r.w / r.h).toBeCloseTo(r.ratio, 1);
     // The tile grid covers the half-diagonal: at least 3x3, more for a big box.
     const ring = Math.max(1, Math.ceil(Math.hypot(r.w, r.h) / 2 / 256));
