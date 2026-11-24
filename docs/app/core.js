@@ -1260,13 +1260,9 @@ NavAid.tuningDefaults = {
   // (see traffic.js: a browser cannot read these feeds), so this is the switch that turns
   // it on for everyone flying with the app, without an app release.
   featureLiveTraffic: { value: false, type: 'bool', label: 'Feature: live ADS-B traffic' },
-  // Live ATC audio
-  featureAtcRadio: { value: true, type: 'bool', label: 'Feature: live ATC radio (Herzliya, Haifa)' },
-  // The channel's full name beside the green map button, for this long after it starts; then a
-  // small airfield badge on the button's edge, clear of the chart's middle. 0: always in full.
-  atcNowLabelSec: { value: 4, min: 0, max: 30, step: 1, label: 'ATC radio: show the playing channel in full for (s)' },
-  atcRadioBase: { value: 'https://navaid-atc.marco-956.workers.dev/', type: 'text',
-    label: 'Where the live ATC channels are played from (<base><channel id>)' },
+  // ATC-IL embeds its own controls in the native app. The old direct stream feature remains
+  // disabled: the provider page creates its own session and signed stream URLs.
+  featureAtcIlEmbed: { value: true, type: 'bool', label: 'Feature: embedded ATC-IL radio (native app)' },
   featureDensityAltitude: { value: true, type: 'bool', label: 'Feature: density altitude in the airfield panel' },
   defaultShowAirspace: { value: false, type: 'bool', label: 'Default: show airspace areas' },
   airspaceProhibitedColor: { value: '#c0392b', type: 'color', label: 'Prohibited area outline color' },
@@ -1366,7 +1362,7 @@ NavAid.tuningGroups = [
   { name: 'Airspace', keys: ['defaultShowAirspace', 'airspaceProhibitedColor', 'airspaceRestrictedColor',
     'airspaceTmaColor', 'airspaceCtrColor', 'airspaceFillAlpha', 'airspaceLineWidthPx', 'airspaceLabelMinZoom',
     'airspaceLabelFontPx'] },
-  { name: 'ATC radio', keys: ['featureAtcRadio', 'atcNowLabelSec', 'atcRadioBase'] },
+  { name: 'ATC radio', keys: ['featureAtcIlEmbed'] },
   { name: 'Live traffic', keys: ['featureLiveTraffic', 'defaultShowTraffic', 'trafficApiUrl', 'trafficViewUrl', 'trafficWebApiUrl', 'trafficRadiusNm',
     'trafficRefreshSec', 'trafficFailsBeforeWarn', 'trafficTimeoutSec', 'trafficStaleSec', 'trafficDropSec', 'trafficIconPx', 'trafficGroundKt', 'trafficGroundBelowFt', 'trafficGroundScale', 'trafficGroundAlpha', 'trafficGroundLabelZoom', 'trafficArrowColor',
     'trafficLabelColor'] },
@@ -3756,8 +3752,9 @@ window.S = Object.assign({
   tbPrintTitle: 'Print or save the framed map + route as a PNG',
   tbMagnifier: '🔍 Magnifying glass (M)',
   atcRadio: 'ATC radio',
-  atcRadioTitle: 'Listen live: Herzliya and Haifa towers, and Pluto West',
-  atcRadioNote: 'Live ATC receivers. One channel at a time.',
+  atcRadioTitle: 'Open the ATC-IL radio page',
+  atcRadioNote: 'Use ATC-IL’s radio controls below. If the player does not load, open ATC-IL separately.',
+  atcOpenProvider: 'Open ATC-IL separately',
   atcTower: 'Tower',
   atcClearance: 'Clearance',
   atcPluto: 'Pluto West',

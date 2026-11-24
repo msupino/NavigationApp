@@ -99,11 +99,20 @@ for (const lang of ['en', 'he']) {
 
     test('the simulator and ATC radio close buttons are 44px', async ({ page }) => {
       await boot(page, lang);
+      await page.route('https://www.atc-il.live/**', route => route.fulfill({
+        status: 200, contentType: 'text/html', body: '<!doctype html><title>ATC test</title>',
+      }));
       await page.evaluate(() => document.getElementById('sim-trigger').click());
       const sim = await page.locator('#sim-modal-close').boundingBox();
       expect(sim.width).toBeGreaterThanOrEqual(MIN);
       expect(sim.height).toBeGreaterThanOrEqual(MIN);
-      await page.evaluate(() => { document.getElementById('sim-modal').classList.add('hidden'); window.atcRadio.open(); });
+      await page.evaluate(() => {
+        document.getElementById('sim-modal').classList.add('hidden');
+        window.Capacitor = { isNativePlatform: () => true };
+        NavAid.tuning.featureAtcIlEmbed = true;
+        refreshAtcRadioFeature();
+        window.atcRadio.open();
+      });
       const atc = await page.locator('#atc-modal-close').boundingBox();
       expect(atc.width).toBeGreaterThanOrEqual(MIN);
       expect(atc.height).toBeGreaterThanOrEqual(MIN);
