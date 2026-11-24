@@ -278,6 +278,7 @@ NavAid.tuningDefaults = {
   gpsTrackColors: { value: '#e6194b,#3cb44b,#4363d8,#f58231,#911eb4,#008080,#9a6324,#000075',
     type: 'text', label: 'GPS track palette (comma-separated)' },
   satelliteChartOverscale: { value: 1, min: 0, max: 3, step: 1, label: 'Satellite chart overscale levels' },
+  satelliteAtsNativeZoom: { value: 10, min: 6, max: 14, step: 1, label: 'Satellite view: native zoom of the ATS chart image' },
 
   magBaselineZoom: { value: 12, min: 8, max: 18, step: 1, label: 'Magnifier baseline zoom' },
   magMaxExp: { value: 4, min: 1, max: 6, step: 1, label: 'Magnifier max sub-tile exponent' },
@@ -1371,7 +1372,7 @@ NavAid.tuningGroups = [
   { name: 'Search', keys: ['searchMaxResults', 'searchMaxVor', 'searchMaxBubbles', 'searchMaxNotams', 'searchMaxAirfields', 'searchMaxNavWp', 'searchMaxRouteWp', 'searchMaxNotes', 'searchNoteLabelChars', 'searchFlashMs', 'searchFlashRadiusPx', 'searchFlashColor',
     'searchFlashWidthPx', 'searchFlashFillAlpha', 'searchFlashPulses'] },
   { name: 'Zoom', keys: ['inspZoomSmallest', 'inspZoomLargest', 'inspZoomStep', 'plateZoomMax', 'plateZoomStep', 'plateZoomDoubleTap', 'wxStaleAfterMin'] },
-  { name: 'Satellite', keys: ['satellitePreviewZoom', 'satelliteExpandedZoom', 'satelliteMinZoom', 'satelliteMaxZoom', 'satelliteChartOverscale', 'satellitePreviewWidthPx', 'satellitePreviewHeightPx', 'satelliteMarkerRadiusPx', 'satelliteMarkerColor', 'satelliteMarkerWeightPx', 'satelliteMarkerAlpha'] },
+  { name: 'Satellite', keys: ['satellitePreviewZoom', 'satelliteExpandedZoom', 'satelliteMinZoom', 'satelliteMaxZoom', 'satelliteChartOverscale', 'satelliteAtsNativeZoom', 'satellitePreviewWidthPx', 'satellitePreviewHeightPx', 'satelliteMarkerRadiusPx', 'satelliteMarkerColor', 'satelliteMarkerWeightPx', 'satelliteMarkerAlpha'] },
   { name: 'Go-to marker', keys: ['gotoMarkerColor', 'gotoMarkerFillColor', 'gotoMarkerRadiusPx', 'gotoMarkerWeightPx', 'gotoMarkerFillAlpha'] },
   { name: 'Map buttons', keys: ['mapCtrlLeftEdgePx', 'mapCtrlRightEdgePx'] },
   { name: 'Map label zoom', keys: ['airfieldLabelMinZoom', 'navWpLabelMinZoom', 'vorLabelMinZoom'] },
