@@ -11331,3 +11331,16 @@ body.deck-on .ac-settings-body select, body.deck-on .ac-settings-body input[type
 #insp-body .rwy-dims-row > label { margin-inline-end: 10px; }
 #insp-body .rwy-dims-row .val { text-align: right; }
 html[dir="rtl"] #insp-body .rwy-dims-row .val { text-align: left; }
+
+/* The waypoint zoom view (.satellite-preview-map) is a second Leaflet map, and the deck's rules for
+   the MAIN map's corners reached into it: the bottom margin for the deck bar, the 12-button flex
+   column and the phone lift of the bottom-left corner. On a phone that stacked zoom, the dial, the
+   reset and the credit line up the middle of a 480 px map, over the place being looked at
+   (reported). Its controls sit in its own corners, as on the desktop. Last in the file on purpose:
+   the main-map rules it undoes are spread through it, and source order settles the ties. */
+body .satellite-preview-map .leaflet-bottom { margin-bottom: 0; padding-bottom: 0; }
+body .satellite-preview-map .leaflet-bottom.leaflet-left { bottom: 0; }
+body.deck-on .satellite-preview-map .leaflet-bottom.leaflet-right {
+  display: block;
+  max-height: none;
+}
