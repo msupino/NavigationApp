@@ -1853,7 +1853,9 @@ function refreshEditColumn() {
     && !(typeof shownTracks !== 'undefined' && Array.isArray(shownTracks) && shownTracks.length)
     // So is the A3/A4 page frame: on an otherwise empty map it was the one thing left, and
     // Clear map stayed dimmed ("already empty") with the frame still drawn.
-    && !(typeof pageSize !== 'undefined' && pageSize);
+    && !(typeof pageSize !== 'undefined' && pageSize)
+    // A reference VOR is cleared too: with only VOR 1 or VOR 2 set, Clear map has work to do.
+    && !(typeof vorRef === 'string' && vorRef) && !(typeof vorRef2 === 'string' && vorRef2);
   setButtonWhy(add, lockWhy);
   setButtonWhy(note, lockWhy);
   setButtonWhy(undoBtn, lockWhy || ((menuUndo && menuUndo.disabled) ? (S.whyNothingToUndo || 'Nothing to undo') : null));
@@ -5518,6 +5520,12 @@ document.getElementById('clear').onclick = async () => {
   // and its label left on an empty chart is not that.
   if (window.measure && window.measure.on) measureToggle(false);
   routeAltPrefix = null;    // empty route unpins its altitude layer
+  // The reference VORs were picked for THAT route's radials and DME. Per-leg picks went with
+  // state.legs; the global VOR 1 / VOR 2 did not, so the next route started out reading
+  // radials off stations chosen for a different flight. Cleared through their setters, which
+  // also persist the removal and reset every picker.
+  if (typeof setReferenceVor === 'function') setReferenceVor(null);
+  if (typeof setReferenceVor2 === 'function') setReferenceVor2(null);
   // The direction filter belonged to the route that had a direction to filter. With the
   // route gone it hides nothing, and leaving it set meant the next route was drawn with half
   // its legs missing and a picker the pilot had to remember to put back.

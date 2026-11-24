@@ -1,0 +1,67 @@
+From 738bb16ccc6788e48fd8d1107f67f6daa837efc2 Mon Sep 17 00:00:00 2001
+From: Marco <marco@supino.org>
+Date: Tue, 24 Nov 2026 10:53:07 +0000
+Subject: [PATCH] Clear map also removes the reference VORs (VOR 1, VOR 2)
+
+---
+ Features-he.md | 2 +-
+ Features.md    | 2 +-
+ Toolbar-he.md  | 2 +-
+ Toolbar.md     | 2 +-
+ 4 files changed, 4 insertions(+), 4 deletions(-)
+
+diff --git a/Features-he.md b/Features-he.md
+index bd32e77..dc7c1b1 100644
+--- a/Features-he.md
++++ b/Features-he.md
+@@ -37,7 +37,7 @@
+ - **היפוך מסלול** — היפוך הכיוון. זוג הגובה של כל רגל מתחלף וטקסט שם הנקודה מסתובב 180° כך שמפה המוחזקת הפוך עדיין נקראת זקופה.
+ - **הצמדה לנקודות מפורסמות** — מפילים או גוררים נקודה ליד נקודת דיווח VFR מפורסמת או שדה תעופה ו-NavAid מצמיד לקואורדינטות המדויקות. שדות תעופה מאמצים את קוד ה-ICAO; נקודות ניווט מאמצות את השם המקומי.
+ - **התאמה** — מסגור כל המסלול באזור הנראה.
+-- **ניקוי מפה** — הסרת כל הנקודות וההערות (עם אישור).
++- **ניקוי מפה** — הסרת כל הנקודות וההערות (עם אישור), וגם תחנות ייחוס ה-VOR ‏(<span dir="ltr">VOR 1</span> ו-<span dir="ltr">VOR 2</span>) שנבחרו לאותו מסלול.
+ - **↶ ביטול (Undo)** (**Ctrl-Z**) — חזרה אחורה על העריכה, ההזזה או המחיקה האחרונה.
+ - **↺ איפוס כל מיקומי הסמנים** — החזרת היסט סמן המידע של כל רגל (כיוון / גובה / זמן) למקומו המוגדר.
+ - **↺ איפוס כל שמות הנקודות** — קביעת כל שם לנקודת הייחוס הקרובה, או ניקוי כשמחוץ לרשת.
+diff --git a/Features.md b/Features.md
+index 3bd5076..404ce7a 100644
+--- a/Features.md
++++ b/Features.md
+@@ -36,7 +36,7 @@ Below the sections you'll see live totals — **Waypoints**, **Legs**, **Distanc
+ - **Reverse Route** — invert direction. Each leg's altitude pair swaps and waypoint name text is rotated 180° so a chart held the other way still reads upright.
+ - **Snap to published points** - drop or drag a waypoint near a published Israeli VFR reporting point or airfield and NavAid snaps it to the exact coordinates. Airfields adopt the ICAO code; nav-waypoints adopt the localized name.
+ - **Fit** — frame the entire route in the visible area.
+-- **Clear map** — remove all waypoints and notes (with a confirmation prompt).
++- **Clear map** — remove all waypoints and notes (with a confirmation prompt), and the reference VORs (VOR 1 and VOR 2) chosen for that route.
+ - **↶ Undo** (**Ctrl-Z**) — step back the last edit, move, or delete.
+ - **↺ Reset all marker positions** — return every leg's info-marker offset (heading / altitude / time kite) to its default spot.
+ - **↺ Reset all waypoint names** — set each name to its nearest reference point, or clear it when off-grid.
+diff --git a/Toolbar-he.md b/Toolbar-he.md
+index 3ed983e..e066cd1 100644
+--- a/Toolbar-he.md
++++ b/Toolbar-he.md
+@@ -53,7 +53,7 @@
+ | **🔍 חפש** (Ctrl-F) | פותח חלון חיפוש צף. הקלידו ICAO של שדה, קוד ציון ניווט, או חלק משם (אנגלית/עברית). שאילתה רב-מילית + Enter בונה מסלול שלם. |
+ | **⇄ הפוך מסלול** (R) | הופך את סדר ציוני הדרך; מחליף גובה נכנס / יוצא בכל קטע ומסובב תוויות שם 180°. מתריע ש**ייתכן שהמסלול ההפוך אינו תואם למסלולים המאושרים** — הרשת המפורסמת היא מכוונת, ומסדרונות יכולים להיות חד-כיווניים. ללא מסלול מצויר הוא אומר זאת במקום. אינו זמין כאשר מסומנת [נקודת חזרה](Route-and-Legs-he#נקודת-חזרה): המסלול כבר טס הלוך וחזור. |
+ | **↶ ביטול** (Ctrl-Z) | חזרה אחורה על העריכה, ההזזה או המחיקה האחרונה. |
+-| **🗑 נקה מפה** (C) | מסיר את כל ציוני הדרך וההערות לאחר אישור, ומסיר איתם את מסגרת עמוד ההדפסה. |
++| **🗑 נקה מפה** (C) | מסיר את כל ציוני הדרך וההערות לאחר אישור, ומסיר איתם את מסגרת עמוד ההדפסה ואת תחנות ייחוס ה-VOR ‏(<span dir="ltr">VOR 1</span>, <span dir="ltr">VOR 2</span>). גם כשמוגדרת רק תחנת ייחוס, הכפתור פעיל. |
+ | **ניתוב אוטומטי דרך נקודות דיווח** | כבוי כברירת מחדל. הוספת נקודה ממלאת את נקודות הדיווח המפורסמות בינה לבין הקודמת (CVFR); נתיבים סגורים נעקפים. |
+ | **הצמדה לנקודה הקרובה** (Force snap) | כל לחיצה נצמדת לשדה או לציון הניווט הקרוב ביותר ללא תלות במרחק (אחרת רדיוס 18 פיקסל). |
+ | **⌖ התאם למסך** (F) | מצמצם את המפה כך שכל ציוני הדרך נראים. |
+diff --git a/Toolbar.md b/Toolbar.md
+index 718b8b3..f497f2e 100644
+--- a/Toolbar.md
++++ b/Toolbar.md
+@@ -55,7 +55,7 @@ compact — icon, dot and count, with words from 1440 px wide.
+ | **🔍 Find** (Ctrl-F) | Opens the floating search overlay. Type any airfield ICAO, nav-WP code, or partial name (English or Hebrew). Multi-token query (e.g. `LLHZ BAZRA DEROR SHARO HADRA`) + Enter builds a full route. |
+ | **⇄ Reverse route** (R) | Flips the waypoint order; swaps inbound / outbound altitudes per leg and rotates name labels 180°. Warns that a reversed route **might not match allowed routes** — the published network is directed, so corridors can be one-way. With no route drawn it says so instead. Unavailable once a [turning point](Route-and-Legs#turning-point) is marked: the route already flies out and back. |
+ | **↶ Undo** (Ctrl-Z) | Steps back the last edit, move, or delete. |
+-| **🗑 Clear map** (C) | Removes every waypoint and note after confirmation, and clears the print page frame with them. |
++| **🗑 Clear map** (C) | Removes every waypoint and note after confirmation, and clears the print page frame and the reference VORs (VOR 1, VOR 2) with them. With only a reference VOR set, the button is still live. |
+ | **Auto-route through waypoints** | Off by default. Adding a point fills in the published reporting points between it and the previous one (CVFR); closed routes are avoided. |
+ | **Snap to nearest point** (Force snap) | Every click snaps to the nearest airfield or nav-waypoint regardless of distance (otherwise an 18 px radius). |
+ | **⌖ Fit to screen** (F) | Zooms the map so all waypoints are visible (capped so two close waypoints don't snap to a tight view). |
+-- 
+2.43.0
+
