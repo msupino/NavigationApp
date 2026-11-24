@@ -382,16 +382,10 @@ function appendNavWaypointCommChangeInfo(body, name) {
       }
       item.appendChild(ident);
 
-      // The play slot between the station's name and its frequency, in either language (asked),
-      // as in the airfield rows. Always there (atc-radio.js fills it for a station NavAid plays
-      // live), so the frequencies line up with or without a button.
       // Button and frequency in one unit: when the panel is narrow (its larger text sizes) the
-      // unit drops under the name whole, rather than the frequency wrapping away from its button.
+      // unit drops under the name whole, rather than the frequency wrapping away from its label.
       const tune = document.createElement('span');
       tune.className = 'commchange-option-tune';
-      const play = document.createElement('span');
-      play.className = 'commchange-option-play';
-      tune.appendChild(play);
       if (opt.freq) {
         const freq = document.createElement('span');
         freq.className = 'commchange-option-freq';
@@ -400,7 +394,6 @@ function appendNavWaypointCommChangeInfo(body, name) {
         tune.appendChild(freq);
       }
       item.appendChild(tune);
-      if (window.atcRadio && typeof window.atcRadio.callSignAttach === 'function') window.atcRadio.callSignAttach(item);
       list.appendChild(item);
     }
     row.appendChild(list);
@@ -2243,7 +2236,6 @@ function appendAirfieldComms(body, af) {
   // styles select, and a second element wearing it makes every one of those selectors
   // ambiguous.
   sec.className = 'insp-frame comm-section';
-  // atc-radio.js loads in phase 2: a window already open by then gets its buttons by this.
   if (af && af.name) sec.dataset.icao = af.name;
   const head = document.createElement('div');
   head.className = 'insp-frame-head';
@@ -2259,11 +2251,6 @@ function appendAirfieldComms(body, af) {
     ? AIRFIELD_CALL_SIGN_IDS[af.name] : null;
   const phoneRow = callSignId ? airfieldPhoneRow(callSignId) : null;
   if (phoneRow) sec.appendChild(phoneRow);
-  // Live ATC audio for the fields that have it (atc-radio.js): a small play button in each
-  // frequency row that is on the air.
-  if (window.atcRadio && typeof window.atcRadio.airfieldAttach === 'function') {
-    window.atcRadio.airfieldAttach(af && af.name, sec);
-  }
   // A field with no published frequency gets no empty frame.
   if (sec.querySelectorAll('.row').length) body.appendChild(sec);
 }
@@ -2572,7 +2559,10 @@ function buildSatelliteSnippet(point, opts = {}) {
   return snippet;
 }
 
-const SATELLITE_MODAL_CHART_LAYERS = ['CVFR', 'Navigation', 'Low Alt', 'Helicopters'];
+// ATS (ENR 6.1) counts as a chart: one image of about 107 m a pixel, so past its native zoom
+// plus the overscale it is a blank patch of a few pixels. Its native zoom is a tunable, as an
+// imageOverlay has no maxNativeZoom of its own.
+const SATELLITE_MODAL_CHART_LAYERS = ['CVFR', 'Navigation', 'Low Alt', 'Helicopters', 'ATS'];
 
 function satelliteModalIsChartLayer(name) {
   return SATELLITE_MODAL_CHART_LAYERS.indexOf(name) !== -1;
@@ -2584,7 +2574,9 @@ function satelliteModalLayerZoomBounds(name, layer) {
   if (!satelliteModalIsChartLayer(name) || !layer) {
     return { minZoom: modalMin, maxZoom: modalMax };
   }
-  const nativeMax = Number(layer.options && (layer.options.maxNativeZoom || layer.options.maxZoom));
+  const nativeMax = (L.ImageOverlay && layer instanceof L.ImageOverlay)
+    ? Number(tune('satelliteAtsNativeZoom'))
+    : Number(layer.options && (layer.options.maxNativeZoom || layer.options.maxZoom));
   if (!Number.isFinite(nativeMax)) return { minZoom: modalMin, maxZoom: modalMax };
   const maxZoom = Math.min(modalMax, nativeMax + tune('satelliteChartOverscale'));
   return {
@@ -2602,6 +2594,13 @@ function satelliteModalLayers() {
   for (const nm in layers) {
     if (typeof layerOffered === 'function' && !layerOffered(nm)) continue;
     const src = layers[nm];
+    // The ATS chart (ENR 6.1) is one reprojected image placed by its bounds, not a tile set.
+    // Copied as a tile layer, its single URL was fetched for EVERY tile, so the view showed the
+    // whole sheet repeated as a mosaic (reported at z18 on ALMOG). Copy it as what it is.
+    if (src && src._url && L.ImageOverlay && src instanceof L.ImageOverlay) {
+      out[nm] = L.imageOverlay(src._url, src.getBounds(), Object.assign({}, src.options));
+      continue;
+    }
     if (src && src._url) {
       const opts = Object.assign({}, src.options);
       if (SATELLITE_MODAL_CHART_LAYERS.indexOf(nm) !== -1) {

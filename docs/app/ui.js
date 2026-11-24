@@ -1472,29 +1472,20 @@ atcRadioCtrl.onAdd = function () {
   b.id = 'tool-atc-radio';
   b.className = 'atc-fab';
   b.setAttribute('aria-pressed', 'false');
+  b.setAttribute('aria-expanded', 'false');
   setMapIcon(b, 'headset');
   b.title = (typeof S !== 'undefined' && S.atcRadioTitle) || 'ATC radio';
   b.setAttribute('aria-label', b.title);
-  // Green (a channel playing): a tap stops it (asked). Otherwise it opens the channel list.
+  // ATC-IL owns playback; the map button opens or closes its embedded page.
   b.addEventListener('click', () => {
     const r = window.atcRadio;
     if (!r) return;
-    if (r.current && typeof r.stop === 'function') r.stop();
+    const modal = document.getElementById('atc-modal');
+    if (modal && !modal.classList.contains('hidden') && typeof r.close === 'function') r.close();
     else if (typeof r.open === 'function') r.open();
   });
   wrap.appendChild(b);
-  // What is playing, beside the green button (asked). Absolutely placed, so showing it never moves
-  // the column; the button's own label already says it to a screen reader.
-  const now = document.createElement('span');
-  now.className = 'atc-fab-now';
-  now.hidden = true;
-  now.setAttribute('aria-hidden', 'true');
-  now.dir = 'auto';
-  wrap.appendChild(now);
-  // Ships off (gist turns it on). The wrapper reserves its slot from first paint (CSS min-size);
-  // only the button is hidden when off. So the gist flipping it on -- after paint, on a cold load
-  // lighthouse measures -- fills the reserved slot without moving any control (no layout shift).
-  if (typeof tune === 'function' && tune('featureAtcRadio') === false) b.hidden = true;
+  // The wrapper reserves its slot from first paint; the phase-2 feature gate hides only the button.
   L.DomEvent.disableClickPropagation(wrap);
   L.DomEvent.disableScrollPropagation(wrap);
   return wrap;

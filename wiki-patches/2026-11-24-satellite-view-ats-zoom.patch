@@ -1,0 +1,44 @@
+From bf8751775d864657664c5cc6294cea9009aae616 Mon Sep 17 00:00:00 2001
+From: Marco <marco@supino.org>
+Date: Tue, 24 Nov 2026 16:18:33 +0000
+Subject: [PATCH] Satellite view: chart layers (ATS routes too) stop at the
+ chart's resolution
+
+---
+ Auto-Zoom-he.md | 3 +++
+ Auto-Zoom.md    | 5 ++++-
+ 2 files changed, 7 insertions(+), 1 deletion(-)
+
+diff --git a/Auto-Zoom-he.md b/Auto-Zoom-he.md
+index 38274b0..a3fe1d7 100644
+--- a/Auto-Zoom-he.md
++++ b/Auto-Zoom-he.md
+@@ -62,6 +62,9 @@
+ 
+ - **תצוגת הלוויין** בפאנל השדה — <span dir="ltr"><code>satellitePreviewZoom</code></span> 16, ו-<span dir="ltr"><code>satelliteExpandedZoom</code></span> 17
+   כשהיא נפתחת. המחוון תחום בין <span dir="ltr"><code>satelliteMinZoom</code></span> 13 ל-<span dir="ltr"><code>satelliteMaxZoom</code></span> 18.
++  בשכבת מפה (CVFR, ניווט, גובה נמוך, מסוקים, נתיבי ATS) הוא נעצר ברזולוציה של המפה עצמה ועוד
++  <span dir="ltr"><code>satelliteChartOverscale</code></span> רמה אחת, ונפתח שם. מפת נתיבי ATS היא תמונה אחת, ולכן לרזולוציה
++  שלה הגדרה נפרדת: <span dir="ltr"><code>satelliteAtsNativeZoom</code></span> 10 (התצוגה נעצרת אפוא ב-11).
+ - **זכוכית המגדלת** — <span dir="ltr"><code>magBaselineZoom</code></span> 12 הוא הזום שביחס אליו נמדדת ההגדלה.
+ 
+ ## זום ידני
+diff --git a/Auto-Zoom.md b/Auto-Zoom.md
+index 8e20ff2..96d37d5 100644
+--- a/Auto-Zoom.md
++++ b/Auto-Zoom.md
+@@ -63,7 +63,10 @@ Two panels have a zoom of their own, unrelated to the map's:
+ 
+ - **Satellite preview** in the airfield inspector — `satellitePreviewZoom` 16, and
+   `satelliteExpandedZoom` 17 when opened out. The slider is bounded by `satelliteMinZoom` 13
+-  and `satelliteMaxZoom` 18.
++  and `satelliteMaxZoom` 18. On a chart layer (CVFR, Navigation, Low Alt, Helicopters, ATS routes)
++  it stops at the chart's own resolution plus `satelliteChartOverscale` 1 level, and opens there.
++  The ATS routes chart is one image, so its resolution is a tunable of its own:
++  `satelliteAtsNativeZoom` 10 (the view therefore stops at 11).
+ - **Magnifier** — `magBaselineZoom` 12 is the zoom its magnification is measured against.
+ 
+ ## Zoom by hand
+-- 
+2.43.0
+

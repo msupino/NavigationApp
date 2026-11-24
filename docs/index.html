@@ -1321,14 +1321,16 @@
     </div>
   </div>
 
-  <!-- Live ATC radio (atc-radio.js): one channel plays at a time, each through its owner's
-       own stream link. Opened from View -> ATC radio. -->
+  <!-- ATC-IL's own radio controls, embedded for native app users. -->
   <div id="atc-modal" class="sim-overlay hidden">
     <div class="modal atc-modal" role="dialog" aria-modal="true" aria-labelledby="atc-modal-title">
       <button class="sim-modal-close" id="atc-modal-close" type="button" data-i18n-aria="modalCloseTitle" aria-label="Close">✕</button>
       <h3 class="sim-modal-title" id="atc-modal-title" data-i18n="atcRadio">ATC radio</h3>
       <p class="atc-note" data-i18n="atcRadioNote"></p>
-      <div id="atc-list" class="atc-list"></div>
+      <iframe id="atc-il-frame" class="atc-il-frame" title="ATC-IL radio" src="about:blank"
+              loading="lazy" allow="autoplay" referrerpolicy="strict-origin-when-cross-origin"></iframe>
+      <a class="atc-open-provider" href="https://www.atc-il.live/" target="_blank" rel="noopener noreferrer"
+         data-i18n="atcOpenProvider">Open ATC-IL separately</a>
     </div>
   </div>
 

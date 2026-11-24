@@ -3489,15 +3489,14 @@ body.theme-light .modal.sim-modal #sim-url { border-color: #c6ccd6; background: 
   background: #2e7d32;
   border-color: #2e7d32;
 }
-/* Live ATC radio (atc-radio.js): the same small window as the simulator's. One row per
-   channel -- name, frequency, the state line under them, and Listen / Stop at the row's end
-   (44px, the app's blue; pressed it is the stop). A channel on the air gets a green state. */
+/* ATC-IL radio page embedded in the native app. */
 .modal.atc-modal {
   display: flex;
   flex-direction: column;
   gap: 10px;
-  min-width: 260px;
-  max-width: min(380px, 92vw);
+  width: min(900px, 94vw);
+  max-width: 94vw;
+  max-height: calc(100dvh - 24px);
 }
 .modal.atc-modal > .sim-modal-title { margin: 0 0 2px; }
 .modal.atc-modal > .atc-note {
@@ -3505,79 +3504,40 @@ body.theme-light .modal.sim-modal #sim-url { border-color: #c6ccd6; background: 
   color: var(--muted);
   font: 400 13px/1.45 system-ui, sans-serif;
 }
-.atc-list { display: grid; gap: 8px; }
-.atc-row {
-  display: grid;
-  grid-template-columns: 1fr auto;
-  grid-template-areas: "name btn" "state btn";
-  align-items: center;
-  column-gap: 10px;
-  row-gap: 2px;
-  padding: 8px 10px;
-  border: 1px solid rgba(255, 255, 255, 0.12);
+.atc-il-frame {
+  display: block;
+  width: 100%;
+  height: min(72dvh, 720px);
+  min-height: 320px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
   border-radius: 8px;
+  background: #1c1e22;
 }
-body.theme-light .atc-row { border-color: #d5dae2; }
-.atc-row .atc-name { grid-area: name; font: 600 15px/1.3 system-ui, sans-serif; }
-.atc-row .atc-state { grid-area: state; min-height: 1.2em; font: 400 12px/1.3 system-ui, sans-serif; color: var(--muted); }
-.atc-row.is-live .atc-state { color: #3ecf83; font-weight: 600; }
-body.theme-light .atc-row.is-live .atc-state { color: #1e7d45; }
-.atc-row .atc-play {
-  grid-area: btn;
-  min-width: 84px;
+.atc-open-provider {
+  align-self: flex-start;
   min-height: 44px;
+  display: inline-flex;
+  align-items: center;
   padding: 0 12px;
-  font: 700 14px/1 system-ui, sans-serif;
   color: #fff;
   background: #1d6fe0;
   border: 1px solid #1d6fe0;
   border-radius: 8px;
-  cursor: pointer;
+  text-decoration: none;
+  font: 700 14px/1 system-ui, sans-serif;
 }
-.atc-row .atc-play:hover { background: #195fc2; border-color: #195fc2; }
-.atc-row .atc-play[aria-pressed="true"],
-.atc-row .atc-play[aria-pressed="true"]:hover { background: #2e7d32; border-color: #2e7d32; }
-.atc-row .atc-play:focus-visible { outline: 3px solid #3d8bfd; outline-offset: 2px; }
-/* In the airfield's window: a small round play button beside the frequency it plays.
-   32px drawn, a 44px touch area around it. Blue ring idle, blue fill connecting (pulsing),
-   green fill live, red ring when the channel would not start. */
-.atc-inline { display: inline-flex; align-items: center; flex-shrink: 0; margin-inline-start: 6px; }
-.atc-inline .atc-play {
-  position: relative;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 32px;
-  height: 32px;
-  padding: 0;
-  color: #5aa2ff;
-  background: transparent;
-  border: 2px solid #1d6fe0;
-  border-radius: 50%;
-  cursor: pointer;
-  transition: background-color 150ms ease-out, border-color 150ms ease-out, color 150ms ease-out;
+.atc-open-provider:hover { background: #195fc2; border-color: #195fc2; }
+.atc-open-provider:focus-visible { outline: 3px solid #3d8bfd; outline-offset: 2px; }
+@media (max-width: 600px) {
+  .modal.atc-modal {
+    width: calc(100vw - 20px);
+    max-width: calc(100vw - 20px);
+    max-height: calc(100dvh - 20px);
+    padding: 14px;
+  }
+  .atc-il-frame { height: 68dvh; min-height: 280px; }
 }
-.atc-inline .atc-play::after { content: ''; position: absolute; inset: -6px; border-radius: 50%; }
-.atc-inline .atc-play svg { width: 16px; height: 16px; fill: currentColor; }
-.atc-inline .atc-play:hover { background: rgba(29, 111, 224, 0.18); }
-.atc-inline .atc-play:focus-visible { outline: 3px solid #3d8bfd; outline-offset: 2px; }
-.atc-inline .atc-play[aria-pressed="true"] { color: #fff; background: #1d6fe0; }
-.atc-inline.is-live .atc-play,
-.atc-inline.is-live .atc-play:hover { color: #fff; background: #2e7d32; border-color: #2e7d32; }
-.atc-inline.is-connecting .atc-play { animation: atc-pulse 1.1s ease-in-out infinite; }
-.atc-inline.is-offline .atc-play { color: #e5534b; border-color: #e5534b; }
-body.theme-light .atc-inline .atc-play { color: #1d6fe0; }
-body.theme-light .atc-inline .atc-play[aria-pressed="true"],
-body.theme-light .atc-inline.is-live .atc-play { color: #fff; }
-body.theme-light .atc-inline.is-offline .atc-play { color: #c62828; border-color: #c62828; }
-/* The other frequency rows keep the button's space, so every input stays in one column. */
-.comm-section.has-atc .row:not(:has(.atc-inline)) > .val:has(input) { padding-inline-end: 38px; }
-/* English: the button leads the value box (next to the label), so its gap and the reserved space
-   on rows without one sit at the start. */
-.atc-inline.atc-inline-lead { margin-inline-start: 0; margin-inline-end: 6px; }
-/* A frequency value -- play button, frequency box, reset -- is one line, always. As an inline span
-   its parts wrapped onto three lines at the inspector's larger text sizes; the box gives up width
-   first (it holds six characters), the label keeps its word. */
+/* Keep a frequency input and its reset control together in the inspector. */
 .row > .val:has(> .charts-freq-input) {
   display: inline-flex;
   align-items: center;
@@ -3594,54 +3554,10 @@ body.theme-light .atc-inline.is-offline .atc-play { color: #c62828; border-color
    "קלירנס" stood at different places (reported). In Hebrew the free space is on the box's right. */
 html[dir="rtl"] .row:has(> .val > .charts-freq-input) > .val { margin-left: 0; margin-right: auto; }
 .row > .val > .charts-freq-input { flex: 0 1 96px; min-width: 76px; }
-.row > .val > .commchange-freq-reset,
-.row > .val > .atc-inline { flex: 0 0 auto; }
-html:not([dir="rtl"]) .comm-section.has-atc .row:not(:has(.atc-inline)) > .val:has(input) { padding-inline-end: 0; padding-inline-start: 38px; }
-@keyframes atc-pulse { 50% { opacity: 0.55; } }
-@media (prefers-reduced-motion: reduce) { .atc-inline.is-connecting .atc-play { animation: none; } }
-/* On-map launcher: a round button in the bottom-right control column (with zoom and the
-   assistant launcher). Neutral at rest; green and gently pulsing while a channel plays, the
-   same "live" language as the inline airfield buttons. */
-/* Reserve the slot whether or not the button shows, so the gist turning the feature on (after
-   first paint) fills it without shifting the column -- the strict CLS budget needs this. */
+.row > .val > .commchange-freq-reset { flex: 0 0 auto; }
+/* Reserve the slot so the native-only feature gate never shifts the control column after paint. */
 .atc-fab-control { position: relative; min-width: 44px; min-height: 44px; margin-bottom: 8px !important; }
-/* What is playing: a label to the left of the green button (the column is on the right in both
-   languages). Absolute, so it never moves the column; not a target -- the button stops. */
-.atc-fab-now {
-  position: absolute;
-  right: calc(100% + 8px);
-  top: 50%;
-  transform: translateY(-50%);
-  max-width: 46vw;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  padding: 5px 10px;
-  font: 600 13px/1.2 system-ui, sans-serif;
-  color: #fff;
-  background: rgba(20, 18, 18, 0.92);
-  border: 1px solid #2e7d32;
-  border-radius: 14px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.45);
-  pointer-events: none;
-}
-.atc-fab-now[hidden] { display: none; }
-/* After atcNowLabelSec: only the airfield, on the button's lower edge, at the screen edge -- the
-   full label had sat across the chart's middle (reported). Still absolute: the column never moves. */
-.atc-fab-now.atc-fab-now-badge {
-  right: auto;
-  left: 50%;
-  top: auto;
-  bottom: -7px;
-  transform: translateX(-50%);
-  max-width: 64px;
-  padding: 1px 5px;
-  font: 700 10px/1.25 system-ui, sans-serif;
-  border-radius: 8px;
-  border-color: #fff;
-  background: var(--navaid-mapbtn-live, #1f8a4c);
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.45);
-}
+/* On-map opener for the embedded ATC-IL page. */
 .atc-fab {
   display: flex;
   align-items: center;
@@ -5276,11 +5192,7 @@ body.theme-light .msa-low .val { color: #c0392b; }
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   font-size: 13px;
 }
-/* The play slot: always there (empty when the station is not one NavAid plays), so the
-   frequencies line up whether or not a row has a button -- the airfield rows do the same. */
 .commchange-option-tune { flex: 0 0 auto; margin-inline-start: auto; display: inline-flex; align-items: center; gap: 8px; }
-.commchange-option-play { flex: 0 0 32px; display: inline-flex; justify-content: center; align-items: center; }
-.commchange-option-play > .atc-inline { margin-inline-start: 0; }
 .commchange-template {
   margin-top: -3px;
   font-size: 11px;
@@ -11331,3 +11243,16 @@ body.deck-on .ac-settings-body select, body.deck-on .ac-settings-body input[type
 #insp-body .rwy-dims-row > label { margin-inline-end: 10px; }
 #insp-body .rwy-dims-row .val { text-align: right; }
 html[dir="rtl"] #insp-body .rwy-dims-row .val { text-align: left; }
+
+/* The waypoint zoom view (.satellite-preview-map) is a second Leaflet map, and the deck's rules for
+   the MAIN map's corners reached into it: the bottom margin for the deck bar, the 12-button flex
+   column and the phone lift of the bottom-left corner. On a phone that stacked zoom, the dial, the
+   reset and the credit line up the middle of a 480 px map, over the place being looked at
+   (reported). Its controls sit in its own corners, as on the desktop. Last in the file on purpose:
+   the main-map rules it undoes are spread through it, and source order settles the ties. */
+body .satellite-preview-map .leaflet-bottom { margin-bottom: 0; padding-bottom: 0; }
+body .satellite-preview-map .leaflet-bottom.leaflet-left { bottom: 0; }
+body.deck-on .satellite-preview-map .leaflet-bottom.leaflet-right {
+  display: block;
+  max-height: none;
+}
