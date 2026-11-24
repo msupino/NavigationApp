@@ -382,16 +382,10 @@ function appendNavWaypointCommChangeInfo(body, name) {
       }
       item.appendChild(ident);
 
-      // The play slot between the station's name and its frequency, in either language (asked),
-      // as in the airfield rows. Always there (atc-radio.js fills it for a station NavAid plays
-      // live), so the frequencies line up with or without a button.
       // Button and frequency in one unit: when the panel is narrow (its larger text sizes) the
-      // unit drops under the name whole, rather than the frequency wrapping away from its button.
+      // unit drops under the name whole, rather than the frequency wrapping away from its label.
       const tune = document.createElement('span');
       tune.className = 'commchange-option-tune';
-      const play = document.createElement('span');
-      play.className = 'commchange-option-play';
-      tune.appendChild(play);
       if (opt.freq) {
         const freq = document.createElement('span');
         freq.className = 'commchange-option-freq';
@@ -400,7 +394,6 @@ function appendNavWaypointCommChangeInfo(body, name) {
         tune.appendChild(freq);
       }
       item.appendChild(tune);
-      if (window.atcRadio && typeof window.atcRadio.callSignAttach === 'function') window.atcRadio.callSignAttach(item);
       list.appendChild(item);
     }
     row.appendChild(list);
@@ -2243,7 +2236,6 @@ function appendAirfieldComms(body, af) {
   // styles select, and a second element wearing it makes every one of those selectors
   // ambiguous.
   sec.className = 'insp-frame comm-section';
-  // atc-radio.js loads in phase 2: a window already open by then gets its buttons by this.
   if (af && af.name) sec.dataset.icao = af.name;
   const head = document.createElement('div');
   head.className = 'insp-frame-head';
@@ -2259,11 +2251,6 @@ function appendAirfieldComms(body, af) {
     ? AIRFIELD_CALL_SIGN_IDS[af.name] : null;
   const phoneRow = callSignId ? airfieldPhoneRow(callSignId) : null;
   if (phoneRow) sec.appendChild(phoneRow);
-  // Live ATC audio for the fields that have it (atc-radio.js): a small play button in each
-  // frequency row that is on the air.
-  if (window.atcRadio && typeof window.atcRadio.airfieldAttach === 'function') {
-    window.atcRadio.airfieldAttach(af && af.name, sec);
-  }
   // A field with no published frequency gets no empty frame.
   if (sec.querySelectorAll('.row').length) body.appendChild(sec);
 }
