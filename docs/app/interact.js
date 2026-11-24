@@ -2527,8 +2527,12 @@ function buildSatelliteSnippet(point, opts = {}) {
   // overscans the visible box, so rotation never reveals corner gaps.
   const tiles = document.createElement('div');
   tiles.className = 'satellite-snippet-tiles';
-  for (let dy = -1; dy <= 1; dy++) {
-    for (let dx = -1; dx <= 1; dx++) {
+  // The grid must cover the box's half-diagonal from the point in every direction, or a
+  // rotated preview shows bare corners. 3x3 covers it up to ~360x200; a preview filling a wide
+  // inspector needs another ring of tiles.
+  const ring = Math.max(1, Math.ceil(Math.hypot(width, height) / 2 / SATELLITE_TILE_SIZE));
+  for (let dy = -ring; dy <= ring; dy++) {
+    for (let dx = -ring; dx <= ring; dx++) {
       const tileX = ((centerTileX + dx) % p.n + p.n) % p.n;
       const tileY = Math.max(0, Math.min(p.n - 1, centerTileY + dy));
       const img = document.createElement('img');
@@ -3070,7 +3074,13 @@ function appendSatelliteSnippet(body, point, label) {
   // means re-rendering the grid at another tile zoom, which is what buildSatelliteSnippet
   // already does when given one.
   let snipZoom = tune('satellitePreviewZoom');
-  let snippet = buildSatelliteSnippet(point, { zoom: snipZoom });
+  // Size: the tunables' fixed 214x118 left most of a phone's inspector empty around a small
+  // picture (reported: "way too small"). On the deck, once the section is laid out it takes the
+  // panel's width (up to satellitePreviewMaxWidthPx) at the tunables' aspect ratio; until then,
+  // on the desktop, and where nothing can be measured, the tunables' size.
+  let fit = null;
+  const build = z => buildSatelliteSnippet(point, Object.assign({ zoom: z }, fit || {}));
+  let snippet = build(snipZoom);
   if (!snippet) return;
   hookSatelliteSnippetRotation();
   const section = document.createElement('div');
@@ -3148,7 +3158,11 @@ function appendSatelliteSnippet(body, point, label) {
     const z = Math.max(tune('satelliteMinZoom'),
                        Math.min(tune('satelliteMaxZoom'), Math.round(next)));
     if (z === snipZoom) return;
-    const fresh = buildSatelliteSnippet(point, { zoom: z });
+    rerender(z);
+  }
+
+  function rerender(z) {
+    const fresh = build(z);
     if (!fresh) return;
     snipZoom = z;
     wire(fresh);
@@ -3174,6 +3188,20 @@ function appendSatelliteSnippet(body, point, label) {
   expand.onclick = open;
   section.appendChild(snippet);
   body.appendChild(section);
+  // Only on the deck (phone, tablet): the desktop inspector is a narrow side panel where 40 px
+  // more width bought 22 px more height, which on a 900 px screen tipped the panel into scrolling
+  // as soon as a status line appeared, and its buttons moved under the pointer
+  // (inspector-toggles-hold-position.spec.js).
+  const avail = document.body.classList.contains('deck-on') ? section.clientWidth : 0;
+  if (avail > 0) {
+    const baseW = tune('satellitePreviewWidthPx');
+    const baseH = tune('satellitePreviewHeightPx');
+    const w = Math.round(Math.min(avail, Math.max(baseW, tune('satellitePreviewMaxWidthPx'))));
+    if (w !== baseW) {
+      fit = { width: w, height: Math.round(w * baseH / baseW) };
+      rerender(snipZoom);
+    }
+  }
 }
 
 // A single button that opens this airfield in the Charts modal — the full
