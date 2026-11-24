@@ -17,6 +17,8 @@
 export const UPSTREAM = 'https://api.adsb.lol/v2/lat/{lat}/lon/{lon}/dist/{dist}';
 export const ALLOWED_ORIGINS = [
   'https://navaid.supino.org',
+  'https://navaid-cf.supino.org',      // the Cloudflare Pages copy (test address)
+  'https://navaid-pr.supino.org',      // PR previews (GitHub Pages)
   'https://msupino.github.io',
   'http://localhost:8080',
 ];
