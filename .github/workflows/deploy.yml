@@ -356,6 +356,23 @@ jobs:
           set -euo pipefail
           for ROOT in site site/staging; do node /tmp/minify/minify.mjs "$ROOT"; done
 
+      # Two app downloads instead of ~44 (scripts/bundle-app.mjs): Google's renderer caps the
+      # resources it fetches per page and skipped some, recording the boot-error overlay as the
+      # page. Each file still runs as its own script (index.html runBundle). After the minifier,
+      # so the bundles carry minified code; before the update bundle, so the apps get them too.
+      # The bundler is MAIN's copy, never a branch's; a root whose loader cannot run bundles is
+      # left as it is.
+      - name: Bundle the app scripts
+        run: |
+          set -euo pipefail
+          if [ ! -f m/scripts/bundle-app.mjs ]; then echo "main has no bundler yet; scripts stay separate"; exit 0; fi
+          cp m/scripts/bundle-app.mjs /tmp/minify/bundle-app.mjs
+          # The bundler plans before it writes, so a failure leaves the root untouched: warn and
+          # publish separate scripts rather than fail the deploy.
+          for ROOT in site site/staging; do
+            node /tmp/minify/bundle-app.mjs "$ROOT" || echo "::warning::$ROOT: bundling failed; it keeps separate scripts"
+          done
+
       - name: Publish the update bundle for the embedded apps
         run: |
           set -euo pipefail
@@ -542,6 +559,11 @@ jobs:
             # Minified like production, so its e2e run tests what production will serve.
             node /tmp/minify/minify.mjs "$STAGING" \
               || echo "::warning::PR #$NUM: minify failed; its preview keeps the source files"
+            # Bundled like production too (main's bundler, copied by "Bundle the app scripts").
+            if [ -f /tmp/minify/bundle-app.mjs ]; then
+              node /tmp/minify/bundle-app.mjs "$STAGING" \
+                || echo "::warning::PR #$NUM: bundling failed; its preview keeps separate scripts"
+            fi
             mv "$STAGING" "../site/pr/$NUM"
             echo "  -> /pr/$NUM/ ($SHA)"
           }
