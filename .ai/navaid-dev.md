@@ -12,12 +12,12 @@ carries the static web app source only.
 
 - **Live (production):** https://navaid.supino.org/
 - **Live (staging):** https://navaid.supino.org/staging/
-- **Hosting:** production and staging are published to **Cloudflare Pages**
+- **Hosting:** production (main) is also published to **Cloudflare Pages**, on main deploys only
   (job `deploy-cloudflare` in `deploy.yml`, project `vars.CLOUDFLARE_PAGES_PROJECT`,
   secret `CLOUDFLARE_API_TOKEN`, `vars.CLOUDFLARE_ACCOUNT_ID`; skipped until those exist).
-  **GitHub Pages** keeps publishing the same artifact including the previews, at
-  `vars.PREVIEW_ORIGIN`. Until DNS moves, both serve `navaid.supino.org` content and
-  GitHub Pages is what the domain points at.
+  Staging (dev) and the PR previews stay on **GitHub Pages** only, at `vars.PREVIEW_ORIGIN`:
+  the Free plan allows 500 Pages builds/deploys a month, and publishing every dev push as
+  well came to ~360. Until DNS moves, GitHub Pages is what `navaid.supino.org` points at.
 - **Pull-request previews:** every open same-repository PR is published at
   `<PREVIEW_ORIGIN>/pr/<n>/` (today `https://navaid.supino.org/pr/<n>/`), linked from a bot
   comment and a `View deployment` record. Fork PRs are never published.
@@ -1207,8 +1207,8 @@ downloadable `route.json`.
   - on PRs, the current head is also assembled under `/pr/NNN/` inside the
     artifact for localhost E2E only; the deploy job is skipped.
   - `actions/deploy-pages@v4` publishes the artifact (with previews) to GitHub Pages.
-  - `deploy-cloudflare` publishes the same artifact minus `/pr/` to Cloudflare Pages on
-    main/dev pushes only, adding `_headers` (no-cache for `sw.js` and the OTA manifest)
+  - `deploy-cloudflare` publishes the same artifact minus `/pr/` and `/staging/` to Cloudflare
+    Pages on main deploys only, adding `_headers` (no-cache for `sw.js` and the OTA manifest)
     and a `404.html` so missing files are real 404s (Pages otherwise serves index.html).
 - **Staging deploy** follows an issue + feature-branch PR into `dev`; the merge
   push publishes staging. Direct protected-branch pushes are exceptional and
