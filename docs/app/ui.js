@@ -1802,6 +1802,10 @@ function toggleQuickLayers() {
   if (closeQuickLayers()) return;
   const b = document.getElementById('edit-col-layers');
   if (!b) return;
+  // The layers are about the chart, and the inspector covered both the popover and the map the
+  // pilot was changing (reported on a tablet: LLHZ's panel over the list). Opening it dismisses
+  // the inspector, as the legend does.
+  if (typeof window.closeInspectorIfOpen === 'function') window.closeInspectorIfOpen();
   const p = document.createElement('div');
   p.id = 'quick-layers';
   p.className = 'quick-layers';
@@ -12940,6 +12944,11 @@ function refreshMapAfterToolbarModeChange() {
       if (willOpen && typeof dismissRoutePriming === 'function') dismissRoutePriming();
       // Accordion behaviour: opening a section closes the others.
       if (willOpen) closeOthers(sec);
+      // Extra layers, like the column's layers popover: the inspector stood over the chart being
+      // changed, so opening the menu dismisses it.
+      if (willOpen && sec.dataset.sec === 'weather' && typeof window.closeInspectorIfOpen === 'function') {
+        window.closeInspectorIfOpen();
+      }
       setSectionOpen(sec, willOpen);
     }
     head.addEventListener('click', toggle);
