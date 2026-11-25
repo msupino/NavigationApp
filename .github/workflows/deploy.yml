@@ -698,7 +698,16 @@ jobs:
           # the same PR could show different builds after a rebase.
           URL="${PREVIEW_ORIGIN%/}/pr/${PR}/"
           SHORT="${SHA:0:7}"
-          BODY=$(printf '### 🚀 Preview deployed\n\n<a href="%s" target="_blank">Open PR preview →</a>\n\n`%s`\n\nCommit: `%s`\n\n<sub>⚠️ Unreviewed branch code. It gets its own storage namespace and no service worker; while previews share an origin with the live app that is not a sandbox, so open it as you would run this branch locally. Not indexed; rebuilt on every push.</sub>' "$URL" "$URL" "$SHORT")
+          # The warning was about sharing the LIVE app's origin (its saved routes, settings and
+          # credentials). Previews moved to their own host (PREVIEW_ORIGIN, navaid-pr.supino.org),
+          # so it shows only if they are ever published on the production host again.
+          case "$PREVIEW_ORIGIN" in
+            https://navaid.supino.org|https://navaid.supino.org/)
+              NOTE='⚠️ Unreviewed branch code on the production origin. It gets its own storage namespace and no service worker, but that is not a sandbox: open it as you would run this branch locally. Not indexed; rebuilt on every push.' ;;
+            *)
+              NOTE='Served from the preview host, apart from the live app: previews and staging share it, the live app does not. Not indexed; rebuilt on every push.' ;;
+          esac
+          BODY=$(printf '### 🚀 Preview deployed\n\n<a href="%s" target="_blank">Open PR preview →</a>\n\n`%s`\n\nCommit: `%s`\n\n<sub>%s</sub>' "$URL" "$URL" "$SHORT" "$NOTE")
           # Update the existing bot comment rather than adding one per push.
           EXISTING=$(gh api "repos/${REPO}/issues/${PR}/comments" \
             --jq '[.[] | select(.user.login == "github-actions[bot]" and (.body | startswith("### 🚀 Preview deployed")))] | .[0].id // empty')
