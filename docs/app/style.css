@@ -11263,3 +11263,12 @@ body.deck-on .satellite-preview-map .leaflet-bottom.leaflet-right {
 body.deck-on .satellite-preview-map { height: min(68dvh, 640px); }
 body.deck-on .satellite-preview-map .satellite-layer-control { padding: 2px; }
 body.deck-on .satellite-preview-map .satellite-layer-select { font-size: 14px; min-height: 40px; }
+
+/* The zoom view's map sits inside a dialog, never against a screen edge, so the safe-area padding
+   the main map's corners take (.leaflet-top etc., "the unsafe edges") is not its to keep. In the
+   Android app, drawn edge to edge, the status bar's inset pushed the layer picker ~55 px down into
+   the map (reported). */
+body .satellite-preview-map .leaflet-top,
+body .satellite-preview-map .leaflet-bottom,
+body .satellite-preview-map .leaflet-left,
+body .satellite-preview-map .leaflet-right { padding-top: 0; padding-bottom: 0; padding-left: 0; padding-right: 0; }
