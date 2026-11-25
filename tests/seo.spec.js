@@ -64,7 +64,10 @@ test.describe('SEO URLs', () => {
     expect(site.name).toBe('NavAid');
     expect(site.name).not.toMatch(/^supino\.org$/i);
     expect(site.url).toBe(CUSTOM_DOMAIN + '/');
-    expect(site.alternateName).toContain('CVFR Israel Map Navigation Aid');
+    // Google shows the site name from WebSite.name and falls back to alternateName only when it
+    // rejects it -- so the alternates stay few and close to the name, or one of them (or the bare
+    // domain, as "supino.org") can win. The descriptive phrases live on the WebApplication node.
+    expect(site.alternateName).toEqual(['NavAid CVFR']);
   });
 
   test('favicon metadata exposes a crawlable square PNG icon', async ({ page }) => {

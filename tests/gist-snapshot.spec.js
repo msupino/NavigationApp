@@ -55,8 +55,15 @@ test('the snapshot is a script loaded before core.js, and the deploy refreshes i
   expect(deploy.indexOf('Refresh the bundled gist snapshot')).toBeLessThan(deploy.indexOf('Publish the update bundle'));
   const { snapshotSource } = await import('../scripts/write-gist-snapshot.mjs');
   // Only plain settings reach the file the app executes.
-  const src = snapshotSource({ a: 1, b: 'x', c: true, n: null, nested: { x: 1 }, 'bad key': 1, list: [1] }, 'T');
+  const src = snapshotSource({ a: 1, b: 'x', c: true, n: null, nested: { x: 1 }, 'bad key': 1, list: [1] });
   const w = {};
   new Function('window', src)(w);
   expect(w.__navaidGistSnapshot).toEqual({ a: 1, b: 'x', c: true, n: null });
+  // Reproducible: the same gist gives the same file in every build. It carried the fetch time,
+  // so the main run and a dev run of one commit made different update zips, and Cloudflare's
+  // manifest (main run) named a checksum the zip on GitHub Pages (dev run) did not have.
+  expect(snapshotSource({ a: 1, b: 'x' })).toBe(snapshotSource({ a: 1, b: 'x' }));
+  expect(src).not.toMatch(/\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/);
+  expect(w.__navaidGistSnapshotHash).toMatch(/^[0-9a-f]{12}$/);
+  expect(snapshotSource({ a: 2 })).not.toBe(snapshotSource({ a: 1 }));
 });
