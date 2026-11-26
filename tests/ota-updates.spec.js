@@ -11,6 +11,7 @@
 // bundle it has; and notifyAppReady() is called at boot, because a bundle that does not say
 // it started is rolled back to the one that did.
 const { test, expect } = require('./_setup');
+const { routeAppScript } = require('./_app-scripts');
 
 const boot = (page) => page.goto('?lang=en&nogist');
 
@@ -402,28 +403,16 @@ test('an exception on the way up disqualifies the bundle even if it looks loaded
 // used to reach notifyAppReady(), which is a broken bundle switching off its own rollback.
 for (const [what, breakIt] of [
   ['a script that never arrived', (route) => route.fulfill({ status: 404, body: '' })],
-  ['a script that threw on the way up', (route) => route.fulfill({
-    status: 200, contentType: 'application/javascript',
-    body: 'throw new Error("deck.js is broken");',
-  })],
+  ['a script that threw on the way up', (route, bundle) => {
+    const code = 'throw new Error("deck.js is broken");';
+    if (bundle) return route.fulfill({ response: bundle.res, body: bundle.withCode(code) });
+    return route.fulfill({ status: 200, contentType: 'application/javascript', body: code });
+  }],
 ]) {
   test('a bundle with ' + what + ' stays silent', async ({ page }) => {
-    await page.route('**/app/deck.js*', breakIt);
-    // A deployed site carries deck.js inside app/boot.bundle.js (scripts/bundle-app.mjs), so
-    // the route above never fires there. Break the same file inside the bundle: a 404 of the
-    // bundle is deck.js never arriving; for the throw, deck.js's text is swapped in place and
-    // the loader still runs it as its own inline script.
-    await page.route('**/app/*.bundle.js*', async (route) => {
-      const res = await route.fetch();
-      const body = await res.text();
-      if (!body.includes('"app/deck.js"')) return route.fulfill({ response: res, body });
-      if (what === 'a script that never arrived') return breakIt(route);
-      const at = body.indexOf('] = [') + 4;                 // the entries are a JSON array
-      const end = body.lastIndexOf(';');
-      const files = JSON.parse(body.slice(at, end))
-        .map(([name, code]) => [name, name === 'app/deck.js' ? 'throw new Error("deck.js is broken");' : code]);
-      return route.fulfill({ response: res, body: body.slice(0, at) + JSON.stringify(files) + body.slice(end) });
-    });
+    // On the deployed site deck.js arrives inside app/boot.bundle.js (tests/_app-scripts.js):
+    // the bundle's 404 is deck.js never arriving, and the throw replaces deck.js's own text.
+    await routeAppScript(page, 'app/deck.js', breakIt);
     await page.addInitScript(() => {
       window.__navaidEmbedded = true;
       window.__readyCalls = 0;
