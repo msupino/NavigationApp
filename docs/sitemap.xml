@@ -12,27 +12,27 @@
     <priority>1.0</priority>
   </url>
   <url>
-    <loc>https://navaid.supino.org/cvfr-flight-planning-israel.html</loc>
+    <loc>https://navaid.supino.org/cvfr-flight-planning-israel</loc>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://navaid.supino.org/cvfr-flight-planning-israel-he.html</loc>
+    <loc>https://navaid.supino.org/cvfr-flight-planning-israel-he</loc>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://navaid.supino.org/about.html</loc>
+    <loc>https://navaid.supino.org/about</loc>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
-    <loc>https://navaid.supino.org/privacy.html</loc>
+    <loc>https://navaid.supino.org/privacy</loc>
     <changefreq>yearly</changefreq>
     <priority>0.3</priority>
   </url>
   <url>
-    <loc>https://navaid.supino.org/terms.html</loc>
+    <loc>https://navaid.supino.org/terms</loc>
     <changefreq>yearly</changefreq>
     <priority>0.3</priority>
   </url>

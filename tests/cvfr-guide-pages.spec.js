@@ -10,6 +10,8 @@ const path = require('path');
 const { test, expect } = require('./_setup');
 
 const ORIGIN = 'https://navaid.supino.org/';
+// The address a page is known by: no .html (Cloudflare Pages 308s *.html to the bare path).
+const url = (file) => ORIGIN + file.replace(/\.html$/, '');
 const read = (f) => fs.readFileSync(path.join(__dirname, '..', 'docs', f), 'utf8');
 const GUIDES = [
   { file: 'cvfr-flight-planning-israel.html', lang: 'en', dir: 'ltr', other: 'he',
@@ -22,11 +24,11 @@ for (const g of GUIDES) {
   test(`${g.file}: own language, self-canonical, reciprocal hreflang`, () => {
     const html = read(g.file);
     expect(html).toContain(`<html lang="${g.lang}" dir="${g.dir}">`);
-    expect(html).toContain(`<link rel="canonical" href="${ORIGIN}${g.file}">`);
-    expect(html).toContain(`<link rel="alternate" hreflang="${g.lang}" href="${ORIGIN}${g.file}">`);
+    expect(html).toContain(`<link rel="canonical" href="${url(g.file)}">`);
+    expect(html).toContain(`<link rel="alternate" hreflang="${g.lang}" href="${url(g.file)}">`);
     const twin = GUIDES.find((x) => x.lang === g.other);
-    expect(html).toContain(`<link rel="alternate" hreflang="${g.other}" href="${ORIGIN}${twin.file}">`);
-    expect(read(twin.file)).toContain(`hreflang="${g.lang}" href="${ORIGIN}${g.file}"`);
+    expect(html).toContain(`<link rel="alternate" hreflang="${g.other}" href="${url(twin.file)}">`);
+    expect(read(twin.file)).toContain(`hreflang="${g.lang}" href="${url(g.file)}"`);
     // the official sources a pilot must check, and the planning-aid caveat
     expect(html).toContain('https://www.gov.il/en/departments/guides/aip-israel');
     expect(html).toContain('https://www.iaa.gov.il/en/about/aeronautical-information/');
@@ -55,5 +57,5 @@ test('the guide is linked from About, the app header and the sitemap', () => {
   expect(header).toContain('href="cvfr-flight-planning-israel.html"');
   expect(header).toContain('href="cvfr-flight-planning-israel-he.html"');
   const xml = read('sitemap.xml');
-  for (const g of GUIDES) expect(xml).toContain(`<loc>${ORIGIN}${g.file}</loc>`);
+  for (const g of GUIDES) expect(xml).toContain(`<loc>${url(g.file)}</loc>`);
 });
