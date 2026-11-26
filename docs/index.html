@@ -1579,16 +1579,42 @@
           window.dispatchEvent(new CustomEvent('navaid:optional-script-failed', { detail: String(src) }));
         } catch (e) { /* older WebView */ }
       }
+      // One retry, on the web only, before declaring the app broken. A required script that a
+      // network blip dropped -- a shaky cockpit connection, or a crawler's renderer, which fetches
+      // dozens of files under a quota -- left a working app behind the overlay below, and Search
+      // Console recorded that overlay as the page. The scripts run in order, so one retried on its
+      // own would run after the code that needs it: the retry is the whole page, once per tab
+      // session (the mark is cleared when a boot completes). Never in the installed app: its files
+      // are local, a reload cannot bring a missing one back, and its rollback relies on a broken
+      // bundle staying broken.
+      var RETRY_KEY = 'navaid.bootRetry';
+      var retrying = false;
+      function retryOnce() {
+        if (retrying) return true;
+        var C = window.Capacitor;
+        if (C && typeof C.isNativePlatform === 'function' && C.isNativePlatform()) return false;
+        try {
+          if (sessionStorage.getItem(RETRY_KEY)) return false;
+          sessionStorage.setItem(RETRY_KEY, '1');
+        } catch (e) { return false; }      // no storage: no guard against a loop, so no retry
+        retrying = true;
+        setTimeout(function () { location.reload(); }, 300);
+        return true;
+      }
       function loadFailed(src) {
         if (OPTIONAL.test(String(src))) { loadFailedOptional(src); return; }
         // A required script that never arrived is a broken app, whatever the rest of it does.
         window.__navaidBootBroke = true;
         window.__navaidBootBrokeBy = String(src);
+        if (retryOnce()) return;
         var seen = document.getElementById('boot-error');
         if (!seen) {
           seen = document.createElement('div');
           seen.id = 'boot-error';
           seen.setAttribute('role', 'alert');
+          // Not search-result text: the same overlay for everyone, but Google is told not to quote
+          // it as the page's description (the documented attribute, not a crawler-only page).
+          seen.setAttribute('data-nosnippet', '');
           seen.style.cssText = 'position:fixed;inset:0;z-index:99999;display:flex;' +
             'align-items:center;justify-content:center;padding:24px;text-align:center;' +
             'font:600 15px/1.5 system-ui,sans-serif;color:#fff;background:rgba(24,18,18,0.94)';
@@ -1600,8 +1626,39 @@
           '). Check the connection and reload — the chart and route tools are unavailable ' +
           'until it loads.';
       }
+      // A deployed site packs the app scripts into two downloads (scripts/bundle-app.mjs):
+      // app/boot.bundle.js for `srcs`, app/later.bundle.js for `later`. A bundle holds each file
+      // as text; this runs them in order, each as its OWN inline script -- the same program as
+      // loading them one by one (a throw stays in its file, top-level names are shared, nothing
+      // is hoisted across files), in two requests instead of ~44. The source tree is not bundled:
+      // this only runs when the deploy rewrote the lists above.
+      function runBundle(id) {
+        var files = (window.__navaidBundles || {})[id];
+        if (!files || !files.length) { loadFailed('app/' + id + '.bundle.js'); return; }
+        for (var k = 0; k < files.length; k++) {
+          var el = document.createElement('script');
+          el.setAttribute('data-src', files[k][0]);
+          el.textContent = files[k][1];
+          document.head.appendChild(el);          // an inline script runs on insertion
+        }
+        window.__navaidBundles[id] = null;        // the text is not needed twice
+      }
       function append(list, then) {
         for (var i = 0; i < list.length; i++) {
+          var bundle = /app\/([a-z]+)\.bundle\.js/.exec(list[i]);
+          if (bundle) {
+            var b = document.createElement('script');
+            b.src = list[i];
+            b.async = false;
+            b.onload = (function (id, last) {
+              return function () { runBundle(id); if (last) last(); };
+            }(bundle[1], (then && i === list.length - 1) ? then : null));
+            b.onerror = (function (src, last) {
+              return function () { loadFailed(src); if (last) last(); };
+            }(list[i], (then && i === list.length - 1) ? then : null));
+            document.head.appendChild(b);
+            continue;
+          }
           var s = document.createElement('script');
           s.src = list[i];
           if (sri[list[i]]) {
@@ -1625,6 +1682,8 @@
         // The first phase has run, deck.js included: the map's controls are where they will
         // stay, and may show (style.css, html.nav-booted).
         document.documentElement.classList.add('nav-booted');
+        // A boot that came through clears the retry mark, so a later blip may retry again.
+        if (!window.__navaidBootBroke) { try { sessionStorage.removeItem(RETRY_KEY); } catch (e) { /* */ } }
         var started = false;
         function go() { if (started) return; started = true; append(later); }
         setTimeout(go, LATER_MAX_MS);
