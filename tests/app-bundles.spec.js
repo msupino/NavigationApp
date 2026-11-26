@@ -17,8 +17,9 @@ async function servePlan(page, tweak) {
   expect(plan, 'the loader supports bundles').not.toBeNull();
   if (tweak) tweak(plan);
   const fetched = [];
-  page.on('request', (r) => { const u = new URL(r.url()); if (/\/app\/[^/]+\.js$/.test(u.pathname)) fetched.push(u.pathname); });
-  await page.route((url) => url.pathname === '/' || url.pathname.endsWith('/index.html'), (route) =>
+  page.on('request', (r) => { const u = new URL(r.url()); if (/\/app\/[^/]+\.js$/.test(u.pathname)) fetched.push(u.pathname.split('/').pop()); });
+  // The page itself, wherever the suite serves it: '/' locally, '/pr/<n>/' in the deployed run.
+  await page.route((url) => url.pathname.endsWith('/') || url.pathname.endsWith('/index.html'), (route) =>
     route.fulfill({ status: 200, contentType: 'text/html; charset=utf-8', body: plan.indexHtml }));
   await page.route('**/app/*.bundle.js*', (route) => {
     const name = 'app/' + new URL(route.request().url()).pathname.split('/').pop();
@@ -44,7 +45,7 @@ test('a bundled site boots as the same program, from two app downloads', async (
   expect(ran).toEqual(order);
   expect(order).toContain('app/core.js');
   expect(order).toContain('app/ota.js');
-  expect([...new Set(fetched)].sort(), 'only the two bundles are downloaded').toEqual(['/app/boot.bundle.js', '/app/later.bundle.js']);
+  expect([...new Set(fetched)].sort(), 'only the two bundles are downloaded').toEqual(['boot.bundle.js', 'later.bundle.js']);
   expect(await page.evaluate(() => window.__navaidBootBroke)).toBe(false);
 });
 
