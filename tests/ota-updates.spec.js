@@ -409,6 +409,21 @@ for (const [what, breakIt] of [
 ]) {
   test('a bundle with ' + what + ' stays silent', async ({ page }) => {
     await page.route('**/app/deck.js*', breakIt);
+    // A deployed site carries deck.js inside app/boot.bundle.js (scripts/bundle-app.mjs), so
+    // the route above never fires there. Break the same file inside the bundle: a 404 of the
+    // bundle is deck.js never arriving; for the throw, deck.js's text is swapped in place and
+    // the loader still runs it as its own inline script.
+    await page.route('**/app/*.bundle.js*', async (route) => {
+      const res = await route.fetch();
+      const body = await res.text();
+      if (!body.includes('"app/deck.js"')) return route.fulfill({ response: res, body });
+      if (what === 'a script that never arrived') return breakIt(route);
+      const at = body.indexOf('] = [') + 4;                 // the entries are a JSON array
+      const end = body.lastIndexOf(';');
+      const files = JSON.parse(body.slice(at, end))
+        .map(([name, code]) => [name, name === 'app/deck.js' ? 'throw new Error("deck.js is broken");' : code]);
+      return route.fulfill({ response: res, body: body.slice(0, at) + JSON.stringify(files) + body.slice(end) });
+    });
     await page.addInitScript(() => {
       window.__navaidEmbedded = true;
       window.__readyCalls = 0;
