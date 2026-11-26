@@ -49,20 +49,22 @@ test('the sitemap lists only self-canonical pages, with no alternates', () => {
   expect(xml).not.toContain('hreflang=');                  // no advertised non-pages
   expect(xml).not.toContain('?lang=');
   expect(xml).not.toContain('<xhtml:link');
+  expect(xml).not.toMatch(/<loc>[^<]*\.html<\/loc>/);     // Cloudflare 308s every *.html
   const locs = [...xml.matchAll(/<loc>([^<]+)<\/loc>/g)].map(m => m[1]);
   expect(locs).toEqual([
     'https://navaid.supino.org/',
-    'https://navaid.supino.org/cvfr-flight-planning-israel.html',
-    'https://navaid.supino.org/cvfr-flight-planning-israel-he.html',
-    'https://navaid.supino.org/about.html',
-    'https://navaid.supino.org/privacy.html',
-    'https://navaid.supino.org/terms.html',
+    'https://navaid.supino.org/cvfr-flight-planning-israel',
+    'https://navaid.supino.org/cvfr-flight-planning-israel-he',
+    'https://navaid.supino.org/about',
+    'https://navaid.supino.org/privacy',
+    'https://navaid.supino.org/terms',
   ]);
   // every listed page declares itself canonical, which is what hreflang required and
-  // ?lang= could never satisfy
+  // ?lang= could never satisfy. Without .html: Cloudflare Pages answers /about.html with a
+  // 308 to /about, and a canonical or sitemap entry that redirects is not indexed.
   for (const f of ['cvfr-flight-planning-israel.html', 'cvfr-flight-planning-israel-he.html',
                    'about.html', 'privacy.html', 'terms.html']) {
-    expect(read(f)).toContain(`<link rel="canonical" href="https://navaid.supino.org/${f}">`);
+    expect(read(f)).toContain(`<link rel="canonical" href="https://navaid.supino.org/${f.replace(/\.html$/, '')}">`);
   }
   expect(read('index.html')).toContain('<link rel="canonical" href="https://navaid.supino.org/">');
 });
