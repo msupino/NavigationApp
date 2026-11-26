@@ -4,6 +4,8 @@
 // page (web only, once per tab session) before the overlay; and the overlay, the same for
 // everyone, carries data-nosnippet so a search result never quotes it.
 const { test, expect } = require('./_setup');
+// deck.js, or the boot bundle that carries it on the deployed site
+const { routeAppScript } = require('./_app-scripts');
 
 // Booted in the RELOADED document: the first one can look booted (its failed script does not
 // stop the rest) for the 300 ms before the retry reloads it.
@@ -21,7 +23,7 @@ function countNavigations(page) {
 
 test('a script that fails once is retried by one reload, and the app boots', async ({ page }) => {
   let failed = 0;
-  await page.route('**/app/deck.js*', (route) => {
+  await routeAppScript(page, 'app/deck.js', (route) => {
     if (failed++ === 0) return route.fulfill({ status: 503, body: '' });
     return route.continue();
   });
@@ -35,7 +37,7 @@ test('a script that fails once is retried by one reload, and the app boots', asy
 });
 
 test('a script that keeps failing shows the overlay after one retry, marked data-nosnippet', async ({ page }) => {
-  await page.route('**/app/deck.js*', (route) => route.fulfill({ status: 503, body: '' }));
+  await routeAppScript(page, 'app/deck.js', (route) => route.fulfill({ status: 503, body: '' }));
   const navs = countNavigations(page);
   await page.goto('?lang=en&nogist');
   const alert = page.locator('#boot-error');
@@ -47,7 +49,7 @@ test('a script that keeps failing shows the overlay after one retry, marked data
 });
 
 test('the installed app never retries: a broken bundle stays broken for its rollback', async ({ page }) => {
-  await page.route('**/app/deck.js*', (route) => route.fulfill({ status: 404, body: '' }));
+  await routeAppScript(page, 'app/deck.js', (route) => route.fulfill({ status: 404, body: '' }));
   await page.addInitScript(() => {
     window.Capacitor = { isNativePlatform: () => true, Plugins: {} };
   });

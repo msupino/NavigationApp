@@ -2,6 +2,7 @@
 // English text. The dataset URLs are the deliberate exception: they are
 // locale-independent (same files, Hebrew text inside) and the Hebrew file says so.
 const { test, expect } = require('./_setup');
+const { loadedAppScriptsFn } = require('./_app-scripts');
 const fs = require('fs');
 const path = require('path');
 // The SOURCE, from disk: the deployed suite serves the minified site, where a mangled local
@@ -118,14 +119,11 @@ test('every S.<key> referenced in code is defined, so no English fallback is rea
 // files out of 16.
 test('the scan covers every app script the page loads', async ({ page }) => {
   await page.goto('?lang=en&nogist');
-  const seen = await page.evaluate(async () => {
-    const html = await (await fetch('index.html')).text();
-    return [...new Set([...html.matchAll(/'(app\/[a-z0-9-]+\.js)'/g)].map(m => m[1]))];
-  });
-  const loaded = await page.evaluate(() =>
-    [...document.querySelectorAll('script[src]')]
-      .map(s => s.getAttribute('src').split('?')[0])
-      .filter(s => s.startsWith('app/')));
+  // The scan reads the source index.html; the deployed one lists the two bundles instead, and
+  // runs each file from them as <script data-src> (tests/_app-scripts.js).
+  const seen = [...new Set([...src('index.html').matchAll(/'(app\/[a-z0-9-]+\.js)'/g)].map(m => m[1]))];
+  await page.waitForFunction(() => window.NavAid && NavAid.followMe);   // the second phase ran
+  const loaded = await page.evaluate(loadedAppScriptsFn);
   expect(loaded.length).toBeGreaterThan(0);
   expect([...loaded].sort()).toEqual([...seen].sort());
 });

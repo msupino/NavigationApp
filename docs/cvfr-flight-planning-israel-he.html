@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>תכנון טיסת CVFR בישראל — NavAid</title>
+  <link rel="canonical" href="https://navaid.supino.org/cvfr-flight-planning-israel-he.html">
+  <link rel="alternate" hreflang="he" href="https://navaid.supino.org/cvfr-flight-planning-israel-he.html">
+  <link rel="alternate" hreflang="en" href="https://navaid.supino.org/cvfr-flight-planning-israel.html">
+  <link rel="alternate" hreflang="x-default" href="https://navaid.supino.org/cvfr-flight-planning-israel.html">
+  <meta name="description" content="איך מתכננים טיסת CVFR בישראל עם NavAid, יישום חינמי בדפדפן: שרטוט המסלול על תרשים ה-CVFR הישראלי, הצמדה לנקודות הדיווח ולשדות התעופה המפורסמים, והדפסת תכנית טיסה עם כיוונים, מרחקים, זמנים ודלק.">
+  <meta property="og:type" content="article">
+  <meta property="og:locale" content="he_IL">
+  <meta property="og:title" content="תכנון טיסת CVFR בישראל — NavAid">
+  <meta property="og:description" content="מתכננים מסלול CVFR על התרשים הישראלי ומדפיסים תכנית טיסה. חינם, בדפדפן, בעברית ובאנגלית.">
+  <meta property="og:url" content="https://navaid.supino.org/cvfr-flight-planning-israel-he.html">
+  <meta property="og:image" content="https://navaid.supino.org/assets/og-preview.jpg">
+  <style>
+    :root { --bg: #ffffff; --fg: #1f252c; --muted: #5b6878; --link: #1d6fe0; --rule: #dfe4ea;
+            --card: #f4f7fb; }
+    @media (prefers-color-scheme: dark) {
+      :root { --bg: #12161b; --fg: #e6eaef; --muted: #a3afbd; --link: #6ea8ff; --rule: #2b333d;
+              --card: #1b2129; }
+    }
+    html { background: var(--bg); color-scheme: light dark; }
+    body { max-width: 760px; margin: 2rem auto; padding: 0 1rem; background: var(--bg); color: var(--fg);
+           font: 16px/1.7 system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; }
+    h1 { font-size: 1.7rem; line-height: 1.3; text-wrap: balance; }
+    h2 { font-size: 1.2rem; margin-top: 1.8rem; }
+    a { color: var(--link); }
+    a:focus-visible { outline: 2px solid var(--link); outline-offset: 2px; border-radius: 2px; }
+    bdi, .ltr { unicode-bidi: isolate; direction: ltr; }
+    .lead { font-size: 1.12rem; }
+    .muted { color: var(--muted); font-size: .9rem; }
+    .lang-switch { font-size: .9rem; margin-bottom: 1.5rem; }
+    .lang-switch a, .lang-switch strong { display: inline-block; padding: .5rem 0; }
+    .cta { display: inline-block; margin: .5rem 0 1rem; padding: .7rem 1.2rem; min-height: 44px;
+           box-sizing: border-box; border-radius: 8px; background: #1d6fe0; color: #fff;
+           font-weight: 600; text-decoration: none; }
+    .cta:focus-visible { outline: 3px solid var(--fg); outline-offset: 2px; }
+    ol.steps > li { margin-bottom: .8rem; }
+    .note { background: var(--card); border: 1px solid var(--rule); border-radius: 8px;
+            padding: .8rem 1rem; }
+    dt { font-weight: 600; margin-top: .8rem; }
+    dd { margin: .2rem 0 0; }
+    footer { margin-top: 2.5rem; padding-top: 1rem; border-top: 1px solid var(--rule); }
+  </style>
+</head>
+<body>
+  <p class="lang-switch"><strong>עברית</strong> ·
+    <a href="cvfr-flight-planning-israel.html" hreflang="en" lang="en">English</a></p>
+
+  <main>
+    <h1>תכנון טיסת CVFR בישראל</h1>
+    <p class="lead">NavAid הוא יישום חינמי לתכנון טיסות CVFR בישראל. משרטטים את המסלול על
+      תרשים ה-CVFR הישראלי, ו-NavAid מחשב לכל קטע את הכיוון המגנטי, המרחק, הזמן והדלק, ומדפיס
+      את תכנית הטיסה.</p>
+    <p>היישום פועל בדפדפן במחשב, בטאבלט ובטלפון. אין צורך בחשבון, והמסלולים נשמרים במכשיר
+      שלך, אלא אם תבחר לגבות אותם ל-Google Drive הפרטי שלך.</p>
+    <p><a class="cta" href="./">פתח את NavAid</a></p>
+
+    <div class="note">
+      <p><strong>אמצעי תכנון, לא תדריך.</strong> לפני כל טיסה יש לבדוק את המקורות הרשמיים
+        העדכניים: את
+        <a href="https://www.gov.il/en/departments/guides/aip-israel" target="_blank" rel="noopener noreferrer">ה-AIP של רשות התעופה האזרחית</a>
+        לתרשימים, למרחב האווירי, לנקודות הדיווח, לתדרים ולכללי תכנית הטיסה; את
+        <a href="https://www.iaa.gov.il/en/about/aeronautical-information/" target="_blank" rel="noopener noreferrer">שירות המידע התעופתי של רשות שדות התעופה</a>
+        לנוטמים (NOTAM); ואת
+        <a href="https://ims.gov.il" target="_blank" rel="noopener noreferrer">השירות המטאורולוגי הישראלי</a>
+        למזג האוויר התעופתי.</p>
+    </div>
+
+    <h2>תכנון מסלול CVFR, שלב אחר שלב</h2>
+    <ol class="steps">
+      <li><strong>בוחרים תרשים.</strong> NavAid נפתח על תרשים ה-CVFR הישראלי. בתפריט השכבות
+        יש גם את תרשים הניווט, תרשים הגובה הנמוך, גיליון נתיבי ה-ATS
+        (<bdi>ENR 6.1</bdi>), צילום לוויין ומפת רחובות.</li>
+      <li><strong>משרטטים את המסלול.</strong> בוחרים <em>הוסף ציון דרך</em> ולוחצים על המפה:
+        כל לחיצה מוסיפה נקודה, המחוברת לקודמת בקטע. נקודה שמונחת ליד נקודת דיווח VFR או שדה
+        תעופה מפורסמים נצמדת למיקום ולשם המפורסמים.</li>
+      <li><strong>בודקים את הקטעים.</strong> לכל קטע מוצגים הכיוון המגנטי (אחרי תיקון הסטייה
+        המגנטית המקומית), המרחק במיילים ימיים והזמן במהירות המתוכננת. גוררים נקודה כדי להזיז
+        אותה, או לוחצים לחיצה כפולה על קטע כדי להוסיף נקודה באמצעו.</li>
+      <li><strong>פותחים את תכנית הטיסה.</strong> <em>תכנית טיסה</em> הופכת את המסלול לטבלת
+        ניווט: מ-, אל, כיוון, מרחק, מהירות, גובה, זמן ודלק לכל קטע, עם סיכומים. קובעים מהירות
+        וגובה לכל קטע; הדלק מחושב מצריכת כלי הטיס ומתוספת ההסעה. הטבלה מחושבת בכוונה ללא רוח,
+        כדי שתכנית מודפסת לא תשתנה; תיקון הרוח נמצא בטופס התכנון הנפרד.</li>
+      <li><strong>מדפיסים או מייצאים.</strong> מדפיסים את תכנית הטיסה או שומרים אותה כ-PDF,
+        מייצאים את המפה כתמונת PNG בגודל A4 או A3 בקנה מידה <bdi>1:250,000</bdi>, או מייצאים
+        את המסלול כ-GPX או כ-PLN לתוכנות ניווט אחרות.</li>
+    </ol>
+
+    <h2>נקודות דיווח ושדות תעופה</h2>
+    <p>שתי שכבות מציגות על התרשים את הנקודות המפורסמות, בסמלים של התרשים עצמו:</p>
+    <ul>
+      <li><strong>נקודות דיווח VFR</strong> (<em>הצג/נעץ ציוני ניווט</em>): נקודות הדיווח
+        הפעילות בישראל, בעברית ובאנגלית; נקודת חובה מסומנת במשולש מלא ונקודה לפי דרישה במשולש
+        ריק.</li>
+      <li><strong>שדות תעופה</strong> (<em>הצג/נעץ שדות תעופה</em>): שדות התעופה המפורסמים
+        בישראל, ביניהם הרצליה (<bdi>LLHZ</bdi>), חיפה (<bdi>LLHA</bdi>), מגידו
+        (<bdi>LLMG</bdi>), ראש פינה (<bdi>LLIB</bdi>), נתב״ג (<bdi>LLBG</bdi>) ורמון
+        (<bdi>LLER</bdi>). בחירת שדה מציגה את דפיות הגישה והתרשימים שלו.</li>
+    </ul>
+    <p>החיפוש מוצא כל נקודת דיווח או שדה תעופה לפי שם בעברית או באנגלית, או לפי קוד ICAO.
+      אפשר להציג גם את תחנות ה-VOR/DME, ו-NavAid נותן לכל נקודה במסלול רדיאל ו-DME מעד שתי
+      תחנות VOR לבחירתך.</p>
+
+    <h2>באוויר</h2>
+    <ul>
+      <li><strong>המיקום שלך על התרשים</strong>, עם מהירות, גובה וכיוון התקדמות, והקלטה של
+        המסלול שטסת. לטיסה מומלץ להשתמש
+        <a href="https://github.com/msupino/NavigationApp/releases" target="_blank" rel="noopener noreferrer">ביישום לאנדרואיד</a>
+        או <a href="https://apps.apple.com/app/id6824476911" target="_blank" rel="noopener noreferrer">ביישום ל-iPhone ול-iPad</a>,
+        שממשיכים לקבל GPS גם כשהמסך כבוי.</li>
+      <li><strong>תקלת קשר</strong>: כפתור אחד משרטט מסלול ממיקומך לשדה הקרוב שיש לו נוהל תקלת
+        קשר מפורסם (הרצליה, חיפה או ראש פינה), בגובה המפורסם של נקודת הכניסה, מציג סקווק
+        <bdi>7600</bdi> ופותח את תרשים תקלת הקשר של השדה.</li>
+      <li><strong>הסטה</strong>: כפתור אחד מציג את שדות התעופה הקרובים, עם כיוון, מרחק, זמן
+        ודלק לכל אחד, ומנתב אותך ישירות לשדה שתבחר.</li>
+    </ul>
+
+    <h2>בלי חיבור לרשת</h2>
+    <p>אפשר להתקין את NavAid כיישום, ואז המתכנן עובד גם בלי רשת. את תרשים ה-CVFR אפשר להוריד
+      לשימוש לא מקוון; מזג האוויר, הנוטמים, צילומי הלוויין ומפת הרחובות דורשים חיבור.</p>
+
+    <h2>שאלות</h2>
+    <dl>
+      <dt>האם NavAid חינמי?</dt>
+      <dd>כן. אין חשבון, אין מנוי ואין פרסומות.</dd>
+      <dt>האם NavAid בעברית?</dt>
+      <dd>כן. היישום כולו בעברית ובאנגלית, ונפתח בעברית אלא אם בוחרים באנגלית. המדריך הזה
+        קיים גם <a href="cvfr-flight-planning-israel.html" hreflang="en">באנגלית</a>.</dd>
+      <dt>האם הוא מחליף את התרשים והתדריך הרשמיים?</dt>
+      <dd>לא. הנתונים נגזרים מהפרסומים הרשמיים של מדינת ישראל, אבל NavAid הוא אמצעי תכנון
+        עצמאי, שאינו מסונף לרשות התעופה האזרחית, לרשות שדות התעופה או לגוף ממשלתי כלשהו. יש
+        לטוס תמיד עם ה-AIP העדכני, הנוטמים ותדריך מזג אוויר מלא.</dd>
+      <dt>איפה המדריך המלא?</dt>
+      <dd>ב<a href="https://github.com/msupino/NavigationApp/wiki/Home-he" target="_blank" rel="noopener noreferrer">ויקי של NavAid</a>,
+        בעברית ובאנגלית.</dd>
+    </dl>
+  </main>
+
+  <footer class="muted">
+    <a href="./">פתח את NavAid</a> ·
+    <a href="about.html">אודות</a> ·
+    <a href="privacy.html">פרטיות</a> ·
+    <a href="terms.html">תנאי שימוש</a>
+  </footer>
+</body>
+</html>

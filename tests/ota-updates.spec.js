@@ -11,6 +11,7 @@
 // bundle it has; and notifyAppReady() is called at boot, because a bundle that does not say
 // it started is rolled back to the one that did.
 const { test, expect } = require('./_setup');
+const { routeAppScript } = require('./_app-scripts');
 
 const boot = (page) => page.goto('?lang=en&nogist');
 
@@ -402,13 +403,16 @@ test('an exception on the way up disqualifies the bundle even if it looks loaded
 // used to reach notifyAppReady(), which is a broken bundle switching off its own rollback.
 for (const [what, breakIt] of [
   ['a script that never arrived', (route) => route.fulfill({ status: 404, body: '' })],
-  ['a script that threw on the way up', (route) => route.fulfill({
-    status: 200, contentType: 'application/javascript',
-    body: 'throw new Error("deck.js is broken");',
-  })],
+  ['a script that threw on the way up', (route, bundle) => {
+    const code = 'throw new Error("deck.js is broken");';
+    if (bundle) return route.fulfill({ response: bundle.res, body: bundle.withCode(code) });
+    return route.fulfill({ status: 200, contentType: 'application/javascript', body: code });
+  }],
 ]) {
   test('a bundle with ' + what + ' stays silent', async ({ page }) => {
-    await page.route('**/app/deck.js*', breakIt);
+    // On the deployed site deck.js arrives inside app/boot.bundle.js (tests/_app-scripts.js):
+    // the bundle's 404 is deck.js never arriving, and the throw replaces deck.js's own text.
+    await routeAppScript(page, 'app/deck.js', breakIt);
     await page.addInitScript(() => {
       window.__navaidEmbedded = true;
       window.__readyCalls = 0;

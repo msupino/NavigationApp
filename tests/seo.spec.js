@@ -146,11 +146,12 @@ test.describe('SEO URLs', () => {
       expect(href).not.toContain('msupino.github.io');
     }
     // No hreflang alternates and no ?lang= URLs: those are not separate pages (see the
-    // canonical test above). What IS listed is the app plus the three legal/about pages,
+    // canonical test above). What IS listed is the app, the CVFR planning guide (English and
+    // Hebrew: two real pages, each its own canonical) and the three legal/about pages,
     // each of which declares itself canonical.
     expect(text).not.toContain('hreflang=');
     expect(text).not.toContain('?lang=');
-    expect(locs.length).toBe(4);
+    expect(locs.length).toBe(6);
   });
 
   test('no msupino.github.io URLs in SEO tags', async ({ page }) => {
