@@ -781,19 +781,6 @@ jobs:
         with:
           name: github-pages
           path: artifact
-      # The Pages Functions (functions/, the live-traffic relay at /api/traffic) are server code,
-      # not site files: wrangler bundles them from the directory it runs in. Main's own copy, at
-      # the commit this artifact was built from.
-      - name: Check out main's Pages Functions
-        if: steps.cfg.outputs.skip != 'true'
-        uses: actions/checkout@v6
-        with:
-          ref: ${{ needs.build.outputs.main_sha }}
-          path: fn
-          sparse-checkout: |
-            functions
-            relay/traffic
-          sparse-checkout-cone-mode: false
       - name: Prepare the Cloudflare copy
         if: steps.cfg.outputs.skip != 'true'
         run: |
@@ -831,11 +818,6 @@ jobs:
               *) echo "::error::$f is over Cloudflare Pages' 25 MiB file limit"; exit 1 ;;
             esac
           done
-          # Functions run only under /api/: every other request stays a plain static file, outside
-          # the Workers quota (100,000 a day on the Free plan).
-          if [ -d fn/functions ]; then
-            printf '%s\n' '{"version":1,"include":["/api/*"],"exclude":[]}' > site/_routes.json
-          fi
           # The service workers and the update manifest must never be served from a cache:
           # a stale sw.js or manifest keeps phones on an old build.
           printf '%s\n' \
@@ -849,8 +831,6 @@ jobs:
           set -euo pipefail
           # The production branch of the Pages project is main; every publish here is the
           # production deployment, main's build alone.
-          # Run beside functions/ when main has any, so wrangler bundles them into the deployment.
-          if [ -d fn/functions ]; then mv site fn/site; cd fn; fi
           npx --yes wrangler@4 pages deploy site --project-name "$PROJECT" --branch main \
             --commit-hash "${{ needs.build.outputs.main_sha }}" --commit-dirty=true
 
