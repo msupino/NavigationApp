@@ -52,13 +52,16 @@ test('the sitemap lists only self-canonical pages, with no alternates', () => {
   const locs = [...xml.matchAll(/<loc>([^<]+)<\/loc>/g)].map(m => m[1]);
   expect(locs).toEqual([
     'https://navaid.supino.org/',
+    'https://navaid.supino.org/cvfr-flight-planning-israel.html',
+    'https://navaid.supino.org/cvfr-flight-planning-israel-he.html',
     'https://navaid.supino.org/about.html',
     'https://navaid.supino.org/privacy.html',
     'https://navaid.supino.org/terms.html',
   ]);
   // every listed page declares itself canonical, which is what hreflang required and
   // ?lang= could never satisfy
-  for (const f of ['about.html', 'privacy.html', 'terms.html']) {
+  for (const f of ['cvfr-flight-planning-israel.html', 'cvfr-flight-planning-israel-he.html',
+                   'about.html', 'privacy.html', 'terms.html']) {
     expect(read(f)).toContain(`<link rel="canonical" href="https://navaid.supino.org/${f}">`);
   }
   expect(read('index.html')).toContain('<link rel="canonical" href="https://navaid.supino.org/">');

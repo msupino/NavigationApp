@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>CVFR flight planning in Israel — NavAid</title>
+  <link rel="canonical" href="https://navaid.supino.org/cvfr-flight-planning-israel.html">
+  <link rel="alternate" hreflang="en" href="https://navaid.supino.org/cvfr-flight-planning-israel.html">
+  <link rel="alternate" hreflang="he" href="https://navaid.supino.org/cvfr-flight-planning-israel-he.html">
+  <link rel="alternate" hreflang="x-default" href="https://navaid.supino.org/cvfr-flight-planning-israel.html">
+  <meta name="description" content="How to plan a CVFR flight in Israel with NavAid, a free web app: draw the route on the Israeli CVFR chart, snap to published VFR reporting points and airfields, and print a nav-log with headings, distances, times and fuel.">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="CVFR flight planning in Israel — NavAid">
+  <meta property="og:description" content="Plan a CVFR route on the Israeli chart and print the nav-log. Free, in the browser, English and Hebrew.">
+  <meta property="og:url" content="https://navaid.supino.org/cvfr-flight-planning-israel.html">
+  <meta property="og:image" content="https://navaid.supino.org/assets/og-preview.jpg">
+  <!-- A real page in its own language (the Hebrew twin is its own URL), so the hreflang
+       pair above is honest: both pages exist, and each declares itself canonical. -->
+  <style>
+    :root { --bg: #ffffff; --fg: #1f252c; --muted: #5b6878; --link: #1d6fe0; --rule: #dfe4ea;
+            --card: #f4f7fb; }
+    @media (prefers-color-scheme: dark) {
+      :root { --bg: #12161b; --fg: #e6eaef; --muted: #a3afbd; --link: #6ea8ff; --rule: #2b333d;
+              --card: #1b2129; }
+    }
+    html { background: var(--bg); color-scheme: light dark; }
+    body { max-width: 760px; margin: 2rem auto; padding: 0 1rem; background: var(--bg); color: var(--fg);
+           font: 16px/1.6 system-ui, -apple-system, Segoe UI, Roboto, sans-serif; }
+    h1 { font-size: 1.7rem; line-height: 1.25; text-wrap: balance; }
+    h2 { font-size: 1.2rem; margin-top: 1.8rem; }
+    a { color: var(--link); }
+    a:focus-visible { outline: 2px solid var(--link); outline-offset: 2px; border-radius: 2px; }
+    .lead { font-size: 1.12rem; }
+    .muted { color: var(--muted); font-size: .9rem; }
+    .lang-switch { font-size: .9rem; margin-bottom: 1.5rem; }
+    .lang-switch a, .lang-switch strong { display: inline-block; padding: .5rem 0; }
+    .cta { display: inline-block; margin: .5rem 0 1rem; padding: .7rem 1.2rem; min-height: 44px;
+           box-sizing: border-box; border-radius: 8px; background: #1d6fe0; color: #fff;
+           font-weight: 600; text-decoration: none; }
+    .cta:focus-visible { outline: 3px solid var(--fg); outline-offset: 2px; }
+    ol.steps > li { margin-bottom: .8rem; }
+    .note { background: var(--card); border: 1px solid var(--rule); border-radius: 8px;
+            padding: .8rem 1rem; }
+    dt { font-weight: 600; margin-top: .8rem; }
+    dd { margin: .2rem 0 0; }
+    footer { margin-top: 2.5rem; padding-top: 1rem; border-top: 1px solid var(--rule); }
+  </style>
+</head>
+<body>
+  <p class="lang-switch"><strong>English</strong> ·
+    <a href="cvfr-flight-planning-israel-he.html" hreflang="he" lang="he">עברית</a></p>
+
+  <main>
+    <h1>CVFR flight planning in Israel</h1>
+    <p class="lead">NavAid is a free web app for planning CVFR flights in Israel. You draw the
+      route on the Israeli CVFR chart, and NavAid works out the magnetic heading, distance,
+      time and fuel for every leg, then prints the nav-log.</p>
+    <p>It runs in the browser on a computer, tablet or phone. There is no account to create,
+      and your routes stay on your device unless you choose to back them up to your own
+      Google Drive.</p>
+    <p><a class="cta" href="./?lang=en">Open NavAid</a></p>
+
+    <div class="note">
+      <p><strong>A planning aid, not a briefing.</strong> Before every flight, check the
+        current official sources: the
+        <a href="https://www.gov.il/en/departments/guides/aip-israel" target="_blank" rel="noopener noreferrer">AIP of the Civil Aviation Authority of Israel</a>
+        for charts, airspace, reporting points, frequencies and flight-plan rules; the
+        <a href="https://www.iaa.gov.il/en/about/aeronautical-information/" target="_blank" rel="noopener noreferrer">Israel Airports Authority's aeronautical information service</a>
+        for NOTAMs; and the
+        <a href="https://ims.gov.il" target="_blank" rel="noopener noreferrer">Israel Meteorological Service</a>
+        for aviation weather.</p>
+    </div>
+
+    <h2>Plan a CVFR route, step by step</h2>
+    <ol class="steps">
+      <li><strong>Pick the chart.</strong> NavAid opens on the Israeli CVFR chart. The
+        <em>Layer</em> menu also offers the Navigation and Low-Altitude charts, the ATS routes
+        sheet (ENR 6.1), satellite imagery and a street map.</li>
+      <li><strong>Draw the route.</strong> Choose <em>Add waypoint</em> and click the map: each
+        click adds a point, joined to the one before by a leg. Drop a point near a published VFR
+        reporting point or airfield and it snaps to the exact published position and name.</li>
+      <li><strong>Check the legs.</strong> Each leg shows its magnetic heading (with the local
+        magnetic variation applied), its distance in nautical miles and its time at the planned
+        speed. Drag a point to move it, or double-click a leg to insert one.</li>
+      <li><strong>Open the flight plan.</strong> <em>Flight plan</em> turns the route into a
+        nav-log table: from, to, heading, distance, speed, altitude, time and fuel per leg, with
+        the totals. Set the speed and altitude per leg; the fuel comes from your aircraft's burn
+        and the taxi allowance. The table is deliberately zero-wind, so the printed plan never
+        changes under you; the wind correction is on the separate planning form.</li>
+      <li><strong>Print or export.</strong> Print the flight plan or save it as a PDF, export
+        the map as a PNG sized for A4 or A3 at 1:250,000, or export the route as GPX or PLN for
+        other navigation software.</li>
+    </ol>
+
+    <h2>Reporting points and airfields</h2>
+    <p>Two overlays put the published points on the chart, drawn in the chart's own symbols:</p>
+    <ul>
+      <li><strong>VFR reporting points</strong>: the active Israeli reporting points, in Hebrew
+        and English, with compulsory points as a filled triangle and on-request points as an
+        open one.</li>
+      <li><strong>Airfields</strong>: the published Israeli airfields, including Herzliya
+        (LLHZ), Haifa (LLHA), Megiddo (LLMG), Rosh Pina (LLIB), Ben Gurion (LLBG) and Ramon
+        (LLER). Select one to see its approach plates and charts.</li>
+    </ul>
+    <p>The search box finds any reporting point or airfield by its Hebrew or English name or
+      by ICAO code. VOR/DME stations can be shown too, and NavAid gives the radial and DME of
+      every route point from up to two reference VORs.</p>
+
+    <h2>In the air</h2>
+    <ul>
+      <li><strong>Your position on the chart</strong>, with speed, altitude and track, and a
+        recording of the track you flew. For flying, use the
+        <a href="https://github.com/msupino/NavigationApp/releases" target="_blank" rel="noopener noreferrer">Android app</a>
+        or the <a href="https://apps.apple.com/app/id6824476911" target="_blank" rel="noopener noreferrer">iPhone and iPad app</a>,
+        which keep the GPS running with the screen off.</li>
+      <li><strong>Comm failure</strong>: one button draws a route from where you are to the
+        nearest field with a published comm-failure procedure (Herzliya, Haifa or Rosh Pina),
+        at the entry point's published altitude, shows squawk 7600 and opens the field's
+        comm-failure chart.</li>
+      <li><strong>Divert</strong>: one button lists the nearest airfields with bearing,
+        distance, time and fuel, and re-routes you direct to the one you pick.</li>
+    </ul>
+
+    <h2>Without a connection</h2>
+    <p>NavAid installs as an app, and the planner then works offline. The CVFR chart can be
+      downloaded for offline use; weather, NOTAMs, satellite imagery and street maps need a
+      connection.</p>
+
+    <h2>Questions</h2>
+    <dl>
+      <dt>Is NavAid free?</dt>
+      <dd>Yes. There is no account, subscription or advertising.</dd>
+      <dt>Is NavAid in Hebrew?</dt>
+      <dd>Yes. The whole app is in Hebrew and English, and opens in Hebrew unless you choose
+        English. This guide is also <a href="cvfr-flight-planning-israel-he.html" hreflang="he">in Hebrew</a>.</dd>
+      <dt>Does it replace the official chart and briefing?</dt>
+      <dd>No. The data is derived from Israel's official publications, but NavAid is an
+        independent planning aid, not affiliated with the Civil Aviation Authority, the Israel
+        Airports Authority or any government body. Always fly with the current AIP, NOTAMs and
+        a proper weather briefing.</dd>
+      <dt>Where is the full manual?</dt>
+      <dd>In the <a href="https://github.com/msupino/NavigationApp/wiki" target="_blank" rel="noopener noreferrer">NavAid wiki</a>,
+        in English and Hebrew.</dd>
+    </dl>
+  </main>
+
+  <footer class="muted">
+    <a href="./?lang=en">Open NavAid</a> ·
+    <a href="about.html?lang=en">About</a> ·
+    <a href="privacy.html?lang=en">Privacy</a> ·
+    <a href="terms.html?lang=en">Terms</a>
+  </footer>
+</body>
+</html>
