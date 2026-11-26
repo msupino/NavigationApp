@@ -70,7 +70,11 @@ const seen = (page, lat, lon) => page.evaluate(([la, lo]) => {
   return { onMap: x > box.left && x < box.right && y > box.top && y < box.bottom,
     underPanel: x >= i.left && x <= i.right && y >= i.top && y <= i.bottom };
 }, [lat, lon]);
-const asked = (page) => page.evaluate(() => window.__asked || []);
+// Only the traffic requests: the stub is the app's whole native HTTP, and other features ask
+// through it too (the NOTAM feed, whenever its fetch lands -- which raced the 'nothing is
+// asked' check on the deployed site). A traffic request carries the /lat/../lon/../dist/ path.
+const asked = (page) => page.evaluate(() =>
+  (window.__asked || []).filter((u) => /\/lat\/[^/]+\/lon\/[^/]+\/dist\//.test(u)));
 const frameShown = (page) => page.evaluate(() => {
   const f = document.getElementById('traffic-cb').closest('.tb-layer-frame');
   return getComputedStyle(f).display !== 'none';
