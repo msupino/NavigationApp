@@ -137,6 +137,30 @@ between debug- and release-signed installs without uninstalling first.
 4. Publish: `gh release create android-vX.Y.Z <apk> --title … --notes …`
    (replace an existing asset: `gh release upload <tag> <apk> --clobber`).
 
+### Wear OS companion (`wear/`)
+
+A small watch app showing what the phone sends: next waypoint, magnetic bearing and distance,
+ETE/ETA, time on the leg, GS and altitude. It has a screen, a tile and a complication. The phone
+side is `WearBridgePlugin.java` plus `docs/app/wear.js` (gist `featureWear`, on by default). The
+design is in `docs/superpowers/specs/2026-11-09-wear-os-companion-design.md`.
+
+- Same `applicationId` and the **same release key** as the phone app: the Wearable Data Layer
+  connects nothing else. A debug watch app pairs only with a debug phone app.
+- Build: `./gradlew :wear:assembleRelease` -> `wear/build/outputs/apk/release/wear-release.apk`.
+  Bump `versionCode` in `wear/build.gradle` for each new watch build.
+- Ship it on the same GitHub release as the phone APK, as `navaid-wear-<version>.apk`.
+- Install on the watch (Pixel Watch: Settings -> System -> About -> tap Build number 7 times;
+  then Developer options -> ADB debugging and Wireless debugging -> Pair new device):
+
+  ```sh
+  adb pair <watch-ip>:<pair-port>          # the code the watch shows
+  adb connect <watch-ip>:<port>
+  adb -s <watch-ip>:<port> install -r navaid-wear-<version>.apk
+  ```
+
+  Then add the NavAid tile (swipe left on the watch face, +), or the complication (long-press
+  the watch face -> Edit).
+
 ## iOS
 
 The `ios/` project exists (bundle id `org.supino.navaid`). Building needs

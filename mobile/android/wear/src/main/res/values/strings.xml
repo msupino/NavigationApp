@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">NavAid</string>
+    <string name="tile_label">NavAid: next waypoint</string>
+    <string name="complication_label">NavAid: next waypoint</string>
+    <string name="no_data">No data from phone</string>
+    <string name="start_on_phone">Show your location in NavAid on the phone</string>
+    <string name="off_route">Off route</string>
+    <string name="ete">ETE</string>
+    <string name="eta">ETA</string>
+    <string name="leg">Leg</string>
+    <string name="age">%1$d s old</string>
+</resources>

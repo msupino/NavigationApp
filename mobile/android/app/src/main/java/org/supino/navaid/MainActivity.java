@@ -28,6 +28,7 @@ public class MainActivity extends BridgeActivity
     registerPlugin(BarometerPlugin.class);
     registerPlugin(Gdl90Plugin.class);
     registerPlugin(NavAidPrintPlugin.class);
+    registerPlugin(WearBridgePlugin.class);
     super.onCreate(savedInstanceState);
     applySystemFontScale();
   }
