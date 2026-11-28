@@ -27,8 +27,9 @@ test('on a phone: quick layers, route check, then the menu\'s four, top left, dr
     };
   });
   expect(out.visible).toBe(true);
-  expect(out.ids).toEqual(['edit-col-layers', 'edit-col-check', 'edit-col-add', 'edit-col-note', 'edit-col-undo', 'edit-col-clear', 'edit-col-fit']);
-  expect(out.icons).toEqual(['layers', 'routeCheck', 'addWp', 'addNote', 'undo', 'clearMap', 'fitFrame']);
+  // ...and this branch's Auto arrange labels, last (kite-declutter).
+  expect(out.ids).toEqual(['edit-col-layers', 'edit-col-check', 'edit-col-add', 'edit-col-note', 'edit-col-undo', 'edit-col-clear', 'edit-col-fit', 'edit-col-arrange']);
+  expect(out.icons).toEqual(['layers', 'routeCheck', 'addWp', 'addNote', 'undo', 'clearMap', 'fitFrame', 'arrange']);
   expect(out.left).toBeLessThan(40);                 // the left edge, opposite the live column
   expect(out.top).toBeGreaterThanOrEqual(out.stripBottom);   // below the top strip, not under it
 });

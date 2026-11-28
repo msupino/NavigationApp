@@ -16,7 +16,7 @@
     // the tour's opening step it explained checking a route nobody had drawn yet (reported).
     // The edit buttons only: Route check sits in the same column, and a spotlight round the
     // whole column read as if checking were an edit too. Fit closes the column, under Clear map.
-    { sel: ['.edit-col-ctrl'], k: 'Edit', group: ['#edit-col-add', '#edit-col-note', '#edit-col-undo', '#edit-col-clear', '#edit-col-fit'] },
+    { sel: ['.edit-col-ctrl'], k: 'Edit', group: ['#edit-col-add', '#edit-col-note', '#edit-col-undo', '#edit-col-clear', '#edit-col-fit', '#edit-col-arrange'] },
     // Its own step, right after the buttons that make the route it checks.
     // The Layers button above it joins this step, lit with it.
     { sel: ['#edit-col-check'], k: 'Check', group: ['#edit-col-layers', '#edit-col-check'] },
