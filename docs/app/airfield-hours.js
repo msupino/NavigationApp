@@ -168,6 +168,9 @@
     const { tags, unsure } = dayTags(L.y, L.m, L.d, L.dow);
     const rule = entry.schedule.find(r => (r.days || []).some(t => tags.has(t)));
     if (!rule) return { state: null, reason: 'norule' };
+    // Prior coordination is not a clock window: leave the verdict undecided, even if the
+    // calendar day also matches a normal weekday rule later in the schedule.
+    if (rule.ppr) return { state: null, reason: 'ppr' };
     if (rule.h24) return { state: 'open', reason: 'h24' };
     const usesHolidays = entry.schedule.some(r => (r.days || []).some(t => t !== 'any' && !DAY_TAGS.includes(t)));
     if (unsure && usesHolidays) return { state: null, reason: 'calendar' };
