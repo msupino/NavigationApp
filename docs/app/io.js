@@ -7070,7 +7070,12 @@ function printHtmlPage(html) {
     return;
   }
   const old = document.getElementById('navaid-print-frame');
-  if (old) old.remove();
+  if (old) {
+    if (typeof old.__navaidPrintCleanup === 'function') old.__navaidPrintCleanup();
+    else old.remove();
+  }
+  const resumeTraffic = typeof window.trafficPauseForPrint === 'function'
+    ? window.trafficPauseForPrint() : () => {};
   const frame = document.createElement('iframe');
   frame.id = 'navaid-print-frame';
   frame.setAttribute('aria-hidden', 'true');
@@ -7083,11 +7088,17 @@ function printHtmlPage(html) {
   doc.close();
   const w = frame.contentWindow;
   let cleaned = false;
-  const cleanup = () => { if (!cleaned) { cleaned = true; frame.remove(); } };
+  const cleanup = () => {
+    if (cleaned) return;
+    cleaned = true;
+    frame.remove();
+    resumeTraffic();
+  };
+  frame.__navaidPrintCleanup = cleanup;
   // A beat for the fonts and layout, as the tab version had.
   setTimeout(() => {
     try { w.addEventListener('afterprint', () => setTimeout(cleanup, 500)); } catch (e) { /* */ }
-    try { w.focus(); w.print(); } catch (e) { /* */ }
+    try { w.focus(); w.print(); } catch (e) { cleanup(); }
     setTimeout(cleanup, 120000);
   }, 300);
 }
@@ -7100,7 +7111,12 @@ function openPrintWindow(blobs, paperWmm, paperHmm) {
   }
   const urls = list.map(b => URL.createObjectURL(b));
   const old = document.getElementById('navaid-print-frame');
-  if (old) old.remove();
+  if (old) {
+    if (typeof old.__navaidPrintCleanup === 'function') old.__navaidPrintCleanup();
+    else old.remove();
+  }
+  const resumeTraffic = typeof window.trafficPauseForPrint === 'function'
+    ? window.trafficPauseForPrint() : () => {};
   const frame = document.createElement('iframe');
   frame.id = 'navaid-print-frame';
   frame.setAttribute('aria-hidden', 'true');
@@ -7114,7 +7130,9 @@ function openPrintWindow(blobs, paperWmm, paperHmm) {
     cleaned = true;
     urls.forEach(u => URL.revokeObjectURL(u));
     frame.remove();
+    resumeTraffic();
   };
+  frame.__navaidPrintCleanup = cleanup;
   const sized = (paperWmm && paperHmm)
     ? `@page{size:${paperWmm}mm ${paperHmm}mm;margin:0}img{width:${paperWmm}mm;height:${paperHmm}mm;display:block}`
     : `@page{margin:0}img{max-width:100%;display:block}`;
@@ -7128,9 +7146,10 @@ function openPrintWindow(blobs, paperWmm, paperHmm) {
   const w = frame.contentWindow;
   const imgs = [...doc.querySelectorAll('img')];
   let left = imgs.length;
+  if (!left) { cleanup(); return; }
   const go = () => {
     try { w.addEventListener('afterprint', () => setTimeout(cleanup, 500)); } catch (e) { /* */ }
-    try { w.focus(); w.print(); } catch (e) { /* */ }
+    try { w.focus(); w.print(); } catch (e) { cleanup(); }
     setTimeout(cleanup, 120000);        // a print dialog left open, or a browser without afterprint
   };
   imgs.forEach((img, i) => {

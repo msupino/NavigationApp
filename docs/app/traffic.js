@@ -17,6 +17,7 @@
   let followedHex = '';
   let timer = 0;
   let inFlight = false;
+  let printPauseCount = 0;
   let fails = 0;               // consecutive failed polls; one blip is not an outage
   let lastOkAt = 0;            // when the feed last answered (ms)
   let stalePolled = false;     // the feed's aircraft are drawn faded: their positions are old
@@ -73,6 +74,30 @@
   // Follow is a temporary target choice made in the selected aircraft's inspector. Keep it
   // separate from navaid.gpsFollow, which is the pilot's saved own-aircraft preference.
   window.trafficFollowTarget = () => followedHex;
+  // Printing can take long enough for a fresh ADS-B response to redraw the map while its
+  // export is being assembled. Pause only the internet poller; receiver-fed targets remain
+  // available, and the user's traffic setting is left untouched.
+  window.trafficPauseForPrint = function () {
+    printPauseCount++;
+    if (printPauseCount === 1) {
+      generation++;                 // discard a feed response already in flight
+      clearInterval(timer);
+      timer = 0;
+      clearTimeout(moveTimer);
+      moveTimer = 0;
+      polled = [];                  // remove the last ADS-B snapshot while the print is open
+      lastOkAt = 0;
+      stalePolled = false;
+      render();
+    }
+    let resumed = false;
+    return function () {
+      if (resumed) return;
+      resumed = true;
+      printPauseCount = Math.max(0, printPauseCount - 1);
+      if (!printPauseCount && on()) schedule();
+    };
+  };
   // Where a followed aircraft goes: the middle of the map you can SEE, not of the whole map. On a
   // phone the inspector is a bottom sheet over the lower half -- and Stop following lives in it --
   // so centring on the whole map parked the aircraft under the panel that follows it (reported).
@@ -575,7 +600,7 @@
 
   async function poll() {
     ageOut();
-    if (inFlight) return;
+    if (printPauseCount || inFlight) return;
     if (!on()) { clear(); return; }
     const myGen = generation;   // 'mine' below is the own-ship fix; do not shadow it
     const at = centre();
@@ -622,12 +647,13 @@
 
   function schedule() {
     clearInterval(timer);
+    if (printPauseCount || !on()) { timer = 0; return; }
     const sec = (typeof tune === 'function' ? tune('trafficRefreshSec') : 8) || 8;
     timer = setInterval(poll, Math.max(3, sec) * 1000);
     poll();
   }
   window.trafficRefresh = function () {
-    if (on()) { schedule(); return; }
+    if (on()) { if (!printPauseCount) schedule(); return; }
     generation++;                                   // disown whatever is still in flight
     clearInterval(timer);
     timer = 0;
@@ -639,12 +665,25 @@
   // and each one is a request over the wire.
   let lastAsked = null;
   map.on('moveend', () => {
-    if (!on()) return;
+    if (printPauseCount || !on()) return;
     const at = centre();
     if (lastAsked && Math.abs(at.lat - lastAsked.lat) < 0.05
                   && Math.abs(at.lng - lastAsked.lng) < 0.05) return;
     lastAsked = at;
     clearTimeout(moveTimer);
     moveTimer = setTimeout(poll, 400);
+  });
+
+  // Normal browser print() runs on the app window and reports these events there. The hidden
+  // print-frame and Android plugin paths take explicit pauses at their call sites below.
+  let browserPrintResume = null;
+  window.addEventListener('beforeprint', () => {
+    if (!browserPrintResume) browserPrintResume = window.trafficPauseForPrint();
+  });
+  window.addEventListener('afterprint', () => {
+    if (!browserPrintResume) return;
+    const resume = browserPrintResume;
+    browserPrintResume = null;
+    resume();
   });
 })();

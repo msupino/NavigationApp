@@ -23,17 +23,30 @@
     && typeof C.isPluginAvailable === 'function' && C.isPluginAvailable('NavAidPrint')
     && C.Plugins && C.Plugins.NavAidPrint) || null;
   let busy = false;
+  let resumeTraffic = null;
+
+  function pauseTraffic() {
+    if (!resumeTraffic && typeof window.trafficPauseForPrint === 'function') {
+      resumeTraffic = window.trafficPauseForPrint();
+    }
+  }
 
   function available() { return !!plugin(); }
 
   function done() {
     busy = false;
+    if (resumeTraffic) {
+      const resume = resumeTraffic;
+      resumeTraffic = null;
+      resume();
+    }
     try { window.dispatchEvent(new Event('afterprint')); } catch (e) { /* */ }
   }
 
   async function printPage() {
     const p = plugin();
     if (!p) return false;
+    pauseTraffic();
     busy = true;
     try { await p.printPage({ name: 'NavAid' }); return true; }
     catch (e) { done(); return false; }
@@ -53,6 +66,7 @@
     const p = plugin();
     const fs = C && C.Plugins && C.Plugins.Filesystem;
     if (!p || !fs) return false;
+    pauseTraffic();
     busy = true;
     try {
       const uris = [];
@@ -81,6 +95,7 @@
   async function printHtml(html) {
     const p = plugin();
     if (!p) return false;
+    pauseTraffic();
     busy = true;
     try { await p.printHtml({ html: String(html), name: 'NavAid' }); return true; }
     catch (e) { done(); return false; }
