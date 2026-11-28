@@ -1,0 +1,57 @@
+{
+ "generatedAt": "2026-11-28T18:20:29.888Z",
+ "source": "IMS area warnings (ims.gov.il)",
+ "airmets": [
+  {
+   "id": "44395",
+   "hazard": "AIRMET",
+   "validFrom": "2026-11-28T16:00:00.000Z",
+   "validTo": "2026-11-28T20:00:00.000Z",
+   "coords": [
+    [
+     31.53333,
+     34.53333
+    ],
+    [
+     31.3,
+     35.06667
+    ],
+    [
+     30.7,
+     34.43333
+    ],
+    [
+     31.21667,
+     34.26667
+    ]
+   ],
+   "raw": "LLLL AIRMET 4 VALID 281600/282000 LLBD- LLLL TEL AVIV FIR BKN CLD 800/1500FT FCST WI N3132 E03432 - N3118 E03504 - N3042 E03426 - N3113 E03416 - N3132 E03432 STNR NC="
+  },
+  {
+   "id": "44396",
+   "hazard": "MT OBSC",
+   "validFrom": "2026-11-28T16:00:00.000Z",
+   "validTo": "2026-11-28T20:00:00.000Z",
+   "coords": [
+    [
+     30.7,
+     34.43333
+    ],
+    [
+     30.3,
+     34.58333
+    ],
+    [
+     32.91667,
+     35.58333
+    ],
+    [
+     33.25,
+     35.58333
+    ]
+   ],
+   "raw": "LLLL AIRMET 5 VALID 281600/282000 LLBD- LLLL TEL AVIV FIR MT OBSC FCST WI N3255 E03535 - N3315 E03535 - N3018 E03435 - N3042 E03426 - N3255 E03535 STNR INTSF="
+  }
+ ],
+ "airfieldWarnings": {}
+}
