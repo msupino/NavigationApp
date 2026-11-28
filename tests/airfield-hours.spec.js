@@ -80,8 +80,11 @@ test('every schedule decides every hour of a year without failing', async ({ pag
   for (const [k, t] of Object.entries(result)) {
     expect(t.errors, k + ' errors').toBe(0);
     expect(t.open, k + ' is within its hours some of the time').toBeGreaterThan(0);
-    // An unknown verdict is the exception, never the rule.
-    expect(t.none, k + ' undecided hours').toBeLessThan((t.open + t.closed) * 0.1);
+    // A schedule can deliberately leave whole days undecided when the AIP requires prior
+    // coordination. The unknown verdict should otherwise be the exception, never the rule.
+    if (!HOURS.fields[k].schedule.some(r => r.ppr)) {
+      expect(t.none, k + ' undecided hours').toBeLessThan((t.open + t.closed) * 0.1);
+    }
   }
 });
 
@@ -119,6 +122,11 @@ test('other rule shapes: weekdays, summer time, closures, daytime only', async (
   // Ein Yahav, daytime only: midday is within, civil twilight is undecided.
   expect(await status(page, 'LLEY', '2026-10-12T12:00:00+03:00')).toMatch(/^open until 18:\d\d window$/);
   expect(await status(page, 'LLEY', '2026-10-12T18:25:00+03:00')).toBe('null twilight');
+  // Its amended schedule requires prior coordination on weekends, holidays and holiday eves.
+  for (const t of ['2026-10-16T12:00:00+03:00', '2026-10-17T12:00:00+03:00',
+    '2026-09-20T12:00:00+03:00', '2026-09-21T12:00:00+03:00']) {
+    expect(await status(page, 'LLEY', t), 'LLEY PPR at ' + t).toBe('null ppr');
+  }
   expect(await status(page, 'LLBG', '2026-10-16T03:00:00+03:00')).toBe('open h24');
 });
 
