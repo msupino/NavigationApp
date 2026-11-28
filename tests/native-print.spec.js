@@ -31,14 +31,30 @@ async function bootNative(page) {
 test('the map prints through the app: images to the cache, a page of them to Android', async ({ page }) => {
   await bootNative(page);
   const r = await page.evaluate(async () => {
+    window.__trafficPause = { paused: 0, resumed: 0 };
+    window.trafficPauseForPrint = () => {
+      window.__trafficPause.paused++;
+      let resumed = false;
+      return () => {
+        if (resumed) return;
+        resumed = true;
+        window.__trafficPause.resumed++;
+      };
+    };
     const c = document.createElement('canvas'); c.width = 4; c.height = 3;
     const png = await new Promise(res => c.toBlob(res, 'image/png'));
     openPrintWindow([png, png], 210, 297);
     for (let i = 0; i < 50 && !window.__np.html; i++) await new Promise(x => setTimeout(x, 50));
-    return { html: window.__np.html, writes: window.__np.writes.length, frame: !!document.getElementById('navaid-print-frame') };
+    const paused = { ...window.__trafficPause };
+    window.__np.listeners.printFinished();
+    return { html: window.__np.html, writes: window.__np.writes.length,
+      frame: !!document.getElementById('navaid-print-frame'), paused,
+      resumed: { ...window.__trafficPause } };
   });
   expect(r.writes).toBe(2);
   expect(r.frame).toBe(false);                               // no browser frame in the app
+  expect(r.paused).toEqual({ paused: 1, resumed: 0 });
+  expect(r.resumed).toEqual({ paused: 1, resumed: 1 });
   expect(r.html).toContain('@page{size:210mm 297mm');
   expect((r.html.match(/<img [^>]*src="file:\/\/\/cache\/print\//g) || []).length).toBe(2);
 });

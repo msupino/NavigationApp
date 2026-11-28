@@ -128,6 +128,34 @@ test('a browser shows traffic through the relay the gist names', async ({ page }
   expect(await asked(page)).toEqual([]);
 });
 
+test('printing removes internet-fed ADS-B and resumes polling when printing ends', async ({ page }) => {
+  await boot(page, { native: false });
+  const relayed = [];
+  await page.route('https://relay.navaid.test/**', (r) => {
+    relayed.push(r.request().url());
+    return r.fulfill({ contentType: 'application/json', headers: { 'Access-Control-Allow-Origin': '*' },
+      body: JSON.stringify({ ac: AC }) });
+  });
+  await page.evaluate(() => {
+    setTune('trafficWebApiUrl', 'https://relay.navaid.test/v2/lat/{lat}/lon/{lon}/dist/{dist}');
+    setTune('trafficRefreshSec', 60);
+    refreshTrafficFeature();
+    map.setView([32.05, 34.92], 10);
+  });
+  await expect(marks(page)).toHaveCount(2);
+  const requestsBeforePause = relayed.length;
+
+  await page.evaluate(() => { window.__resumePrintTraffic = trafficPauseForPrint(); });
+  await expect(marks(page)).toHaveCount(0);
+  await page.evaluate(() => { trafficRefresh(); map.fire('moveend'); });
+  await page.waitForTimeout(500);
+  expect(relayed).toHaveLength(requestsBeforePause);
+
+  await page.evaluate(() => window.__resumePrintTraffic());
+  await expect(marks(page)).toHaveCount(2);
+  expect(relayed.length).toBeGreaterThan(requestsBeforePause);
+});
+
 test('the gist switch is the only thing that takes it away', async ({ page }) => {
   await boot(page, { feature: false });           // shipped state: featureLiveTraffic off
   expect(await page.evaluate(() => tune('featureLiveTraffic'))).toBe(false);
